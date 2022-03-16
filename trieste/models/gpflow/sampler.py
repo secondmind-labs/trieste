@@ -330,7 +330,8 @@ class RandomFourierFeatureTrajectorySampler(
     This class builds functions that approximate a trajectory sampled from an underlying Gaussian
     process model. For tractibility, the Gaussian process is approximated with a Bayesian
     Linear model across a set of features sampled from the Fourier feature decomposition of
-    the model's kernel. See :cite:`hernandez2014predictive` for details.
+    the model's kernel. See :cite:`hernandez2014predictive` for details. Currently we do not
+    support models with multiple latent Gaussian processes.
 
     In particular, we approximate the Gaussian processes' posterior samples as the finite feature
     approximation
@@ -478,7 +479,8 @@ class DecoupledTrajectorySampler(
 
     This class builds functions that approximate a trajectory sampled from an underlying Gaussian
     process model using decoupled sampling. See :cite:`wilson2020efficiently` for an introduction
-    to decoupled sampling.
+    to decoupled sampling. Currently we do not support models with multiple latent Gaussian
+    processes.
 
     Unlike our :class:`RandomFourierFeatureTrajectorySampler` which uses a RFF decomposition to
     aprroximate the Gaussian process posterior, a :class:`DecoupledTrajectorySampler` only
@@ -501,8 +503,6 @@ class DecoupledTrajectorySampler(
     :class:`FeatureDecompositionInternalDataModel` type,
     :class:`FeatureDecompositionInducingPointModel` will take a priority and inducing points
     will be used for computations rather than data.
-
-    At the moment only models with single latent GP are supported.
     """
 
     def __init__(
@@ -519,17 +519,8 @@ class DecoupledTrajectorySampler(
         :param num_features: The number of features used to approximate the kernel. We use a default
             of 1000 as it typically perfoms well for a wide range of kernels. Note that very smooth
             kernels (e.g. RBF) can be well-approximated with fewer features.
-        :raise NotImplementedError: If the model is not of valid type, or we try to use the
-            sampler with a model that has more than one latent GP.
+        :raise NotImplementedError: If the model is not of valid type.
         """
-        if model.model.num_latent_gps > 1:
-            raise NotImplementedError(
-                f"""
-                DecoupledTrajectorySampler does not currently support models with multiple latent
-                GPs, however received a model with {model.model.num_latent_gps} latent GPs.
-                """
-            )
-
         if not isinstance(
             model, (FeatureDecompositionInducingPointModel, FeatureDecompositionInternalDataModel)
         ):
@@ -627,8 +618,6 @@ class ResampleableRandomFourierFeatureFunctions(RFF):  # type: ignore[misc]
     :class:`FeatureDecompositionInternalDataModel` type,
     :class:`FeatureDecompositionInducingPointModel` will take a priority and inducing points
     will be used for computations rather than data.
-
-    At the moment only models with single latent GP are supported.
     """
 
     def __init__(
@@ -642,17 +631,8 @@ class ResampleableRandomFourierFeatureFunctions(RFF):  # type: ignore[misc]
         """
         :param model: The model that will be approximed by these feature functions.
         :param n_components: The desired number of features.
-        :raise NotImplementedError: If the model is not of valid type, or we try to use the
-            sampler with a model that has more than one latent GP.
+        :raise NotImplementedError: If the model is not of valid type.
         """
-        if model.model.num_latent_gps > 1:
-            raise NotImplementedError(
-                f"""
-                DecoupledTrajectorySampler does not currently support models with multiple latent
-                GPs, however received a model with {model.model.num_latent_gps} latent GPs.
-                """
-            )
-
         if not isinstance(
             model,
             (
@@ -704,8 +684,6 @@ class ResampleableDecoupledFeatureFunctions(ResampleableRandomFourierFeatureFunc
     :class:`FeatureDecompositionInternalDataModel` type,
     :class:`FeatureDecompositionInducingPointModel` will take a priority and inducing points
     will be used for computations rather than data.
-
-    At the moment only models with single latent GP are supported.
     """
 
     def __init__(

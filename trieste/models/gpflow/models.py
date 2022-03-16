@@ -312,8 +312,20 @@ class GaussianProcessRegression(
         Return a trajectory sampler. For :class:`GaussianProcessRegression`, we build
         trajectories using a random Fourier feature approximation.
 
+        At the moment only models with single latent GP are supported.
+
         :return: The trajectory sampler.
+        :raise NotImplementedError: If we try to use the
+            sampler with a model that has more than one latent GP.
         """
+        if self.model.num_latent_gps > 1:
+            raise NotImplementedError(
+                f"""
+                Trajectory sampler does not currently support models with multiple latent
+                GPs, however received a model with {self.model.num_latent_gps} latent GPs.
+                """
+            )
+
         if self._use_decoupled_sampler:
             return DecoupledTrajectorySampler(self, self._num_rff_features)
         else:
@@ -542,8 +554,8 @@ class SparseGaussianProcessRegression(
         :param inducing_point_selector: The (optional) desired inducing point selector that
             will update the underlying GPflow SGPR model's inducing points as
             the optimization progresses.
-        :raise NotImplementedError (or ValueError): If we try to use a model with more than one
-            latent GP, invalid ``num_rff_features``, or an ``inducing_point_selector`` with a model
+        :raise NotImplementedError (or ValueError): If we try to use a model with invalid
+            ``num_rff_features``, or an ``inducing_point_selector`` with a model
             that has more than one set of inducing points.
         """
         super().__init__(optimizer)
@@ -567,14 +579,6 @@ class SparseGaussianProcessRegression(
                     """
                 )
         self._inducing_point_selector = inducing_point_selector
-
-        if self.model.num_latent_gps > 1:
-            raise NotImplementedError(
-                f"""
-                We do not currently support models with more than one latent GP,
-                however received a model with {self.model.num_latent_gps} outputs.
-                """
-            )
 
         self._ensure_variable_model_data()
         self.create_posterior_cache()
@@ -733,7 +737,16 @@ class SparseGaussianProcessRegression(
             variational mean ``q_mu``; a tensor containing the Cholesky decomposition of the
             variational covariance ``q_sqrt``; and a bool denoting if we are using whitened or
             non-whitened representations.
+        :raise NotImplementedError: If the model has more than one latent GP.
         """
+        if self.model.num_latent_gps > 1:
+            raise NotImplementedError(
+                f"""
+                We do not currently support models with more than one latent GP,
+                however received a model with {self.model.num_latent_gps} outputs.
+                """
+            )
+
         inducing_variable = self.model.inducing_variable
 
         if isinstance(inducing_variable, SharedIndependentInducingVariables):
@@ -785,8 +798,20 @@ class SparseGaussianProcessRegression(
         trajectories using a decoupled random Fourier feature approximation. Note that this
         is available only for single output models.
 
+        At the moment only models with single latent GP are supported.
+
         :return: The trajectory sampler.
+        :raise NotImplementedError: If we try to use the
+            sampler with a model that has more than one latent GP.
         """
+        if self.model.num_latent_gps > 1:
+            raise NotImplementedError(
+                f"""
+                Trajectory sampler does not currently support models with multiple latent
+                GPs, however received a model with {self.model.num_latent_gps} latent GPs.
+                """
+            )
+
         return DecoupledTrajectorySampler(self, self._num_rff_features)
 
     def get_internal_data(self) -> Dataset:
@@ -1052,8 +1077,19 @@ class SparseVariational(
         Return a trajectory sampler. For :class:`SparseVariational`, we build
         trajectories using a decoupled random Fourier feature approximation.
 
+        At the moment only models with single latent GP are supported.
+
         :return: The trajectory sampler.
+        :raise NotImplementedError: If we try to use the
+            sampler with a model that has more than one latent GP.
         """
+        if self.model.num_latent_gps > 1:
+            raise NotImplementedError(
+                f"""
+                Trajectory sampler does not currently support models with multiple latent
+                GPs, however received a model with {self.model.num_latent_gps} latent GPs.
+                """
+            )
 
         return DecoupledTrajectorySampler(self, self._num_rff_features)
 
@@ -1283,8 +1319,19 @@ class VariationalGaussianProcess(
         Return a trajectory sampler. For :class:`VariationalGaussianProcess`, we build
         trajectories using a decoupled random Fourier feature approximation.
 
+        At the moment only models with single latent GP are supported.
+
         :return: The trajectory sampler.
+        :raise NotImplementedError: If we try to use the
+            sampler with a model that has more than one latent GP.
         """
+        if self.model.num_latent_gps > 1:
+            raise NotImplementedError(
+                f"""
+                Trajectory sampler does not currently support models with multiple latent
+                GPs, however received a model with {self.model.num_latent_gps} latent GPs.
+                """
+            )
 
         return DecoupledTrajectorySampler(self, self._num_rff_features)
 

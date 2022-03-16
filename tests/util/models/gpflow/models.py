@@ -67,14 +67,6 @@ class PseudoTrainableProbModel(TrainableProbabilisticModel, Protocol):
 class GaussianMarginal(ProbabilisticModel):
     """A probabilistic model with Gaussian marginal distribution. Assumes events of shape [N]."""
 
-    @property
-    def model(self) -> ProbabilisticModel:
-        return self
-
-    @property
-    def num_latent_gps(self) -> int:
-        return 1
-
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         mean, var = self.predict(query_points)
         samples = tfp.distributions.Normal(mean, tf.sqrt(var)).sample(num_samples)
@@ -321,18 +313,24 @@ def gpr_model(x: tf.Tensor, y: tf.Tensor) -> GPR:
     return GPR((x, y), gpflow.kernels.Matern32())
 
 
-def sgpr_model(x: tf.Tensor, y: tf.Tensor) -> SGPR:
-    return SGPR((x, y), gpflow.kernels.Matern32(), x[:2])
+def sgpr_model(x: tf.Tensor, y: tf.Tensor, num_latent_gps: int = 1) -> SGPR:
+    return SGPR((x, y), gpflow.kernels.Matern32(), x[:2], num_latent_gps=num_latent_gps)
 
 
-def svgp_model(x: tf.Tensor, y: tf.Tensor) -> SVGP:
-    return SVGP(gpflow.kernels.Matern32(), gpflow.likelihoods.Gaussian(), x[:2], num_data=len(x))
+def svgp_model(x: tf.Tensor, y: tf.Tensor, num_latent_gps: int = 1) -> SVGP:
+    return SVGP(
+        gpflow.kernels.Matern32(),
+        gpflow.likelihoods.Gaussian(),
+        x[:2],
+        num_data=len(x),
+        num_latent_gps=num_latent_gps,
+    )
 
 
-def vgp_model(x: tf.Tensor, y: tf.Tensor) -> VGP:
+def vgp_model(x: tf.Tensor, y: tf.Tensor, num_latent_gps: int = 1) -> VGP:
     likelihood = gpflow.likelihoods.Gaussian()
     kernel = gpflow.kernels.Matern32()
-    m = VGP((x, y), kernel, likelihood)
+    m = VGP((x, y), kernel, likelihood, num_latent_gps=num_latent_gps)
     return m
 
 

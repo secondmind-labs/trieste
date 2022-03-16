@@ -558,6 +558,15 @@ def test_gaussian_process_regression_pairwise_covariance(num_outputs: int) -> No
     np.testing.assert_allclose(expected_covariance, actual_covariance, atol=1e-5)
 
 
+def test_gaussian_process_regression_trajectory_sampler_raises_multi_latent_gp() -> None:
+    x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
+    y = fnc_3x_plus_10(x)
+    model = GaussianProcessRegression(gpr_model(x, tf.repeat(y, 2, axis=1)))
+
+    with pytest.raises(NotImplementedError):
+        model.trajectory_sampler()
+
+
 @random_seed
 @pytest.mark.parametrize("use_decoupled_sampler", [True, False])
 def test_gaussian_process_regression_trajectory_sampler_has_correct_samples(
@@ -702,9 +711,6 @@ def test_sparse_gaussian_process_regression_raises_for_invalid_init() -> None:
     x = tf.convert_to_tensor(x_np, x_np.dtype)
     y = fnc_3x_plus_10(x)
 
-    with pytest.raises(NotImplementedError):
-        SparseGaussianProcessRegression(two_output_sgpr_model(x, y))
-
     with pytest.raises(ValueError):
         SparseGaussianProcessRegression(sgpr_model(x, y), num_rff_features=-1)
 
@@ -800,6 +806,14 @@ def test_sparse_gaussian_process_regression_optimize(compile: bool) -> None:
     assert model.model.training_loss() < loss
 
 
+def test_sparse_gaussian_process_regression_trajectory_sampler_raises_multi_latent_gp() -> None:
+    data = mock_data()
+    model = SparseGaussianProcessRegression(sgpr_model(*data, num_latent_gps=2))
+
+    with pytest.raises(NotImplementedError):
+        model.trajectory_sampler()
+
+
 @random_seed
 def test_sparse_gaussian_process_regression_trajectory_sampler_has_correct_samples() -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
@@ -829,6 +843,14 @@ def test_sparse_gaussian_process_regression_trajectory_sampler_has_correct_sampl
     # test predictions almost correct at data
     npt.assert_allclose(sample_mean[:3] + 1.0, true_mean[:3] + 1.0, rtol=0.1)
     npt.assert_allclose(sample_variance[:3], true_variance[:3], rtol=0.3)
+
+
+def test_sparse_gaussian_process_regression_get_inducing_raises_multi_latent_gp() -> None:
+    data = mock_data()
+    model = SparseGaussianProcessRegression(sgpr_model(*data, num_latent_gps=2))
+
+    with pytest.raises(NotImplementedError):
+        model.get_inducing_variables()
 
 
 def test_sparse_gaussian_process_regression_correctly_returns_inducing_points() -> None:
@@ -1015,6 +1037,14 @@ def test_variational_gaussian_process_update_q_mu_sqrt_unchanged() -> None:
 
     npt.assert_allclose(old_q_mu, new_q_mu, atol=1e-5)
     npt.assert_allclose(old_q_sqrt, new_q_sqrt, atol=1e-5)
+
+
+def test_variational_gaussian_process_trajectory_sampler_raises_multi_latent_gp() -> None:
+    data = mock_data()
+    model = VariationalGaussianProcess(vgp_model(*data, num_latent_gps=2))
+
+    with pytest.raises(NotImplementedError):
+        model.trajectory_sampler()
 
 
 @random_seed
@@ -1371,6 +1401,14 @@ def test_sparse_variational_optimize(batcher: DatasetTransformer, compile: bool)
     loss = model.model.training_loss(data)
     model.optimize(dataset)
     assert model.model.training_loss(data) < loss
+
+
+def test_sparse_variational_gaussian_process_trajectory_sampler_raises_multi_latent_gp() -> None:
+    data = mock_data()
+    model = SparseVariational(svgp_model(*data, num_latent_gps=2))
+
+    with pytest.raises(NotImplementedError):
+        model.trajectory_sampler()
 
 
 @random_seed
