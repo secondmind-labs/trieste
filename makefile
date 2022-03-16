@@ -24,7 +24,7 @@ f_m_l_r_n = $(foreach pre,$(f_m_l_r),$(addprefix $(pre),$(norm)))
 f_m_l_r_n_run = $(foreach pre,$(f_m_l_r_n),$(addprefix $(pre),$(run)))
 
 results_rtfreq/%: experiment.py
-	$(base) python $< $@ --exp_name rtfreq --function $(call a1,$*) --model $(call a2,$*) --$(call a3,$*) --$(call a4,$*) --rt_freq $(call a5,$*) --$(call a6,$*) --run $(call a7,$*)
+	$(base) python $< $@ --exp_name rtfreq --function $(call a1,$*) --model $(call a2,$*) --$(call a3,$*) --$(call a4,$*) --rt_every $(call a5,$*) --$(call a6,$*) --run $(call a7,$*)
 experiment: $(addprefix results_rtfreq/,$(f_m_l_r_n_run))
 
 random_search = rs_
