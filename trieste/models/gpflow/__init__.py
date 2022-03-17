@@ -26,7 +26,12 @@ from .inducing_point_selectors import (
     UniformInducingPointSelector,
 )
 from .interface import GPflowPredictor
-from .models import GaussianProcessRegression, SparseVariational, VariationalGaussianProcess
+from .models import (
+    GaussianProcessRegression,
+    SparseGaussianProcessRegression,
+    SparseVariational,
+    VariationalGaussianProcess,
+)
 from .sampler import (
     BatchReparametrizationSampler,
     DecoupledTrajectorySampler,

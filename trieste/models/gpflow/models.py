@@ -63,8 +63,7 @@ class GaussianProcessRegression(
     HasTrajectorySampler,
 ):
     """
-    A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.GPR`
-    or :class:`~gpflow.models.SGPR`.
+    A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.GPR`.
 
     As Bayesian optimization requires a large number of sequential predictions (i.e. when maximizing
     acquisition functions), rather than calling the model directly at prediction time we instead
@@ -77,7 +76,7 @@ class GaussianProcessRegression(
 
     def __init__(
         self,
-        model: GPR | SGPR,
+        model: GPR,
         optimizer: Optimizer | None = None,
         num_kernel_samples: int = 10,
         num_rff_features: int = 1000,
@@ -94,7 +93,7 @@ class GaussianProcessRegression(
             kernel when calling :meth:`trajectory_sampler`. We use a default of 1000 as it
             typically perfoms well for a wide range of kernels. Note that very smooth
             kernels (e.g. RBF) can be well-approximated with fewer features.
-        :param used_decoupled_sampler: If True use a decoupled random Fourier feature sampler, else
+        :param use_decoupled_sampler: If True use a decoupled random Fourier feature sampler, else
             just use a random Fourier feature sampler. The decoupled sampler suffers less from
             overestimating variance and can typically get away with a lower num_rff_features.
         """
@@ -120,10 +119,14 @@ class GaussianProcessRegression(
 
     def __repr__(self) -> str:
         """"""
-        return f"GaussianProcessRegression({self.model!r}, {self.optimizer!r})"
+        return (
+            f"GaussianProcessRegression({self.model!r}, {self.optimizer!r},"
+            f"{self._num_kernel_samples!r}, {self._num_rff_features!r},"
+            f"{self._use_decoupled_sampler!r})"
+        )
 
     @property
-    def model(self) -> GPR | SGPR:
+    def model(self) -> GPR:
         return self._model
 
     def _ensure_variable_model_data(self) -> None:
@@ -184,9 +187,6 @@ class GaussianProcessRegression(
         :return: Covariance matrix between the sets of query points with shape [..., L, N, M]
             (L being the number of latent GPs = number of output dimensions)
         """
-        if isinstance(self.model, SGPR):
-            raise NotImplementedError("Covariance between points is not supported for SGPR.")
-
         tf.debugging.assert_shapes(
             [(query_points_1, [..., "N", "D"]), (query_points_2, ["M", "D"])]
         )
@@ -312,8 +312,20 @@ class GaussianProcessRegression(
         Return a trajectory sampler. For :class:`GaussianProcessRegression`, we build
         trajectories using a random Fourier feature approximation.
 
+        At the moment only models with single latent GP are supported.
+
         :return: The trajectory sampler.
+        :raise NotImplementedError: If we try to use the
+            sampler with a model that has more than one latent GP.
         """
+        if self.model.num_latent_gps > 1:
+            raise NotImplementedError(
+                f"""
+                Trajectory sampler does not currently support models with multiple latent
+                GPs, however received a model with {self.model.num_latent_gps} latent GPs.
+                """
+            )
+
         if self._use_decoupled_sampler:
             return DecoupledTrajectorySampler(self, self._num_rff_features)
         else:
@@ -341,7 +353,6 @@ class GaussianProcessRegression(
         :return: mean_qp_new: predictive mean at query_points, with shape [..., M, L],
                  and var_qp_new: predictive variance at query_points, with shape [..., M, L]
         """
-
         tf.debugging.assert_shapes(
             [
                 (additional_data.query_points, [..., "N", "D"]),
@@ -352,9 +363,6 @@ class GaussianProcessRegression(
             " and observations with shape [..., N, L], and query_points "
             "should have shape [M, D]",
         )
-
-        if isinstance(self.model, SGPR):
-            raise NotImplementedError("Conditional predict f is not supported for SGPR.")
 
         mean_add, cov_add = self.predict_joint(
             additional_data.query_points
@@ -411,7 +419,6 @@ class GaussianProcessRegression(
                  and cov_qp_new: predictive covariance between query_points, with shape
                  [..., L, M, M]
         """
-
         tf.debugging.assert_shapes(
             [
                 (additional_data.query_points, [..., "N", "D"]),
@@ -422,9 +429,6 @@ class GaussianProcessRegression(
             " and observations with shape [..., N, L], and query_points "
             "should have shape [M, D]",
         )
-
-        if isinstance(self.model, SGPR):
-            raise NotImplementedError("Conditional predict f is not supported for SGPR.")
 
         leading_dims = tf.shape(additional_data.query_points)[:-2]  # [...]
         new_shape = tf.concat([leading_dims, tf.shape(query_points)], axis=0)  # [..., M, D]
@@ -484,9 +488,6 @@ class GaussianProcessRegression(
         :return: samples of f at query points, with shape [..., num_samples, M, L]
         """
 
-        if isinstance(self.model, SGPR):
-            raise NotImplementedError("Conditional predict y is not supported for SGPR.")
-
         mean_new, cov_new = self.conditional_predict_joint(query_points, additional_data)
         mean_for_sample = tf.linalg.adjoint(mean_new)  # [..., L, N]
         samples = sample_mvn(
@@ -507,11 +508,320 @@ class GaussianProcessRegression(
         :return: predictive variance at query_points, with shape [..., M, L],
                  and predictive variance at query_points, with shape [..., M, L]
         """
-
-        if isinstance(self.model, SGPR):
-            raise NotImplementedError("Conditional predict y is not supported for SGPR.")
         f_mean, f_var = self.conditional_predict_f(query_points, additional_data)
         return self.model.likelihood.predict_mean_and_var(f_mean, f_var)
+
+
+class SparseGaussianProcessRegression(
+    GPflowPredictor,
+    TrainableProbabilisticModel,
+    SupportsCovarianceBetweenPoints,
+    SupportsGetInducingVariables,
+    SupportsGetInternalData,
+    HasTrajectorySampler,
+):
+    """
+    A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.SGPR`.
+    At the moment we only support models with a single latent GP. This is due to ``compute_qu``
+    method in :class:`~gpflow.models.SGPR` that is used for computing covariance between
+    query points and trajectory sampling, which at the moment works only for single latent GP.
+
+    Similarly to our :class:`GaussianProcessRegression`, our :class:`~gpflow.models.SGPR` wrapper
+    directly calls the posterior objects built by these models at prediction
+    time. These posterior objects store the pre-computed Gram matrices, which can be reused to allow
+    faster subsequent predictions. However, note that these posterior objects need to be updated
+    whenever the underlying model is changed  by calling :meth:`update_posterior_cache` (this
+    happens automatically after calls to :meth:`update` or :math:`optimize`).
+    """
+
+    def __init__(
+        self,
+        model: SGPR,
+        optimizer: Optimizer | None = None,
+        num_rff_features: int = 1000,
+        inducing_point_selector: Optional[
+            InducingPointSelector[SparseGaussianProcessRegression]
+        ] = None,
+    ):
+        """
+        :param model: The GPflow model to wrap.
+        :param optimizer: The optimizer with which to train the model. Defaults to
+            :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
+        :param num_rff_features: The number of random Fourier features used to approximate the
+            kernel when calling :meth:`trajectory_sampler`. We use a default of 1000 as it
+            typically perfoms well for a wide range of kernels. Note that very smooth
+            kernels (e.g. RBF) can be well-approximated with fewer features.
+        :param inducing_point_selector: The (optional) desired inducing point selector that
+            will update the underlying GPflow SGPR model's inducing points as
+            the optimization progresses.
+        :raise NotImplementedError (or ValueError): If we try to use a model with invalid
+            ``num_rff_features``, or an ``inducing_point_selector`` with a model
+            that has more than one set of inducing points.
+        """
+        super().__init__(optimizer)
+        self._model = model
+
+        check_optimizer(self.optimizer)
+
+        if num_rff_features <= 0:
+            raise ValueError(
+                f"num_rff_features must be greater or equal to zero but got {num_rff_features}."
+            )
+        self._num_rff_features = num_rff_features
+
+        if isinstance(self.model.inducing_variable, SeparateIndependentInducingVariables):
+            if inducing_point_selector is not None:
+                raise NotImplementedError(
+                    f"""
+                    InducingPointSelectors only currently support models with a single set
+                    of inducing points however received inducing points of
+                    type {type(self.model.inducing_variable)}.
+                    """
+                )
+        self._inducing_point_selector = inducing_point_selector
+
+        self._ensure_variable_model_data()
+        self.create_posterior_cache()
+
+    def __repr__(self) -> str:
+        """"""
+        return (
+            f"SparseGaussianProcessRegression({self.model!r}, {self.optimizer!r},"
+            f"{self._num_rff_features!r}, {self._inducing_point_selector!r})"
+        )
+
+    @property
+    def model(self) -> SGPR:
+        return self._model
+
+    @property
+    def inducing_point_selector(
+        self,
+    ) -> Optional[InducingPointSelector[SparseGaussianProcessRegression]]:
+        return self._inducing_point_selector
+
+    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        f_mean, f_var = self.predict(query_points)
+        return self.model.likelihood.predict_mean_and_var(f_mean, f_var)
+
+    def _ensure_variable_model_data(self) -> None:
+        # GPflow stores the data in Tensors. However, since we want to be able to update the data
+        # without having to retrace the acquisition functions, put it in Variables instead.
+        # Data has to be stored in variables with dynamic shape to allow for changes
+        # Sometimes, for instance after serialization-deserialization, the shape can be overridden
+        # Thus here we ensure data is stored in dynamic shape Variables
+        if not all(is_variable(x) and x.shape[0] is None for x in self._model.data):
+            self._model.data = (
+                tf.Variable(
+                    self._model.data[0],
+                    trainable=False,
+                    shape=[None, *self._model.data[0].shape[1:]],
+                ),
+                tf.Variable(
+                    self._model.data[1],
+                    trainable=False,
+                    shape=[None, *self._model.data[1].shape[1:]],
+                ),
+            )
+
+        if not is_variable(self._model.num_data):
+            self._model.num_data = tf.Variable(self._model.num_data, trainable=False)
+
+    def optimize(self, dataset: Dataset) -> None:
+        """
+        Optimize the model with the specified `dataset`.
+
+        :param dataset: The data with which to optimize the `model`.
+        """
+        self.optimizer.optimize(self.model, dataset)
+        self.update_posterior_cache()
+
+    def update(self, dataset: Dataset) -> None:
+        self._ensure_variable_model_data()
+
+        x, y = self.model.data[0].value(), self.model.data[1].value()
+
+        assert_data_is_compatible(dataset, Dataset(x, y))
+
+        if dataset.query_points.shape[-1] != x.shape[-1]:
+            raise ValueError
+
+        if dataset.observations.shape[-1] != y.shape[-1]:
+            raise ValueError
+
+        self.model.data[0].assign(dataset.query_points)
+        self.model.data[1].assign(dataset.observations)
+
+        current_inducing_points, q_mu, _, _ = self.get_inducing_variables()
+
+        if isinstance(current_inducing_points, list):
+            inducing_points_trailing_dim = current_inducing_points[0].shape[-1]
+        else:
+            inducing_points_trailing_dim = current_inducing_points.shape[-1]
+
+        if dataset.query_points.shape[-1] != inducing_points_trailing_dim:
+            raise ValueError(
+                f"Shape {dataset.query_points.shape} of new query points is incompatible with"
+                f" shape {self.model.inducing_variable.Z.shape} of existing query points."
+                f" Trailing dimensions must match."
+            )
+
+        if dataset.observations.shape[-1] != q_mu.shape[-1]:
+            raise ValueError(
+                f"Shape {dataset.observations.shape} of new observations is incompatible with"
+                f" shape {self.model.q_mu.shape} of existing observations. Trailing"
+                f" dimensions must match."
+            )
+
+        num_data = dataset.query_points.shape[0]
+        self.model.num_data.assign(num_data)
+
+        if self._inducing_point_selector is not None:
+            new_inducing_points = self._inducing_point_selector.calculate_inducing_points(
+                current_inducing_points, self, dataset
+            )
+            if not tf.reduce_all(
+                tf.math.equal(
+                    new_inducing_points,
+                    current_inducing_points,
+                )
+            ):  # only bother updating if points actually change
+                self._update_inducing_variables(new_inducing_points)
+
+        self.update_posterior_cache()
+
+    def _update_inducing_variables(self, new_inducing_points: TensorType) -> None:
+        """
+        When updating the inducing points of a model, we must also update the other
+        inducing variables, i.e. `q_mu` and `q_sqrt` accordingly. The exact form of this update
+        depends if we are using whitened representations of the inducing variables.
+        See :meth:`_whiten_points` for details.
+
+        :param new_inducing_points: The desired values for the new inducing points.
+        :raise NotImplementedError: If we try to update the inducing variables of a model
+            that has more than one set of inducing points.
+        """
+
+        if isinstance(new_inducing_points, list):
+            raise NotImplementedError(
+                f"""
+                We do not currently support updating models with multiple sets of
+                inducing points however received; {new_inducing_points}
+                """
+            )
+
+        old_inducing_points, _, _, _ = self.get_inducing_variables()
+        tf.assert_equal(
+            tf.shape(old_inducing_points), tf.shape(new_inducing_points)
+        )  # number of inducing points must not change
+
+        if isinstance(self.model.inducing_variable, SharedIndependentInducingVariables):
+            # gpflow says inducing_variable might be a ndarray; it won't
+            cast(TensorType, self.model.inducing_variable.inducing_variable).Z.assign(
+                new_inducing_points
+            )  # [M, D]
+        else:
+            self.model.inducing_variable.Z.assign(new_inducing_points)  # [M, D]
+
+    def get_inducing_variables(
+        self,
+    ) -> Tuple[Union[TensorType, list[TensorType]], TensorType, TensorType, bool]:
+        """
+        Return the model's inducing variables. The SGPR model does not have ``q_mu``, ``q_sqrt`` and
+        ``whiten`` objects. We can use ``compute_qu`` method to obtain ``q_mu`` and ``q_sqrt``,
+        while the SGPR model does not use the whitened representation. Note that at the moment
+        ``compute_qu`` works only for single latent GP and returns ``q_sqrt`` in a shape that is
+        inconsistent with the SVGP model (hence we need to do modify its shape).
+
+        :return: The inducing points (i.e. locations of the inducing variables), as a Tensor or a
+            list of Tensors (when the model has multiple inducing points); a tensor containing the
+            variational mean ``q_mu``; a tensor containing the Cholesky decomposition of the
+            variational covariance ``q_sqrt``; and a bool denoting if we are using whitened or
+            non-whitened representations.
+        :raise NotImplementedError: If the model has more than one latent GP.
+        """
+        if self.model.num_latent_gps > 1:
+            raise NotImplementedError(
+                f"""
+                We do not currently support models with more than one latent GP,
+                however received a model with {self.model.num_latent_gps} outputs.
+                """
+            )
+
+        inducing_variable = self.model.inducing_variable
+
+        if isinstance(inducing_variable, SharedIndependentInducingVariables):
+            # gpflow says inducing_variable might be a ndarray; it won't
+            inducing_points = cast(TensorType, inducing_variable.inducing_variable).Z  # [M, D]
+        elif isinstance(inducing_variable, SeparateIndependentInducingVariables):
+            inducing_points = [
+                cast(TensorType, inducing_variable).Z
+                for inducing_variable in inducing_variable.inducing_variables
+            ]  # list of L [M, D] tensors
+        else:
+            inducing_points = inducing_variable.Z  # [M, D]
+
+        q_mu, q_var = self.model.compute_qu()
+        q_sqrt = tf.linalg.cholesky(q_var)
+        q_sqrt = tf.expand_dims(q_sqrt, 0)
+        whiten = False
+
+        return inducing_points, q_mu, q_sqrt, whiten
+
+    def covariance_between_points(
+        self, query_points_1: TensorType, query_points_2: TensorType
+    ) -> TensorType:
+        r"""
+        Compute the posterior covariance between sets of query points.
+
+        Note that query_points_2 must be a rank 2 tensor, but query_points_1 can
+        have leading dimensions.
+
+        :param query_points_1: Set of query points with shape [..., A, D]
+        :param query_points_2: Sets of query points with shape [B, D]
+        :return: Covariance matrix between the sets of query points with shape [..., L, A, B]
+            (L being the number of latent GPs = number of output dimensions)
+        """
+        inducing_points, _, q_sqrt, whiten = self.get_inducing_variables()
+
+        return _covariance_between_points_for_variational_models(
+            kernel=self.get_kernel(),
+            inducing_points=inducing_points,
+            q_sqrt=q_sqrt,
+            query_points_1=query_points_1,
+            query_points_2=query_points_2,
+            whiten=whiten,
+        )
+
+    def trajectory_sampler(self) -> TrajectorySampler[SparseGaussianProcessRegression]:
+        """
+        Return a trajectory sampler. For :class:`SparseGaussianProcessRegression`, we build
+        trajectories using a decoupled random Fourier feature approximation. Note that this
+        is available only for single output models.
+
+        At the moment only models with single latent GP are supported.
+
+        :return: The trajectory sampler.
+        :raise NotImplementedError: If we try to use the
+            sampler with a model that has more than one latent GP.
+        """
+        if self.model.num_latent_gps > 1:
+            raise NotImplementedError(
+                f"""
+                Trajectory sampler does not currently support models with multiple latent
+                GPs, however received a model with {self.model.num_latent_gps} latent GPs.
+                """
+            )
+
+        return DecoupledTrajectorySampler(self, self._num_rff_features)
+
+    def get_internal_data(self) -> Dataset:
+        """
+        Return the model's training data.
+
+        :return: The model's training data.
+        """
+        return Dataset(self.model.data[0], self.model.data[1])
 
 
 class SparseVariational(
@@ -599,7 +909,10 @@ class SparseVariational(
 
     def __repr__(self) -> str:
         """"""
-        return f"SparseVariational({self.model!r}, {self.optimizer!r})"
+        return (
+            f"SparseVariational({self.model!r}, {self.optimizer!r},"
+            f"{self._num_rff_features!r}, {self._inducing_point_selector!r})"
+        )
 
     @property
     def model(self) -> SVGP:
@@ -657,6 +970,7 @@ class SparseVariational(
     def optimize(self, dataset: Dataset) -> None:
         """
         Optimize the model with the specified `dataset`.
+
         :param dataset: The data with which to optimize the `model`.
         """
         self.optimizer.optimize(self.model, dataset)
@@ -764,8 +1078,19 @@ class SparseVariational(
         Return a trajectory sampler. For :class:`SparseVariational`, we build
         trajectories using a decoupled random Fourier feature approximation.
 
+        At the moment only models with single latent GP are supported.
+
         :return: The trajectory sampler.
+        :raise NotImplementedError: If we try to use the
+            sampler with a model that has more than one latent GP.
         """
+        if self.model.num_latent_gps > 1:
+            raise NotImplementedError(
+                f"""
+                Trajectory sampler does not currently support models with multiple latent
+                GPs, however received a model with {self.model.num_latent_gps} latent GPs.
+                """
+            )
 
         return DecoupledTrajectorySampler(self, self._num_rff_features)
 
@@ -905,7 +1230,10 @@ class VariationalGaussianProcess(
 
     def __repr__(self) -> str:
         """"""
-        return f"VariationalGaussianProcess({self.model!r}, {self.optimizer!r})"
+        return (
+            f"VariationalGaussianProcess({self.model!r}, {self.optimizer!r})"
+            f"{self._use_natgrads!r}, {self._natgrad_gamma!r}, {self._num_rff_features!r})"
+        )
 
     @property
     def model(self) -> VGP:
@@ -992,8 +1320,19 @@ class VariationalGaussianProcess(
         Return a trajectory sampler. For :class:`VariationalGaussianProcess`, we build
         trajectories using a decoupled random Fourier feature approximation.
 
+        At the moment only models with single latent GP are supported.
+
         :return: The trajectory sampler.
+        :raise NotImplementedError: If we try to use the
+            sampler with a model that has more than one latent GP.
         """
+        if self.model.num_latent_gps > 1:
+            raise NotImplementedError(
+                f"""
+                Trajectory sampler does not currently support models with multiple latent
+                GPs, however received a model with {self.model.num_latent_gps} latent GPs.
+                """
+            )
 
         return DecoupledTrajectorySampler(self, self._num_rff_features)
 

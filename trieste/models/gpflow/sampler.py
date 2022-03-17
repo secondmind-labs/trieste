@@ -330,7 +330,8 @@ class RandomFourierFeatureTrajectorySampler(
     This class builds functions that approximate a trajectory sampled from an underlying Gaussian
     process model. For tractibility, the Gaussian process is approximated with a Bayesian
     Linear model across a set of features sampled from the Fourier feature decomposition of
-    the model's kernel. See :cite:`hernandez2014predictive` for details.
+    the model's kernel. See :cite:`hernandez2014predictive` for details. Currently we do not
+    support models with multiple latent Gaussian processes.
 
     In particular, we approximate the Gaussian processes' posterior samples as the finite feature
     approximation
@@ -478,7 +479,8 @@ class DecoupledTrajectorySampler(
 
     This class builds functions that approximate a trajectory sampled from an underlying Gaussian
     process model using decoupled sampling. See :cite:`wilson2020efficiently` for an introduction
-    to decoupled sampling.
+    to decoupled sampling. Currently we do not support models with multiple latent Gaussian
+    processes.
 
     Unlike our :class:`RandomFourierFeatureTrajectorySampler` which uses a RFF decomposition to
     aprroximate the Gaussian process posterior, a :class:`DecoupledTrajectorySampler` only
@@ -496,6 +498,11 @@ class DecoupledTrajectorySampler(
 
     The expression for :math:`v_i` depends on if we are using an exact Gaussian process or a sparse
     approximations. See  eq. (13) in :cite:`wilson2020efficiently` for details.
+
+    Note that if a model is both of :class:`FeatureDecompositionInducingPointModel` type and
+    :class:`FeatureDecompositionInternalDataModel` type,
+    :class:`FeatureDecompositionInducingPointModel` will take a priority and inducing points
+    will be used for computations rather than data.
     """
 
     def __init__(
@@ -512,22 +519,22 @@ class DecoupledTrajectorySampler(
         :param num_features: The number of features used to approximate the kernel. We use a default
             of 1000 as it typically perfoms well for a wide range of kernels. Note that very smooth
             kernels (e.g. RBF) can be well-approximated with fewer features.
-        :raise ValueError: If ``dataset`` is empty.
+        :raise NotImplementedError: If the model is not of valid type.
         """
-
         if not isinstance(
             model, (FeatureDecompositionInducingPointModel, FeatureDecompositionInternalDataModel)
         ):
             raise NotImplementedError(
-                f"RandomFourierFeatureTrajectorySampler only works with models that either support "
-                f"get_kernel, get_observation_noise and get_internal_data or support get_kernel, "
-                f"get_observation_noise and get_internal_data; but received {model.__repr__()}."
+                f"DecoupledTrajectorySampler only works with models that either support "
+                f"get_kernel, get_observation_noise and get_internal_data or support get_kernel "
+                f"and get_inducing_variables; but received {model.__repr__()}."
             )
 
         tf.debugging.assert_positive(num_features)
         self._num_features = num_features
         self._model = model
         feature_functions = ResampleableDecoupledFeatureFunctions(self._model, self._num_features)
+
         super().__init__(self._model, feature_functions)
 
     def _prepare_weight_sampler(self) -> Callable[[int], TensorType]:
@@ -606,6 +613,11 @@ class ResampleableRandomFourierFeatureFunctions(RFF):  # type: ignore[misc]
 
     In particular, we store the bias and weights as variables, which can then be
     updated without triggering expensive graph retracing.
+
+    Note that if a model is both of :class:`FeatureDecompositionInducingPointModel` type and
+    :class:`FeatureDecompositionInternalDataModel` type,
+    :class:`FeatureDecompositionInducingPointModel` will take a priority and inducing points
+    will be used for computations rather than data.
     """
 
     def __init__(
@@ -619,8 +631,8 @@ class ResampleableRandomFourierFeatureFunctions(RFF):  # type: ignore[misc]
         """
         :param model: The model that will be approximed by these feature functions.
         :param n_components: The desired number of features.
+        :raise NotImplementedError: If the model is not of valid type.
         """
-
         if not isinstance(
             model,
             (
@@ -631,7 +643,7 @@ class ResampleableRandomFourierFeatureFunctions(RFF):  # type: ignore[misc]
             raise NotImplementedError(
                 f"ResampleableRandomFourierFeatureFunctions only work with models that either"
                 f"support get_kernel, get_observation_noise and get_internal_data or support "
-                f"get_kernel, get_observation_noise and get_internal_data;"
+                f"get_kernel and get_inducing_variables;"
                 f"but received {model.__repr__()}."
             )
 
@@ -639,10 +651,11 @@ class ResampleableRandomFourierFeatureFunctions(RFF):  # type: ignore[misc]
         self._n_components = n_components
         super().__init__(self._kernel, self._n_components, dtype=tf.float64)
 
-        if isinstance(model, SupportsGetInternalData):
-            dummy_X = model.get_internal_data().query_points[0:1, :]
-        else:
+        if isinstance(model, SupportsGetInducingVariables):
             dummy_X = model.get_inducing_variables()[0][0:1, :]
+        else:
+            dummy_X = model.get_internal_data().query_points[0:1, :]
+
         self.__call__(dummy_X)  # dummy call to force init of weights
         self.b: TensorType = tf.Variable(self.b)
         self.W: TensorType = tf.Variable(self.W)  # allow updateable weights
@@ -666,6 +679,11 @@ class ResampleableDecoupledFeatureFunctions(ResampleableRandomFourierFeatureFunc
     A wrapper around our :class:`ResampleableRandomFourierFeatureFunctions` which rather
     than evaluates just `L` RFF functions instead evaluates the concatenation of
     `L` RFF functions with evaluations of the cannonical basis functions.
+
+    Note that if a model is both of :class:`FeatureDecompositionInducingPointModel` type and
+    :class:`FeatureDecompositionInternalDataModel` type,
+    :class:`FeatureDecompositionInducingPointModel` will take a priority and inducing points
+    will be used for computations rather than data.
     """
 
     def __init__(
@@ -681,10 +699,10 @@ class ResampleableDecoupledFeatureFunctions(ResampleableRandomFourierFeatureFunc
         :param n_components: The desired number of features.
         """
 
-        if isinstance(model, SupportsGetInternalData):
-            inducing_points = model.get_internal_data().query_points  # [M, D]
-        else:
+        if isinstance(model, SupportsGetInducingVariables):
             inducing_points = model.get_inducing_variables()[0]  # [M, D]
+        else:
+            inducing_points = model.get_internal_data().query_points  # [M, D]
 
         self._cannonical_feature_functions = lambda x: tf.linalg.matrix_transpose(
             model.get_kernel().K(inducing_points, x)
@@ -760,6 +778,7 @@ class feature_decomposition_trajectory(TrajectoryFunctionClass):
         flat_x, unflatten = flatten_leading_dims(x)  # [N*B, d]
         flattened_feature_evaluations = self._feature_functions(flat_x)  # [N*B, m]
         feature_evaluations = unflatten(flattened_feature_evaluations)  # [N, B, m]
+
         return tf.reduce_sum(feature_evaluations * self._weights_sample, -1)  # [N, B]
 
     def resample(self) -> None:
