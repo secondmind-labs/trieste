@@ -18,10 +18,12 @@ This module contains the :class:`BayesianOptimizer` class, used to perform Bayes
 
 from __future__ import annotations
 
-import copy
+import datetime
+import pickle
 import traceback
 from collections.abc import Mapping
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, Generic, Optional, TypeVar, cast, overload
 
 import absl
@@ -86,6 +88,30 @@ class Record(Generic[StateType]):
         else:
             raise ValueError(f"Expected a single dataset, found {len(self.datasets)}")
 
+    def save(self, path: Path) -> FrozenRecord[StateType]:
+        """ """
+        with open(path, "wb") as f:
+            pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
+        return FrozenRecord(path)
+
+
+@dataclass(frozen=True)
+class FrozenRecord(Generic[StateType]):
+    """
+    A Record container saved on disk.
+
+    Note that records are saved via pickling and are therefore neither portable nor secure.
+    Only open frozen records generated on the same system.
+    """
+
+    path: Path
+    """ The path to the pickled Record. """
+
+    def load(self) -> Record[StateType]:
+        """Load the record into memory."""
+        with open(self.path, "rb") as f:
+            return pickle.load(f)
+
 
 # this should be a generic NamedTuple, but mypy doesn't support them
 #  https://github.com/python/mypy/issues/685
@@ -99,14 +125,14 @@ class OptimizationResult(Generic[StateType]):
     exception.
     """
 
-    history: list[Record[StateType]]
+    history: list[FrozenRecord[StateType]]
     r"""
     The history of the :class:`Record`\ s from each step of the optimization process. These
-    :class:`Record`\ s are created at the *start* of each loop, and as such will never include the
-    :attr:`final_result`.
+    :class:`FrozenRecord`\ s are created at the *start* of each loop, and as such will never
+    include the :attr:`final_result` (though this is still saved to disk).
     """
 
-    def astuple(self) -> tuple[Result[Record[StateType]], list[Record[StateType]]]:
+    def astuple(self) -> tuple[Result[Record[StateType]], list[FrozenRecord[StateType]]]:
         """
         **Note:** In contrast to the standard library function :func:`dataclasses.astuple`, this
         method does *not* deepcopy instance attributes.
@@ -173,6 +199,16 @@ class OptimizationResult(Generic[StateType]):
             return next(iter(models.values()))
         else:
             raise ValueError(f"Expected single model, found {len(models)}")
+
+    @property
+    def loaded_history(self) -> list[Record[StateType]]:
+        """The history of the optimization process loaded into memory."""
+        return [record.load() for record in self.history]
+
+    @classmethod
+    def from_path(cls, base_path: Path) -> OptimizationResult[StateType]:
+        """ """
+        # TODO: construct from pickle files in path
 
 
 class BayesianOptimizer(Generic[SearchSpaceType]):
@@ -465,7 +501,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             Dict[str, TrainableProbabilisticModelType], map_values(create_model, model_specs)
         )
 
-        history: list[Record[StateType]] = []
+        history: list[FrozenRecord[StateType]] = []
         plot_df: Optional[pd.DataFrame] = None
 
         summary_writer = logging.get_tensorboard_writer()
@@ -488,14 +524,18 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     output_stream=absl.logging.INFO,
                 )
 
+        if track_state:
+            # TODO: make configurable
+            base_path = f"{datetime.datetime.now():%Y%m%dT%H%M%S}"
+
         for step in range(num_steps):
             logging.set_step_number(step)
             try:
 
                 if track_state:
-                    models_copy = copy.deepcopy(models)
-                    acquisition_state_copy = copy.deepcopy(acquisition_state)
-                    history.append(Record(datasets, models_copy, acquisition_state_copy))
+                    record = Record(datasets, models, acquisition_state)
+                    record_path = Path(f"{base_path}.{step}.pickle")
+                    history.append(record.save(record_path))
 
                 with Timer() as total_step_wallclock_timer:
                     with Timer() as initial_model_fitting_timer:
@@ -597,9 +637,13 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         "\nusing split_acquisition_function or split_acquisition_function_calls.",
                         output_stream=absl.logging.ERROR,
                     )
+                # TODO: save error
                 return OptimizationResult(Err(error), history)
 
         tf.print("Optimization completed without errors", output_stream=absl.logging.INFO)
 
         record = Record(datasets, models, acquisition_state)
+        if track_state:
+            record_path = Path(f"{base_path}.{step}.pickle")
+            record.save(record_path)
         return OptimizationResult(Ok(record), history)

@@ -228,12 +228,12 @@ gpflow.utilities.print_summary(
 
 variance_list = [
     step.model.model.kernel.variance.numpy()  # type: ignore
-    for step in result.history + [result.final_result.unwrap()]
+    for step in result.loaded_history + [result.final_result.unwrap()]
 ]
 
 ls_list = [
     step.model.model.kernel.lengthscales.numpy()  # type: ignore
-    for step in result.history + [result.final_result.unwrap()]
+    for step in result.loaded_history + [result.final_result.unwrap()]
 ]
 
 variance = np.array(variance_list)

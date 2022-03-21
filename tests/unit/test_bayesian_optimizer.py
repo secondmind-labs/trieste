@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from pathlib import Path
 from typing import NoReturn, Optional
 
 import numpy.testing as npt
@@ -34,7 +35,7 @@ from tests.util.models.gpflow.models import (
     rbf,
 )
 from trieste.acquisition.rule import AcquisitionRule
-from trieste.bayesian_optimizer import BayesianOptimizer, OptimizationResult, Record
+from trieste.bayesian_optimizer import BayesianOptimizer, FrozenRecord, OptimizationResult, Record
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel, TrainableProbabilisticModel
 from trieste.observer import OBJECTIVE, Observer
@@ -57,7 +58,7 @@ class _Whoops(Exception):
 
 def test_optimization_result_astuple() -> None:
     opt_result: OptimizationResult[None] = OptimizationResult(
-        Err(_Whoops()), [Record({}, {}, None)]
+        Err(_Whoops()), [FrozenRecord(Path("record"))]
     )
     final_result, history = opt_result.astuple()
     assert final_result is opt_result.final_result
@@ -255,7 +256,7 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
 
     assert rule.states_received == expected_states_received
     assert final_state.unwrap().acquisition_state == final_acquisition_state
-    assert [record.acquisition_state for record in history] == expected_states_received
+    assert [record.load().acquisition_state for record in history] == expected_states_received
 
 
 def test_bayesian_optimizer_optimize_for_uncopyable_model() -> None:
@@ -496,19 +497,22 @@ def test_bayesian_optimizer_optimize_tracked_state() -> None:
         .astuple()
     )
 
-    assert [record.acquisition_state for record in history] == [None, 0, 1]
+    assert [record.load().acquisition_state for record in history] == [None, 0, 1]
 
-    assert_datasets_allclose(history[0].datasets[""], initial_data)
-    assert_datasets_allclose(history[1].datasets[""], mk_dataset([[0.0], [10.0]], [[0.0], [100.0]]))
+    assert_datasets_allclose(history[0].load().datasets[""], initial_data)
     assert_datasets_allclose(
-        history[2].datasets[""], mk_dataset([[0.0], [10.0], [11.0]], [[0.0], [100.0], [121.0]])
+        history[1].load().datasets[""], mk_dataset([[0.0], [10.0]], [[0.0], [100.0]])
+    )
+    assert_datasets_allclose(
+        history[2].load().datasets[""],
+        mk_dataset([[0.0], [10.0], [11.0]], [[0.0], [100.0], [121.0]]),
     )
 
     for step in range(3):
-        assert history[step].model == history[step].models[""]
-        assert history[step].dataset == history[step].datasets[""]
+        assert history[step].load().model == history[step].load().models[""]
+        assert history[step].load().dataset == history[step].load().datasets[""]
 
         _, variance_from_saved_model = (
-            history[step].models[""].predict(tf.constant([[0.0]], tf.float64))
+            history[step].load().models[""].predict(tf.constant([[0.0]], tf.float64))
         )
         npt.assert_allclose(variance_from_saved_model, 1.0 / (step + 1))
