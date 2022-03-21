@@ -19,7 +19,6 @@ This module contains the :class:`BayesianOptimizer` class, used to perform Bayes
 from __future__ import annotations
 
 import datetime
-import pickle
 import traceback
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -27,6 +26,7 @@ from pathlib import Path
 from typing import Dict, Generic, Optional, TypeVar, cast, overload
 
 import absl
+import dill
 import numpy as np
 import tensorflow as tf
 
@@ -90,8 +90,9 @@ class Record(Generic[StateType]):
 
     def save(self, path: Path) -> FrozenRecord[StateType]:
         """ """
+        path.parent.mkdir(exist_ok=True, parents=True)
         with open(path, "wb") as f:
-            pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
+            dill.dump(self, f, dill.HIGHEST_PROTOCOL)
         return FrozenRecord(path)
 
 
@@ -110,7 +111,7 @@ class FrozenRecord(Generic[StateType]):
     def load(self) -> Record[StateType]:
         """Load the record into memory."""
         with open(self.path, "rb") as f:
-            return pickle.load(f)
+            return dill.load(f)
 
 
 # this should be a generic NamedTuple, but mypy doesn't support them
@@ -526,7 +527,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
         if track_state:
             # TODO: make configurable
-            base_path = f"{datetime.datetime.now():%Y%m%dT%H%M%S}"
+            base_path = f"history/{datetime.datetime.now():%Y%m%dT%H%M%S}"
 
         for step in range(num_steps):
             logging.set_step_number(step)
@@ -534,7 +535,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
                 if track_state:
                     record = Record(datasets, models, acquisition_state)
-                    record_path = Path(f"{base_path}.{step}.pickle")
+                    record_path = Path(f"{base_path}/step.{step}.pickle")
                     history.append(record.save(record_path))
 
                 with Timer() as total_step_wallclock_timer:
@@ -644,6 +645,6 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
         record = Record(datasets, models, acquisition_state)
         if track_state:
-            record_path = Path(f"{base_path}.{step}.pickle")
+            record_path = Path(f"{base_path}/step.{num_steps}.pickle")
             record.save(record_path)
         return OptimizationResult(Ok(record), history)
