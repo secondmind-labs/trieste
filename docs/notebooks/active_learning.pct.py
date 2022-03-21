@@ -102,7 +102,7 @@ def plot_active_learning_query(
     for i in range(bo_iter):
 
         def pred_var(x):
-            _, var = result.history[i].models["OBJECTIVE"].model.predict_f(x)
+            _, var = result.history[i].load().models["OBJECTIVE"].model.predict_f(x)
             return var
 
         _, ax = plot_function_2d(
