@@ -23,12 +23,16 @@ import tensorflow as tf
 from ...data import Dataset
 from ...models.interfaces import HasTrajectorySampler, TrajectoryFunction, TrajectoryFunctionClass
 from ...types import TensorType
-from ..interface import SingleModelAcquisitionBuilder, SingleModelGreedyAcquisitionBuilder, SingleModelVectorizedAcquisitionBuilder
+from ..interface import (
+    SingleModelAcquisitionBuilder,
+    SingleModelGreedyAcquisitionBuilder,
+    SingleModelVectorizedAcquisitionBuilder,
+)
 
 
 class NegativeModelTrajectory(SingleModelAcquisitionBuilder[HasTrajectorySampler]):
     def __repr__(self) -> str:
-        return f"NegativeModelTrajectory"
+        return "NegativeModelTrajectory"
 
     def prepare_acquisition_function(
         self,
