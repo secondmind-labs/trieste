@@ -200,6 +200,14 @@ def test_tensorboard_logging(mocked_summary_scalar: unittest.mock.MagicMock) -> 
         assert isinstance(call_arg[0][1], float)
 
 
+class _PseudoTrainableQuadraticWithWaiting(QuadraticMeanAndRBFKernel, PseudoTrainableProbModel):
+
+    model_fit_time = 0.2
+
+    def optimize(self, dataset: Dataset) -> None:
+        sleep(self.model_fit_time)
+
+
 @unittest.mock.patch("trieste.models.gpflow.interface.tf.summary.scalar")
 @pytest.mark.parametrize("fit_initial_model", [True, False])
 def test_wallclock_time_logging(
@@ -207,12 +215,8 @@ def test_wallclock_time_logging(
     fit_initial_model: bool,
 ) -> None:
 
-    model_fit_time = 0.2
+    model_fit_time = _PseudoTrainableQuadraticWithWaiting.model_fit_time
     acq_time = 0.1
-
-    class _PseudoTrainableQuadraticWithWaiting(QuadraticMeanAndRBFKernel, PseudoTrainableProbModel):
-        def optimize(self, dataset: Dataset) -> None:
-            sleep(model_fit_time)
 
     class _FixedAcquisitionRuleWithWaiting(FixedAcquisitionRule):
         def acquire(
