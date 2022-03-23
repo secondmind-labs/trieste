@@ -14,8 +14,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from pathlib import Path
-from typing import Any, NoReturn, Optional
+from typing import NoReturn, Optional
 
 import numpy.testing as npt
 import pytest
@@ -35,7 +34,7 @@ from tests.util.models.gpflow.models import (
     rbf,
 )
 from trieste.acquisition.rule import AcquisitionRule
-from trieste.bayesian_optimizer import BayesianOptimizer, FrozenRecord, OptimizationResult, Record
+from trieste.bayesian_optimizer import BayesianOptimizer, OptimizationResult, Record
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel, TrainableProbabilisticModel
 from trieste.observer import OBJECTIVE, Observer
@@ -58,7 +57,7 @@ class _Whoops(Exception):
 
 def test_optimization_result_astuple() -> None:
     opt_result: OptimizationResult[None] = OptimizationResult(
-        Err(_Whoops()), [FrozenRecord(Path("record"))]
+        Err(_Whoops()), [Record({}, {}, None)]
     )
     final_result, history = opt_result.astuple()
     assert final_result is opt_result.final_result
@@ -157,15 +156,13 @@ def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> Non
     assert observer.call_count == steps
 
 
-class _CountingOptimizerModel(_PseudoTrainableQuadratic):
-    _optimize_count = 0
-
-    def optimize(self, dataset: Dataset) -> None:
-        self._optimize_count += 1
-
-
 @pytest.mark.parametrize("fit_initial_model", [True, False])
 def test_bayesian_optimizer_optimizes_initial_model(fit_initial_model: bool) -> None:
+    class _CountingOptimizerModel(_PseudoTrainableQuadratic):
+        _optimize_count = 0
+
+        def optimize(self, dataset: Dataset) -> None:
+            self._optimize_count += 1
 
     rule = FixedAcquisitionRule([[0.0]])
     model = _CountingOptimizerModel()
@@ -258,22 +255,21 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
 
     assert rule.states_received == expected_states_received
     assert final_state.unwrap().acquisition_state == final_acquisition_state
-    assert [record.load().acquisition_state for record in history] == expected_states_received
-
-
-class _UncopyableModel(_PseudoTrainableQuadratic):
-    _optimize_count = 0
-
-    def optimize(self, dataset: Dataset) -> None:
-        self._optimize_count += 1
-
-    def __getstate__(self) -> Any:
-        if self._optimize_count >= 3:
-            raise _Whoops
-        return self.__dict__.copy()
+    assert [record.acquisition_state for record in history] == expected_states_received
 
 
 def test_bayesian_optimizer_optimize_for_uncopyable_model() -> None:
+    class _UncopyableModel(_PseudoTrainableQuadratic):
+        _optimize_count = 0
+
+        def optimize(self, dataset: Dataset) -> None:
+            self._optimize_count += 1
+
+        def __deepcopy__(self, memo: dict[int, object]) -> _UncopyableModel:
+            if self._optimize_count >= 3:
+                raise _Whoops
+
+            return self
 
     rule = FixedAcquisitionRule([[0.0]])
     result, history = (
@@ -345,24 +341,23 @@ def test_bayesian_optimizer_optimize_raises_for_negative_steps(num_steps: int) -
         optimizer.optimize(num_steps, data, models)
 
 
-class _UnusableModel(TrainableProbabilisticModel):
-    def predict(self, query_points: TensorType) -> NoReturn:
-        assert False
-
-    def predict_joint(self, query_points: TensorType) -> NoReturn:
-        assert False
-
-    def sample(self, query_points: TensorType, num_samples: int) -> NoReturn:
-        assert False
-
-    def update(self, dataset: Dataset) -> NoReturn:
-        assert False
-
-    def optimize(self, dataset: Dataset) -> NoReturn:
-        assert False
-
-
 def test_bayesian_optimizer_optimize_is_noop_for_zero_steps() -> None:
+    class _UnusableModel(TrainableProbabilisticModel):
+        def predict(self, query_points: TensorType) -> NoReturn:
+            assert False
+
+        def predict_joint(self, query_points: TensorType) -> NoReturn:
+            assert False
+
+        def sample(self, query_points: TensorType, num_samples: int) -> NoReturn:
+            assert False
+
+        def update(self, dataset: Dataset) -> NoReturn:
+            assert False
+
+        def optimize(self, dataset: Dataset) -> NoReturn:
+            assert False
+
     class _UnusableRule(AcquisitionRule[NoReturn, Box, ProbabilisticModel]):
         def acquire(
             self,
@@ -387,17 +382,15 @@ def test_bayesian_optimizer_optimize_is_noop_for_zero_steps() -> None:
     assert_datasets_allclose(final_data[""], data[""])
 
 
-class ExponentialWithUnitVariance(GaussianProcess, PseudoTrainableProbModel):
-    def __init__(self) -> None:
-        super().__init__([lambda x: tf.exp(-x)], [rbf()])
-
-
-class LinearWithUnitVariance(GaussianProcess, PseudoTrainableProbModel):
-    def __init__(self) -> None:
-        super().__init__([lambda x: 2 * x], [rbf()])
-
-
 def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimensions() -> None:
+    class ExponentialWithUnitVariance(GaussianProcess, PseudoTrainableProbModel):
+        def __init__(self) -> None:
+            super().__init__([lambda x: tf.exp(-x)], [rbf()])
+
+    class LinearWithUnitVariance(GaussianProcess, PseudoTrainableProbModel):
+        def __init__(self) -> None:
+            super().__init__([lambda x: 2 * x], [rbf()])
+
     LINEAR = "linear"
     EXPONENTIAL = "exponential"
 
@@ -466,22 +459,6 @@ def test_bayesian_optimizer_optimize_doesnt_track_state_if_told_not_to() -> None
     assert len(history) == 0
 
 
-class _DecreasingVarianceModel(QuadraticMeanAndRBFKernel, TrainableProbabilisticModel):
-    def __init__(self, data: Dataset):
-        super().__init__()
-        self._data = data
-
-    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        mean, var = super().predict(query_points)
-        return mean, var / len(self._data)
-
-    def update(self, dataset: Dataset) -> None:
-        self._data = dataset
-
-    def optimize(self, dataset: Dataset) -> None:
-        pass
-
-
 def test_bayesian_optimizer_optimize_tracked_state() -> None:
     class _CountingRule(AcquisitionRule[State[Optional[int], TensorType], Box, ProbabilisticModel]):
         def acquire(
@@ -496,6 +473,21 @@ def test_bayesian_optimizer_optimize_tracked_state() -> None:
 
             return go
 
+    class _DecreasingVarianceModel(QuadraticMeanAndRBFKernel, TrainableProbabilisticModel):
+        def __init__(self, data: Dataset):
+            super().__init__()
+            self._data = data
+
+        def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+            mean, var = super().predict(query_points)
+            return mean, var / len(self._data)
+
+        def update(self, dataset: Dataset) -> None:
+            self._data = dataset
+
+        def optimize(self, dataset: Dataset) -> None:
+            pass
+
     initial_data = mk_dataset([[0.0]], [[0.0]])
     model = _DecreasingVarianceModel(initial_data)
     _, history = (
@@ -504,23 +496,19 @@ def test_bayesian_optimizer_optimize_tracked_state() -> None:
         .astuple()
     )
 
-    assert [record.load().acquisition_state for record in history] == [None, 0, 1]
+    assert [record.acquisition_state for record in history] == [None, 0, 1]
 
-    assert_datasets_allclose(history[0].load().datasets[""], initial_data)
+    assert_datasets_allclose(history[0].datasets[""], initial_data)
+    assert_datasets_allclose(history[1].datasets[""], mk_dataset([[0.0], [10.0]], [[0.0], [100.0]]))
     assert_datasets_allclose(
-        history[1].load().datasets[""], mk_dataset([[0.0], [10.0]], [[0.0], [100.0]])
-    )
-    assert_datasets_allclose(
-        history[2].load().datasets[""],
-        mk_dataset([[0.0], [10.0], [11.0]], [[0.0], [100.0], [121.0]]),
+        history[2].datasets[""], mk_dataset([[0.0], [10.0], [11.0]], [[0.0], [100.0], [121.0]])
     )
 
     for step in range(3):
-        record = history[step].load()
-        assert record.model == record.models[""]
-        assert record.dataset == record.datasets[""]
+        assert history[step].model == history[step].models[""]
+        assert history[step].dataset == history[step].datasets[""]
 
         _, variance_from_saved_model = (
-            history[step].load().models[""].predict(tf.constant([[0.0]], tf.float64))
+            history[step].models[""].predict(tf.constant([[0.0]], tf.float64))
         )
         npt.assert_allclose(variance_from_saved_model, 1.0 / (step + 1))

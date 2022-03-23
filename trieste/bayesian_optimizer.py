@@ -18,7 +18,7 @@ This module contains the :class:`BayesianOptimizer` class, used to perform Bayes
 
 from __future__ import annotations
 
-import datetime
+import copy
 import traceback
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -89,7 +89,7 @@ class Record(Generic[StateType]):
             raise ValueError(f"Expected a single dataset, found {len(self.datasets)}")
 
     def save(self, path: Path) -> FrozenRecord[StateType]:
-        """ """
+        """Save the record to disk."""
         path.parent.mkdir(exist_ok=True, parents=True)
         with open(path, "wb") as f:
             dill.dump(self, f, dill.HIGHEST_PROTOCOL)
@@ -113,6 +113,31 @@ class FrozenRecord(Generic[StateType]):
         with open(self.path, "rb") as f:
             return dill.load(f)
 
+    @property
+    def datasets(self) -> Mapping[str, Dataset]:
+        """The known data from the observer."""
+        return self.load().datasets
+
+    @property
+    def models(self) -> Mapping[str, TrainableProbabilisticModel]:
+        """The models over the :attr:`datasets`."""
+        return self.load().models
+
+    @property
+    def acquisition_state(self) -> StateType | None:
+        """The acquisition state."""
+        return self.load().acquisition_state
+
+    @property
+    def dataset(self) -> Dataset:
+        """The dataset when there is just one dataset."""
+        return self.load().dataset
+
+    @property
+    def model(self) -> TrainableProbabilisticModel:
+        """The model when there is just one dataset."""
+        return self.load().model
+
 
 # this should be a generic NamedTuple, but mypy doesn't support them
 #  https://github.com/python/mypy/issues/685
@@ -126,14 +151,16 @@ class OptimizationResult(Generic[StateType]):
     exception.
     """
 
-    history: list[FrozenRecord[StateType]]
+    history: list[Record[StateType] | FrozenRecord[StateType]]
     r"""
     The history of the :class:`Record`\ s from each step of the optimization process. These
-    :class:`FrozenRecord`\ s are created at the *start* of each loop, and as such will never
-    include the :attr:`final_result` (though this is still saved to disk).
+    :class:`Record`\ s are created at the *start* of each loop, and as such will never
+    include the :attr:`final_result`.
     """
 
-    def astuple(self) -> tuple[Result[Record[StateType]], list[FrozenRecord[StateType]]]:
+    def astuple(
+        self,
+    ) -> tuple[Result[Record[StateType]], list[Record[StateType] | FrozenRecord[StateType]]]:
         """
         **Note:** In contrast to the standard library function :func:`dataclasses.astuple`, this
         method does *not* deepcopy instance attributes.
@@ -204,7 +231,7 @@ class OptimizationResult(Generic[StateType]):
     @property
     def loaded_history(self) -> list[Record[StateType]]:
         """The history of the optimization process loaded into memory."""
-        return [record.load() for record in self.history]
+        return [record if isinstance(record, Record) else record.load() for record in self.history]
 
     @classmethod
     def from_path(cls, base_path: Path) -> OptimizationResult[StateType]:
@@ -240,6 +267,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         model_specs: Mapping[str, ModelSpec],
         *,
         track_state: bool = True,
+        track_path: Optional[Path] = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[None]:
         ...
@@ -255,6 +283,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         ],
         *,
         track_state: bool = True,
+        track_path: Optional[Path] = None,
         fit_initial_model: bool = True,
         # this should really be OptimizationResult[None], but tf.Tensor is untyped so the type
         # checker can't differentiate between TensorType and State[S | None, TensorType], and
@@ -274,6 +303,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         ],
         *,
         track_state: bool = True,
+        track_path: Optional[Path] = None,
         fit_initial_model: bool = True,
         # this should really be OptimizationResult[None], but tf.Tensor is untyped so the type
         # checker can't differentiate between TensorType and State[S | None, TensorType], and
@@ -293,6 +323,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         acquisition_state: StateType | None = None,
         *,
         track_state: bool = True,
+        track_path: Optional[Path] = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[StateType]:
         ...
@@ -310,6 +341,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         acquisition_state: StateType | None = None,
         *,
         track_state: bool = True,
+        track_path: Optional[Path] = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[StateType]:
         ...
@@ -322,6 +354,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         model_specs: ModelSpec,
         *,
         track_state: bool = True,
+        track_path: Optional[Path] = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[None]:
         ...
@@ -337,6 +370,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         ],
         *,
         track_state: bool = True,
+        track_path: Optional[Path] = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[object]:
         ...
@@ -352,6 +386,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         ],
         *,
         track_state: bool = True,
+        track_path: Optional[Path] = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[object]:
         ...
@@ -368,6 +403,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         acquisition_state: StateType | None = None,
         *,
         track_state: bool = True,
+        track_path: Optional[Path] = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[StateType]:
         ...
@@ -384,6 +420,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         acquisition_state: StateType | None = None,
         *,
         track_state: bool = True,
+        track_path: Optional[Path] = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[StateType]:
         ...
@@ -405,6 +442,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         acquisition_state: StateType | None = None,
         *,
         track_state: bool = True,
+        track_path: Optional[Path] = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[StateType] | OptimizationResult[None]:
         """
@@ -421,12 +459,6 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         If any errors are raised during the optimization loop, this method will catch and return
         them instead, along with the history of the optimization process, and print a message (using
         `absl` at level `absl.logging.ERROR`).
-
-        **Note:** While the :class:`~trieste.models.TrainableProbabilisticModel` interface implies
-        mutable models, it is *not* guaranteed that the model passed to :meth:`optimize` will
-        be updated during the optimization process. For example, if ``track_state`` is `True`, a
-        copied model will be used on each optimization step. Use the models in the return value for
-        reliable access to the updated models.
 
         **Type hints:**
             - The ``acquisition_rule`` must use the same type of
@@ -449,6 +481,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             :class:`Record`.
         :param track_state: If `True`, this method saves the optimization state at the start of each
             step. Models and acquisition state are copied using `copy.deepcopy`.
+        :param track_path: If set, the optimization state is saved to disk rather than being copied
+            in memory.
         :param fit_initial_model: If `False`, this method assumes that the initial models have
             already been optimized on the datasets and so do not require optimization before the
             first optimization step.
@@ -502,7 +536,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             Dict[str, TrainableProbabilisticModelType], map_values(create_model, model_specs)
         )
 
-        history: list[FrozenRecord[StateType]] = []
+        history: list[FrozenRecord[StateType] | Record[StateType]] = []
         plot_df: Optional[pd.DataFrame] = None
 
         summary_writer = logging.get_tensorboard_writer()
@@ -525,18 +559,20 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     output_stream=absl.logging.INFO,
                 )
 
-        if track_state:
-            # TODO: make configurable
-            base_path = f"history/{datetime.datetime.now():%Y%m%dT%H%M%S}"
-
         for step in range(num_steps):
             logging.set_step_number(step)
             try:
 
                 if track_state:
-                    record = Record(datasets, models, acquisition_state)
-                    record_path = Path(f"{base_path}/step.{step}.pickle")
-                    history.append(record.save(record_path))
+                    if track_path is None:
+                        datasets_copy = copy.deepcopy(datasets)
+                        models_copy = copy.deepcopy(models)
+                        acquisition_state_copy = copy.deepcopy(acquisition_state)
+                        history.append(Record(datasets_copy, models_copy, acquisition_state_copy))
+                    else:
+                        record = Record(datasets, models, acquisition_state)
+                        record_path = track_path / f"step.{step}.pickle"
+                        history.append(record.save(record_path))
 
                 with Timer() as total_step_wallclock_timer:
                     with Timer() as initial_model_fitting_timer:
@@ -644,7 +680,6 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         tf.print("Optimization completed without errors", output_stream=absl.logging.INFO)
 
         record = Record(datasets, models, acquisition_state)
-        if track_state:
-            record_path = Path(f"{base_path}/step.{num_steps}.pickle")
-            record.save(record_path)
+        if track_state and track_path is not None:
+            record.save(track_path / f"step.{num_steps}.pickle")
         return OptimizationResult(Ok(record), history)

@@ -102,10 +102,10 @@ if result.is_err:
 
     result, new_history = bo.optimize(
         15 - len(history),
-        history[-1].load().dataset,
-        history[-1].load().model,
+        history[-1].dataset,
+        history[-1].model,
         acquisition_rule,
-        history[-1].load().acquisition_state,
+        history[-1].acquisition_state,
     ).astuple()
 
     history.extend(new_history)
