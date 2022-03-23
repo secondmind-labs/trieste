@@ -86,7 +86,7 @@ class Record(Generic[StateType]):
         if len(self.models) == 1:
             return next(iter(self.models.values()))
         else:
-            raise ValueError(f"Expected a single dataset, found {len(self.datasets)}")
+            raise ValueError(f"Expected a single model, found {len(self.models)}")
 
     def save(self, path: Path) -> FrozenRecord[StateType]:
         """Save the record to disk."""
@@ -468,8 +468,10 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             - Updates the datasets and models with the data from the ``observer``.
 
         If any errors are raised during the optimization loop, this method will catch and return
-        them instead, along with the history of the optimization process, and print a message (using
-        `absl` at level `absl.logging.ERROR`).
+        them instead and print a message (using `absl` at level `absl.logging.ERROR`).
+        If ``track_state`` is enabled, then in addition to the final result, the history of the
+        optimization process will also be returned. If ``track_path`` is also set, then
+        the history and final result will be saved to disk rather than all being kept in memory.
 
         **Type hints:**
             - The ``acquisition_rule`` must use the same type of
