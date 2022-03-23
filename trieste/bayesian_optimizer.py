@@ -233,10 +233,21 @@ class OptimizationResult(Generic[StateType]):
         """The history of the optimization process loaded into memory."""
         return [record if isinstance(record, Record) else record.load() for record in self.history]
 
+    def save_result(self, path: Path) -> None:
+        """Save the final result to disk."""
+        path.parent.mkdir(exist_ok=True, parents=True)
+        with open(path, "wb") as f:
+            dill.dump(self.final_result, f, dill.HIGHEST_PROTOCOL)
+
     @classmethod
     def from_path(cls, base_path: Path) -> OptimizationResult[StateType]:
-        """ """
-        # TODO: construct from pickle files in path
+        """Load a previously saved OptimizationResult."""
+        with open(base_path / "result.pickle", "rb") as f:
+            result = dill.load(f)
+        history: list[Record[StateType] | FrozenRecord[StateType]] = [
+            FrozenRecord(file) for file in sorted(base_path.glob("step.*.pickle"))
+        ]
+        return cls(result, history)
 
 
 class BayesianOptimizer(Generic[SearchSpaceType]):
@@ -571,7 +582,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         history.append(Record(datasets_copy, models_copy, acquisition_state_copy))
                     else:
                         record = Record(datasets, models, acquisition_state)
-                        record_path = track_path / f"step.{step}.pickle"
+                        record_path = track_path / f"step.{step:0{len(str(num_steps-1))}d}.pickle"
                         history.append(record.save(record_path))
 
                 with Timer() as total_step_wallclock_timer:
@@ -674,12 +685,15 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         "\nusing split_acquisition_function or split_acquisition_function_calls.",
                         output_stream=absl.logging.ERROR,
                     )
-                # TODO: save error
-                return OptimizationResult(Err(error), history)
+                result = OptimizationResult(Err(error), history)
+                if track_state and track_path is not None:
+                    result.save_result(track_path / "result.pickle")
+                return result
 
         tf.print("Optimization completed without errors", output_stream=absl.logging.INFO)
 
         record = Record(datasets, models, acquisition_state)
+        result = OptimizationResult(Ok(record), history)
         if track_state and track_path is not None:
-            record.save(track_path / f"step.{num_steps}.pickle")
-        return OptimizationResult(Ok(record), history)
+            result.save_result(track_path / "result.pickle")
+        return result
