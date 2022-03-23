@@ -155,7 +155,7 @@ class OptimizationResult(Generic[StateType]):
     r"""
     The history of the :class:`Record`\ s from each step of the optimization process. These
     :class:`Record`\ s are created at the *start* of each loop, and as such will never
-    include the :attr:`final_result`.
+    include the :attr:`final_result`. The records may be either in memory or on disk.
     """
 
     def astuple(
@@ -492,8 +492,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             :class:`Record`.
         :param track_state: If `True`, this method saves the optimization state at the start of each
             step. Models and acquisition state are copied using `copy.deepcopy`.
-        :param track_path: If set, the optimization state is saved to disk rather than being copied
-            in memory.
+        :param track_path: If set, the optimization state is saved to disk at this path,
+            rather than being copied in memory.
         :param fit_initial_model: If `False`, this method assumes that the initial models have
             already been optimized on the datasets and so do not require optimization before the
             first optimization step.
