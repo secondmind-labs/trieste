@@ -13,7 +13,9 @@
 # limitations under the License.
 from __future__ import annotations
 
+import tempfile
 from collections.abc import Mapping
+from pathlib import Path
 from typing import NoReturn, Optional
 
 import numpy.testing as npt
@@ -34,7 +36,7 @@ from tests.util.models.gpflow.models import (
     rbf,
 )
 from trieste.acquisition.rule import AcquisitionRule
-from trieste.bayesian_optimizer import BayesianOptimizer, OptimizationResult, Record
+from trieste.bayesian_optimizer import BayesianOptimizer, FrozenRecord, OptimizationResult, Record
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel, TrainableProbabilisticModel
 from trieste.observer import OBJECTIVE, Observer
@@ -459,7 +461,24 @@ def test_bayesian_optimizer_optimize_doesnt_track_state_if_told_not_to() -> None
     assert len(history) == 0
 
 
-def test_bayesian_optimizer_optimize_tracked_state() -> None:
+class _DecreasingVarianceModel(QuadraticMeanAndRBFKernel, TrainableProbabilisticModel):
+    def __init__(self, data: Dataset):
+        super().__init__()
+        self._data = data
+
+    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        mean, var = super().predict(query_points)
+        return mean, var / len(self._data)
+
+    def update(self, dataset: Dataset) -> None:
+        self._data = dataset
+
+    def optimize(self, dataset: Dataset) -> None:
+        pass
+
+
+@pytest.mark.parametrize("save_to_disk", [False, True])
+def test_bayesian_optimizer_optimize_tracked_state(save_to_disk: bool) -> None:
     class _CountingRule(AcquisitionRule[State[Optional[int], TensorType], Box, ProbabilisticModel]):
         def acquire(
             self,
@@ -473,42 +492,40 @@ def test_bayesian_optimizer_optimize_tracked_state() -> None:
 
             return go
 
-    class _DecreasingVarianceModel(QuadraticMeanAndRBFKernel, TrainableProbabilisticModel):
-        def __init__(self, data: Dataset):
-            super().__init__()
-            self._data = data
-
-        def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-            mean, var = super().predict(query_points)
-            return mean, var / len(self._data)
-
-        def update(self, dataset: Dataset) -> None:
-            self._data = dataset
-
-        def optimize(self, dataset: Dataset) -> None:
-            pass
-
-    initial_data = mk_dataset([[0.0]], [[0.0]])
-    model = _DecreasingVarianceModel(initial_data)
-    _, history = (
-        BayesianOptimizer(_quadratic_observer, Box([0], [1]))
-        .optimize(3, {"": initial_data}, {"": model}, _CountingRule())
-        .astuple()
-    )
-
-    assert [record.acquisition_state for record in history] == [None, 0, 1]
-
-    assert_datasets_allclose(history[0].datasets[""], initial_data)
-    assert_datasets_allclose(history[1].datasets[""], mk_dataset([[0.0], [10.0]], [[0.0], [100.0]]))
-    assert_datasets_allclose(
-        history[2].datasets[""], mk_dataset([[0.0], [10.0], [11.0]], [[0.0], [100.0], [121.0]])
-    )
-
-    for step in range(3):
-        assert history[step].model == history[step].models[""]
-        assert history[step].dataset == history[step].datasets[""]
-
-        _, variance_from_saved_model = (
-            history[step].models[""].predict(tf.constant([[0.0]], tf.float64))
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        initial_data = mk_dataset([[0.0]], [[0.0]])
+        model = _DecreasingVarianceModel(initial_data)
+        _, history = (
+            BayesianOptimizer(_quadratic_observer, Box([0], [1]))
+            .optimize(
+                3,
+                {"": initial_data},
+                {"": model},
+                _CountingRule(),
+                track_path=Path(tmpdirname) if save_to_disk else None,
+            )
+            .astuple()
         )
-        npt.assert_allclose(variance_from_saved_model, 1.0 / (step + 1))
+
+        assert all(
+            isinstance(record, FrozenRecord if save_to_disk else Record) for record in history
+        )
+        assert [record.acquisition_state for record in history] == [None, 0, 1]
+
+        assert_datasets_allclose(history[0].datasets[""], initial_data)
+        assert_datasets_allclose(
+            history[1].datasets[""], mk_dataset([[0.0], [10.0]], [[0.0], [100.0]])
+        )
+        assert_datasets_allclose(
+            history[2].datasets[""], mk_dataset([[0.0], [10.0], [11.0]], [[0.0], [100.0], [121.0]])
+        )
+
+        for step in range(3):
+            record = history[step].load() if save_to_disk else history[step]  # type: ignore
+            assert record.model == record.models[""]
+            assert record.dataset == record.datasets[""]
+
+            _, variance_from_saved_model = (
+                history[step].models[""].predict(tf.constant([[0.0]], tf.float64))
+            )
+            npt.assert_allclose(variance_from_saved_model, 1.0 / (step + 1))
