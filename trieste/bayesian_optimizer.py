@@ -28,6 +28,8 @@ import absl
 import numpy as np
 import tensorflow as tf
 
+from .acquisition.multi_objective import non_dominated
+
 try:
     import pandas as pd
     import seaborn as sns
@@ -584,17 +586,41 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                                     copy=False,
                                     ignore_index=True,
                                 )
-                                # TODO: distinguish non-dominated observations
+                                observation_plot_df["pareto"] = (
+                                    non_dominated(datasets[tag].observations)[1] == 0
+                                )
+                                observation_plot_df["observation type"] = observation_plot_df.apply(
+                                    lambda x: x["observations"] + x["pareto"] * " (non-dominated)",
+                                    axis=1,
+                                )
                                 pairplot = sns.pairplot(
                                     observation_plot_df,
-                                    hue="observations",
-                                    hue_order=["initial", "old", "new"],
+                                    vars=columns,
+                                    hue="observation type",
+                                    hue_order=[
+                                        "initial",
+                                        "old",
+                                        "new",
+                                        "initial (non-dominated)",
+                                        "old (non-dominated)",
+                                        "new (non-dominated)",
+                                    ],
                                     palette={
                                         "initial": "tab:green",
                                         "old": "tab:green",
-                                        "new": "tab:red",
+                                        "new": "tab:orange",
+                                        "initial (non-dominated)": "tab:purple",
+                                        "old (non-dominated)": "tab:purple",
+                                        "new (non-dominated)": "tab:red",
                                     },
-                                    markers={"initial": "X", "old": "o", "new": "o"},
+                                    markers={
+                                        "initial": "X",
+                                        "old": "o",
+                                        "new": "o",
+                                        "initial (non-dominated)": "X",
+                                        "old (non-dominated)": "o",
+                                        "new (non-dominated)": "o",
+                                    },
                                 )
                                 logging.pyplot(f"{tag}.observations/_pairplot", pairplot.fig)
                                 observation_plot_df.loc[
