@@ -31,7 +31,7 @@ from trieste.acquisition.rule import (
 )
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
-from trieste.logging import tensorboard_writer
+from trieste.logging import set_summary_filter, tensorboard_writer
 from trieste.models.gpflow import GaussianProcessRegression, build_gpr
 from trieste.models.interfaces import (
     TrainableModelStack,
@@ -125,6 +125,7 @@ def test_multi_objective_optimizer_finds_pareto_front_of_the_VLMOP2_function(
     with tempfile.TemporaryDirectory() as tmpdirname:
         summary_writer = tf.summary.create_file_writer(tmpdirname)
 
+        set_summary_filter(lambda x: True)
         with tensorboard_writer(summary_writer):
 
             dataset = (

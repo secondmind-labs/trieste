@@ -474,38 +474,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         summary_writer = logging.get_tensorboard_writer()
         if summary_writer:
             with summary_writer.as_default(step=0):
-                logging.text(
-                    "metadata",
-                    f"Observer: `{self._observer}`\n\n"
-                    f"Number of steps: `{num_steps}`\n\n"
-                    f"Number of initial points: "
-                    f"`{dict((k, len(v)) for k,v in datasets.items())}`\n\n"
-                    f"Search Space: `{self._search_space}`\n\n"
-                    f"Acquisition rule:\n\n    {acquisition_rule}\n\n"
-                    f"Models:\n\n    {models}",
-                )
-
-            seaborn_warning = False
-            if logging.include_summary("query_points/_pairplot") and not (pd and sns):
-                seaborn_warning = True
-            for tag in datasets:
-                if logging.include_summary(f"{tag}.observations/_pairplot"):
-                    output_dim = tf.shape(datasets[tag].observations)[-1]
-                    if output_dim >= 2:
-                        if not (pd and sns):
-                            seaborn_warning = True
-                        else:
-                            columns = [f"x{i}" for i in range(output_dim)]
-                            observation_plot_dfs[tag] = pd.DataFrame(
-                                datasets[tag].observations, columns=columns
-                            ).applymap(float)
-                            observation_plot_dfs[tag]["observations"] = "initial"
-
-            if seaborn_warning:
-                tf.print(
-                    "\nPairplot TensorBoard summaries require seaborn to be installed."
-                    "\nOne way to do this is to install 'trieste[plotting]'.",
-                    output_stream=absl.logging.INFO,
+                self._write_summary_init(
+                    acquisition_rule, datasets, models, num_steps, observation_plot_dfs
                 )
 
         for step in range(num_steps):
@@ -588,6 +558,53 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
         record = Record(datasets, models, acquisition_state)
         return OptimizationResult(Ok(record), history)
+
+    def _write_summary_init(
+        self,
+        acquisition_rule: AcquisitionRule[
+            TensorType | State[StateType | None, TensorType],
+            SearchSpaceType,
+            TrainableProbabilisticModelType,
+        ],
+        datasets: Mapping[str, Dataset],
+        models: Mapping[str, TrainableProbabilisticModel],
+        num_steps: int,
+        observation_plot_dfs: MutableMapping[str, pd.DataFrame],
+    ) -> None:
+        """Write initial TensorBoard summary (and set up any initial monitoring state)."""
+        logging.text(
+            "metadata",
+            f"Observer: `{self._observer}`\n\n"
+            f"Number of steps: `{num_steps}`\n\n"
+            f"Number of initial points: "
+            f"`{dict((k, len(v)) for k, v in datasets.items())}`\n\n"
+            f"Search Space: `{self._search_space}`\n\n"
+            f"Acquisition rule:\n\n    {acquisition_rule}\n\n"
+            f"Models:\n\n    {models}",
+        )
+
+        seaborn_warning = False
+        if logging.include_summary("query_points/_pairplot") and not (pd and sns):
+            seaborn_warning = True
+        for tag in datasets:
+            if logging.include_summary(f"{tag}.observations/_pairplot"):
+                output_dim = tf.shape(datasets[tag].observations)[-1]
+                if output_dim >= 2:
+                    if not (pd and sns):
+                        seaborn_warning = True
+                    else:
+                        columns = [f"x{i}" for i in range(output_dim)]
+                        observation_plot_dfs[tag] = pd.DataFrame(
+                            datasets[tag].observations, columns=columns
+                        ).applymap(float)
+                        observation_plot_dfs[tag]["observations"] = "initial"
+
+        if seaborn_warning:
+            tf.print(
+                "\nPairplot TensorBoard summaries require seaborn to be installed."
+                "\nOne way to do this is to install 'trieste[plotting]'.",
+                output_stream=absl.logging.INFO,
+            )
 
     def _write_summary_step(
         self,
