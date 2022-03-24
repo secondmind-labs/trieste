@@ -432,7 +432,7 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
                         )
                         logging.scalar(
                             f"{tag}.observation{suffix}/best_new_observation",
-                            np.min(new_data[tag].observations)[..., i],
+                            np.min(new_data[tag].observations[..., i]),
                         )
                         logging.scalar(
                             f"{tag}.observation{suffix}/best_overall",
