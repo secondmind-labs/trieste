@@ -89,7 +89,7 @@ class Record(Generic[StateType]):
             raise ValueError(f"Expected a single model, found {len(self.models)}")
 
     def save(self, path: Path) -> FrozenRecord[StateType]:
-        """Save the record to disk."""
+        """Save the record to disk. Will overwrite any existing file at the same path."""
         path.parent.mkdir(exist_ok=True, parents=True)
         with open(path, "wb") as f:
             dill.dump(self, f, dill.HIGHEST_PROTOCOL)
@@ -234,7 +234,7 @@ class OptimizationResult(Generic[StateType]):
         return [record if isinstance(record, Record) else record.load() for record in self.history]
 
     def save_result(self, path: Path) -> None:
-        """Save the final result to disk."""
+        """Save the final result to disk. Will overwrite any existing file at the same path."""
         path.parent.mkdir(exist_ok=True, parents=True)
         with open(path, "wb") as f:
             dill.dump(self.final_result, f, dill.HIGHEST_PROTOCOL)
