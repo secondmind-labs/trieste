@@ -466,7 +466,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         )
 
         history: list[Record[StateType]] = []
-        plot_df: Optional[pd.DataFrame] = None
+        query_plot_df: Optional[pd.DataFrame] = None
+        observation_plot_dfs: dict[str, pd.DataFrame] = {}
 
         summary_writer = logging.get_tensorboard_writer()
         if summary_writer:
@@ -481,7 +482,24 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     f"Acquisition rule:\n\n    {acquisition_rule}\n\n"
                     f"Models:\n\n    {models}",
                 )
+
+            seaborn_warning = False
             if logging.include_summary("query_points/_pairplot") and not (pd and sns):
+                seaborn_warning = True
+            for tag in datasets:
+                if logging.include_summary(f"{tag}.observations/_pairplot"):
+                    output_dim = tf.shape(datasets[tag].observations)[-1]
+                    if output_dim >= 2:
+                        if not (pd and sns):
+                            seaborn_warning = True
+                        else:
+                            columns = [f"x{i}" for i in range(output_dim)]
+                            observation_plot_dfs[tag] = pd.DataFrame(
+                                datasets[tag].observations, columns=columns
+                            ).applymap(float)
+                            observation_plot_dfs[tag]["observations"] = "initial"
+
+            if seaborn_warning:
                 tf.print(
                     "\nPairplot TensorBoard summaries require seaborn to be installed."
                     "\nOne way to do this is to install 'trieste[plotting]'.",
@@ -533,8 +551,10 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                 if summary_writer:
                     with summary_writer.as_default(step=step):
                         for tag in datasets:
+
                             with tf.name_scope(f"{tag}.model"):
                                 models[tag].log()
+
                             output_dim = tf.shape(tagged_output[tag].observations)[-1]
                             for i in tf.range(output_dim):
                                 suffix = f"[{i}]" if output_dim > 1 else ""
@@ -551,6 +571,37 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                                     np.min(datasets[tag].observations[..., i]),
                                 )
 
+                            if logging.include_summary(f"{tag}.observations/_pairplot") and (
+                                pd and sns and output_dim >= 2
+                            ):
+                                columns = [f"x{i}" for i in range(output_dim)]
+                                observation_new_df = pd.DataFrame(
+                                    tagged_output[tag].observations, columns=columns
+                                ).applymap(float)
+                                observation_new_df["observations"] = "new"
+                                observation_plot_df = pd.concat(
+                                    (observation_plot_dfs.get(tag), observation_new_df),
+                                    copy=False,
+                                    ignore_index=True,
+                                )
+                                # TODO: distinguish non-dominated observations
+                                pairplot = sns.pairplot(
+                                    observation_plot_df,
+                                    hue="observations",
+                                    hue_order=["initial", "old", "new"],
+                                    palette={
+                                        "initial": "tab:green",
+                                        "old": "tab:green",
+                                        "new": "tab:red",
+                                    },
+                                    markers={"initial": "X", "old": "o", "new": "o"},
+                                )
+                                logging.pyplot(f"{tag}.observations/_pairplot", pairplot.fig)
+                                observation_plot_df.loc[
+                                    observation_plot_df["observations"] == "new", "observations"
+                                ] = "old"
+                                observation_plot_dfs[tag] = observation_plot_df
+
                         if tf.rank(query_points) == 2:
                             for i in tf.range(tf.shape(query_points)[1]):
                                 if len(query_points) == 1:
@@ -560,10 +611,14 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
                         if pd and sns and logging.include_summary("query_points/_pairplot"):
                             columns = [f"x{i}" for i in range(tf.shape(query_points)[1])]
-                            new_df = pd.DataFrame(query_points, columns=columns)
-                            new_df["query points"] = "new"
-                            plot_df = pd.concat((plot_df, new_df), copy=False, ignore_index=True)
-                            pairplot = sns.pairplot(plot_df, hue="query points")
+                            query_new_df = pd.DataFrame(query_points, columns=columns).applymap(
+                                float
+                            )
+                            query_new_df["query points"] = "new"
+                            query_plot_df = pd.concat(
+                                (query_plot_df, query_new_df), copy=False, ignore_index=True
+                            )
+                            pairplot = sns.pairplot(query_plot_df, hue="query points")
                             padding = 0.025 * (self._search_space.upper - self._search_space.lower)
                             upper_limits = self._search_space.upper + padding
                             lower_limits = self._search_space.lower - padding
@@ -571,7 +626,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                                 pairplot.axes[0, i].set_xlim((lower_limits[i], upper_limits[i]))
                                 pairplot.axes[i, 0].set_ylim((lower_limits[i], upper_limits[i]))
                             logging.pyplot("query_points/_pairplot", pairplot.fig)
-                            plot_df["query points"] = "old"
+                            query_plot_df["query points"] = "old"
 
                         logging.scalar("wallclock/step", total_step_wallclock_timer.time)
                         logging.scalar(
