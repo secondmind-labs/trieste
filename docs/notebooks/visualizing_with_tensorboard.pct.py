@@ -81,7 +81,7 @@ trieste.logging.set_summary_filter(lambda name: True)  # enabe all summaries
 # %% [markdown]
 # Furthermore, some summaries such as pairplots also require special plotting tools, which can be installed by running `pip install trieste[plotting]`. A warning message will be printed if you try to generate a summary without the necessary tools.
 #
-# ![TensorBoard graphs](figures/tensorboard_pairplot.png)
+# ![TensorBoard pairplot](figures/tensorboard_pairplot.png)
 
 # %% [markdown]
 # ## Logging additional model parameters
