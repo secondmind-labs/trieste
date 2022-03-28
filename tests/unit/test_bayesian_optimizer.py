@@ -140,6 +140,48 @@ def test_optimization_result_try_get_optimal_point_for_failed_optimization() -> 
         result.try_get_optimal_point()
 
 
+def test_optimization_result_from_path() -> None:
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        opt_result: OptimizationResult[None] = OptimizationResult(
+            Err(_Whoops()), [Record({}, {}, None)] * 10
+        )
+        opt_result.save(tmpdirname)
+
+        result, history = OptimizationResult[None].from_path(tmpdirname).astuple()
+        assert result.is_err
+        with pytest.raises(_Whoops):
+            result.unwrap()
+        assert len(history) == 10
+        assert all(isinstance(record, FrozenRecord) for record in history)
+        assert (
+            r2.load() == r1
+            for r1, r2 in zip(opt_result.history, history)
+            if isinstance(r2, FrozenRecord)
+        )
+
+
+def test_optimization_result_from_path_partial_result() -> None:
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        opt_result: OptimizationResult[None] = OptimizationResult(
+            Err(_Whoops()), [Record({}, {}, None)] * 10
+        )
+        opt_result.save(tmpdirname)
+        (Path(tmpdirname) / "result.pickle").unlink()
+        (Path(tmpdirname) / "step.9.pickle").unlink()
+
+        result, history = OptimizationResult[None].from_path(tmpdirname).astuple()
+        assert result.is_err
+        with pytest.raises(FileNotFoundError):
+            result.unwrap()
+        assert len(history) == 9
+        assert all(isinstance(record, FrozenRecord) for record in history)
+        assert (
+            r2.load() == r1
+            for r1, r2 in zip(opt_result.history, history)
+            if isinstance(r2, FrozenRecord)
+        )
+
+
 @pytest.mark.parametrize("steps", [0, 1, 2, 5])
 def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> None:
     class _CountingObserver:

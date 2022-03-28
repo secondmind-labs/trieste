@@ -88,12 +88,12 @@ class Record(Generic[StateType]):
         else:
             raise ValueError(f"Expected a single model, found {len(self.models)}")
 
-    def save(self, path: Path) -> FrozenRecord[StateType]:
+    def save(self, path: Path | str) -> FrozenRecord[StateType]:
         """Save the record to disk. Will overwrite any existing file at the same path."""
-        path.parent.mkdir(exist_ok=True, parents=True)
+        Path(path).parent.mkdir(exist_ok=True, parents=True)
         with open(path, "wb") as f:
             dill.dump(self, f, dill.HIGHEST_PROTOCOL)
-        return FrozenRecord(path)
+        return FrozenRecord(Path(path))
 
 
 @dataclass(frozen=True)
@@ -233,19 +233,32 @@ class OptimizationResult(Generic[StateType]):
         """The history of the optimization process loaded into memory."""
         return [record if isinstance(record, Record) else record.load() for record in self.history]
 
-    def save_result(self, path: Path) -> None:
+    def save_result(self, path: Path | str) -> None:
         """Save the final result to disk. Will overwrite any existing file at the same path."""
-        path.parent.mkdir(exist_ok=True, parents=True)
+        Path(path).parent.mkdir(exist_ok=True, parents=True)
         with open(path, "wb") as f:
             dill.dump(self.final_result, f, dill.HIGHEST_PROTOCOL)
 
+    def save(self, base_path: Path | str) -> None:
+        """Save the optimization result to disk. Will overwrite existing files at the same path."""
+        path = Path(base_path)
+        num_steps = len(self.history)
+        self.save_result(path / "result.pickle")
+        for i, record in enumerate(self.loaded_history):
+            record_path = path / f"step.{i:0{len(str(num_steps - 1))}d}.pickle"
+            record.save(record_path)
+
     @classmethod
-    def from_path(cls, base_path: Path) -> OptimizationResult[StateType]:
+    def from_path(cls, base_path: Path | str) -> OptimizationResult[StateType]:
         """Load a previously saved OptimizationResult."""
-        with open(base_path / "result.pickle", "rb") as f:
-            result = dill.load(f)
+        try:
+            with open(Path(base_path) / "result.pickle", "rb") as f:
+                result = dill.load(f)
+        except FileNotFoundError as e:
+            result = Err(e)
+
         history: list[Record[StateType] | FrozenRecord[StateType]] = [
-            FrozenRecord(file) for file in sorted(base_path.glob("step.*.pickle"))
+            FrozenRecord(file) for file in sorted(Path(base_path).glob("step.*.pickle"))
         ]
         return cls(result, history)
 
@@ -278,7 +291,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         model_specs: Mapping[str, ModelSpec],
         *,
         track_state: bool = True,
-        track_path: Optional[Path] = None,
+        track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[None]:
         ...
@@ -294,7 +307,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         ],
         *,
         track_state: bool = True,
-        track_path: Optional[Path] = None,
+        track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
         # this should really be OptimizationResult[None], but tf.Tensor is untyped so the type
         # checker can't differentiate between TensorType and State[S | None, TensorType], and
@@ -314,7 +327,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         ],
         *,
         track_state: bool = True,
-        track_path: Optional[Path] = None,
+        track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
         # this should really be OptimizationResult[None], but tf.Tensor is untyped so the type
         # checker can't differentiate between TensorType and State[S | None, TensorType], and
@@ -334,7 +347,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         acquisition_state: StateType | None = None,
         *,
         track_state: bool = True,
-        track_path: Optional[Path] = None,
+        track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[StateType]:
         ...
@@ -352,7 +365,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         acquisition_state: StateType | None = None,
         *,
         track_state: bool = True,
-        track_path: Optional[Path] = None,
+        track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[StateType]:
         ...
@@ -365,7 +378,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         model_specs: ModelSpec,
         *,
         track_state: bool = True,
-        track_path: Optional[Path] = None,
+        track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[None]:
         ...
@@ -381,7 +394,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         ],
         *,
         track_state: bool = True,
-        track_path: Optional[Path] = None,
+        track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[object]:
         ...
@@ -397,7 +410,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         ],
         *,
         track_state: bool = True,
-        track_path: Optional[Path] = None,
+        track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[object]:
         ...
@@ -414,7 +427,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         acquisition_state: StateType | None = None,
         *,
         track_state: bool = True,
-        track_path: Optional[Path] = None,
+        track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[StateType]:
         ...
@@ -431,7 +444,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         acquisition_state: StateType | None = None,
         *,
         track_state: bool = True,
-        track_path: Optional[Path] = None,
+        track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[StateType]:
         ...
@@ -453,7 +466,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         acquisition_state: StateType | None = None,
         *,
         track_state: bool = True,
-        track_path: Optional[Path] = None,
+        track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[StateType] | OptimizationResult[None]:
         """
@@ -583,6 +596,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         acquisition_state_copy = copy.deepcopy(acquisition_state)
                         history.append(Record(datasets_copy, models_copy, acquisition_state_copy))
                     else:
+                        track_path = Path(track_path)
                         record = Record(datasets, models, acquisition_state)
                         record_path = track_path / f"step.{step:0{len(str(num_steps-1))}d}.pickle"
                         history.append(record.save(record_path))
@@ -689,7 +703,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     )
                 result = OptimizationResult(Err(error), history)
                 if track_state and track_path is not None:
-                    result.save_result(track_path / "result.pickle")
+                    result.save_result(Path(track_path) / "result.pickle")
                 return result
 
         tf.print("Optimization completed without errors", output_stream=absl.logging.INFO)
@@ -697,5 +711,5 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         record = Record(datasets, models, acquisition_state)
         result = OptimizationResult(Ok(record), history)
         if track_state and track_path is not None:
-            result.save_result(track_path / "result.pickle")
+            result.save_result(Path(track_path) / "result.pickle")
         return result
