@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Any, Optional
 
 import gpflow
 import tensorflow as tf
@@ -66,6 +66,12 @@ class GPflowPredictor(
         """
         self._posterior = self.model.posterior(PrecomputeCacheType.VARIABLE)
 
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        # when unpickling we may need to regenerate the posterior cache
+        self.__dict__.update(state)
+        if self._posterior is not None:
+            self.create_posterior_cache()
+
     def update_posterior_cache(self) -> None:
         """Update the posterior cache. This needs to be called whenever the underlying model
         is changed."""
@@ -78,10 +84,20 @@ class GPflowPredictor(
         """The underlying GPflow model."""
 
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        return (self._posterior or self.model).predict_f(query_points)
+        mean, cov = (self._posterior or self.model).predict_f(query_points)
+        # posterior predict can return negative variance values [cf GPFlow issue #1813]
+        if self._posterior is not None:
+            cov = tf.clip_by_value(cov, 1e-12, cov.dtype.max)
+        return mean, cov
 
     def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        return (self._posterior or self.model).predict_f(query_points, full_cov=True)
+        mean, cov = (self._posterior or self.model).predict_f(query_points, full_cov=True)
+        # posterior predict can return negative variance values [cf GPFlow issue #1813]
+        if self._posterior is not None:
+            cov = tf.linalg.set_diag(
+                cov, tf.clip_by_value(tf.linalg.diag_part(cov), 1e-12, cov.dtype.max)
+            )
+        return mean, cov
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         return self.model.predict_f_samples(query_points, num_samples)

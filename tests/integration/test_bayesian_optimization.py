@@ -52,9 +52,11 @@ from trieste.models.gpflow import (
     GaussianProcessRegression,
     GPflowPredictor,
     RandomSubSampleInducingPointSelector,
+    SparseGaussianProcessRegression,
     SparseVariational,
     VariationalGaussianProcess,
     build_gpr,
+    build_sgpr,
     build_svgp,
 )
 from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp
@@ -278,6 +280,34 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_simple_quadratic() -> None
 
 @random_seed
 @pytest.mark.slow
+def test_bayesian_optimizer_with_sgpr_finds_minima_of_scaled_branin() -> None:
+    _test_optimizer_finds_minimum(
+        SparseGaussianProcessRegression,
+        9,
+        EfficientGlobalOptimization[SearchSpace, SparseGaussianProcessRegression](),
+        optimize_branin=True,
+    )
+    _test_optimizer_finds_minimum(
+        SparseGaussianProcessRegression,
+        11,
+        EfficientGlobalOptimization[SearchSpace, SparseGaussianProcessRegression](
+            builder=ParallelContinuousThompsonSampling(), num_query_points=5
+        ),
+        optimize_branin=True,
+    )
+
+
+@random_seed
+def test_bayesian_optimizer_with_sgpr_finds_minima_of_simple_quadratic() -> None:
+    _test_optimizer_finds_minimum(
+        SparseGaussianProcessRegression,
+        5,
+        EfficientGlobalOptimization[SearchSpace, SparseGaussianProcessRegression](),
+    )
+
+
+@random_seed
+@pytest.mark.slow
 @pytest.mark.parametrize("num_steps, acquisition_rule", [(25, DiscreteThompsonSampling(1000, 8))])
 def test_bayesian_optimizer_with_dgp_finds_minima_of_scaled_branin(
     num_steps: int,
@@ -389,6 +419,14 @@ def _test_optimizer_finds_minimum(
             likelihood_variance = 1e-5
         gpr = build_gpr(initial_data, search_space, likelihood_variance=likelihood_variance)
         model = GaussianProcessRegression(gpr, **model_args)
+
+    elif model_type is SparseGaussianProcessRegression:
+        sgpr = build_sgpr(initial_data, search_space, num_inducing_points=50)
+        model = SparseGaussianProcessRegression(
+            sgpr,
+            **model_args,
+            inducing_point_selector=RandomSubSampleInducingPointSelector(search_space),
+        )
 
     elif model_type is VariationalGaussianProcess:
         empirical_variance = tf.math.reduce_variance(initial_data.observations)
