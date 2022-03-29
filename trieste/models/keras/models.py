@@ -16,8 +16,10 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
+import dill
 import tensorflow as tf
 import tensorflow_probability as tfp
+from tensorflow.python.keras.callbacks import Callback
 
 from ...data import Dataset
 from ...types import TensorType
@@ -28,7 +30,7 @@ from ..interfaces import (
     TrajectorySampler,
 )
 from ..optimizer import KerasOptimizer
-from .architectures import KerasEnsemble
+from .architectures import KerasEnsemble, MultivariateNormalTriL
 from .interface import KerasPredictor
 from .sampler import EnsembleTrajectorySampler
 from .utils import negative_log_likelihood, sample_with_replacement
@@ -333,9 +335,34 @@ class DeepEnsemble(
         x, y = self.prepare_dataset(dataset)
         self.model.fit(x=x, y=y, **self.optimizer.fit_args)
 
+    def __getstate__(self) -> dict[str, Any]:
+        # When pickling use to_json to save any optimizer fit_arg callback models
+        state = self.__dict__.copy()
+        if self._optimizer:
+            # jsonify all the callback models, pickle the optimizer(!), and revert (ugh!)
+            callback: Callback
+            saved_models: list[KerasOptimizer] = []
+            for callback in self._optimizer.fit_args["callbacks"]:
+                saved_models.append(callback.model)
+                callback.model = callback.model and callback.model.to_json()
+            state["_optimizer"] = dill.dumps(state["_optimizer"])
+            for callback, model in zip(self._optimizer.fit_args["callbacks"], saved_models):
+                callback.model = model
+        return state
+
     def __setstate__(self, state: dict[str, Any]) -> None:
-        # Recompile model after depickling
+        # Restore optimizer and callback models after depickling, and recompile.
         self.__dict__.update(state)
+        if self._optimizer:
+            # unpickle the optimizer, and restore all the callback models
+            self._optimizer = dill.loads(self._optimizer)
+            for callback in self._optimizer.fit_args.get("callbacks", []):
+                if callback.model:
+                    callback.model = tf.keras.models.model_from_json(
+                        callback.model,
+                        custom_objects={"MultivariateNormalTriL": MultivariateNormalTriL},
+                    )
+        # Recompile the model
         self._model.model.compile(
             self.optimizer.optimizer,
             loss=[self.optimizer.loss] * self._model.ensemble_size,
