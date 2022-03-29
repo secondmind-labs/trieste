@@ -98,7 +98,7 @@ if function_key == 'branin':
     num_acquisitions = 15
 else:
     num_initial_points = 20
-    num_acquisitions = 480
+    num_acquisitions = 180
 
 if retrain:
     num_loops = num_acquisitions // retrain_every
