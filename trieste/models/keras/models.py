@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -332,3 +332,12 @@ class DeepEnsemble(
 
         x, y = self.prepare_dataset(dataset)
         self.model.fit(x=x, y=y, **self.optimizer.fit_args)
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        # Recompile model after depickling
+        self.__dict__.update(state)
+        self._model.model.compile(
+            self.optimizer.optimizer,
+            loss=[self.optimizer.loss] * self._model.ensemble_size,
+            metrics=[self.optimizer.metrics] * self._model.ensemble_size,
+        )

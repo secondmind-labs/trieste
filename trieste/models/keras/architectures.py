@@ -19,11 +19,13 @@ This file contains implementations of neural network architectures with Keras.
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Any, Sequence
+from typing import Any, Callable, Sequence
 
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
+
+from trieste.types import TensorType
 
 
 class KerasEnsemble:
@@ -81,6 +83,19 @@ class KerasEnsemble:
         inputs, outputs = zip(*[network.connect_layers() for network in self._networks])
 
         return tf.keras.Model(inputs=inputs, outputs=outputs)
+
+    def __getstate__(self) -> dict[str, Any]:
+        # When pickling use to_json to save the model.
+        state = self.__dict__.copy()
+        state["_model"] = self._model.to_json()
+        return state
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        # When unpickling restore the model using model_from_json.
+        self.__dict__.update(state)
+        self._model = tf.keras.models.model_from_json(
+            state["_model"], custom_objects={"MultivariateNormalTriL": MultivariateNormalTriL}
+        )
 
 
 class KerasEnsembleNetwork:
@@ -140,6 +155,29 @@ class KerasEnsembleNetwork:
             build a model.
         """
         raise NotImplementedError
+
+
+class MultivariateNormalTriL(tfp.layers.MultivariateNormalTriL):  # type: ignore[misc]
+    """Fixed version of tfp.layers.MultivariateNormalTriL that handles saving."""
+
+    def __init__(
+        self,
+        event_size: int,
+        convert_to_tensor_fn: Callable[
+            [tfp.python.distributions.Distribution], TensorType
+        ] = tfp.python.distributions.Distribution.sample,
+        validate_args: bool = False,
+        **kwargs: Any,
+    ) -> None:
+        self._event_size = event_size
+        self._validate_args = validate_args
+        super().__init__(event_size, convert_to_tensor_fn, validate_args, **kwargs)
+
+    def get_config(self) -> dict[str, Any]:
+        config = {"event_size": self._event_size, "validate_args": self._validate_args}
+        base_config = super().get_config()
+        del base_config["make_distribution_fn"]
+        return dict(list(base_config.items()) + list(config.items()))
 
 
 class GaussianNetwork(KerasEnsembleNetwork):
@@ -202,9 +240,7 @@ class GaussianNetwork(KerasEnsembleNetwork):
 
     def _gen_output_layer(self, input_tensor: tf.Tensor) -> tf.Tensor:
 
-        dist_layer = (
-            tfp.layers.IndependentNormal if self._independent else tfp.layers.MultivariateNormalTriL
-        )
+        dist_layer = tfp.layers.IndependentNormal if self._independent else MultivariateNormalTriL
         n_params = dist_layer.params_size(self.flattened_output_shape)
 
         parameter_layer = tf.keras.layers.Dense(
@@ -213,7 +249,7 @@ class GaussianNetwork(KerasEnsembleNetwork):
 
         distribution = dist_layer(
             self.flattened_output_shape,
-            lambda s: s.mean(),
+            tfp.python.distributions.Distribution.mean,
             name=self.output_layer_name,
         )(parameter_layer)
 
