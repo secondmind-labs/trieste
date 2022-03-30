@@ -24,6 +24,7 @@ from typing import Any, Callable, Sequence
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
+from tensorflow_probability.python.layers.distribution_layer import DistributionLambda, _serialize
 
 from trieste.types import TensorType
 
@@ -174,9 +175,15 @@ class MultivariateNormalTriL(tfp.layers.MultivariateNormalTriL):  # type: ignore
         super().__init__(event_size, convert_to_tensor_fn, validate_args, **kwargs)
 
     def get_config(self) -> dict[str, Any]:
-        config = {"event_size": self._event_size, "validate_args": self._validate_args}
-        base_config = super().get_config()
-        del base_config["make_distribution_fn"]
+        config = {
+            "event_size": self._event_size,
+            "validate_args": self._validate_args,
+            "convert_to_tensor_fn": _serialize(self._convert_to_tensor_fn),
+        }
+        # skip DistributionLambda's get_config because we don't want to serialize the
+        # make_distribution_fn: both to avoid confusing the constructor, and because it doesn't
+        # seem to work in TF2.4.
+        base_config = super(DistributionLambda, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
 
 
