@@ -14,8 +14,6 @@
 
 from __future__ import annotations
 
-import copy
-
 import gpflow
 import numpy.testing as npt
 import pytest
