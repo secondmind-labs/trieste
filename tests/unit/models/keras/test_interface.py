@@ -14,8 +14,6 @@
 
 from __future__ import annotations
 
-import copy
-
 import gpflow
 import pytest
 import tensorflow as tf
