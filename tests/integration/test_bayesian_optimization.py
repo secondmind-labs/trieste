@@ -341,6 +341,14 @@ def test_bayesian_optimizer_with_dgp_finds_minima_of_simple_quadratic(
             DiscreteThompsonSampling(1000, 3, thompson_sampler=ThompsonSamplerFromTrajectory()),
             id="DiscreteThompsonSampling/ThompsonSamplerFromTrajectory",
         ),
+        pytest.param(
+            10,
+            EfficientGlobalOptimization(
+                ParallelContinuousThompsonSampling(),
+                num_query_points=5,
+            ),
+            id="ParallelContinuousThompsonSampling",
+        ),
     ],
 )
 def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_scaled_branin(
@@ -366,6 +374,14 @@ def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_scaled_branin(
             5,
             DiscreteThompsonSampling(500, 1, thompson_sampler=ThompsonSamplerFromTrajectory()),
             id="DiscreteThompsonSampling/ThompsonSamplerFromTrajectory",
+        ),
+        pytest.param(
+            10,
+            EfficientGlobalOptimization(
+                ParallelContinuousThompsonSampling(),
+                num_query_points=5,
+            ),
+            id="ParallelContinuousThompsonSampling",
         ),
     ],
 )
