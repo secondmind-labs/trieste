@@ -342,10 +342,10 @@ def test_bayesian_optimizer_with_dgp_finds_minima_of_simple_quadratic(
             id="DiscreteThompsonSampling/ThompsonSamplerFromTrajectory",
         ),
         pytest.param(
-            10,
+            11,
             EfficientGlobalOptimization(
                 ParallelContinuousThompsonSampling(),
-                num_query_points=5,
+                num_query_points=10,
             ),
             id="ParallelContinuousThompsonSampling",
         ),
@@ -376,10 +376,10 @@ def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_scaled_branin(
             id="DiscreteThompsonSampling/ThompsonSamplerFromTrajectory",
         ),
         pytest.param(
-            10,
+            5,
             EfficientGlobalOptimization(
                 ParallelContinuousThompsonSampling(),
-                num_query_points=5,
+                num_query_points=3,
             ),
             id="ParallelContinuousThompsonSampling",
         ),
@@ -471,7 +471,7 @@ def _test_optimizer_finds_minimum(
         keras_ensemble = build_vanilla_keras_ensemble(initial_data, 5, 3, 25)
         fit_args = {
             "batch_size": 20,
-            "epochs": 1000,
+            "epochs": 100,
             "callbacks": [
                 tf.keras.callbacks.EarlyStopping(
                     monitor="loss", patience=25, restore_best_weights=True

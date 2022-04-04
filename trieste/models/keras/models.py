@@ -74,6 +74,7 @@ class DeepEnsemble(
         model: KerasEnsemble,
         optimizer: Optional[KerasOptimizer] = None,
         bootstrap: bool = False,
+        use_samples: bool = False,
     ) -> None:
         """
         :param model: A Keras ensemble model with probabilistic networks as ensemble members. The
@@ -87,6 +88,10 @@ class DeepEnsemble(
             arguments.
         :param bootstrap: Sample with replacement data for training each network in the ensemble.
             By default set to `False`.
+        :param use_samples: Whether to use samples from final probabilistic layer as trajectories
+            or mean predictions when calling :meth:`trajectory_sampler`. Samples can be used to
+            increase the diversity in case of optimizing very large batches of query points.
+            By default set to `False` as it is not a thoroughly explored feature.
         :raise ValueError: If ``model`` is not an instance of
             :class:`~trieste.models.keras.KerasEnsemble` or ensemble has less than two base
             learners (networks).
@@ -119,6 +124,7 @@ class DeepEnsemble(
 
         self._model = model
         self._bootstrap = bootstrap
+        self._use_samples = use_samples
 
     def __repr__(self) -> str:
         """"""
@@ -303,7 +309,7 @@ class DeepEnsemble(
 
         :return: The trajectory sampler.
         """
-        return EnsembleTrajectorySampler(self)
+        return EnsembleTrajectorySampler(self, self._use_samples)
 
     def update(self, dataset: Dataset) -> None:
         """

@@ -768,8 +768,8 @@ class feature_decomposition_trajectory(TrajectoryFunctionClass):
         tf.debugging.assert_equal(
             tf.shape(x)[-2],
             self._batch_size.value(),
-            message="""
-            This trajectory only supports batch sizes of {self._batch_size}}.
+            message=f"""
+            This trajectory only supports batch sizes of {self._batch_size}.
             If you wish to change the batch size you must get a new trajectory
             by calling the get_trajectory method of the trajectory sampler.
             """,
