@@ -100,13 +100,13 @@ class ensemble_trajectory(TrajectoryFunctionClass):
             0, dtype=tf.int32, trainable=False
         )
         if self._use_samples:
-            self._seeds = tf.Variable(tf.ones([self._model.ensemble_size, 2], dtype=tf.int32), trainable=False)
+            self._seeds = tf.Variable(tf.ones([0,0], dtype=tf.int32), shape=[None, None], trainable=False)
 
-    @tf.function
+    # @tf.function
     def __call__(self, x: TensorType) -> TensorType:  # [N, B, d] -> [N, B]
         """
         Call trajectory function. Note that we are flattening the batch dimension and
-        computing predictions for each network in the ensemble with the whole batch. This is
+        doing a forward pass with each network in the ensemble with the whole batch. This is
         somewhat wasteful, but is necessary given the underlying ``KerasEnsemble`` network
         model. Also, if same networks are used in multiple batch elements due to sampling
         with replacement it is less wasteful. 
@@ -129,17 +129,22 @@ class ensemble_trajectory(TrajectoryFunctionClass):
         flat_x, unflatten = flatten_leading_dims(x)  # [N*B, d]
         x_transformed = self._model.prepare_query_points(flat_x)
         ensemble_distributions = self._model.model(x_transformed)
-        if self._use_samples:
-            predictions = [dist.sample(seed=seed) for dist, seed in zip(ensemble_distributions, tf.unstack(self._seeds))]
+        
+        predictions = []
+        batch_index = tf.range(0, self._batch_size, 1)
+        if self._use_samples: 
+            for b, seed in zip(batch_index, tf.unstack(self._seeds)):
+                predictions.append(ensemble_distributions[self._indices[b]].sample(seed=seed))
         else:
-            predictions = [dist.mean() for dist in ensemble_distributions]
+            for b in batch_index:
+                predictions.append(ensemble_distributions[self._indices[b]].mean())
         tensor_predictions = tf.squeeze(
             tf.convert_to_tensor([unflatten(p) for p in predictions]), axis=-1
         )  # [B, N, B]
 
-        # for each network we have predictions for the whole batch, here we select simultaneously
-        # networks according to indices and batch dimension for each index
-        indices = tf.stack([self._indices, tf.range(0, self._batch_size, 1)], axis=1)
+        # here we select simultaneously networks and batch dimension according to batch indices
+        # this is needed because we compute a whole batch with each network
+        indices = tf.stack([batch_index, batch_index], axis=1)
         batch_predictions = tf.gather_nd(tf.transpose(tensor_predictions, perm=[0,2,1]), indices)  # [B,N]
 
         return tf.transpose(batch_predictions, perm=[1, 0])  # [N, B]
@@ -150,4 +155,4 @@ class ensemble_trajectory(TrajectoryFunctionClass):
         """
         self._indices.assign(self._model.sample_index(self._batch_size))  # [B]
         if self._use_samples:
-            self._seeds.assign(tf.random.uniform(shape=(self._model.ensemble_size,2), minval=1, maxval=5000000, dtype=tf.int32))
+            self._seeds.assign(tf.random.uniform(shape=(self._batch_size, 2), minval=1, maxval=999999999, dtype=tf.int32))
