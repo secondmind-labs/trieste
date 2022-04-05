@@ -161,11 +161,13 @@ def negate_trajectory_function(function: TrajectoryFunction) -> TrajectoryFuncti
     if isinstance(function, TrajectoryFunctionClass):
 
         class NegatedTrajectory(type(function)):  # type: ignore[misc]
-            @tf.function
+            # @tf.function
             def __call__(self, x: TensorType) -> TensorType:
                 return -1.0 * super().__call__(x)
 
         function.__class__ = NegatedTrajectory
+
+        return function
 
     else:
 
@@ -173,6 +175,4 @@ def negate_trajectory_function(function: TrajectoryFunction) -> TrajectoryFuncti
         def negated_trajectory(x: TensorType) -> TensorType:
             return -1.0 * function(x)
 
-        function = negated_trajectory
-
-    return function
+        return negated_trajectory
