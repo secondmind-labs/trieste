@@ -91,7 +91,7 @@ class ensemble_trajectory(TrajectoryFunctionClass):
         :param model: The model of the objective function.
         """
         self._model = model
-        self._use_samples = True
+        self._use_samples = use_samples
         self._initialized = tf.Variable(False, trainable=False)
 
         # dummy inits to be updated before trajectory evaluation
@@ -100,9 +100,9 @@ class ensemble_trajectory(TrajectoryFunctionClass):
             0, dtype=tf.int32, trainable=False
         )
         if self._use_samples:
-            self._seeds = tf.Variable(tf.ones([0,0], dtype=tf.int32), shape=[None, None], trainable=False)
+            self._seeds = tf.Variable(tf.ones([self._model.ensemble_size, 2], dtype=tf.int32), trainable=False)
 
-    # @tf.function
+    @tf.function
     def __call__(self, x: TensorType) -> TensorType:  # [N, B, d] -> [N, B]
         """
         Call trajectory function. Note that we are flattening the batch dimension and
@@ -130,7 +130,7 @@ class ensemble_trajectory(TrajectoryFunctionClass):
         x_transformed = self._model.prepare_query_points(flat_x)
         ensemble_distributions = self._model.model(x_transformed)
         if self._use_samples:
-            predictions = [dist.sample(1, seed) for dist, seed in zip(ensemble_distributions, tf.unstack(self._seeds))]
+            predictions = [dist.sample(seed=seed) for dist, seed in zip(ensemble_distributions, tf.unstack(self._seeds))]
         else:
             predictions = [dist.mean() for dist in ensemble_distributions]
         tensor_predictions = tf.squeeze(
@@ -140,9 +140,7 @@ class ensemble_trajectory(TrajectoryFunctionClass):
         # for each network we have predictions for the whole batch, here we select simultaneously
         # networks according to indices and batch dimension for each index
         indices = tf.stack([self._indices, tf.range(0, self._batch_size, 1)], axis=1)
-        batch_predictions = tf.gather_nd(
-            tf.transpose(tensor_predictions, perm=[0,2,1]), indices
-        )  # [B,N]
+        batch_predictions = tf.gather_nd(tf.transpose(tensor_predictions, perm=[0,2,1]), indices)  # [B,N]
 
         return tf.transpose(batch_predictions, perm=[1, 0])  # [N, B]
 
@@ -152,4 +150,4 @@ class ensemble_trajectory(TrajectoryFunctionClass):
         """
         self._indices.assign(self._model.sample_index(self._batch_size))  # [B]
         if self._use_samples:
-            self._seeds.assign(tf.random.uniform(shape=(self._batch_size,2), minval=1, maxval=5, dtype=tf.int32))
+            self._seeds.assign(tf.random.uniform(shape=(self._model.ensemble_size,2), minval=1, maxval=5000000, dtype=tf.int32))
