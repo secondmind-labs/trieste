@@ -20,7 +20,7 @@ perform Bayesian Optimization with external control of the optimization loop.
 
 from __future__ import annotations
 
-import copy
+from copy import deepcopy
 from typing import Dict, Generic, Mapping, TypeVar, cast, overload
 
 import numpy as np
@@ -300,6 +300,37 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
                {self._models!r}, {self._acquisition_rule!r}), "
                {self._acquisition_state!r}"""
 
+    @property
+    def datasets(self) -> Mapping[str, Dataset]:
+        """The current datasets."""
+        return self._datasets
+
+    @property
+    def dataset(self) -> Dataset:
+        """The current dataset when there is just one dataset."""
+        if len(self.datasets) == 1:
+            return next(iter(self.datasets.values()))
+        else:
+            raise ValueError(f"Expected a single dataset, found {len(self.datasets)}")
+
+    @property
+    def models(self) -> Mapping[str, TrainableProbabilisticModel]:
+        """The current models."""
+        return self._models
+
+    @property
+    def model(self) -> TrainableProbabilisticModel:
+        """The current model when there is just one model."""
+        if len(self.models) == 1:
+            return next(iter(self.models.values()))
+        else:
+            raise ValueError(f"Expected a single model, found {len(self.models)}")
+
+    @property
+    def acquisition_state(self) -> StateType | None:
+        """The current acquisition state."""
+        return self._acquisition_state
+
     @classmethod
     def from_record(
         cls,
@@ -337,22 +368,40 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
             fit_model=False,
         )
 
-    def to_record(self) -> Record[StateType]:
+    def to_record(self, copy: bool = True) -> Record[StateType]:
         """Collects the current state of the optimization, which includes datasets,
         models and acquisition state (if applicable).
 
+        :param copy: Whether to return a copy of the current state or the original. Copying
+            is not supported for all model types. However, continuing the optimization will
+            modify the original state.
         :return: An optimization state record.
         """
-        models_copy = copy.deepcopy(self._models)
-        acquisition_state_copy = copy.deepcopy(self._acquisition_state)
-        return Record(
-            datasets=self._datasets, models=models_copy, acquisition_state=acquisition_state_copy
-        )
+        try:
+            datasets_copy = deepcopy(self._datasets) if copy else self._datasets
+            models_copy = deepcopy(self._models) if copy else self._models
+            state_copy = deepcopy(self._acquisition_state) if copy else self._acquisition_state
+        except Exception as e:
+            raise NotImplementedError(
+                "Failed to copy the optimization state. Some models do not support "
+                "deecopying (this is particularly common for deep neural network models). "
+                "For these models, the `copy` argument of the `to_record` or `to_result` "
+                "methods should be set to `False`. This means that the returned state may be "
+                "modified by subsequent optimization."
+            ) from e
 
-    def to_result(self) -> OptimizationResult[StateType]:
+        return Record(datasets=datasets_copy, models=models_copy, acquisition_state=state_copy)
+
+    def to_result(self, copy: bool = True) -> OptimizationResult[StateType]:
         """Converts current state of the optimization
-        into a :class:`~trieste.data.OptimizationResult` object."""
-        record: Record[StateType] = self.to_record()
+        into a :class:`~trieste.data.OptimizationResult` object.
+
+        :param copy: Whether to return a copy of the current state or the original. Copying
+            is not supported for all model types. However, continuing the optimization will
+            modify the original state.
+        :return: A :class:`~trieste.data.OptimizationResult` object.
+        """
+        record: Record[StateType] = self.to_record(copy=copy)
         return OptimizationResult(Ok(record), [])
 
     def ask(self) -> TensorType:
@@ -409,7 +458,8 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
                 f"match dataset keys {self._datasets.keys()}"
             )
 
-        self._datasets = {tag: self._datasets[tag] + new_data[tag] for tag in new_data}
+        for tag in self._datasets:
+            self._datasets[tag] += new_data[tag]
 
         with Timer() as model_fitting_timer:
             for tag, model in self._models.items():
