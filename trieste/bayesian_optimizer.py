@@ -22,9 +22,11 @@ import copy
 import traceback
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Dict, Generic, MutableMapping, TypeVar, cast, overload
+from pathlib import Path
+from typing import ClassVar, Dict, Generic, MutableMapping, Optional, TypeVar, cast, overload
 
 import absl
+import dill
 import numpy as np
 import tensorflow as tf
 
@@ -86,7 +88,57 @@ class Record(Generic[StateType]):
         if len(self.models) == 1:
             return next(iter(self.models.values()))
         else:
-            raise ValueError(f"Expected a single dataset, found {len(self.datasets)}")
+            raise ValueError(f"Expected a single model, found {len(self.models)}")
+
+    def save(self, path: Path | str) -> FrozenRecord[StateType]:
+        """Save the record to disk. Will overwrite any existing file at the same path."""
+        Path(path).parent.mkdir(exist_ok=True, parents=True)
+        with open(path, "wb") as f:
+            dill.dump(self, f, dill.HIGHEST_PROTOCOL)
+        return FrozenRecord(Path(path))
+
+
+@dataclass(frozen=True)
+class FrozenRecord(Generic[StateType]):
+    """
+    A Record container saved on disk.
+
+    Note that records are saved via pickling and are therefore neither portable nor secure.
+    Only open frozen records generated on the same system.
+    """
+
+    path: Path
+    """ The path to the pickled Record. """
+
+    def load(self) -> Record[StateType]:
+        """Load the record into memory."""
+        with open(self.path, "rb") as f:
+            return dill.load(f)
+
+    @property
+    def datasets(self) -> Mapping[str, Dataset]:
+        """The known data from the observer."""
+        return self.load().datasets
+
+    @property
+    def models(self) -> Mapping[str, TrainableProbabilisticModel]:
+        """The models over the :attr:`datasets`."""
+        return self.load().models
+
+    @property
+    def acquisition_state(self) -> StateType | None:
+        """The acquisition state."""
+        return self.load().acquisition_state
+
+    @property
+    def dataset(self) -> Dataset:
+        """The dataset when there is just one dataset."""
+        return self.load().dataset
+
+    @property
+    def model(self) -> TrainableProbabilisticModel:
+        """The model when there is just one dataset."""
+        return self.load().model
 
 
 # this should be a generic NamedTuple, but mypy doesn't support them
@@ -101,14 +153,24 @@ class OptimizationResult(Generic[StateType]):
     exception.
     """
 
-    history: list[Record[StateType]]
+    history: list[Record[StateType] | FrozenRecord[StateType]]
     r"""
     The history of the :class:`Record`\ s from each step of the optimization process. These
-    :class:`Record`\ s are created at the *start* of each loop, and as such will never include the
-    :attr:`final_result`.
+    :class:`Record`\ s are created at the *start* of each loop, and as such will never
+    include the :attr:`final_result`. The records may be either in memory or on disk.
     """
 
-    def astuple(self) -> tuple[Result[Record[StateType]], list[Record[StateType]]]:
+    @staticmethod
+    def step_filename(step: int, num_steps: int) -> str:
+        """Default filename for saved optimization steps."""
+        return f"step.{step:0{len(str(num_steps - 1))}d}.pickle"
+
+    STEP_GLOB: ClassVar[str] = "step.*.pickle"
+    RESULTS_FILENAME: ClassVar[str] = "results.pickle"
+
+    def astuple(
+        self,
+    ) -> tuple[Result[Record[StateType]], list[Record[StateType] | FrozenRecord[StateType]]]:
         """
         **Note:** In contrast to the standard library function :func:`dataclasses.astuple`, this
         method does *not* deepcopy instance attributes.
@@ -176,6 +238,40 @@ class OptimizationResult(Generic[StateType]):
         else:
             raise ValueError(f"Expected single model, found {len(models)}")
 
+    @property
+    def loaded_history(self) -> list[Record[StateType]]:
+        """The history of the optimization process loaded into memory."""
+        return [record if isinstance(record, Record) else record.load() for record in self.history]
+
+    def save_result(self, path: Path | str) -> None:
+        """Save the final result to disk. Will overwrite any existing file at the same path."""
+        Path(path).parent.mkdir(exist_ok=True, parents=True)
+        with open(path, "wb") as f:
+            dill.dump(self.final_result, f, dill.HIGHEST_PROTOCOL)
+
+    def save(self, base_path: Path | str) -> None:
+        """Save the optimization result to disk. Will overwrite existing files at the same path."""
+        path = Path(base_path)
+        num_steps = len(self.history)
+        self.save_result(path / self.RESULTS_FILENAME)
+        for i, record in enumerate(self.loaded_history):
+            record_path = path / self.step_filename(i, num_steps)
+            record.save(record_path)
+
+    @classmethod
+    def from_path(cls, base_path: Path | str) -> OptimizationResult[StateType]:
+        """Load a previously saved OptimizationResult."""
+        try:
+            with open(Path(base_path) / cls.RESULTS_FILENAME, "rb") as f:
+                result = dill.load(f)
+        except FileNotFoundError as e:
+            result = Err(e)
+
+        history: list[Record[StateType] | FrozenRecord[StateType]] = [
+            FrozenRecord(file) for file in sorted(Path(base_path).glob(cls.STEP_GLOB))
+        ]
+        return cls(result, history)
+
 
 class BayesianOptimizer(Generic[SearchSpaceType]):
     """
@@ -205,6 +301,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         model_specs: Mapping[str, ModelSpec],
         *,
         track_state: bool = True,
+        track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[None]:
         ...
@@ -220,6 +317,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         ],
         *,
         track_state: bool = True,
+        track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
         # this should really be OptimizationResult[None], but tf.Tensor is untyped so the type
         # checker can't differentiate between TensorType and State[S | None, TensorType], and
@@ -239,6 +337,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         ],
         *,
         track_state: bool = True,
+        track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
         # this should really be OptimizationResult[None], but tf.Tensor is untyped so the type
         # checker can't differentiate between TensorType and State[S | None, TensorType], and
@@ -258,6 +357,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         acquisition_state: StateType | None = None,
         *,
         track_state: bool = True,
+        track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[StateType]:
         ...
@@ -275,6 +375,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         acquisition_state: StateType | None = None,
         *,
         track_state: bool = True,
+        track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[StateType]:
         ...
@@ -287,6 +388,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         model_specs: ModelSpec,
         *,
         track_state: bool = True,
+        track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[None]:
         ...
@@ -302,6 +404,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         ],
         *,
         track_state: bool = True,
+        track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[object]:
         ...
@@ -317,6 +420,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         ],
         *,
         track_state: bool = True,
+        track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[object]:
         ...
@@ -333,6 +437,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         acquisition_state: StateType | None = None,
         *,
         track_state: bool = True,
+        track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[StateType]:
         ...
@@ -349,6 +454,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         acquisition_state: StateType | None = None,
         *,
         track_state: bool = True,
+        track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[StateType]:
         ...
@@ -370,6 +476,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         acquisition_state: StateType | None = None,
         *,
         track_state: bool = True,
+        track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[StateType] | OptimizationResult[None]:
         """
@@ -384,14 +491,10 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             - Updates the datasets and models with the data from the ``observer``.
 
         If any errors are raised during the optimization loop, this method will catch and return
-        them instead, along with the history of the optimization process, and print a message (using
-        `absl` at level `absl.logging.ERROR`).
-
-        **Note:** While the :class:`~trieste.models.TrainableProbabilisticModel` interface implies
-        mutable models, it is *not* guaranteed that the model passed to :meth:`optimize` will
-        be updated during the optimization process. For example, if ``track_state`` is `True`, a
-        copied model will be used on each optimization step. Use the models in the return value for
-        reliable access to the updated models.
+        them instead and print a message (using `absl` at level `absl.logging.ERROR`).
+        If ``track_state`` is enabled, then in addition to the final result, the history of the
+        optimization process will also be returned. If ``track_path`` is also set, then
+        the history and final result will be saved to disk rather than all being kept in memory.
 
         **Type hints:**
             - The ``acquisition_rule`` must use the same type of
@@ -414,6 +517,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             :class:`Record`.
         :param track_state: If `True`, this method saves the optimization state at the start of each
             step. Models and acquisition state are copied using `copy.deepcopy`.
+        :param track_path: If set, the optimization state is saved to disk at this path,
+            rather than being copied in memory.
         :param fit_initial_model: If `False`, this method assumes that the initial models have
             already been optimized on the datasets and so do not require optimization before the
             first optimization step.
@@ -467,7 +572,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             Dict[str, TrainableProbabilisticModelType], map_values(create_model, model_specs)
         )
 
-        history: list[Record[StateType]] = []
+        history: list[FrozenRecord[StateType] | Record[StateType]] = []
         query_plot_dfs: dict[int, pd.DataFrame] = {}
         observation_plot_dfs: dict[str, pd.DataFrame] = {}
 
@@ -483,9 +588,16 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             try:
 
                 if track_state:
-                    models_copy = copy.deepcopy(models)
-                    acquisition_state_copy = copy.deepcopy(acquisition_state)
-                    history.append(Record(datasets, models_copy, acquisition_state_copy))
+                    if track_path is None:
+                        datasets_copy = copy.deepcopy(datasets)
+                        models_copy = copy.deepcopy(models)
+                        acquisition_state_copy = copy.deepcopy(acquisition_state)
+                        history.append(Record(datasets_copy, models_copy, acquisition_state_copy))
+                    else:
+                        track_path = Path(track_path)
+                        record = Record(datasets, models, acquisition_state)
+                        record_path = track_path / OptimizationResult.step_filename(step, num_steps)
+                        history.append(record.save(record_path))
 
                 with Timer() as total_step_wallclock_timer:
                     with Timer() as initial_model_fitting_timer:
@@ -552,12 +664,18 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         "\nusing split_acquisition_function or split_acquisition_function_calls.",
                         output_stream=absl.logging.ERROR,
                     )
-                return OptimizationResult(Err(error), history)
+                result = OptimizationResult(Err(error), history)
+                if track_state and track_path is not None:
+                    result.save_result(Path(track_path) / OptimizationResult.RESULTS_FILENAME)
+                return result
 
         tf.print("Optimization completed without errors", output_stream=absl.logging.INFO)
 
         record = Record(datasets, models, acquisition_state)
-        return OptimizationResult(Ok(record), history)
+        result = OptimizationResult(Ok(record), history)
+        if track_state and track_path is not None:
+            result.save_result(Path(track_path) / OptimizationResult.RESULTS_FILENAME)
+        return result
 
     def _write_summary_init(
         self,
