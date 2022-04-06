@@ -377,9 +377,19 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
             modify the original state.
         :return: An optimization state record.
         """
-        datasets_copy = deepcopy(self._datasets) if copy else self._datasets
-        models_copy = deepcopy(self._models) if copy else self._models
-        state_copy = deepcopy(self._acquisition_state) if copy else self._acquisition_state
+        try:
+            datasets_copy = deepcopy(self._datasets) if copy else self._datasets
+            models_copy = deepcopy(self._models) if copy else self._models
+            state_copy = deepcopy(self._acquisition_state) if copy else self._acquisition_state
+        except Exception as e:
+            raise NotImplementedError(
+                "Failed to copy the optimization state. Some models do not support "
+                "deecopying (this is particularly common for deep neural network models). "
+                "For these models, the `copy` argument of the `to_record` or `to_result` "
+                "methods should be set to `False`. This means that the returned state may be "
+                "modified by subsequent optimization."
+            ) from e
+
         return Record(datasets=datasets_copy, models=models_copy, acquisition_state=state_copy)
 
     def to_result(self, copy: bool = True) -> OptimizationResult[StateType]:

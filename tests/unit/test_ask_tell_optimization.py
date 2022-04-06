@@ -356,12 +356,12 @@ def test_ask_tell_optimizer_for_uncopyable_model(
     model = _UncopyableModel()
     ask_tell = AskTellOptimizer(search_space, init_dataset, model, acquisition_rule)
 
-    with pytest.raises(MemoryError):
+    with pytest.raises(NotImplementedError):
         ask_tell.to_result()
     assert ask_tell.to_result(copy=False).final_result.is_ok
 
     ask_tell.tell(mk_dataset([[1.0]], [[1.0]]))
 
-    with pytest.raises(MemoryError):
+    with pytest.raises(NotImplementedError):
         ask_tell.to_result()
     assert ask_tell.to_result(copy=False).final_result.is_ok
