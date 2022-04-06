@@ -88,45 +88,51 @@ def test_ask_tell_optimizer_with_default_acquisition_suggests_new_point(
     assert len(new_point) == 1
 
 
+@pytest.mark.parametrize("copy", [True, False])
 def test_ask_tell_optimizer_returns_complete_state(
     search_space: Box,
     init_dataset: Dataset,
     model: TrainableProbabilisticModel,
     acquisition_rule: AcquisitionRule[TensorType, Box, TrainableProbabilisticModel],
+    copy: bool,
 ) -> None:
     ask_tell = AskTellOptimizer(search_space, init_dataset, model, acquisition_rule)
 
-    state_record: Record[None] = ask_tell.to_record()
+    state_record: Record[None] = ask_tell.to_record(copy=copy)
 
     assert_datasets_allclose(state_record.dataset, init_dataset)
     assert isinstance(state_record.model, type(model))
     assert state_record.acquisition_state is None
 
 
+@pytest.mark.parametrize("copy", [True, False])
 def test_ask_tell_optimizer_loads_from_state(
     search_space: Box,
     init_dataset: Dataset,
     model: TrainableProbabilisticModel,
     acquisition_rule: AcquisitionRule[TensorType, Box, TrainableProbabilisticModel],
+    copy: bool,
 ) -> None:
     old_state: Record[None] = Record({OBJECTIVE: init_dataset}, {OBJECTIVE: model}, None)
 
     ask_tell = AskTellOptimizer.from_record(old_state, search_space, acquisition_rule)
-    new_state: Record[None] = ask_tell.to_record()
+    new_state: Record[None] = ask_tell.to_record(copy=copy)
 
     assert_datasets_allclose(old_state.dataset, new_state.dataset)
     assert isinstance(new_state.model, type(old_state.model))
 
 
+@pytest.mark.parametrize("copy", [True, False])
 def test_ask_tell_optimizer_returns_optimization_result(
     search_space: Box,
     init_dataset: Dataset,
     model: TrainableProbabilisticModel,
     acquisition_rule: AcquisitionRule[TensorType, Box, TrainableProbabilisticModel],
+    copy: bool,
 ) -> None:
     ask_tell = AskTellOptimizer(search_space, init_dataset, model, acquisition_rule)
 
-    result: OptimizationResult[None] = ask_tell.to_result()
+    result: OptimizationResult[None] = ask_tell.to_result(copy=copy)
 
     assert_datasets_allclose(result.try_get_final_dataset(), init_dataset)
     assert isinstance(result.try_get_final_model(), type(model))
@@ -145,6 +151,47 @@ def test_ask_tell_optimizer_updates_state_with_new_data(
     state_record: Record[None] = ask_tell.to_record()
 
     assert_datasets_allclose(state_record.dataset, init_dataset + new_data)
+
+
+@pytest.mark.parametrize("copy", [True, False])
+def test_ask_tell_optimizer_copies_state(
+    search_space: Box,
+    init_dataset: Dataset,
+    model: TrainableProbabilisticModel,
+    acquisition_rule: AcquisitionRule[TensorType, Box, TrainableProbabilisticModel],
+    copy: bool,
+) -> None:
+    new_data = mk_dataset([[1.0]], [[1.0]])
+    ask_tell = AskTellOptimizer(search_space, init_dataset, model, acquisition_rule)
+    state_start: Record[None] = ask_tell.to_record(copy=copy)
+    ask_tell.tell(new_data)
+    state_end: Record[None] = ask_tell.to_record(copy=copy)
+
+    assert_datasets_allclose(state_start.dataset, init_dataset if copy else init_dataset + new_data)
+    assert_datasets_allclose(state_end.dataset, init_dataset + new_data)
+    assert state_start.model is not model if copy else state_start.model is model
+
+
+def test_ask_tell_optimizer_datasets_property(
+    search_space: Box,
+    init_dataset: Dataset,
+    model: TrainableProbabilisticModel,
+    acquisition_rule: AcquisitionRule[TensorType, Box, TrainableProbabilisticModel],
+) -> None:
+    ask_tell = AskTellOptimizer(search_space, init_dataset, model, acquisition_rule)
+    assert_datasets_allclose(ask_tell.datasets[OBJECTIVE], init_dataset)
+    assert_datasets_allclose(ask_tell.dataset, init_dataset)
+
+
+def test_ask_tell_optimizer_models_property(
+    search_space: Box,
+    init_dataset: Dataset,
+    model: TrainableProbabilisticModel,
+    acquisition_rule: AcquisitionRule[TensorType, Box, TrainableProbabilisticModel],
+) -> None:
+    ask_tell = AskTellOptimizer(search_space, init_dataset, model, acquisition_rule)
+    assert ask_tell.models[OBJECTIVE] is model
+    assert ask_tell.model is model
 
 
 def test_ask_tell_optimizer_trains_model(
@@ -238,6 +285,7 @@ def test_ask_tell_optimizer_uses_specified_acquisition_state(
 
     # mypy cannot see that this is in fact int
     assert state_record.acquisition_state == expected_state  # type: ignore
+    assert ask_tell.acquisition_state == expected_state
 
 
 def test_ask_tell_optimizer_does_not_accept_empty_datasets_or_models(
@@ -294,3 +342,26 @@ def test_ask_tell_optimizer_default_acquisition_requires_objective_tag(
 
     with pytest.raises(ValueError):
         AskTellOptimizer(search_space, wrong_datasets, wrong_models)
+
+
+def test_ask_tell_optimizer_for_uncopyable_model(
+    search_space: Box,
+    init_dataset: Dataset,
+    acquisition_rule: AcquisitionRule[TensorType, Box, TrainableProbabilisticModel],
+) -> None:
+    class _UncopyableModel(LinearWithUnitVariance):
+        def __deepcopy__(self, memo: dict[int, object]) -> _UncopyableModel:
+            raise MemoryError
+
+    model = _UncopyableModel()
+    ask_tell = AskTellOptimizer(search_space, init_dataset, model, acquisition_rule)
+
+    with pytest.raises(MemoryError):
+        ask_tell.to_result()
+    assert ask_tell.to_result(copy=False).final_result.is_ok
+
+    ask_tell.tell(mk_dataset([[1.0]], [[1.0]]))
+
+    with pytest.raises(MemoryError):
+        ask_tell.to_result()
+    assert ask_tell.to_result(copy=False).final_result.is_ok
