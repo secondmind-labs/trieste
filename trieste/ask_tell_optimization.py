@@ -423,14 +423,19 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
                 for tag in self._datasets:
                     with tf.name_scope(f"{tag}.model"):
                         self._models[tag].log()
-                    logging.histogram(
-                        f"{tag}.observation/new_observations", new_data[tag].observations
-                    )
-                    logging.scalar(
-                        f"{tag}.observation/best_new_observation",
-                        np.min(new_data[tag].observations),
-                    )
-                    logging.scalar(
-                        f"{tag}.observation/best_overall", np.min(self._datasets[tag].observations)
-                    )
+                    output_dim = tf.shape(new_data[tag].observations)[-1]
+                    for i in tf.range(output_dim):
+                        suffix = f"[{i}]" if output_dim > 1 else ""
+                        logging.histogram(
+                            f"{tag}.observation{suffix}/new_observations",
+                            new_data[tag].observations[..., i],
+                        )
+                        logging.scalar(
+                            f"{tag}.observation{suffix}/best_new_observation",
+                            np.min(new_data[tag].observations[..., i]),
+                        )
+                        logging.scalar(
+                            f"{tag}.observation{suffix}/best_overall",
+                            np.min(self._datasets[tag].observations[..., i]),
+                        )
                     logging.scalar("wallclock/model_fitting", model_fitting_timer.time)
