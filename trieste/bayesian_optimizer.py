@@ -598,8 +598,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         else:
                             track_path = Path(track_path)
                             record = Record(datasets, models, acquisition_state)
-                            file_path = track_path / OptimizationResult.step_filename(step, num_steps)
-                            history.append(record.save(file_path))
+                            file_name = OptimizationResult.step_filename(step, num_steps)
+                            history.append(record.save(track_path / file_name))
                     except Exception as e:
                         raise NotImplementedError(
                             "Failed to save the optimization state. Some models do not support "
