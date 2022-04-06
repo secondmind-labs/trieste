@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import tempfile
 
 import pytest
 import tensorflow as tf
@@ -30,6 +31,7 @@ from trieste.acquisition.rule import (
 )
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
+from trieste.logging import set_summary_filter, tensorboard_writer
 from trieste.models.gpflow import GaussianProcessRegression, build_gpr
 from trieste.models.interfaces import (
     TrainableModelStack,
@@ -120,11 +122,17 @@ def test_multi_objective_optimizer_finds_pareto_front_of_the_VLMOP2_function(
 
     model = build_stacked_independent_objectives_model(initial_data[OBJECTIVE])
 
-    dataset = (
-        BayesianOptimizer(observer, search_space)
-        .optimize(num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule)
-        .try_get_final_datasets()[OBJECTIVE]
-    )
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        summary_writer = tf.summary.create_file_writer(tmpdirname)
+
+        set_summary_filter(lambda x: True)
+        with tensorboard_writer(summary_writer):
+
+            dataset = (
+                BayesianOptimizer(observer, search_space)
+                .optimize(num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule)
+                .try_get_final_datasets()[OBJECTIVE]
+            )
 
     # A small log hypervolume difference corresponds to a succesful optimization.
     ref_point = get_reference_point(dataset.observations)

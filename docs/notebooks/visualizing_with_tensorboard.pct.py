@@ -79,6 +79,11 @@ trieste.logging.set_summary_filter(lambda name: True)  # enabe all summaries
 
 
 # %% [markdown]
+# Furthermore, some summaries such as pairplots also require special plotting tools, which can be installed by running `pip install trieste[plotting]`. A warning message will be printed if you try to generate a summary without the necessary tools.
+#
+# ![TensorBoard pairplot](figures/tensorboard_pairplot.png)
+
+# %% [markdown]
 # ## Logging additional model parameters
 #
 # Where trieste's monitoring is insufficient, you can also add your own logs. To log additional model parameters, you can define your own model subclass and override the `log` method. You can use the various `tf.summary` method wrappers in `trieste.logging` to ensure that your logs are filtered correctly. For example, the following GPR subclass also logs the average lengthscale at each step.

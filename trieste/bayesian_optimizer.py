@@ -23,12 +23,14 @@ import traceback
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Generic, Optional, TypeVar, cast, overload
+from typing import ClassVar, Dict, Generic, MutableMapping, Optional, TypeVar, cast, overload
 
 import absl
 import dill
 import numpy as np
 import tensorflow as tf
+
+from .acquisition.multi_objective import non_dominated
 
 try:
     import pandas as pd
@@ -158,6 +160,14 @@ class OptimizationResult(Generic[StateType]):
     include the :attr:`final_result`. The records may be either in memory or on disk.
     """
 
+    @staticmethod
+    def step_filename(step: int, num_steps: int) -> str:
+        """Default filename for saved optimization steps."""
+        return f"step.{step:0{len(str(num_steps - 1))}d}.pickle"
+
+    STEP_GLOB: ClassVar[str] = "step.*.pickle"
+    RESULTS_FILENAME: ClassVar[str] = "results.pickle"
+
     def astuple(
         self,
     ) -> tuple[Result[Record[StateType]], list[Record[StateType] | FrozenRecord[StateType]]]:
@@ -243,22 +253,22 @@ class OptimizationResult(Generic[StateType]):
         """Save the optimization result to disk. Will overwrite existing files at the same path."""
         path = Path(base_path)
         num_steps = len(self.history)
-        self.save_result(path / "result.pickle")
+        self.save_result(path / self.RESULTS_FILENAME)
         for i, record in enumerate(self.loaded_history):
-            record_path = path / f"step.{i:0{len(str(num_steps - 1))}d}.pickle"
+            record_path = path / self.step_filename(i, num_steps)
             record.save(record_path)
 
     @classmethod
     def from_path(cls, base_path: Path | str) -> OptimizationResult[StateType]:
         """Load a previously saved OptimizationResult."""
         try:
-            with open(Path(base_path) / "result.pickle", "rb") as f:
+            with open(Path(base_path) / cls.RESULTS_FILENAME, "rb") as f:
                 result = dill.load(f)
         except FileNotFoundError as e:
             result = Err(e)
 
         history: list[Record[StateType] | FrozenRecord[StateType]] = [
-            FrozenRecord(file) for file in sorted(Path(base_path).glob("step.*.pickle"))
+            FrozenRecord(file) for file in sorted(Path(base_path).glob(cls.STEP_GLOB))
         ]
         return cls(result, history)
 
@@ -563,26 +573,14 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         )
 
         history: list[FrozenRecord[StateType] | Record[StateType]] = []
-        plot_df: Optional[pd.DataFrame] = None
+        query_plot_dfs: dict[int, pd.DataFrame] = {}
+        observation_plot_dfs: dict[str, pd.DataFrame] = {}
 
         summary_writer = logging.get_tensorboard_writer()
         if summary_writer:
             with summary_writer.as_default(step=0):
-                logging.text(
-                    "metadata",
-                    f"Observer: `{self._observer}`\n\n"
-                    f"Number of steps: `{num_steps}`\n\n"
-                    f"Number of initial points: "
-                    f"`{dict((k, len(v)) for k,v in datasets.items())}`\n\n"
-                    f"Search Space: `{self._search_space}`\n\n"
-                    f"Acquisition rule:\n\n    {acquisition_rule}\n\n"
-                    f"Models:\n\n    {models}",
-                )
-            if logging.include_summary("query_points/_pairplot") and not (pd and sns):
-                tf.print(
-                    "\nPairplot TensorBoard summaries require seaborn to be installed."
-                    "\nOne way to do this is to install 'trieste[plotting]'.",
-                    output_stream=absl.logging.INFO,
+                self._write_summary_init(
+                    acquisition_rule, datasets, models, num_steps, observation_plot_dfs
                 )
 
         for step in range(num_steps):
@@ -600,7 +598,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         else:
                             track_path = Path(track_path)
                             record = Record(datasets, models, acquisition_state)
-                            file_path = track_path / f"step.{step:0{len(str(num_steps-1))}d}.pickle"
+                            file_path = track_path / OptimizationResult.step_filename(step, num_steps)
                             history.append(record.save(file_path))
                     except Exception as e:
                         raise NotImplementedError(
@@ -648,52 +646,17 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
                 if summary_writer:
                     with summary_writer.as_default(step=step):
-                        for tag in datasets:
-                            with tf.name_scope(f"{tag}.model"):
-                                models[tag].log()
-                            logging.histogram(
-                                f"{tag}.observation/new_observations",
-                                tagged_output[tag].observations,
-                            )
-                            logging.scalar(
-                                f"{tag}.observation/best_new_observation",
-                                np.min(tagged_output[tag].observations),
-                            )
-                            logging.scalar(
-                                f"{tag}.observation/best_overall",
-                                np.min(datasets[tag].observations),
-                            )
-
-                        if tf.rank(query_points) == 2:
-                            for i in tf.range(tf.shape(query_points)[1]):
-                                if len(query_points) == 1:
-                                    logging.scalar(f"query_points/[{i}]", float(query_points[0, i]))
-                                else:
-                                    logging.histogram(f"query_points/[{i}]", query_points[:, i])
-
-                        if pd and sns and logging.include_summary("query_points/_pairplot"):
-                            columns = [f"x{i}" for i in range(tf.shape(query_points)[1])]
-                            new_df = pd.DataFrame(query_points, columns=columns)
-                            new_df["query points"] = "new"
-                            plot_df = pd.concat((plot_df, new_df), copy=False, ignore_index=True)
-                            pairplot = sns.pairplot(plot_df, hue="query points")
-                            padding = 0.025 * (self._search_space.upper - self._search_space.lower)
-                            upper_limits = self._search_space.upper + padding
-                            lower_limits = self._search_space.lower - padding
-                            for i in range(self._search_space.dimension):
-                                pairplot.axes[0, i].set_xlim((lower_limits[i], upper_limits[i]))
-                                pairplot.axes[i, 0].set_ylim((lower_limits[i], upper_limits[i]))
-                            logging.pyplot("query_points/_pairplot", pairplot.fig)
-                            plot_df["query points"] = "old"
-
-                        logging.scalar("wallclock/step", total_step_wallclock_timer.time)
-                        logging.scalar(
-                            "wallclock/query_point_generation",
-                            query_point_generation_timer.time,
-                        )
-                        logging.scalar(
-                            "wallclock/model_fitting",
-                            model_fitting_timer.time + initial_model_fitting_timer.time,
+                        self._write_summary_step(
+                            datasets,
+                            models,
+                            query_points,
+                            tagged_output,
+                            initial_model_fitting_timer,
+                            model_fitting_timer,
+                            query_point_generation_timer,
+                            total_step_wallclock_timer,
+                            observation_plot_dfs,
+                            query_plot_dfs,
                         )
 
             except Exception as error:  # pylint: disable=broad-except
@@ -715,7 +678,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     )
                 result = OptimizationResult(Err(error), history)
                 if track_state and track_path is not None:
-                    result.save_result(Path(track_path) / "result.pickle")
+                    result.save_result(Path(track_path) / OptimizationResult.RESULTS_FILENAME)
                 return result
 
         tf.print("Optimization completed without errors", output_stream=absl.logging.INFO)
@@ -723,5 +686,175 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         record = Record(datasets, models, acquisition_state)
         result = OptimizationResult(Ok(record), history)
         if track_state and track_path is not None:
-            result.save_result(Path(track_path) / "result.pickle")
+            result.save_result(Path(track_path) / OptimizationResult.RESULTS_FILENAME)
         return result
+
+    def _write_summary_init(
+        self,
+        acquisition_rule: AcquisitionRule[
+            TensorType | State[StateType | None, TensorType],
+            SearchSpaceType,
+            TrainableProbabilisticModelType,
+        ],
+        datasets: Mapping[str, Dataset],
+        models: Mapping[str, TrainableProbabilisticModel],
+        num_steps: int,
+        observation_plot_dfs: MutableMapping[str, pd.DataFrame],
+    ) -> None:
+        """Write initial TensorBoard summary (and set up any initial monitoring state)."""
+        logging.text(
+            "metadata",
+            f"Observer: `{self._observer}`\n\n"
+            f"Number of steps: `{num_steps}`\n\n"
+            f"Number of initial points: "
+            f"`{dict((k, len(v)) for k, v in datasets.items())}`\n\n"
+            f"Search Space: `{self._search_space}`\n\n"
+            f"Acquisition rule:\n\n    {acquisition_rule}\n\n"
+            f"Models:\n\n    {models}",
+        )
+
+        seaborn_warning = False
+        if logging.include_summary("query_points/_pairplot") and not (pd and sns):
+            seaborn_warning = True
+        for tag in datasets:
+            if logging.include_summary(f"{tag}.observations/_pairplot"):
+                output_dim = tf.shape(datasets[tag].observations)[-1]
+                if output_dim >= 2:
+                    if not (pd and sns):
+                        seaborn_warning = True
+                    else:
+                        columns = [f"x{i}" for i in range(output_dim)]
+                        observation_plot_dfs[tag] = pd.DataFrame(
+                            datasets[tag].observations, columns=columns
+                        ).applymap(float)
+                        observation_plot_dfs[tag]["observations"] = "initial"
+
+        if seaborn_warning:
+            tf.print(
+                "\nPairplot TensorBoard summaries require seaborn to be installed."
+                "\nOne way to do this is to install 'trieste[plotting]'.",
+                output_stream=absl.logging.INFO,
+            )
+
+    def _write_summary_step(
+        self,
+        datasets: Mapping[str, Dataset],
+        models: Mapping[str, TrainableProbabilisticModel],
+        query_points: TensorType,
+        tagged_output: Mapping[str, TensorType],
+        initial_model_fitting_timer: Timer,
+        model_fitting_timer: Timer,
+        query_point_generation_timer: Timer,
+        total_step_wallclock_timer: Timer,
+        observation_plot_dfs: MutableMapping[str, pd.DataFrame],
+        query_plot_dfs: MutableMapping[int, pd.DataFrame],
+    ) -> None:
+        """Write TensorBoard summary for the current step."""
+        for tag in datasets:
+
+            with tf.name_scope(f"{tag}.model"):
+                models[tag].log()
+
+            output_dim = tf.shape(tagged_output[tag].observations)[-1]
+            for i in tf.range(output_dim):
+                suffix = f"[{i}]" if output_dim > 1 else ""
+                logging.histogram(
+                    f"{tag}.observation{suffix}/new_observations",
+                    tagged_output[tag].observations[..., i],
+                )
+                logging.scalar(
+                    f"{tag}.observation{suffix}/best_new_observation",
+                    np.min(tagged_output[tag].observations[..., i]),
+                )
+                logging.scalar(
+                    f"{tag}.observation{suffix}/best_overall",
+                    np.min(datasets[tag].observations[..., i]),
+                )
+
+            if logging.include_summary(f"{tag}.observations/_pairplot") and (
+                pd and sns and output_dim >= 2
+            ):
+                columns = [f"x{i}" for i in range(output_dim)]
+                observation_new_df = pd.DataFrame(
+                    tagged_output[tag].observations, columns=columns
+                ).applymap(float)
+                observation_new_df["observations"] = "new"
+                observation_plot_df = pd.concat(
+                    (observation_plot_dfs.get(tag), observation_new_df),
+                    copy=False,
+                    ignore_index=True,
+                )
+                observation_plot_df["pareto"] = non_dominated(datasets[tag].observations)[1] == 0
+                observation_plot_df["observation type"] = observation_plot_df.apply(
+                    lambda x: x["observations"] + x["pareto"] * " (non-dominated)",
+                    axis=1,
+                )
+                pairplot = sns.pairplot(
+                    observation_plot_df,
+                    vars=columns,
+                    hue="observation type",
+                    hue_order=[
+                        "initial",
+                        "old",
+                        "new",
+                        "initial (non-dominated)",
+                        "old (non-dominated)",
+                        "new (non-dominated)",
+                    ],
+                    palette={
+                        "initial": "tab:green",
+                        "old": "tab:green",
+                        "new": "tab:orange",
+                        "initial (non-dominated)": "tab:purple",
+                        "old (non-dominated)": "tab:purple",
+                        "new (non-dominated)": "tab:red",
+                    },
+                    markers={
+                        "initial": "X",
+                        "old": "o",
+                        "new": "o",
+                        "initial (non-dominated)": "X",
+                        "old (non-dominated)": "o",
+                        "new (non-dominated)": "o",
+                    },
+                )
+                logging.pyplot(f"{tag}.observations/_pairplot", pairplot.fig)
+                observation_plot_df.loc[
+                    observation_plot_df["observations"] == "new", "observations"
+                ] = "old"
+                observation_plot_dfs[tag] = observation_plot_df
+
+        if tf.rank(query_points) == 2:
+            for i in tf.range(tf.shape(query_points)[1]):
+                if len(query_points) == 1:
+                    logging.scalar(f"query_points/[{i}]", float(query_points[0, i]))
+                else:
+                    logging.histogram(f"query_points/[{i}]", query_points[:, i])
+
+        if pd and sns and logging.include_summary("query_points/_pairplot"):
+            columns = [f"x{i}" for i in range(tf.shape(query_points)[1])]
+            query_new_df = pd.DataFrame(query_points, columns=columns).applymap(float)
+            query_new_df["query points"] = "new"
+            query_plot_df = pd.concat(
+                (query_plot_dfs.get(0), query_new_df), copy=False, ignore_index=True
+            )
+            pairplot = sns.pairplot(query_plot_df, hue="query points")
+            padding = 0.025 * (self._search_space.upper - self._search_space.lower)
+            upper_limits = self._search_space.upper + padding
+            lower_limits = self._search_space.lower - padding
+            for i in range(self._search_space.dimension):
+                pairplot.axes[0, i].set_xlim((lower_limits[i], upper_limits[i]))
+                pairplot.axes[i, 0].set_ylim((lower_limits[i], upper_limits[i]))
+            logging.pyplot("query_points/_pairplot", pairplot.fig)
+            query_plot_df["query points"] = "old"
+            query_plot_dfs[0] = query_plot_df
+
+        logging.scalar("wallclock/step", total_step_wallclock_timer.time)
+        logging.scalar(
+            "wallclock/query_point_generation",
+            query_point_generation_timer.time,
+        )
+        logging.scalar(
+            "wallclock/model_fitting",
+            model_fitting_timer.time + initial_model_fitting_timer.time,
+        )

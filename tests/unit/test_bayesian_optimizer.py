@@ -166,8 +166,8 @@ def test_optimization_result_from_path_partial_result() -> None:
             Err(_Whoops()), [Record({}, {}, None)] * 10
         )
         opt_result.save(tmpdirname)
-        (Path(tmpdirname) / "result.pickle").unlink()
-        (Path(tmpdirname) / "step.9.pickle").unlink()
+        (Path(tmpdirname) / OptimizationResult.RESULTS_FILENAME).unlink()
+        (Path(tmpdirname) / OptimizationResult.step_filename(9, 10)).unlink()
 
         result, history = OptimizationResult[None].from_path(tmpdirname).astuple()
         assert result.is_err
