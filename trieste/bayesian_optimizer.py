@@ -23,7 +23,7 @@ import traceback
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Generic, Optional, TypeVar, cast, overload
+from typing import ClassVar, Dict, Generic, Optional, TypeVar, cast, overload
 
 import absl
 import dill
@@ -158,6 +158,14 @@ class OptimizationResult(Generic[StateType]):
     include the :attr:`final_result`. The records may be either in memory or on disk.
     """
 
+    @staticmethod
+    def step_filename(step: int, num_steps: int) -> str:
+        """Default filename for saved optimization steps."""
+        return f"step.{step:0{len(str(num_steps - 1))}d}.pickle"
+
+    STEP_GLOB: ClassVar[str] = "step.*.pickle"
+    RESULTS_FILENAME: ClassVar[str] = "results.pickle"
+
     def astuple(
         self,
     ) -> tuple[Result[Record[StateType]], list[Record[StateType] | FrozenRecord[StateType]]]:
@@ -243,22 +251,22 @@ class OptimizationResult(Generic[StateType]):
         """Save the optimization result to disk. Will overwrite existing files at the same path."""
         path = Path(base_path)
         num_steps = len(self.history)
-        self.save_result(path / "result.pickle")
+        self.save_result(path / self.RESULTS_FILENAME)
         for i, record in enumerate(self.loaded_history):
-            record_path = path / f"step.{i:0{len(str(num_steps - 1))}d}.pickle"
+            record_path = path / self.step_filename(i, num_steps)
             record.save(record_path)
 
     @classmethod
     def from_path(cls, base_path: Path | str) -> OptimizationResult[StateType]:
         """Load a previously saved OptimizationResult."""
         try:
-            with open(Path(base_path) / "result.pickle", "rb") as f:
+            with open(Path(base_path) / cls.RESULTS_FILENAME, "rb") as f:
                 result = dill.load(f)
         except FileNotFoundError as e:
             result = Err(e)
 
         history: list[Record[StateType] | FrozenRecord[StateType]] = [
-            FrozenRecord(file) for file in sorted(Path(base_path).glob("step.*.pickle"))
+            FrozenRecord(file) for file in sorted(Path(base_path).glob(cls.STEP_GLOB))
         ]
         return cls(result, history)
 
@@ -598,7 +606,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     else:
                         track_path = Path(track_path)
                         record = Record(datasets, models, acquisition_state)
-                        record_path = track_path / f"step.{step:0{len(str(num_steps-1))}d}.pickle"
+                        record_path = track_path / OptimizationResult.step_filename(step, num_steps)
                         history.append(record.save(record_path))
 
                 with Timer() as total_step_wallclock_timer:
@@ -703,7 +711,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     )
                 result = OptimizationResult(Err(error), history)
                 if track_state and track_path is not None:
-                    result.save_result(Path(track_path) / "result.pickle")
+                    result.save_result(Path(track_path) / OptimizationResult.RESULTS_FILENAME)
                 return result
 
         tf.print("Optimization completed without errors", output_stream=absl.logging.INFO)
@@ -711,5 +719,5 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         record = Record(datasets, models, acquisition_state)
         result = OptimizationResult(Ok(record), history)
         if track_state and track_path is not None:
-            result.save_result(Path(track_path) / "result.pickle")
+            result.save_result(Path(track_path) / OptimizationResult.RESULTS_FILENAME)
         return result
