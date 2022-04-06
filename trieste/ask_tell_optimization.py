@@ -324,7 +324,7 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
         if len(self.models) == 1:
             return next(iter(self.models.values()))
         else:
-            raise ValueError(f"Expected a single dataset, found {len(self.datasets)}")
+            raise ValueError(f"Expected a single model, found {len(self.models)}")
 
     @property
     def acquisition_state(self) -> StateType | None:
