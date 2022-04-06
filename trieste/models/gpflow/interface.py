@@ -142,13 +142,15 @@ class GPflowPredictor(
         summary_writer = logging.get_tensorboard_writer()
         if summary_writer:
             with summary_writer.as_default(step=logging.get_step_number()):
-                logging.scalar("kernel.variance", self.get_kernel().variance)
-                lengthscales = self.get_kernel().lengthscales
-                if tf.rank(lengthscales) == 0:
-                    logging.scalar("kernel.lengthscale", lengthscales)
-                elif tf.rank(lengthscales) == 1:
-                    for i, lengthscale in enumerate(lengthscales):
-                        logging.scalar(f"kernel.lengthscale[{i}]", lengthscale)
+                kernel = self.get_kernel()
+                if isinstance(kernel, gpflow.kernels.Stationary):
+                    logging.scalar("kernel.variance", kernel.variance)
+                    lengthscales = kernel.lengthscales
+                    if tf.rank(lengthscales) == 0:
+                        logging.scalar("kernel.lengthscale", lengthscales)
+                    elif tf.rank(lengthscales) == 1:
+                        for i, lengthscale in enumerate(lengthscales):
+                            logging.scalar(f"kernel.lengthscale[{i}]", lengthscale)
 
     def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[GPflowPredictor]:
         """
