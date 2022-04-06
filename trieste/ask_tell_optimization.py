@@ -28,7 +28,7 @@ import tensorflow as tf
 
 from . import logging
 from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
-from .bayesian_optimizer import OptimizationResult, Record
+from .bayesian_optimizer import FrozenRecord, OptimizationResult, Record
 from .data import Dataset
 from .models import ModelSpec, TrainableProbabilisticModel, create_model
 from .models.config import ModelConfigType
@@ -303,7 +303,7 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
     @classmethod
     def from_record(
         cls,
-        record: Record[StateType],
+        record: Record[StateType] | FrozenRecord[StateType],
         search_space: SearchSpaceType,
         acquisition_rule: AcquisitionRule[
             TensorType | State[StateType | None, TensorType],
