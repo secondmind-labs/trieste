@@ -240,7 +240,7 @@ def test_gpflow_wrappers_predict_y(gpflow_interface_factory: ModelFactoryType) -
                 "kernel.Matern52.lengthscales[1]",
             ],
             [2, 0.2, 0.2],
-            id="default kernel",
+            id="Matern52",
         ),
         pytest.param(
             gpflow.kernels.Matern12() * gpflow.kernels.Linear(),
