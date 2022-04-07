@@ -746,18 +746,20 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             output_dim = tf.shape(tagged_output[tag].observations)[-1]
             for i in tf.range(output_dim):
                 suffix = f"[{i}]" if output_dim > 1 else ""
-                logging.histogram(
-                    f"{tag}.observation{suffix}/new_observations",
-                    tagged_output[tag].observations[..., i],
-                )
-                logging.scalar(
-                    f"{tag}.observation{suffix}/best_new_observation",
-                    np.min(tagged_output[tag].observations[..., i]),
-                )
-                logging.scalar(
-                    f"{tag}.observation{suffix}/best_overall",
-                    np.min(datasets[tag].observations[..., i]),
-                )
+                if tf.size(tagged_output[tag].observations) > 0:
+                    logging.histogram(
+                        f"{tag}.observation{suffix}/new_observations",
+                        tagged_output[tag].observations[..., i],
+                    )
+                    logging.scalar(
+                        f"{tag}.observation{suffix}/best_new_observation",
+                        np.min(tagged_output[tag].observations[..., i]),
+                    )
+                if tf.size(datasets[tag].observations) > 0:
+                    logging.scalar(
+                        f"{tag}.observation{suffix}/best_overall",
+                        np.min(datasets[tag].observations[..., i]),
+                    )
 
             if logging.include_summary(f"{tag}.observations/_pairplot") and (
                 pd and sns and output_dim >= 2
