@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import unittest.mock
 from time import time
-from typing import Any, cast
+from typing import Any, Optional, cast
 
 import gpflow
 import numpy as np
@@ -223,11 +223,50 @@ def test_gpflow_wrappers_predict_y(gpflow_interface_factory: ModelFactoryType) -
 
 
 @unittest.mock.patch("trieste.models.gpflow.interface.tf.summary.scalar")
+@pytest.mark.parametrize(
+    "kernel, names, values",
+    [
+        pytest.param(
+            None,
+            ["kernel.Matern32.variance", "kernel.Matern32.lengthscales"],
+            [1, 1],
+            id="default kernel",
+        ),
+        pytest.param(
+            gpflow.kernels.Matern52(variance=2.0, lengthscales=[0.2, 0.2]),
+            [
+                "kernel.Matern52.variance",
+                "kernel.Matern52.lengthscales[0]",
+                "kernel.Matern52.lengthscales[1]",
+            ],
+            [2, 0.2, 0.2],
+            id="default kernel",
+        ),
+        pytest.param(
+            gpflow.kernels.Matern12() * gpflow.kernels.Linear(),
+            [
+                "kernel.Product.kernels[0].variance",
+                "kernel.Product.kernels[0].lengthscales",
+                "kernel.Product.kernels[1].variance",
+            ],
+            [1, 1, 1],
+            id="product kernel",
+        ),
+    ],
+)
 def test_gpflow_wrappers_log(
-    mocked_summary_scalar: unittest.mock.MagicMock, gpflow_interface_factory: ModelFactoryType
+    mocked_summary_scalar: unittest.mock.MagicMock,
+    gpflow_interface_factory: ModelFactoryType,
+    kernel: Optional[gpflow.kernels.Kernel],
+    names: list[str],
+    values: list[float],
 ) -> None:
     x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
     model, _ = gpflow_interface_factory(x, fnc_3x_plus_10(x))
+
+    if kernel is not None:
+        model.model.kernel = kernel
+
     mocked_summary_writer = unittest.mock.MagicMock()
     with tensorboard_writer(mocked_summary_writer):
         with step_number(42):
@@ -237,11 +276,10 @@ def test_gpflow_wrappers_log(
     assert mocked_summary_writer.method_calls[0][0] == "as_default"
     assert mocked_summary_writer.method_calls[0][-1]["step"] == 42
 
-    assert mocked_summary_scalar.call_count == 2
-    assert mocked_summary_scalar.call_args_list[0][0][0] == "kernel.Matern32.variance"
-    assert mocked_summary_scalar.call_args_list[0][0][1].numpy() == 1
-    assert mocked_summary_scalar.call_args_list[1][0][0] == "kernel.Matern32.lengthscales"
-    assert mocked_summary_scalar.call_args_list[1][0][1].numpy() == 1
+    assert mocked_summary_scalar.call_count == len(names)
+    for i, (n, v) in enumerate(zip(names, values)):
+        assert mocked_summary_scalar.call_args_list[i][0][0] == n
+        assert mocked_summary_scalar.call_args_list[i][0][1].numpy() == v
 
 
 @random_seed
