@@ -588,16 +588,28 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             try:
 
                 if track_state:
-                    if track_path is None:
-                        datasets_copy = copy.deepcopy(datasets)
-                        models_copy = copy.deepcopy(models)
-                        acquisition_state_copy = copy.deepcopy(acquisition_state)
-                        history.append(Record(datasets_copy, models_copy, acquisition_state_copy))
-                    else:
-                        track_path = Path(track_path)
-                        record = Record(datasets, models, acquisition_state)
-                        record_path = track_path / OptimizationResult.step_filename(step, num_steps)
-                        history.append(record.save(record_path))
+                    try:
+                        if track_path is None:
+                            datasets_copy = copy.deepcopy(datasets)
+                            models_copy = copy.deepcopy(models)
+                            acquisition_state_copy = copy.deepcopy(acquisition_state)
+                            record = Record(datasets_copy, models_copy, acquisition_state_copy)
+                            history.append(record)
+                        else:
+                            track_path = Path(track_path)
+                            record = Record(datasets, models, acquisition_state)
+                            file_name = OptimizationResult.step_filename(step, num_steps)
+                            history.append(record.save(track_path / file_name))
+                    except Exception as e:
+                        raise NotImplementedError(
+                            "Failed to save the optimization state. Some models do not support "
+                            "deecopying or serialization and cannot be saved. "
+                            "(This is particularly common for deep neural network models.) "
+                            "For these models, the `track_state`` argument of the "
+                            ":meth:`~trieste.bayesian_optimizer.BayesianOptimizer.optimize` method "
+                            "should be set to `False`. This means that only the final model "
+                            "will be available."
+                        ) from e
 
                 with Timer() as total_step_wallclock_timer:
                     with Timer() as initial_model_fitting_timer:

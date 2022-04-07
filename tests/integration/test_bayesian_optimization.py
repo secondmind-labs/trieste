@@ -455,8 +455,6 @@ def _test_optimizer_finds_minimum(
         model = DeepGaussianProcess(dgp, **model_args)
 
     elif model_type is DeepEnsemble:
-        track_state = False
-
         keras_ensemble = build_vanilla_keras_ensemble(initial_data, 5, 3, 25)
         fit_args = {
             "batch_size": 20,

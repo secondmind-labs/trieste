@@ -328,7 +328,7 @@ def test_bayesian_optimizer_optimize_for_uncopyable_model() -> None:
         .astuple()
     )
 
-    with pytest.raises(_Whoops):
+    with pytest.raises(NotImplementedError):
         result.unwrap()
 
     assert len(history) == 3
