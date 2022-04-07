@@ -238,9 +238,9 @@ def test_gpflow_wrappers_log(
     assert mocked_summary_writer.method_calls[0][-1]["step"] == 42
 
     assert mocked_summary_scalar.call_count == 2
-    assert mocked_summary_scalar.call_args_list[0][0][0] == "kernel.variance"
+    assert mocked_summary_scalar.call_args_list[0][0][0] == "kernel.Matern32.variance"
     assert mocked_summary_scalar.call_args_list[0][0][1].numpy() == 1
-    assert mocked_summary_scalar.call_args_list[1][0][0] == "kernel.lengthscale"
+    assert mocked_summary_scalar.call_args_list[1][0][0] == "kernel.Matern32.lengthscales"
     assert mocked_summary_scalar.call_args_list[1][0][1].numpy() == 1
 
 
