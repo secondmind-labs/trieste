@@ -121,7 +121,7 @@ class ensemble_trajectory(TrajectoryFunctionClass):
             tf.shape(x)[-2],
             self._batch_size,
             message=f"""
-            TThis trajectory only supports batch sizes of {self._batch_size}.
+            This trajectory only supports batch sizes of {self._batch_size}.
             If you wish to change the batch size you must get a new trajectory
             by calling the get_trajectory method of the trajectory sampler.
             """,
@@ -134,10 +134,10 @@ class ensemble_trajectory(TrajectoryFunctionClass):
         predictions = []
         batch_index = tf.range(0, self._batch_size, 1)
         if self._use_samples:
-            for b, seed in zip(tf.range(self._batch_size), self._seeds):
+            for b, seed in zip(batch_index, tf.unstack(self._seeds)):
                 predictions.append(ensemble_distributions[self._indices[b]].sample(seed=seed))
         else:
-            for b in tf.range(self._batch_size):
+            for b in batch_index:
                 predictions.append(ensemble_distributions[self._indices[b]].mean())
 
         tensor_predictions = tf.squeeze(
