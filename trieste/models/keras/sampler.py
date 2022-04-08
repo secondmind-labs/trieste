@@ -100,9 +100,11 @@ class ensemble_trajectory(TrajectoryFunctionClass):
         self._model = model
         self._use_samples = use_samples
         self._batch_size = batch_size
-        self._indices = [0 for _ in range(batch_size)]
-        if self._use_samples:
-            self._seeds = tf.Variable(tf.ones([batch_size, 2], dtype=tf.int32), trainable=False)
+        self.resample()
+
+    def reset_batch_size(self, batch_size: int) -> None:
+        """Reset the batch size."""
+        self._batch_size = batch_size
         self.resample()
 
     @tf.function
@@ -119,8 +121,8 @@ class ensemble_trajectory(TrajectoryFunctionClass):
             self._batch_size,
             message=f"""
             This trajectory only supports batch sizes of {self._batch_size}.
-            If you wish to change the batch size you must get a new trajectory
-            by calling the get_trajectory method of the trajectory sampler.
+            If you wish to change the batch size you must first call `reset_batch_size`
+            on the trajectory function.
             """,
         )
 
@@ -133,7 +135,7 @@ class ensemble_trajectory(TrajectoryFunctionClass):
 
         predictions = []
         if self._use_samples:
-            for b, seed in zip(range(self._batch_size), tf.unstack(self._seeds)):
+            for b, seed in zip(range(self._batch_size), self._seeds):
                 predictions.append(ensemble_distributions[self._indices[b]].sample(seed=seed))
         else:
             for b in range(self._batch_size):
@@ -157,11 +159,8 @@ class ensemble_trajectory(TrajectoryFunctionClass):
         """
         Efficiently resample network indices, and optionally quantiles, in-place without retracing.
         """
-        for i in range(self._batch_size):
-            self._indices[i] = np.random.randint(self._model.ensemble_size)
+        self._indices = [
+            np.random.randint(self._model.ensemble_size) for i in range(self._batch_size)
+        ]
         if self._use_samples:
-            self._seeds.assign(
-                tf.random.uniform(
-                    shape=(self._batch_size, 2), minval=1, maxval=999999999, dtype=tf.int32
-                )
-            )
+            self._seeds = [np.random.randint(1, 999999999) for _ in range(self._batch_size)]
