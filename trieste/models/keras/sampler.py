@@ -19,9 +19,7 @@ of the Trieste's Keras model wrappers.
 
 from __future__ import annotations
 
-import numpy as np
 import tensorflow as tf
-from tensorflow_probability.python.distributions import MultivariateNormalTriL
 
 from ...types import TensorType
 from ...utils import flatten_leading_dims
@@ -39,11 +37,10 @@ class EnsembleTrajectorySampler(TrajectorySampler[EnsembleModel]):
     the ensemble and using its predicted means as a trajectory.
     """
 
-    def __init__(self, model: EnsembleModel, use_samples: bool = False, batch_size: int = 1):
+    def __init__(self, model: EnsembleModel, use_samples: bool = False):
         """
         :param model: The ensemble model to sample from.
         :param use_samples:
-        :param batch_size:
         """
         if not isinstance(model, EnsembleModel):
             raise NotImplementedError(
@@ -56,7 +53,6 @@ class EnsembleTrajectorySampler(TrajectorySampler[EnsembleModel]):
 
         self._model = model
         self._use_samples = use_samples
-        self._batch_size = batch_size
 
     def __repr__(self) -> str:
         """"""
@@ -70,7 +66,7 @@ class EnsembleTrajectorySampler(TrajectorySampler[EnsembleModel]):
         :return: A trajectory function representing an approximate trajectory
             from the model, taking an input of shape `[N, 1, D]` and returning shape `[N, 1]`.
         """
-        return ensemble_trajectory(self._model, self._use_samples, self._batch_size)
+        return ensemble_trajectory(self._model, self._use_samples)
 
     def resample_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction:
         """
@@ -91,21 +87,21 @@ class ensemble_trajectory(TrajectoryFunctionClass):
     networks from the ensemble and using their predicted means as trajectories.
     """
 
-    def __init__(self, model: EnsembleModel, use_samples: bool, batch_size: int):
+    def __init__(self, model: EnsembleModel, use_samples: bool):
         """
         :param model: The model of the objective function.
         :param use_samples:
-        :param batch_size:
         """
         self._model = model
         self._use_samples = use_samples
-        self._batch_size = batch_size
-        self.resample()
 
-    def reset_batch_size(self, batch_size: int) -> None:
-        """Reset the batch size."""
-        self._batch_size = batch_size
-        self.resample()
+        self._initialized = tf.Variable(False, trainable=False)
+        self._batch_size = tf.Variable(0, dtype=tf.int32, trainable=False)
+        self._indices = tf.Variable(tf.ones([0], dtype=tf.int32), shape=[None], trainable=False)
+        if self._use_samples:
+            self._seeds = tf.Variable(
+                tf.ones([0, 2], dtype=tf.int32), shape=[None, 2], trainable=False
+            )
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:  # [N, B, d] -> [N, B]
@@ -116,29 +112,32 @@ class ensemble_trajectory(TrajectoryFunctionClass):
         model. Also, if same networks are used in multiple batch elements due to sampling
         with replacement it is less wasteful.
         """
+        if not self._initialized:  # work out desired batch size from input
+            self._batch_size.assign(tf.shape(x)[-2])  # B
+            self.resample()  # sample B network indices
+            self._initialized.assign(True)
+
         tf.debugging.assert_equal(
             tf.shape(x)[-2],
             self._batch_size,
             message=f"""
-            This trajectory only supports batch sizes of {self._batch_size}.
-            If you wish to change the batch size you must first call `reset_batch_size`
-            on the trajectory function.
+            TThis trajectory only supports batch sizes of {self._batch_size}.
+            If you wish to change the batch size you must get a new trajectory
+            by calling the get_trajectory method of the trajectory sampler.
             """,
         )
 
-        # TOFIX: we're currently assuming model is a DeepEnsemble, not any EnsembleModel
         flat_x, unflatten = flatten_leading_dims(x)  # [N*B, d]
-        x_transformed: dict[str, TensorType] = self._model.prepare_query_points(flat_x)
-        ensemble_distributions: tuple[MultivariateNormalTriL, ...] = self._model.model(
-            x_transformed
-        )
+        x_transformed = self._model.prepare_query_points(flat_x)
+        ensemble_distributions = self._model.model(x_transformed)
 
         predictions = []
+        batch_index = tf.range(0, self._batch_size, 1)
         if self._use_samples:
-            for b, seed in zip(range(self._batch_size), self._seeds):
+            for b, seed in zip(tf.range(self._batch_size), self._seeds):
                 predictions.append(ensemble_distributions[self._indices[b]].sample(seed=seed))
         else:
-            for b in range(self._batch_size):
+            for b in tf.range(self._batch_size):
                 predictions.append(ensemble_distributions[self._indices[b]].mean())
 
         tensor_predictions = tf.squeeze(
@@ -147,7 +146,6 @@ class ensemble_trajectory(TrajectoryFunctionClass):
 
         # here we select simultaneously networks and batch dimension according to batch indices
         # this is needed because we compute a whole batch with each network
-        batch_index = tf.range(0, self._batch_size, 1)
         indices = tf.stack([batch_index, batch_index], axis=1)
         batch_predictions = tf.gather_nd(
             tf.transpose(tensor_predictions, perm=[0, 2, 1]), indices
@@ -159,8 +157,10 @@ class ensemble_trajectory(TrajectoryFunctionClass):
         """
         Efficiently resample network indices, and optionally quantiles, in-place without retracing.
         """
-        self._indices = [
-            np.random.randint(self._model.ensemble_size) for i in range(self._batch_size)
-        ]
+        self._indices.assign(self._model.sample_index(self._batch_size))  # [B]
         if self._use_samples:
-            self._seeds = [np.random.randint(1, 999999999) for _ in range(self._batch_size)]
+            self._seeds.assign(
+                tf.random.uniform(
+                    shape=(self._batch_size, 2), minval=1, maxval=999999999, dtype=tf.int32
+                )
+            )
