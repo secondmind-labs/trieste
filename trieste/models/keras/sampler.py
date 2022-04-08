@@ -126,26 +126,21 @@ class ensemble_trajectory(TrajectoryFunctionClass):
             by calling the get_trajectory method of the trajectory sampler.
             """,
         )
-
         flat_x, unflatten = flatten_leading_dims(x)  # [N*B, d]
         x_transformed = self._model.prepare_query_points(flat_x)
         ensemble_distributions = self._model.model(x_transformed)
 
-        predictions = []
-        batch_index = tf.range(0, self._batch_size, 1)
         if self._use_samples:
-            for b, seed in zip(batch_index, tf.unstack(self._seeds)):
-                predictions.append(ensemble_distributions[self._indices[b]].sample(seed=seed))
+            ...
         else:
-            for b in batch_index:
-                predictions.append(ensemble_distributions[self._indices[b]].mean())
+            predicted_means = tf.convert_to_tensor([dist.mean() for dist in ensemble_distributions])
+            predictions = tf.gather(predicted_means, self._indices)
 
-        tensor_predictions = tf.squeeze(
-            tf.convert_to_tensor([unflatten(p) for p in predictions]), axis=-1
-        )  # [B, N, B]
+        tensor_predictions = tf.squeeze(tf.map_fn(unflatten, predictions), axis=-1)  # [B, N, B]
 
         # here we select simultaneously networks and batch dimension according to batch indices
         # this is needed because we compute a whole batch with each network
+        batch_index = tf.range(self._batch_size)
         indices = tf.stack([batch_index, batch_index], axis=1)
         batch_predictions = tf.gather_nd(
             tf.transpose(tensor_predictions, perm=[0, 2, 1]), indices
