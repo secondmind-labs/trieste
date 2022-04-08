@@ -143,15 +143,6 @@ class DeepEnsemble(
         """
         return self._model.ensemble_size
 
-    def sample_index(self, size: int = 1) -> TensorType:
-        """
-        Returns a network index sampled randomly with replacement.
-        """
-        network_index = tf.random.uniform(
-            shape=(tf.cast(size, tf.int32),), maxval=self.ensemble_size, dtype=tf.int32
-        )
-        return network_index
-
     def prepare_dataset(
         self, dataset: Dataset
     ) -> tuple[Dict[str, TensorType], Dict[str, TensorType]]:

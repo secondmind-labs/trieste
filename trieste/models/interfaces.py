@@ -256,6 +256,7 @@ class EnsembleModel(ProbabilisticModel, Protocol):
     individual models in the ensemble.
     """
 
+    @property
     @abstractmethod
     def ensemble_size(self) -> int:
         """
@@ -264,7 +265,6 @@ class EnsembleModel(ProbabilisticModel, Protocol):
         """
         raise NotImplementedError
 
-    @abstractmethod
     def sample_index(self, size: int) -> TensorType:
         """
         Returns indices of individual models in the ensemble sampled randomly with replacement.
@@ -272,7 +272,10 @@ class EnsembleModel(ProbabilisticModel, Protocol):
         :param size: The number of samples to take.
         :return: A tensor with indices
         """
-        raise NotImplementedError
+        network_index = tf.random.uniform(
+            shape=(tf.cast(size, tf.int32),), maxval=self.ensemble_size, dtype=tf.int32
+        )
+        return network_index
 
     @abstractmethod
     def predict_ensemble(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
