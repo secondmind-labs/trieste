@@ -20,7 +20,7 @@ of the Trieste's Keras model wrappers.
 from __future__ import annotations
 
 import tensorflow as tf
-from tensorflow_probability.python.distributions import Distribution
+import tensorflow_probability.python.distributions as tfd
 
 from ...types import TensorType
 from ...utils import flatten_leading_dims
@@ -98,11 +98,12 @@ class ensemble_trajectory(TrajectoryFunctionClass):
 
         self._initialized = tf.Variable(False, trainable=False)
         self._batch_size = tf.Variable(0, dtype=tf.int32, trainable=False)
-        self._indices = tf.Variable(tf.ones([0], dtype=tf.int32), shape=[None], trainable=False)
         if self._use_samples:
             self._seeds = tf.Variable(
                 tf.ones([0, 2], dtype=tf.int32), shape=[None, 2], trainable=False
             )
+        else:
+            self._indices = tf.Variable(tf.ones([0], dtype=tf.int32), shape=[None], trainable=False)
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:  # [N, B, d] -> [N, B]
@@ -129,14 +130,18 @@ class ensemble_trajectory(TrajectoryFunctionClass):
         )
         flat_x, unflatten = flatten_leading_dims(x)  # [N*B, d]
         x_transformed: dict[str, TensorType] = self._model.prepare_query_points(flat_x)
-        ensemble_distributions: tuple[Distribution, ...] = self._model.model(x_transformed)
+        ensemble_distributions: tuple[tfd.Distribution, ...] = self._model.model(x_transformed)
 
-        # [WIP]
         if self._use_samples:
 
+            mixture_distribution = tfd.Mixture(
+                cat=tfd.Categorical(logits=tf.ones([tf.shape(x)[0], self._model.ensemble_size])),
+                components=ensemble_distributions,
+            )
+
             @tf.function
-            def get_sample(seed):
-                return ensemble_distributions[0].sample(seed=seed)
+            def get_sample(seed: TensorType) -> TensorType:
+                return mixture_distribution.sample(seed=seed)
 
             predictions = tf.map_fn(get_sample, self._seeds, dtype=tf.float32)
         else:
@@ -159,10 +164,11 @@ class ensemble_trajectory(TrajectoryFunctionClass):
         """
         Efficiently resample network indices, and optionally quantiles, in-place without retracing.
         """
-        self._indices.assign(self._model.sample_index(self._batch_size))  # [B]
         if self._use_samples:
             self._seeds.assign(
                 tf.random.uniform(
                     shape=(self._batch_size, 2), minval=1, maxval=999999999, dtype=tf.int32
                 )
             )  # [B, 2]
+        else:
+            self._indices.assign(self._model.sample_index(self._batch_size))  # [B]
