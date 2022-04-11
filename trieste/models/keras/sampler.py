@@ -135,7 +135,9 @@ class ensemble_trajectory(TrajectoryFunctionClass):
         if self._use_samples:
 
             mixture_distribution = tfd.Mixture(
-                cat=tfd.Categorical(logits=tf.ones([tf.shape(x)[0], self._model.ensemble_size])),
+                cat=tfd.Categorical(
+                    logits=tf.ones([tf.shape(flat_x)[0], self._model.ensemble_size])
+                ),
                 components=ensemble_distributions,
             )
 
