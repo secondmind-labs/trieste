@@ -14,8 +14,6 @@
 
 from __future__ import annotations
 
-import copy
-
 import gpflow
 import pytest
 import tensorflow as tf
@@ -64,10 +62,3 @@ def test_keras_predictor_raises_for_non_tf_optimizer() -> None:
 
     with pytest.raises(ValueError):
         _DummyKerasPredictor(optimizer=KerasOptimizer(gpflow.optimizers.Scipy()))
-
-
-def test_keras_predictor_deepcopy_raises_not_implemented() -> None:
-    model = _DummyKerasPredictor()
-
-    with pytest.raises(NotImplementedError):
-        copy.deepcopy(model)
