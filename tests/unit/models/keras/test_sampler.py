@@ -26,8 +26,10 @@ _ENSEMBLE_SIZE = 3
 
 
 @pytest.mark.parametrize("num_evals", [10, 20])
+@pytest.mark.parametrize("use_samples", [True, False])
 def test_ensemble_trajectory_sampler_returns_trajectory_function_with_correctly_shaped_output(
     num_evals: int,
+    use_samples: bool,
 ) -> None:
     example_data = empty_dataset([1], [1])
     test_data = tf.linspace([-10.0], [10.0], num_evals)
@@ -35,7 +37,7 @@ def test_ensemble_trajectory_sampler_returns_trajectory_function_with_correctly_
 
     model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE)
 
-    sampler = EnsembleTrajectorySampler(model)
+    sampler = EnsembleTrajectorySampler(model, use_samples=use_samples)
     trajectory = sampler.get_trajectory()
 
     assert trajectory(test_data).shape == (num_evals, 1)

@@ -393,7 +393,12 @@ def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_scaled_branin(
 def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_simple_quadratic(
     num_steps: int, acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepEnsemble]
 ) -> None:
-    _test_optimizer_finds_minimum(DeepEnsemble, num_steps, acquisition_rule)
+    _test_optimizer_finds_minimum(
+        DeepEnsemble,
+        num_steps,
+        acquisition_rule,
+        model_args={"use_samples": True},
+    )
 
 
 def _test_optimizer_finds_minimum(
