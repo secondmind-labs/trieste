@@ -43,14 +43,15 @@ def test_ensemble_trajectory_sampler_returns_trajectory_function_with_correctly_
     assert trajectory(test_data).shape == (num_evals, 1)
 
 
-def test_ensemble_trajectory_sampler_returns_deterministic_trajectory() -> None:
+@pytest.mark.parametrize("use_samples", [True, False])
+def test_ensemble_trajectory_sampler_returns_deterministic_trajectory(use_samples: bool) -> None:
     example_data = empty_dataset([1], [1])
     test_data = tf.linspace([-10.0], [10.0], 100)
     test_data = tf.expand_dims(test_data, -2)  # [N, 1, d]
 
     model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE)
 
-    sampler = EnsembleTrajectorySampler(model)
+    sampler = EnsembleTrajectorySampler(model, use_samples=use_samples)
     trajectory = sampler.get_trajectory()
 
     trajectory_eval_1 = trajectory(test_data)
@@ -60,31 +61,40 @@ def test_ensemble_trajectory_sampler_returns_deterministic_trajectory() -> None:
 
 
 @random_seed
-def test_ensemble_trajectory_sampler_samples_are_distinct_for_new_instances() -> None:
+@pytest.mark.parametrize("use_samples", [True, False])
+def test_ensemble_trajectory_sampler_samples_are_distinct_for_new_instances(
+    use_samples: bool,
+) -> None:
     example_data = empty_dataset([1], [1])
     test_data = tf.linspace([-10.0], [10.0], 100)
     test_data = tf.expand_dims(test_data, -2)  # [N, 1, d]
 
     model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE * 2)
 
-    sampler1 = EnsembleTrajectorySampler(model)
+    sampler1 = EnsembleTrajectorySampler(model, use_samples=use_samples)
     trajectory1 = sampler1.get_trajectory()
 
-    sampler2 = EnsembleTrajectorySampler(model)
+    sampler2 = EnsembleTrajectorySampler(model, use_samples=use_samples)
     trajectory2 = sampler2.get_trajectory()
 
-    assert tf.reduce_any(trajectory1(test_data) != trajectory2(test_data))
+    eval1 = trajectory1(test_data)
+    eval2 = trajectory2(test_data)
+
+    assert tf.reduce_any(eval1 != eval2)
 
 
 @random_seed
-def test_ensemble_trajectory_sampler_resample_provides_new_samples_without_retracing() -> None:
+@pytest.mark.parametrize("use_samples", [True, False])
+def test_ensemble_trajectory_sampler_resample_provides_new_samples_without_retracing(
+    use_samples: bool,
+) -> None:
     example_data = empty_dataset([1], [1])
     test_data = tf.linspace([-10.0], [10.0], 100)
     test_data = tf.expand_dims(test_data, -2)  # [N, 1, d]
 
     model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE * 2)
 
-    sampler = EnsembleTrajectorySampler(model)
+    sampler = EnsembleTrajectorySampler(model, use_samples=use_samples)
 
     trajectory = sampler.get_trajectory()
     evals_1 = trajectory(test_data)
