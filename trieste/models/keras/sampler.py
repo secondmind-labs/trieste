@@ -98,17 +98,14 @@ class ensemble_trajectory(TrajectoryFunctionClass):
 
         self._initialized = tf.Variable(False, trainable=False)
         self._batch_size = tf.Variable(0, dtype=tf.int32, trainable=False)
+        self._indices = tf.Variable(tf.zeros([0], dtype=tf.int32), shape=[None], trainable=False)
+
         if self._use_samples:
             self._ensemble_size = self._model.ensemble_size
             self._sample_size = tf.Variable(0, dtype=tf.int32, trainable=False)
             self._seeds = tf.Variable(
-                tf.random.uniform(
-                    shape=(self._ensemble_size, 2), minval=1, maxval=999999999, dtype=tf.int32
-                ),
-                trainable=False,
+                tf.zeros([self._ensemble_size, 2], dtype=tf.int32), trainable=False
             )
-        else:
-            self._indices = tf.Variable(tf.ones([0], dtype=tf.int32), shape=[None], trainable=False)
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:  # [N, B, d] -> [N, B]
@@ -149,7 +146,7 @@ class ensemble_trajectory(TrajectoryFunctionClass):
             flattened_samples = tf.reshape(
                 samples, [self._ensemble_size * self._sample_size, *samples.shape[2:]]
             )  # [E*B/E, N*B, 1]
-            predictions = flattened_samples[: self._batch_size]  # [B, N*B, 1]
+            predictions = tf.gather(flattened_samples, self._indices)  # [B, N*B, 1]
         else:
             predicted_means = tf.convert_to_tensor([dist.mean() for dist in ensemble_distributions])
             predictions = tf.gather(predicted_means, self._indices)  # [B, N*B, 1]
@@ -171,6 +168,8 @@ class ensemble_trajectory(TrajectoryFunctionClass):
         Efficiently resample network indices, and optionally quantiles, in-place without retracing.
         """
         if self._use_samples:
+            indices = tf.random.shuffle(tf.range(self._ensemble_size * self._sample_size))
+            self._indices.assign(indices[: self._batch_size])  # [B]
             self._seeds.assign(
                 tf.random.uniform(
                     shape=(self._ensemble_size, 2), minval=1, maxval=999999999, dtype=tf.int32
