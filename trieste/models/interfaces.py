@@ -19,6 +19,7 @@ from typing import Callable, Generic, TypeVar
 
 import gpflow
 import tensorflow as tf
+import tensorflow_probability.python.distributions as tfd
 from typing_extensions import Protocol, runtime_checkable
 
 from ..data import Dataset
@@ -286,6 +287,17 @@ class EnsembleModel(ProbabilisticModel, Protocol):
 
         :param query_points: The points at which to make predictions.
         :return: The predicted mean and variance of the observations at the specified
+            ``query_points`` for each member of the ensemble.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def ensemble_distributions(self, query_points: TensorType) -> tuple[tfd.Distribution, ...]:
+        """
+        Return distributions for each member of the ensemble.
+
+        :param query_points: The points at which to return distributions.
+        :return: The distributions for the observations at the specified
             ``query_points`` for each member of the ensemble.
         """
         raise NotImplementedError
