@@ -69,6 +69,20 @@ class EnsembleTrajectorySampler(TrajectorySampler[EnsembleModel]):
         """
         return ensemble_trajectory(self._model, self._use_samples)
 
+    def update_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction:
+        """
+        Update a :const:`TrajectoryFunction` to reflect an update in its
+        underlying :class:`ProbabilisticModel` and resample accordingly.
+
+        Efficient implementations will have a custom method here to allow in-place resampling
+        and updating. However, the default behavior is just to make a new trajectory from scratch.
+
+        :param trajectory: The trajectory function to be resampled.
+        :return: The new trajectory function updated for a new model
+        """
+        tf.debugging.Assert(isinstance(trajectory, ensemble_trajectory), [])
+        return trajectory  # nothing to update
+
     def resample_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction:
         """
         Efficiently resample a :const:`TrajectoryFunction` in-place to avoid function retracing
