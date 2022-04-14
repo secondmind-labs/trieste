@@ -20,7 +20,6 @@ of the Trieste's Keras model wrappers.
 from __future__ import annotations
 
 import tensorflow as tf
-import tensorflow_probability.python.distributions as tfd
 
 from ...types import TensorType
 from ...utils import flatten_leading_dims
@@ -147,8 +146,7 @@ class ensemble_trajectory(TrajectoryFunctionClass):
             """,
         )
         flat_x, unflatten = flatten_leading_dims(x)  # [N*B, d]
-        x_transformed: dict[str, TensorType] = self._model.prepare_query_points(flat_x)
-        ensemble_distributions: tuple[tfd.Distribution, ...] = self._model.model(x_transformed)
+        ensemble_distributions = self._model.ensemble_distributions(flat_x)
 
         if self._use_samples:
             samples = tf.convert_to_tensor(

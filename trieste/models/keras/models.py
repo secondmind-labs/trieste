@@ -18,6 +18,7 @@ from typing import Dict, Optional
 
 import tensorflow as tf
 import tensorflow_probability as tfp
+import tensorflow_probability.python.distributions as tfd
 
 from ...data import Dataset
 from ...types import TensorType
@@ -183,6 +184,17 @@ class DeepEnsemble(
             inputs[self.model.input_names[index]] = query_points
 
         return inputs
+
+    def ensemble_distributions(self, query_points: TensorType) -> tuple[tfd.Distribution, ...]:
+        """
+        Return distributions for each member of the ensemble.
+
+        :param query_points: The points at which to return distributions.
+        :return: The distributions for the observations at the specified
+            ``query_points`` for each member of the ensemble.
+        """
+        x_transformed: dict[str, TensorType] = self.prepare_query_points(query_points)
+        return self._model.model(x_transformed)
 
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         r"""
