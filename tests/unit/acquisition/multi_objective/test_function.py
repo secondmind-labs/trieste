@@ -35,8 +35,8 @@ from tests.util.misc import (
 )
 from tests.util.models.gpflow.models import (
     GaussianProcess,
-    HasReparamSampler,
     GaussianProcessWithBatchSamplers,
+    HasReparamSampler,
     QuadraticMeanAndRBFKernel,
 )
 from trieste.acquisition import (
@@ -707,7 +707,7 @@ def test_expected_constrained_hypervolume_improvement_can_reproduce_ehvi() -> No
         .prepare_acquisition_function(models_, datasets=data)
     )
 
-    at = tf.constant([[[-0.1]], [[1.23]], [[-6.78]]])
+    at = tf.constant([[[-0.1]], [[1.23]], [[-6.78]]], dtype=tf.float64)
     npt.assert_allclose(echvi(at), ehvi(at))
 
     new_data = {"foo": Dataset(train_x, model_pred_observation)}
@@ -742,7 +742,9 @@ def test_expected_constrained_hypervolume_improvement_based_on_specified_ref_poi
     specify_ref_points: TensorType | Sequence[float] | Callable[..., TensorType]
 ) -> None:
     num_obj = 2
-    train_x = tf.constant([[-2.0], [-1.5], [-1.0], [0.0], [0.5], [1.0], [1.5], [2.0]])
+    train_x = tf.constant(
+        [[-2.0], [-1.5], [-1.0], [0.0], [0.5], [1.0], [1.5], [2.0]], dtype=tf.float64
+    )
 
     obj_model = _mo_test_model(num_obj, *[None] * num_obj)
     model_pred_observation = obj_model.predict(train_x)[0]
