@@ -44,6 +44,7 @@ from trieste.acquisition.rule import (
     AsynchronousRuleState,
     DiscreteThompsonSampling,
     EfficientGlobalOptimization,
+    RandomSampling,
     TrustRegion,
 )
 from trieste.acquisition.sampler import (
@@ -187,6 +188,25 @@ def test_discrete_thompson_sampling_acquire_returns_correct_shape(
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
     query_points = ts.acquire_single(search_space, model, dataset=dataset)
+
+    npt.assert_array_equal(query_points.shape, tf.constant([num_query_points, 2]))
+
+
+@pytest.mark.parametrize("num_query_points", [-1, 0])
+def test_random_sampling_raises_for_invalid_init_params(num_query_points: int) -> None:
+    with pytest.raises(ValueError):
+        RandomSampling(num_query_points)
+
+
+@pytest.mark.parametrize("num_query_points", [1, 10, 50])
+def test_random_sampling_acquire_returns_correct_shape(num_query_points: int) -> None:
+    search_space = Box([-2.2, -1.0], [1.3, 3.3])
+    rule = RandomSampling(num_query_points)
+    dataset = Dataset(tf.zeros([1, 2], dtype=tf.float64), tf.zeros([1, 1], dtype=tf.float64))
+    model = QuadraticMeanAndRBFKernelWithSamplers(
+        dataset=dataset, noise_variance=tf.constant(1.0, dtype=tf.float64)
+    )
+    query_points = rule.acquire_single(search_space, model)
 
     npt.assert_array_equal(query_points.shape, tf.constant([num_query_points, 2]))
 
@@ -430,7 +450,9 @@ def test_async_greedy_raises_for_incorrect_query_points() -> None:
     ],
 )
 def test_async_keeps_track_of_pending_points(
-    async_rule: AcquisitionRule[State[TensorType, AsynchronousRuleState], Box, ProbabilisticModel]
+    async_rule: AcquisitionRule[
+        State[Optional[AsynchronousRuleState], TensorType], Box, ProbabilisticModel
+    ]
 ) -> None:
     search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
@@ -440,6 +462,7 @@ def test_async_keeps_track_of_pending_points(
     state, point2 = state_fn(state)
 
     assert state is not None
+    assert state.pending_points is not None
     assert len(state.pending_points) == 2
 
     # pretend we saw observation for the first point
@@ -455,6 +478,7 @@ def test_async_keeps_track_of_pending_points(
     state, point3 = state_fn(state)
 
     assert state is not None
+    assert state.pending_points is not None
     assert len(state.pending_points) == 2
 
     # we saw first point, so pendings points are

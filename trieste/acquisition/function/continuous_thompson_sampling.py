@@ -23,7 +23,7 @@ import tensorflow as tf
 from ...data import Dataset
 from ...models.interfaces import HasTrajectorySampler, TrajectoryFunction, TrajectoryFunctionClass
 from ...types import TensorType
-from ..interface import SingleModelGreedyAcquisitionBuilder
+from ..interface import SingleModelGreedyAcquisitionBuilder, SingleModelVectorizedAcquisitionBuilder
 
 
 class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTrajectorySampler]):
@@ -62,7 +62,7 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTr
 
         self._trajectory_sampler = model.trajectory_sampler()
         function = self._trajectory_sampler.get_trajectory()
-        return self._negate_trajectory_function(function)
+        return negate_trajectory_function(function)
 
     def update_acquisition_function(
         self,
@@ -82,7 +82,6 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTr
             for the current step. Defaults to ``True``.
         :return: A new trajectory sampled from the model.
         """
-        tf.debugging.Assert(self._trajectory_sampler is not None, [])
 
         if new_optimization_step:  # update sampler and resample trajectory
             new_function = self._trajectory_sampler.update_trajectory(function)
@@ -90,26 +89,90 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTr
             new_function = self._trajectory_sampler.resample_trajectory(function)
 
         if new_function is not function:
-            function = self._negate_trajectory_function(new_function)
+            function = negate_trajectory_function(new_function)
 
         return function
 
-    def _negate_trajectory_function(self, function: TrajectoryFunction) -> TrajectoryFunction:
 
-        if isinstance(function, TrajectoryFunctionClass):
-            # we want to negate the trajectory function object but otherwise leave it alone,
-            # as it may have e.g. update and resample methods
+class ParallelContinuousThompsonSampling(
+    SingleModelVectorizedAcquisitionBuilder[HasTrajectorySampler]
+):
+    r"""
+    Acquisition function builder for performing parallel continuous Thompson sampling.
 
-            class NegatedTrajectory(type(function)):  # type: ignore[misc]
-                def __call__(self, x: TensorType) -> TensorType:
-                    return -1.0 * super().__call__(x)
+    This builder provides broadly the same behavior as our :class:`GreedyContinuousThompsonSampler`
+    however optimizes trajectory samples in parallel rather than sequentially.
+    Consequently, :class:`ParallelContinuousThompsonSampling` can choose query points faster
+    than  :class:`GreedyContinuousThompsonSampler` however it has much larger memory usage.
 
-            function.__class__ = NegatedTrajectory
-        else:
+    For a convenient way to control the total memory usage of this acquisition function, see
+    our :const:`split_acquisition_function_calls` wrapper.
+    """
 
-            def negated_trajectory(x: TensorType) -> TensorType:
-                return -1.0 * function(x)
+    def prepare_acquisition_function(
+        self,
+        model: HasTrajectorySampler,
+        dataset: Optional[Dataset] = None,
+    ) -> TrajectoryFunction:
+        """
+        :param model: The model.
+        :param dataset: The data from the observer (not used).
+        :return: A negated trajectory sampled from the model.
+        """
+        if not isinstance(model, HasTrajectorySampler):
+            raise ValueError(
+                f"Thompson sampling from trajectory only supports models with a trajectory_sampler "
+                f"method; received {model.__repr__()}"
+            )
 
-            function = negated_trajectory
+        self._trajectory_sampler = model.trajectory_sampler()
+        function = self._trajectory_sampler.get_trajectory()
+        return negate_trajectory_function(function)
+
+    def update_acquisition_function(
+        self,
+        function: TrajectoryFunction,
+        model: HasTrajectorySampler,
+        dataset: Optional[Dataset] = None,
+    ) -> TrajectoryFunction:
+        """
+        :param function: The trajectory function to update.
+        :param model: The model.
+        :param dataset: The data from the observer (not used).
+        :return: A new trajectory sampled from the model.
+        """
+
+        new_function = self._trajectory_sampler.update_trajectory(function)
+
+        if new_function is not function:
+            function = negate_trajectory_function(new_function)
 
         return function
+
+
+def negate_trajectory_function(function: TrajectoryFunction) -> TrajectoryFunction:
+    """
+    Return the negative of trajectories so that our acquisition optimizers (which are
+    all maximizers) can be used to extract the minimizers of trajectories.
+
+    We negate the trajectory function object's call method but otherwise leave it alone,
+    as it may have e.g. update and resample methods.
+    """
+    if isinstance(function, TrajectoryFunctionClass):
+
+        class NegatedTrajectory(type(function)):  # type: ignore[misc]
+            @tf.function
+            def __call__(self, x: TensorType) -> TensorType:
+                return -1.0 * super().__call__(x)
+
+        function.__class__ = NegatedTrajectory
+
+    else:
+
+        @tf.function
+        def negated_trajectory(x: TensorType) -> TensorType:
+            return -1.0 * function(x)
+
+        function = negated_trajectory
+
+    return function

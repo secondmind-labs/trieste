@@ -19,7 +19,7 @@ This module contains functionality for optimizing
 
 from __future__ import annotations
 
-from typing import Any, Callable, List, Optional, Tuple, Union
+from typing import Any, Callable, List, Optional, Tuple, Union, cast
 
 import greenlet as gr
 import numpy as np
@@ -108,6 +108,35 @@ def automatic_optimizer_selector(
         )
 
 
+def _get_max_discrete_points(
+    points: TensorType, target_func: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]]
+) -> TensorType:
+    # check if we need a vectorized optimizer
+    if isinstance(target_func, tuple):
+        target_func, V = target_func
+    else:
+        V = 1
+
+    if V < 0:
+        raise ValueError(f"vectorization must be positive, got {V}")
+
+    tiled_points = tf.tile(points, [1, V, 1])
+    target_func_values = target_func(tiled_points)
+    tf.debugging.assert_shapes(
+        [(target_func_values, ("_", V))],
+        message=(
+            f"""
+            The result of function target_func has shape
+            {tf.shape(target_func_values)}, however, expected a trailing
+            dimension of size {V}.
+            """
+        ),
+    )
+
+    best_indices = tf.math.argmax(target_func_values, axis=0)  # [V]
+    return tf.gather(tf.transpose(tiled_points, [1, 0, 2]), best_indices, batch_dims=1)  # [V, D]
+
+
 def optimize_discrete(
     space: DiscreteSearchSpace,
     target_func: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]],
@@ -124,31 +153,8 @@ def optimize_discrete(
             [..., V].
     :return: The V points in ``space`` that maximises ``target_func``, with shape [V, D].
     """
-
-    if isinstance(target_func, tuple):  # check if we need a vectorized optimizer
-        target_func, V = target_func
-    else:
-        V = 1
-
-    if V < 0:
-        raise ValueError(f"vectorization must be positive, got {V}")
-
     points = space.points[:, None, :]
-    tiled_points = tf.tile(points, [1, V, 1])
-    target_func_values = target_func(tiled_points)
-    tf.debugging.assert_shapes(
-        [(target_func_values, ("_", V))],
-        message=(
-            f"""
-            The result of function target_func has shape
-            {tf.shape(target_func_values)}, however, expected a trailing
-            dimension of size {V}.
-            """
-        ),
-    )
-
-    best_indices = tf.math.argmax(target_func_values, axis=0)  # [V]
-    return tf.gather(tf.transpose(tiled_points, [1, 0, 2]), best_indices, batch_dims=1)  # [V, D]
+    return _get_max_discrete_points(points, target_func)
 
 
 def generate_continuous_optimizer(
@@ -402,7 +408,7 @@ def _perform_parallel_continuous_optimization(
 
     # Set up child greenlets
     child_greenlets = [ScipyLbfgsBGreenlet() for _ in range(num_optimization_runs)]
-    vectorized_child_results: List[Union[spo.OptimizeResult, np.ndarray]] = [
+    vectorized_child_results: List[Union[spo.OptimizeResult, "np.ndarray[Any, Any]"]] = [
         gr.switch(vectorized_starting_points[i].numpy(), bounds[i], optimizer_args)
         for i, gr in enumerate(child_greenlets)
     ]
@@ -430,14 +436,15 @@ def _perform_parallel_continuous_optimization(
                 continue
             vectorized_child_results[i] = greenlet.switch(np_batch_y[i], np_batch_dy_dx[i, :])
 
+    final_vectorized_child_results: List[spo.OptimizeResult] = vectorized_child_results
     vectorized_successes = tf.constant(
-        [result.success for result in vectorized_child_results]
+        [result.success for result in final_vectorized_child_results]
     )  # [num_optimization_runs]
     vectorized_fun_values = tf.constant(
-        [-result.fun for result in vectorized_child_results], dtype=tf_dtype
+        [-result.fun for result in final_vectorized_child_results], dtype=tf_dtype
     )  # [num_optimization_runs]
     vectorized_chosen_x = tf.constant(
-        [result.x for result in vectorized_child_results], dtype=tf_dtype
+        [result.x for result in final_vectorized_child_results], dtype=tf_dtype
     )  # [num_optimization_runs, D]
 
     successes = tf.reshape(vectorized_successes, [-1, V])  # [num_optimization_runs, V]
@@ -456,15 +463,19 @@ class ScipyLbfgsBGreenlet(gr.greenlet):  # type: ignore[misc]
     """
 
     def run(
-        self, start: np.ndarray, bounds: spo.Bounds, optimizer_args: dict[str, Any] = dict()
+        self,
+        start: "np.ndarray[Any, Any]",
+        bounds: spo.Bounds,
+        optimizer_args: dict[str, Any] = dict(),
     ) -> spo.OptimizeResult:
         cache_x = start + 1  # Any value different from `start`.
-        cache_y: Optional[np.ndarray] = None
-        cache_dy_dx: Optional[np.ndarray] = None
+        cache_y: Optional["np.ndarray[Any, Any]"] = None
+        cache_dy_dx: Optional["np.ndarray[Any, Any]"] = None
 
         def value_and_gradient(
-            x: np.ndarray,
-        ) -> Tuple[np.ndarray, np.ndarray]:  # Collect function evaluations from parent greenlet
+            x: "np.ndarray[Any, Any]",
+        ) -> Tuple["np.ndarray[Any, Any]", "np.ndarray[Any, Any]"]:
+            # Collect function evaluations from parent greenlet
             nonlocal cache_x
             nonlocal cache_y
             nonlocal cache_dy_dx
@@ -474,7 +485,7 @@ class ScipyLbfgsBGreenlet(gr.greenlet):  # type: ignore[misc]
                 # Send `x` to parent greenlet, which will evaluate all `x`s in a batch.
                 cache_y, cache_dy_dx = self.parent.switch(cache_x)
 
-            return cache_y, cache_dy_dx
+            return cast("np.ndarray[Any, Any]", cache_y), cast("np.ndarray[Any, Any]", cache_dy_dx)
 
         return spo.minimize(
             lambda x: value_and_gradient(x)[0],
@@ -624,31 +635,7 @@ def generate_random_search_optimizer(
                 [..., V].
         :return: The V points in ``space`` that maximises ``target_func``, with shape [V, D].
         """
-        if isinstance(target_func, tuple):  # check if we need a vectorized optimizer
-            target_func, V = target_func
-        else:
-            V = 1
-
-        if V < 0:
-            raise ValueError(f"vectorization must be positive, got {V}")
-
         points = space.sample(num_samples)[:, None, :]
-        tiled_points = tf.tile(points, [1, V, 1])
-        target_func_values = target_func(tiled_points)
-        tf.debugging.assert_shapes(
-            [(target_func_values, ("_", V))],
-            message=(
-                f"""
-                The result of function target_func has shape
-                {tf.shape(target_func_values)}, however, expected a trailing
-                dimension of size {V}.
-                """
-            ),
-        )
-
-        best_indices = tf.math.argmax(target_func_values, axis=0)  # [V]
-        return tf.gather(
-            tf.transpose(tiled_points, [1, 0, 2]), best_indices, batch_dims=1
-        )  # [V, D]
+        return _get_max_discrete_points(points, target_func)
 
     return optimize_random

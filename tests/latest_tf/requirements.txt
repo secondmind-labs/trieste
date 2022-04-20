@@ -1,4 +1,4 @@
-# Copyright 2021 The Trieste Contributors
+# Copyright 2020 The Trieste Contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,3 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+packaging
+pytest
+
+# to test with the latest tensorflow and numpy we currently need to use an old gpflux
+gpflux == 0.2.3
+tensorflow >= 2.8.0

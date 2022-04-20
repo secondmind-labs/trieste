@@ -22,7 +22,10 @@ from .active_learning import (
     integrated_variance_reduction,
     predictive_variance,
 )
-from .continuous_thompson_sampling import GreedyContinuousThompsonSampling
+from .continuous_thompson_sampling import (
+    GreedyContinuousThompsonSampling,
+    ParallelContinuousThompsonSampling,
+)
 from .entropy import (
     GIBBON,
     MinValueEntropySearch,
@@ -35,6 +38,9 @@ from .function import (
     BatchMonteCarloExpectedImprovement,
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
+    MakePositive,
+    MonteCarloAugmentedExpectedImprovement,
+    MonteCarloExpectedImprovement,
     MultipleOptimismNegativeLowerConfidenceBound,
     NegativeLowerConfidenceBound,
     NegativePredictiveMean,
@@ -47,6 +53,7 @@ from .function import (
 )
 from .greedy_batch import Fantasizer, LocalPenalization, hard_local_penalizer, soft_local_penalizer
 from .multi_objective import (
+    HIPPO,
     BatchMonteCarloExpectedHypervolumeImprovement,
     ExpectedConstrainedHypervolumeImprovement,
     ExpectedHypervolumeImprovement,

@@ -14,10 +14,12 @@
 
 from __future__ import annotations
 
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
+import dill
 import tensorflow as tf
 import tensorflow_probability as tfp
+from tensorflow.python.keras.callbacks import Callback
 
 from ...data import Dataset
 from ...types import TensorType
@@ -28,7 +30,7 @@ from ..interfaces import (
     TrajectorySampler,
 )
 from ..optimizer import KerasOptimizer
-from .architectures import KerasEnsemble
+from .architectures import KerasEnsemble, MultivariateNormalTriL
 from .interface import KerasPredictor
 from .sampler import EnsembleTrajectorySampler
 from .utils import negative_log_likelihood, sample_with_replacement
@@ -81,7 +83,8 @@ class DeepEnsemble(
         :param optimizer: The optimizer wrapper with necessary specifications for compiling and
             training the model. Defaults to :class:`~trieste.models.optimizer.KerasOptimizer` with
             :class:`~tf.optimizers.Adam` optimizer, negative log likelihood loss and a dictionary
-            of default arguments for Keras `fit` method: 100 epochs, batch size 100, and verbose 0.
+            of default arguments for Keras `fit` method: 1000 epochs, batch size 16, early stopping
+            callback with patience of 50, and verbose 0.
             See https://keras.io/api/models/model_training_apis/#fit-method for a list of possible
             arguments.
         :param bootstrap: Sample with replacement data for training each network in the ensemble.
@@ -98,8 +101,13 @@ class DeepEnsemble(
         if not self.optimizer.fit_args:
             self.optimizer.fit_args = {
                 "verbose": 0,
-                "epochs": 100,
-                "batch_size": 100,
+                "epochs": 1000,
+                "batch_size": 16,
+                "callbacks": [
+                    tf.keras.callbacks.EarlyStopping(
+                        monitor="loss", patience=50, restore_best_weights=True
+                    )
+                ],
             }
 
         if self.optimizer.loss is None:
@@ -326,3 +334,37 @@ class DeepEnsemble(
 
         x, y = self.prepare_dataset(dataset)
         self.model.fit(x=x, y=y, **self.optimizer.fit_args)
+
+    def __getstate__(self) -> dict[str, Any]:
+        # When pickling use to_json to save any optimizer fit_arg callback models
+        state = self.__dict__.copy()
+        if self._optimizer:
+            # jsonify all the callback models, pickle the optimizer(!), and revert (ugh!)
+            callback: Callback
+            saved_models: list[KerasOptimizer] = []
+            for callback in self._optimizer.fit_args["callbacks"]:
+                saved_models.append(callback.model)
+                callback.model = callback.model and callback.model.to_json()
+            state["_optimizer"] = dill.dumps(state["_optimizer"])
+            for callback, model in zip(self._optimizer.fit_args["callbacks"], saved_models):
+                callback.model = model
+        return state
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        # Restore optimizer and callback models after depickling, and recompile.
+        self.__dict__.update(state)
+        if self._optimizer:
+            # unpickle the optimizer, and restore all the callback models
+            self._optimizer = dill.loads(self._optimizer)
+            for callback in self._optimizer.fit_args.get("callbacks", []):
+                if callback.model:
+                    callback.model = tf.keras.models.model_from_json(
+                        callback.model,
+                        custom_objects={"MultivariateNormalTriL": MultivariateNormalTriL},
+                    )
+        # Recompile the model
+        self._model.model.compile(
+            self.optimizer.optimizer,
+            loss=[self.optimizer.loss] * self._model.ensemble_size,
+            metrics=[self.optimizer.metrics] * self._model.ensemble_size,
+        )

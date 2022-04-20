@@ -25,9 +25,8 @@ from typing import Generic, Optional, TypeVar, Union, cast, overload
 
 import tensorflow as tf
 
-from .. import types
+from .. import logging, types
 from ..data import Dataset
-from ..logging import get_step_number, get_tensorboard_writer
 from ..models import ProbabilisticModel
 from ..models.interfaces import HasReparamSampler, ProbabilisticModelType
 from ..observer import OBJECTIVE
@@ -260,13 +259,15 @@ class EfficientGlobalOptimization(
 
         points = self._optimizer(search_space, self._acquisition_function)
 
-        summary_writer = get_tensorboard_writer()
-        step_number = get_step_number()
+        summary_writer = logging.get_tensorboard_writer()
+        step_number = logging.get_step_number()
+
         if summary_writer:
             with summary_writer.as_default(step=step_number):
                 batched_points = tf.expand_dims(points, axis=0)
                 value = self._acquisition_function(batched_points)[0][0]
-                tf.summary.scalar("EGO.acquisition_function.maximum_found", value)
+                greedy = isinstance(self._builder, GreedyAcquisitionFunctionBuilder)
+                logging.scalar("EGO.acquisition_function/maximum_found" + "[0]" * greedy, value)
 
         if isinstance(self._builder, GreedyAcquisitionFunctionBuilder):
             for i in range(
@@ -286,7 +287,7 @@ class EfficientGlobalOptimization(
                     with summary_writer.as_default(step=step_number):
                         batched_points = tf.expand_dims(chosen_point, axis=0)
                         value = self._acquisition_function(batched_points)[0][0]
-                        tf.summary.scalar(f"EGO.acquisition_function.maximum_found.{i+1}", value)
+                        logging.scalar(f"EGO.acquisition_function/maximum_found[{i+1}]", value)
 
         return points
 
@@ -332,9 +333,12 @@ class AsynchronousRuleState:
                 # point to remove isn't there, nothing to do
                 return pending_points
 
+            # since we're compiling, we still need to handle pending_points = [] here
+            top = tf.cond(tf.math.greater(1, tf.shape(are_points_equal)[0]), lambda: 0, lambda: 1)
+
             # this line converts all bool values to 0 and 1
             # then finds first 1 and returns its index as 1x1 tensor
-            _, first_index_tensor = tf.math.top_k(tf.cast(are_points_equal, tf.int8), k=1)
+            _, first_index_tensor = tf.math.top_k(tf.cast(are_points_equal, tf.int8), k=top)
             # to use it as index for slicing, we need to convert 1x1 tensor to a TF scalar
             first_index = tf.reshape(first_index_tensor, [])
             return tf.concat(
@@ -690,8 +694,8 @@ class AsynchronousGreedy(
             new_points_batch = self._optimizer(search_space, self._acquisition_function)
             state = state.add_pending_points(new_points_batch)
 
-            summary_writer = get_tensorboard_writer()
-            step_number = get_step_number()
+            summary_writer = logging.get_tensorboard_writer()
+            step_number = logging.get_step_number()
 
             for i in range(self._num_query_points - 1):
                 # greedily allocate additional batch elements
@@ -707,8 +711,8 @@ class AsynchronousGreedy(
                     with summary_writer.as_default(step=step_number):
                         batched_point = tf.expand_dims(new_point, axis=0)
                         value = self._acquisition_function(batched_point)[0][0]
-                        tf.summary.scalar(
-                            f"AsyncGreedy.acquisition_function.maximum_found.{i}", value
+                        logging.scalar(
+                            f"AsyncGreedy.acquisition_function/maximum_found[{i}]", value
                         )
                 state = state.add_pending_points(new_point)
                 new_points_batch = tf.concat([new_points_batch, new_point], axis=0)
@@ -716,6 +720,49 @@ class AsynchronousGreedy(
             return state, new_points_batch
 
         return state_func
+
+
+class RandomSampling(AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel]):
+    """
+    This class performs random search for choosing optimal points. It uses ``sample`` method
+    from :class:`~trieste.space.SearchSpace` to take random samples from the search space that
+    are used as optimal points. Hence, it does not use any acquisition function. This
+    acquisition rule can be useful as a baseline for other acquisition functions of interest.
+    """
+
+    def __init__(self, num_query_points: int = 1):
+        """
+        :param num_query_points: The number of points to acquire. By default set to 1 point.
+        :raise ValueError: If ``num_query_points`` is less or equal to 0.
+        """
+        if num_query_points <= 0:
+            raise ValueError(
+                f"Number of query points must be greater than 0, got {num_query_points}"
+            )
+        self._num_query_points = num_query_points
+
+    def __repr__(self) -> str:
+        """"""
+        return f"""RandomSampling({self._num_query_points!r})"""
+
+    def acquire(
+        self,
+        search_space: SearchSpace,
+        models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
+    ) -> TensorType:
+        """
+        Sample ``num_query_points`` (see :meth:`__init__`) points from the
+        ``search_space``.
+
+        :param search_space: The acquisition search space.
+        :param models: Unused.
+        :param datasets: Unused.
+        :return: The ``num_query_points`` points to query.
+        """
+        samples = search_space.sample(self._num_query_points)
+
+        return samples
 
 
 class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, ProbabilisticModelType]):

@@ -35,7 +35,7 @@ class _QuadraticPredictor(GPflowPredictor):
         pass
 
 
-class _QuadraticGPModel(GPModel):  # type: ignore[misc]
+class _QuadraticGPModel(GPModel):
     def __init__(self) -> None:
         super().__init__(
             gpflow.kernels.Polynomial(2),  # not actually used

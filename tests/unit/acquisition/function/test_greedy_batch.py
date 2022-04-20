@@ -139,7 +139,7 @@ def test_locally_penalized_acquisitions_combine_base_and_penalization_correctly(
 
     best = acq_builder._eta
     lipschitz_constant = acq_builder._lipschitz_constant
-    penalizer = penalizer(model, pending_points, lipschitz_constant, best)
+    penalizer_value = penalizer(model, pending_points, lipschitz_constant, best)
 
     x_range = tf.linspace(0.0, 1.0, 11)
     x_range = tf.cast(x_range, dtype=tf.float64)
@@ -147,7 +147,7 @@ def test_locally_penalized_acquisitions_combine_base_and_penalization_correctly(
 
     lp_acq_values = lp_acq(xs[..., None, :])
     base_acq_values = base_acq(xs[..., None, :])
-    penal_values = penalizer(xs[..., None, :])
+    penal_values = penalizer_value(xs[..., None, :])
     penalized_base_acq = tf.math.exp(tf.math.log(base_acq_values) + tf.math.log(penal_values))
 
     if isinstance(base_builder, ExpectedImprovement):
@@ -180,7 +180,7 @@ def test_lipschitz_penalizers_raises_for_invalid_pending_points_shape(
     best = tf.constant([0], dtype=tf.float64)
     lipschitz_constant = tf.constant([1], dtype=tf.float64)
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        soft_local_penalizer(QuadraticMeanAndRBFKernel(), pending_points, lipschitz_constant, best)
+        penalizer(QuadraticMeanAndRBFKernel(), pending_points, lipschitz_constant, best)
 
 
 def test_fantasized_expected_improvement_builder_raises_for_invalid_fantasize_method() -> None:

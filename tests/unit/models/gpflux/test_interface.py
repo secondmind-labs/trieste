@@ -14,8 +14,6 @@
 
 from __future__ import annotations
 
-import copy
-
 import gpflow
 import numpy.testing as npt
 import pytest
@@ -61,7 +59,7 @@ class _QuadraticPredictor(GPfluxPredictor):
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         # Taken from GPflow implementation of `GPModel.predict_f_samples` in gpflow.models.model
-        mean, cov = self.model_gpflux.predict_f(query_points, full_cov=True)
+        mean, cov = self._model_gpflux.predict_f(query_points, full_cov=True)
         mean_for_sample = tf.linalg.adjoint(mean)
         samples = sample_mvn(mean_for_sample, cov, True, num_samples=num_samples)
         samples = tf.linalg.adjoint(samples)
@@ -71,7 +69,7 @@ class _QuadraticPredictor(GPfluxPredictor):
         pass
 
 
-class _QuadraticGPModel(DeepGP):  # type: ignore[misc]
+class _QuadraticGPModel(DeepGP):
     def __init__(
         self, likelihood: gpflow.likelihoods.Likelihood = gpflow.likelihoods.Gaussian(0.01)
     ) -> None:
@@ -146,10 +144,3 @@ def test_gpflux_predictor_get_observation_noise_raises_for_non_gaussian_likeliho
 
     with pytest.raises(NotImplementedError):
         model.get_observation_noise()
-
-
-def test_gpflux_predictor_deepcopy_raises_not_implemented() -> None:
-    model = _QuadraticPredictor()
-
-    with pytest.raises(NotImplementedError):
-        copy.deepcopy(model)

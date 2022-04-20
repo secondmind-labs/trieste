@@ -20,22 +20,22 @@ perform Bayesian Optimization with external control of the optimization loop.
 
 from __future__ import annotations
 
-import copy
+from copy import deepcopy
 from typing import Dict, Generic, Mapping, TypeVar, cast, overload
 
 import numpy as np
 import tensorflow as tf
 
+from . import logging
 from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
-from .bayesian_optimizer import OptimizationResult, Record
+from .bayesian_optimizer import FrozenRecord, OptimizationResult, Record
 from .data import Dataset
-from .logging import get_step_number, get_tensorboard_writer
 from .models import ModelSpec, TrainableProbabilisticModel, create_model
 from .models.config import ModelConfigType
 from .observer import OBJECTIVE
 from .space import SearchSpace
 from .types import State, TensorType
-from .utils import Ok, map_values
+from .utils import Ok, Timer, map_values
 
 StateType = TypeVar("StateType")
 """ Unbound type variable. """
@@ -300,10 +300,41 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
                {self._models!r}, {self._acquisition_rule!r}), "
                {self._acquisition_state!r}"""
 
+    @property
+    def datasets(self) -> Mapping[str, Dataset]:
+        """The current datasets."""
+        return self._datasets
+
+    @property
+    def dataset(self) -> Dataset:
+        """The current dataset when there is just one dataset."""
+        if len(self.datasets) == 1:
+            return next(iter(self.datasets.values()))
+        else:
+            raise ValueError(f"Expected a single dataset, found {len(self.datasets)}")
+
+    @property
+    def models(self) -> Mapping[str, TrainableProbabilisticModel]:
+        """The current models."""
+        return self._models
+
+    @property
+    def model(self) -> TrainableProbabilisticModel:
+        """The current model when there is just one model."""
+        if len(self.models) == 1:
+            return next(iter(self.models.values()))
+        else:
+            raise ValueError(f"Expected a single model, found {len(self.models)}")
+
+    @property
+    def acquisition_state(self) -> StateType | None:
+        """The current acquisition state."""
+        return self._acquisition_state
+
     @classmethod
     def from_record(
         cls,
-        record: Record[StateType],
+        record: Record[StateType] | FrozenRecord[StateType],
         search_space: SearchSpaceType,
         acquisition_rule: AcquisitionRule[
             TensorType | State[StateType | None, TensorType],
@@ -337,22 +368,40 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
             fit_model=False,
         )
 
-    def to_record(self) -> Record[StateType]:
+    def to_record(self, copy: bool = True) -> Record[StateType]:
         """Collects the current state of the optimization, which includes datasets,
         models and acquisition state (if applicable).
 
+        :param copy: Whether to return a copy of the current state or the original. Copying
+            is not supported for all model types. However, continuing the optimization will
+            modify the original state.
         :return: An optimization state record.
         """
-        models_copy = copy.deepcopy(self._models)
-        acquisition_state_copy = copy.deepcopy(self._acquisition_state)
-        return Record(
-            datasets=self._datasets, models=models_copy, acquisition_state=acquisition_state_copy
-        )
+        try:
+            datasets_copy = deepcopy(self._datasets) if copy else self._datasets
+            models_copy = deepcopy(self._models) if copy else self._models
+            state_copy = deepcopy(self._acquisition_state) if copy else self._acquisition_state
+        except Exception as e:
+            raise NotImplementedError(
+                "Failed to copy the optimization state. Some models do not support "
+                "deecopying (this is particularly common for deep neural network models). "
+                "For these models, the `copy` argument of the `to_record` or `to_result` "
+                "methods should be set to `False`. This means that the returned state may be "
+                "modified by subsequent optimization."
+            ) from e
 
-    def to_result(self) -> OptimizationResult[StateType]:
+        return Record(datasets=datasets_copy, models=models_copy, acquisition_state=state_copy)
+
+    def to_result(self, copy: bool = True) -> OptimizationResult[StateType]:
         """Converts current state of the optimization
-        into a :class:`~trieste.data.OptimizationResult` object."""
-        record: Record[StateType] = self.to_record()
+        into a :class:`~trieste.data.OptimizationResult` object.
+
+        :param copy: Whether to return a copy of the current state or the original. Copying
+            is not supported for all model types. However, continuing the optimization will
+            modify the original state.
+        :return: A :class:`~trieste.data.OptimizationResult` object.
+        """
+        record: Record[StateType] = self.to_record(copy=copy)
         return OptimizationResult(Ok(record), [])
 
     def ask(self) -> TensorType:
@@ -368,14 +417,29 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
         #   which, when called, returns state and points
         # so code below is needed to cater for both cases
 
-        points_or_stateful = self._acquisition_rule.acquire(
-            self._search_space, self._models, datasets=self._datasets
-        )
+        with Timer() as query_point_generation_timer:
+            points_or_stateful = self._acquisition_rule.acquire(
+                self._search_space, self._models, datasets=self._datasets
+            )
 
         if callable(points_or_stateful):
             self._acquisition_state, query_points = points_or_stateful(self._acquisition_state)
         else:
             query_points = points_or_stateful
+
+        summary_writer = logging.get_tensorboard_writer()
+        if summary_writer:
+            with summary_writer.as_default(step=logging.get_step_number()):
+                if tf.rank(query_points) == 2:
+                    for i in tf.range(tf.shape(query_points)[1]):
+                        if len(query_points) == 1:
+                            logging.scalar(f"query_points/[{i}]", float(query_points[0, i]))
+                        else:
+                            logging.histogram(f"query_points/[{i}]", query_points[:, i])
+                logging.scalar(
+                    "wallclock/query_point_generation",
+                    query_point_generation_timer.time,
+                )
 
         return query_points
 
@@ -394,27 +458,36 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
                 f"match dataset keys {self._datasets.keys()}"
             )
 
-        self._datasets = {tag: self._datasets[tag] + new_data[tag] for tag in new_data}
+        for tag in self._datasets:
+            self._datasets[tag] += new_data[tag]
 
-        for tag, model in self._models.items():
-            dataset = self._datasets[tag]
-            model.update(dataset)
-            model.optimize(dataset)
+        with Timer() as model_fitting_timer:
+            for tag, model in self._models.items():
+                dataset = self._datasets[tag]
+                model.update(dataset)
+                model.optimize(dataset)
 
-        summary_writer = get_tensorboard_writer()
-        step_number = get_step_number()
+        summary_writer = logging.get_tensorboard_writer()
         if summary_writer:
-            with summary_writer.as_default():
+            with summary_writer.as_default(step=logging.get_step_number()):
                 for tag in self._datasets:
                     with tf.name_scope(f"{tag}.model"):
                         self._models[tag].log()
-                    tf.summary.scalar(
-                        f"{tag}.observation.best_overall",
-                        np.min(self._datasets[tag].observations),
-                        step=step_number,
-                    )
-                    tf.summary.scalar(
-                        f"{tag}.observation.best_new",
-                        np.min(new_data[tag].observations),
-                        step=step_number,
-                    )
+                    output_dim = tf.shape(new_data[tag].observations)[-1]
+                    for i in tf.range(output_dim):
+                        suffix = f"[{i}]" if output_dim > 1 else ""
+                        if tf.size(new_data[tag].observations) > 0:
+                            logging.histogram(
+                                f"{tag}.observation{suffix}/new_observations",
+                                new_data[tag].observations[..., i],
+                            )
+                            logging.scalar(
+                                f"{tag}.observation{suffix}/best_new_observation",
+                                np.min(new_data[tag].observations[..., i]),
+                            )
+                        if tf.size(self._datasets[tag].observations) > 0:
+                            logging.scalar(
+                                f"{tag}.observation{suffix}/best_overall",
+                                np.min(self._datasets[tag].observations[..., i]),
+                            )
+                    logging.scalar("wallclock/model_fitting", model_fitting_timer.time)

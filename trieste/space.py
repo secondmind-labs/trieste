@@ -53,7 +53,7 @@ class SearchSpace(ABC):
 
     @property
     @abstractmethod
-    def dimension(self) -> int:
+    def dimension(self) -> TensorType:
         """The number of inputs in this search space."""
 
     @property
@@ -67,11 +67,32 @@ class SearchSpace(ABC):
         """The highest value taken by each search space dimension."""
 
     @abstractmethod
-    def __mul__(self: SearchSpaceType, other: SearchSpaceType) -> SearchSpaceType:
+    def product(self: SearchSpaceType, other: SearchSpaceType) -> SearchSpaceType:
         """
         :param other: A search space of the same type as this search space.
         :return: The Cartesian product of this search space with the ``other``.
         """
+
+    @overload
+    def __mul__(self: SearchSpaceType, other: SearchSpaceType) -> SearchSpaceType:
+        ...
+
+    @overload
+    def __mul__(self: SearchSpaceType, other: SearchSpace) -> SearchSpace:  # type: ignore[misc]
+        # mypy complains that this is superfluous, but it seems to use it fine to infer
+        # that Box * Box = Box, while Box * Discrete = SearchSpace.
+        ...
+
+    def __mul__(self, other: SearchSpace) -> SearchSpace:
+        """
+        :param other: A search space.
+        :return: The Cartesian product of this search space with the ``other``.
+            If both spaces are of the same type then this calls the :meth:`product` method.
+            Otherwise, it generates a :class:`TaggedProductSearchSpace`.
+        """
+        if isinstance(other, type(self)):
+            return self.product(other)
+        return TaggedProductSearchSpace((self, other))
 
     def __pow__(self: SearchSpaceType, other: int) -> SearchSpaceType:
         """
@@ -86,6 +107,21 @@ class SearchSpace(ABC):
         """
         tf.debugging.assert_positive(other, message="Exponent must be strictly positive")
         return reduce(operator.mul, [self] * other)
+
+    def discretize(self, num_samples: int) -> DiscreteSearchSpace:
+        """
+        :param num_samples: The number of points in the :class:`DiscreteSearchSpace`.
+        :return: A discrete search space consisting of ``num_samples`` points sampled uniformly from
+            this search space.
+        """
+        return DiscreteSearchSpace(points=self.sample(num_samples))
+
+    @abstractmethod
+    def __eq__(self, other: object) -> bool:
+        """
+        :param other: A search space.
+        :return: Whether the search space is identical to this one.
+        """
 
 
 class DiscreteSearchSpace(SearchSpace):
@@ -132,7 +168,7 @@ class DiscreteSearchSpace(SearchSpace):
         return self._points
 
     @property
-    def dimension(self) -> int:
+    def dimension(self) -> TensorType:
         """The number of inputs in this search space."""
         return self._dimension
 
@@ -154,7 +190,7 @@ class DiscreteSearchSpace(SearchSpace):
             )
             return tf.gather(self.points, sampled_indices)[0, :, :]  # [num_samples, D]
 
-    def __mul__(self, other: DiscreteSearchSpace) -> DiscreteSearchSpace:
+    def product(self, other: DiscreteSearchSpace) -> DiscreteSearchSpace:
         r"""
         Return the Cartesian product of the two :class:`DiscreteSearchSpace`\ s. For example:
 
@@ -180,6 +216,15 @@ class DiscreteSearchSpace(SearchSpace):
         cartesian_product = tf.concat([tile_self, tile_other], axis=2)
         product_space_dimension = self.points.shape[-1] + other.points.shape[-1]
         return DiscreteSearchSpace(tf.reshape(cartesian_product, [-1, product_space_dimension]))
+
+    def __eq__(self, other: object) -> bool:
+        """
+        :param other: A search space.
+        :return: Whether the search space is identical to this one.
+        """
+        if not isinstance(other, DiscreteSearchSpace):
+            return NotImplemented
+        return bool(tf.reduce_all(tf.sort(self.points, 0) == tf.sort(other.points, 0)))
 
     def __deepcopy__(self, memo: dict[int, object]) -> DiscreteSearchSpace:
         return self
@@ -242,17 +287,17 @@ class Box(SearchSpace):
         return f"Box({self._lower!r}, {self._upper!r})"
 
     @property
-    def lower(self) -> TensorType:
+    def lower(self) -> tf.Tensor:
         """The lower bounds of the box."""
         return self._lower
 
     @property
-    def upper(self) -> TensorType:
+    def upper(self) -> tf.Tensor:
         """The upper bounds of the box."""
         return self._upper
 
     @property
-    def dimension(self) -> int:
+    def dimension(self) -> TensorType:
         """The number of inputs in this search space."""
         return self._dimension
 
@@ -336,15 +381,7 @@ class Box(SearchSpace):
             dim=dim, num_results=num_samples, dtype=self._lower.dtype, skip=skip
         ) + self._lower
 
-    def discretize(self, num_samples: int) -> DiscreteSearchSpace:
-        """
-        :param num_samples: The number of points in the :class:`DiscreteSearchSpace`.
-        :return: A discrete search space consisting of ``num_samples`` points sampled uniformly from
-            this :class:`Box`.
-        """
-        return DiscreteSearchSpace(points=self.sample(num_samples))
-
-    def __mul__(self, other: Box) -> Box:
+    def product(self, other: Box) -> Box:
         r"""
         Return the Cartesian product of the two :class:`Box`\ es (concatenating their respective
         lower and upper bounds). For example:
@@ -369,6 +406,17 @@ class Box(SearchSpace):
         product_upper_bound = tf.concat([self._upper, other.upper], axis=-1)
 
         return Box(product_lower_bound, product_upper_bound)
+
+    def __eq__(self, other: object) -> bool:
+        """
+        :param other: A search space.
+        :return: Whether the search space is identical to this one.
+        """
+        if not isinstance(other, Box):
+            return NotImplemented
+        return bool(
+            tf.reduce_all(self.lower == other.lower) and tf.reduce_all(self.upper == other.upper)
+        )
 
     def __deepcopy__(self, memo: dict[int, object]) -> Box:
         return self
@@ -456,9 +504,9 @@ class TaggedProductSearchSpace(SearchSpace):
         return self._tags
 
     @property
-    def dimension(self) -> int:
+    def dimension(self) -> TensorType:
         """The number of inputs in this product search space."""
-        return int(self._dimension)
+        return self._dimension
 
     def get_subspace(self, tag: str) -> SearchSpace:
         """
@@ -550,15 +598,7 @@ class TaggedProductSearchSpace(SearchSpace):
         subspace_samples = [self._spaces[tag].sample(num_samples) for tag in self._tags]
         return tf.concat(subspace_samples, -1)
 
-    def discretize(self, num_samples: int) -> DiscreteSearchSpace:
-        """
-        :param num_samples: The number of points in the :class:`DiscreteSearchSpace`.
-        :return: A discrete search space consisting of ``num_samples`` points sampled
-            uniformly across the space.
-        """
-        return DiscreteSearchSpace(points=self.sample(num_samples))
-
-    def __mul__(self, other: SearchSpace) -> TaggedProductSearchSpace:
+    def product(self, other: TaggedProductSearchSpace) -> TaggedProductSearchSpace:
         r"""
         Return the Cartesian product of the two :class:`TaggedProductSearchSpace`\ s,
         building a tree of :class:`TaggedProductSearchSpace`\ s.
@@ -567,6 +607,15 @@ class TaggedProductSearchSpace(SearchSpace):
         :return: The Cartesian product of this search space with the ``other``.
         """
         return TaggedProductSearchSpace(spaces=[self, other])
+
+    def __eq__(self, other: object) -> bool:
+        """
+        :param other: A search space.
+        :return: Whether the search space is identical to this one.
+        """
+        if not isinstance(other, TaggedProductSearchSpace):
+            return NotImplemented
+        return self._tags == other._tags and self._spaces == other._spaces
 
     def __deepcopy__(self, memo: dict[int, object]) -> TaggedProductSearchSpace:
         return self

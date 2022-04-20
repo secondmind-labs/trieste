@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 from time import sleep
 from typing import Any
 
@@ -19,9 +21,9 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
-from tests.util.misc import ShapeLike, various_shapes
+from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, various_shapes
 from trieste.types import TensorType
-from trieste.utils.misc import Err, Ok, Timer, jit, shapes_equal, to_numpy
+from trieste.utils.misc import Err, Ok, Timer, flatten_leading_dims, jit, shapes_equal, to_numpy
 
 
 @pytest.mark.parametrize("apply", [True, False])
@@ -66,7 +68,7 @@ def test_shapes_equal(this_shape: ShapeLike, that_shape: ShapeLike) -> None:
         (tf.reshape(tf.range(12), [3, -1]), np.arange(12).reshape(3, -1)),
     ],
 )
-def test_to_numpy(t: TensorType, expected: np.ndarray) -> None:
+def test_to_numpy(t: TensorType, expected: "np.ndarray[Any, Any]") -> None:
     npt.assert_array_equal(to_numpy(t), expected)
 
 
@@ -99,3 +101,20 @@ def test_Timer_with_nesting() -> None:
             sleep(sleep_time)
     npt.assert_allclose(timer_1.time, 2.0 * sleep_time, rtol=0.01)
     npt.assert_allclose(timer_2.time, 1.0 * sleep_time, rtol=0.01)
+
+
+def test_flatten_leading_dims() -> None:
+    x_old = tf.random.uniform([2, 3, 4, 5])  # [2, 3, 4, 5]
+    flat_x_old, unflatten = flatten_leading_dims(x_old)  # [24, 5]
+
+    npt.assert_array_equal(tf.shape(flat_x_old), [24, 5])
+
+    x_new = unflatten(flat_x_old)  # [2, 3, 4, 5]
+    npt.assert_array_equal(x_old, x_new)
+
+
+def test_unflatten_raises_for_invalid_shape() -> None:
+    x_old = tf.random.uniform([2, 3, 4, 5])  # [2, 3, 4, 5]
+    flat_x_old, unflatten = flatten_leading_dims(x_old)  # [24, 5]
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        unflatten(x_old)

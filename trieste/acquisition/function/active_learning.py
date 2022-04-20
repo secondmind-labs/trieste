@@ -44,8 +44,6 @@ class PredictiveVariance(SingleModelAcquisitionBuilder[SupportsPredictJoint]):
         :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
             the covariance matrix.
         """
-        super().__init__()
-
         self._jitter = jitter
 
     def __repr__(self) -> str:
@@ -85,7 +83,7 @@ class PredictiveVariance(SingleModelAcquisitionBuilder[SupportsPredictJoint]):
         return function  # no need to update anything
 
 
-def predictive_variance(model: SupportsPredictJoint, jitter: float) -> TensorType:
+def predictive_variance(model: SupportsPredictJoint, jitter: float) -> AcquisitionFunction:
     """
     The predictive variance acquisition function for active learning, based on
     the determinant of the covariance (see :cite:`MacKay1992` for details).
@@ -138,8 +136,6 @@ class ExpectedFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel]):
         tf.debugging.assert_scalar(delta)
         tf.debugging.Assert(delta in [1, 2], [delta])
 
-        super().__init__()
-
         self._threshold = threshold
         self._alpha = alpha
         self._delta = delta
@@ -180,7 +176,7 @@ def bichon_ranjan_criterion(
     threshold: float,
     alpha: float,
     delta: int,
-) -> TensorType:
+) -> AcquisitionFunction:
     r"""
     Return the *bichon* criterion (:cite:`bichon2008efficient`) and *ranjan* criterion
     (:cite:`ranjan2008sequential`) used in Expected feasibility acquisition function for active

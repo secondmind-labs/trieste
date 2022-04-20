@@ -14,13 +14,30 @@
 """ This module contains logging utilities. """
 from __future__ import annotations
 
+import io
 from contextlib import contextmanager
-from typing import Iterator, Optional
+from typing import TYPE_CHECKING, Any, Callable, Iterator, Optional
 
 import tensorflow as tf
+from tensorflow.python.eager import context
+
+from trieste.types import TensorType
+
+if TYPE_CHECKING:
+    import matplotlib
+
+
+SummaryFilter = Callable[[str], bool]
+
+
+def default_summary_filter(name: str) -> bool:
+    """Default summary filter: omits any names that start with _."""
+    return not (name.startswith("_") or "/_" in name)
+
 
 _TENSORBOARD_WRITER: Optional[tf.summary.SummaryWriter] = None
 _STEP_NUMBER: int = 0
+_SUMMARY_FILTER: SummaryFilter = default_summary_filter
 
 
 def set_tensorboard_writer(summary_writer: Optional[tf.summary.SummaryWriter]) -> None:
@@ -72,7 +89,9 @@ def set_step_number(step_number: int) -> None:
 
 def get_step_number() -> int:
     """
-    Set an optimization step number to use for logging purposes.
+    Get the optimization step number used for logging purposes.
+
+    :return: current step number.
     """
     return _STEP_NUMBER
 
@@ -88,3 +107,75 @@ def step_number(step_number: int) -> Iterator[None]:
     set_step_number(step_number)
     yield
     set_step_number(old_step_number)
+
+
+def set_summary_filter(summary_filter: SummaryFilter) -> None:
+    """
+    Set a filter on summary names. The default is to only omit names that start with _.
+
+    :param summary_filter: new summary filter
+    """
+    global _SUMMARY_FILTER
+    _SUMMARY_FILTER = summary_filter
+
+
+def get_summary_filter() -> SummaryFilter:
+    """
+    Get the current filter on summary names. The default is to only omit names that start with _.
+
+    :return: current summary filter.
+    """
+    return _SUMMARY_FILTER
+
+
+def get_current_name_scope() -> str:
+    """Returns the full name scope. Copied from TF 2.5."""
+    ctx = context.context()
+    if ctx.executing_eagerly():
+        return ctx.scope_name.rstrip("/")
+    else:
+        return tf.compat.v1.get_default_graph().get_name_scope()
+
+
+def include_summary(name: str) -> bool:
+    """
+    Whether a summary name should be included.
+
+    :param: full summary name (including name spaces)
+    :return: whether the summary should be included.
+    """
+    full_name = get_current_name_scope() + "/" + name
+    return _SUMMARY_FILTER(full_name)
+
+
+def histogram(name: str, data: TensorType, **kwargs: Any) -> bool:
+    """Wrapper for tf.summary.histogram that first filters out unwanted summaries by name."""
+    if include_summary(name):
+        return tf.summary.histogram(name, data, **kwargs)
+    return False
+
+
+def scalar(name: str, data: float, **kwargs: Any) -> bool:
+    """Wrapper for tf.summary.scalar that first filters out unwanted summaries by name."""
+    if include_summary(name):
+        return tf.summary.scalar(name, data, **kwargs)
+    return False
+
+
+def text(name: str, data: str, **kwargs: Any) -> bool:
+    """Wrapper for tf.summary.text that first filters out unwanted summaries by name."""
+    if include_summary(name):
+        return tf.summary.text(name, data, **kwargs)
+    return False
+
+
+def pyplot(name: str, figure: "matplotlib.figure.Figure") -> bool:
+    """Utility function for passing a matplotlib figure to tf.summary.image."""
+    if include_summary(name):
+        with io.BytesIO() as buffer:
+            figure.savefig(buffer, format="png")
+            buffer.seek(0)
+            image = tf.image.decode_png(buffer.getvalue(), channels=4)
+        image = tf.expand_dims(image, 0)
+        return tf.summary.image(name, image)
+    return False

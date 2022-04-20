@@ -24,6 +24,7 @@ from trieste.models import TrainableProbabilisticModel
 from trieste.models.config import ModelRegistry
 from trieste.models.gpflow import (
     GaussianProcessRegression,
+    SparseGaussianProcessRegression,
     SparseVariational,
     VariationalGaussianProcess,
 )
@@ -33,7 +34,7 @@ from trieste.models.gpflow import (
     "supported_models",
     [
         (GPR, GaussianProcessRegression),
-        (SGPR, GaussianProcessRegression),
+        (SGPR, SparseGaussianProcessRegression),
         (VGP, VariationalGaussianProcess),
         (SVGP, SparseVariational),
     ],

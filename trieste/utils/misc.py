@@ -16,7 +16,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from time import perf_counter
 from types import TracebackType
-from typing import Any, Callable, Generic, Mapping, NoReturn, Optional, Type, TypeVar
+from typing import Any, Callable, Generic, Mapping, NoReturn, Optional, Tuple, Type, TypeVar
 
 import numpy as np
 import tensorflow as tf
@@ -52,7 +52,7 @@ def shapes_equal(this: TensorType, that: TensorType) -> TensorType:
     return tf.rank(this) == tf.rank(that) and tf.reduce_all(tf.shape(this) == tf.shape(that))
 
 
-def to_numpy(t: TensorType) -> np.ndarray:
+def to_numpy(t: TensorType) -> "np.ndarray[Any, Any]":
     """
     :param t: An array-like object.
     :return: ``t`` as a NumPy array.
@@ -235,3 +235,26 @@ class Timer:
     ) -> None:
         self.end = perf_counter()
         self.time = self.end - self.start
+
+
+def flatten_leading_dims(x: TensorType) -> Tuple[TensorType, Callable[[TensorType], TensorType]]:
+    """
+    Flattens the leading dimensions of `x` (all but the last two dimensions), and returns a
+    function that can be used to restore them (typically after first manipulating the
+    flattened tensor).
+    """
+    x_batched_shape = tf.shape(x)
+    batch_shape = x_batched_shape[:-1]
+    input_shape = x_batched_shape[-1:]
+    x_flat_shape = tf.concat([[-1], input_shape], axis=0)
+
+    def unflatten(y: TensorType) -> TensorType:
+        tf.debugging.assert_rank(y, 2, message="unflatten is expecting a rank two tensor.")
+        y_flat_shape = tf.shape(y)
+        output_shape = y_flat_shape[1:]
+        y_batched_shape = tf.concat([batch_shape, output_shape], axis=0)
+        y_batched = tf.reshape(y, y_batched_shape)
+        tf.debugging.assert_shapes([(y, ["N", "D"]), (y_batched, [..., "M", "D"])])
+        return y_batched
+
+    return tf.reshape(x, x_flat_shape), unflatten

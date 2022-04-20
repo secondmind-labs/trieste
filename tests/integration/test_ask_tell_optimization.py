@@ -16,7 +16,7 @@ from __future__ import annotations
 import copy
 import pickle
 import tempfile
-from typing import Callable, List, Tuple, Union, cast
+from typing import Callable
 
 import numpy.testing as npt
 import pytest
@@ -55,53 +55,40 @@ from trieste.types import State, TensorType
 # (copying is necessary as some of the acquisition rules are stateful).
 OPTIMIZER_PARAMS = (
     "num_steps, reload_state, acquisition_rule_fn",
-    cast(
-        List[
-            Tuple[
-                int,
-                bool,
-                Union[
-                    Callable[[], AcquisitionRule[TensorType, Box, TrainableProbabilisticModel]],
-                    Callable[
-                        [],
-                        AcquisitionRule[
-                            State[
-                                TensorType,
-                                Union[AsynchronousRuleState, TrustRegion.State],
-                            ],
-                            Box,
-                            GaussianProcessRegression,
-                        ],
-                    ],
-                ],
-            ]
-        ],
-        [
-            (20, False, lambda: EfficientGlobalOptimization()),
-            (20, True, lambda: EfficientGlobalOptimization()),
-            (15, False, lambda: TrustRegion()),
-            (15, True, lambda: TrustRegion()),
-            (
-                10,
-                False,
-                lambda: EfficientGlobalOptimization(
-                    LocalPenalization(
-                        BRANIN_SEARCH_SPACE,
-                    ).using(OBJECTIVE),
-                    num_query_points=3,
-                ),
+    [
+        pytest.param(
+            20, False, lambda: EfficientGlobalOptimization(), id="EfficientGlobalOptimization"
+        ),
+        pytest.param(
+            20,
+            True,
+            lambda: EfficientGlobalOptimization(),
+            id="EfficientGlobalOptimization/reload_state",
+        ),
+        pytest.param(15, False, lambda: TrustRegion(), id="TrustRegion"),
+        pytest.param(16, True, lambda: TrustRegion(), id="TrustRegion/reload_state"),
+        pytest.param(
+            10,
+            False,
+            lambda: EfficientGlobalOptimization(
+                LocalPenalization(
+                    BRANIN_SEARCH_SPACE,
+                ).using(OBJECTIVE),
+                num_query_points=3,
             ),
-            (
-                30,
-                False,
-                lambda: AsynchronousGreedy(
-                    LocalPenalization(
-                        BRANIN_SEARCH_SPACE,
-                    ).using(OBJECTIVE),
-                ),
+            id="LocalPenalization",
+        ),
+        pytest.param(
+            30,
+            False,
+            lambda: AsynchronousGreedy(
+                LocalPenalization(
+                    BRANIN_SEARCH_SPACE,
+                ).using(OBJECTIVE),
             ),
-        ],
-    ),
+            id="LocalPenalization/AsynchronousGreedy",
+        ),
+    ],
 )
 
 

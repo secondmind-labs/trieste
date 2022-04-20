@@ -125,19 +125,19 @@ dataset = result.try_get_final_dataset()
 # We can now get the best point found by the optimizer. Note this isn't necessarily the point that was last evaluated.
 
 # %%
-query_points = dataset.query_points.numpy()
-observations = dataset.observations.numpy()
+query_point, observation, arg_min_idx = result.try_get_optimal_point()
 
-arg_min_idx = tf.squeeze(tf.argmin(observations, axis=0))
-
-print(f"query point: {query_points[arg_min_idx, :]}")
-print(f"observation: {observations[arg_min_idx, :]}")
+print(f"query point: {query_point}")
+print(f"observation: {observation}")
 
 # %% [markdown]
 # We can visualise how the optimizer performed by plotting all the acquired observations, along with the true function values and optima, either in a two-dimensional contour plot ...
 
 # %%
 from util.plotting import plot_bo_points, plot_function_2d
+
+query_points = dataset.query_points.numpy()
+observations = dataset.observations.numpy()
 
 _, ax = plot_function_2d(
     scaled_branin,
@@ -219,7 +219,7 @@ fig = add_bo_points_plotly(
 fig.show()
 
 # %% [markdown]
-# We can also inspect the model hyperparameters, and use the history to see how the length scales evolved over iterations. Note the history is saved at the *start* of each step, and as such never includes the final result, so we'll add that ourselves.
+# We can also inspect the model hyperparameters, and use the history to see how the length scales evolved over iterations. By default, the model history is kept in memory though it's possibe to store it to disk instead using optimize's `track_path` argument (see [this tutorial](recovering_from_errors.ipynb)). Note also the history is saved at the *start* of each step, and as such never includes the final result, so we'll add that ourselves.
 
 # %%
 gpflow.utilities.print_summary(
@@ -263,8 +263,8 @@ result = bo.optimize(
     num_steps, result.try_get_final_dataset(), result.try_get_final_model()
 )
 dataset = result.try_get_final_dataset()
+_, _, arg_min_idx = result.try_get_optimal_point()
 
-arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 _, ax = plot_function_2d(
     scaled_branin,
     search_space.lower,

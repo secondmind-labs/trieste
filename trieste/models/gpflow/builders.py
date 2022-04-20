@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-This file contains builders for GPflow models supported in Trieste. We found the default
+This module contains builders for GPflow models supported in Trieste. We found the default
 configurations used here to work well in most situation, but they should not be taken as
 universally good solutions.
 """
@@ -182,7 +182,9 @@ def build_sgpr(
     kernel = _get_kernel(empirical_variance, search_space, kernel_priors, kernel_priors)
     mean = _get_mean_function(empirical_mean)
 
-    inducing_points = _get_inducing_points(search_space, num_inducing_points)
+    inducing_points = gpflow.inducing_variables.InducingPoints(
+        _get_inducing_points(search_space, num_inducing_points)
+    )
 
     model = SGPR(data.astuple(), kernel, inducing_points, mean_function=mean)
 
