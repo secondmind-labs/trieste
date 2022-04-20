@@ -408,8 +408,10 @@ def _test_optimizer_finds_minimum(
         rtol_level = 0.05
         num_initial_query_points = 10
 
-    if model_type in [SparseVariational, DeepGaussianProcess, DeepEnsemble]:
+    if model_type in [SparseVariational, DeepEnsemble]:
         num_initial_query_points = 20
+    elif model_type in [DeepGaussianProcess]:
+        num_initial_query_points = 25
 
     initial_query_points = search_space.sample(num_initial_query_points)
     observer = mk_observer(scaled_branin if optimize_branin else simple_quadratic)
