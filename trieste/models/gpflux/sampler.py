@@ -13,8 +13,9 @@
 # limitations under the License.
 
 from __future__ import annotations
+
 from abc import ABC
-from typing import List, Tuple, Callable, Optional, cast
+from typing import Callable, List, cast
 
 import gpflow.kernels
 
@@ -26,18 +27,19 @@ except (ModuleNotFoundError, ImportError):
 
 import tensorflow as tf
 from gpflow.inducing_variables import InducingPoints
-from gpflow.covariances import Kuu, Kuf
-from gpflow.kernels import Kernel
-from gpflow.config import default_float, default_jitter
-from gpflow.inducing_variables import InducingVariables
-from gpflux.math import compute_A_inv_b
 from gpflux.layers import GPLayer, LatentVariableLayer
+from gpflux.math import compute_A_inv_b
 from gpflux.models import DeepGP
 from gpflux.sampling.sample import Sample
 
 from ...types import TensorType
 from ...utils import DEFAULTS, flatten_leading_dims
-from ..interfaces import ReparametrizationSampler, TrajectoryFunction, TrajectorySampler, TrajectoryFunctionClass
+from ..interfaces import (
+    ReparametrizationSampler,
+    TrajectoryFunction,
+    TrajectoryFunctionClass,
+    TrajectorySampler,
+)
 from .interface import GPfluxPredictor
 
 
@@ -214,6 +216,7 @@ class DeepGaussianProcessDecoupledTrajectorySampler(TrajectorySampler[GPfluxPred
     This sampler provides approximate trajectory samples using decoupled sampling (i.e. Matheron's
     rule) for GPflux DeepGP models.
     """
+
     def __init__(
         self,
         model: GPfluxPredictor,
@@ -233,7 +236,8 @@ class DeepGaussianProcessDecoupledTrajectorySampler(TrajectorySampler[GPfluxPred
         self._num_features = num_features
         self._model_gpflux = model.model_gpflux
         self._sampling_layers = [
-            DeepGaussianProcessDecoupledLayer(layer, num_features) for layer in self._model_gpflux.f_layers
+            DeepGaussianProcessDecoupledLayer(layer, num_features)
+            for layer in self._model_gpflux.f_layers
         ]
 
     def __repr__(self) -> str:
@@ -285,6 +289,7 @@ class DeepGaussianProcessDecoupledLayer(ABC):
     Layer that samples a decoupled trajectory from a GPflux :class:~`gpflux.layers.GPLayer` using
     Matheron's rule (:cite:`wilson2020efficiently`).
     """
+
     def __init__(
         self,
         layer: GPLayer,
@@ -343,17 +348,20 @@ class DeepGaussianProcessDecoupledLayer(ABC):
         flat_x, unflatten = flatten_leading_dims(x)
         flattened_feature_evaluations = self._feature_functions(flat_x)
         feature_evaluations = unflatten(flattened_feature_evaluations)[
-            ..., None]  # [N, B, L + M, 1]
+            ..., None
+        ]  # [N, B, L + M, 1]
 
-        return tf.reduce_sum(feature_evaluations * self._weights_sample, -2) + self._layer.mean_function(x)  # [N, B, P]
+        return tf.reduce_sum(
+            feature_evaluations * self._weights_sample, -2
+        ) + self._layer.mean_function(
+            x
+        )  # [N, B, P]
 
     def resample(self) -> None:
         """
         Efficiently resample in-place without retracing.
         """
-        self._weights_sample.assign(
-            self._weight_sampler(self._batch_size)
-        )
+        self._weights_sample.assign(self._weight_sampler(self._batch_size))
 
     def update(self) -> None:
         """
@@ -387,20 +395,16 @@ class DeepGaussianProcessDecoupledLayer(ABC):
                 (inducing_points, ["M", "D"]),
                 (q_mu, ["M", "P"]),
                 (q_sqrt, ["P", "M", "M"]),
-                (Kmm, ["M", "M"])
+                (Kmm, ["M", "M"]),
             ]
         )
 
         def weight_sampler(batch_size: int) -> TensorType:
-            prior_weights = tf.random.normal(
-                [batch_size, self._num_features, P], dtype=tf.float64
-            )
+            prior_weights = tf.random.normal([batch_size, self._num_features, P], dtype=tf.float64)
 
             u_noise_sample = tf.matmul(
                 q_sqrt,  # [P, M, M]
-                tf.random.normal(
-                    [batch_size, P, M, 1], dtype=tf.float64
-                )  # [B, P, M, 1]
+                tf.random.normal([batch_size, P, M, 1], dtype=tf.float64),  # [B, P, M, 1]
             )  # [B, P, M, 1]
             u_sample = q_mu + tf.linalg.matrix_transpose(u_noise_sample[..., 0])  # [B, M, P]
 
@@ -408,7 +412,7 @@ class DeepGaussianProcessDecoupledLayer(ABC):
                 Luu = tf.linalg.cholesky(Kmm)  # [M, M]
                 u_sample = tf.matmul(Luu, u_sample)
 
-            phi_Z = self._feature_functions(inducing_points)[:, :self._num_features]
+            phi_Z = self._feature_functions(inducing_points)[:, : self._num_features]
             weight_space_prior_Z = phi_Z @ prior_weights  # [B, M, P]
 
             diff = u_sample - weight_space_prior_Z  # [B, M, P]
@@ -427,11 +431,7 @@ class ResampleableDecoupledDeepGaussianProcessFeatureFunctions(RFF):  # type: ig
     basis functions.
     """
 
-    def __init__(
-        self,
-        layer: GPLayer,
-        n_components: int
-    ):
+    def __init__(self, layer: GPLayer, n_components: int):
         """
         :param layer: The layer that will be approximated by the feature functions.
         :param n_components: The number of features.
@@ -492,10 +492,7 @@ class dgp_feature_decomposition_trajectory(TrajectoryFunctionClass):
     resample.
     """
 
-    def __init__(
-        self,
-        sampling_layers: List[DeepGaussianProcessDecoupledLayer]
-    ):
+    def __init__(self, sampling_layers: List[DeepGaussianProcessDecoupledLayer]):
         """
         :param sampling_layers: Samplers corresponding to each layer of the DGP model.
         """
