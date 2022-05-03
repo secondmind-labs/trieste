@@ -262,3 +262,14 @@ def test_gaussian_network_is_correctly_constructed(
     assert isinstance(network_built.layers[0], tf.keras.layers.InputLayer)
     assert len(network_built.layers[1:-2]) == num_hidden_layers
     assert isinstance(network_built.layers[-1], tfp.layers.DistributionLambda)
+
+
+def test_multivariatenormaltril_layer_fails_to_serialilze() -> None:
+    # tfp.layers.MultivariateNormalTriL currently fails to serialize out of the box
+    # (with different errors in TF2.4 and TF2.5). When that's fixed we can remove our workaround.
+    layer = tfp.layers.MultivariateNormalTriL(1)
+    with pytest.raises(Exception):
+        serialized = tf.keras.utils.serialize_keras_object(layer)
+        tf.keras.utils.deserialize_keras_object(
+            serialized, custom_objects={"MultivariateNormalTriL": tfp.layers.MultivariateNormalTriL}
+        )

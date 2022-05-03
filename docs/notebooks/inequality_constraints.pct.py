@@ -333,7 +333,7 @@ mask_fail1 = (
     data[CONSTRAINT].observations.numpy().flatten().astype(int) > Sim2.threshold
 )
 mask_fail2 = (
-    data[CONSTRAINT].observations.numpy().flatten().astype(int)
+    data[CONSTRAINT2].observations.numpy().flatten().astype(int)
     > Sim2.threshold2
 )
 mask_fail = np.logical_or(mask_fail1, mask_fail2)

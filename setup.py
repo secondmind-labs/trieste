@@ -38,6 +38,7 @@ setup(
     python_requires="~=3.7",
     install_requires=[
         "absl-py",
+        "dill",
         "gpflow>=2.4.0",
         "gpflux>=0.2.3",
         "numpy",

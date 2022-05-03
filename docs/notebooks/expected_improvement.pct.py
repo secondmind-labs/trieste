@@ -219,7 +219,7 @@ fig = add_bo_points_plotly(
 fig.show()
 
 # %% [markdown]
-# We can also inspect the model hyperparameters, and use the history to see how the length scales evolved over iterations. Note the history is saved at the *start* of each step, and as such never includes the final result, so we'll add that ourselves.
+# We can also inspect the model hyperparameters, and use the history to see how the length scales evolved over iterations. By default, the model history is kept in memory though it's possibe to store it to disk instead using optimize's `track_path` argument (see [this tutorial](recovering_from_errors.ipynb)). Note also the history is saved at the *start* of each step, and as such never includes the final result, so we'll add that ourselves.
 
 # %%
 gpflow.utilities.print_summary(

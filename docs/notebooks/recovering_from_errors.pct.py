@@ -125,9 +125,34 @@ if result.is_ok:
     plot_bo_points(data.query_points.numpy(), ax[0, 0], 5, arg_min_idx)
 
 # %% [markdown]
+# ## Saving results to disk
+#
+# For convenience, tracked state is stored in memory by default. However, this can potentially result in Out of Memory errors and also makes it difficult to recover from intentional or unintentional Python process shutdowns. You can instead store the result on disk by passing in a `track_path` argument to `optimize`.
+#
+# **Note that trieste currently saves models using pickling, which is not portable and not secure. You should only try to load optimization results that you generated yourself on the same system (or a system with the same version libraries).**
+
+# %%
+result, history = bo.optimize(
+    num_steps, initial_data, model, acquisition_rule, None, track_path="history"
+).astuple()
+
+# %% [markdown]
+# The returned `history` records are now stored in files rather than in memory. Their constituents can be accessed just as before, which loads the content into memory only when required. The `result` is automatically loaded into memory, but is also saved to disk with the rest of the history.
+
+# %%
+print(history[-1])
+print(history[-1].model)
+
+# %% [markdown]
+# It is also possible to reload the `OptimizationResult` in a new Python process:
+
+# %%
+trieste.bayesian_optimizer.OptimizationResult.from_path("history")
+
+# %% [markdown]
 # ## Out of memory errors
 #
-# At the moment, trieste's `OptimizationResult` doesn't allow you to recover from Out Of Memory errors, which normally result in the Python process shutting down. One possible cause of memory errors is trying to evaluate an acquisition function over a large dataset, e.g. when initializing our gradient-based optimizers. To work around this, you can specify that evaluations of the acquisition function be split up: this splits them (on the first dimension) into batches of a given size, then stitches them back together. To do this, you need to provide an explicit split optimizer and specify a desired batch size.
+# Since Out Of Memory errors normally result in the Python process shutting down, saving tracked state to disk as described above is an important tool in recovering from them. One possible cause of memory errors is trying to evaluate an acquisition function over a large dataset, e.g. when initializing our gradient-based optimizers. To work around this, you can specify that evaluations of the acquisition function be split up: this splits them (on the first dimension) into batches of a given size, then stitches them back together. To do this, you need to provide an explicit split optimizer and specify a desired batch size.
 
 # %%
 from trieste.acquisition.optimizer import automatic_optimizer_selector

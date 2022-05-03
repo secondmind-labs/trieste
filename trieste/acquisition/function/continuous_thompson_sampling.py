@@ -126,8 +126,9 @@ class ParallelContinuousThompsonSampling(
             )
 
         self._trajectory_sampler = model.trajectory_sampler()
-        function = self._trajectory_sampler.get_trajectory()
-        return negate_trajectory_function(function)
+        self._trajectory = self._trajectory_sampler.get_trajectory()
+        self._negated_trajectory = negate_trajectory_function(self._trajectory)
+        return self._negated_trajectory
 
     def update_acquisition_function(
         self,
@@ -141,13 +142,16 @@ class ParallelContinuousThompsonSampling(
         :param dataset: The data from the observer (not used).
         :return: A new trajectory sampled from the model.
         """
+        if function is not self._negated_trajectory:
+            raise ValueError("Wrong trajectory function passed into update_acquisition_function")
 
-        new_function = self._trajectory_sampler.update_trajectory(function)
+        new_function = self._trajectory_sampler.update_trajectory(self._trajectory)
 
-        if new_function is not function:
-            function = negate_trajectory_function(new_function)
+        if new_function is not self._trajectory:  # need to negate again if not modified in place
+            self._trajectory = new_function
+            self._negated_trajectory = negate_trajectory_function(new_function)
 
-        return function
+        return self._negated_trajectory
 
 
 def negate_trajectory_function(function: TrajectoryFunction) -> TrajectoryFunction:
