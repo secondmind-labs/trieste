@@ -13,7 +13,10 @@
 # limitations under the License.
 
 from __future__ import annotations
-from typing import List, Tuple, Callable, Optional
+from abc import ABC
+from typing import List, Tuple, Callable, Optional, cast
+
+import gpflow.kernels
 
 try:
     from gpflux.layers.basis_functions.fourier_features import RandomFourierFeaturesCosine as RFF
@@ -33,7 +36,7 @@ from gpflux.models import DeepGP
 from gpflux.sampling.sample import Sample
 
 from ...types import TensorType
-from ...utils import DEFAULTS
+from ...utils import DEFAULTS, flatten_leading_dims
 from ..interfaces import ReparametrizationSampler, TrajectoryFunction, TrajectorySampler, TrajectoryFunctionClass
 from .interface import GPfluxPredictor
 
@@ -206,230 +209,311 @@ class DeepGaussianProcessReparamSampler(ReparametrizationSampler[GPfluxPredictor
         return samples
 
 
-def _efficient_sample_matheron_rule(
-    inducing_variable: InducingVariables,
-    kernel: Kernel,
-    q_mu: tf.Tensor,
-    *,
-    q_sqrt: Optional[TensorType] = None,
-    whiten: bool = False,
-) -> Sample:
+class DeepGaussianProcessDecoupledTrajectorySampler(TrajectorySampler[GPfluxPredictor]):
     """
-    Implements the efficient sampling rule from :cite:t:`wilson2020efficiently` using
-    the Matheron rule. To use this sampling scheme, the GP has to have a
-    ``kernel`` of the :class:`KernelWithFeatureDecomposition` type .
-    :param kernel: A kernel of the :class:`KernelWithFeatureDecomposition` type, which
-        holds the covariance function and the kernel's features and
-        coefficients.
-    :param q_mu: A tensor with the shape ``[M, P]``.
-    :param q_sqrt: A tensor with the shape ``[P, M, M]``.
-    :param whiten: Determines the parameterisation of the inducing variables.
+    This sampler provides approximate trajectory samples using decoupled sampling (i.e. Matheron's
+    rule) for GPflux DeepGP models.
     """
-    L = tf.shape(kernel.feature_coefficients)[0]  # num eigenfunctions  # noqa: F841
+    def __init__(
+        self,
+        model: GPfluxPredictor,
+        num_features: int = 1000,
+    ):
+        if not isinstance(model, GPfluxPredictor):
+            raise ValueError(
+                f"Model must be a gpflux.interface.GPfluxPredictor, received {type(model)}"
+            )
+        if not isinstance(model.model_gpflux, DeepGP):
+            raise ValueError(
+                f"GPflux model must be a gpflux.models.DeepGP, received {type(model.model_gpflux)}"
+            )
 
-    prior_weights = tf.sqrt(kernel.feature_coefficients) * tf.random.normal(
-        tf.shape(kernel.feature_coefficients), dtype=default_float()
-    )  # [L, 1]
+        super().__init__(model)
+        tf.debugging.assert_positive(num_features)
+        self._num_features = num_features
+        self._model_gpflux = model.model_gpflux
+        self._sampling_layers = [
+            DeepGaussianProcessDecoupledLayer(layer, num_features) for layer in self._model_gpflux.f_layers
+        ]
 
-    M, P = tf.shape(q_mu)[0], tf.shape(q_mu)[1]  # num inducing, num output heads
-    u_sample_noise = tf.matmul(
-        q_sqrt,
-        tf.random.normal((P, M, 1), dtype=default_float()),  # [P, M, M]  # [P, M, 1]
-    )  # [P, M, 1]
-    Kmm = Kuu(inducing_variable, kernel, jitter=default_jitter())  # [M, M]
-    tf.debugging.assert_equal(tf.shape(Kmm), [M, M])
-    u_sample = q_mu + tf.linalg.matrix_transpose(u_sample_noise[..., 0])  # [M, P]
+    def __repr__(self) -> str:
+        """"""
+        return f"""{self.__class__.__name__}(
+        {self._model!r},
+        {self._num_features!r})
+        """
 
-    if whiten:
-        Luu = tf.linalg.cholesky(Kmm)  # [M, M]
-        u_sample = tf.matmul(Luu, u_sample)  # [M, P]
+    def get_trajectory(self) -> TrajectoryFunction:
+        """
+        Generate an approximate function draw (trajectory) from the deep GP model.
 
-    phi_Z = kernel.feature_functions(inducing_variable.Z)  # [M, L]
-    weight_space_prior_Z = phi_Z @ prior_weights  # [M, 1]
-    diff = u_sample - weight_space_prior_Z  # [M, P] -- using implicit broadcasting
-    v = compute_A_inv_b(Kmm, diff)  # [M, P]
-    tf.debugging.assert_equal(tf.shape(v), [M, P])
+        :return: A trajectory function representing an approximate trajectory from the deep GP,
+            taking an input of shape `[N, D]` and returning shape `[N, 1]`
+        """
 
-    class WilsonSample(Sample):
-        def __call__(self, X: TensorType) -> tf.Tensor:
-            """
-            :param X: evaluation points [N, D]
-            :return: function value of sample [N, P]
-            """
-            N = tf.shape(X)[0]
-            phi_X = kernel.feature_functions(X)  # [N, L]
-            weight_space_prior_X = phi_X @ prior_weights  # [N, 1]
-            Knm = tf.linalg.matrix_transpose(Kuf(inducing_variable, kernel, X))  # [N, M]
-            function_space_update_X = Knm @ v  # [N, P]
+        return dgp_feature_decomposition_trajectory(self._sampling_layers)
 
-            tf.debugging.assert_equal(tf.shape(weight_space_prior_X), [N, 1])
-            tf.debugging.assert_equal(tf.shape(function_space_update_X), [N, P])
+    def update_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction:
+        """
+        Efficiently update a :const:`TrajectoryFunction` to reflect an update in its underlying
+        :class:`ProbabilisticModel` and resample accordingly.
 
-            return weight_space_prior_X + function_space_update_X  # [N, P]
+        :param trajectory: The trajectory function to be updated and resampled.
+        :return: The updated and resampled trajectory function.
+        """
 
-    return WilsonSample()
+        tf.debugging.Assert(isinstance(trajectory, dgp_feature_decomposition_trajectory), [])
+
+        cast(dgp_feature_decomposition_trajectory, trajectory).update()
+        return trajectory
+
+    def resample_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction:
+        """
+        Efficiently resample a :const:`TrajectoryFunction` in-place to avoid function retracing
+        with every new sample.
+
+        :param trajectory: The trajectory function to be resampled.
+        :return: The new resampled trajectory function.
+        """
+        tf.debugging.Assert(isinstance(trajectory, dgp_feature_decomposition_trajectory), [])
+        cast(dgp_feature_decomposition_trajectory, trajectory).resample()
+        return trajectory
 
 
-# class DeepGaussianProcessDecoupledFeatureFunctions:
-#     def __init__(self, model: DeepGP, n_components: int):
-#         self._fourier_features_list = []
-#         self._canonical_features_list = []
-#
-#         for i, layer in enumerate(model.f_layers):
-#             if isinstance(layer, LatentVariableLayer):
-#                 raise ValueError("LatentVariableLayer is not currently supported with decoupled"
-#                                  "trajectory sampling")
-#
-#             if isinstance(layer.inducing_variable, InducingPoints):
-#                 inducing_variable = layer.inducing_variable
-#             else:
-#                 inducing_variable = layer.inducing_variable.inducing_variable
-#             fourier_features_layer = RFF(layer.kernel, n_components, dtype=tf.float64)
-#             dummy_X = inducing_variable.Z[0:1, :]
-#             fourier_features_layer.__call__(dummy_X)
-#             fourier_features_layer.b = tf.Variable(fourier_features_layer.b)
-#             fourier_features_layer.W = tf.Variable(fourier_features_layer.W)
-#             self._fourier_features_list.append(fourier_features_layer)
-#
-#             canonical_features_function = lambda x: tf.linalg.matrix_transpose(
-#                 layer.kernel.K(inducing_variable.Z, x)
-#             )
-#             self._canonical_features_list.append(canonical_features_function)
-#
-#     def resample(self) -> None:
-#         """
-#         Resample weights and biases
-#         """
-#
-#         for features in self._fourier_features_list:
-#             if not hasattr(features, "_bias_init"):
-#                 features.b.assign(features._sample_bias(tf.shape(features.b), dtype=features._dtype))
-#                 features.W.assign(features._sample_weights(tf.shape(features.W), dtype=features._dtype))
-#             else:
-#                 features.b.assign(features._bias_init(tf.shape(features.b), dtype=features._dtype))
-#                 features.W.assign(features._weight_init(tf.shape(features.W), dtype=features._dtype))
-#
-#     def __call__(self) -> Tuple[List, List]:
-#         return self._fourier_features_list, self._canonical_features_list
-#
-#
-# class DeepGaussianProcessDecoupledTrajectorySampler(TrajectorySampler[GPfluxPredictor]):
-#     """
-#     This sampler provides approximate trajectory samples using decoupled sampling (i.e. Matheron's
-#     rule).
-#     """
-#     def __init__(
-#         self,
-#         model: GPfluxPredictor,
-#         num_features: int = 1000,
-#     ):
-#         if not isinstance(model, GPfluxPredictor):
-#             raise ValueError(
-#                 f"Model must be a gpflux.interface.GPfluxPredictor, received {type(model)}"
-#             )
-#         super().__init__(model)
-#         tf.debugging.assert_positive(num_features)
-#         self._num_features = num_features
-#         self._model_gpflux = model.model_gpflux
-#         self._feature_functions = DeepGaussianProcessDecoupledFeatureFunctions(self._model_gpflux,
-#                                                                                num_features)
-#
-#     def __repr__(self) -> str:
-#         """"""
-#         return f"""{self.__class__.__name__}(
-#         {self._model!r},
-#         {self._feature_functions!r})
-#         """
-#
-#     def get_trajectory(self) -> TrajectoryFunction:
-#         weight_sampler = self._prepare_weight_sampler()
-#
-#         return feature_decomposition_trajectory(
-#             feature_functions=self._feature_functions(),
-#             weight_sampler=weight_sampler
-#         )
-#
-#     def _prepare_weight_sampler(self) -> Callable[[int], TensorType]:
-#
-#         def weight_sampler(batch_size: int) -> Tuple[TensorType, TensorType]:
-#
-#
-#
-# class feature_decomposition_trajectory(TrajectoryFunctionClass):
-#     r"""
-#     An approximate sample from a Gaussian processes' posterior samples represented as a
-#     finite weighted sum of features.
-#
-#     A trajectory is given by
-#
-#     .. math:: \hat{f}(x) = \sum_{i=1}^m \phi_i(x)\theta_i
-#
-#     where :math:`\phi_i` are m feature functions and :math:`\theta_i` are
-#     feature weights sampled from a posterior distribution.
-#
-#     The number of trajectories (i.e. batch size) is determined from the first call of the
-#     trajectory. In order to change the batch size, a new :class:`TrajectoryFunction` must be built.
-#     """
-#
-#     def __init__(
-#         self,
-#         feature_functions: Callable[[TensorType], TensorType],
-#         weight_sampler: Callable[[int], TensorType],
-#     ):
-#         """
-#         :param feature_functions: Set of feature function.
-#         :param weight_sampler: New sampler that generates feature weight samples.
-#         """
-#         self._feature_functions = feature_functions
-#         self._weight_sampler = weight_sampler
-#         self._initialized = tf.Variable(False)
-#
-#         self._weights_sample = tf.Variable(  # dummy init to be updated before trajectory evaluation
-#             tf.ones([0, 0], dtype=tf.float64), shape=[None, None]
-#         )
-#
-#         self._batch_size = tf.Variable(
-#             0, dtype=tf.int32
-#         )  # dummy init to be updated before trajectory evaluation
-#
-#     @tf.function
-#     def __call__(self, x: TensorType) -> TensorType:  # [N, B, d] -> [N, B]
-#         """Call trajectory function."""
-#
-#         if not self._initialized:  # work out desired batch size from input
-#             self._batch_size.assign(tf.shape(x)[-2])  # B
-#             self.resample()  # sample B feature weights
-#             self._initialized.assign(True)
-#
-#         tf.debugging.assert_equal(
-#             tf.shape(x)[-2],
-#             self._batch_size.value(),
-#             message="""
-#             This trajectory only supports batch sizes of {self._batch_size}}.
-#             If you wish to change the batch size you must get a new trajectory
-#             by calling the get_trajectory method of the trajectory sampler.
-#             """,
-#         )
-#
-#         flat_x, unflatten = flatten_leading_dims(x)  # [N*B, d]
-#         flattened_feature_evaluations = self._feature_functions(flat_x)  # [N*B, m]
-#         feature_evaluations = unflatten(flattened_feature_evaluations)  # [N, B, m]
-#
-#         return tf.reduce_sum(feature_evaluations * self._weights_sample, -1)  # [N, B]
-#
-#     def resample(self) -> None:
-#         """
-#         Efficiently resample in-place without retracing.
-#         """
-#         self._weights_sample.assign(  # [B, m]
-#             self._weight_sampler(self._batch_size)
-#         )  # resample weights
-#
-#     def update(self, weight_sampler: Callable[[int], TensorType]) -> None:
-#         """
-#         Efficiently update the trajectory with a new weight distribution and resample its weights.
-#
-#         :param weight_sampler: New sampler that generates feature weight samples.
-#         """
-#         self._weight_sampler = weight_sampler  # update weight sampler
-#         self.resample()  # resample weights
+class DeepGaussianProcessDecoupledLayer(ABC):
+    """
+    Layer that samples a decoupled trajectory from a GPflux :class:~`gpflux.layers.GPLayer` using
+    Matheron's rule (:cite:`wilson2020efficiently`).
+    """
+    def __init__(
+        self,
+        layer: GPLayer,
+        num_features: int = 1000,
+    ):
+        """
+        :param layer: The layer that we wish to sample from.
+        :param num_features: The number of features to use in the random feature approximation.
+        :raise ValueError: If the layer is not a valid layer.
+        """
+        if not isinstance(layer, GPLayer):
+            raise ValueError(
+                f"Layers other than gpflux.layers.GPLayer are not currently supported, received"
+                f"{type(layer)}"
+            )
+
+        self._num_features = num_features
+        self._layer = layer
+
+        if isinstance(layer.kernel, gpflow.kernels.SharedIndependent):
+            self._kernel = layer.kernel.kernel
+        else:
+            self._kernel = layer.kernel
+
+        self._feature_functions = ResampleableDecoupledDeepGaussianProcessFeatureFunctions(
+            layer, num_features
+        )
+
+        self._weight_sampler = self._prepare_weight_sampler()
+
+        self._initialized = tf.Variable(False)
+
+        self._weights_sample = tf.Variable(
+            tf.ones([0, 0, 0], dtype=tf.float64), shape=[None, None, None]
+        )
+
+        self._batch_size = tf.Variable(0, dtype=tf.int32)
+
+    def __call__(self, x: TensorType) -> TensorType:  # [N, B, D] -> [N, B, P]
+        """Call trajectory function for layer."""
+        if not self._initialized:
+            self._batch_size.assign(tf.shape(x)[-2])
+            self.resample()
+            self._initialized.assign(True)
+
+        tf.debugging.assert_equal(
+            tf.shape(x)[-2],
+            self._batch_size.value(),
+            message=f"""
+            This trajectory only supports batch sizes of {self._batch_size}.
+            If you wish to change the batch size you must get a new trajectory
+            by calling the get_trajectory method of the trajectory sampler.
+            """,
+        )
+
+        flat_x, unflatten = flatten_leading_dims(x)
+        flattened_feature_evaluations = self._feature_functions(flat_x)
+        feature_evaluations = unflatten(flattened_feature_evaluations)[
+            ..., None]  # [N, B, L + M, 1]
+
+        return tf.reduce_sum(feature_evaluations * self._weights_sample, -2) + self._layer.mean_function(x)  # [N, B, P]
+
+    def resample(self) -> None:
+        """
+        Efficiently resample in-place without retracing.
+        """
+        self._weights_sample.assign(
+            self._weight_sampler(self._batch_size)
+        )
+
+    def update(self) -> None:
+        """
+        Efficiently update the trajectory with a new weight distribution and resample its weights.
+        """
+        self._weight_sampler = self._prepare_weight_sampler()
+        self.resample()
+
+    def _prepare_weight_sampler(self) -> Callable[[int], TensorType]:  # [B] -> [B, L+M, P]
+        """
+        Prepare the sampler function that provides samples of the feature weights for both the
+        RFF and canonical feature functions, i.e. we return a function that takes in a batch size
+        `B` and returns `B` samples for the weights of each of the `L` RFF features and `N`
+        canonical features.
+        """
+
+        if isinstance(self._layer.inducing_variable, InducingPoints):
+            inducing_points = self._layer.inducing_variable.Z  # [M, D]
+        else:
+            inducing_points = self._layer.inducing_variable.inducing_variable.Z  # [M, D]
+
+        q_mu = self._layer.q_mu  # [M, P]
+        q_sqrt = self._layer.q_sqrt  # [P, M, M]
+        Kmm = self._kernel.K(inducing_points, inducing_points)  # [M, M]
+        Kmm += tf.eye(tf.shape(inducing_points)[0], dtype=Kmm.dtype) * DEFAULTS.JITTER
+        whiten = self._layer.whiten
+        M, P = tf.shape(q_mu)[0], tf.shape(q_mu)[1]
+
+        tf.debugging.assert_shapes(
+            [
+                (inducing_points, ["M", "D"]),
+                (q_mu, ["M", "P"]),
+                (q_sqrt, ["P", "M", "M"]),
+                (Kmm, ["M", "M"])
+            ]
+        )
+
+        def weight_sampler(batch_size: int) -> TensorType:
+            prior_weights = tf.random.normal(
+                [batch_size, self._num_features, P], dtype=tf.float64
+            )
+
+            u_noise_sample = tf.matmul(
+                q_sqrt,  # [P, M, M]
+                tf.random.normal(
+                    [batch_size, P, M, 1], dtype=tf.float64
+                )  # [B, P, M, 1]
+            )  # [B, P, M, 1]
+            u_sample = q_mu + tf.linalg.matrix_transpose(u_noise_sample[..., 0])  # [B, M, P]
+
+            if whiten:
+                Luu = tf.linalg.cholesky(Kmm)  # [M, M]
+                u_sample = tf.matmul(Luu, u_sample)
+
+            phi_Z = self._feature_functions(inducing_points)[:, :self._num_features]
+            weight_space_prior_Z = phi_Z @ prior_weights  # [B, M, P]
+
+            diff = u_sample - weight_space_prior_Z  # [B, M, P]
+            v = compute_A_inv_b(Kmm, diff)  # [B, M, P]
+
+            return tf.concat([prior_weights, v], axis=1)  # [B, L + M, P]
+
+        return weight_sampler
+
+
+class ResampleableDecoupledDeepGaussianProcessFeatureFunctions(RFF):  # type: ignore[misc]
+    """
+    A wrapper around GPflux's random Fourier feature function that allows for efficient in-place
+    updating when generating new decompositions. In addition to providing Fourier features,
+    this class concatenates a layer's Fourier feature expansion with evaluations of the canonical
+    basis functions.
+    """
+
+    def __init__(
+        self,
+        layer: GPLayer,
+        n_components: int
+    ):
+        """
+        :param layer: The layer that will be approximated by the feature functions.
+        :param n_components: The number of features.
+        """
+        if not isinstance(layer, GPLayer):
+            raise NotImplementedError(
+                f"ResampleableDecoupledDeepGaussianProcessFeatureFunctions currently only work with"
+                f"gpflux.layers.GPLayer layers, received {type(layer)} instead"
+            )
+
+        if isinstance(layer.kernel, gpflow.kernels.SharedIndependent):
+            self._kernel = layer.kernel.kernel
+        else:
+            self._kernel = layer.kernel
+        self._n_components = n_components
+        super().__init__(self._kernel, self._n_components, dtype=tf.float64)
+
+        if isinstance(layer.inducing_variable, InducingPoints):
+            inducing_points = layer.inducing_variable.Z
+        else:
+            inducing_points = layer.inducing_variable.inducing_variable.Z
+
+        self._canonical_feature_functions = lambda x: tf.linalg.matrix_transpose(
+            self._kernel.K(inducing_points, x)
+        )
+
+        dummy_X = inducing_points[0:1, :]
+
+        self.__call__(dummy_X)
+        self.b: TensorType = tf.Variable(self.b)
+        self.W: TensorType = tf.Variable(self.W)
+
+    def resample(self) -> None:
+        """
+        Resample weights and biases
+        """
+        if not hasattr(self, "_bias_init"):
+            self.b.assign(self._sample_bias(tf.shape(self.b), dtype=self._dtype))
+            self.W.assign(self._sample_weights(tf.shape(self.W), dtype=self._dtype))
+        else:
+            self.b.assign(self._bias_init(tf.shape(self.b), dtype=self._dtype))
+            self.W.assign(self._weights_init(tf.shape(self.W), dtype=self._dtype))
+
+    def __call__(self, x: TensorType) -> TensorType:  # [N, D] -> [N, L + M]
+        """
+        Combine prior basis functions with canonical basic functions
+        """
+        fourier_feature_eval = super().__call__(x)  # [N, L]
+        canonical_feature_eval = self._canonical_feature_functions(x)  # [N, M]
+        return tf.concat([fourier_feature_eval, canonical_feature_eval], axis=-1)  # [N, L + M]
+
+
+class dgp_feature_decomposition_trajectory(TrajectoryFunctionClass):
+    """
+    An approximate sample from a deep Gaussian process's posterior, where the samples are
+    represented as a finite weighted sum of features. This class essentially takes a list of
+    :class:`DeepGaussianProcessDecoupledLayer`s and iterates through them to sample, update and
+    resample.
+    """
+
+    def __init__(
+        self,
+        sampling_layers: List[DeepGaussianProcessDecoupledLayer]
+    ):
+        """
+        :param sampling_layers: Samplers corresponding to each layer of the DGP model.
+        """
+        self._sampling_layers = sampling_layers
+
+    @tf.function
+    def __call__(self, x: TensorType) -> TensorType:
+        """Call trajectory function by looping through layers."""
+        for layer in self._sampling_layers:
+            x = layer(x)
+        return x[..., 0]  # Assume single output
+
+    def update(self) -> None:
+        """Update the layers."""
+        for layer in self._sampling_layers:
+            layer.update()
+
+    def resample(self) -> None:
+        """Resample the layers."""
+        for layer in self._sampling_layers:
+            layer.resample()

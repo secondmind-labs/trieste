@@ -31,8 +31,8 @@ from ..interfaces import (
 from ..optimizer import KerasOptimizer
 from .interface import GPfluxPredictor
 from .sampler import (
+    DeepGaussianProcessDecoupledTrajectorySampler,
     DeepGaussianProcessReparamSampler,
-    DeepGaussianProcessTrajectorySampler,
     sample_dgp,
 )
 
@@ -143,7 +143,7 @@ class DeepGaussianProcess(
 
         :return: The trajectory sampler.
         """
-        return DeepGaussianProcessTrajectorySampler(self)
+        return DeepGaussianProcessDecoupledTrajectorySampler(self)
 
     def update(self, dataset: Dataset) -> None:
         inputs = dataset.query_points
