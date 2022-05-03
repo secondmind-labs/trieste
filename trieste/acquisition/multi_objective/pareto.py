@@ -78,8 +78,8 @@ def get_reference_point(
     observations: TensorType,
 ) -> TensorType:
     """
-    default reference point calculation method: a Pareto front will firstly be
-    extracted and the reference point will be calculated upon this front.
+    Default reference point calculation method that calculates the reference
+    point according to a Pareto front extracted from set of observations.
 
     :param observations: observations referred to calculate the reference
         point, with shape [..., N, D]
