@@ -66,8 +66,15 @@ class DeepEnsemble(
     formulation in <cite data-cite="lakshminarayanan2017simple"/>, but any user-specified network
     can be supplied, as long as it has a Gaussian distribution as a final layer and follows the
     :class:`~trieste.models.keras.KerasEnsembleNetwork` interface.
+    
+    A word of caution in case a learning rate scheduler is used in ``fit_args`` to
+    :class:`KerasOptimizer` optimizer instance. Typically one would not want to continue with the
+    reduced learning rate in the subsequent Bayesian optimization step. Hence, we reset the
+    learning rate to the original one after calling the ``fit`` method. In case this is not the
+    behaviour you would like, you will need to subclass the model and overwrite the
+    :meth:`optimize` method.
 
-    Note that currently we do not support setting up the model with dictionary configs and saving
+    Currently we do not support setting up the model with dictionary configs and saving
     the model during Bayesian optimization loop (``track_state`` argument in
     :meth:`~trieste.bayesian_optimizer.BayesianOptimizer.optimize` method should be set to `False`).
     """
@@ -93,7 +100,7 @@ class DeepEnsemble(
             By default set to `False`.
         :param use_samples: Whether to use samples from final probabilistic layer as trajectories
             or mean predictions when calling :meth:`trajectory_sampler`. Samples can be used to
-            increase the diversity in case of optimizing very large batches of query points.
+            increase the diversity in case of optimizing very large batches of trajectories.
             By default set to `False` as it is not a thoroughly explored feature.
         :raise ValueError: If ``model`` is not an instance of
             :class:`~trieste.models.keras.KerasEnsemble` or ensemble has less than two base
@@ -124,6 +131,7 @@ class DeepEnsemble(
             loss=[self.optimizer.loss] * model.ensemble_size,
             metrics=[self.optimizer.metrics] * model.ensemble_size,
         )
+        self.original_lr = self.optimizer.optimizer.lr.numpy()
 
         self._model = model
         self._bootstrap = bootstrap
@@ -225,9 +233,7 @@ class DeepEnsemble(
         :return: The predicted mean and variance of the observations at the specified
             ``query_points``.
         """
-        query_points_transformed = self.prepare_query_points(query_points)
-
-        ensemble_distributions = self.model(query_points_transformed)
+        ensemble_distributions = self.ensemble_distributions(query_points)
         predicted_means = tf.math.reduce_mean(
             [dist.mean() for dist in ensemble_distributions], axis=0
         )
@@ -254,9 +260,7 @@ class DeepEnsemble(
         :return: The predicted mean and variance of the observations at the specified
             ``query_points`` for each member of the ensemble.
         """
-        query_points_transformed = self.prepare_query_points(query_points)
-
-        ensemble_distributions = self.model(query_points_transformed)
+        ensemble_distributions = self.ensemble_distributions(query_points)
         predicted_means = tf.convert_to_tensor([dist.mean() for dist in ensemble_distributions])
         predicted_vars = tf.convert_to_tensor([dist.variance() for dist in ensemble_distributions])
 
@@ -343,6 +347,11 @@ class DeepEnsemble(
 
         x, y = self.prepare_dataset(dataset)
         self.model.fit(x=x, y=y, **self.optimizer.fit_args)
+
+        # Reset lr in case there was an lr schedule: a schedule will have change the learning rate,
+        # so that the next time we call `optimize` the starting learning rate would be different.
+        # Therefore we make sure the learning rate is set back to its initial value.
+        self.optimizer.optimizer.lr.assign(self.original_lr)
 
     def __getstate__(self) -> dict[str, Any]:
         # When pickling use to_json to save any optimizer fit_arg callback models

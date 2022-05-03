@@ -35,12 +35,17 @@ class EnsembleTrajectorySampler(TrajectorySampler[EnsembleModel]):
     """
     This class builds functions that approximate a trajectory by randomly choosing a network from
     the ensemble and using its predicted means as a trajectory.
+
+    Option `use_samples` can be used to increase the diversity in case of optimizing very large
+    batches of trajectories. In this case the sampler will use samples from distributions rather
+    than means as trajectories. It is an experimental feature and hence should be used with caution.
     """
 
     def __init__(self, model: EnsembleModel, use_samples: bool = False):
         """
         :param model: The ensemble model to sample from.
-        :param use_samples:
+        :param use_samples: Whether to use samples from final probabilistic layer as trajectories
+            or mean predictions (default). 
         """
         if not isinstance(model, EnsembleModel):
             raise NotImplementedError(
@@ -99,12 +104,16 @@ class ensemble_trajectory(TrajectoryFunctionClass):
     """
     Generate an approximate function draw (trajectory) by randomly choosing a batch B of
     networks from the ensemble and using their predicted means as trajectories.
+
+    Option `use_samples` can be used to increase the diversity in case of optimizing very large
+    batches of trajectories. It is experimental feature and hence should be used with caution.
     """
 
     def __init__(self, model: EnsembleModel, use_samples: bool):
         """
         :param model: The model of the objective function.
-        :param use_samples:
+        :param use_samples: Whether to use samples from final probabilistic layer as trajectories
+            or mean predictions.
         """
         self._model = model
         self._use_samples = use_samples
