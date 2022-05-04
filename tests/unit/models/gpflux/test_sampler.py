@@ -36,7 +36,11 @@ from tests.util.models.gpflow.models import QuadraticMeanAndRBFKernel
 from tests.util.models.gpflux.models import two_layer_trieste_dgp
 from trieste.data import Dataset
 from trieste.models.gpflux import DeepGaussianProcess
-from trieste.models.gpflux.sampler import DeepGaussianProcessReparamSampler, DeepGaussianProcessDecoupledTrajectorySampler, dgp_feature_decomposition_trajectory
+from trieste.models.gpflux.sampler import (
+    DeepGaussianProcessDecoupledTrajectorySampler,
+    DeepGaussianProcessReparamSampler,
+    dgp_feature_decomposition_trajectory,
+)
 from trieste.space import Box
 from trieste.types import TensorType
 
@@ -90,7 +94,7 @@ def _build_dataset_and_train_deep_gp(
         "epochs": 200,
         "batch_size": 1000,
     }
-    
+
     model.optimize(dataset)
 
     return dataset, model
@@ -179,7 +183,9 @@ def test_dgp_decoupled_trajectory_sampler_raises_for_invalid_number_of_features(
 
 def test_dgp_decoupled_trajectory_sampler_raises_for_invalid_model(keras_float: None) -> None:
     with pytest.raises(ValueError, match="Model must be .*"):
-        DeepGaussianProcessDecoupledTrajectorySampler(QuadraticMeanAndRBFKernel(), 10)  # type: ignore
+        DeepGaussianProcessDecoupledTrajectorySampler(
+            QuadraticMeanAndRBFKernel(), 10  # type: ignore
+        )
 
 
 @pytest.mark.parametrize("num_evals", [10, 100])
@@ -318,9 +324,7 @@ def test_dgp_decoupled_trajectory_resample_trajectory_provides_new_samples_witho
     for _ in range(5):
         trajectory = sampler.resample_trajectory(trajectory)
         evals_new = trajectory(xs)
-        npt.assert_array_less(
-            1e-1, tf.reduce_max(tf.abs(evals_1 - evals_new))
-        )
+        npt.assert_array_less(1e-1, tf.reduce_max(tf.abs(evals_1 - evals_new)))
 
     assert trajectory.__call__._get_tracing_count() == 1  # type: ignore
 
@@ -357,5 +361,3 @@ def test_dgp_decoupled_trajectory_update_trajectory_updates_and_doesnt_retrace(
         )  # two samples should be different
 
     assert trajectory.__call__._get_tracing_count() == 1  # type: ignore
-
-
