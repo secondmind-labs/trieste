@@ -30,7 +30,7 @@ importlib-metadata==4.11.3
 importlib-resources==5.7.1
 ipython==7.33.0
 jedi==0.18.1
-Jinja2==3.1.2
+Jinja2==3.0.3
 jsonschema==4.4.0
 jupyter-client==7.3.0
 jupyter-core==4.10.0
