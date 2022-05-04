@@ -62,10 +62,11 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder[Probabilistic
         """
         :param reference_point_spec: this method is used to determine how the reference point is
             calculated. If a Callable function specified, it is expected to take existing
-            observations and return a reference point with shape [D] (D represents number of
-            objectives). If the Pareto front location is known, this arg can be used to specify
-            a fixed reference point in each bo iteration. A dynamic reference point updating
-            strategy is used by default to set a reference point according to the datasets.
+            posterior mean-based observations (to screen out the observation noise) and return
+            a reference point with shape [D] (D represents number of objectives). If the Pareto
+            front location is known, this arg can be used to specify a fixed reference point
+            in each bo iteration. A dynamic reference point updating strategy is used by
+            default to set a reference point according to the datasets.
         """
         if callable(reference_point_spec):
             self._ref_point_spec: tf.Tensor | Callable[..., TensorType] = reference_point_spec
@@ -271,11 +272,12 @@ class BatchMonteCarloExpectedHypervolumeImprovement(
         :param sample_size: The number of samples from model predicted distribution for
             each batch of points.
         :param reference_point_spec: this method is used to determine how the reference point is
-            calculated. If a Callable function specified, it is expected to take existing pareto
-            front and return a reference point with shape [D] (D represents number of objectives).
-            If the Pareto front location is known, this arg can be used to specify a fixed
-            reference point in each bo iteration. A dynamic reference point updating strategy is
-            used by default to set a reference point according to the datasets.
+            calculated. If a Callable function specified, it is expected to take existing
+            posterior mean-based observations (to screen out the observation noise) and return
+            a reference point with shape [D] (D represents number of objectives). If the Pareto
+            front location is known, this arg can be used to specify a fixed reference point
+            in each bo iteration. A dynamic reference point updating strategy is used by
+            default to set a reference point according to the datasets.
         :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
             the covariance matrix.
         :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive, or
@@ -435,11 +437,12 @@ class ExpectedConstrainedHypervolumeImprovement(
         :param min_feasibility_probability: The minimum probability of feasibility for a
             "best point" to be considered feasible.
         :param reference_point_spec: this method is used to determine how the reference point is
-            calculated. If a Callable function specified, it is expected to take existing feasible
-            observations and return a reference point with shape [D] (D represents number of
-            objectives). If the feasible Pareto front location is known, this arg can be used to
-            specify a fixed reference point in each bo iteration. A dynamic reference point
-            updating strategy is used by default to set a reference point according to the datasets.
+            calculated. If a Callable function specified, it is expected to take existing posterior
+            mean-based feasible observations (to screen out the observation noise) and return a
+            reference point with shape [D] (D represents number of objectives). If the feasible
+            Pareto front location is known, this arg can be used to specify a fixed reference
+            point in each bo iteration. A dynamic reference point updating strategy is used by
+            default to set a reference point according to the datasets.
         """
         super().__init__(objective_tag, constraint_builder, min_feasibility_probability)
         if callable(reference_point_spec):
