@@ -286,7 +286,7 @@ class DeepGaussianProcessDecoupledTrajectorySampler(TrajectorySampler[GPfluxPred
 
 class DeepGaussianProcessDecoupledLayer(ABC):
     """
-    Layer that samples a decoupled trajectory from a GPflux :class:~`gpflux.layers.GPLayer` using
+    Layer that samples a decoupled trajectory from a GPflux :class:`~gpflux.layers.GPLayer` using
     Matheron's rule (:cite:`wilson2020efficiently`).
     """
 
@@ -488,7 +488,7 @@ class dgp_feature_decomposition_trajectory(TrajectoryFunctionClass):
     """
     An approximate sample from a deep Gaussian process's posterior, where the samples are
     represented as a finite weighted sum of features. This class essentially takes a list of
-    :class:`DeepGaussianProcessDecoupledLayer`s and iterates through them to sample, update and
+    :class:`DeepGaussianProcessDecoupledLayer`\s and iterates through them to sample, update and
     resample.
     """
 
