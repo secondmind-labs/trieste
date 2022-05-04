@@ -485,7 +485,7 @@ class ResampleableDecoupledDeepGaussianProcessFeatureFunctions(RFF):  # type: ig
 
 
 class dgp_feature_decomposition_trajectory(TrajectoryFunctionClass):
-    """
+    r"""
     An approximate sample from a deep Gaussian process's posterior, where the samples are
     represented as a finite weighted sum of features. This class essentially takes a list of
     :class:`DeepGaussianProcessDecoupledLayer`\s and iterates through them to sample, update and
