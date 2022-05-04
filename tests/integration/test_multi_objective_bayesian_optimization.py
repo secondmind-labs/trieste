@@ -51,6 +51,16 @@ from trieste.types import TensorType
     [
         pytest.param(
             20,
+            EfficientGlobalOptimization(
+                ExpectedHypervolumeImprovement(tf.constant([1.1, 1.1], dtype=tf.float64)).using(
+                    OBJECTIVE
+                )
+            ),
+            -3.65,
+            id="ehvi_fixed_reference_pts",
+        ),
+        pytest.param(
+            20,
             EfficientGlobalOptimization(ExpectedHypervolumeImprovement().using(OBJECTIVE)),
             -3.65,
             id="ExpectedHypervolumeImprovement",
@@ -64,6 +74,19 @@ from trieste.types import TensorType
             ),
             -3.44,
             id="BatchMonteCarloExpectedHypervolumeImprovement/2",
+        ),
+        pytest.param(
+            15,
+            EfficientGlobalOptimization(
+                BatchMonteCarloExpectedHypervolumeImprovement(
+                    sample_size=500,
+                    reference_point_spec=tf.constant([1.1, 1.1], dtype=tf.float64),
+                ).using(OBJECTIVE),
+                num_query_points=2,
+                optimizer=generate_continuous_optimizer(num_initial_samples=500),
+            ),
+            -3.44,
+            id="qehvi_vlmop2_q_2_fixed_reference_pts",
         ),
         pytest.param(
             10,
