@@ -22,9 +22,6 @@ ipython
 nbsphinx
 sphinxcontrib-bibtex
 
-# pin typing-extensions so we're compatible with venvs that have tensorflow installed
-typing-extensions~=3.7.4
-
 # pin to version of TF used in prod
 tensorflow ~= 2.4.1
 tensorflow-probability ~= 0.12.0
