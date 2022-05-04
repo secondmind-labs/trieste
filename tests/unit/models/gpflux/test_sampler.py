@@ -41,8 +41,8 @@ from tests.util.models.gpflux.models import two_layer_trieste_dgp
 from trieste.data import Dataset
 from trieste.models.gpflux import DeepGaussianProcess
 from trieste.models.gpflux.sampler import (
-    DeepGaussianProcessDecoupledTrajectorySampler,
     DeepGaussianProcessDecoupledLayer,
+    DeepGaussianProcessDecoupledTrajectorySampler,
     DeepGaussianProcessReparamSampler,
     dgp_feature_decomposition_trajectory,
 )
@@ -388,7 +388,7 @@ def test_dgp_decoupled_layer_raises_for_invalid_number_of_features(
         gpflow.kernels.SquaredExponential(),
         tf.random.normal([5, 2], dtype=tf.float64),
         num_data=10,
-        num_latent_gps=2
+        num_latent_gps=2,
     )
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
@@ -397,11 +397,12 @@ def test_dgp_decoupled_layer_raises_for_invalid_number_of_features(
 
 def test_dgp_decoupled_layer_raises_for_invalid_kernel() -> None:
     layer = gpflux.layers.GPLayer(
-        gpflow.kernels.SeparateIndependent([gpflow.kernels.SquaredExponential(),
-                                           gpflow.kernels.SquaredExponential()]),
+        gpflow.kernels.SeparateIndependent(
+            [gpflow.kernels.SquaredExponential(), gpflow.kernels.SquaredExponential()]
+        ),
         tf.random.normal([5, 2], dtype=tf.float64),
         num_data=10,
-        num_latent_gps=2
+        num_latent_gps=2,
     )
 
     with pytest.raises(ValueError, match="Multioutput kernels .*"):
@@ -426,8 +427,9 @@ def test_dgp_decoupled_layer_returns_trajectory_with_correct_shapes(
     xs_with_dummy_batch_dim = tf.expand_dims(xs, -2)  # [N, 1, D]
     xs_with_full_batch_dim = tf.tile(xs_with_dummy_batch_dim, [1, batch_size, 1])  # [N, B, D]
 
-    tf.debugging.assert_shapes([(decoupled_layer(xs_with_full_batch_dim),
-                                 [num_evals, batch_size, P])])
+    tf.debugging.assert_shapes(
+        [(decoupled_layer(xs_with_full_batch_dim), [num_evals, batch_size, P])]
+    )
 
 
 @random_seed
@@ -453,8 +455,8 @@ def test_dgp_decoupled_layer_returns_deterministic_trajectory(
 
 @random_seed
 def test_dgp_decoupled_layer_samples_are_distinct_for_new_instances(
-        two_layer_model: Callable[[TensorType], DeepGP],
-        keras_float: None,
+    two_layer_model: Callable[[TensorType], DeepGP],
+    keras_float: None,
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
@@ -497,9 +499,7 @@ def test_dgp_decoupled_layer_resample_provides_new_samples(
     for _ in range(5):
         decoupled_layer.resample()
         evals_new = decoupled_layer(xs)
-        npt.assert_array_less(
-            1e-2, tf.reduce_sum(tf.abs(evals_1 - evals_new))
-        )
+        npt.assert_array_less(1e-2, tf.reduce_sum(tf.abs(evals_1 - evals_new)))
 
 
 @random_seed
@@ -530,9 +530,7 @@ def test_dgp_decoupled_layer_update_updates(
 
         decoupled_layer.update()
         evals_new = decoupled_layer(xs)
-        npt.assert_array_less(
-            1e-2, tf.reduce_sum(tf.abs(evals_1 - evals_new))
-        )
+        npt.assert_array_less(1e-2, tf.reduce_sum(tf.abs(evals_1 - evals_new)))
 
         # Check that RFF weights change
         npt.assert_array_less(
