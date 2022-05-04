@@ -20,7 +20,7 @@ matplotlib
 ray[default]
 jupyterlab
 jupytext
-gym
+gym<0.22
 box2d
 
 # pin to version of TF used in prod

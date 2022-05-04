@@ -48,8 +48,7 @@ gpflux==0.2.3
 gpustat==1.0.0b1
 greenlet==1.1.2
 grpcio==1.32.0
-gym==0.23.1
-gym-notices==0.0.6
+gym==0.21.0
 h5py==2.10.0
 idna==3.3
 importlib-metadata==4.11.3
