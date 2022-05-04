@@ -306,10 +306,16 @@ class DeepGaussianProcessDecoupledLayer(ABC):
                 f"{type(layer)}"
             )
 
+        tf.debugging.assert_positive(num_features)
         self._num_features = num_features
         self._layer = layer
 
-        if isinstance(layer.kernel, gpflow.kernels.SharedIndependent):
+        if isinstance(layer.kernel, gpflow.kernels.MultioutputKernel):
+            if not isinstance(layer.kernel, gpflow.kernels.SharedIndependent):
+                raise ValueError(
+                    f"Multioutput kernels other than gpflow.kernels.SharedIndependent are not"
+                    f"currently supported, received {type(layer.kernel)}"
+                )
             self._kernel = layer.kernel.kernel
         else:
             self._kernel = layer.kernel
@@ -367,6 +373,7 @@ class DeepGaussianProcessDecoupledLayer(ABC):
         """
         Efficiently update the trajectory with a new weight distribution and resample its weights.
         """
+        self._feature_functions.resample()
         self._weight_sampler = self._prepare_weight_sampler()
         self.resample()
 

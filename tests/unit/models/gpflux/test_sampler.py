@@ -26,9 +26,13 @@ from __future__ import annotations
 
 from typing import Callable, Tuple
 
+import gpflow.kernels
+import gpflux.layers
+import numpy as np
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
+import tensorflow_probability as tfp
 from gpflux.models import DeepGP
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, mk_dataset, quadratic, random_seed
@@ -38,6 +42,7 @@ from trieste.data import Dataset
 from trieste.models.gpflux import DeepGaussianProcess
 from trieste.models.gpflux.sampler import (
     DeepGaussianProcessDecoupledTrajectorySampler,
+    DeepGaussianProcessDecoupledLayer,
     DeepGaussianProcessReparamSampler,
     dgp_feature_decomposition_trajectory,
 )
@@ -361,3 +366,178 @@ def test_dgp_decoupled_trajectory_update_trajectory_updates_and_doesnt_retrace(
         )  # two samples should be different
 
     assert trajectory.__call__._get_tracing_count() == 1  # type: ignore
+
+
+def test_dgp_decoupled_layer_raises_for_invalid_layer() -> None:
+    w_dim = 1
+    prior_means = np.zeros(w_dim)
+    prior_std = np.ones(w_dim)
+    encoder = gpflux.encoders.DirectlyParameterizedNormalDiag(10, w_dim)
+    prior = tfp.distributions.MultivariateNormalDiag(prior_means, prior_std)
+    lv = gpflux.layers.LatentVariableLayer(prior, encoder)
+
+    with pytest.raises(ValueError, match="Layers other than .*"):
+        DeepGaussianProcessDecoupledLayer(lv)
+
+
+@pytest.mark.parametrize("num_features", [0, -2])
+def test_dgp_decoupled_layer_raises_for_invalid_number_of_features(
+    num_features: int,
+) -> None:
+    layer = gpflux.layers.GPLayer(
+        gpflow.kernels.SquaredExponential(),
+        tf.random.normal([5, 2], dtype=tf.float64),
+        num_data=10,
+        num_latent_gps=2
+    )
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        DeepGaussianProcessDecoupledLayer(layer, num_features)
+
+
+def test_dgp_decoupled_layer_raises_for_invalid_kernel() -> None:
+    layer = gpflux.layers.GPLayer(
+        gpflow.kernels.SeparateIndependent([gpflow.kernels.SquaredExponential(),
+                                           gpflow.kernels.SquaredExponential()]),
+        tf.random.normal([5, 2], dtype=tf.float64),
+        num_data=10,
+        num_latent_gps=2
+    )
+
+    with pytest.raises(ValueError, match="Multioutput kernels .*"):
+        DeepGaussianProcessDecoupledLayer(layer)
+
+
+def test_dgp_decoupled_layer_returns_trajectory_with_correct_shapes(
+    two_layer_model: Callable[[TensorType], DeepGP],
+    keras_float: None,
+) -> None:
+    num_evals = 20
+    batch_size = 5
+
+    _, model = _build_dataset_and_train_deep_gp(two_layer_model)
+
+    layer = model.model_gpflux.f_layers[0]
+    P = layer.num_latent_gps
+
+    decoupled_layer = DeepGaussianProcessDecoupledLayer(layer)
+
+    xs = tf.random.uniform([num_evals, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)  # [N, D]
+    xs_with_dummy_batch_dim = tf.expand_dims(xs, -2)  # [N, 1, D]
+    xs_with_full_batch_dim = tf.tile(xs_with_dummy_batch_dim, [1, batch_size, 1])  # [N, B, D]
+
+    tf.debugging.assert_shapes([(decoupled_layer(xs_with_full_batch_dim),
+                                 [num_evals, batch_size, P])])
+
+
+@random_seed
+def test_dgp_decoupled_layer_returns_deterministic_trajectory(
+    two_layer_model: Callable[[TensorType], DeepGP],
+    keras_float: None,
+) -> None:
+    _, model = _build_dataset_and_train_deep_gp(two_layer_model)
+
+    layer = model.model_gpflux.f_layers[0]
+
+    decoupled_layer = DeepGaussianProcessDecoupledLayer(layer)
+
+    xs = tf.random.uniform([10, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)  # [N, D]
+    xs = tf.expand_dims(xs, -2)
+    xs = tf.tile(xs, [1, 5, 1])
+
+    eval_1 = decoupled_layer(xs)
+    eval_2 = decoupled_layer(xs)
+
+    npt.assert_allclose(eval_1, eval_2)
+
+
+@random_seed
+def test_dgp_decoupled_layer_samples_are_distinct_for_new_instances(
+        two_layer_model: Callable[[TensorType], DeepGP],
+        keras_float: None,
+) -> None:
+    _, model = _build_dataset_and_train_deep_gp(two_layer_model)
+
+    layer = model.model_gpflux.f_layers[0]
+
+    decoupled_layer_1 = DeepGaussianProcessDecoupledLayer(layer)
+    decoupled_layer_2 = DeepGaussianProcessDecoupledLayer(layer)
+
+    xs = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)  # [N, D]
+    xs = tf.expand_dims(xs, -2)
+    xs = tf.tile(xs, [1, 5, 1])
+
+    npt.assert_array_less(
+        1e-2, tf.reduce_sum(tf.abs(decoupled_layer_1(xs) - decoupled_layer_2(xs)))
+    )  # distinct between sample draws
+    npt.assert_array_less(
+        1e-2, tf.reduce_sum(tf.abs(decoupled_layer_1(xs)[:, 0] - decoupled_layer_1(xs)[:, 1]))
+    )  # distinct between samples within draws
+    npt.assert_array_less(
+        1e-2, tf.reduce_sum(tf.abs(decoupled_layer_2(xs)[:, 0] - decoupled_layer_2(xs)[:, 1]))
+    )  # distinct between samples within draws
+
+
+@random_seed
+def test_dgp_decoupled_layer_resample_provides_new_samples(
+    two_layer_model: Callable[[TensorType], DeepGP],
+    keras_float: None,
+) -> None:
+    _, model = _build_dataset_and_train_deep_gp(two_layer_model)
+
+    layer = model.model_gpflux.f_layers[0]
+
+    decoupled_layer = DeepGaussianProcessDecoupledLayer(layer)
+
+    xs = tf.random.uniform([10, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)  # [N, D]
+    xs = tf.expand_dims(xs, -2)
+    xs = tf.tile(xs, [1, 5, 1])
+
+    evals_1 = decoupled_layer(xs)
+    for _ in range(5):
+        decoupled_layer.resample()
+        evals_new = decoupled_layer(xs)
+        npt.assert_array_less(
+            1e-2, tf.reduce_sum(tf.abs(evals_1 - evals_new))
+        )
+
+
+@random_seed
+def test_dgp_decoupled_layer_update_updates(
+    two_layer_model: Callable[[TensorType], DeepGP],
+    keras_float: None,
+) -> None:
+    _, model = _build_dataset_and_train_deep_gp(two_layer_model)
+
+    layer = model.model_gpflux.f_layers[0]
+
+    decoupled_layer = DeepGaussianProcessDecoupledLayer(layer)
+
+    xs = tf.random.uniform([10, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)  # [N, D]
+    xs = tf.expand_dims(xs, -2)
+    xs = tf.tile(xs, [1, 5, 1])
+
+    evals_1 = decoupled_layer(xs)
+
+    original_W = decoupled_layer._feature_functions.W.value().numpy()
+    original_b = decoupled_layer._feature_functions.b.value().numpy()
+    for _ in range(5):
+        x_train = tf.random.uniform([20, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
+        y_train = tf.random.normal([20, 1], dtype=tf.float64)
+        new_dataset = Dataset(x_train, y_train)
+        model.update(new_dataset)
+        model.optimize(new_dataset)
+
+        decoupled_layer.update()
+        evals_new = decoupled_layer(xs)
+        npt.assert_array_less(
+            1e-2, tf.reduce_sum(tf.abs(evals_1 - evals_new))
+        )
+
+        # Check that RFF weights change
+        npt.assert_array_less(
+            1e-2, tf.reduce_sum(tf.abs(original_b - decoupled_layer._feature_functions.b))
+        )
+        npt.assert_array_less(
+            1e-2, tf.reduce_sum(tf.abs(original_W - decoupled_layer._feature_functions.W))
+        )
