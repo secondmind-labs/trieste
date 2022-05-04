@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import copy
 import traceback
+from collections import Counter
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -702,6 +703,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         observation_plot_dfs: MutableMapping[str, pd.DataFrame],
     ) -> None:
         """Write initial TensorBoard summary (and set up any initial monitoring state)."""
+        devices = tf.config.list_logical_devices()
         logging.text(
             "metadata",
             f"Observer: `{self._observer}`\n\n"
@@ -710,7 +712,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             f"`{dict((k, len(v)) for k, v in datasets.items())}`\n\n"
             f"Search Space: `{self._search_space}`\n\n"
             f"Acquisition rule:\n\n    {acquisition_rule}\n\n"
-            f"Models:\n\n    {models}",
+            f"Models:\n\n    {models}\n\n"
+            f"Available devices: `{dict(Counter(d.device_type for d in devices))}`",
         )
 
         seaborn_warning = False
