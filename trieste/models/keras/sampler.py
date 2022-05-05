@@ -45,7 +45,7 @@ class EnsembleTrajectorySampler(TrajectorySampler[EnsembleModel]):
         """
         :param model: The ensemble model to sample from.
         :param use_samples: Whether to use samples from final probabilistic layer as trajectories
-            or mean predictions (default). 
+            or mean predictions (default).
         """
         if not isinstance(model, EnsembleModel):
             raise NotImplementedError(
@@ -78,14 +78,14 @@ class EnsembleTrajectorySampler(TrajectorySampler[EnsembleModel]):
         Update a :const:`TrajectoryFunction` to reflect an update in its
         underlying :class:`ProbabilisticModel` and resample accordingly.
 
-        Efficient implementations will have a custom method here to allow in-place resampling
-        and updating. However, the default behavior is just to make a new trajectory from scratch.
+        Here we rely on the underlying models being updated and we only resample the trajectory.
 
         :param trajectory: The trajectory function to be resampled.
         :return: The new trajectory function updated for a new model
         """
         tf.debugging.Assert(isinstance(trajectory, ensemble_trajectory), [])
-        return trajectory  # nothing to update
+        trajectory.resample()  # type: ignore
+        return trajectory
 
     def resample_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction:
         """
@@ -135,8 +135,7 @@ class ensemble_trajectory(TrajectoryFunctionClass):
         Call trajectory function. Note that we are flattening the batch dimension and
         doing a forward pass with each network in the ensemble with the whole batch. This is
         somewhat wasteful, but is necessary given the underlying ``KerasEnsemble`` network
-        model. Also, if same networks are used in multiple batch elements due to sampling
-        with replacement it is less wasteful.
+        model.
         """
         if not self._initialized:  # work out desired batch size from input
             self._batch_size.assign(tf.shape(x)[-2])  # B

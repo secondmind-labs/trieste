@@ -66,7 +66,7 @@ class DeepEnsemble(
     formulation in <cite data-cite="lakshminarayanan2017simple"/>, but any user-specified network
     can be supplied, as long as it has a Gaussian distribution as a final layer and follows the
     :class:`~trieste.models.keras.KerasEnsembleNetwork` interface.
-    
+
     A word of caution in case a learning rate scheduler is used in ``fit_args`` to
     :class:`KerasOptimizer` optimizer instance. Typically one would not want to continue with the
     reduced learning rate in the subsequent Bayesian optimization step. Hence, we reset the
