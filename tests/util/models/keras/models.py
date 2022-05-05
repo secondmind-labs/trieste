@@ -68,8 +68,8 @@ def trieste_deep_ensemble_model(
 
     optimizer = tf.keras.optimizers.Adam()
     fit_args = {
-        "batch_size": 32,
-        "epochs": 10,
+        "batch_size": 100,
+        "epochs": 1,
         "callbacks": [],
         "verbose": 0,
     }

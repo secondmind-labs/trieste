@@ -18,58 +18,81 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
-from tests.util.misc import empty_dataset, random_seed
+from tests.util.misc import empty_dataset, quadratic, random_seed
 from tests.util.models.keras.models import trieste_deep_ensemble_model
+from trieste.data import Dataset
 from trieste.models.keras import EnsembleTrajectorySampler
 
 _ENSEMBLE_SIZE = 3
 
 
-@pytest.mark.parametrize("num_evals", [10, 20])
-@pytest.mark.parametrize("use_samples", [True, False])
+@pytest.fixture(name="use_samples", params=[True, False])
+def _use_samples_fixture(request: Any) -> bool:
+    return request.param
+
+
+@pytest.fixture(name="num_evals", params=[9, 19])
+def _num_evals_fixture(request: Any) -> int:
+    return request.param
+
+
+@pytest.fixture(name="batch_size", params=[1, 2])
+def _batch_size_fixture(request: Any) -> int:
+    return request.param
+
+
 def test_ensemble_trajectory_sampler_returns_trajectory_function_with_correctly_shaped_output(
     num_evals: int,
+    batch_size: int,
+    dim: int,
     use_samples: bool,
 ) -> None:
-    example_data = empty_dataset([1], [1])
-    test_data = tf.linspace([-10.0], [10.0], num_evals)
-    test_data = tf.expand_dims(test_data, -2)  # [N, 1, d]
+    """
+    Inputs should be [N,B,d] while output should be [N,B]
+    """
+    example_data = empty_dataset([dim], [1])
+    test_data = tf.random.uniform([num_evals, batch_size, dim])  # [N, B, d]
 
     model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE)
 
     sampler = EnsembleTrajectorySampler(model, use_samples=use_samples)
     trajectory = sampler.get_trajectory()
 
-    assert trajectory(test_data).shape == (num_evals, 1)
+    assert trajectory(test_data).shape == (num_evals, batch_size)
 
 
-@pytest.mark.parametrize("use_samples", [True, False])
-def test_ensemble_trajectory_sampler_returns_deterministic_trajectory(use_samples: bool) -> None:
-    example_data = empty_dataset([1], [1])
-    test_data = tf.linspace([-10.0], [10.0], 100)
-    test_data = tf.expand_dims(test_data, -2)  # [N, 1, d]
+def test_ensemble_trajectory_sampler_returns_deterministic_trajectory(
+    num_evals: int, batch_size: int, dim: int, use_samples: bool
+) -> None:
+    """
+    Evaluating the same data with the same trajectory multiple times should yield
+    exactly the same output.
+    """
+    example_data = empty_dataset([dim], [1])
+    test_data = tf.random.uniform([num_evals, batch_size, dim])  # [N, B, d]
 
     model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE)
 
     sampler = EnsembleTrajectorySampler(model, use_samples=use_samples)
     trajectory = sampler.get_trajectory()
 
-    trajectory_eval_1 = trajectory(test_data)
-    trajectory_eval_2 = trajectory(test_data)
+    eval_1 = trajectory(test_data)
+    eval_2 = trajectory(test_data)
 
-    npt.assert_allclose(trajectory_eval_1, trajectory_eval_2)
+    npt.assert_allclose(eval_1, eval_2)
 
 
+@pytest.mark.skip
 @random_seed
-@pytest.mark.parametrize("use_samples", [True, False])
 def test_ensemble_trajectory_sampler_samples_are_distinct_for_new_instances(
     use_samples: bool,
 ) -> None:
     example_data = empty_dataset([1], [1])
     test_data = tf.linspace([-10.0], [10.0], 100)
     test_data = tf.expand_dims(test_data, -2)  # [N, 1, d]
+    test_data = tf.tile(test_data, [1, 2, 1])  # [N, 2, D]
 
-    model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE * 2)
+    model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE * 3)
 
     sampler1 = EnsembleTrajectorySampler(model, use_samples=use_samples)
     trajectory1 = sampler1.get_trajectory()
@@ -78,16 +101,131 @@ def test_ensemble_trajectory_sampler_samples_are_distinct_for_new_instances(
     trajectory2 = sampler2.get_trajectory()
 
     eval1 = trajectory1(test_data)
+    # breakpoint()
     eval2 = trajectory2(test_data)
+    # breakpoint()
+    # assert tf.reduce_any(eval1 != eval2)
 
-    assert tf.reduce_any(eval1 != eval2)
+    npt.assert_array_less(
+        1e-1, tf.reduce_max(tf.abs(trajectory1(test_data) - trajectory2(test_data)))
+    )
+    # )  # distinct between seperate draws
+    npt.assert_array_less(
+        1e-1, tf.reduce_max(tf.abs(trajectory1(test_data)[:, 0] - trajectory1(test_data)[:, 1]))
+    )  # distinct for two samples within same draw
+    npt.assert_array_less(
+        1e-1, tf.reduce_max(tf.abs(trajectory2(test_data)[:, 0] - trajectory2(test_data)[:, 1]))
+    )  # distinct for two samples within same draw
 
 
 @random_seed
-@pytest.mark.parametrize("use_samples", [True, False])
+def test_ensemble_trajectory_sampler_samples_are_distinct_within_batch(
+    use_samples: bool,
+) -> None:
+    """
+    Samples for elements of the batch should be different. Note that when use_samples is not used,
+    for small ensembles we could randomnly choose the same network and then we would get the same
+    result.
+    """
+    example_data = empty_dataset([1], [1])
+    test_data = tf.linspace([-10.0], [10.0], 100)
+    test_data = tf.expand_dims(test_data, -2)  # [N, 1, d]
+    test_data = tf.tile(test_data, [1, 2, 1])  # [N, 2, D]
+
+    model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE * 3)
+
+    sampler1 = EnsembleTrajectorySampler(model, use_samples=use_samples)
+    trajectory1 = sampler1.get_trajectory()
+
+    sampler2 = EnsembleTrajectorySampler(model, use_samples=use_samples)
+    trajectory2 = sampler2.get_trajectory()
+
+    eval_1 = trajectory1(test_data)
+    eval_2 = trajectory2(test_data)
+
+    npt.assert_allclose(eval_1, eval_2)  # same for seperate draws
+    npt.assert_array_less(
+        1e-1, tf.reduce_max(tf.abs(eval_1[:, 0] - eval_1[:, 1]))
+    )  # distinct for two samples within same draw
+    npt.assert_array_less(
+        1e-1, tf.reduce_max(tf.abs(eval_2[:, 0] - eval_2[:, 1]))
+    )  # distinct for two samples within same draw
+
+
+@random_seed
+def test_ensemble_trajectory_sampler_resample_with_new_sampler_does_not_change_old_sampler(
+    use_samples: bool,
+) -> None:
+    """
+    Generating a new sampler and resampling trajectories in it will not affect a previous
+    sampler instance. Before resampling evaluations from trajectories of both samplers
+    are the same.
+    """
+    example_data = empty_dataset([1], [1])
+    test_data = tf.linspace([-10.0], [10.0], 100)
+    test_data = tf.expand_dims(test_data, -2)  # [N, 1, d]
+    test_data = tf.tile(test_data, [1, 2, 1])  # [N, 2, D]
+
+    model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE * 3)
+
+    sampler1 = EnsembleTrajectorySampler(model, use_samples=use_samples)
+    trajectory1 = sampler1.get_trajectory()
+    evals_11 = trajectory1(test_data)
+
+    sampler2 = EnsembleTrajectorySampler(model, use_samples=use_samples)
+    trajectory21 = sampler2.get_trajectory()
+    evals_21 = trajectory21(test_data)
+
+    trajectory22 = sampler2.resample_trajectory(trajectory21)
+    evals_22 = trajectory22(test_data)
+    evals_12 = trajectory1(test_data)
+
+    npt.assert_array_less(1e-1, tf.reduce_max(tf.abs(evals_22 - evals_21)))
+    npt.assert_allclose(evals_11, evals_21)
+    npt.assert_allclose(evals_11, evals_12)
+
+
+@random_seed
+def test_ensemble_trajectory_sampler_new_trajectories_diverge(
+    use_samples: bool,
+) -> None:
+    """
+    Generating two trajectories from the same sampler and resampling them will lead to different
+    trajectories, even though they were initially the same.
+    """
+    example_data = empty_dataset([1], [1])
+    test_data = tf.linspace([-10.0], [10.0], 100)
+    test_data = tf.expand_dims(test_data, -2)  # [N, 1, d]
+    test_data = tf.tile(test_data, [1, 2, 1])  # [N, 2, D]
+
+    model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE * 3)
+
+    sampler = EnsembleTrajectorySampler(model, use_samples=use_samples)
+
+    trajectory11 = sampler.get_trajectory()
+    evals_11 = trajectory11(test_data)
+    trajectory12 = sampler.resample_trajectory(trajectory11)
+    evals_12 = trajectory12(test_data)
+
+    trajectory21 = sampler.get_trajectory()
+    evals_21 = trajectory21(test_data)
+    trajectory22 = sampler.resample_trajectory(trajectory21)
+    evals_22 = trajectory22(test_data)
+
+    npt.assert_allclose(evals_11, evals_21)
+    npt.assert_array_less(1e-1, tf.reduce_max(tf.abs(evals_22 - evals_12)))
+    npt.assert_array_less(1e-1, tf.reduce_max(tf.abs(evals_11 - evals_12)))
+    npt.assert_array_less(1e-1, tf.reduce_max(tf.abs(evals_21 - evals_22)))
+
+
+@random_seed
 def test_ensemble_trajectory_sampler_resample_provides_new_samples_without_retracing(
     use_samples: bool,
 ) -> None:
+    """
+    Resampling a trajectory should be done without retracing, we also check whether we
+    get different samples.
+    """
     example_data = empty_dataset([1], [1])
     test_data = tf.linspace([-10.0], [10.0], 100)
     test_data = tf.expand_dims(test_data, -2)  # [N, 1, d]
@@ -112,3 +250,73 @@ def test_ensemble_trajectory_sampler_resample_provides_new_samples_without_retra
     npt.assert_array_less(1e-4, tf.abs(evals_1 - evals_2))
     npt.assert_array_less(1e-4, tf.abs(evals_2 - evals_3))
     npt.assert_array_less(1e-4, tf.abs(evals_1 - evals_3))
+
+
+@random_seed
+def test_ensemble_trajectory_sampler_update_trajectory_updates_and_doesnt_retrace(
+    use_samples: bool,
+) -> None:
+    """
+    We do updates after updating the model, check if model is indeed changed and verify
+    that samples are new.
+    """
+    dim = 3
+    batch_size = 2
+    num_data = 100
+
+    example_data = empty_dataset([dim], [1])
+    test_data = tf.random.uniform([num_data, batch_size, dim])  # [N, B, d]
+
+    model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE)
+
+    trajectory_sampler = EnsembleTrajectorySampler(model, use_samples=use_samples)
+    trajectory = trajectory_sampler.get_trajectory()
+
+    eval_before = trajectory(test_data)
+
+    for _ in range(3):
+        x_train = tf.random.uniform([num_data, dim])  # [N, d]
+        new_dataset = Dataset(x_train, quadratic(x_train))
+        old_weights = trajectory_sampler._model.model.get_weights()
+        model.optimize(new_dataset)
+
+        trajectory_updated = trajectory_sampler.update_trajectory(trajectory)
+        eval_after = trajectory(test_data)
+
+        assert trajectory_updated is trajectory  # check update was in place
+
+        npt.assert_array_less(
+            1e-4, tf.abs(trajectory_sampler._model.model.get_weights()[0], old_weights[0])
+        )
+        npt.assert_array_less(
+            0.01, tf.reduce_max(tf.abs(eval_before - eval_after))
+        )  # two samples should be different
+
+    assert trajectory.__call__._get_tracing_count() == 1  # type: ignore
+
+
+# @pytest.mark.skip
+@random_seed
+def test_ensemble_trajectory_sampler_trajectory_on_subsets_same_as_set(use_samples: bool) -> None:
+    """
+    We check if the trajectory called on a set of data is the same as calling it on subsets.
+    """
+    x_train = 10 * tf.random.uniform([10000, 1])  # [N, d]
+    train_data = Dataset(x_train, quadratic(x_train))
+
+    test_data = tf.linspace([-10.0], [10.0], 300)
+    test_data = tf.expand_dims(test_data, -2)  # [N, 1, d]
+    test_data = tf.tile(test_data, [1, 2, 1])  # [N, 2, d]
+
+    model, _, _ = trieste_deep_ensemble_model(train_data, _ENSEMBLE_SIZE)
+    model.optimize(train_data)
+
+    trajectory_sampler = EnsembleTrajectorySampler(model, use_samples=use_samples)
+    trajectory = trajectory_sampler.get_trajectory()
+
+    eval_all = trajectory(test_data)
+    eval_1 = trajectory(test_data[0:100, :])
+    eval_2 = trajectory(test_data[100:200, :])
+    eval_3 = trajectory(test_data[200:300, :])
+
+    npt.assert_allclose(eval_all, tf.concat([eval_1, eval_2, eval_3], axis=0))
