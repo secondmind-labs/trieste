@@ -316,17 +316,17 @@ def test_bayesian_optimizer_with_sgpr_finds_minima_of_simple_quadratic() -> None
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule",
     [
-        pytest.param(7, DiscreteThompsonSampling(1000, 2), id="DiscreteThompsonSampling"),
+        pytest.param(10, DiscreteThompsonSampling(1000, 2), id="DiscreteThompsonSampling"),
         pytest.param(
-            8,
+            10,
             EfficientGlobalOptimization(
                 ParallelContinuousThompsonSampling(),
-                num_query_points=3,
+                num_query_points=4,
             ),
             id="ParallelContinuousThompsonSampling",
         ),
         pytest.param(
-            5,
+            6,
             EfficientGlobalOptimization(
                 GreedyContinuousThompsonSampling(),
                 num_query_points=4,
