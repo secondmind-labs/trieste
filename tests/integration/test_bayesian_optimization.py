@@ -321,7 +321,7 @@ def test_bayesian_optimizer_with_sgpr_finds_minima_of_simple_quadratic() -> None
             10,
             EfficientGlobalOptimization(
                 ParallelContinuousThompsonSampling(),
-                num_query_points=4,
+                num_query_points=3,
             ),
             id="ParallelContinuousThompsonSampling",
         ),
