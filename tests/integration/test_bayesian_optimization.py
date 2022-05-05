@@ -313,7 +313,20 @@ def test_bayesian_optimizer_with_sgpr_finds_minima_of_simple_quadratic() -> None
 
 @random_seed
 @pytest.mark.slow
-@pytest.mark.parametrize("num_steps, acquisition_rule", [(25, DiscreteThompsonSampling(1000, 8))])
+@pytest.mark.parametrize(
+    "num_steps, acquisition_rule",
+    [
+        pytest.param(5, DiscreteThompsonSampling(1000, 1), id="DiscreteThompsonSampling"),
+        pytest.param(7, EfficientGlobalOptimization(
+            ParallelContinuousThompsonSampling(),
+            num_query_points=3,
+        ), id="ParallelContinuousThompsonSampling"),
+        pytest.param(3, EfficientGlobalOptimization(
+            GreedyContinuousThompsonSampling(),
+            num_query_points=4,
+        ), id="GreedyContinuousThompsonSampling")
+    ]
+)
 def test_bayesian_optimizer_with_dgp_finds_minima_of_scaled_branin(
     num_steps: int,
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepGaussianProcess],
@@ -325,7 +338,20 @@ def test_bayesian_optimizer_with_dgp_finds_minima_of_scaled_branin(
 
 
 @random_seed
-@pytest.mark.parametrize("num_steps, acquisition_rule", [(5, DiscreteThompsonSampling(1000, 1))])
+@pytest.mark.parametrize(
+    "num_steps, acquisition_rule",
+    [
+        pytest.param(5, DiscreteThompsonSampling(1000, 1), id="DiscreteThompsonSampling"),
+        pytest.param(2, EfficientGlobalOptimization(
+            ParallelContinuousThompsonSampling(),
+            num_query_points=5,
+        ), id="ParallelContinuousThompsonSampling"),
+        pytest.param(2, EfficientGlobalOptimization(
+            GreedyContinuousThompsonSampling(),
+            num_query_points=5,
+        ), id="GreedyContinuousThompsonSampling")
+    ]
+)
 def test_bayesian_optimizer_with_dgp_finds_minima_of_simple_quadratic(
     num_steps: int,
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepGaussianProcess],
