@@ -317,15 +317,23 @@ def test_bayesian_optimizer_with_sgpr_finds_minima_of_simple_quadratic() -> None
     "num_steps, acquisition_rule",
     [
         pytest.param(5, DiscreteThompsonSampling(1000, 1), id="DiscreteThompsonSampling"),
-        pytest.param(7, EfficientGlobalOptimization(
-            ParallelContinuousThompsonSampling(),
-            num_query_points=3,
-        ), id="ParallelContinuousThompsonSampling"),
-        pytest.param(3, EfficientGlobalOptimization(
-            GreedyContinuousThompsonSampling(),
-            num_query_points=4,
-        ), id="GreedyContinuousThompsonSampling")
-    ]
+        pytest.param(
+            10,
+            EfficientGlobalOptimization(
+                ParallelContinuousThompsonSampling(),
+                num_query_points=4,
+            ),
+            id="ParallelContinuousThompsonSampling",
+        ),
+        pytest.param(
+            4,
+            EfficientGlobalOptimization(
+                GreedyContinuousThompsonSampling(),
+                num_query_points=4,
+            ),
+            id="GreedyContinuousThompsonSampling",
+        ),
+    ],
 )
 def test_bayesian_optimizer_with_dgp_finds_minima_of_scaled_branin(
     num_steps: int,
@@ -342,15 +350,23 @@ def test_bayesian_optimizer_with_dgp_finds_minima_of_scaled_branin(
     "num_steps, acquisition_rule",
     [
         pytest.param(5, DiscreteThompsonSampling(1000, 1), id="DiscreteThompsonSampling"),
-        pytest.param(2, EfficientGlobalOptimization(
-            ParallelContinuousThompsonSampling(),
-            num_query_points=5,
-        ), id="ParallelContinuousThompsonSampling"),
-        pytest.param(2, EfficientGlobalOptimization(
-            GreedyContinuousThompsonSampling(),
-            num_query_points=5,
-        ), id="GreedyContinuousThompsonSampling")
-    ]
+        pytest.param(
+            2,
+            EfficientGlobalOptimization(
+                ParallelContinuousThompsonSampling(),
+                num_query_points=5,
+            ),
+            id="ParallelContinuousThompsonSampling",
+        ),
+        pytest.param(
+            2,
+            EfficientGlobalOptimization(
+                GreedyContinuousThompsonSampling(),
+                num_query_points=5,
+            ),
+            id="GreedyContinuousThompsonSampling",
+        ),
+    ],
 )
 def test_bayesian_optimizer_with_dgp_finds_minima_of_simple_quadratic(
     num_steps: int,

@@ -212,9 +212,16 @@ class DeepGaussianProcessReparamSampler(ReparametrizationSampler[GPfluxPredictor
 
 
 class DeepGaussianProcessDecoupledTrajectorySampler(TrajectorySampler[GPfluxPredictor]):
-    """
-    This sampler provides approximate trajectory samples using decoupled sampling (i.e. Matheron's
-    rule) for GPflux DeepGP models.
+    r"""
+    This sampler employs decoupled sampling (see :cite:`wilson2020efficiently`) to build functions
+    that approximate a trajectory sampled from an underlying deep Gaussian process model. In
+    particular, this sampler provides trajectory functions for :class:`GPfluxPredictor`\s with
+    underlying :class:`~gpflux.models.DeepGP` models by using a feature decomposition using both
+    random Fourier features and canonical features centered at inducing point locations. This allows
+    for cheap approximate trajectory samples, as opposed to exact trajectory sampling, which scales
+    cubically in the number of query points.
+
+    Note that we do not currently support deep GP models with multiple outputs.
     """
 
     def __init__(
@@ -222,6 +229,13 @@ class DeepGaussianProcessDecoupledTrajectorySampler(TrajectorySampler[GPfluxPred
         model: GPfluxPredictor,
         num_features: int = 1000,
     ):
+        """
+        :param model: The model to sample from.
+        :param num_features: The number of random Fourier features to use.
+        :raise ValueError (or InvalidArgumentError): If the model is not a :class:`GPfluxPredictor`,
+            or its underlying ``model_gpflux`` is not a :class:`~gpflux.models.DeepGP`, or
+            ``num_features`` is not positive.
+        """
         if not isinstance(model, GPfluxPredictor):
             raise ValueError(
                 f"Model must be a gpflux.interface.GPfluxPredictor, received {type(model)}"
@@ -252,7 +266,7 @@ class DeepGaussianProcessDecoupledTrajectorySampler(TrajectorySampler[GPfluxPred
         Generate an approximate function draw (trajectory) from the deep GP model.
 
         :return: A trajectory function representing an approximate trajectory from the deep GP,
-            taking an input of shape `[N, D]` and returning shape `[N, 1]`
+            taking an input of shape `[N, B, D]` and returning shape `[N, B]`.
         """
 
         return dgp_feature_decomposition_trajectory(self._sampling_layers)
@@ -264,6 +278,8 @@ class DeepGaussianProcessDecoupledTrajectorySampler(TrajectorySampler[GPfluxPred
 
         :param trajectory: The trajectory function to be updated and resampled.
         :return: The updated and resampled trajectory function.
+        :raise InvalidArgumentError: If ``trajectory`` is not a
+            :class:`dgp_feature_decomposition_trajectory`
         """
 
         tf.debugging.Assert(isinstance(trajectory, dgp_feature_decomposition_trajectory), [])
@@ -278,6 +294,8 @@ class DeepGaussianProcessDecoupledTrajectorySampler(TrajectorySampler[GPfluxPred
 
         :param trajectory: The trajectory function to be resampled.
         :return: The new resampled trajectory function.
+        :raise InvalidArgumentError: If ``trajectory`` is not a
+            :class:`dgp_feature_decomposition_trajectory`
         """
         tf.debugging.Assert(isinstance(trajectory, dgp_feature_decomposition_trajectory), [])
         cast(dgp_feature_decomposition_trajectory, trajectory).resample()
@@ -286,8 +304,10 @@ class DeepGaussianProcessDecoupledTrajectorySampler(TrajectorySampler[GPfluxPred
 
 class DeepGaussianProcessDecoupledLayer(ABC):
     """
-    Layer that samples a decoupled trajectory from a GPflux :class:`~gpflux.layers.GPLayer` using
-    Matheron's rule (:cite:`wilson2020efficiently`).
+    Layer that samples an approximate decoupled trajectory for a GPflux
+    :class:`~gpflux.layers.GPLayer` using Matheron's rule (:cite:`wilson2020efficiently`). Note
+    that the only multi-output kernel that is supported is a
+    :class:`~gpflow.kernels.SharedIndependent` kernel.
     """
 
     def __init__(
@@ -298,7 +318,9 @@ class DeepGaussianProcessDecoupledLayer(ABC):
         """
         :param layer: The layer that we wish to sample from.
         :param num_features: The number of features to use in the random feature approximation.
-        :raise ValueError: If the layer is not a valid layer.
+        :raise ValueError (or InvalidArgumentError): If the layer is not a
+            :class:`~gpflux.layers.GPLayer`, the layer's kernel is not supported, or if
+            ``num_features`` is not positive.
         """
         if not isinstance(layer, GPLayer):
             raise ValueError(
@@ -335,7 +357,16 @@ class DeepGaussianProcessDecoupledLayer(ABC):
         self._batch_size = tf.Variable(0, dtype=tf.int32)
 
     def __call__(self, x: TensorType) -> TensorType:  # [N, B, D] -> [N, B, P]
-        """Call trajectory function for layer."""
+        """
+        Evaluate trajectory function for layer at input.
+
+        :param x: Input location with shape `[N, B, D]`, where `N` is the number of points, `B` is
+            the batch dimension, and `D` is the input dimensionality.
+        :return: Trajectory for the layer evaluated at the input, with shape `[N, B, P]`, where `P`
+            is the number of latent GPs in the layer.
+        :raise InvalidArgumentError: If the provided batch size does not match with the layer's
+            batch size.
+        """
         if not self._initialized:
             self._batch_size.assign(tf.shape(x)[-2])
             self.resample()
@@ -381,8 +412,8 @@ class DeepGaussianProcessDecoupledLayer(ABC):
         """
         Prepare the sampler function that provides samples of the feature weights for both the
         RFF and canonical feature functions, i.e. we return a function that takes in a batch size
-        `B` and returns `B` samples for the weights of each of the `L` RFF features and `N`
-        canonical features.
+        `B` and returns `B` samples for the weights of each of the `L` RFF features and `M`
+        canonical features for `P` outputs.
         """
 
         if isinstance(self._layer.inducing_variable, InducingPoints):
@@ -442,9 +473,10 @@ class ResampleableDecoupledDeepGaussianProcessFeatureFunctions(RFF):  # type: ig
         """
         :param layer: The layer that will be approximated by the feature functions.
         :param n_components: The number of features.
+        :raise ValueError: If the layer is not a :class:`~gpflux.layers.GPLayer`.
         """
         if not isinstance(layer, GPLayer):
-            raise NotImplementedError(
+            raise ValueError(
                 f"ResampleableDecoupledDeepGaussianProcessFeatureFunctions currently only work with"
                 f"gpflux.layers.GPLayer layers, received {type(layer)} instead"
             )
@@ -473,7 +505,7 @@ class ResampleableDecoupledDeepGaussianProcessFeatureFunctions(RFF):  # type: ig
 
     def resample(self) -> None:
         """
-        Resample weights and biases
+        Resample weights and biases.
         """
         if not hasattr(self, "_bias_init"):
             self.b.assign(self._sample_bias(tf.shape(self.b), dtype=self._dtype))
@@ -484,7 +516,7 @@ class ResampleableDecoupledDeepGaussianProcessFeatureFunctions(RFF):  # type: ig
 
     def __call__(self, x: TensorType) -> TensorType:  # [N, D] -> [N, L + M]
         """
-        Combine prior basis functions with canonical basic functions
+        Evaluate and combine prior basis functions and canonical basic functions at the input.
         """
         fourier_feature_eval = super().__call__(x)  # [N, L]
         canonical_feature_eval = self._canonical_feature_functions(x)  # [N, M]
@@ -496,7 +528,7 @@ class dgp_feature_decomposition_trajectory(TrajectoryFunctionClass):
     An approximate sample from a deep Gaussian process's posterior, where the samples are
     represented as a finite weighted sum of features. This class essentially takes a list of
     :class:`DeepGaussianProcessDecoupledLayer`\s and iterates through them to sample, update and
-    resample.
+    resample. Note that we assume that the model only has one output.
     """
 
     def __init__(self, sampling_layers: List[DeepGaussianProcessDecoupledLayer]):
@@ -507,17 +539,23 @@ class dgp_feature_decomposition_trajectory(TrajectoryFunctionClass):
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:
-        """Call trajectory function by looping through layers."""
+        """
+        Call trajectory function by looping through layers.
+
+        :param x: Input location with shape `[N, B, D]`, where `N` is the number of points, `B` is
+            the batch dimension, and `D` is the input dimensionality.
+        :return: Trajectory samples with shape `[N, B]`.
+        """
         for layer in self._sampling_layers:
             x = layer(x)
         return x[..., 0]  # Assume single output
 
     def update(self) -> None:
-        """Update the layers."""
+        """Update the layers with new features and weights."""
         for layer in self._sampling_layers:
             layer.update()
 
     def resample(self) -> None:
-        """Resample the layers."""
+        """Resample the layer weights."""
         for layer in self._sampling_layers:
             layer.resample()
