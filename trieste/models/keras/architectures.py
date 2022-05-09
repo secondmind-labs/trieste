@@ -25,6 +25,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 from tensorflow_probability.python.layers.distribution_layer import DistributionLambda, _serialize
+from tensorflow_probability.python.bijectors.fill_scale_tril import FillScaleTriL
 
 from trieste.types import TensorType
 
@@ -245,7 +246,7 @@ class GaussianNetwork(KerasEnsembleNetwork):
 
         return input_tensor
 
-    def _gen_output_layer(self, input_tensor: tf.Tensor) -> tf.Tensor:
+    def _gen_output_layer2(self, input_tensor: tf.Tensor) -> tf.Tensor:
 
         dist_layer = tfp.layers.IndependentNormal if self._independent else MultivariateNormalTriL
         n_params = dist_layer.params_size(self.flattened_output_shape)
@@ -257,6 +258,48 @@ class GaussianNetwork(KerasEnsembleNetwork):
         distribution = dist_layer(
             self.flattened_output_shape,
             tfp.python.distributions.Distribution.mean,
+            name=self.output_layer_name,
+        )(parameter_layer)
+
+        return distribution
+
+    def _gen_output_layer(self, input_tensor: tf.Tensor) -> tf.Tensor:
+
+        num_par_mean = self.flattened_output_shape
+        if self._independent:
+            dist = tfp.distributions.MultivariateNormalDiag
+            num_par_cov = num_par_mean
+            cov_transform = tf.math.softplus
+        else:
+            dist = tfp.distributions.MultivariateNormalTriL
+            num_par_cov = num_par_mean * (num_par_mean + 1) // 2
+            cov_transform = FillScaleTriL(
+                diag_shift=np.array(1e-5, input_tensor.dtype.as_numpy_dtype)
+            )
+        # breakpoint()
+
+        def distribution_fn(inputs):
+            # breakpoint()
+            if self._independent:
+                function = tfp.distributions.MultivariateNormalDiag(
+                    loc=inputs[..., :num_par_mean],
+                    scale=tf.math.softplus(inputs[..., num_par_mean:])
+                )
+            else:
+                function = tfp.distributions.MultivariateNormalTriL(
+                    loc=inputs[..., :num_par_mean],
+                    scale_tril=cov_transform(inputs[..., num_par_mean:])
+                )
+
+        parameter_layer = tf.keras.layers.Dense(
+            num_par_mean + num_par_cov, name=self.network_name + "dense_parameters"
+        )(input_tensor)
+
+        distribution = tfp.layers.DistributionLambda(
+            make_distribution_fn=distribution_fn,
+            # make_distribution_fn=lambda t: dist(
+            #     loc=t[..., :num_par_mean], scale_tril=cov_transform(t[..., num_par_mean:])),
+            convert_to_tensor_fn=tfp.distributions.Distribution.mean,
             name=self.output_layer_name,
         )(parameter_layer)
 
