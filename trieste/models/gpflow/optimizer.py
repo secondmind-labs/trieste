@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import tensorflow as tf
 from gpflow.models import ExternalDataTrainingLossMixin, InternalDataTrainingLossMixin
+from tensorflow.python.data.ops.iterator_ops import OwnedIterator as DatasetOwnedIterator
 
 from ..optimizer import LossClosure, TrainingData, create_loss_function
 
@@ -41,24 +42,28 @@ def _create_loss_function_external(
 ) -> LossClosure:
 
     if not compile:
+        return model.training_loss_closure(data, compile=False)
 
-        def closure() -> tf.Tensor:
-            return model.training_loss(data)
-
-        return closure
+    # when compiling, we want to avoid generating a new closure every optimization step
+    # instead we compile and save a single function that can handle the dynamic data shape
+    X, Y = next(data) if isinstance(data, DatasetOwnedIterator) else data
 
     if not hasattr(model, "compiled_training_loss_closure_builder"):
-        X, Y = data
         shape_spec = (
-            tf.TensorSpec([None, *X.shape[1:]], dtype=X.dtype),
-            tf.TensorSpec([None, *Y.shape[1:]], dtype=Y.dtype),
+            data.element_spec
+            if isinstance(data, DatasetOwnedIterator)
+            else (
+                tf.TensorSpec([None, *X.shape[1:]], dtype=X.dtype),
+                tf.TensorSpec([None, *Y.shape[1:]], dtype=Y.dtype),
+            )
         )
 
+        @tf.function(input_signature=shape_spec)
         def training_loss_builder(x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
-            return tf.function(model.training_loss((x, y)), input_signature=shape_spec)
+            return model.training_loss((x, y))
 
         def closure_builder(data: TrainingData) -> LossClosure:
-            x, y = data
+            x, y = next(data) if isinstance(data, DatasetOwnedIterator) else data
 
             def compiled_closure() -> tf.Tensor:
                 return training_loss_builder(x, y)
@@ -67,4 +72,4 @@ def _create_loss_function_external(
 
         setattr(model, "compiled_training_loss_closure_builder", closure_builder)
 
-    return getattr(model, "compiled_training_loss_closure_builder")(data)
+    return getattr(model, "compiled_training_loss_closure_builder")((X, Y))
