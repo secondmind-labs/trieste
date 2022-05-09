@@ -14,8 +14,6 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
-
 import tensorflow as tf
 from gpflow.inducing_variables import InducingPoints
 from gpflux.layers import GPLayer, LatentVariableLayer
@@ -23,12 +21,25 @@ from gpflux.models import DeepGP
 
 from ...data import Dataset
 from ...types import TensorType
-from ..interfaces import TrainableProbabilisticModel
+from ..interfaces import (
+    HasReparamSampler,
+    HasTrajectorySampler,
+    ReparametrizationSampler,
+    TrainableProbabilisticModel,
+    TrajectorySampler,
+)
+from ..optimizer import KerasOptimizer
 from .interface import GPfluxPredictor
-from .utils import sample_dgp
+from .sampler import (
+    DeepGaussianProcessReparamSampler,
+    DeepGaussianProcessTrajectorySampler,
+    sample_dgp,
+)
 
 
-class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
+class DeepGaussianProcess(
+    GPfluxPredictor, TrainableProbabilisticModel, HasReparamSampler, HasTrajectorySampler
+):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflux :class:`~gpflux.models.DeepGP` with
     :class:`GPLayer` or :class:`LatentVariableLayer`: this class does not support e.g. keras layers.
@@ -40,49 +51,23 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
     def __init__(
         self,
         model: DeepGP,
-        optimizer: tf.optimizers.Optimizer | None = None,
-        fit_args: Dict[str, Any] | None = None,
+        optimizer: KerasOptimizer | None = None,
+        continuous_optimisation: bool = True,
     ):
         """
         :param model: The underlying GPflux deep Gaussian process model.
-        :param optimizer: The optimizer with which to train the model. Defaults to
-            :class:`~trieste.models.optimizer.TFOptimizer` with :class:`~tf.optimizers.Adam`. Only
-            the optimizer itself is used; other args relevant for fitting should be passed as part
-            of `fit_args`.
-        :param fit_args: A dictionary of arguments to be used in the Keras `fit` method. Defaults to
-            using 100 epochs, batch size 100, and verbose 0. See
+        :param optimizer: The optimizer configuration for training the model. Defaults to
+            :class:`~trieste.models.optimizer.KerasOptimizer` wrapper with
+            :class:`~tf.optimizers.Adam` optimizer. The ``optimizer`` argument to the wrapper is
+            used when compiling the model and ``fit_args`` is a dictionary of arguments to be used
+            in the Keras ``fit`` method. Defaults to 400 epochs, batch size of 1000, and verbose 0.
+            A custom callback that reduces the optimizer learning rate is used as well. See
             https://keras.io/api/models/model_training_apis/#fit-method for a list of possible
             arguments.
+        :param continuous_optimisation: if True (default), the optimizer will keep track of the
+            number of epochs across BO iterations and use this number as initial_epoch. This is
+            essential to allow monitoring of model training across BO iterations.
         """
-
-        super().__init__()
-
-        if optimizer is None:
-            self._optimizer = tf.optimizers.Adam()
-        else:
-            self._optimizer = optimizer
-
-        if not isinstance(self._optimizer, tf.optimizers.Optimizer):
-            raise ValueError(
-                f"Optimizer for `DeepGaussianProcess` must be an instance of a "
-                f"`tf.optimizers.Optimizer` or `tf.keras.optimizers.Optimizer`, "
-                f"received {type(optimizer)} instead. Note that the optimizer should "
-                f"therefore not be wrapped in the Trieste `TFOptimizer` wrapper."
-            )
-
-        self.original_lr = self._optimizer.lr.numpy()
-
-        if fit_args is None:
-            self.fit_args = dict(
-                {
-                    "verbose": 0,
-                    "epochs": 100,
-                    "batch_size": 100,
-                }
-            )
-        else:
-            self.fit_args = fit_args
-
         for layer in model.f_layers:
             if not isinstance(layer, (GPLayer, LatentVariableLayer)):
                 raise ValueError(
@@ -90,14 +75,43 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
                     f"`LatentVariableLayer`, received {type(layer)} instead."
                 )
 
+        super().__init__(optimizer)
+
+        if not isinstance(self.optimizer.optimizer, tf.optimizers.Optimizer):
+            raise ValueError(
+                f"Optimizer for `DeepGaussianProcess` must be an instance of a "
+                f"`tf.optimizers.Optimizer` or `tf.keras.optimizers.Optimizer`, "
+                f"received {type(self.optimizer.optimizer)} instead."
+            )
+
+        self.original_lr = self.optimizer.optimizer.lr.numpy()
+
+        epochs = 400
+
+        def scheduler(epoch: int, lr: float) -> float:
+            if epoch == epochs // 2:
+                return lr * 0.1
+            else:
+                return lr
+
+        if not self.optimizer.fit_args:
+            self.optimizer.fit_args = {
+                "verbose": 0,
+                "epochs": epochs,
+                "batch_size": 1000,
+                "callbacks": [tf.keras.callbacks.LearningRateScheduler(scheduler)],
+            }
+
         self._model_gpflux = model
 
         self._model_keras = model.as_training_model()
-        self._model_keras.compile(self._optimizer)
+        self._model_keras.compile(self.optimizer.optimizer)
+        self._absolute_epochs = 0
+        self._continuous_optimisation = continuous_optimisation
 
     def __repr__(self) -> str:
         """"""
-        return f"DeepGaussianProcess({self._model_gpflux!r}, {self.optimizer!r})"
+        return f"DeepGaussianProcess({self.model_gpflux!r}, {self.optimizer.optimizer!r})"
 
     @property
     def model_gpflux(self) -> DeepGP:
@@ -107,15 +121,29 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
     def model_keras(self) -> tf.keras.Model:
         return self._model_keras
 
-    @property
-    def optimizer(self) -> tf.keras.optimizers.Optimizer:
-        return self._optimizer
-
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         samples = []
         for _ in range(num_samples):
             samples.append(sample_dgp(self.model_gpflux)(query_points))
         return tf.stack(samples)
+
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[GPfluxPredictor]:
+        """
+        Return a reparametrization sampler for a :class:`DeepGaussianProcess` model.
+
+        :param num_samples: The number of samples to obtain.
+        :return: The reparametrization sampler.
+        """
+        return DeepGaussianProcessReparamSampler(num_samples, self)
+
+    def trajectory_sampler(self) -> TrajectorySampler[GPfluxPredictor]:
+        """
+        Return a trajectory sampler. For :class:`DeepGaussianProcess`, we build
+        trajectories using the GPflux default sampler.
+
+        :return: The trajectory sampler.
+        """
+        return DeepGaussianProcessTrajectorySampler(self)
 
     def update(self, dataset: Dataset) -> None:
         inputs = dataset.query_points
@@ -159,11 +187,25 @@ class DeepGaussianProcess(GPfluxPredictor, TrainableProbabilisticModel):
         Optimize the model with the specified `dataset`.
         :param dataset: The data with which to optimize the `model`.
         """
-        self.model_keras.fit(
-            {"inputs": dataset.query_points, "targets": dataset.observations}, **self.fit_args
+        fit_args = dict(self.optimizer.fit_args)
+
+        # Tell optimizer how many epochs have been used before: the optimizer will "continue"
+        # optimization across multiple BO iterations rather than start fresh at each iteration.
+        # This allows us to monitor training across iterations.
+
+        if "epochs" in fit_args:
+            fit_args["epochs"] = fit_args["epochs"] + self._absolute_epochs
+
+        hist = self.model_keras.fit(
+            {"inputs": dataset.query_points, "targets": dataset.observations},
+            **fit_args,
+            initial_epoch=self._absolute_epochs,
         )
+
+        if self._continuous_optimisation:
+            self._absolute_epochs = self._absolute_epochs + len(hist.history["loss"])
 
         # Reset lr in case there was an lr schedule: a schedule will have change the learning rate,
         # so that the next time we call `optimize` the starting learning rate would be different.
         # Therefore we make sure the learning rate is set back to its initial value.
-        self.optimizer.lr.assign(self.original_lr)
+        self.optimizer.optimizer.lr.assign(self.original_lr)

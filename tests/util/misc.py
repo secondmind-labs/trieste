@@ -14,9 +14,12 @@
 from __future__ import annotations
 
 import functools
+import os
+import random
 from collections.abc import Container, Mapping
-from typing import Any, Callable, NoReturn, Sequence, TypeVar, Union, cast
+from typing import Any, Callable, NoReturn, Optional, Sequence, TypeVar, Union, cast
 
+import numpy as np
 import numpy.testing as npt
 import tensorflow as tf
 from typing_extensions import Final
@@ -24,6 +27,8 @@ from typing_extensions import Final
 from trieste.acquisition.rule import AcquisitionRule
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
+from trieste.objectives import BRANIN_SEARCH_SPACE, HARTMANN_6_SEARCH_SPACE, branin, hartmann_6
+from trieste.objectives.utils import mk_observer
 from trieste.space import SearchSpace
 from trieste.types import TensorType
 from trieste.utils import shapes_equal
@@ -41,12 +46,15 @@ C = TypeVar("C", bound=Callable[..., object])
 def random_seed(f: C) -> C:
     """
     :param f: A function.
-    :return: The function ``f``, but with the TensorFlow randomness seed fixed to a hardcoded value.
+    :return: The function ``f``, but with TensorFlow, numpy and Python randomness seeds fixed to 0.
     """
 
     @functools.wraps(f)
     def decorated(*args: Any, **kwargs: Any) -> Any:
+        os.environ["PYTHONHASHSEED"] = str(0)
         tf.random.set_seed(0)
+        np.random.seed(0)
+        random.seed(0)
         return f(*args, **kwargs)
 
     return cast(C, decorated)
@@ -113,7 +121,7 @@ def quadratic(x: tf.Tensor) -> tf.Tensor:
     return tf.reduce_sum(x ** 2, axis=-1, keepdims=True)
 
 
-class FixedAcquisitionRule(AcquisitionRule[TensorType, SearchSpace]):
+class FixedAcquisitionRule(AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel]):
     """An acquisition rule that returns the same fixed value on every step."""
 
     def __init__(self, query_points: SequenceN[Sequence[float]]):
@@ -129,13 +137,13 @@ class FixedAcquisitionRule(AcquisitionRule[TensorType, SearchSpace]):
     def acquire(
         self,
         search_space: SearchSpace,
-        datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> TensorType:
         """
         :param search_space: Unused.
-        :param datasets: Unused.
         :param models: Unused.
+        :param datasets: Unused.
         :return: The fixed value specified on initialisation.
         """
         return self._qp
@@ -181,3 +189,33 @@ def assert_datasets_allclose(this: Dataset, that: Dataset) -> None:
 
     npt.assert_allclose(this.query_points, that.query_points)
     npt.assert_allclose(this.observations, that.observations)
+
+
+def hartmann_6_dataset(num_query_points: int) -> Dataset:
+    """
+    Generate example dataset based on Hartmann 6 objective function.
+    :param num_query_points: A number of samples from the objective function.
+    :return: A dataset.
+    """
+    search_space = HARTMANN_6_SEARCH_SPACE
+    query_points = search_space.sample(num_query_points)
+
+    observer = mk_observer(hartmann_6)
+    data = observer(query_points)
+
+    return data
+
+
+def branin_dataset(num_query_points: int) -> Dataset:
+    """
+    Generate example dataset based on Hartmann 6 objective function.
+    :param num_query_points: A number of samples from the objective function.
+    :return: A dataset.
+    """
+    search_space = BRANIN_SEARCH_SPACE
+    query_points = search_space.sample(num_query_points)
+
+    observer = mk_observer(branin)
+    data = observer(query_points)
+
+    return data

@@ -14,8 +14,6 @@
 
 from __future__ import annotations
 
-import copy
-
 import gpflow
 import numpy.testing as npt
 import pytest
@@ -28,22 +26,21 @@ from gpflux.models import DeepGP
 from tests.util.misc import random_seed
 from trieste.data import Dataset
 from trieste.models.gpflux import GPfluxPredictor
-from trieste.models.optimizer import Optimizer
 from trieste.types import TensorType
 
 
 class _QuadraticPredictor(GPfluxPredictor):
     def __init__(
         self,
-        optimizer: Optimizer | None = None,
+        optimizer: tf.optimizers.Optimizer | None = None,
         likelihood: gpflow.likelihoods.Likelihood = gpflow.likelihoods.Gaussian(0.01),
     ):
-        super().__init__()
+        super().__init__(optimizer=optimizer)
 
         if optimizer is None:
             self._optimizer = tf.optimizers.Adam()
         else:
-            self._optimizer = optimizer.optimizer
+            self._optimizer = optimizer
         self._model_gpflux = _QuadraticGPModel(likelihood=likelihood)
 
         self._model_keras = self._model_gpflux.as_training_model()
@@ -62,7 +59,7 @@ class _QuadraticPredictor(GPfluxPredictor):
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         # Taken from GPflow implementation of `GPModel.predict_f_samples` in gpflow.models.model
-        mean, cov = self.model_gpflux.predict_f(query_points, full_cov=True)
+        mean, cov = self._model_gpflux.predict_f(query_points, full_cov=True)
         mean_for_sample = tf.linalg.adjoint(mean)
         samples = sample_mvn(mean_for_sample, cov, True, num_samples=num_samples)
         samples = tf.linalg.adjoint(samples)
@@ -133,14 +130,6 @@ def test_gpflux_predictor_sample_0_samples() -> None:
     assert samples.shape == (0, 1, 1)
 
 
-def test_gpflux_predictor_raises_on_predict_joint_call() -> None:
-    model = _QuadraticPredictor()
-    query_points = tf.ones([5], dtype=gpflow.default_float())
-
-    with pytest.raises(NotImplementedError):
-        model.predict_joint(query_points)
-
-
 def test_gpflux_predictor_get_observation_noise() -> None:
     noise_var = 0.1
     likelihood = gpflow.likelihoods.Gaussian(noise_var)
@@ -155,10 +144,3 @@ def test_gpflux_predictor_get_observation_noise_raises_for_non_gaussian_likeliho
 
     with pytest.raises(NotImplementedError):
         model.get_observation_noise()
-
-
-def test_gpflux_predictor_deepcopy_raises_not_implemented() -> None:
-    model = _QuadraticPredictor()
-
-    with pytest.raises(NotImplementedError):
-        copy.deepcopy(model)

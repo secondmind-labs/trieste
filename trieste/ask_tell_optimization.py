@@ -20,26 +20,36 @@ perform Bayesian Optimization with external control of the optimization loop.
 
 from __future__ import annotations
 
-import copy
+from copy import deepcopy
 from typing import Dict, Generic, Mapping, TypeVar, cast, overload
 
+import numpy as np
+import tensorflow as tf
+
+from . import logging
 from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
-from .bayesian_optimizer import OptimizationResult, Record
+from .bayesian_optimizer import FrozenRecord, OptimizationResult, Record
 from .data import Dataset
-from .models import ModelSpec, create_model
+from .models import ModelSpec, TrainableProbabilisticModel, create_model
+from .models.config import ModelConfigType
 from .observer import OBJECTIVE
 from .space import SearchSpace
 from .types import State, TensorType
-from .utils import Ok, map_values
+from .utils import Ok, Timer, map_values
 
-S = TypeVar("S")
+StateType = TypeVar("StateType")
 """ Unbound type variable. """
 
-SP = TypeVar("SP", bound=SearchSpace)
+SearchSpaceType = TypeVar("SearchSpaceType", bound=SearchSpace)
 """ Type variable bound to :class:`SearchSpace`. """
 
+TrainableProbabilisticModelType = TypeVar(
+    "TrainableProbabilisticModelType", bound=TrainableProbabilisticModel, contravariant=True
+)
+""" Contravariant type variable bound to :class:`TrainableProbabilisticModel`. """
 
-class AskTellOptimizer(Generic[SP]):
+
+class AskTellOptimizer(Generic[SearchSpaceType]):
     """
     This class provides Ask/Tell optimization interface. It is designed for those use cases
     when control of the optimization loop by Trieste is impossible or not desirable.
@@ -49,9 +59,9 @@ class AskTellOptimizer(Generic[SP]):
     @overload
     def __init__(
         self,
-        search_space: SP,
+        search_space: SearchSpaceType,
         datasets: Mapping[str, Dataset],
-        model_specs: Mapping[str, ModelSpec],
+        model_specs: Mapping[str, TrainableProbabilisticModelType],
         *,
         fit_model: bool = True,
     ):
@@ -60,10 +70,9 @@ class AskTellOptimizer(Generic[SP]):
     @overload
     def __init__(
         self,
-        search_space: SP,
+        search_space: SearchSpaceType,
         datasets: Mapping[str, Dataset],
-        model_specs: Mapping[str, ModelSpec],
-        acquisition_rule: AcquisitionRule[TensorType, SP],
+        model_specs: Mapping[str, ModelConfigType],
         *,
         fit_model: bool = True,
     ):
@@ -72,11 +81,12 @@ class AskTellOptimizer(Generic[SP]):
     @overload
     def __init__(
         self,
-        search_space: SP,
+        search_space: SearchSpaceType,
         datasets: Mapping[str, Dataset],
-        model_specs: Mapping[str, ModelSpec],
-        acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP],
-        acquisition_state: S | None = None,
+        model_specs: Mapping[str, TrainableProbabilisticModelType],
+        acquisition_rule: AcquisitionRule[
+            TensorType, SearchSpaceType, TrainableProbabilisticModelType
+        ],
         *,
         fit_model: bool = True,
     ):
@@ -85,9 +95,12 @@ class AskTellOptimizer(Generic[SP]):
     @overload
     def __init__(
         self,
-        search_space: SP,
-        datasets: Dataset,
-        model_specs: ModelSpec,
+        search_space: SearchSpaceType,
+        datasets: Mapping[str, Dataset],
+        model_specs: Mapping[str, ModelConfigType],
+        acquisition_rule: AcquisitionRule[
+            TensorType, SearchSpaceType, TrainableProbabilisticModelType
+        ],
         *,
         fit_model: bool = True,
     ):
@@ -96,10 +109,13 @@ class AskTellOptimizer(Generic[SP]):
     @overload
     def __init__(
         self,
-        search_space: SP,
-        datasets: Dataset,
-        model_specs: ModelSpec,
-        acquisition_rule: AcquisitionRule[TensorType, SP],
+        search_space: SearchSpaceType,
+        datasets: Mapping[str, Dataset],
+        model_specs: Mapping[str, TrainableProbabilisticModelType],
+        acquisition_rule: AcquisitionRule[
+            State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
+        ],
+        acquisition_state: StateType | None,
         *,
         fit_model: bool = True,
     ):
@@ -108,11 +124,93 @@ class AskTellOptimizer(Generic[SP]):
     @overload
     def __init__(
         self,
-        search_space: SP,
+        search_space: SearchSpaceType,
+        datasets: Mapping[str, Dataset],
+        model_specs: Mapping[str, ModelConfigType],
+        acquisition_rule: AcquisitionRule[
+            State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
+        ],
+        acquisition_state: StateType | None = None,
+        *,
+        fit_model: bool = True,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self,
+        search_space: SearchSpaceType,
         datasets: Dataset,
-        model_specs: ModelSpec,
-        acquisition_rule: AcquisitionRule[State[S | None, TensorType], SP],
-        acquisition_state: S | None = None,
+        model_specs: TrainableProbabilisticModelType,
+        *,
+        fit_model: bool = True,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self,
+        search_space: SearchSpaceType,
+        datasets: Dataset,
+        model_specs: ModelConfigType,
+        *,
+        fit_model: bool = True,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self,
+        search_space: SearchSpaceType,
+        datasets: Dataset,
+        model_specs: TrainableProbabilisticModelType,
+        acquisition_rule: AcquisitionRule[
+            TensorType, SearchSpaceType, TrainableProbabilisticModelType
+        ],
+        *,
+        fit_model: bool = True,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self,
+        search_space: SearchSpaceType,
+        datasets: Dataset,
+        model_specs: TrainableProbabilisticModelType,
+        acquisition_rule: AcquisitionRule[
+            TensorType, SearchSpaceType, TrainableProbabilisticModelType
+        ],
+        *,
+        fit_model: bool = True,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self,
+        search_space: SearchSpaceType,
+        datasets: Dataset,
+        model_specs: TrainableProbabilisticModelType,
+        acquisition_rule: AcquisitionRule[
+            State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
+        ],
+        acquisition_state: StateType | None = None,
+        *,
+        fit_model: bool = True,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self,
+        search_space: SearchSpaceType,
+        datasets: Dataset,
+        model_specs: ModelConfigType,
+        acquisition_rule: AcquisitionRule[
+            State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
+        ],
+        acquisition_state: StateType | None,
         *,
         fit_model: bool = True,
     ):
@@ -120,12 +218,16 @@ class AskTellOptimizer(Generic[SP]):
 
     def __init__(
         self,
-        search_space: SP,
+        search_space: SearchSpaceType,
         datasets: Mapping[str, Dataset] | Dataset,
         model_specs: Mapping[str, ModelSpec] | ModelSpec,
-        acquisition_rule: AcquisitionRule[TensorType | State[S | None, TensorType], SP]
+        acquisition_rule: AcquisitionRule[
+            TensorType | State[StateType | None, TensorType],
+            SearchSpaceType,
+            TrainableProbabilisticModelType,
+        ]
         | None = None,
-        acquisition_state: S | None = None,
+        acquisition_state: StateType | None = None,
         *,
         fit_model: bool = True,
     ):
@@ -155,8 +257,7 @@ class AskTellOptimizer(Generic[SP]):
 
         if isinstance(datasets, Dataset):
             datasets = {OBJECTIVE: datasets}
-            # ignore below is due to MyPy not being able to handle overloads properly
-            model_specs = {OBJECTIVE: model_specs}  # type: ignore
+            model_specs = {OBJECTIVE: model_specs}
 
         # reassure the type checker that everything is tagged
         datasets = cast(Dict[str, Dataset], datasets)
@@ -169,7 +270,9 @@ class AskTellOptimizer(Generic[SP]):
             )
 
         self._datasets = datasets
-        self._models = map_values(create_model, model_specs)
+        self._models = cast(
+            Dict[str, TrainableProbabilisticModelType], map_values(create_model, model_specs)
+        )
 
         if acquisition_rule is None:
             if self._datasets.keys() != {OBJECTIVE}:
@@ -179,7 +282,8 @@ class AskTellOptimizer(Generic[SP]):
                 )
 
             self._acquisition_rule = cast(
-                AcquisitionRule[TensorType, SP], EfficientGlobalOptimization()
+                AcquisitionRule[TensorType, SearchSpaceType, TrainableProbabilisticModelType],
+                EfficientGlobalOptimization(),
             )
         else:
             self._acquisition_rule = acquisition_rule
@@ -196,14 +300,49 @@ class AskTellOptimizer(Generic[SP]):
                {self._models!r}, {self._acquisition_rule!r}), "
                {self._acquisition_state!r}"""
 
+    @property
+    def datasets(self) -> Mapping[str, Dataset]:
+        """The current datasets."""
+        return self._datasets
+
+    @property
+    def dataset(self) -> Dataset:
+        """The current dataset when there is just one dataset."""
+        if len(self.datasets) == 1:
+            return next(iter(self.datasets.values()))
+        else:
+            raise ValueError(f"Expected a single dataset, found {len(self.datasets)}")
+
+    @property
+    def models(self) -> Mapping[str, TrainableProbabilisticModel]:
+        """The current models."""
+        return self._models
+
+    @property
+    def model(self) -> TrainableProbabilisticModel:
+        """The current model when there is just one model."""
+        if len(self.models) == 1:
+            return next(iter(self.models.values()))
+        else:
+            raise ValueError(f"Expected a single model, found {len(self.models)}")
+
+    @property
+    def acquisition_state(self) -> StateType | None:
+        """The current acquisition state."""
+        return self._acquisition_state
+
     @classmethod
     def from_record(
         cls,
-        record: Record[S],
-        search_space: SP,
-        acquisition_rule: AcquisitionRule[TensorType | State[S | None, TensorType], SP]
+        record: Record[StateType] | FrozenRecord[StateType],
+        search_space: SearchSpaceType,
+        acquisition_rule: AcquisitionRule[
+            TensorType | State[StateType | None, TensorType],
+            SearchSpaceType,
+            TrainableProbabilisticModelType,
+        ]
         | None = None,
-    ) -> AskTellOptimizer[SP]:
+    ) -> AskTellOptimizer[SearchSpaceType]:
         """Creates new :class:`~AskTellOptimizer` instance from provided optimization state.
         Model training isn't triggered upon creation of the instance.
 
@@ -223,28 +362,46 @@ class AskTellOptimizer(Generic[SP]):
         return cls(
             search_space,
             record.datasets,
-            record.models,
+            cast(Mapping[str, TrainableProbabilisticModelType], record.models),
             acquisition_rule=acquisition_rule,  # type: ignore
             acquisition_state=record.acquisition_state,
             fit_model=False,
         )
 
-    def to_record(self) -> Record[S]:
+    def to_record(self, copy: bool = True) -> Record[StateType]:
         """Collects the current state of the optimization, which includes datasets,
         models and acquisition state (if applicable).
 
+        :param copy: Whether to return a copy of the current state or the original. Copying
+            is not supported for all model types. However, continuing the optimization will
+            modify the original state.
         :return: An optimization state record.
         """
-        models_copy = copy.deepcopy(self._models)
-        acquisition_state_copy = copy.deepcopy(self._acquisition_state)
-        return Record(
-            datasets=self._datasets, models=models_copy, acquisition_state=acquisition_state_copy
-        )
+        try:
+            datasets_copy = deepcopy(self._datasets) if copy else self._datasets
+            models_copy = deepcopy(self._models) if copy else self._models
+            state_copy = deepcopy(self._acquisition_state) if copy else self._acquisition_state
+        except Exception as e:
+            raise NotImplementedError(
+                "Failed to copy the optimization state. Some models do not support "
+                "deecopying (this is particularly common for deep neural network models). "
+                "For these models, the `copy` argument of the `to_record` or `to_result` "
+                "methods should be set to `False`. This means that the returned state may be "
+                "modified by subsequent optimization."
+            ) from e
 
-    def to_result(self) -> OptimizationResult[S]:
+        return Record(datasets=datasets_copy, models=models_copy, acquisition_state=state_copy)
+
+    def to_result(self, copy: bool = True) -> OptimizationResult[StateType]:
         """Converts current state of the optimization
-        into a :class:`~trieste.data.OptimizationResult` object."""
-        record: Record[S] = self.to_record()
+        into a :class:`~trieste.data.OptimizationResult` object.
+
+        :param copy: Whether to return a copy of the current state or the original. Copying
+            is not supported for all model types. However, continuing the optimization will
+            modify the original state.
+        :return: A :class:`~trieste.data.OptimizationResult` object.
+        """
+        record: Record[StateType] = self.to_record(copy=copy)
         return OptimizationResult(Ok(record), [])
 
     def ask(self) -> TensorType:
@@ -260,14 +417,29 @@ class AskTellOptimizer(Generic[SP]):
         #   which, when called, returns state and points
         # so code below is needed to cater for both cases
 
-        points_or_stateful = self._acquisition_rule.acquire(
-            self._search_space, self._datasets, self._models
-        )
+        with Timer() as query_point_generation_timer:
+            points_or_stateful = self._acquisition_rule.acquire(
+                self._search_space, self._models, datasets=self._datasets
+            )
 
         if callable(points_or_stateful):
             self._acquisition_state, query_points = points_or_stateful(self._acquisition_state)
         else:
             query_points = points_or_stateful
+
+        summary_writer = logging.get_tensorboard_writer()
+        if summary_writer:
+            with summary_writer.as_default(step=logging.get_step_number()):
+                if tf.rank(query_points) == 2:
+                    for i in tf.range(tf.shape(query_points)[1]):
+                        if len(query_points) == 1:
+                            logging.scalar(f"query_points/[{i}]", float(query_points[0, i]))
+                        else:
+                            logging.histogram(f"query_points/[{i}]", query_points[:, i])
+                logging.scalar(
+                    "wallclock/query_point_generation",
+                    query_point_generation_timer.time,
+                )
 
         return query_points
 
@@ -286,9 +458,36 @@ class AskTellOptimizer(Generic[SP]):
                 f"match dataset keys {self._datasets.keys()}"
             )
 
-        self._datasets = {tag: self._datasets[tag] + new_data[tag] for tag in new_data}
+        for tag in self._datasets:
+            self._datasets[tag] += new_data[tag]
 
-        for tag, model in self._models.items():
-            dataset = self._datasets[tag]
-            model.update(dataset)
-            model.optimize(dataset)
+        with Timer() as model_fitting_timer:
+            for tag, model in self._models.items():
+                dataset = self._datasets[tag]
+                model.update(dataset)
+                model.optimize(dataset)
+
+        summary_writer = logging.get_tensorboard_writer()
+        if summary_writer:
+            with summary_writer.as_default(step=logging.get_step_number()):
+                for tag in self._datasets:
+                    with tf.name_scope(f"{tag}.model"):
+                        self._models[tag].log()
+                    output_dim = tf.shape(new_data[tag].observations)[-1]
+                    for i in tf.range(output_dim):
+                        suffix = f"[{i}]" if output_dim > 1 else ""
+                        if tf.size(new_data[tag].observations) > 0:
+                            logging.histogram(
+                                f"{tag}.observation{suffix}/new_observations",
+                                new_data[tag].observations[..., i],
+                            )
+                            logging.scalar(
+                                f"{tag}.observation{suffix}/best_new_observation",
+                                np.min(new_data[tag].observations[..., i]),
+                            )
+                        if tf.size(self._datasets[tag].observations) > 0:
+                            logging.scalar(
+                                f"{tag}.observation{suffix}/best_overall",
+                                np.min(self._datasets[tag].observations[..., i]),
+                            )
+                    logging.scalar("wallclock/model_fitting", model_fitting_timer.time)

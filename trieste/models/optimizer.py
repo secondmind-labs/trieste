@@ -11,17 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r""" This module contains model optimizers. """
+
+r"""
+This module contains common optimizers based on :class:`~tf.optimizers.Optimizer` that can be used
+with models. Specific models can also sub-class these optimizers or implement their own, and should
+register their loss functions using a :func:`create_loss_function`.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from functools import singledispatch
-from typing import Any, Callable, Dict, Iterable, Optional, Tuple, Union
+from typing import Any, Callable, Iterable, Optional, Tuple, Union
 
-import gpflow
 import scipy
 import tensorflow as tf
-from gpflow.models import ExternalDataTrainingLossMixin, InternalDataTrainingLossMixin
+import tensorflow_probability as tfp
 
 from ..data import Dataset
 from ..types import TensorType
@@ -41,8 +46,8 @@ LossClosure = Callable[[], TensorType]
 
 OptimizeResult = Union[scipy.optimize.OptimizeResult, None]
 """
-Optimization result. For scipy optimizer it is :class:`~scipy.optimize.OptimizeResult`.
-TensorFlow optimizer doesn't return any result.
+Optimization result. TensorFlow optimizer doesn't return any result. For scipy optimizer that is
+also commonly used, it is :class:`~scipy.optimize.OptimizeResult`.
 """
 
 
@@ -50,18 +55,23 @@ TensorFlow optimizer doesn't return any result.
 class Optimizer:
     """Optimizer for training models with all the training data at once."""
 
-    optimizer: gpflow.optimizers.Scipy | tf.optimizers.Optimizer
-    """ The underlying optimizer to use. """
+    optimizer: Any
+    """
+    The underlying optimizer to use. For example, one of the subclasses of
+    :class:`~tensorflow.optimizers.Optimizer` could be used. Note that we use a flexible type `Any`
+    to allow for various optimizers that specific models might need to use.
+    """
 
     minimize_args: dict[str, Any] = field(default_factory=lambda: {})
     """ The keyword arguments to pass to the :meth:`minimize` method of the :attr:`optimizer`. """
 
     compile: bool = False
-    """ If `True`, the optimization process will be compiled with :func:`tf.function`. """
+    """ If `True`, the optimization process will be compiled with :func:`~tf.function`. """
 
     def create_loss(self, model: tf.Module, dataset: Dataset) -> LossClosure:
         """
-        Build a loss function for the specified `model` with the `dataset`.
+        Build a loss function for the specified `model` with the `dataset` using a
+        :func:`create_loss_function`.
 
         :param model: The model to build a loss function for.
         :param dataset: The data with which to build the loss function.
@@ -86,27 +96,31 @@ class Optimizer:
 
 
 @dataclass
-class TFOptimizer(Optimizer):
+class BatchOptimizer(Optimizer):
     """Optimizer for training models with mini-batches of training data."""
 
     max_iter: int = 100
     """ The number of iterations over which to optimize the model. """
 
-    batch_size: int | None = None
+    batch_size: int = 100
     """ The size of the mini-batches. """
 
     dataset_builder: DatasetTransformer | None = None
     """ A mapping from :class:`~trieste.observer.Observer` data to mini-batches. """
 
     def create_loss(self, model: tf.Module, dataset: Dataset) -> LossClosure:
+        """
+        Build a loss function for the specified `model` with the `dataset`.
+
+        :param model: The model to build a loss function for.
+        :param dataset: The data with which to build the loss function.
+        :return: The loss function.
+        """
+
         def creator_fn(data: TrainingData) -> LossClosure:
             return create_loss_function(model, data, self.compile)
 
-        if self.dataset_builder is None and self.batch_size is None:
-            x = tf.convert_to_tensor(dataset.query_points)
-            y = tf.convert_to_tensor(dataset.observations)
-            return creator_fn((x, y))
-        elif self.dataset_builder is None:
+        if self.dataset_builder is None:
             return creator_fn(
                 iter(
                     tf.data.Dataset.from_tensor_slices(dataset.astuple())
@@ -137,45 +151,37 @@ class TFOptimizer(Optimizer):
             train_fn()
 
 
-@singledispatch
-def create_optimizer(
-    optimizer: gpflow.optimizers.Scipy | tf.optimizers.Optimizer,
-    optimizer_args: Dict[str, Any],
-) -> Optimizer:
+@dataclass
+class KerasOptimizer:
+    """Optimizer wrapper for training models implemented with Keras."""
+
+    optimizer: tf.keras.optimizers.Optimizer
+    """ The underlying optimizer to use for training the model. """
+
+    fit_args: dict[str, Any] = field(default_factory=lambda: {})
     """
-    Generic function for creating a :class:`Optimizer` wrapper from a specified
-    `optimizer` and `optimizer_args`. The implementations depends on the type of the
-    underlying optimizer.
-
-    :param optimizer: The optimizer with which to train the model.
-    :param optimizer_args: The keyword arguments to pass to the optimizer wrapper..
-    :return: The :class:`Optimizer` wrapper.
+    The keyword arguments to pass to the ``fit`` method of a :class:`~tf.keras.Model` instance.
+    See https://keras.io/api/models/model_training_apis/#fit-method for a list of possible
+    arguments in the dictionary.
     """
 
+    loss: Optional[
+        Union[
+            tf.keras.losses.Loss, Callable[[TensorType, tfp.distributions.Distribution], TensorType]
+        ]
+    ] = None
+    """ Optional loss function for training the model. """
 
-@create_optimizer.register
-def _create_tf_optimizer(
-    optimizer: tf.optimizers.Optimizer,
-    optimizer_args: Dict[str, Any],
-) -> Optimizer:
-    return TFOptimizer(optimizer, **optimizer_args)
-
-
-@create_optimizer.register
-def _create_scipy_optimizer(
-    optimizer: gpflow.optimizers.Scipy,
-    optimizer_args: Dict[str, Any],
-) -> Optimizer:
-    return Optimizer(optimizer, **optimizer_args)
+    metrics: Optional[list[tf.keras.metrics.Metric]] = None
+    """ Optional metrics for monitoring the performance of the network. """
 
 
 @singledispatch
-def create_loss_function(
-    model: gpflow.models.GPModel, dataset: TrainingData, compile: bool = False
-) -> LossClosure:
+def create_loss_function(model: Any, dataset: TrainingData, compile: bool = False) -> LossClosure:
     """
     Generic function for building a loss function for a specified `model` and `dataset`.
-    The implementations depends on the type of the model.
+    The implementations depends on the type of the model, which should use this function as a
+    decorator together with its register method to make a model-specific loss function available.
 
     :param model: The model to build a loss function for.
     :param dataset: The data with which to build the loss function.
@@ -183,21 +189,3 @@ def create_loss_function(
     :return: The loss function.
     """
     raise NotImplementedError(f"Unknown model {model} passed for loss function extraction")
-
-
-@create_loss_function.register
-def _create_loss_function_internal(
-    model: InternalDataTrainingLossMixin,
-    data: TrainingData,
-    compile: bool = False,
-) -> LossClosure:
-    return model.training_loss_closure(compile=compile)
-
-
-@create_loss_function.register
-def _create_loss_function_external(
-    model: ExternalDataTrainingLossMixin,
-    data: TrainingData,
-    compile: bool = False,
-) -> LossClosure:
-    return model.training_loss_closure(data, compile=compile)

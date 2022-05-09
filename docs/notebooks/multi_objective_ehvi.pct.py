@@ -21,14 +21,18 @@ import trieste
 from trieste.acquisition.function import ExpectedHypervolumeImprovement
 from trieste.acquisition.rule import EfficientGlobalOptimization
 from trieste.data import Dataset
-from trieste.models import create_model, ModelStack
-from trieste.models.gpflow import GPflowModelConfig
-from trieste.space import Box
+from trieste.models import TrainableModelStack
+from trieste.models.gpflow import build_gpr, GaussianProcessRegression
+from trieste.space import Box, SearchSpace
 from trieste.objectives.multi_objectives import VLMOP2
-from trieste.acquisition.multi_objective.pareto import Pareto, get_reference_point
+from trieste.acquisition.multi_objective.pareto import (
+    Pareto,
+    get_reference_point,
+)
 
 np.random.seed(1793)
 tf.random.set_seed(1793)
+
 
 # %% [markdown]
 # ## Describe the problem
@@ -76,7 +80,7 @@ plot_bo_points(initial_query_points, ax=ax[0, 1], num_init=num_initial_points)
 plt.show()
 
 # %% [markdown]
-# ... and in the objective space. The `plot_mobo_points_in_obj_space` will automatically search for non-dominated points and colours them in purple. 
+# ... and in the objective space. The `plot_mobo_points_in_obj_space` will automatically search for non-dominated points and colours them in purple.
 
 # %%
 plot_mobo_points_in_obj_space(initial_data.observations)
@@ -86,31 +90,30 @@ plt.show()
 # %% [markdown]
 # ## Modelling the two functions
 #
-# In this example we model the two objective functions individually with their own Gaussian process models, for problems where the objective functions are similar it may make sense to build a joint model. 
+# In this example we model the two objective functions individually with their own Gaussian process models, for problems where the objective functions are similar it may make sense to build a joint model.
 #
-# We use a model wrapper: `ModelStack` to stack these two independent GP into a single model working as a (independent) multi-output model. 
+# We use a model wrapper: `TrainableModelStack` to stack these two independent GPs into a single model working as an (independent) multi-output model. Note that we set the likelihood variance to a small number because we are dealing with a noise-free problem.
 
 
 # %%
-def build_stacked_independent_objectives_model(data: Dataset, num_output) -> ModelStack:
-        gprs =[]
-        for idx in range(num_output):
-            single_obj_data = Dataset(data.query_points, tf.gather(data.observations, [idx], axis=1))
-            variance = tf.math.reduce_variance(single_obj_data.observations)
-            kernel = gpflow.kernels.Matern52(variance)
-            gpr = gpflow.models.GPR((single_obj_data.query_points, single_obj_data.observations), kernel, noise_variance=1e-5)
-            gpflow.utilities.set_trainable(gpr.likelihood, False)
-            gprs.append((create_model(GPflowModelConfig(**{
-            "model": gpr,
-            "optimizer": gpflow.optimizers.Scipy(),
-            "optimizer_args": {
-            "minimize_args": {"options": dict(maxiter=100)}}})), 1))
+def build_stacked_independent_objectives_model(
+    data: Dataset, num_output: int, search_space: SearchSpace
+) -> TrainableModelStack:
+    gprs = []
+    for idx in range(num_output):
+        single_obj_data = Dataset(
+            data.query_points, tf.gather(data.observations, [idx], axis=1)
+        )
+        gpr = build_gpr(single_obj_data, search_space, likelihood_variance=1e-7)
+        gprs.append((GaussianProcessRegression(gpr), 1))
 
-        return ModelStack(*gprs)
+    return TrainableModelStack(*gprs)
 
 
 # %%
-model = build_stacked_independent_objectives_model(initial_data, num_objective)
+model = build_stacked_independent_objectives_model(
+    initial_data, num_objective, search_space
+)
 
 # %% [markdown]
 # ## Define the acquisition function
@@ -131,8 +134,8 @@ bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 result = bo.optimize(num_steps, initial_data, model, acquisition_rule=rule)
 
 # %% [markdown]
-# To conclude, we visualize the queried data across the design space.  
-# We represent the initial points as crosses and the points obtained by our optimization loop as dots. 
+# To conclude, we visualize the queried data across the design space.
+# We represent the initial points as crosses and the points obtained by our optimization loop as dots.
 
 # %%
 dataset = result.try_get_final_dataset()
@@ -179,7 +182,9 @@ plt.show()
 # %%
 actual_pf = VLMOP2().gen_pareto_optimal_points(100)  # gen 100 pf points
 ref_point = get_reference_point(data_observations)
-idea_hv = Pareto(tf.cast(actual_pf, dtype=data_observations.dtype)).hypervolume_indicator(ref_point)
+idea_hv = Pareto(
+    tf.cast(actual_pf, dtype=data_observations.dtype)
+).hypervolume_indicator(ref_point)
 
 
 # %% [markdown]
@@ -193,14 +198,81 @@ def log_hv(observations):
 
 
 # %% [markdown]
-# Finally, we can plot the convergence of our performance metric over the course of the optimization.  
+# Finally, we can plot the convergence of our performance metric over the course of the optimization.
 # The blue vertical line in the figure denotes the time after which BO starts.
 
 # %%
-fig, ax = plot_mobo_history(data_observations, log_hv, num_init=num_initial_points)
+fig, ax = plot_mobo_history(
+    data_observations, log_hv, num_init=num_initial_points
+)
 ax.set_xlabel("Iterations")
 ax.set_ylabel("log HV difference")
 plt.show()
+
+
+# %% [markdown]
+# ## Batch multi-objective optimization
+#
+# EHVI can be extended to the case of batches (i.e. query several points at a time) using the `Fantasizer`. `Fantasizer` works by greedily optimising a base acquisition function, then "fantasizing" the observations at the chosen query points and updating the predictive equations of the models as if the fantasized data was added to the models. The only changes that need to be done here are to wrap the `ExpectedHypervolumeImprovement` in a `Fantasizer` object, and set the rule argument `num_query_points` to a value greater than one. Here, we choose 10 batches of size 3, so the observation budget is the same as before.
+
+# %%
+model = build_stacked_independent_objectives_model(
+    initial_data, num_objective, search_space
+)
+
+from trieste.acquisition.function import Fantasizer
+
+batch_ehvi = Fantasizer(ExpectedHypervolumeImprovement())
+batch_rule: EfficientGlobalOptimization = EfficientGlobalOptimization(
+    builder=batch_ehvi, num_query_points=3
+)
+num_steps = 10
+bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+batch_result = bo.optimize(
+    num_steps, initial_data, model, acquisition_rule=batch_rule
+)
+
+# %% [markdown]
+# We can have a look at the results, as in the previous case. For this relatively simple problem, the greedy heuristic works quite well, and the performance is similar to the non-batch run.
+
+# %%
+
+dataset = batch_result.try_get_final_dataset()
+batch_data_query_points = dataset.query_points
+batch_data_observations = dataset.observations
+
+_, ax = plot_function_2d(
+    vlmop2,
+    mins,
+    maxs,
+    grid_density=100,
+    contour=True,
+    figsize=(12, 6),
+    title=["Obj 1", "Obj 2"],
+    xlabel="$X_1$",
+    ylabel="$X_2$",
+    colorbar=True,
+)
+plot_bo_points(
+    batch_data_query_points, ax=ax[0, 0], num_init=num_initial_points
+)
+plot_bo_points(
+    batch_data_query_points, ax=ax[0, 1], num_init=num_initial_points
+)
+plt.show()
+
+plot_mobo_points_in_obj_space(
+    batch_data_observations, num_init=num_initial_points
+)
+plt.show()
+
+fig, ax = plot_mobo_history(
+    batch_data_observations, log_hv, num_init=num_initial_points
+)
+ax.set_xlabel("Iterations")
+ax.set_ylabel("log HV difference")
+plt.show()
+
 
 # %% [markdown]
 # ## Multi-objective optimization with constraints
@@ -225,11 +297,13 @@ class Sim:
 OBJECTIVE = "OBJECTIVE"
 CONSTRAINT = "CONSTRAINT"
 
+
 def observer_cst(query_points):
     return {
         OBJECTIVE: Dataset(query_points, Sim.objective(query_points)),
         CONSTRAINT: Dataset(query_points, Sim.constraint(query_points)),
     }
+
 
 num_initial_points = 10
 initial_query_points = search_space.sample(num_initial_points)
@@ -250,39 +324,31 @@ plot_2obj_cst_query_points(
 )
 plt.show()
 
-mask_fail = initial_data_with_cst[CONSTRAINT].observations.numpy() > Sim.threshold
-plot_mobo_points_in_obj_space(initial_data_with_cst[OBJECTIVE].observations, mask_fail=mask_fail[:, 0])
+mask_fail = (
+    initial_data_with_cst[CONSTRAINT].observations.numpy() > Sim.threshold
+)
+plot_mobo_points_in_obj_space(
+    initial_data_with_cst[OBJECTIVE].observations, mask_fail=mask_fail[:, 0]
+)
 plt.show()
 
 # %% [markdown]
 # We use the same model wrapper to build and stack the two GP models of the objective:
 
 # %%
-objective_model = build_stacked_independent_objectives_model(initial_data_with_cst[OBJECTIVE], num_objective)
+objective_model = build_stacked_independent_objectives_model(
+    initial_data_with_cst[OBJECTIVE], num_objective, search_space
+)
 
 # %% [markdown]
-# We also create a single model of the constraint:
+# We also create a single model of the constraint. Note that we set the likelihood variance to a small number because we are dealing with a noise-free problem.
 
 # %%
-def create_constraint_model(data):
-    variance = tf.math.reduce_variance(data.observations)
-    lengthscale = 1.0 * np.ones(2, dtype=gpflow.default_float())
-    kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=lengthscale)
-    jitter = gpflow.kernels.White(1e-12)
-    gpr = gpflow.models.GPR(data.astuple(), kernel + jitter, noise_variance=1e-5)
-    gpflow.set_trainable(gpr.likelihood, False)
-    return trieste.models.create_model(GPflowModelConfig(
-        **{
-            "model": gpr,
-            "optimizer": gpflow.optimizers.Scipy(),
-            "optimizer_args": {
-                "minimize_args": {"options": dict(maxiter=100)},
-            },
-        }
-    ))
+gpflow_model = build_gpr(
+    initial_data_with_cst[CONSTRAINT], search_space, likelihood_variance=1e-7
+)
+constraint_model = GaussianProcessRegression(gpflow_model)
 
-
-constraint_model = create_constraint_model(initial_data_with_cst[CONSTRAINT])
 
 # %% [markdown]
 # We store both sets of models in a dictionary:
@@ -295,10 +361,14 @@ models = {OBJECTIVE: objective_model, CONSTRAINT: constraint_model}
 # We utilize the `ExpectedConstrainedHypervolumeImprovement` acquisition function, which is the product of EHVI (based on the feasible Pareto set) with the probability of feasibility:
 
 # %%
-from trieste.acquisition.function import ExpectedConstrainedHypervolumeImprovement
+from trieste.acquisition.function import (
+    ExpectedConstrainedHypervolumeImprovement,
+)
 
 pof = trieste.acquisition.ProbabilityOfFeasibility(threshold=Sim.threshold)
-echvi = ExpectedConstrainedHypervolumeImprovement(OBJECTIVE, pof.using(CONSTRAINT))
+echvi = ExpectedConstrainedHypervolumeImprovement(
+    OBJECTIVE, pof.using(CONSTRAINT)
+)
 rule = EfficientGlobalOptimization(builder=echvi)
 
 # %% [markdown]
@@ -307,7 +377,9 @@ rule = EfficientGlobalOptimization(builder=echvi)
 # %%
 num_steps = 30
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer_cst, search_space)
-result = bo.optimize(num_steps, initial_data_with_cst, models, acquisition_rule=rule)
+result = bo.optimize(
+    num_steps, initial_data_with_cst, models, acquisition_rule=rule
+)
 
 # %% [markdown]
 # As previously, we visualize the queried data across the design space.

@@ -20,15 +20,30 @@ import tensorflow as tf
 from gpflow.base import Module
 
 from ...types import TensorType
-from ..interfaces import ProbabilisticModel
+from ..interfaces import SupportsGetObservationNoise
+from ..optimizer import KerasOptimizer
 
 
-class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
-    """A trainable wrapper for a GPflux deep Gaussian process model. The code assumes subclasses
+class GPfluxPredictor(SupportsGetObservationNoise, ABC):
+    """
+    A trainable wrapper for a GPflux deep Gaussian process model. The code assumes subclasses
     will use the Keras `fit` method for training, and so they should provide access to both a
     `model_keras` and `model_gpflux`. Note: due to Keras integration, the user should remember to
     use `tf.keras.backend.set_floatx()` with the desired value (consistent with GPflow) to avoid
-    dtype errors."""
+    dtype errors.
+    """
+
+    def __init__(self, optimizer: KerasOptimizer | None = None):
+        """
+        :param optimizer: The optimizer wrapper containing the optimizer with which to train the
+            model and arguments for the wrapper and the optimizer. The optimizer must
+            be an instance of a :class:`~tf.optimizers.Optimizer`. Defaults to
+            :class:`~tf.optimizers.Adam` optimizer with 0.01 learning rate.
+        """
+        if optimizer is None:
+            optimizer = KerasOptimizer(tf.optimizers.Adam(0.01))
+
+        self._optimizer = optimizer
 
     @property
     @abstractmethod
@@ -41,17 +56,14 @@ class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
         """Returns the compiled Keras model for training."""
 
     @property
-    @abstractmethod
-    def optimizer(self) -> tf.keras.optimizers.Optimizer:
-        """The optimizer with which to train the model."""
+    def optimizer(self) -> KerasOptimizer:
+        """The optimizer wrapper for training the model."""
+        return self._optimizer
 
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """Note: unless otherwise noted, this returns the mean and variance of the last layer
         conditioned on one sample from the previous layers."""
         return self.model_gpflux.predict_f(query_points)
-
-    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        raise NotImplementedError("Joint prediction not implemented for deep GPs")
 
     @abstractmethod
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
@@ -76,6 +88,3 @@ class GPfluxPredictor(ProbabilisticModel, tf.Module, ABC):
             raise NotImplementedError(f"Model {self!r} does not have scalar observation noise")
 
         return noise_variance
-
-    def __deepcopy__(self, memo: dict[int, object]) -> GPfluxPredictor:
-        raise NotImplementedError("`deepcopy` not yet supported for `GPfluxPredictor`")

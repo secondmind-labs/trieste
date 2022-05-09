@@ -15,7 +15,7 @@
 """
 This module contains toy objective functions, useful for experimentation. A number of them have been
 taken from `this Virtual Library of Simulation Experiments
-<https://www.sfu.ca/~ssurjano/optimization.html>`_.
+<https://web.archive.org/web/20211015101644/https://www.sfu.ca/~ssurjano/> (:cite:`ssurjano2021`)`_.
 """
 
 from __future__ import annotations
@@ -91,6 +91,35 @@ SCALED_BRANIN_MINIMUM = tf.constant([-1.047393], tf.float64)
 
 BRANIN_SEARCH_SPACE = Box([0.0], [1.0]) ** 2
 """ The search space for the :func:`branin` function. """
+
+
+def simple_quadratic(x: TensorType) -> TensorType:
+    """
+    A trivial quadratic function over :math:`[0, 1]^2`. Useful for quick testing.
+
+    :param x: The points at which to evaluate the function, with shape [..., 2].
+    :return: The function values at ``x``, with shape [..., 1].
+    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+    """
+    tf.debugging.assert_shapes([(x, (..., 2))])
+
+    return -tf.math.reduce_sum(x, axis=-1, keepdims=True) ** 2
+
+
+SIMPLE_QUADRATIC_MINIMIZER = tf.constant([[1.0, 1.0]], tf.float64)
+"""
+The global minimizer of the :func:`simple_quadratic` function over :math:`[0, 1]^2`,
+with shape [1, 2] and dtype float64.
+"""
+
+SIMPLE_QUADRATIC_MINIMUM = tf.constant([-4.0], tf.float64)
+"""
+The global minimum of the :func:`simple_quadratic` function over :math:`[0, 1]^2`, with shape [1]
+and dtype float64.
+"""
+
+SIMPLE_QUADRATIC_SEARCH_SPACE = BRANIN_SEARCH_SPACE
+""" The search space for the :func:`simple_quadratic` function. """
 
 
 def gramacy_lee(x: TensorType) -> TensorType:
@@ -510,4 +539,51 @@ The search space for the 5-dimensional :func:`michalewicz` function.
 MICHALEWICZ_10_SEARCH_SPACE = Box([0.0], [pi]) ** 10
 """
 The search space for the 10-dimensional :func:`michalewicz` function.
+"""
+
+
+def trid(x: TensorType, d: int = 10) -> TensorType:
+    """
+    The Trid function over :math:`[-d^2, d^2]` for all i=1,...,d. Dimensionality is determined
+    by the parameter ``d`` and it has a global minimum. This function has large variation in
+    output which makes it challenging for Bayesian optimisation with vanilla Gaussian processes
+    with non-stationary kernels. Models that can deal with non-stationarities, such as deep
+    Gaussian processes, can be useful for modelling these functions. See :cite:`hebbal2019bayesian`
+    and https://www.sfu.ca/~ssurjano/trid.html for details.
+
+    :param x: The points at which to evaluate the function, with shape [..., d].
+    :return: The function values at ``x``, with shape [..., 1].
+    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+    """
+    tf.debugging.assert_greater_equal(d, 2)
+    tf.debugging.assert_shapes([(x, (..., d))])
+
+    result = tf.reduce_sum(tf.pow(x - 1, 2), 1, True) - tf.reduce_sum(x[:, 1:] * x[:, :-1], 1, True)
+    return result
+
+
+def trid_10(x: TensorType) -> TensorType:
+    return trid(x, d=10)
+
+
+TRID_10_MINIMIZER = tf.constant([[i * (10 + 1 - i) for i in range(1, 10 + 1)]], tf.float64)
+"""
+The global minimizer of :func:`trid` function is defined as :math:`x_i=i(d+1-i)` for all i=1,...,d.
+Here, we define it specifically for the 10-dimensional variant, with shape [1, 10] and dtype
+float64.
+"""
+
+
+TRID_10_MINIMUM = tf.constant([-10 * (10 + 4) * (10 - 1) / 6], tf.float64)
+"""
+The global minimum of :func:`trid` function is defined as :math:`d(d+4)(d-1)/6` for dimensionality
+`d`. Here, we define it specifically for the 10-dimensional variant, with shape [1] and dtype
+float64.
+"""
+
+
+TRID_10_SEARCH_SPACE = Box([-(10 ** 2)], [10 ** 2]) ** 10
+"""
+The search space for :func:`trid` function is defined over :math:`[-d^2, d^2]` for all i=1,...,d.
+Here, we define it specifically for the 10-dimensional variant.
 """

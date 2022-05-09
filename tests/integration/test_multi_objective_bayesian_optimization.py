@@ -11,23 +11,33 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import tempfile
 
-import gpflow
 import pytest
 import tensorflow as tf
 
 from tests.util.misc import random_seed
-from trieste.acquisition.function import (
+from trieste.acquisition import (
+    HIPPO,
     BatchMonteCarloExpectedHypervolumeImprovement,
     ExpectedHypervolumeImprovement,
 )
 from trieste.acquisition.multi_objective.pareto import Pareto, get_reference_point
 from trieste.acquisition.optimizer import generate_continuous_optimizer
-from trieste.acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
+from trieste.acquisition.rule import (
+    AcquisitionRule,
+    AsynchronousOptimization,
+    EfficientGlobalOptimization,
+)
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
-from trieste.models.gpflow import GaussianProcessRegression
-from trieste.models.interfaces import ModelStack
+from trieste.logging import set_summary_filter, tensorboard_writer
+from trieste.models.gpflow import GaussianProcessRegression, build_gpr
+from trieste.models.interfaces import (
+    TrainableModelStack,
+    TrainablePredictJointReparamModelStack,
+    TrainableProbabilisticModel,
+)
 from trieste.objectives.multi_objectives import VLMOP2
 from trieste.objectives.utils import mk_observer
 from trieste.observer import OBJECTIVE
@@ -41,9 +51,19 @@ from trieste.types import TensorType
     [
         pytest.param(
             20,
+            EfficientGlobalOptimization(
+                ExpectedHypervolumeImprovement(tf.constant([1.1, 1.1], dtype=tf.float64)).using(
+                    OBJECTIVE
+                )
+            ),
+            -3.65,
+            id="ehvi_fixed_reference_pts",
+        ),
+        pytest.param(
+            20,
             EfficientGlobalOptimization(ExpectedHypervolumeImprovement().using(OBJECTIVE)),
             -3.65,
-            id="ehvi_vlmop2",
+            id="ExpectedHypervolumeImprovement",
         ),
         pytest.param(
             15,
@@ -53,7 +73,20 @@ from trieste.types import TensorType
                 optimizer=generate_continuous_optimizer(num_initial_samples=500),
             ),
             -3.44,
-            id="qehvi_vlmop2_q_2",
+            id="BatchMonteCarloExpectedHypervolumeImprovement/2",
+        ),
+        pytest.param(
+            15,
+            EfficientGlobalOptimization(
+                BatchMonteCarloExpectedHypervolumeImprovement(
+                    sample_size=500,
+                    reference_point_spec=tf.constant([1.1, 1.1], dtype=tf.float64),
+                ).using(OBJECTIVE),
+                num_query_points=2,
+                optimizer=generate_continuous_optimizer(num_initial_samples=500),
+            ),
+            -3.44,
+            id="qehvi_vlmop2_q_2_fixed_reference_pts",
         ),
         pytest.param(
             10,
@@ -63,28 +96,47 @@ from trieste.types import TensorType
                 optimizer=generate_continuous_optimizer(num_initial_samples=500),
             ),
             -3.2095,
-            id="qehvi_vlmop2_q_4",
+            id="BatchMonteCarloExpectedHypervolumeImprovement/4",
+        ),
+        pytest.param(
+            10,
+            EfficientGlobalOptimization(
+                HIPPO(),
+                num_query_points=4,
+                optimizer=generate_continuous_optimizer(num_initial_samples=500),
+            ),
+            -3.2095,
+            id="HIPPO/4",
+        ),
+        pytest.param(
+            10,
+            AsynchronousOptimization(
+                BatchMonteCarloExpectedHypervolumeImprovement(sample_size=250).using(OBJECTIVE),
+                num_query_points=4,
+                optimizer=generate_continuous_optimizer(num_initial_samples=500),
+            ),
+            -3.2095,
+            id="BatchMonteCarloExpectedHypervolumeImprovement/4",
         ),
     ],
 )
 def test_multi_objective_optimizer_finds_pareto_front_of_the_VLMOP2_function(
-    num_steps: int, acquisition_rule: AcquisitionRule[TensorType, Box], convergence_threshold: float
+    num_steps: int,
+    acquisition_rule: AcquisitionRule[TensorType, Box, TrainableProbabilisticModel],
+    convergence_threshold: float,
 ) -> None:
     search_space = Box([-2, -2], [2, 2])
 
-    def build_stacked_independent_objectives_model(data: Dataset) -> ModelStack:
+    def build_stacked_independent_objectives_model(data: Dataset) -> TrainableModelStack:
         gprs = []
         for idx in range(2):
             single_obj_data = Dataset(
                 data.query_points, tf.gather(data.observations, [idx], axis=1)
             )
-            variance = tf.math.reduce_variance(single_obj_data.observations)
-            kernel = gpflow.kernels.Matern52(variance, tf.constant([0.2, 0.2], tf.float64))
-            gpr = gpflow.models.GPR(single_obj_data.astuple(), kernel, noise_variance=1e-5)
-            gpflow.utilities.set_trainable(gpr.likelihood, False)
+            gpr = build_gpr(single_obj_data, search_space, likelihood_variance=1e-5)
             gprs.append((GaussianProcessRegression(gpr), 1))
 
-        return ModelStack(*gprs)
+        return TrainablePredictJointReparamModelStack(*gprs)
 
     observer = mk_observer(VLMOP2().objective(), OBJECTIVE)
 
@@ -93,11 +145,17 @@ def test_multi_objective_optimizer_finds_pareto_front_of_the_VLMOP2_function(
 
     model = build_stacked_independent_objectives_model(initial_data[OBJECTIVE])
 
-    dataset = (
-        BayesianOptimizer(observer, search_space)
-        .optimize(num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule)
-        .try_get_final_datasets()[OBJECTIVE]
-    )
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        summary_writer = tf.summary.create_file_writer(tmpdirname)
+
+        set_summary_filter(lambda x: True)
+        with tensorboard_writer(summary_writer):
+
+            dataset = (
+                BayesianOptimizer(observer, search_space)
+                .optimize(num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule)
+                .try_get_final_datasets()[OBJECTIVE]
+            )
 
     # A small log hypervolume difference corresponds to a succesful optimization.
     ref_point = get_reference_point(dataset.observations)

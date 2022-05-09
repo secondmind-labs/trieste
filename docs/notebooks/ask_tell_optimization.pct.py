@@ -18,7 +18,6 @@ from trieste.data import Dataset
 from trieste.models.gpflow.models import GaussianProcessRegression
 from trieste.objectives import scaled_branin, SCALED_BRANIN_MINIMUM
 from trieste.objectives.utils import mk_observer
-from trieste.observer import OBJECTIVE
 from trieste.space import Box
 
 from util.plotting import plot_regret
@@ -29,6 +28,7 @@ tf.random.set_seed(1234)
 
 search_space = Box([0, 0], [1, 1])
 n_steps = 5
+
 
 def build_model(data, kernel_func=None):
     """kernel_func should be a function that takes variance as a single input parameter"""
@@ -42,6 +42,7 @@ def build_model(data, kernel_func=None):
 
     return GaussianProcessRegression(gpr)
 
+
 num_initial_points = 5
 initial_query_points = search_space.sample(num_initial_points)
 observer = mk_observer(scaled_branin)
@@ -50,7 +51,7 @@ initial_data = observer(initial_query_points)
 # %% [markdown]
 # ## Timing acquisition function: simple use case for Ask-Tell
 #
-# Let's say we are very concerned with the performance of the acqusition function, and want a simple way of measuring its performance over the course of the optimization. At the time of writing these lines, regular Trieste's optimizer does not provide such customization functionality, and this is where Ask-Tell comes in handy.
+# Let's say we are very concerned with the performance of the acquisition function, and want a simple way of measuring its performance over the course of the optimization. At the time of writing these lines, regular Trieste's optimizer does not provide such customization functionality, and this is where Ask-Tell comes in handy.
 
 # %%
 import timeit
@@ -79,12 +80,15 @@ def plot_ask_tell_regret(ask_tell_result):
 
     suboptimality = observations - SCALED_BRANIN_MINIMUM.numpy()
     ax = plt.gca()
-    plot_regret(suboptimality, ax, num_init=num_initial_points, idx_best=arg_min_idx)
+    plot_regret(
+        suboptimality, ax, num_init=num_initial_points, idx_best=arg_min_idx
+    )
 
     ax.set_yscale("log")
     ax.set_ylabel("Regret")
     ax.set_ylim(0.001, 100)
     ax.set_xlabel("# evaluations")
+
 
 plot_ask_tell_regret(ask_tell.to_result())
 
@@ -94,8 +98,12 @@ plot_ask_tell_regret(ask_tell.to_result())
 # We now turn to a slightly more complex use case. Let's suppose we want to switch between two models depending on some criteria dynamically during the optimization loop, e.g. we want to be able to train a model outside of Trieste. In this case we can only use Ask part of the Ask-Tell interface.
 
 # %%
-model1 = build_model(initial_data, kernel_func=lambda v: gpflow.kernels.RBF(variance=v))
-model2 = build_model(initial_data, kernel_func=lambda v: gpflow.kernels.Matern32(variance=v))
+model1 = build_model(
+    initial_data, kernel_func=lambda v: gpflow.kernels.RBF(variance=v)
+)
+model2 = build_model(
+    initial_data, kernel_func=lambda v: gpflow.kernels.Matern32(variance=v)
+)
 
 dataset = initial_data
 for step in range(n_steps):
@@ -128,8 +136,8 @@ plot_ask_tell_regret(ask_tell.to_result())
 # %% [markdown]
 # ## External experiment: storing optimizer state
 #
-# Now let's suppose you are optimizing a process that takes hours or even days to complete, e.g. a lab experiment or a hyperparameter optimization of a big machine learning model. This time you cannot even express the objective function in Python code. Instead you would like to ask Trieste what configuration to run next, go to the lab, perform the experiment, collect data, feed it back to Trieste and ask for the next configuration, and so on. It would be very convenient to be able to store intermediate optimization state to disk or database or other storage, so that your machine can be switched off while you are waiting for observation results. 
-# 
+# Now let's suppose you are optimizing a process that takes hours or even days to complete, e.g. a lab experiment or a hyperparameter optimization of a big machine learning model. This time you cannot even express the objective function in Python code. Instead you would like to ask Trieste what configuration to run next, go to the lab, perform the experiment, collect data, feed it back to Trieste and ask for the next configuration, and so on. It would be very convenient to be able to store intermediate optimization state to disk or database or other storage, so that your machine can be switched off while you are waiting for observation results.
+#
 # In this section we'll show how you could do it with Ask-Tell in Trieste. Of course we cannot perform a real physical experiment within this notebook, so we will just mimick it by using pickle to write optimization state and read it back.
 
 # %%

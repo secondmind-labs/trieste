@@ -48,7 +48,11 @@ class Dataset:
                 f" {self.query_points.shape} and {self.observations.shape}."
             )
 
-        if self.query_points.shape[:-1] != self.observations.shape[:-1]:
+        if (
+            self.query_points.shape[:-1] != self.observations.shape[:-1]
+            # can't check dynamic shapes, so trust that they're ok (if not, they'll fail later)
+            and None not in self.query_points.shape[:-1]
+        ):
             raise ValueError(
                 f"Leading shapes of query_points and observations must match. Got shapes"
                 f" {self.query_points.shape}, {self.observations.shape}."
@@ -87,7 +91,7 @@ class Dataset:
             tf.concat([self.observations, rhs.observations], axis=0),
         )
 
-    def __len__(self) -> TensorType:
+    def __len__(self) -> tf.Tensor:
         """
         :return: The number of query points, or equivalently the number of observations.
         """
