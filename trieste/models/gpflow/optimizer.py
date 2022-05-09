@@ -18,6 +18,7 @@ This module registers the GPflow specific loss functions.
 
 from __future__ import annotations
 
+import tensorflow as tf
 from gpflow.models import ExternalDataTrainingLossMixin, InternalDataTrainingLossMixin
 
 from ..optimizer import LossClosure, TrainingData, create_loss_function
@@ -38,4 +39,32 @@ def _create_loss_function_external(
     data: TrainingData,
     compile: bool = False,
 ) -> LossClosure:
-    return model.training_loss_closure(data, compile=compile)
+
+    if not compile:
+
+        def closure() -> tf.Tensor:
+            return model.training_loss(data)
+
+        return closure
+
+    if not hasattr(model, "compiled_training_loss_closure_builder"):
+        X, Y = data
+        shape_spec = (
+            tf.TensorSpec([None, *X.shape[1:]], dtype=X.dtype),
+            tf.TensorSpec([None, *Y.shape[1:]], dtype=Y.dtype),
+        )
+
+        def training_loss_builder(x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+            return tf.function(model.training_loss((x, y)), input_signature=shape_spec)
+
+        def closure_builder(data: TrainingData) -> LossClosure:
+            x, y = data
+
+            def compiled_closure() -> tf.Tensor:
+                return training_loss_builder(x, y)
+
+            return compiled_closure
+
+        setattr(model, "compiled_training_loss_closure_builder", closure_builder)
+
+    return getattr(model, "compiled_training_loss_closure_builder")(data)
