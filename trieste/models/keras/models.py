@@ -84,7 +84,7 @@ class DeepEnsemble(
         model: KerasEnsemble,
         optimizer: Optional[KerasOptimizer] = None,
         bootstrap: bool = False,
-        use_samples: bool = False,
+        use_quantiles: bool = False,
     ) -> None:
         """
         :param model: A Keras ensemble model with probabilistic networks as ensemble members. The
@@ -98,10 +98,12 @@ class DeepEnsemble(
             arguments.
         :param bootstrap: Sample with replacement data for training each network in the ensemble.
             By default set to `False`.
-        :param use_samples: Whether to use samples from final probabilistic layer as trajectories
-            or mean predictions when calling :meth:`trajectory_sampler`. Samples can be used to
-            increase the diversity in case of optimizing very large batches of trajectories.
-            By default set to `False` as it is not a thoroughly explored feature.
+        :param use_quantiles: Whether to use quantiles from final probabilistic layer as
+            trajectories or mean predictions when calling :meth:`trajectory_sampler`. Quantiles are
+            sampled uniformly from a unit interval. This mode can be used to increase the diversity
+            in case of optimizing very large batches of trajectories. When batch size is larger
+            than the ensemble size, multiple quantiles will be used with the same network. By
+            default set to `False`.
         :raise ValueError: If ``model`` is not an instance of
             :class:`~trieste.models.keras.KerasEnsemble` or ensemble has less than two base
             learners (networks).
@@ -135,7 +137,7 @@ class DeepEnsemble(
 
         self._model = model
         self._bootstrap = bootstrap
-        self._use_samples = use_samples
+        self._use_quantiles = use_quantiles
 
     def __repr__(self) -> str:
         """"""
@@ -314,11 +316,11 @@ class DeepEnsemble(
         """
         Return a trajectory sampler. For :class:`DeepEnsemble`, we use an ensemble
         sampler that randomly picks a network from the ensemble and uses its predicted means
-        for generating a trajectory.
+        for generating a trajectory, or optionally randomly sampled quantiles rather than means.
 
         :return: The trajectory sampler.
         """
-        return EnsembleTrajectorySampler(self, self._use_samples)
+        return EnsembleTrajectorySampler(self, self._use_quantiles)
 
     def update(self, dataset: Dataset) -> None:
         """
