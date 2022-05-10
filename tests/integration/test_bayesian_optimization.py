@@ -260,7 +260,7 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_scaled_branin() -> None:
         40,
         EfficientGlobalOptimization[SearchSpace, SparseVariational](),
         optimize_branin=True,
-        model_args={"optimizer": Optimizer(gpflow.optimizers.Scipy())},
+        model_args={"optimizer": Optimizer(gpflow.optimizers.Scipy(), compile=True)},
     )
     _test_optimizer_finds_minimum(
         SparseVariational,
@@ -269,7 +269,7 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_scaled_branin() -> None:
             builder=ParallelContinuousThompsonSampling(), num_query_points=5
         ),
         optimize_branin=True,
-        model_args={"optimizer": Optimizer(gpflow.optimizers.Scipy())},
+        model_args={"optimizer": Optimizer(gpflow.optimizers.Scipy(), compile=True)},
     )
 
 
@@ -279,7 +279,7 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_simple_quadratic() -> None
         SparseVariational,
         5,
         EfficientGlobalOptimization[SearchSpace, SparseVariational](),
-        model_args={"optimizer": Optimizer(gpflow.optimizers.Scipy())},
+        model_args={"optimizer": Optimizer(gpflow.optimizers.Scipy(), compile=True)},
     )
 
 

@@ -18,6 +18,8 @@ This module registers the GPflow specific loss functions.
 
 from __future__ import annotations
 
+from typing import Any, Callable, Optional
+
 import tensorflow as tf
 from gpflow.models import ExternalDataTrainingLossMixin, InternalDataTrainingLossMixin
 from tensorflow.python.data.ops.iterator_ops import OwnedIterator as DatasetOwnedIterator
@@ -34,6 +36,21 @@ def _create_loss_function_internal(
     return model.training_loss_closure(compile=compile)
 
 
+class _TrainingLossClosureBuilder:
+
+    # A cached, compiled training loss closure builder to avoid having to generate a new
+    # closure each time. Stored in a separate class, so we can avoid pickling it.
+
+    def __init__(self) -> None:
+        self.closure_builder: Optional[Callable[[TrainingData], LossClosure]] = None
+
+    def __getstate__(self) -> dict[str, Any]:
+        return {}
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        self.closure_builder = None
+
+
 @create_loss_function.register
 def _create_loss_function_external(
     model: ExternalDataTrainingLossMixin,
@@ -48,7 +65,11 @@ def _create_loss_function_external(
     # instead we compile and save a single function that can handle the dynamic data shape
     X, Y = next(data) if isinstance(data, DatasetOwnedIterator) else data
 
-    if not hasattr(model, "compiled_training_loss_closure_builder"):
+    if not hasattr(model, "_training_loss_closure_builder"):
+        setattr(model, "_training_loss_closure_builder", _TrainingLossClosureBuilder())
+
+    builder: _TrainingLossClosureBuilder = getattr(model, "_training_loss_closure_builder")
+    if builder.closure_builder is None:
         shape_spec = (
             data.element_spec
             if isinstance(data, DatasetOwnedIterator)
@@ -70,6 +91,6 @@ def _create_loss_function_external(
 
             return compiled_closure
 
-        setattr(model, "compiled_training_loss_closure_builder", closure_builder)
+        builder.closure_builder = closure_builder
 
-    return getattr(model, "compiled_training_loss_closure_builder")((X, Y))
+    return builder.closure_builder((X, Y))
