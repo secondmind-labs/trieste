@@ -31,6 +31,7 @@ from trieste.models import (
     TrajectorySampler,
 )
 from trieste.models.gpflow import (
+    IndependentReparametrizationSampler,
     BatchReparametrizationSampler,
     GPflowPredictor,
     RandomFourierFeatureTrajectorySampler,
@@ -148,7 +149,7 @@ class GaussianProcessWithoutNoise(GaussianMarginal, HasReparamSampler):
     def reparam_sampler(
         self: GaussianProcessWithoutNoise, num_samples: int
     ) -> ReparametrizationSampler[GaussianProcessWithoutNoise]:
-        return GaussianProcessSampler(num_samples, self)
+        return IndependentReparametrizationSampler(num_samples, self)
 
 
 class GaussianProcessWithSamplers(GaussianProcess, HasReparamSampler):
@@ -157,7 +158,7 @@ class GaussianProcessWithSamplers(GaussianProcess, HasReparamSampler):
     def reparam_sampler(
         self, num_samples: int
     ) -> ReparametrizationSampler[GaussianProcessWithSamplers]:
-        return GaussianProcessSampler(num_samples, self)
+        return IndependentReparametrizationSampler(num_samples, self)
 
 
 class GaussianProcessWithBatchSamplers(GaussianProcess, HasReparamSampler):
@@ -187,23 +188,6 @@ class QuadraticMeanAndRBFKernel(GaussianProcess, SupportsGetKernel, SupportsGetO
 
     def get_kernel(self) -> tfp.math.psd_kernels.PositiveSemidefiniteKernel:
         return self.kernel
-
-
-class GaussianProcessSampler(ReparametrizationSampler[ProbabilisticModel]):
-    r"""A :class:`trieste.models.interfaces.ReparametrizationSampler` for a
-    :class:`GaussianProcess` model."""
-
-    def __init__(self, sample_size: int, model: ProbabilisticModel):
-        super().__init__(sample_size, model)
-
-        self._model = model
-
-    def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
-        mean, var = self._model.predict(at)
-
-        return mean + tf.sqrt(var) * tf.random.normal(
-            [self._sample_size, 1, tf.shape(mean)[-1]], dtype=mean.dtype
-        )
 
 
 def mock_data() -> tuple[tf.Tensor, tf.Tensor]:
@@ -248,7 +232,7 @@ class QuadraticMeanAndRBFKernelWithSamplers(
     def reparam_sampler(
         self, num_samples: int
     ) -> ReparametrizationSampler[QuadraticMeanAndRBFKernelWithSamplers]:
-        return GaussianProcessSampler(num_samples, self)
+        return IndependentReparametrizationSampler(num_samples, self)
 
     def get_internal_data(self) -> Dataset:
         return Dataset(self._dataset[0], self._dataset[1])
