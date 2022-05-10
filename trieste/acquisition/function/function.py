@@ -636,7 +636,9 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSamp
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
-        samples_at_query_points = sampler.sample(dataset.query_points[..., None, :], jitter=self._jitter)
+        samples_at_query_points = sampler.sample(
+            dataset.query_points[..., None, :], jitter=self._jitter
+        )
         mean = tf.reduce_mean(samples_at_query_points, axis=-3, keepdims=True)  # [N, 1, 1, L]
 
         tf.debugging.assert_shapes(
@@ -664,7 +666,9 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSamp
         tf.debugging.Assert(isinstance(function, monte_carlo_expected_improvement), [])
         sampler = function._sampler  # type: ignore
         sampler.reset_sampler()
-        samples_at_query_points = sampler.sample(dataset.query_points[..., None, :], jitter=self._jitter)
+        samples_at_query_points = sampler.sample(
+            dataset.query_points[..., None, :], jitter=self._jitter
+        )
         mean = tf.reduce_mean(samples_at_query_points, axis=-3, keepdims=True)
 
         tf.debugging.assert_shapes(
@@ -774,7 +778,9 @@ class MonteCarloAugmentedExpectedImprovement(
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
-        samples_at_query_points = sampler.sample(dataset.query_points[..., None, :], jitter=self._jitter)
+        samples_at_query_points = sampler.sample(
+            dataset.query_points[..., None, :], jitter=self._jitter
+        )
         mean = tf.reduce_mean(samples_at_query_points, axis=-3, keepdims=True)  # [N, 1, 1, L]
 
         tf.debugging.assert_shapes(
@@ -802,7 +808,9 @@ class MonteCarloAugmentedExpectedImprovement(
         tf.debugging.Assert(isinstance(function, monte_carlo_augmented_expected_improvement), [])
         sampler = function._sampler  # type: ignore
         sampler.reset_sampler()
-        samples_at_query_points = sampler.sample(dataset.query_points[..., None, :], jitter=self._jitter)
+        samples_at_query_points = sampler.sample(
+            dataset.query_points[..., None, :], jitter=self._jitter
+        )
         mean = tf.reduce_mean(samples_at_query_points, axis=-3, keepdims=True)  # [N, 1, 1, L]
 
         tf.debugging.assert_shapes(
