@@ -31,9 +31,9 @@ from trieste.models import (
     TrajectorySampler,
 )
 from trieste.models.gpflow import (
-    IndependentReparametrizationSampler,
     BatchReparametrizationSampler,
     GPflowPredictor,
+    IndependentReparametrizationSampler,
     RandomFourierFeatureTrajectorySampler,
 )
 from trieste.models.gpflow.interface import SupportsCovarianceBetweenPoints
@@ -45,7 +45,6 @@ from trieste.models.interfaces import (
 )
 from trieste.models.optimizer import Optimizer
 from trieste.types import TensorType
-from trieste.utils import DEFAULTS
 
 
 def rbf() -> tfp.math.psd_kernels.ExponentiatedQuadratic:

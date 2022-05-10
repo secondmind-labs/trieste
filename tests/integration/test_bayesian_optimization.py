@@ -33,9 +33,12 @@ from trieste.acquisition import (
     GreedyContinuousThompsonSampling,
     LocalPenalization,
     MinValueEntropySearch,
+    MonteCarloAugmentedExpectedImprovement,
+    MonteCarloExpectedImprovement,
     MultipleOptimismNegativeLowerConfidenceBound,
     ParallelContinuousThompsonSampling,
 )
+from trieste.acquisition.optimizer import generate_continuous_optimizer
 from trieste.acquisition.rule import (
     AcquisitionRule,
     AsynchronousGreedy,
@@ -95,6 +98,22 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                 30,
                 EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE)),
                 id="AugmentedExpectedImprovement",
+            ),
+            pytest.param(
+                20,
+                EfficientGlobalOptimization(
+                    MonteCarloExpectedImprovement(int(1e3)).using(OBJECTIVE),
+                    generate_continuous_optimizer(100),
+                ),
+                id="MonteCarloExpectedImprovement",
+            ),
+            pytest.param(
+                20,
+                EfficientGlobalOptimization(
+                    MonteCarloAugmentedExpectedImprovement(int(1e3)).using(OBJECTIVE),
+                    generate_continuous_optimizer(100),
+                ),
+                id="MonteCarloAugmentedExpectedImprovement",
             ),
             pytest.param(
                 24,
@@ -325,7 +344,26 @@ def test_bayesian_optimizer_with_dgp_finds_minima_of_scaled_branin(
 
 
 @random_seed
-@pytest.mark.parametrize("num_steps, acquisition_rule", [(5, DiscreteThompsonSampling(1000, 1))])
+@pytest.mark.parametrize(
+    "num_steps, acquisition_rule",
+    [
+        pytest.param(5, DiscreteThompsonSampling(1000, 1), id="DiscreteThompsonSampling"),
+        pytest.param(
+            5,
+            EfficientGlobalOptimization(
+                MonteCarloExpectedImprovement(int(1e2)), generate_continuous_optimizer(100)
+            ),
+            id="MonteCarloExpectedImprovement",
+        ),
+        pytest.param(
+            5,
+            EfficientGlobalOptimization(
+                MonteCarloAugmentedExpectedImprovement(int(1e2)), generate_continuous_optimizer(100)
+            ),
+            id="MonteCarloAugmentedExpectedImprovement",
+        ),
+    ],
+)
 def test_bayesian_optimizer_with_dgp_finds_minima_of_simple_quadratic(
     num_steps: int,
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepGaussianProcess],
