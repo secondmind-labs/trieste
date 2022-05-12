@@ -893,11 +893,11 @@ def test_sparse_gaussian_process_regression_trajectory_sampler_has_correct_sampl
 
     # test predictions approx correct away from data
     npt.assert_allclose(sample_mean[3:] + 1.0, true_mean[3:] + 1.0, rtol=0.1)
-    npt.assert_allclose(sample_variance[3:], true_variance[3:], rtol=0.5)
+    npt.assert_allclose(sample_variance[3:], true_variance[3:], rtol=0.25)
 
     # test predictions almost correct at data
     npt.assert_allclose(sample_mean[:3] + 1.0, true_mean[:3] + 1.0, rtol=0.1)
-    npt.assert_allclose(sample_variance[:3], true_variance[:3], rtol=0.3)
+    npt.assert_allclose(sample_variance[:3], true_variance[:3], rtol=0.25)
 
 
 def test_sparse_gaussian_process_regression_get_inducing_raises_multi_latent_gp() -> None:
@@ -1139,11 +1139,11 @@ def test_variational_gaussian_process_trajectory_sampler_has_correct_samples(
 
     # test predictions approx correct away from data
     npt.assert_allclose(sample_mean[3:] + 1.0, true_mean[3:] + 1.0, rtol=0.1)
-    npt.assert_allclose(sample_variance[3:], true_variance[3:], rtol=0.5)
+    npt.assert_allclose(sample_variance[3:], true_variance[3:], rtol=0.25)
 
     # test predictions correct at data
     npt.assert_allclose(sample_mean[:3] + 1.0, true_mean[:3] + 1.0, rtol=0.1)
-    npt.assert_allclose(sample_variance[:3], true_variance[:3], rtol=0.5)
+    npt.assert_allclose(sample_variance[:3], true_variance[:3], rtol=0.25)
 
 
 @random_seed
@@ -1477,7 +1477,7 @@ def test_sparse_variational_gaussian_process_trajectory_sampler_raises_multi_lat
 
 @random_seed
 @pytest.mark.parametrize("use_mean_function", [True, False])
-@pytest.mark.parametrize("noise_var", [1e-3,1e-1])
+@pytest.mark.parametrize("noise_var", [1e-5,1e-2])
 @pytest.mark.parametrize("whiten", [True, False])
 def test_sparse_variational_trajectory_sampler_has_correct_samples(
     use_mean_function: bool,
@@ -1486,14 +1486,16 @@ def test_sparse_variational_trajectory_sampler_has_correct_samples(
     ) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     y = _3x_plus_gaussian_noise(x)
-    svgp = SVGP(gpflow.kernels.Matern32(), gpflow.likelihoods.Gaussian(noise_var), x, num_data=len(x), whiten=whiten)
-    model = SparseVariational(svgp)
     if use_mean_function:
-        model.model.mean_function = gpflow.mean_functions.Linear()
-    # for speed just pretend update rather than optimize
-    model.model.q_sqrt.assign(tf.expand_dims(tf.eye(len(x)) * tf.math.sqrt(noise_var), 0))
-    model.model.q_mu.assign(y)
-    model.update_posterior_cache()
+        mean = gpflow.mean_functions.Linear()
+    else:
+        mean = gpflow.mean_functions.Zero()
+    svgp = SVGP(gpflow.kernels.Matern32(), gpflow.likelihoods.Gaussian(noise_var), x, num_data=len(x), whiten=whiten, mean_function = mean)
+    optimizer = BatchOptimizer(tf.optimizers.Adam(1.0), max_iter=10)
+    model = SparseVariational(svgp, optimizer=optimizer)
+    model.update(Dataset(x,y))
+    model.optimize(Dataset(x,y))
+
 
     num_samples = 100
     trajectory_sampler = model.trajectory_sampler()
@@ -1511,12 +1513,12 @@ def test_sparse_variational_trajectory_sampler_has_correct_samples(
     true_mean, true_variance = model.predict(x_predict)
 
     # test predictions approx correct away from data
-    npt.assert_allclose(sample_mean[3:] + 1.0, true_mean[3:] + 1.0, rtol=0.05)
-    npt.assert_allclose(sample_variance[3:], true_variance[3:], rtol=0.2)
+    npt.assert_allclose(sample_mean[3:] + 1.0, true_mean[3:] + 1.0, rtol=0.1)
+    npt.assert_allclose(sample_variance[3:], true_variance[3:], rtol=0.25)
 
     # test predictions almost correct at data
-    npt.assert_allclose(sample_mean[:3] + 1.0, true_mean[:3] + 1.0, rtol=0.05)
-    npt.assert_allclose(sample_variance[:3], true_variance[:3], rtol=0.2)
+    npt.assert_allclose(sample_mean[:3] + 1.0, true_mean[:3] + 1.0, rtol=0.1)
+    npt.assert_allclose(sample_variance[:3], true_variance[:3], rtol=0.25)
 
 
 def test_sparse_variational_default_optimizer_is_correct() -> None:

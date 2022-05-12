@@ -755,7 +755,7 @@ class feature_decomposition_trajectory(TrajectoryFunctionClass):
         """
         :param feature_functions: Set of feature function.
         :param weight_sampler: New sampler that generates feature weight samples.
-        :param mean_function: TODO.
+        :param mean_function: The underlying model's mean function.
         """
         self._feature_functions = feature_functions
         self._mean_function = mean_function
@@ -792,7 +792,7 @@ class feature_decomposition_trajectory(TrajectoryFunctionClass):
         flat_x, unflatten = flatten_leading_dims(x)  # [N*B, d]
         flattened_feature_evaluations = self._feature_functions(flat_x)  # [N*B, m]
         feature_evaluations = unflatten(flattened_feature_evaluations)  # [N, B, m]
-        mean = tf.squeeze(self._mean_function(x), -1) # [N, B]
+        mean = tf.squeeze(self._mean_function(x), -1) # account for the model's mean function
         return tf.reduce_sum(feature_evaluations * self._weights_sample, -1)  + mean # [N, B]
 
     def resample(self) -> None:
