@@ -292,7 +292,11 @@ def test_rff_trajectory_sampler_returns_trajectory_function_with_correct_shapes(
     sampler = RandomFourierFeatureTrajectorySampler(model, num_features=num_features)
 
     trajectory = sampler.get_trajectory()
-    xs = tf.linspace([-10.0], [10.0], num_evals,)  # [N, D]
+    xs = tf.linspace(
+        [-10.0],
+        [10.0],
+        num_evals,
+    )  # [N, D]
     xs = tf.cast(xs, tf.float64)
     xs_with_dummy_batch_dim = tf.expand_dims(xs, -2)  # [N, 1, D]
     xs_with_full_batch_dim = tf.tile(xs_with_dummy_batch_dim, [1, batch_size, 1])  # [N, B, D]
@@ -474,6 +478,7 @@ def test_rff_trajectory_update_trajectory_updates_and_doesnt_retrace(batch_size:
         )  # two samples should be different
 
     assert trajectory.__call__._get_tracing_count() == 1  # type: ignore
+
 
 @pytest.mark.parametrize("num_features", [0, -2])
 def test_decoupled_trajectory_sampler_raises_for_invalid_number_of_features(
@@ -677,6 +682,7 @@ def test_decoupled_trajectory_update_trajectory_updates_and_doesnt_retrace(batch
         )  # two samples should be different
 
     assert trajectory.__call__._get_tracing_count() == 1  # type: ignore
+
 
 @random_seed
 @pytest.mark.parametrize("noise_var", [1e-5, 1e-1])

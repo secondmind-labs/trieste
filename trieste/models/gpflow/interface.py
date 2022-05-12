@@ -120,7 +120,7 @@ class GPflowPredictor(
 
         :return: The mean function.
         """
-        return self.model.mean_function       
+        return self.model.mean_function
 
     def get_observation_noise(self) -> TensorType:
         """

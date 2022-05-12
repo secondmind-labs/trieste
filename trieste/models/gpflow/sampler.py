@@ -21,6 +21,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Callable, Optional, Tuple, Union, cast
 
+import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
 
@@ -234,7 +235,9 @@ class FeatureDecompositionTrajectorySampler(
         super().__init__(model)
         self._feature_functions = feature_functions
         self._weight_sampler: Optional[Callable[[int], TensorType]] = None  # lazy init
-        self._mean_function = model.get_mean_function()
+        self._mean_function: Callable[
+            [TensorType], TensorType
+        ] = gpflow.mean_functions.Zero()  # lazy init, i.e. no mean function
 
     def __repr__(self) -> str:
         """"""
@@ -305,7 +308,11 @@ class FeatureDecompositionTrajectorySampler(
 
 @runtime_checkable
 class FeatureDecompositionInternalDataModel(
-    SupportsGetKernel, SupportsGetMeanFunction, SupportsGetObservationNoise, SupportsGetInternalData, Protocol
+    SupportsGetKernel,
+    SupportsGetMeanFunction,
+    SupportsGetObservationNoise,
+    SupportsGetInternalData,
+    Protocol,
 ):
     """
     A probabilistic model that supports get_kernel, get_mean_function, get_observation_noise
@@ -320,7 +327,8 @@ class FeatureDecompositionInducingPointModel(
     SupportsGetKernel, SupportsGetMeanFunction, SupportsGetInducingVariables, Protocol
 ):
     """
-    A probabilistic model that supports get_kernel, get_mean_function and get_inducing_point methods.
+    A probabilistic model that supports get_kernel, get_mean_function
+    and get_inducing_point methods.
     """
 
     pass
@@ -384,6 +392,7 @@ class RandomFourierFeatureTrajectorySampler(
         tf.debugging.assert_positive(num_features)
         self._num_features = num_features
         self._model = model
+        self._mean_function = model.get_mean_function()
         feature_functions = ResampleableRandomFourierFeatureFunctions(
             self._model, self._num_features
         )
@@ -425,11 +434,8 @@ class RandomFourierFeatureTrajectorySampler(
         L = tf.linalg.cholesky(D + s)
         D_inv = tf.linalg.cholesky_solve(L, tf.eye(self._num_features, dtype=phi.dtype))
 
-
         residuals = dataset.observations - self._model.get_mean_function()(dataset.query_points)
-        theta_posterior_mean = tf.matmul(
-            D_inv, tf.matmul(phi, residuals, transpose_a=True)
-        )[
+        theta_posterior_mean = tf.matmul(D_inv, tf.matmul(phi, residuals, transpose_a=True))[
             :, 0
         ]  # [m,]
         theta_posterior_chol_covariance = tf.linalg.cholesky(
@@ -457,7 +463,9 @@ class RandomFourierFeatureTrajectorySampler(
         s = self._model.get_observation_noise() * tf.eye(num_data, dtype=phi.dtype)
         L = tf.linalg.cholesky(G + s)
         L_inv_phi = tf.linalg.triangular_solve(L, phi)  # [n, m]
-        residuals = dataset.observations - self._model.get_mean_function()(dataset.query_points) # [n, 1]
+        residuals = dataset.observations - self._model.get_mean_function()(
+            dataset.query_points
+        )  # [n, 1]
         L_inv_y = tf.linalg.triangular_solve(L, residuals)  # [n, 1]
 
         theta_posterior_mean = tf.tensordot(tf.transpose(L_inv_phi), L_inv_y, [[-1], [-2]])[
@@ -536,9 +544,9 @@ class DecoupledTrajectorySampler(
                 f"and get_inducing_variables; but received {model.__repr__()}."
             )
 
-
         tf.debugging.assert_positive(num_features)
         self._num_features = num_features
+        self._mean_function = model.get_mean_function()
         self._model = model
         feature_functions = ResampleableDecoupledFeatureFunctions(self._model, self._num_features)
 
@@ -565,8 +573,10 @@ class DecoupledTrajectorySampler(
         else:  # massage quantities from GP to look like variational parameters
             internal_data = self._model.get_internal_data()
             inducing_points = internal_data.query_points  # [M, d]
-            q_mu = self._model.get_internal_data().observations # [M, 1]
-            q_mu = q_mu -  self._model.get_mean_function()(inducing_points) # account for mean function
+            q_mu = self._model.get_internal_data().observations  # [M, 1]
+            q_mu = q_mu - self._model.get_mean_function()(
+                inducing_points
+            )  # account for mean function
             q_sqrt = tf.eye(tf.shape(inducing_points)[0], dtype=tf.float64)  # [M, M]
             q_sqrt = tf.math.sqrt(self._model.get_observation_noise()) * q_sqrt
             whiten = False
@@ -601,8 +611,7 @@ class DecoupledTrajectorySampler(
             if whiten:
                 Luu = tf.linalg.cholesky(Kmm)  # [M, M]
                 u_sample = tf.matmul(Luu, u_sample)  # [M, B]
-            
-            #u_sample -= self._model.get_mean_function()(inducing_points) # account for mean function
+
             phi_Z = self._feature_functions(inducing_points)[:, : self._num_features]  # [M, B]
             weight_space_prior_Z = phi_Z @ prior_weights  # [M, B]
 
@@ -750,7 +759,7 @@ class feature_decomposition_trajectory(TrajectoryFunctionClass):
         self,
         feature_functions: Callable[[TensorType], TensorType],
         weight_sampler: Callable[[int], TensorType],
-        mean_function: Callable[[TensorType, TensorType]]
+        mean_function: Callable[[TensorType], TensorType],
     ):
         """
         :param feature_functions: Set of feature function.
@@ -792,8 +801,8 @@ class feature_decomposition_trajectory(TrajectoryFunctionClass):
         flat_x, unflatten = flatten_leading_dims(x)  # [N*B, d]
         flattened_feature_evaluations = self._feature_functions(flat_x)  # [N*B, m]
         feature_evaluations = unflatten(flattened_feature_evaluations)  # [N, B, m]
-        mean = tf.squeeze(self._mean_function(x), -1) # account for the model's mean function
-        return tf.reduce_sum(feature_evaluations * self._weights_sample, -1)  + mean # [N, B]
+        mean = tf.squeeze(self._mean_function(x), -1)  # account for the model's mean function
+        return tf.reduce_sum(feature_evaluations * self._weights_sample, -1) + mean  # [N, B]
 
     def resample(self) -> None:
         """

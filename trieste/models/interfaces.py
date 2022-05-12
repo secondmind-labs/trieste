@@ -176,6 +176,7 @@ class SupportsGetInternalData(ProbabilisticModel, Protocol):
         """
         raise NotImplementedError
 
+
 @runtime_checkable
 class SupportsGetMeanFunction(ProbabilisticModel, Protocol):
     """A probabilistic model that makes use of a mean function."""
