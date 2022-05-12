@@ -392,11 +392,11 @@ class RandomFourierFeatureTrajectorySampler(
         tf.debugging.assert_positive(num_features)
         self._num_features = num_features
         self._model = model
-        self._mean_function = model.get_mean_function()
         feature_functions = ResampleableRandomFourierFeatureFunctions(
             self._model, self._num_features
         )
         super().__init__(self._model, feature_functions)
+        self._mean_function = model.get_mean_function()
 
     def _prepare_weight_sampler(self) -> Callable[[int], TensorType]:  # [B] -> [L, B]
         """
@@ -546,11 +546,11 @@ class DecoupledTrajectorySampler(
 
         tf.debugging.assert_positive(num_features)
         self._num_features = num_features
-        self._mean_function = model.get_mean_function()
         self._model = model
         feature_functions = ResampleableDecoupledFeatureFunctions(self._model, self._num_features)
 
         super().__init__(self._model, feature_functions)
+        self._mean_function = model.get_mean_function()
 
     def _prepare_weight_sampler(self) -> Callable[[int], TensorType]:
         """
