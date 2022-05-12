@@ -892,11 +892,11 @@ def test_sparse_gaussian_process_regression_trajectory_sampler_has_correct_sampl
     true_mean, true_variance = model.predict(x_predict)
 
     # test predictions approx correct away from data
-    npt.assert_allclose(sample_mean[3:] + 1.0, true_mean[3:] + 1.0, rtol=0.2)
+    npt.assert_allclose(sample_mean[3:] + 1.0, true_mean[3:] + 1.0, rtol=0.1)
     npt.assert_allclose(sample_variance[3:], true_variance[3:], rtol=0.5)
 
     # test predictions almost correct at data
-    npt.assert_allclose(sample_mean[:3] + 1.0, true_mean[:3] + 1.0, rtol=0.01)
+    npt.assert_allclose(sample_mean[:3] + 1.0, true_mean[:3] + 1.0, rtol=0.1)
     npt.assert_allclose(sample_variance[:3], true_variance[:3], rtol=0.3)
 
 

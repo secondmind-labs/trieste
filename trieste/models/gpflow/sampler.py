@@ -566,6 +566,7 @@ class DecoupledTrajectorySampler(
             internal_data = self._model.get_internal_data()
             inducing_points = internal_data.query_points  # [M, d]
             q_mu = self._model.get_internal_data().observations # [M, 1]
+            q_mu = q_mu -  self._model.get_mean_function()(inducing_points) # account for mean function
             q_sqrt = tf.eye(tf.shape(inducing_points)[0], dtype=tf.float64)  # [M, M]
             q_sqrt = tf.math.sqrt(self._model.get_observation_noise()) * q_sqrt
             whiten = False
@@ -601,7 +602,7 @@ class DecoupledTrajectorySampler(
                 Luu = tf.linalg.cholesky(Kmm)  # [M, M]
                 u_sample = tf.matmul(Luu, u_sample)  # [M, B]
             
-            u_sample -= self._model.get_mean_function()(inducing_points) # account for mean function
+            #u_sample -= self._model.get_mean_function()(inducing_points) # account for mean function
             phi_Z = self._feature_functions(inducing_points)[:, : self._num_features]  # [M, B]
             weight_space_prior_Z = phi_Z @ prior_weights  # [M, B]
 
