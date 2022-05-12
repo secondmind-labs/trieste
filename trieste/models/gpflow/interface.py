@@ -114,6 +114,14 @@ class GPflowPredictor(
         """
         return self.model.kernel
 
+    def get_mean_function(self) -> gpflow.mean_functions.MeanFunction:
+        """
+        Return the mean function of the model.
+
+        :return: The mean function.
+        """
+        return self.model.mean_function       
+
     def get_observation_noise(self) -> TensorType:
         """
         Return the variance of observation noise for homoscedastic likelihoods.

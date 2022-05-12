@@ -176,6 +176,21 @@ class SupportsGetInternalData(ProbabilisticModel, Protocol):
         """
         raise NotImplementedError
 
+@runtime_checkable
+class SupportsGetMeanFunction(ProbabilisticModel, Protocol):
+    """A probabilistic model that makes use of a mean function."""
+
+    @abstractmethod
+    def get_mean_function(self) -> Callable[[TensorType], TensorType]:
+        """
+        Return the model's mean function, i.e. a parameterized function that can explain
+        coarse scale variations in the data, leaving just the residuals to be explained by
+        our model.
+
+        :return: The model's mean function.
+        """
+        raise NotImplementedError
+
 
 @runtime_checkable
 class FastUpdateModel(ProbabilisticModel, Protocol):

@@ -113,6 +113,8 @@ class GaussianProcess(
         return tf.concat(covs, axis=-3)
 
 
+
+
 class GaussianProcessWithoutNoise(GaussianMarginal, HasReparamSampler):
     """A (static) Gaussian process over a vector random variable with independent reparam sampler
     but without noise variance."""
@@ -180,13 +182,17 @@ class QuadraticMeanAndRBFKernel(GaussianProcess, SupportsGetKernel, SupportsGetO
         noise_variance: float = 1.0,
     ):
         self.kernel = tfp.math.psd_kernels.ExponentiatedQuadratic(kernel_amplitude)
-        super().__init__([lambda x: quadratic(x - x_shift)], [self.kernel], noise_variance)
+        self.mean_function = lambda x: quadratic(x - tf.cast(x_shift,dtype=x.dtype))
+        super().__init__([self.mean_function], [self.kernel], noise_variance)
 
     def __repr__(self) -> str:
         return "QuadraticMeanAndRBFKernel()"
 
     def get_kernel(self) -> tfp.math.psd_kernels.PositiveSemidefiniteKernel:
         return self.kernel
+
+    def get_mean_function(self) -> Callable[[TensorType], TensorType]:
+        return self.mean_function
 
 
 class GaussianProcessSampler(ReparametrizationSampler[ProbabilisticModel]):

@@ -42,6 +42,7 @@ from ..interfaces import (
     SupportsGetInducingVariables,
     SupportsGetInternalData,
     SupportsGetKernel,
+    SupportsGetMeanFunction,
     SupportsGetObservationNoise,
     SupportsPredictJoint,
     TrajectoryFunction,
@@ -233,6 +234,7 @@ class FeatureDecompositionTrajectorySampler(
         super().__init__(model)
         self._feature_functions = feature_functions
         self._weight_sampler: Optional[Callable[[int], TensorType]] = None  # lazy init
+        self._mean_function = model.get_mean_function()
 
     def __repr__(self) -> str:
         """"""
@@ -255,6 +257,7 @@ class FeatureDecompositionTrajectorySampler(
         return feature_decomposition_trajectory(
             feature_functions=self._feature_functions,
             weight_sampler=weight_sampler,
+            mean_function=self._mean_function,
         )
 
     def update_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction:
@@ -302,10 +305,10 @@ class FeatureDecompositionTrajectorySampler(
 
 @runtime_checkable
 class FeatureDecompositionInternalDataModel(
-    SupportsGetKernel, SupportsGetObservationNoise, SupportsGetInternalData, Protocol
+    SupportsGetKernel, SupportsGetMeanFunction, SupportsGetObservationNoise, SupportsGetInternalData, Protocol
 ):
     """
-    A probabilistic model that supports get_kernel, get_observation_noise
+    A probabilistic model that supports get_kernel, get_mean_function, get_observation_noise
     and get_internal_data methods.
     """
 
@@ -314,10 +317,10 @@ class FeatureDecompositionInternalDataModel(
 
 @runtime_checkable
 class FeatureDecompositionInducingPointModel(
-    SupportsGetKernel, SupportsGetInducingVariables, Protocol
+    SupportsGetKernel, SupportsGetMeanFunction, SupportsGetInducingVariables, Protocol
 ):
     """
-    A probabilistic model that supports get_kernel and get_inducing_point methods.
+    A probabilistic model that supports get_kernel, get_mean_function and get_inducing_point methods.
     """
 
     pass
@@ -422,8 +425,10 @@ class RandomFourierFeatureTrajectorySampler(
         L = tf.linalg.cholesky(D + s)
         D_inv = tf.linalg.cholesky_solve(L, tf.eye(self._num_features, dtype=phi.dtype))
 
+
+        residuals = dataset.observations - self._model.get_mean_function()(dataset.query_points)
         theta_posterior_mean = tf.matmul(
-            D_inv, tf.matmul(phi, dataset.observations, transpose_a=True)
+            D_inv, tf.matmul(phi, residuals, transpose_a=True)
         )[
             :, 0
         ]  # [m,]
@@ -452,7 +457,8 @@ class RandomFourierFeatureTrajectorySampler(
         s = self._model.get_observation_noise() * tf.eye(num_data, dtype=phi.dtype)
         L = tf.linalg.cholesky(G + s)
         L_inv_phi = tf.linalg.triangular_solve(L, phi)  # [n, m]
-        L_inv_y = tf.linalg.triangular_solve(L, dataset.observations)  # [n, 1]
+        residuals = dataset.observations - self._model.get_mean_function()(dataset.query_points) # [n, 1]
+        L_inv_y = tf.linalg.triangular_solve(L, residuals)  # [n, 1]
 
         theta_posterior_mean = tf.tensordot(tf.transpose(L_inv_phi), L_inv_y, [[-1], [-2]])[
             :, 0
@@ -530,6 +536,7 @@ class DecoupledTrajectorySampler(
                 f"and get_inducing_variables; but received {model.__repr__()}."
             )
 
+
         tf.debugging.assert_positive(num_features)
         self._num_features = num_features
         self._model = model
@@ -558,7 +565,7 @@ class DecoupledTrajectorySampler(
         else:  # massage quantities from GP to look like variational parameters
             internal_data = self._model.get_internal_data()
             inducing_points = internal_data.query_points  # [M, d]
-            q_mu = self._model.get_internal_data().observations  # [M, 1]
+            q_mu = self._model.get_internal_data().observations # [M, 1]
             q_sqrt = tf.eye(tf.shape(inducing_points)[0], dtype=tf.float64)  # [M, M]
             q_sqrt = tf.math.sqrt(self._model.get_observation_noise()) * q_sqrt
             whiten = False
@@ -589,14 +596,17 @@ class DecoupledTrajectorySampler(
             )  # [M, B]
 
             u_sample = q_mu + u_noise_sample  # [M, B]
+
             if whiten:
                 Luu = tf.linalg.cholesky(Kmm)  # [M, M]
                 u_sample = tf.matmul(Luu, u_sample)  # [M, B]
-
+            
+            u_sample -= self._model.get_mean_function()(inducing_points) # account for mean function
             phi_Z = self._feature_functions(inducing_points)[:, : self._num_features]  # [M, B]
             weight_space_prior_Z = phi_Z @ prior_weights  # [M, B]
 
             diff = u_sample - weight_space_prior_Z  # [M, B]
+
             v = compute_A_inv_b(Kmm, diff)  # [M, B]
 
             tf.debugging.assert_shapes([(v, ["M", "B"]), (prior_weights, ["L", "B"])])
@@ -739,12 +749,15 @@ class feature_decomposition_trajectory(TrajectoryFunctionClass):
         self,
         feature_functions: Callable[[TensorType], TensorType],
         weight_sampler: Callable[[int], TensorType],
+        mean_function: Callable[[TensorType, TensorType]]
     ):
         """
         :param feature_functions: Set of feature function.
         :param weight_sampler: New sampler that generates feature weight samples.
+        :param mean_function: TODO.
         """
         self._feature_functions = feature_functions
+        self._mean_function = mean_function
         self._weight_sampler = weight_sampler
         self._initialized = tf.Variable(False)
 
@@ -778,8 +791,8 @@ class feature_decomposition_trajectory(TrajectoryFunctionClass):
         flat_x, unflatten = flatten_leading_dims(x)  # [N*B, d]
         flattened_feature_evaluations = self._feature_functions(flat_x)  # [N*B, m]
         feature_evaluations = unflatten(flattened_feature_evaluations)  # [N, B, m]
-
-        return tf.reduce_sum(feature_evaluations * self._weights_sample, -1)  # [N, B]
+        mean = tf.squeeze(self._mean_function(x), -1) # [N, B]
+        return tf.reduce_sum(feature_evaluations * self._weights_sample, -1)  + mean # [N, B]
 
     def resample(self) -> None:
         """
