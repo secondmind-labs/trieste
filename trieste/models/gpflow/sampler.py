@@ -198,8 +198,41 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
         return mean[..., None, :, :] + tf.transpose(variance_contribution, new_order)
 
 
+@runtime_checkable
+class FeatureDecompositionInternalDataModel(
+    SupportsGetKernel,
+    SupportsGetMeanFunction,
+    SupportsGetObservationNoise,
+    SupportsGetInternalData,
+    Protocol,
+):
+    """
+    A probabilistic model that supports get_kernel, get_mean_function, get_observation_noise
+    and get_internal_data methods.
+    """
+
+    pass
+
+
+@runtime_checkable
+class FeatureDecompositionInducingPointModel(
+    SupportsGetKernel, SupportsGetMeanFunction, SupportsGetInducingVariables, Protocol
+):
+    """
+    A probabilistic model that supports get_kernel, get_mean_function
+    and get_inducing_point methods.
+    """
+
+    pass
+
+
 class FeatureDecompositionTrajectorySampler(
-    TrajectorySampler[ProbabilisticModelType],
+    TrajectorySampler[
+        Union[
+            FeatureDecompositionInducingPointModel,
+            FeatureDecompositionInternalDataModel,
+        ]
+    ],
     ABC,
 ):
     r"""
@@ -304,34 +337,6 @@ class FeatureDecompositionTrajectorySampler(
         the weights of each of the `L` features.
         """
         raise NotImplementedError
-
-
-@runtime_checkable
-class FeatureDecompositionInternalDataModel(
-    SupportsGetKernel,
-    SupportsGetMeanFunction,
-    SupportsGetObservationNoise,
-    SupportsGetInternalData,
-    Protocol,
-):
-    """
-    A probabilistic model that supports get_kernel, get_mean_function, get_observation_noise
-    and get_internal_data methods.
-    """
-
-    pass
-
-
-@runtime_checkable
-class FeatureDecompositionInducingPointModel(
-    SupportsGetKernel, SupportsGetMeanFunction, SupportsGetInducingVariables, Protocol
-):
-    """
-    A probabilistic model that supports get_kernel, get_mean_function
-    and get_inducing_point methods.
-    """
-
-    pass
 
 
 class RandomFourierFeatureTrajectorySampler(
