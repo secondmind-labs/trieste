@@ -188,12 +188,12 @@ def negate_trajectory_function(function: TrajectoryFunction) -> TrajectoryFuncti
 
         function.__class__ = NegatedTrajectory
 
+        return function
+
     else:
 
         @tf.function
         def negated_trajectory(x: TensorType) -> TensorType:
             return -1.0 * function(x)
 
-        function = negated_trajectory
-
-    return function
+        return negated_trajectory
