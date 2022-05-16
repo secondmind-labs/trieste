@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import tempfile
+from pathlib import Path
 from typing import Any, List, Mapping, Optional, Tuple, Type, cast
 
 import gpflow
@@ -32,9 +33,12 @@ from trieste.acquisition import (
     GreedyContinuousThompsonSampling,
     LocalPenalization,
     MinValueEntropySearch,
+    MonteCarloAugmentedExpectedImprovement,
+    MonteCarloExpectedImprovement,
     MultipleOptimismNegativeLowerConfidenceBound,
     ParallelContinuousThompsonSampling,
 )
+from trieste.acquisition.optimizer import generate_continuous_optimizer
 from trieste.acquisition.rule import (
     AcquisitionRule,
     AsynchronousGreedy,
@@ -45,7 +49,11 @@ from trieste.acquisition.rule import (
     TrustRegion,
 )
 from trieste.acquisition.sampler import ThompsonSamplerFromTrajectory
-from trieste.bayesian_optimizer import BayesianOptimizer, TrainableProbabilisticModelType
+from trieste.bayesian_optimizer import (
+    BayesianOptimizer,
+    OptimizationResult,
+    TrainableProbabilisticModelType,
+)
 from trieste.logging import tensorboard_writer
 from trieste.models import TrainableProbabilisticModel, TrajectoryFunctionClass
 from trieste.models.gpflow import (
@@ -90,6 +98,22 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                 30,
                 EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE)),
                 id="AugmentedExpectedImprovement",
+            ),
+            pytest.param(
+                20,
+                EfficientGlobalOptimization(
+                    MonteCarloExpectedImprovement(int(1e3)).using(OBJECTIVE),
+                    generate_continuous_optimizer(100),
+                ),
+                id="MonteCarloExpectedImprovement",
+            ),
+            pytest.param(
+                20,
+                EfficientGlobalOptimization(
+                    MonteCarloAugmentedExpectedImprovement(int(1e3)).using(OBJECTIVE),
+                    generate_continuous_optimizer(100),
+                ),
+                id="MonteCarloAugmentedExpectedImprovement",
             ),
             pytest.param(
                 24,
@@ -320,7 +344,26 @@ def test_bayesian_optimizer_with_dgp_finds_minima_of_scaled_branin(
 
 
 @random_seed
-@pytest.mark.parametrize("num_steps, acquisition_rule", [(5, DiscreteThompsonSampling(1000, 1))])
+@pytest.mark.parametrize(
+    "num_steps, acquisition_rule",
+    [
+        pytest.param(5, DiscreteThompsonSampling(1000, 1), id="DiscreteThompsonSampling"),
+        pytest.param(
+            5,
+            EfficientGlobalOptimization(
+                MonteCarloExpectedImprovement(int(1e2)), generate_continuous_optimizer(100)
+            ),
+            id="MonteCarloExpectedImprovement",
+        ),
+        pytest.param(
+            5,
+            EfficientGlobalOptimization(
+                MonteCarloAugmentedExpectedImprovement(int(1e2)), generate_continuous_optimizer(100)
+            ),
+            id="MonteCarloAugmentedExpectedImprovement",
+        ),
+    ],
+)
 def test_bayesian_optimizer_with_dgp_finds_minima_of_simple_quadratic(
     num_steps: int,
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepGaussianProcess],
@@ -403,8 +446,10 @@ def _test_optimizer_finds_minimum(
         rtol_level = 0.05
         num_initial_query_points = 10
 
-    if model_type in [SparseVariational, DeepGaussianProcess, DeepEnsemble]:
+    if model_type in [SparseVariational, DeepEnsemble]:
         num_initial_query_points = 20
+    elif model_type in [DeepGaussianProcess]:
+        num_initial_query_points = 25
 
     initial_query_points = search_space.sample(num_initial_query_points)
     observer = mk_observer(scaled_branin if optimize_branin else simple_quadratic)
@@ -450,8 +495,6 @@ def _test_optimizer_finds_minimum(
         model = DeepGaussianProcess(dgp, **model_args)
 
     elif model_type is DeepEnsemble:
-        track_state = False
-
         keras_ensemble = build_vanilla_keras_ensemble(initial_data, 5, 3, 25)
         fit_args = {
             "batch_size": 20,
@@ -479,6 +522,7 @@ def _test_optimizer_finds_minimum(
                 cast(TrainableProbabilisticModelType, model),
                 acquisition_rule,
                 track_state=track_state,
+                track_path=Path(tmpdirname) / "history" if track_state else None,
             )
             best_x, best_y, _ = result.try_get_optimal_point()
 
@@ -491,6 +535,15 @@ def _test_optimizer_finds_minimum(
                 # steps, which makes this is a regression test
                 assert tf.reduce_any(tf.reduce_all(minimizer_err < 0.05, axis=-1), axis=0)
                 npt.assert_allclose(best_y, minima, rtol=rtol_level)
+
+                if track_state:
+                    assert len(result.history) == num_steps
+                    assert len(result.loaded_history) == num_steps
+                    loaded_result: OptimizationResult[None] = OptimizationResult.from_path(
+                        Path(tmpdirname) / "history"
+                    )
+                    assert loaded_result.final_result.is_ok
+                    assert len(loaded_result.history) == num_steps
 
             # check that acquisition functions defined as classes aren't retraced unnecessarily
             # They should be retraced once for the optimzier's starting grid, L-BFGS, and logging.

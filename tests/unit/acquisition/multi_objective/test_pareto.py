@@ -80,29 +80,27 @@ def test_pareto_hypervolume_indicator(
 
 
 @pytest.mark.parametrize(
-    "front",
+    "observations",
     [
         (tf.zeros(shape=(0, 2))),
         (tf.zeros(shape=(0, 3))),
         (tf.constant([])),
     ],
 )
-def test_get_reference_point_raise_when_feed_empty_front(front: tf.Tensor) -> None:
+def test_get_reference_point_raise_when_feed_empty_front(observations: tf.Tensor) -> None:
     with pytest.raises(ValueError):
-        get_reference_point(front)
+        get_reference_point(observations)
 
 
 @pytest.mark.parametrize(
-    "front, expected",
+    "observations, expected",
     [
-        (tf.constant([[1.0, 2.0], [3.0, 4.0]]), tf.constant([5.0, 6.0])),
-        (
-            tf.constant([[[1.0, 2.0], [3.0, 4.0]], [[7.0, 2.0], [5.0, 4.0]]]),
-            tf.constant([[5.0, 6.0], [9.0, 6.0]]),
-        ),
+        (tf.constant([[1.0, 2.0], [3.0, 4.0]]), tf.constant([1.0, 2.0])),
+        (tf.constant([[1.0, 2.0], [2.0, 1.0], [3.0, 4.0]]), tf.constant([3.0, 3.0])),
+        (tf.constant([[1.0, 2.0], [2.0, 1.0], [3.0, 4.0], [4.0, 5.0]]), tf.constant([3.0, 3.0])),
     ],
 )
-def test_get_reference_point_with_different_front_shape(
-    front: tf.Tensor, expected: tf.Tensor
+def test_get_reference_point_extract_based_on_pareto_front(
+    observations: tf.Tensor, expected: tf.Tensor
 ) -> None:
-    tf.debugging.assert_equal(get_reference_point(front), expected)
+    tf.debugging.assert_equal(get_reference_point(observations), expected)

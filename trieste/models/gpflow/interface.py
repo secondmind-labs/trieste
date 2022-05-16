@@ -21,6 +21,7 @@ import gpflow
 import tensorflow as tf
 from gpflow.models import GPModel
 from gpflow.posteriors import BasePosterior, PrecomputeCacheType
+from gpflow.utilities.traversal import _merge_leaf_components, leaf_components
 from typing_extensions import Protocol
 
 from ... import logging
@@ -142,13 +143,15 @@ class GPflowPredictor(
         summary_writer = logging.get_tensorboard_writer()
         if summary_writer:
             with summary_writer.as_default(step=logging.get_step_number()):
-                logging.scalar("kernel.variance", self.get_kernel().variance)
-                lengthscales = self.get_kernel().lengthscales
-                if tf.rank(lengthscales) == 0:
-                    logging.scalar("kernel.lengthscale", lengthscales)
-                elif tf.rank(lengthscales) == 1:
-                    for i, lengthscale in enumerate(lengthscales):
-                        logging.scalar(f"kernel.lengthscale[{i}]", lengthscale)
+                kernel = self.get_kernel()
+                components = _merge_leaf_components(leaf_components(kernel))
+                for k, v in components.items():
+                    if v.trainable:
+                        if tf.rank(v) == 0:
+                            logging.scalar(f"kernel.{k}", v)
+                        elif tf.rank(v) == 1:
+                            for i, vi in enumerate(v):
+                                logging.scalar(f"kernel.{k}[{i}]", vi)
 
     def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[GPflowPredictor]:
         """
