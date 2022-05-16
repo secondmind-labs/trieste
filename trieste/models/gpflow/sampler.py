@@ -19,7 +19,7 @@ GPflow wrappers.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Callable, Optional, Tuple, Union, cast
+from typing import Callable, Optional, Tuple, TypeVar, Union, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -37,7 +37,6 @@ from ...types import TensorType
 from ...utils import DEFAULTS, flatten_leading_dims
 from ..interfaces import (
     ProbabilisticModel,
-    ProbabilisticModelType,
     ReparametrizationSampler,
     SupportsGetInducingVariables,
     SupportsGetInternalData,
@@ -196,8 +195,43 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
         return mean[..., None, :, :] + tf.transpose(variance_contribution, new_order)
 
 
+@runtime_checkable
+class FeatureDecompositionInternalDataModel(
+    SupportsGetKernel, SupportsGetObservationNoise, SupportsGetInternalData, Protocol
+):
+    """
+    A probabilistic model that supports get_kernel, get_observation_noise
+    and get_internal_data methods.
+    """
+
+    pass
+
+
+@runtime_checkable
+class FeatureDecompositionInducingPointModel(
+    SupportsGetKernel, SupportsGetInducingVariables, Protocol
+):
+    """
+    A probabilistic model that supports get_kernel and get_inducing_point methods.
+    """
+
+    pass
+
+
+FeatureDecompositionTrajectorySamplerModel = Union[
+    FeatureDecompositionInducingPointModel,
+    FeatureDecompositionInternalDataModel,
+]
+
+FeatureDecompositionTrajectorySamplerModelType = TypeVar(
+    "FeatureDecompositionTrajectorySamplerModelType",
+    bound=FeatureDecompositionTrajectorySamplerModel,
+    contravariant=True,
+)
+
+
 class FeatureDecompositionTrajectorySampler(
-    TrajectorySampler[ProbabilisticModelType],
+    TrajectorySampler[FeatureDecompositionTrajectorySamplerModelType],
     ABC,
 ):
     r"""
@@ -221,7 +255,7 @@ class FeatureDecompositionTrajectorySampler(
 
     def __init__(
         self,
-        model: ProbabilisticModelType,
+        model: FeatureDecompositionTrajectorySamplerModelType,
         feature_functions: ResampleableRandomFourierFeatureFunctions,
     ):
         """
@@ -298,29 +332,6 @@ class FeatureDecompositionTrajectorySampler(
         the weights of each of the `L` features.
         """
         raise NotImplementedError
-
-
-@runtime_checkable
-class FeatureDecompositionInternalDataModel(
-    SupportsGetKernel, SupportsGetObservationNoise, SupportsGetInternalData, Protocol
-):
-    """
-    A probabilistic model that supports get_kernel, get_observation_noise
-    and get_internal_data methods.
-    """
-
-    pass
-
-
-@runtime_checkable
-class FeatureDecompositionInducingPointModel(
-    SupportsGetKernel, SupportsGetInducingVariables, Protocol
-):
-    """
-    A probabilistic model that supports get_kernel and get_inducing_point methods.
-    """
-
-    pass
 
 
 class RandomFourierFeatureTrajectorySampler(
