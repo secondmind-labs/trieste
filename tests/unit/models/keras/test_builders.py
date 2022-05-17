@@ -19,14 +19,14 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from tests.util.misc import empty_dataset
-from trieste.models.keras import build_vanilla_keras_ensemble
+from trieste.models.keras import build_keras_ensemble
 
 
 @pytest.mark.parametrize("units, activation", [(10, "relu"), (50, tf.keras.activations.tanh)])
 @pytest.mark.parametrize("ensemble_size", [2, 5])
 @pytest.mark.parametrize("independent_normal", [False, True])
 @pytest.mark.parametrize("num_hidden_layers", [0, 1, 3])
-def test_build_vanilla_keras_ensemble(
+def test_build_keras_ensemble(
     ensemble_size: int,
     num_hidden_layers: int,
     units: int,
@@ -34,7 +34,7 @@ def test_build_vanilla_keras_ensemble(
     independent_normal: bool,
 ) -> None:
     example_data = empty_dataset([1], [1])
-    keras_ensemble = build_vanilla_keras_ensemble(
+    keras_ensemble = build_keras_ensemble(
         example_data,
         ensemble_size,
         num_hidden_layers,

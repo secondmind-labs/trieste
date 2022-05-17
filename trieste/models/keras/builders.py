@@ -29,7 +29,7 @@ from .architectures import GaussianNetwork, KerasEnsemble
 from .utils import get_tensor_spec_from_data
 
 
-def build_vanilla_keras_ensemble(
+def build_keras_ensemble(
     data: Dataset,
     ensemble_size: int = 5,
     num_hidden_layers: int = 2,
