@@ -189,6 +189,36 @@ def test_config_builds_deep_ensemble_and_default_optimizer_is_correct() -> None:
     assert model.optimizer.fit_args == default_fit_args
 
 
+def test_deep_ensemble_resets_lr_with_lr_schedule() -> None:
+    example_data = _get_example_data([100, 1])
+
+    keras_ensemble = trieste_keras_ensemble_model(example_data, _ENSEMBLE_SIZE)
+
+    epochs = 10
+    init_lr = 0.01
+
+    def scheduler(epoch: int, lr: float) -> float:
+        if epoch == epoch // 2:
+            return lr * 0.1
+        else:
+            return lr
+
+    fit_args = {
+        "epochs": epochs,
+        "batch_size": 100,
+        "verbose": 0,
+        "callbacks": tf.keras.callbacks.LearningRateScheduler(scheduler),
+    }
+    optimizer = KerasOptimizer(tf.optimizers.Adam(init_lr), fit_args)
+    model = DeepEnsemble(keras_ensemble, optimizer)
+
+    npt.assert_allclose(model.model.optimizer.lr.numpy(), init_lr, rtol=1e-6)
+
+    model.optimize(example_data)
+
+    npt.assert_allclose(model.model.optimizer.lr.numpy(), init_lr, rtol=1e-6)
+
+
 @pytest.mark.parametrize("size", [0, 1, 10])
 def test_deep_ensemble_sample_index_call_shape(size: int) -> None:
     example_data = empty_dataset([1], [1])
