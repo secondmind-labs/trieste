@@ -33,7 +33,7 @@ from ..interfaces import (
 from ..optimizer import KerasOptimizer
 from .architectures import KerasEnsemble, MultivariateNormalTriL
 from .interface import KerasPredictor
-from .sampler import EnsembleTrajectorySampler
+from .sampler import DeepEnsembleTrajectorySampler
 from .utils import negative_log_likelihood, sample_with_replacement
 
 
@@ -84,7 +84,7 @@ class DeepEnsemble(
         model: KerasEnsemble,
         optimizer: Optional[KerasOptimizer] = None,
         bootstrap: bool = False,
-        use_quantiles: bool = False,
+        diversify: bool = False,
     ) -> None:
         """
         :param model: A Keras ensemble model with probabilistic networks as ensemble members. The
@@ -98,7 +98,7 @@ class DeepEnsemble(
             arguments.
         :param bootstrap: Sample with replacement data for training each network in the ensemble.
             By default set to `False`.
-        :param use_quantiles: Whether to use quantiles from final probabilistic layer as
+        :param diversify: Whether to use quantiles from final probabilistic layer as
             trajectories or mean predictions when calling :meth:`trajectory_sampler`. Quantiles are
             sampled uniformly from a unit interval. This mode can be used to increase the diversity
             in case of optimizing very large batches of trajectories. When batch size is larger
@@ -137,11 +137,14 @@ class DeepEnsemble(
 
         self._model = model
         self._bootstrap = bootstrap
-        self._use_quantiles = use_quantiles
+        self._diversify = diversify
 
     def __repr__(self) -> str:
         """"""
-        return f"DeepEnsemble({self.model!r}, {self.optimizer!r}, {self._bootstrap!r})"
+        return (
+            f"DeepEnsemble({self.model!r}, {self.optimizer!r}, {self._bootstrap!r},"
+            f"{self._diversify!r})"
+        )
 
     @property
     def model(self) -> tf.keras.Model:
@@ -155,6 +158,26 @@ class DeepEnsemble(
         network models in the ensemble.
         """
         return self._model.ensemble_size
+
+    @property
+    def num_outputs(self) -> int:
+        """
+        Returns the number of outputs trained on by each member network.
+        """
+        return self._model.num_outputs
+
+    def sample_index(self, size: int) -> TensorType:
+        """
+        Samples indices of individual models in the ensemble. If ``size`` is smaller or equal to the
+        ensemble size indices are sampled without replacement, while for larger ``size`` samples until ensemble size are sampled without replacement and then with replacement after that.
+
+        :param size: The number of samples to take.
+        :return: A tensor with indices.
+        """
+        network_index = tf.random.uniform(
+            shape=(tf.cast(size, tf.int32),), maxval=self.ensemble_size, dtype=tf.int32
+        )
+        return network_index
 
     def prepare_dataset(
         self, dataset: Dataset
@@ -197,7 +220,7 @@ class DeepEnsemble(
 
         return inputs
 
-    def ensemble_distributions(self, query_points: TensorType) -> tuple[tfd.Distribution, ...]:
+    def ensemble_outputs(self, query_points: TensorType) -> tuple[tfd.Distribution, ...]:
         """
         Return distributions for each member of the ensemble.
 
@@ -235,7 +258,7 @@ class DeepEnsemble(
         :return: The predicted mean and variance of the observations at the specified
             ``query_points``.
         """
-        ensemble_distributions = self.ensemble_distributions(query_points)
+        ensemble_distributions = self.ensemble_outputs(query_points)
         predicted_means = tf.math.reduce_mean(
             [dist.mean() for dist in ensemble_distributions], axis=0
         )
@@ -262,7 +285,7 @@ class DeepEnsemble(
         :return: The predicted mean and variance of the observations at the specified
             ``query_points`` for each member of the ensemble.
         """
-        ensemble_distributions = self.ensemble_distributions(query_points)
+        ensemble_distributions = self.ensemble_outputs(query_points)
         predicted_means = tf.convert_to_tensor([dist.mean() for dist in ensemble_distributions])
         predicted_vars = tf.convert_to_tensor([dist.variance() for dist in ensemble_distributions])
 
@@ -317,10 +340,22 @@ class DeepEnsemble(
         Return a trajectory sampler. For :class:`DeepEnsemble`, we use an ensemble
         sampler that randomly picks a network from the ensemble and uses its predicted means
         for generating a trajectory, or optionally randomly sampled quantiles rather than means.
+        
+        At the moment only models with single output are supported.
 
         :return: The trajectory sampler.
+        :raise NotImplementedError: If we try to use the sampler with a model that has more than
+            one output.
         """
-        return EnsembleTrajectorySampler(self, self._use_quantiles)
+        if self.num_outputs > 1:
+            raise NotImplementedError(
+                f"""
+                Trajectory sampler does not currently support models with multiple outputs,
+                however received a model with {self.num_outputs} outputs.
+                """
+            )
+
+        return DeepEnsembleTrajectorySampler(self, self._diversify)
 
     def update(self, dataset: Dataset) -> None:
         """
