@@ -18,6 +18,7 @@ import numpy as np
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
+import tensorflow_probability as tfp
 
 from tests.util.misc import ShapeLike, empty_dataset, random_seed
 from tests.util.models.keras.models import trieste_deep_ensemble_model, trieste_keras_ensemble_model
@@ -205,10 +206,34 @@ def test_deep_ensemble_sample_index_samples_are_diverse(ensemble_size: int) -> N
     model, _, _ = trieste_deep_ensemble_model(example_data, ensemble_size, False, False)
 
     network_indices = model.sample_index(1000)
-    # breakpoint()
+
     assert tf.math.reduce_variance(tf.cast(network_indices, tf.float32)) > 0
     assert tf.reduce_min(network_indices) == 0
     assert tf.reduce_max(network_indices) == (ensemble_size - 1)
+
+
+@pytest.mark.parametrize("dataset_size", [10, 100])
+def test_deep_ensemble_ensemble_outputs(ensemble_size: int, dataset_size: int) -> None:
+    example_data = _get_example_data([dataset_size, 1])
+    model, _, _ = trieste_deep_ensemble_model(example_data, ensemble_size, False, False)
+
+    distributions = model.ensemble_outputs(example_data.query_points)
+
+    assert len(distributions) == ensemble_size
+    for dist in distributions:
+        assert isinstance(dist, tfp.distributions.Distribution)
+        try:
+            predicted_means = dist.mean()
+        except Exception as exc:
+            assert False, f"calling 'mean' raised an exception {exc}"
+        try:
+            predicted_vars = dist.variance()
+        except Exception as exc:
+            assert False, f"calling 'variance' raised an exception {exc}"
+        assert tf.is_tensor(predicted_means)
+        assert tf.is_tensor(predicted_vars)
+        assert predicted_means.shape[-2:] == example_data.observations.shape
+        assert predicted_vars.shape[-2:] == example_data.observations.shape
 
 
 @pytest.mark.parametrize("dataset_size", [10, 100])
