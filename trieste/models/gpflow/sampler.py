@@ -19,9 +19,8 @@ GPflow wrappers.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Callable, Optional, Tuple, Union, cast
+from typing import Callable, Optional, Tuple, TypeVar, Union, cast
 
-import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
 
@@ -38,7 +37,6 @@ from ...types import TensorType
 from ...utils import DEFAULTS, flatten_leading_dims
 from ..interfaces import (
     ProbabilisticModel,
-    ProbabilisticModelType,
     ReparametrizationSampler,
     SupportsGetInducingVariables,
     SupportsGetInternalData,
@@ -226,13 +224,20 @@ class FeatureDecompositionInducingPointModel(
     pass
 
 
+FeatureDecompositionTrajectorySamplerModel = Union[
+    FeatureDecompositionInducingPointModel,
+    FeatureDecompositionInternalDataModel,
+]
+
+FeatureDecompositionTrajectorySamplerModelType = TypeVar(
+    "FeatureDecompositionTrajectorySamplerModelType",
+    bound=FeatureDecompositionTrajectorySamplerModel,
+    contravariant=True,
+)
+
+
 class FeatureDecompositionTrajectorySampler(
-    TrajectorySampler[
-        Union[
-            FeatureDecompositionInducingPointModel,
-            FeatureDecompositionInternalDataModel,
-        ]
-    ],
+    TrajectorySampler[FeatureDecompositionTrajectorySamplerModelType],
     ABC,
 ):
     r"""
@@ -256,7 +261,7 @@ class FeatureDecompositionTrajectorySampler(
 
     def __init__(
         self,
-        model: ProbabilisticModelType,
+        model: FeatureDecompositionTrajectorySamplerModelType,
         feature_functions: ResampleableRandomFourierFeatureFunctions,
     ):
         """
@@ -268,9 +273,7 @@ class FeatureDecompositionTrajectorySampler(
         super().__init__(model)
         self._feature_functions = feature_functions
         self._weight_sampler: Optional[Callable[[int], TensorType]] = None  # lazy init
-        self._mean_function: Callable[
-            [TensorType], TensorType
-        ] = gpflow.mean_functions.Zero()  # lazy init, i.e. no mean function
+        self._mean_function = model.get_mean_function()
 
     def __repr__(self) -> str:
         """"""
@@ -401,7 +404,6 @@ class RandomFourierFeatureTrajectorySampler(
             self._model, self._num_features
         )
         super().__init__(self._model, feature_functions)
-        self._mean_function = model.get_mean_function()
 
     def _prepare_weight_sampler(self) -> Callable[[int], TensorType]:  # [B] -> [L, B]
         """
@@ -555,7 +557,6 @@ class DecoupledTrajectorySampler(
         feature_functions = ResampleableDecoupledFeatureFunctions(self._model, self._num_features)
 
         super().__init__(self._model, feature_functions)
-        self._mean_function = model.get_mean_function()
 
     def _prepare_weight_sampler(self) -> Callable[[int], TensorType]:
         """
