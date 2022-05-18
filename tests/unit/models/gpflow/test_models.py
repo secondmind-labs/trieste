@@ -689,9 +689,13 @@ def test_gaussian_process_regression_conditional_predict_equations() -> None:
     )  # shape: [7, 1]
     y = fnc_2sin_x_over_3(x)
 
-    model7 = GaussianProcessRegression(gpr_model(x, y))
-    model5 = GaussianProcessRegression(gpr_model(x[:5, :], y[:5, :]))
+    gpflow_model_7 = gpr_model(x, y)
+    gpflow_model_7.mean_function = gpflow.mean_functions.Linear()
+    model7 = GaussianProcessRegression(gpflow_model_7)
 
+    gpflow_model_5 = gpr_model(x[:5, :], y[:5, :])
+    gpflow_model_5.mean_function = gpflow.mean_functions.Linear()
+    model5 = GaussianProcessRegression(gpflow_model_5)
     additional_data = Dataset(x[5:, :], y[5:, :])
 
     query_points = tf.concat([0.5 * x, 2.0 * x], 0)  # shape: [14, 1]
