@@ -388,10 +388,10 @@ def test_bayesian_optimizer_with_PCTS_and_deep_ensemble_finds_minima_of_scaled_b
     "num_steps, acquisition_rule",
     [
         pytest.param(5, EfficientGlobalOptimization(), id="EfficientGlobalOptimization"),
-        pytest.param(5, DiscreteThompsonSampling(500, 1), id="DiscreteThompsonSampling"),
+        pytest.param(10, DiscreteThompsonSampling(1000, 1), id="DiscreteThompsonSampling"),
         pytest.param(
             5,
-            DiscreteThompsonSampling(500, 1, thompson_sampler=ThompsonSamplerFromTrajectory()),
+            DiscreteThompsonSampling(1000, 1, thompson_sampler=ThompsonSamplerFromTrajectory()),
             id="DiscreteThompsonSampling/ThompsonSamplerFromTrajectory",
         ),
     ],
@@ -525,7 +525,7 @@ def _test_optimizer_finds_minimum(
             ],
             "verbose": 0,
         }
-        de_optimizer = KerasOptimizer(tf.keras.optimizers.Adam(0.001), fit_args)
+        de_optimizer = KerasOptimizer(tf.keras.optimizers.Adam(0.01), fit_args)
         model = DeepEnsemble(keras_ensemble, de_optimizer, **model_args)
 
     else:

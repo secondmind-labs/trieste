@@ -20,10 +20,10 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
-from tests.util.misc import empty_dataset, random_seed, quadratic
+from tests.util.misc import empty_dataset, quadratic, random_seed
 from tests.util.models.keras.models import trieste_deep_ensemble_model
-from trieste.models.keras import DeepEnsembleTrajectorySampler
 from trieste.data import Dataset
+from trieste.models.keras import DeepEnsembleTrajectorySampler
 
 _ENSEMBLE_SIZE = 3
 
@@ -287,7 +287,7 @@ def test_ensemble_trajectory_sampler_update_trajectory_updates_and_doesnt_retrac
             tf.abs(
                 trajectory_sampler._model.model.get_weights()[0],  # type: ignore
                 old_weights[0],
-            )
+            ),
         )
         npt.assert_array_less(
             0.01, tf.reduce_max(tf.abs(eval_before - eval_after))
