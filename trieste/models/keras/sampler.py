@@ -23,16 +23,12 @@ import tensorflow as tf
 
 from ...types import TensorType
 from ...utils import flatten_leading_dims
-from ..interfaces import (
-    EnsembleModel,
-    TrajectoryFunction,
-    TrajectoryFunctionClass,
-    TrajectorySampler,
-)
+from ..interfaces import TrajectoryFunction, TrajectoryFunctionClass, TrajectorySampler
+from .interface import DeepEnsembleModel
 from .utils import sample_model_index
 
 
-class DeepEnsembleTrajectorySampler(TrajectorySampler[EnsembleModel]):
+class DeepEnsembleTrajectorySampler(TrajectorySampler[DeepEnsembleModel]):
     """
     This class builds functions that approximate a trajectory by randomly choosing a network from
     the ensemble and using its predicted means as a trajectory. Currently we do not
@@ -44,16 +40,16 @@ class DeepEnsembleTrajectorySampler(TrajectorySampler[EnsembleModel]):
     size is larger than the ensemble size, multiple quantiles will be used with the same network.
     """
 
-    def __init__(self, model: EnsembleModel, diversify: bool = False):
+    def __init__(self, model: DeepEnsembleModel, diversify: bool = False):
         """
         :param model: The ensemble model to sample from.
         :param diversify: Whether to use quantiles from final probabilistic layer as
             trajectories (`False` by default). See class docstring for details.
         """
-        if not isinstance(model, EnsembleModel):
+        if not isinstance(model, DeepEnsembleModel):
             raise NotImplementedError(
-                f"EnsembleTrajectorySampler only works with EnsembleModel models, that support "
-                f"ensemble_size and ensemble_outputs methods; "
+                f"EnsembleTrajectorySampler only works with DeepEnsembleModel models, that support "
+                f"ensemble_size and ensemble_distributions methods; "
                 f"received {model.__repr__()}"
             )
 
@@ -78,7 +74,7 @@ class DeepEnsembleTrajectorySampler(TrajectorySampler[EnsembleModel]):
     def update_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction:
         """
         Update a :const:`TrajectoryFunction` to reflect an update in its
-        underlying :class:`EnsembleModel` and resample accordingly.
+        underlying :class:`DeepEnsembleModel` and resample accordingly.
 
         Here we rely on the underlying models being updated and we only resample the trajectory.
 
@@ -113,7 +109,7 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
     Models with multiple outputs are not supported.
     """
 
-    def __init__(self, model: EnsembleModel, diversify: bool):
+    def __init__(self, model: DeepEnsembleModel, diversify: bool):
         """
         :param model: The model of the objective function.
         :param diversify: Whether to use samples from final probabilistic layer as trajectories
@@ -158,7 +154,7 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
             """,
         )
         flat_x, unflatten = flatten_leading_dims(x)  # [N*B, d]
-        ensemble_distributions = self._model.ensemble_outputs(flat_x)
+        ensemble_distributions = self._model.ensemble_distributions(flat_x)
 
         if self._diversify:
             samples = tf.convert_to_tensor(

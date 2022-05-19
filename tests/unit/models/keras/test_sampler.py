@@ -84,15 +84,12 @@ def test_ensemble_trajectory_sampler_returns_deterministic_trajectory(
     npt.assert_allclose(eval_1, eval_2)
 
 
-@random_seed
-def test_ensemble_trajectory_sampler_samples_are_distinct_for_new_instances() -> None:
+def test_ensemble_trajectory_sampler_samples_are_distinct_for_new_instances(
+    diversify: bool,
+) -> None:
     """
     If seeds are not fixed instantiating a new sampler should give us different trajectories.
-    We use `diversify=True` here because same network could be accidentally sampled in the
-    mean mode and since we cannot fix the seed here we could get stochastic failure here.
     """
-    diversify = True
-
     example_data = empty_dataset([1], [1])
     test_data = tf.linspace([-10.0], [10.0], 100)
     test_data = tf.expand_dims(test_data, -2)  # [N, 1, d]
@@ -108,7 +105,7 @@ def test_ensemble_trajectory_sampler_samples_are_distinct_for_new_instances() ->
 
     eval_1 = trajectory1(test_data)
     eval_2 = trajectory2(test_data)
-
+    # breakpoint()
     npt.assert_array_less(
         1e-1, tf.reduce_max(tf.abs(eval_1 - eval_2))
     )  # distinct between seperate draws

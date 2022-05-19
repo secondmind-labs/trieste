@@ -339,7 +339,15 @@ def test_bayesian_optimizer_with_dgp_finds_minima_of_simple_quadratic(
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule",
     [
-        pytest.param(90, EfficientGlobalOptimization(), id="EfficientGlobalOptimization"),
+        pytest.param(35, EfficientGlobalOptimization(), id="EfficientGlobalOptimization"),
+        pytest.param(
+            20,
+            EfficientGlobalOptimization(
+                ParallelContinuousThompsonSampling(),
+                num_query_points=4,
+            ),
+            id="ParallelContinuousThompsonSampling",
+        ),
     ],
 )
 def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_scaled_branin(
@@ -351,35 +359,7 @@ def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_scaled_branin(
         num_steps,
         acquisition_rule,
         optimize_branin=True,
-        model_args={"bootstrap": True},
-    )
-
-
-@random_seed
-@pytest.mark.slow
-@pytest.mark.parametrize(
-    "num_steps, acquisition_rule",
-    [
-        pytest.param(
-            15,
-            EfficientGlobalOptimization(
-                ParallelContinuousThompsonSampling(),
-                num_query_points=5,
-            ),
-            id="ParallelContinuousThompsonSampling",
-        ),
-    ],
-)
-def test_bayesian_optimizer_with_PCTS_and_deep_ensemble_finds_minima_of_scaled_branin(
-    num_steps: int,
-    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepEnsemble],
-) -> None:
-    _test_optimizer_finds_minimum(
-        DeepEnsemble,
-        num_steps,
-        acquisition_rule,
-        optimize_branin=True,
-        model_args={"bootstrap": True, "diversify": True},
+        model_args={"bootstrap": True, "diversify": False},
     )
 
 
@@ -517,7 +497,7 @@ def _test_optimizer_finds_minimum(
         keras_ensemble = build_keras_ensemble(initial_data, 5, 3, 25, "selu")
         fit_args = {
             "batch_size": 20,
-            "epochs": 100,
+            "epochs": 200,
             "callbacks": [
                 tf.keras.callbacks.EarlyStopping(
                     monitor="loss", patience=25, restore_best_weights=True

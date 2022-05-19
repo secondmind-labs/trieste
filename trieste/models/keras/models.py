@@ -24,21 +24,16 @@ from tensorflow.python.keras.callbacks import Callback
 
 from ...data import Dataset
 from ...types import TensorType
-from ..interfaces import (
-    EnsembleModel,
-    HasTrajectorySampler,
-    TrainableProbabilisticModel,
-    TrajectorySampler,
-)
+from ..interfaces import HasTrajectorySampler, TrainableProbabilisticModel, TrajectorySampler
 from ..optimizer import KerasOptimizer
 from .architectures import KerasEnsemble, MultivariateNormalTriL
-from .interface import KerasPredictor
+from .interface import DeepEnsembleModel, KerasPredictor
 from .sampler import DeepEnsembleTrajectorySampler
 from .utils import negative_log_likelihood, sample_model_index, sample_with_replacement
 
 
 class DeepEnsemble(
-    KerasPredictor, TrainableProbabilisticModel, EnsembleModel, HasTrajectorySampler
+    KerasPredictor, TrainableProbabilisticModel, DeepEnsembleModel, HasTrajectorySampler
 ):
     """
     A :class:`~trieste.model.TrainableProbabilisticModel` wrapper for deep ensembles built using
@@ -98,8 +93,8 @@ class DeepEnsemble(
             arguments.
         :param bootstrap: Sample with replacement data for training each network in the ensemble.
             By default set to `False`.
-        :param diversify: Whether to use quantiles from final probabilistic layer as
-            trajectories or mean predictions when calling :meth:`trajectory_sampler`. Quantiles are
+        :param diversify: Whether to use quantiles from final probabilistic layer as trajectories
+            instead of mean predictions when calling :meth:`trajectory_sampler`. Quantiles are
             sampled uniformly from a unit interval. This mode can be used to increase the diversity
             in case of optimizing very large batches of trajectories. When batch size is larger
             than the ensemble size, multiple quantiles will be used with the same network. By
@@ -207,7 +202,7 @@ class DeepEnsemble(
 
         return inputs
 
-    def ensemble_outputs(self, query_points: TensorType) -> tuple[tfd.Distribution, ...]:
+    def ensemble_distributions(self, query_points: TensorType) -> tuple[tfd.Distribution, ...]:
         """
         Return distributions for each member of the ensemble.
 
@@ -245,7 +240,7 @@ class DeepEnsemble(
         :return: The predicted mean and variance of the observations at the specified
             ``query_points``.
         """
-        ensemble_distributions = self.ensemble_outputs(query_points)
+        ensemble_distributions = self.ensemble_distributions(query_points)
         predicted_means = tf.math.reduce_mean(
             [dist.mean() for dist in ensemble_distributions], axis=0
         )
@@ -272,7 +267,7 @@ class DeepEnsemble(
         :return: The predicted mean and variance of the observations at the specified
             ``query_points`` for each member of the ensemble.
         """
-        ensemble_distributions = self.ensemble_outputs(query_points)
+        ensemble_distributions = self.ensemble_distributions(query_points)
         predicted_means = tf.convert_to_tensor([dist.mean() for dist in ensemble_distributions])
         predicted_vars = tf.convert_to_tensor([dist.variance() for dist in ensemble_distributions])
 
@@ -308,7 +303,7 @@ class DeepEnsemble(
         :return: The samples. For a predictive distribution with event shape E, this has shape
             [..., S, N] + E, where S is the number of samples.
         """
-        ensemble_distributions = self.ensemble_outputs(query_points)
+        ensemble_distributions = self.ensemble_distributions(query_points)
         network_indices = sample_model_index(self.ensemble_size, num_samples)
 
         stacked_samples = []

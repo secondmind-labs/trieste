@@ -131,3 +131,4 @@ def test_sample_model_index_no_replacement(size: int) -> None:
     indices = sample_model_index(size, size)
 
     assert tf.reduce_sum(indices) == tf.reduce_sum(tf.range(size))
+    assert tf.reduce_all(tf.unique_with_counts(indices)[2] == 1)

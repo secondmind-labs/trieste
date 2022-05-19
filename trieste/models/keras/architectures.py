@@ -44,14 +44,20 @@ class KerasEnsemble:
         """
         :param networks: A list of neural network specifications, one for each member of the
             ensemble. The ensemble will be built using these specifications.
-        :raise ValueError: If we try to create a model with networks whose input or output shapes
-            are not the same.
+        :raise ValueError: If there are no objects in ``networks`` or we try to create
+            a model with networks whose input or output shapes are not the same.
         """
+        if not networks:
+            raise ValueError(
+                f"networks should consist of KerasEnsembleNetwork objects, however"
+                f"received {networks} instead."
+            )
+
         input_shapes, output_shapes = [], []
         for index, network in enumerate(networks):
-            networks[index].network_name = f"model_{index}_"
-            input_shapes.append(networks[index].input_tensor_spec.shape)
-            output_shapes.append(networks[index].output_tensor_spec.shape)
+            network.network_name = f"model_{index}_"
+            input_shapes.append(network.input_tensor_spec.shape)
+            output_shapes.append(network.output_tensor_spec.shape)
 
         if not all(x == input_shapes[0] for x in input_shapes):
             raise ValueError(

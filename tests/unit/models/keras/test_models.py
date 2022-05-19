@@ -239,11 +239,11 @@ def test_deep_ensemble_resets_lr_with_lr_schedule() -> None:
     npt.assert_allclose(model.model.optimizer.lr.numpy(), init_lr, rtol=1e-6)
 
 
-def test_deep_ensemble_ensemble_outputs(ensemble_size: int, dataset_size: int) -> None:
+def test_deep_ensemble_ensemble_distributions(ensemble_size: int, dataset_size: int) -> None:
     example_data = _get_example_data([dataset_size, 1])
     model, _, _ = trieste_deep_ensemble_model(example_data, ensemble_size, False, False)
 
-    distributions = model.ensemble_outputs(example_data.query_points)
+    distributions = model.ensemble_distributions(example_data.query_points)
     # breakpoint()
     assert len(distributions) == ensemble_size
     for dist in distributions:

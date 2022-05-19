@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Generic, TypeVar
+from typing import Callable, Generic, TypeVar
 
 import gpflow
 import tensorflow as tf
@@ -262,36 +262,6 @@ class FastUpdateModel(ProbabilisticModel, Protocol):
         raise NotImplementedError(
             f"Model {self!r} does not support predicting observations, just the latent function"
         )
-
-
-@runtime_checkable
-class EnsembleModel(ProbabilisticModel, Protocol):
-    """
-    This is an interface for ensemble types of models. These models can act as probabilistic models
-    by deriving estimates of epistemic uncertainty from the diversity of predictions made by
-    individual models in the ensemble.
-    """
-
-    @property
-    @abstractmethod
-    def ensemble_size(self) -> int:
-        """
-        Returns the size of the ensemble, that is, the number of base learners or individual
-        models in the ensemble.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def ensemble_outputs(self, query_points: TensorType) -> tuple[Any, ...]:
-        """
-        Return outputs for each member of the ensemble. Type of the output will depend on the
-        subclass, it might be a predicted value or a distribution.
-
-        :param query_points: The points at which to return outputs.
-        :return: The outputs for the observations at the specified ``query_points`` for each member
-            of the ensemble.
-        """
-        raise NotImplementedError
 
 
 @runtime_checkable
