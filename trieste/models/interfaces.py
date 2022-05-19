@@ -19,7 +19,6 @@ from typing import Any, Callable, Generic, TypeVar
 
 import gpflow
 import tensorflow as tf
-import tensorflow_probability.python.distributions as tfd
 from typing_extensions import Protocol, runtime_checkable
 
 from ..data import Dataset
@@ -263,15 +262,6 @@ class EnsembleModel(ProbabilisticModel, Protocol):
         """
         Returns the size of the ensemble, that is, the number of base learners or individual
         models in the ensemble.
-        """
-        raise NotImplementedError
-
-    def sample_index(self, size: int) -> TensorType:
-        """
-        Samples indices of individual models in the ensemble.
-
-        :param size: The number of samples to take.
-        :return: A tensor with indices
         """
         raise NotImplementedError
 

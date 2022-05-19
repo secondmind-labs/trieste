@@ -34,7 +34,7 @@ from ..optimizer import KerasOptimizer
 from .architectures import KerasEnsemble, MultivariateNormalTriL
 from .interface import KerasPredictor
 from .sampler import DeepEnsembleTrajectorySampler
-from .utils import negative_log_likelihood, sample_with_replacement
+from .utils import negative_log_likelihood, sample_model_index, sample_with_replacement
 
 
 class DeepEnsemble(
@@ -142,7 +142,7 @@ class DeepEnsemble(
     def __repr__(self) -> str:
         """"""
         return (
-            f"DeepEnsemble({self.model!r}, {self.optimizer!r}, {self._bootstrap!r},"
+            f"DeepEnsemble({self.model!r}, {self.optimizer!r}, {self._bootstrap!r}, "
             f"{self._diversify!r})"
         )
 
@@ -165,19 +165,6 @@ class DeepEnsemble(
         Returns the number of outputs trained on by each member network.
         """
         return self._model.num_outputs
-
-    def sample_index(self, size: int) -> TensorType:
-        """
-        Samples indices of individual models in the ensemble. If ``size`` is smaller or equal to the
-        ensemble size indices are sampled without replacement, while for larger ``size`` samples until ensemble size are sampled without replacement and then with replacement after that.
-
-        :param size: The number of samples to take.
-        :return: A tensor with indices.
-        """
-        network_index = tf.random.uniform(
-            shape=(tf.cast(size, tf.int32),), maxval=self.ensemble_size, dtype=tf.int32
-        )
-        return network_index
 
     def prepare_dataset(
         self, dataset: Dataset
@@ -321,18 +308,14 @@ class DeepEnsemble(
         :return: The samples. For a predictive distribution with event shape E, this has shape
             [..., S, N] + E, where S is the number of samples.
         """
-        predicted_means, predicted_vars = self.predict_ensemble(query_points)
+        ensemble_distributions = self.ensemble_outputs(query_points)
+        network_indices = sample_model_index(self.ensemble_size, num_samples)
 
         stacked_samples = []
-        for _ in range(num_samples):
-            network_index = self.sample_index(1)[0]
-            normal = tfp.distributions.Normal(
-                predicted_means[network_index], tf.sqrt(predicted_vars[network_index])
-            )
-            samples = normal.sample()
-            stacked_samples.append(samples)
-
+        for i in range(num_samples):
+            stacked_samples.append(ensemble_distributions[network_indices[i]].sample())
         samples = tf.stack(stacked_samples, axis=0)
+
         return samples  # [num_samples, len(query_points), 1]
 
     def trajectory_sampler(self) -> TrajectorySampler[DeepEnsemble]:
@@ -340,7 +323,7 @@ class DeepEnsemble(
         Return a trajectory sampler. For :class:`DeepEnsemble`, we use an ensemble
         sampler that randomly picks a network from the ensemble and uses its predicted means
         for generating a trajectory, or optionally randomly sampled quantiles rather than means.
-        
+
         At the moment only models with single output are supported.
 
         :return: The trajectory sampler.

@@ -29,6 +29,7 @@ from ..interfaces import (
     TrajectoryFunctionClass,
     TrajectorySampler,
 )
+from .utils import sample_model_index
 
 
 class DeepEnsembleTrajectorySampler(TrajectorySampler[EnsembleModel]):
@@ -52,7 +53,7 @@ class DeepEnsembleTrajectorySampler(TrajectorySampler[EnsembleModel]):
         if not isinstance(model, EnsembleModel):
             raise NotImplementedError(
                 f"EnsembleTrajectorySampler only works with EnsembleModel models, that support "
-                f"ensemble_size, sample_index and ensemble_outputs methods; "
+                f"ensemble_size and ensemble_outputs methods; "
                 f"received {model.__repr__()}"
             )
 
@@ -108,6 +109,8 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
 
     Option `diversify` can be used to increase the diversity in case of optimizing very large
     batches of trajectories. It is experimental feature and hence should be used with caution.
+
+    Models with multiple outputs are not supported.
     """
 
     def __init__(self, model: EnsembleModel, diversify: bool):
@@ -118,16 +121,16 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
         """
         self._model = model
         self._diversify = diversify
+        self._ensemble_size = self._model.ensemble_size
 
         self._initialized = tf.Variable(False, trainable=False)
         self._batch_size = tf.Variable(0, dtype=tf.int32, trainable=False)
         self._indices = tf.Variable(tf.zeros([0], dtype=tf.int32), shape=[None], trainable=False)
 
         if self._diversify:
-            self._ensemble_size = self._model.ensemble_size
             self._sample_size = tf.Variable(0, dtype=tf.int32, trainable=False)
             self._seeds = tf.Variable(
-                tf.zeros([0,0], dtype=tf.float32), shape=[None,None], trainable=False
+                tf.zeros([0, 0], dtype=tf.float32), shape=[None, None], trainable=False
             )
 
     @tf.function
@@ -155,11 +158,14 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
             """,
         )
         flat_x, unflatten = flatten_leading_dims(x)  # [N*B, d]
-        ensemble_distributions = self._model.ensemble_distributions(flat_x)
+        ensemble_distributions = self._model.ensemble_outputs(flat_x)
 
         if self._diversify:
             samples = tf.convert_to_tensor(
-                [tf.map_fn(dist.quantile, self._seeds[i]) for i, dist in enumerate(ensemble_distributions)]
+                [
+                    tf.map_fn(dist.quantile, self._seeds[i])
+                    for i, dist in enumerate(ensemble_distributions)
+                ]
             )  # [E, B/E, N*B, 1]
             flattened_samples = tf.reshape(
                 samples, [self._ensemble_size * self._sample_size, *samples.shape[2:]]
@@ -190,8 +196,11 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
             self._indices.assign(indices[: self._batch_size])  # [B]
             self._seeds.assign(
                 tf.random.uniform(
-                    shape=(self._ensemble_size, self._sample_size), minval=0.000001, maxval=0.999999, dtype=tf.float32
+                    shape=(self._ensemble_size, self._sample_size),
+                    minval=0.000001,
+                    maxval=0.999999,
+                    dtype=tf.float32,
                 )
             )  # [E, B/E]
         else:
-            self._indices.assign(self._model.sample_index(self._batch_size))  # [B]
+            self._indices.assign(sample_model_index(self._ensemble_size, self._batch_size))  # [B]

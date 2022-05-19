@@ -45,8 +45,8 @@ def trieste_keras_ensemble_model(
             input_tensor_spec,
             output_tensor_spec,
             hidden_layer_args=[
-                {"units": 32, "activation": "relu"},
-                {"units": 32, "activation": "relu"},
+                {"units": 32, "activation": "selu"},
+                {"units": 32, "activation": "selu"},
             ],
             independent=independent_normal,
         )

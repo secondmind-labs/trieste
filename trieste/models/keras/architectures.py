@@ -25,7 +25,6 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 from tensorflow_probability.python.layers.distribution_layer import DistributionLambda, _serialize
-from tensorflow_probability.python.bijectors.fill_scale_tril import FillScaleTriL
 
 from trieste.types import TensorType
 
@@ -45,14 +44,27 @@ class KerasEnsemble:
         """
         :param networks: A list of neural network specifications, one for each member of the
             ensemble. The ensemble will be built using these specifications.
+        :raise ValueError: If we try to create a model with networks whose input or output shapes
+            are not the same.
         """
+        input_shapes, output_shapes = [], []
         for index, network in enumerate(networks):
-            if not isinstance(network, KerasEnsembleNetwork):
-                raise ValueError(
-                    f"Individual networks must be an instance of KerasEnsembleNetwork, "
-                    f"received {type(network)} instead."
-                )
             networks[index].network_name = f"model_{index}_"
+            input_shapes.append(networks[index].input_tensor_spec.shape)
+            output_shapes.append(networks[index].output_tensor_spec.shape)
+
+        if not all(x == input_shapes[0] for x in input_shapes):
+            raise ValueError(
+                f"Input shapes for all networks must be the same, however"
+                f"received {input_shapes} instead."
+            )
+        if not all(x == output_shapes[0] for x in output_shapes):
+            raise ValueError(
+                f"Output shapes for all networks must be the same, however"
+                f"received {output_shapes} instead."
+            )
+        self.num_outputs = networks[0].flattened_output_shape
+
         self._networks = networks
 
         self._model = self._build_ensemble()
@@ -216,7 +228,8 @@ class GaussianNetwork(KerasEnsembleNetwork):
             :class:`~tf.keras.layers.Dense` layers. Length of this sequence determines the number of
             hidden layers in the network. Default value is two hidden layers, 50 nodes each, with
             ReLu activation functions. Empty sequence needs to be passed to have no hidden layers.
-        :param independent: If set to `True` then :class:`~tfp.layers.IndependentNormal` layer
+        :param independent: In case multiple outputs are modeled, if set to `True` then
+            :class:`~tfp.layers.IndependentNormal` layer
             is used as the output layer. This models outputs as independent, only the diagonal
             elements of the covariance matrix are parametrized. If left as the default `False`,
             then :class:`~tfp.layers.MultivariateNormalTriL` layer is used where correlations
@@ -246,7 +259,7 @@ class GaussianNetwork(KerasEnsembleNetwork):
 
         return input_tensor
 
-    def _gen_output_layer2(self, input_tensor: tf.Tensor) -> tf.Tensor:
+    def _gen_multi_output_layer(self, input_tensor: tf.Tensor) -> tf.Tensor:
 
         dist_layer = tfp.layers.IndependentNormal if self._independent else MultivariateNormalTriL
         n_params = dist_layer.params_size(self.flattened_output_shape)
@@ -263,42 +276,17 @@ class GaussianNetwork(KerasEnsembleNetwork):
 
         return distribution
 
-    def _gen_output_layer(self, input_tensor: tf.Tensor) -> tf.Tensor:
+    def _gen_single_output_layer(self, input_tensor: tf.Tensor) -> tf.Tensor:
 
-        num_par_mean = self.flattened_output_shape
-        if self._independent:
-            dist = tfp.distributions.MultivariateNormalDiag
-            num_par_cov = num_par_mean
-            cov_transform = tf.math.softplus
-        else:
-            dist = tfp.distributions.MultivariateNormalTriL
-            num_par_cov = num_par_mean * (num_par_mean + 1) // 2
-            cov_transform = FillScaleTriL(
-                diag_shift=np.array(1e-5, input_tensor.dtype.as_numpy_dtype)
-            )
-        # breakpoint()
+        parameter_layer = tf.keras.layers.Dense(2, name=self.network_name + "dense_parameters")(
+            input_tensor
+        )
 
-        def distribution_fn(inputs):
-            # breakpoint()
-            if self._independent:
-                function = tfp.distributions.MultivariateNormalDiag(
-                    loc=inputs[..., :num_par_mean],
-                    scale=tf.math.softplus(inputs[..., num_par_mean:])
-                )
-            else:
-                function = tfp.distributions.MultivariateNormalTriL(
-                    loc=inputs[..., :num_par_mean],
-                    scale_tril=cov_transform(inputs[..., num_par_mean:])
-                )
-
-        parameter_layer = tf.keras.layers.Dense(
-            num_par_mean + num_par_cov, name=self.network_name + "dense_parameters"
-        )(input_tensor)
+        def distribution_fn(inputs: TensorType) -> tfp.distributions.Distribution:
+            return tfp.distributions.Normal(inputs[..., :1], tf.math.softplus(inputs[..., 1:]))
 
         distribution = tfp.layers.DistributionLambda(
             make_distribution_fn=distribution_fn,
-            # make_distribution_fn=lambda t: dist(
-            #     loc=t[..., :num_par_mean], scale_tril=cov_transform(t[..., num_par_mean:])),
             convert_to_tensor_fn=tfp.distributions.Distribution.mean,
             name=self.output_layer_name,
         )(parameter_layer)
@@ -316,6 +304,10 @@ class GaussianNetwork(KerasEnsembleNetwork):
         """
         input_tensor = self._gen_input_tensor()
         hidden_tensor = self._gen_hidden_layers(input_tensor)
-        output_tensor = self._gen_output_layer(hidden_tensor)
+
+        if self.flattened_output_shape == 1:
+            output_tensor = self._gen_single_output_layer(hidden_tensor)
+        else:
+            output_tensor = self._gen_multi_output_layer(hidden_tensor)
 
         return input_tensor, output_tensor

@@ -59,7 +59,8 @@ def build_keras_ensemble(
         is used as the output layer. This models outputs as independent, only the diagonal
         elements of the covariance matrix are parametrized. If left as the default `False`,
         then :class:`~tfp.layers.MultivariateNormalTriL` layer is used where correlations
-        between outputs are learned as well.
+        between outputs are learned as well. Note that this is only relevant for multi-output
+        models.
     :return: Keras ensemble model.
     """
     input_tensor_spec, output_tensor_spec = get_tensor_spec_from_data(data)
