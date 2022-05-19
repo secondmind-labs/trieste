@@ -65,7 +65,7 @@ from trieste.models.gpflow import (
     build_svgp,
 )
 from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp
-from trieste.models.keras import DeepEnsemble, build_vanilla_keras_ensemble
+from trieste.models.keras import DeepEnsemble, build_keras_ensemble
 from trieste.models.optimizer import KerasOptimizer, Optimizer
 from trieste.objectives import (
     BRANIN_MINIMIZERS,
@@ -260,7 +260,7 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_scaled_branin() -> None:
         40,
         EfficientGlobalOptimization[SearchSpace, SparseVariational](),
         optimize_branin=True,
-        model_args={"optimizer": Optimizer(gpflow.optimizers.Scipy())},
+        model_args={"optimizer": Optimizer(gpflow.optimizers.Scipy(), compile=True)},
     )
     _test_optimizer_finds_minimum(
         SparseVariational,
@@ -269,7 +269,7 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_scaled_branin() -> None:
             builder=ParallelContinuousThompsonSampling(), num_query_points=5
         ),
         optimize_branin=True,
-        model_args={"optimizer": Optimizer(gpflow.optimizers.Scipy())},
+        model_args={"optimizer": Optimizer(gpflow.optimizers.Scipy(), compile=True)},
     )
 
 
@@ -279,7 +279,7 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_simple_quadratic() -> None
         SparseVariational,
         5,
         EfficientGlobalOptimization[SearchSpace, SparseVariational](),
-        model_args={"optimizer": Optimizer(gpflow.optimizers.Scipy())},
+        model_args={"optimizer": Optimizer(gpflow.optimizers.Scipy(), compile=True)},
     )
 
 
@@ -340,20 +340,6 @@ def test_bayesian_optimizer_with_dgp_finds_minima_of_simple_quadratic(
     "num_steps, acquisition_rule",
     [
         pytest.param(90, EfficientGlobalOptimization(), id="EfficientGlobalOptimization"),
-        pytest.param(30, DiscreteThompsonSampling(500, 3), id="DiscreteThompsonSampling"),
-        pytest.param(
-            30,
-            DiscreteThompsonSampling(1000, 3, thompson_sampler=ThompsonSamplerFromTrajectory()),
-            id="DiscreteThompsonSampling/ThompsonSamplerFromTrajectory",
-        ),
-        pytest.param(
-            11,
-            EfficientGlobalOptimization(
-                ParallelContinuousThompsonSampling(),
-                num_query_points=10,
-            ),
-            id="ParallelContinuousThompsonSampling",
-        ),
     ],
 )
 def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_scaled_branin(
@@ -370,6 +356,34 @@ def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_scaled_branin(
 
 
 @random_seed
+@pytest.mark.slow
+@pytest.mark.parametrize(
+    "num_steps, acquisition_rule",
+    [
+        pytest.param(
+            15,
+            EfficientGlobalOptimization(
+                ParallelContinuousThompsonSampling(),
+                num_query_points=5,
+            ),
+            id="ParallelContinuousThompsonSampling",
+        ),
+    ],
+)
+def test_bayesian_optimizer_with_PCTS_and_deep_ensemble_finds_minima_of_scaled_branin(
+    num_steps: int,
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepEnsemble],
+) -> None:
+    _test_optimizer_finds_minimum(
+        DeepEnsemble,
+        num_steps,
+        acquisition_rule,
+        optimize_branin=True,
+        model_args={"bootstrap": True, "diversify": True},
+    )
+
+
+@random_seed
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule",
     [
@@ -380,6 +394,22 @@ def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_scaled_branin(
             DiscreteThompsonSampling(500, 1, thompson_sampler=ThompsonSamplerFromTrajectory()),
             id="DiscreteThompsonSampling/ThompsonSamplerFromTrajectory",
         ),
+    ],
+)
+def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_simple_quadratic(
+    num_steps: int, acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepEnsemble]
+) -> None:
+    _test_optimizer_finds_minimum(
+        DeepEnsemble,
+        num_steps,
+        acquisition_rule,
+    )
+
+
+@random_seed
+@pytest.mark.parametrize(
+    "num_steps, acquisition_rule",
+    [
         pytest.param(
             5,
             EfficientGlobalOptimization(
@@ -390,14 +420,20 @@ def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_scaled_branin(
         ),
     ],
 )
-def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_simple_quadratic(
+def test_bayesian_optimizer_with_PCTS_and_deep_ensemble_finds_minima_of_simple_quadratic(
     num_steps: int, acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepEnsemble]
 ) -> None:
     _test_optimizer_finds_minimum(
         DeepEnsemble,
         num_steps,
         acquisition_rule,
-        model_args={"use_samples": True},
+        model_args={"diversify": False},
+    )
+    _test_optimizer_finds_minimum(
+        DeepEnsemble,
+        num_steps,
+        acquisition_rule,
+        model_args={"diversify": True},
     )
 
 
@@ -478,7 +514,7 @@ def _test_optimizer_finds_minimum(
         model = DeepGaussianProcess(dgp, **model_args)
 
     elif model_type is DeepEnsemble:
-        keras_ensemble = build_vanilla_keras_ensemble(initial_data, 5, 3, 25)
+        keras_ensemble = build_keras_ensemble(initial_data, 5, 3, 25, "selu")
         fit_args = {
             "batch_size": 20,
             "epochs": 100,

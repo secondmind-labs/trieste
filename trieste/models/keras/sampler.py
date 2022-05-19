@@ -29,35 +29,38 @@ from ..interfaces import (
     TrajectoryFunctionClass,
     TrajectorySampler,
 )
+from .utils import sample_model_index
 
 
-class EnsembleTrajectorySampler(TrajectorySampler[EnsembleModel]):
+class DeepEnsembleTrajectorySampler(TrajectorySampler[EnsembleModel]):
     """
     This class builds functions that approximate a trajectory by randomly choosing a network from
-    the ensemble and using its predicted means as a trajectory.
+    the ensemble and using its predicted means as a trajectory. Currently we do not
+    support models with multiple outputs.
 
-    Option `use_samples` can be used to increase the diversity in case of optimizing very large
-    batches of trajectories. In this case the sampler will use samples from distributions rather
-    than means as trajectories. It is an experimental feature and hence should be used with caution.
+    Option `diversify` can be used to increase the diversity in case of optimizing very large
+    batches of trajectories. In this case the sampler will use quantiles from distributions rather
+    than means as trajectories. Quantiles are sampled uniformly from a unit interval. When batch
+    size is larger than the ensemble size, multiple quantiles will be used with the same network.
     """
 
-    def __init__(self, model: EnsembleModel, use_samples: bool = False):
+    def __init__(self, model: EnsembleModel, diversify: bool = False):
         """
         :param model: The ensemble model to sample from.
-        :param use_samples: Whether to use samples from final probabilistic layer as trajectories
-            or mean predictions (default).
+        :param diversify: Whether to use quantiles from final probabilistic layer as
+            trajectories (`False` by default). See class docstring for details.
         """
         if not isinstance(model, EnsembleModel):
             raise NotImplementedError(
                 f"EnsembleTrajectorySampler only works with EnsembleModel models, that support "
-                f"ensemble_size, sample_index, predict_ensemble and sample_ensemble methods; "
+                f"ensemble_size and ensemble_outputs methods; "
                 f"received {model.__repr__()}"
             )
 
         super().__init__(model)
 
         self._model = model
-        self._use_samples = use_samples
+        self._diversify = diversify
 
     def __repr__(self) -> str:
         """"""
@@ -65,25 +68,24 @@ class EnsembleTrajectorySampler(TrajectorySampler[EnsembleModel]):
 
     def get_trajectory(self) -> TrajectoryFunction:
         """
-        Generate an approximate function draw (trajectory) by randomly choosing a network from
-        the ensemble and using its predicted means as a trajectory.
+        Generate an approximate function draw (trajectory) from the ensemble.
 
         :return: A trajectory function representing an approximate trajectory
             from the model, taking an input of shape `[N, 1, D]` and returning shape `[N, 1]`.
         """
-        return ensemble_trajectory(self._model, self._use_samples)
+        return deep_ensemble_trajectory(self._model, self._diversify)
 
     def update_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction:
         """
         Update a :const:`TrajectoryFunction` to reflect an update in its
-        underlying :class:`ProbabilisticModel` and resample accordingly.
+        underlying :class:`EnsembleModel` and resample accordingly.
 
         Here we rely on the underlying models being updated and we only resample the trajectory.
 
         :param trajectory: The trajectory function to be resampled.
         :return: The new trajectory function updated for a new model
         """
-        tf.debugging.Assert(isinstance(trajectory, ensemble_trajectory), [])
+        tf.debugging.Assert(isinstance(trajectory, deep_ensemble_trajectory), [])
         trajectory.resample()  # type: ignore
         return trajectory
 
@@ -95,38 +97,40 @@ class EnsembleTrajectorySampler(TrajectorySampler[EnsembleModel]):
         :param trajectory: The trajectory function to be resampled.
         :return: The new resampled trajectory function.
         """
-        tf.debugging.Assert(isinstance(trajectory, ensemble_trajectory), [])
+        tf.debugging.Assert(isinstance(trajectory, deep_ensemble_trajectory), [])
         trajectory.resample()  # type: ignore
         return trajectory
 
 
-class ensemble_trajectory(TrajectoryFunctionClass):
+class deep_ensemble_trajectory(TrajectoryFunctionClass):
     """
     Generate an approximate function draw (trajectory) by randomly choosing a batch B of
     networks from the ensemble and using their predicted means as trajectories.
 
-    Option `use_samples` can be used to increase the diversity in case of optimizing very large
+    Option `diversify` can be used to increase the diversity in case of optimizing very large
     batches of trajectories. It is experimental feature and hence should be used with caution.
+
+    Models with multiple outputs are not supported.
     """
 
-    def __init__(self, model: EnsembleModel, use_samples: bool):
+    def __init__(self, model: EnsembleModel, diversify: bool):
         """
         :param model: The model of the objective function.
-        :param use_samples: Whether to use samples from final probabilistic layer as trajectories
+        :param diversify: Whether to use samples from final probabilistic layer as trajectories
             or mean predictions.
         """
         self._model = model
-        self._use_samples = use_samples
+        self._diversify = diversify
+        self._ensemble_size = self._model.ensemble_size
 
         self._initialized = tf.Variable(False, trainable=False)
         self._batch_size = tf.Variable(0, dtype=tf.int32, trainable=False)
         self._indices = tf.Variable(tf.zeros([0], dtype=tf.int32), shape=[None], trainable=False)
 
-        if self._use_samples:
-            self._ensemble_size = self._model.ensemble_size
+        if self._diversify:
             self._sample_size = tf.Variable(0, dtype=tf.int32, trainable=False)
             self._seeds = tf.Variable(
-                tf.zeros([self._ensemble_size, 2], dtype=tf.int32), trainable=False
+                tf.zeros([0, 0], dtype=tf.float32), shape=[None, None], trainable=False
             )
 
     @tf.function
@@ -139,7 +143,7 @@ class ensemble_trajectory(TrajectoryFunctionClass):
         """
         if not self._initialized:  # work out desired batch size from input
             self._batch_size.assign(tf.shape(x)[-2])  # B
-            if self._use_samples:
+            if self._diversify:
                 self._sample_size.assign(-(-self._batch_size // self._ensemble_size))  # B/E
             self.resample()  # sample network indices/seeds
             self._initialized.assign(True)
@@ -154,12 +158,12 @@ class ensemble_trajectory(TrajectoryFunctionClass):
             """,
         )
         flat_x, unflatten = flatten_leading_dims(x)  # [N*B, d]
-        ensemble_distributions = self._model.ensemble_distributions(flat_x)
+        ensemble_distributions = self._model.ensemble_outputs(flat_x)
 
-        if self._use_samples:
+        if self._diversify:
             samples = tf.convert_to_tensor(
                 [
-                    dist.sample(sample_shape=self._sample_size, seed=self._seeds[i])
+                    tf.map_fn(dist.quantile, self._seeds[i])
                     for i, dist in enumerate(ensemble_distributions)
                 ]
             )  # [E, B/E, N*B, 1]
@@ -185,15 +189,18 @@ class ensemble_trajectory(TrajectoryFunctionClass):
 
     def resample(self) -> None:
         """
-        Efficiently resample network indices, and optionally quantiles, in-place without retracing.
+        Efficiently resample network indices in-place, without retracing.
         """
-        if self._use_samples:
+        if self._diversify:
             indices = tf.random.shuffle(tf.range(self._ensemble_size * self._sample_size))
             self._indices.assign(indices[: self._batch_size])  # [B]
             self._seeds.assign(
                 tf.random.uniform(
-                    shape=(self._ensemble_size, 2), minval=1, maxval=999999999, dtype=tf.int32
+                    shape=(self._ensemble_size, self._sample_size),
+                    minval=0.000001,
+                    maxval=0.999999,
+                    dtype=tf.float32,
                 )
-            )  # [E, 2]
+            )  # [E, B/E]
         else:
-            self._indices.assign(self._model.sample_index(self._batch_size))  # [B]
+            self._indices.assign(sample_model_index(self._ensemble_size, self._batch_size))  # [B]

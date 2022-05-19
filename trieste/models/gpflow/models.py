@@ -952,6 +952,7 @@ class SparseVariational(
             )
 
         num_data = dataset.query_points.shape[0]
+        assert self.model.num_data is not None
         self.model.num_data.assign(num_data)
         self.update_posterior_cache()
 
