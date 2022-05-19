@@ -63,16 +63,35 @@ class Reducer(AcquisitionFunctionBuilder[ProbabilisticModel]):
         :param models: The models over each dataset in ``datasets``.
         :return: The reduced acquisition function.
         """
-        functions = tuple(
+        self.functions = tuple(
             acq.prepare_acquisition_function(models, datasets=datasets) for acq in self.acquisitions
         )
 
         def evaluate_acquisition_function_fn(at: TensorType) -> TensorType:
-            return self._reduce_acquisition_functions(at, functions)
+            return self._reduce_acquisition_functions(at, self.functions)
 
         return evaluate_acquisition_function_fn
 
-    # TODO: define update_acquisition_function to avoid unnecessary retracing
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param model: The model.
+        :param dataset: Unused.
+        """
+        self.functions = tuple(
+            acq.update_acquisition_function(function, models, datasets=datasets)
+            for function, acq in zip(self.functions, self.acquisitions)
+        )
+
+        def evaluate_acquisition_function_fn(at: TensorType) -> TensorType:
+            return self._reduce_acquisition_functions(at, self.functions)
+
+        return evaluate_acquisition_function_fn
 
     @property
     def acquisitions(self) -> Sequence[AcquisitionFunctionBuilder[ProbabilisticModel]]:

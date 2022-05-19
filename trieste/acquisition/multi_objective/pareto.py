@@ -74,17 +74,21 @@ class Pareto:
         return hypervolume_indicator
 
 
-def get_reference_point(front: TensorType) -> TensorType:
+def get_reference_point(
+    observations: TensorType,
+) -> TensorType:
     """
-    reference point calculation method. Note if the front only contains one point, this reference
-    point calculation method will result a reference point the same as the input.
+    Default reference point calculation method that calculates the reference
+    point according to a Pareto front extracted from set of observations.
 
-    :param front: Pareto front referred to calculate the reference point, with shape [..., N, D]
+    :param observations: observations referred to calculate the reference
+        point, with shape [..., N, D]
     :return: a reference point to use, with shape [..., D].
-    :raise ValueError: If ``front`` is empty
+    :raise ValueError: If ``observations`` is empty
     """
-    if tf.equal(tf.size(front), 0):
-        raise ValueError("empty front cannot be used to calculate reference point")
+    if tf.equal(tf.size(observations), 0):
+        raise ValueError("empty observations cannot be used to calculate reference point")
 
+    front = Pareto(observations).front
     f = tf.math.reduce_max(front, axis=-2) - tf.math.reduce_min(front, axis=-2)
     return tf.math.reduce_max(front, axis=-2) + 2 * f / tf.cast(tf.shape(front)[-2], f.dtype)

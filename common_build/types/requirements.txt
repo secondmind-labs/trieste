@@ -14,6 +14,7 @@
 
 mypy
 types-PyYAML
-# pin typing-extensions so we're compatible with venvs that have tensorflow installed
+
+# pin typing-extensions so we're compatible with venvs that have TF 2.4 installed
 typing-extensions~=3.7.4
 

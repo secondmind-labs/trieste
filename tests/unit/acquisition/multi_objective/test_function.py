@@ -15,14 +15,17 @@ from __future__ import annotations
 
 import itertools
 import math
-from typing import Mapping, Optional, cast
+from typing import Callable, Mapping, Optional, Sequence, cast
 
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from tests.util.acquisition.sampler import PseudoBatchReparametrizationSampler
+from tests.util.acquisition.sampler import (
+    BatchReparametrizationSampler,
+    PseudoBatchReparametrizationSampler,
+)
 from tests.util.misc import (
     TF_DEBUGGING_ERROR_TYPES,
     empty_dataset,
@@ -33,6 +36,7 @@ from tests.util.misc import (
 from tests.util.models.gpflow.models import (
     GaussianProcess,
     GaussianProcessWithBatchSamplers,
+    HasReparamSampler,
     QuadraticMeanAndRBFKernel,
 )
 from trieste.acquisition import (
@@ -56,7 +60,7 @@ from trieste.acquisition.multi_objective.partition import (
     prepare_default_non_dominated_partition_bounds,
 )
 from trieste.data import Dataset
-from trieste.models import ProbabilisticModel, ReparametrizationSampler
+from trieste.models import ProbabilisticModel, ProbabilisticModelType, ReparametrizationSampler
 from trieste.types import TensorType
 from trieste.utils import DEFAULTS
 
@@ -156,6 +160,78 @@ def test_ehvi_builder_updates_expected_hv_improvement_using_pareto_from_model() 
     expected = expected_hv_improvement(model, _partition_bounds)(xs)
     npt.assert_allclose(acq_fn(xs), expected)
     assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
+
+
+class CustomGetReferencePoint:
+    def __call__(
+        self,
+        observations: TensorType,
+    ) -> TensorType:
+        return tf.reduce_max(observations, -2)
+
+
+def custom_get_ref_point(
+    observations: TensorType,
+) -> TensorType:
+    return tf.reduce_min(observations, -2)
+
+
+@pytest.mark.parametrize(
+    "specify_ref_points",
+    [
+        pytest.param(
+            get_reference_point,
+            id="func_input",
+        ),
+        pytest.param(
+            [8, 2],
+            id="list_input",
+        ),
+        pytest.param(
+            (8, 2),
+            id="tuple_input",
+        ),
+        pytest.param(
+            tf.constant([8, 2]),
+            id="tensor_input",
+        ),
+        pytest.param(
+            custom_get_ref_point,
+            id="callable_func_input",
+        ),
+        pytest.param(
+            CustomGetReferencePoint(),
+            id="callable_instance_input",
+        ),
+    ],
+)
+def test_ehvi_builder_builds_expected_hv_improvement_based_on_specified_ref_points(
+    specify_ref_points: TensorType | Sequence[float] | Callable[..., TensorType]
+) -> None:
+    num_obj = 2
+    train_x = tf.constant([[-2.0], [0.0]])
+    dataset = Dataset(
+        train_x,
+        tf.tile(tf.constant([[4.1], [2.2]]), [1, num_obj]),
+    )
+
+    model = _mo_test_model(num_obj, *[10, 10] * num_obj)
+    acq_fn = ExpectedHypervolumeImprovement(
+        reference_point_spec=specify_ref_points
+    ).prepare_acquisition_function(model, dataset)
+    # manually get ref point outside
+    model_pred_observation = model.predict(train_x)[0]
+    _prt = Pareto(model_pred_observation)
+    if callable(specify_ref_points):
+        _ref_point = specify_ref_points(_prt.front)
+    else:
+        _ref_point = tf.convert_to_tensor(specify_ref_points)
+        _ref_point = tf.cast(_ref_point, dtype=dataset.observations.dtype)
+    screened_front = _prt.front[tf.reduce_all(_prt.front <= _ref_point, -1)]
+    _partition_bounds = prepare_default_non_dominated_partition_bounds(_ref_point, screened_front)
+    xs = tf.linspace([[-10.0]], [[10.0]], 10)
+    expected = expected_hv_improvement(model, _partition_bounds)(xs)
+    npt.assert_allclose(acq_fn(xs), expected)
 
 
 @pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
@@ -302,6 +378,77 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_raises_for_invalid_s
 ) -> None:
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         BatchMonteCarloExpectedHypervolumeImprovement(sample_size)
+
+
+@pytest.mark.parametrize(
+    "specify_ref_points, sample_size",
+    [
+        pytest.param(
+            get_reference_point,
+            100_000,
+            id="func_input",
+        ),
+        pytest.param(
+            [8, 2],
+            100_000,
+            id="list_input",
+        ),
+        pytest.param(
+            (8, 2),
+            100_000,
+            id="tuple_input",
+        ),
+        pytest.param(
+            tf.constant([8, 2]),
+            100_000,
+            id="tensor_input",
+        ),
+        pytest.param(
+            custom_get_ref_point,
+            100_000,
+            id="callable_func_input",
+        ),
+        pytest.param(
+            CustomGetReferencePoint(),
+            100_000,
+            id="callable_instance_input",
+        ),
+    ],
+)
+def test_batch_monte_carlo_expected_hypervolume_improvement_based_on_specified_ref_points(
+    specify_ref_points: TensorType | Sequence[float] | Callable[..., TensorType],
+    sample_size: int,
+) -> None:
+    num_obj = 2
+    train_x = tf.constant([[-2.0], [0.0]])
+    dataset = Dataset(
+        train_x,
+        tf.tile(tf.constant([[4.1], [2.2]]), [1, num_obj]),
+    )
+
+    model = _mo_test_model(num_obj, *[1, 1] * num_obj)
+    assert isinstance(model, HasReparamSampler)
+    acq_fn = BatchMonteCarloExpectedHypervolumeImprovement(
+        sample_size, reference_point_spec=specify_ref_points
+    ).prepare_acquisition_function(model, dataset)
+    # manually get ref point outside
+    model_pred_observation = model.predict(train_x)[0]
+    _prt = Pareto(model_pred_observation)
+    if callable(specify_ref_points):
+        _ref_point = tf.cast(specify_ref_points(_prt.front), model_pred_observation.dtype)
+    else:
+        _ref_point = tf.convert_to_tensor(specify_ref_points)
+        _ref_point = tf.cast(_ref_point, dtype=dataset.observations.dtype)
+    screened_front = _prt.front[tf.reduce_all(_prt.front <= _ref_point, -1)]
+    _partition_bounds = prepare_default_non_dominated_partition_bounds(_ref_point, screened_front)
+    xs = tf.linspace([[-10.0]], [[10.0]], 10)
+    sampler = BatchReparametrizationSampler(sample_size, model)
+    expected = batch_ehvi(
+        sampler,  # type: ignore[arg-type]
+        sampler_jitter=DEFAULTS.JITTER,
+        partition_bounds=_partition_bounds,
+    )(xs)
+    npt.assert_allclose(acq_fn(xs), expected, rtol=0.01, atol=0.02)
 
 
 def test_batch_monte_carlo_expected_hypervolume_improvement_raises_for_invalid_jitter() -> None:
@@ -546,7 +693,79 @@ def test_expected_constrained_hypervolume_improvement_can_reproduce_ehvi() -> No
     data = {"foo": Dataset(train_x[:5], model_pred_observation[:5])}
     models_ = {"foo": obj_model}
 
-    builder = ExpectedConstrainedHypervolumeImprovement("foo", _Certainty(), 0)
+    builder = ExpectedConstrainedHypervolumeImprovement(
+        "foo",
+        _Certainty(),
+        0,
+        reference_point_spec=get_reference_point(Pareto(data["foo"].observations).front),
+    )
+    echvi = builder.prepare_acquisition_function(models_, datasets=data)
+
+    ehvi = (
+        ExpectedHypervolumeImprovement()
+        .using("foo")
+        .prepare_acquisition_function(models_, datasets=data)
+    )
+
+    at = tf.constant([[[-0.1]], [[1.23]], [[-6.78]]], dtype=tf.float64)
+    npt.assert_allclose(echvi(at), ehvi(at))
+
+    new_data = {"foo": Dataset(train_x, model_pred_observation)}
+    up_echvi = builder.update_acquisition_function(echvi, models_, datasets=new_data)
+    assert up_echvi == echvi
+    up_ehvi = (
+        ExpectedHypervolumeImprovement()
+        .using("foo")
+        .prepare_acquisition_function(models_, datasets=new_data)
+    )
+
+    npt.assert_allclose(up_echvi(at), up_ehvi(at))
+    assert up_echvi._get_tracing_count() == 1  # type: ignore
+
+
+def custom_get_ref_point_echvi(
+    observations: TensorType,
+) -> TensorType:
+    return tf.reduce_min(observations, -2)
+
+
+@pytest.mark.parametrize(
+    "specify_ref_points",
+    [
+        pytest.param(
+            custom_get_ref_point_echvi,
+            id="callable_func_input",
+        ),
+    ],
+)
+def test_expected_constrained_hypervolume_improvement_based_on_specified_ref_points(
+    specify_ref_points: TensorType | Sequence[float] | Callable[..., TensorType]
+) -> None:
+    num_obj = 2
+    train_x = tf.constant(
+        [[-2.0], [-1.5], [-1.0], [0.0], [0.5], [1.0], [1.5], [2.0]], dtype=tf.float64
+    )
+
+    obj_model = _mo_test_model(num_obj, *[None] * num_obj)
+    model_pred_observation = obj_model.predict(train_x)[0]
+
+    class _Certainty(AcquisitionFunctionBuilder[ProbabilisticModelType]):
+        def prepare_acquisition_function(
+            self,
+            models: Mapping[str, ProbabilisticModel],
+            datasets: Optional[Mapping[str, Dataset]] = None,
+        ) -> AcquisitionFunction:
+            return lambda x: tf.ones_like(tf.squeeze(x, -2))
+
+    data = {"foo": Dataset(train_x[:5], model_pred_observation[:5])}
+    models_ = {"foo": obj_model}
+
+    builder = ExpectedConstrainedHypervolumeImprovement(  # type: ignore
+        "foo",
+        _Certainty(),
+        0,
+        reference_point_spec=get_reference_point(Pareto(data["foo"].observations).front),
+    )
     echvi = builder.prepare_acquisition_function(models_, datasets=data)
 
     ehvi = (
