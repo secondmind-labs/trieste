@@ -168,7 +168,7 @@ def test_ensemble_trajectory_sampler_resample_with_new_sampler_does_not_change_o
 
     model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE * 3)
 
-    sampler = EnsembleTrajectorySampler(model, use_samples=use_samples)
+    sampler = DeepEnsembleTrajectorySampler(model, diversify)
     trajectory1 = sampler.get_trajectory()
     evals_11 = trajectory1(test_data)
 
