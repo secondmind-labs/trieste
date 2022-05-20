@@ -14,16 +14,17 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any, Callable, cast
 
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
-from tests.util.misc import empty_dataset, quadratic, random_seed, random_seed_custom
+from tests.util.misc import empty_dataset, quadratic, random_seed
 from tests.util.models.keras.models import trieste_deep_ensemble_model
 from trieste.data import Dataset
 from trieste.models.keras import DeepEnsemble, DeepEnsembleTrajectorySampler
+from trieste.types import TensorType
 
 _ENSEMBLE_SIZE = 3
 
@@ -97,19 +98,20 @@ def test_ensemble_trajectory_sampler_samples_are_distinct_for_new_instances(
 
     model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE * 10)
 
-    def _get_trajectory_evaluation(seed: int):
-        @random_seed_custom(seed)
-        def foo(
-            model: DeepEnsemble, diversify: bool, query_points: TensorType
-        ) -> TensorType:
+    def _get_trajectory_evaluation(
+        model: DeepEnsemble, diversify: bool, seed: int
+    ) -> Callable[[TensorType], TensorType]:
+        """This allows us to set a different seed for each instance"""
+        @random_seed(seed=seed)
+        def foo(query_points: TensorType) -> TensorType:
             sampler = DeepEnsembleTrajectorySampler(model, diversify=diversify)
             trajectory = sampler.get_trajectory()
             return trajectory(query_points)
 
         return foo
 
-    eval_1 = _get_trajectory_evaluation(0)(model, diversify, test_data)
-    eval_2 = _get_trajectory_evaluation(1)(model, diversify, test_data)
+    eval_1 = _get_trajectory_evaluation(model, diversify, 0)(test_data)
+    eval_2 = _get_trajectory_evaluation(model, diversify, 1)(test_data)
 
     npt.assert_array_less(
         1e-1, tf.reduce_max(tf.abs(eval_1 - eval_2))

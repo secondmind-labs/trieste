@@ -43,19 +43,38 @@ C = TypeVar("C", bound=Callable[..., object])
 """ Type variable bound to `typing.Callable`. """
 
 
-def random_seed_custom(seed: int = 0) -> Callable[[C], C]:
+def random_seed(f_py: C = None, seed: int = 0) -> Callable[[C], C]:
     """
     Decorates function ``f`` with TensorFlow, numpy and Python randomness seeds fixed to ``seed``.
+    This decorator can be used without and with the ``seed`` parameter. When used with the default
+    seed::
 
+        @random_seed
+        def foo():
+            pass
+
+    or::
+
+        @random_seed()
+        def foo():
+            pass
+
+    However, if ``seed`` needs to be set to a custom value parameter needs to be named::
+
+        @random_seed(seed=1)
+        def foo():
+            pass
+
+    :param f_py: A function to be decorated, used when ``seed`` parameter is not set.
     :param seed: A seed to be fixed, defaults to 0.
     """
+    assert callable(f_py) or f_py is None
 
-    def wrap(f: C) -> C:
+    def _decorator(f: C) -> C:
         """
         :param f: A function.
         :return: The function ``f``, but with TensorFlow, numpy and Python randomness seeds fixed.
         """
-
         @functools.wraps(f)
         def decorated(*args: Any, **kwargs: Any) -> Any:
             os.environ["PYTHONHASHSEED"] = str(seed)
@@ -66,24 +85,7 @@ def random_seed_custom(seed: int = 0) -> Callable[[C], C]:
 
         return cast(C, decorated)
 
-    return wrap
-
-
-def random_seed(f: C) -> C:
-    """
-    :param f: A function.
-    :return: The function ``f``, but with TensorFlow, numpy and Python randomness seeds fixed to 0.
-    """
-
-    @functools.wraps(f)
-    def decorated(*args: Any, **kwargs: Any) -> Any:
-        os.environ["PYTHONHASHSEED"] = str(0)
-        tf.random.set_seed(0)
-        np.random.seed(0)
-        random.seed(0)
-        return f(*args, **kwargs)
-
-    return cast(C, decorated)
+    return _decorator(f_py) if callable(f_py) else _decorator
 
 
 T = TypeVar("T")
