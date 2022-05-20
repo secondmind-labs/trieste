@@ -19,6 +19,7 @@ import operator
 from collections import Sequence
 from collections.abc import Container
 from functools import reduce
+from typing import Optional
 
 import numpy.testing as npt
 import pytest
@@ -43,8 +44,8 @@ class Integers(SearchSpace):
     def upper(self) -> None:
         pass
 
-    def sample(self, num_samples: int) -> tf.Tensor:
-        return tf.random.shuffle(tf.range(self.limit))[:num_samples]
+    def sample(self, num_samples: int, seed: Optional[int] = None) -> tf.Tensor:
+        return tf.random.shuffle(tf.range(self.limit), seed=seed)[:num_samples]
 
     def __contains__(self, point: tf.Tensor) -> bool | TensorType:
         tf.debugging.assert_integer(point)
