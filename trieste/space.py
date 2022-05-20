@@ -35,9 +35,10 @@ class SearchSpace(ABC):
     """
 
     @abstractmethod
-    def sample(self, num_samples: int) -> TensorType:
+    def sample(self, num_samples: int, seed: Optional[int]) -> TensorType:
         """
         :param num_samples: The number of points to sample from this search space.
+        :param seed: Random seed for reproducibility
         :return: ``num_samples`` i.i.d. random points, sampled uniformly from this search space.
         """
 
