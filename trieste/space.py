@@ -383,7 +383,7 @@ class Box(SearchSpace):
         if num_samples == 0:
             return tf.constant([])
         if skip is None:  # generate random skip
-            skip = tf.random.uniform([1], maxval=2**16, dtype=tf.int32)[0]
+            skip = tf.random.uniform([1], maxval=2 ** 16, dtype=tf.int32)[0]
         dim = tf.shape(self._lower)[-1]
         return (self._upper - self._lower) * tf.math.sobol_sample(
             dim=dim, num_results=num_samples, dtype=self._lower.dtype, skip=skip
