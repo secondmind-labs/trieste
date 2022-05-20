@@ -17,7 +17,25 @@ This package contains examples of popular objective functions used in (Bayesian)
 """
 
 from . import multi_objectives, utils
+from .prior_objectives import (
+    DGP_ACKLEY_2_MINIMIZER,
+    DGP_ACKLEY_2_MINIMUM,
+    DGP_ACKLEY_2_SEARCH_SPACE,
+    DGP_ACKLEY_5_MINIMIZER,
+    DGP_ACKLEY_5_MINIMUM,
+    DGP_ACKLEY_5_SEARCH_SPACE,
+    DGP_MICH_2_MINIMIZER,
+    DGP_MICH_2_MINIMUM,
+    DGP_MICH_2_SEARCH_SPACE,
+    DGP_MICH_5_MINIMIZER,
+    DGP_MICH_5_MINIMUM,
+    DGP_MICH_5_SEARCH_SPACE,
+    build_dgp_prior_function,
+)
 from .single_objectives import (
+    ACKLEY_2_MINIMIZER,
+    ACKLEY_2_MINIMUM,
+    ACKLEY_2_SEARCH_SPACE,
     ACKLEY_5_MINIMIZER,
     ACKLEY_5_MINIMUM,
     ACKLEY_5_SEARCH_SPACE,
@@ -58,6 +76,7 @@ from .single_objectives import (
     TRID_10_MINIMIZER,
     TRID_10_MINIMUM,
     TRID_10_SEARCH_SPACE,
+    ackley_2,
     ackley_5,
     branin,
     gramacy_lee,

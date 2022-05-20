@@ -659,7 +659,8 @@ class DeepGaussianProcessPriorTrajectorySampler(TrajectorySampler[GPfluxPredicto
                 "W": layer._feature_functions.W.value(),
                 "b": layer._feature_functions.b.value(),
                 "kernel": layer._feature_functions.kernel,
-                "mean_function": layer._layer.mean_function
+                "mean_function": layer._layer.mean_function,
+                "batch_size": layer._batch_size.value(),
             }
             pickle_list.append(layer_dict)
         return pickle_list
@@ -671,6 +672,7 @@ class DeepGaussianProcessPriorTrajectorySampler(TrajectorySampler[GPfluxPredicto
             layer._feature_functions.b.assign(state[i]["b"])
             layer._feature_functions.kernel = state[i]["kernel"]
             layer._layer.mean_function = state[i]["mean_function"]
+            layer._batch_size.assign(state[i]["batch_size"])
             layer._initialized.assign(True)
 
 
@@ -755,9 +757,7 @@ class DeepGaussianProcessPriorLayer(ABC):
 
         flat_x, unflatten = flatten_leading_dims(x)
         flattened_feature_evaluations = self._feature_functions(flat_x)
-        feature_evaluations = unflatten(flattened_feature_evaluations)[
-            ..., None
-        ]  # [N, B, L, 1]
+        feature_evaluations = unflatten(flattened_feature_evaluations)[..., None]  # [N, B, L, 1]
 
         return tf.reduce_sum(
             feature_evaluations * self._weights_sample, -2
