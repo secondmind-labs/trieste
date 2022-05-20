@@ -176,17 +176,20 @@ class DiscreteSearchSpace(SearchSpace):
         tf.debugging.assert_shapes([(value, self.points.shape[1:])])
         return tf.reduce_any(tf.reduce_all(value == self._points, axis=1))
 
-    def sample(self, num_samples: int) -> TensorType:
+    def sample(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
         """
         :param num_samples: The number of points to sample from this search space.
         :return: ``num_samples`` i.i.d. random points, sampled uniformly,
             from this search space.
         """
+        if seed is not None:  # ensure reproducibility
+            tf.random.set_seed(seed)
+
         if num_samples == 0:
             return self.points[:0, :]
         else:
             sampled_indices = tf.random.categorical(
-                tf.ones((1, tf.shape(self.points)[0])), num_samples
+                tf.ones((1, tf.shape(self.points)[0])), num_samples, seed=seed
             )
             return tf.gather(self.points, sampled_indices)[0, :, :]  # [num_samples, D]
 
@@ -324,7 +327,7 @@ class Box(SearchSpace):
 
         return tf.reduce_all(value >= self._lower) and tf.reduce_all(value <= self._upper)
 
-    def sample(self, num_samples: int) -> TensorType:
+    def sample(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
         """
         Sample randomly from the space.
 
@@ -334,10 +337,15 @@ class Box(SearchSpace):
             dimension.
         """
         tf.debugging.assert_non_negative(num_samples)
-
+        if seed is not None:  # ensure reproducibility
+            tf.random.set_seed(seed)
         dim = tf.shape(self._lower)[-1]
         return tf.random.uniform(
-            (num_samples, dim), minval=self._lower, maxval=self._upper, dtype=self._lower.dtype
+            (num_samples, dim),
+            minval=self._lower,
+            maxval=self._upper,
+            dtype=self._lower.dtype,
+            seed=seed,
         )
 
     def sample_halton(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
@@ -375,7 +383,7 @@ class Box(SearchSpace):
         if num_samples == 0:
             return tf.constant([])
         if skip is None:  # generate random skip
-            skip = tf.random.uniform([1], maxval=2 ** 16, dtype=tf.int32)[0]
+            skip = tf.random.uniform([1], maxval=2**16, dtype=tf.int32)[0]
         dim = tf.shape(self._lower)[-1]
         return (self._upper - self._lower) * tf.math.sobol_sample(
             dim=dim, num_results=num_samples, dtype=self._lower.dtype, skip=skip
@@ -583,7 +591,7 @@ class TaggedProductSearchSpace(SearchSpace):
         ]
         return tf.reduce_all(in_each_subspace)
 
-    def sample(self, num_samples: int) -> TensorType:
+    def sample(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
         """
         Sample randomly from the space by sampling from each subspace
         and concatenating the resulting samples.
@@ -594,8 +602,9 @@ class TaggedProductSearchSpace(SearchSpace):
             dimension.
         """
         tf.debugging.assert_non_negative(num_samples)
-
-        subspace_samples = [self._spaces[tag].sample(num_samples) for tag in self._tags]
+        if seed is not None:  # ensure reproducibility
+            tf.random.set_seed(seed)
+        subspace_samples = [self._spaces[tag].sample(num_samples, seed=seed) for tag in self._tags]
         return tf.concat(subspace_samples, -1)
 
     def product(self, other: TaggedProductSearchSpace) -> TaggedProductSearchSpace:

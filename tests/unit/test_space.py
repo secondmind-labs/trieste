@@ -67,11 +67,11 @@ class Integers(SearchSpace):
 def test_search_space___pow___raises_for_non_positive_exponent(exponent: int) -> None:
     space = Integers(3)
     with pytest.raises(tf.errors.InvalidArgumentError):
-        space ** exponent
+        space**exponent
 
 
 def test_search_space___pow___multiplies_correct_number_of_search_spaces() -> None:
-    assert (Integers(5) ** 7).limit == 5 ** 7
+    assert (Integers(5) ** 7).limit == 5**7
 
 
 def _points_in_2D_search_space() -> tf.Tensor:
@@ -165,6 +165,14 @@ def test_discrete_search_space_sampling(num_samples: int) -> None:
     samples = search_space.sample(num_samples)
     assert all(sample in search_space for sample in samples)
     assert len(samples) == num_samples
+
+
+@pytest.mark.parametrize("seed", [1, 42, 123])
+def test_discrete_search_space_sampling_returns_same_points_for_same_seed(seed: int) -> None:
+    search_space = DiscreteSearchSpace(_points_in_2D_search_space())
+    random_samples_1 = search_space.sample(num_samples=100, seed=seed)
+    random_samples_2 = search_space.sample(num_samples=100, seed=seed)
+    npt.assert_allclose(random_samples_1, random_samples_2)
 
 
 def test_discrete_search_space___mul___points_is_the_concatenation_of_original_points() -> None:
@@ -414,6 +422,14 @@ def test_box_halton_sampling_raises_for_invalid_sample_size(num_samples: int) ->
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         box = Box(tf.zeros((3,)), tf.ones((3,)))
         box.sample_halton(num_samples)
+
+
+@pytest.mark.parametrize("seed", [1, 42, 123])
+def test_box_sampling_returns_same_points_for_same_seed(seed: int) -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)))
+    random_samples_1 = box.sample(num_samples=100, seed=seed)
+    random_samples_2 = box.sample(num_samples=100, seed=seed)
+    npt.assert_allclose(random_samples_1, random_samples_2)
 
 
 @pytest.mark.parametrize("skip", [1, 10, 100])
@@ -794,6 +810,16 @@ def test_product_space_discretize_returns_search_space_with_correct_number_of_po
     samples = dss.sample(num_samples)
 
     assert len(samples) == num_samples
+
+
+@pytest.mark.parametrize("seed", [1, 42, 123])
+def test_product_space_sampling_returns_same_points_for_same_seed(seed: int) -> None:
+    space_A = Box([-1], [2])
+    space_B = DiscreteSearchSpace(tf.random.uniform([100, 2], dtype=tf.float64, seed=42))
+    product_space = TaggedProductSearchSpace(spaces=[space_A, space_B])
+    random_samples_1 = product_space.sample(num_samples=100, seed=seed)
+    random_samples_2 = product_space.sample(num_samples=100, seed=seed)
+    npt.assert_allclose(random_samples_1, random_samples_2)
 
 
 def test_product_space___mul___() -> None:
