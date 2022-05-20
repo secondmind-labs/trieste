@@ -20,7 +20,7 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
-from tests.util.misc import empty_dataset, quadratic, random_seed
+from tests.util.misc import empty_dataset, quadratic, random_seed, random_seed_custom
 from tests.util.models.keras.models import trieste_deep_ensemble_model
 from trieste.data import Dataset
 from trieste.models.keras import DeepEnsemble, DeepEnsembleTrajectorySampler
@@ -95,17 +95,22 @@ def test_ensemble_trajectory_sampler_samples_are_distinct_for_new_instances(
     test_data = tf.expand_dims(test_data, -2)  # [N, 1, d]
     test_data = tf.tile(test_data, [1, 2, 1])  # [N, 2, D]
 
-    model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE * 3)
+    model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE * 10)
 
-    sampler1 = DeepEnsembleTrajectorySampler(model, diversify=diversify)
-    trajectory1 = sampler1.get_trajectory()
+    def _get_trajectory_evaluation(seed: int):
+        @random_seed_custom(seed)
+        def foo(
+            model: DeepEnsemble, diversify: bool, query_points: TensorType
+        ) -> TensorType:
+            sampler = DeepEnsembleTrajectorySampler(model, diversify=diversify)
+            trajectory = sampler.get_trajectory()
+            return trajectory(query_points)
 
-    sampler2 = DeepEnsembleTrajectorySampler(model, diversify=diversify)
-    trajectory2 = sampler2.get_trajectory()
+        return foo
 
-    eval_1 = trajectory1(test_data)
-    eval_2 = trajectory2(test_data)
-    # breakpoint()
+    eval_1 = _get_trajectory_evaluation(0)(model, diversify, test_data)
+    eval_2 = _get_trajectory_evaluation(1)(model, diversify, test_data)
+
     npt.assert_array_less(
         1e-1, tf.reduce_max(tf.abs(eval_1 - eval_2))
     )  # distinct between seperate draws

@@ -43,6 +43,32 @@ C = TypeVar("C", bound=Callable[..., object])
 """ Type variable bound to `typing.Callable`. """
 
 
+def random_seed_custom(seed: int = 0) -> Callable[[C], C]:
+    """
+    Decorates function ``f`` with TensorFlow, numpy and Python randomness seeds fixed to ``seed``.
+
+    :param seed: A seed to be fixed, defaults to 0.
+    """
+
+    def wrap(f: C) -> C:
+        """
+        :param f: A function.
+        :return: The function ``f``, but with TensorFlow, numpy and Python randomness seeds fixed.
+        """
+
+        @functools.wraps(f)
+        def decorated(*args: Any, **kwargs: Any) -> Any:
+            os.environ["PYTHONHASHSEED"] = str(seed)
+            tf.random.set_seed(seed)
+            np.random.seed(seed)
+            random.seed(seed)
+            return f(*args, **kwargs)
+
+        return cast(C, decorated)
+
+    return wrap
+
+
 def random_seed(f: C) -> C:
     """
     :param f: A function.
