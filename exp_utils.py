@@ -8,7 +8,8 @@ from trieste.acquisition.rule import (
     EfficientGlobalOptimization,
 )
 from trieste.acquisition.function import (
-    NegativeModelTrajectory
+    GreedyContinuousThompsonSampling,
+    ParallelContinuousThompsonSampling
 )
 from trieste.models.optimizer import KerasOptimizer
 from trieste.acquisition.optimizer import generate_continuous_optimizer
@@ -32,8 +33,10 @@ def build_vanilla_dgp_model(
     dgp = build_vanilla_deep_gp(data, search_space, num_layers, num_inducing,
                                 likelihood_variance=noise_variance, trainable_likelihood=learn_noise)
 
-    acquisition_function = NegativeModelTrajectory()
-    acquisition_rule = EfficientGlobalOptimization(acquisition_function, optimizer=generate_continuous_optimizer(1000))
+    acquisition_function = GreedyContinuousThompsonSampling()
+    acquisition_rule = EfficientGlobalOptimization(acquisition_function,
+                                                   num_query_points=1,
+                                                   optimizer=generate_continuous_optimizer(1000))
 
     batch_size = 1000
 
@@ -48,7 +51,7 @@ def build_vanilla_dgp_model(
         "batch_size": batch_size,
         "epochs": epochs,
         "verbose": 0,
-        "shuffle": False,
+        "shuffle": True,
         "callbacks": [tf.keras.callbacks.LearningRateScheduler(scheduler)]
     }
     optimizer = KerasOptimizer(keras_optimizer, fit_args)

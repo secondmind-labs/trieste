@@ -29,10 +29,10 @@ branin_exp: $(addprefix results_rtfreq/,$(b_m_l_r_n_run))
 
 
 ########################## Other functions exp ##############################
-function_list = michalewicz5_ ackley_
+function_list = dgpmich2_ dgpmich5_ dgpack2_ dgpack5_ #michalewicz5_ ackley_
 model_list = deepgp_ #gp_ #deepgp_ gidgp_
-learn_noise = lnt_ #lnf_
-retrain = rtt_2_ rtt_10_ #rtt_1_ rtt_2_ rtt_5_ rtt_10_ rtf_1_
+learn_noise = lnt_ lnf_
+retrain = rtt_5_ rtt_10_ rtf_0_ #rtt_1_ rtt_2_ rtt_5_ rtt_10_ rtf_1_
 norm = normt_ normf_
 run = 0 1 2 3 4 5 6 7 8 9
 

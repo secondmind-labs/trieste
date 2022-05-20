@@ -5,6 +5,15 @@ import tensorflow as tf
 tf.config.threading.set_inter_op_parallelism_threads(1)
 tf.config.threading.set_inter_op_parallelism_threads(1)
 from trieste.objectives import (
+    build_dgp_prior_function,
+    DGP_MICH_2_MINIMUM,
+    DGP_MICH_2_SEARCH_SPACE,
+    DGP_MICH_5_MINIMUM,
+    DGP_MICH_5_SEARCH_SPACE,
+    DGP_ACKLEY_2_MINIMUM,
+    DGP_ACKLEY_2_SEARCH_SPACE,
+    DGP_ACKLEY_5_MINIMUM,
+    DGP_ACKLEY_5_SEARCH_SPACE,
     michalewicz_5,
     MICHALEWICZ_5_MINIMUM,
     MICHALEWICZ_5_SEARCH_SPACE,
@@ -61,9 +70,17 @@ np.random.seed(run)
 tf.random.set_seed(run)
 
 function_dict = {
-    "branin": [branin, BRANIN_MINIMUM, BRANIN_SEARCH_SPACE],
-    "michalewicz5": [michalewicz_5, MICHALEWICZ_5_MINIMUM, MICHALEWICZ_5_SEARCH_SPACE],
-    "ackley": [ackley_5, ACKLEY_5_MINIMUM, ACKLEY_5_SEARCH_SPACE],
+    "branin": [branin, BRANIN_MINIMUM, BRANIN_SEARCH_SPACE, 5, 15],
+    "michalewicz5": [michalewicz_5, MICHALEWICZ_5_MINIMUM, MICHALEWICZ_5_SEARCH_SPACE, 20, 180],
+    "ackley": [ackley_5, ACKLEY_5_MINIMUM, ACKLEY_5_SEARCH_SPACE, 20, 180],
+    "dgpmich2": [build_dgp_prior_function('mich_2'), DGP_MICH_2_MINIMUM, DGP_MICH_2_SEARCH_SPACE,
+                 10, 40],
+    "dgpmich5": [build_dgp_prior_function('mich_5'), DGP_MICH_5_MINIMUM, DGP_MICH_5_SEARCH_SPACE,
+                 20, 180],
+    "dgpack2": [build_dgp_prior_function('ackley_2'), DGP_ACKLEY_2_MINIMUM,
+                DGP_ACKLEY_2_SEARCH_SPACE, 10, 40],
+    "dgpack5": [build_dgp_prior_function('ackley_5'), DGP_ACKLEY_5_MINIMUM,
+                DGP_ACKLEY_5_SEARCH_SPACE, 20, 180]
 }
 
 model_dict = {
@@ -93,12 +110,8 @@ observer = mk_observer(function)
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
-if function_key == 'branin':
-    num_initial_points = 5
-    num_acquisitions = 15
-else:
-    num_initial_points = 20
-    num_acquisitions = 180
+num_initial_points = function_dict[function_key][3]
+num_acquisitions = function_dict[function_key][4]
 
 if retrain:
     num_loops = num_acquisitions // retrain_every
