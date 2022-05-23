@@ -18,7 +18,7 @@ import pytest
 import tensorflow as tf
 
 from tests.util.misc import branin_dataset, random_seed
-from trieste.models.keras import DeepEnsemble, build_vanilla_keras_ensemble
+from trieste.models.keras import DeepEnsemble, build_keras_ensemble
 from trieste.models.optimizer import KerasOptimizer
 
 
@@ -30,7 +30,7 @@ def test_neural_network_ensemble_predictions_close_to_actuals(keras_float: None)
 
     example_data = branin_dataset(dataset_size)
 
-    keras_ensemble = build_vanilla_keras_ensemble(example_data, ensemble_size, 2, 50)
+    keras_ensemble = build_keras_ensemble(example_data, ensemble_size, 2, 50)
     optimizer = tf.keras.optimizers.Adam()
     fit_args = {
         "batch_size": 20,

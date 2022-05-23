@@ -14,19 +14,15 @@
 
 from typing import Any, List, Tuple
 
-import gpflow
 import numpy as np
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
 
 from tests.util.misc import empty_dataset
-from tests.util.models.gpflow.models import gpr_model
 from tests.util.models.keras.models import trieste_keras_ensemble_model
-from tests.util.models.models import fnc_3x_plus_10
 from trieste.models.keras import (
     GaussianNetwork,
-    KerasEnsemble,
     KerasEnsembleNetwork,
     get_tensor_spec_from_data,
     negative_log_likelihood,
@@ -76,16 +72,6 @@ def test_keras_ensemble_ensemble_size_attributes(ensemble_size: int) -> None:
     keras_ensemble = trieste_keras_ensemble_model(example_data, ensemble_size)
 
     assert keras_ensemble.ensemble_size == ensemble_size
-
-
-def test_keras_ensemble_raises_for_incorrect_networks() -> None:
-
-    x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
-    y = fnc_3x_plus_10(x)
-    network = gpr_model(x, y)
-
-    with pytest.raises(ValueError):
-        KerasEnsemble([network])
 
 
 @pytest.mark.parametrize(

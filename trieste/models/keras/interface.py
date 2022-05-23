@@ -18,6 +18,8 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 import tensorflow as tf
+import tensorflow_probability as tfp
+from typing_extensions import Protocol, runtime_checkable
 
 from ...types import TensorType
 from ..interfaces import ProbabilisticModel
@@ -70,3 +72,36 @@ class KerasPredictor(ProbabilisticModel, ABC):
             such subclasses should overwrite this method.
             """
         )
+
+
+@runtime_checkable
+class DeepEnsembleModel(ProbabilisticModel, Protocol):
+    """
+    This is an interface for deep ensemble type of model, primarily for usage by trajectory
+    samplers, to avoid circular imports. These models can act as probabilistic models
+    by deriving estimates of epistemic uncertainty from the diversity of predictions made by
+    individual models in the ensemble.
+    """
+
+    @property
+    @abstractmethod
+    def ensemble_size(self) -> int:
+        """
+        Returns the size of the ensemble, that is, the number of base learners or individual
+        models in the ensemble.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def ensemble_distributions(
+        self, query_points: TensorType
+    ) -> tuple[tfp.distributions.Distribution, ...]:
+        """
+        Return distributions for each member of the ensemble. Type of the output will depend on the
+        subclass, it might be a predicted value or a distribution.
+
+        :param query_points: The points at which to return outputs.
+        :return: The outputs for the observations at the specified ``query_points`` for each member
+            of the ensemble.
+        """
+        raise NotImplementedError

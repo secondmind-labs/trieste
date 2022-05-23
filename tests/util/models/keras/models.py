@@ -45,8 +45,8 @@ def trieste_keras_ensemble_model(
             input_tensor_spec,
             output_tensor_spec,
             hidden_layer_args=[
-                {"units": 32, "activation": "relu"},
-                {"units": 32, "activation": "relu"},
+                {"units": 32, "activation": "selu"},
+                {"units": 32, "activation": "selu"},
             ],
             independent=independent_normal,
         )
@@ -68,8 +68,8 @@ def trieste_deep_ensemble_model(
 
     optimizer = tf.keras.optimizers.Adam()
     fit_args = {
-        "batch_size": 32,
-        "epochs": 10,
+        "batch_size": 100,
+        "epochs": 1,
         "callbacks": [],
         "verbose": 0,
     }
