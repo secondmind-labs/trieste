@@ -17,7 +17,7 @@ import functools
 import os
 import random
 from collections.abc import Container, Mapping
-from typing import Any, Callable, NoReturn, Optional, Sequence, TypeVar, Union, cast
+from typing import Any, Callable, NoReturn, Optional, Sequence, TypeVar, Union, cast, overload
 
 import numpy as np
 import numpy.testing as npt
@@ -43,7 +43,17 @@ C = TypeVar("C", bound=Callable[..., object])
 """ Type variable bound to `typing.Callable`. """
 
 
-def random_seed(f_py: C = None, seed: int = 0) -> Callable[[C], C]:
+@overload
+def random_seed(f_py: C, seed: int = 0) -> C:
+    ...
+
+
+@overload
+def random_seed(f_py: None = None, seed: int = 0) -> Callable[[C], C]:
+    ...
+
+
+def random_seed(f_py: Optional[C] = None, seed: int = 0) -> Callable[[C], C] | C:
     """
     Decorates function ``f`` with TensorFlow, numpy and Python randomness seeds fixed to ``seed``.
     This decorator can be used without and with the ``seed`` parameter. When used with the default
@@ -75,6 +85,7 @@ def random_seed(f_py: C = None, seed: int = 0) -> Callable[[C], C]:
         :param f: A function.
         :return: The function ``f``, but with TensorFlow, numpy and Python randomness seeds fixed.
         """
+
         @functools.wraps(f)
         def decorated(*args: Any, **kwargs: Any) -> Any:
             os.environ["PYTHONHASHSEED"] = str(seed)
@@ -85,7 +96,10 @@ def random_seed(f_py: C = None, seed: int = 0) -> Callable[[C], C]:
 
         return cast(C, decorated)
 
-    return _decorator(f_py) if callable(f_py) else _decorator
+    if f_py is None:
+        return _decorator
+    else:
+        return _decorator(f_py)
 
 
 T = TypeVar("T")

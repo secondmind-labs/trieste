@@ -102,6 +102,7 @@ def test_ensemble_trajectory_sampler_samples_are_distinct_for_new_instances(
         model: DeepEnsemble, diversify: bool, seed: int
     ) -> Callable[[TensorType], TensorType]:
         """This allows us to set a different seed for each instance"""
+
         @random_seed(seed=seed)
         def foo(query_points: TensorType) -> TensorType:
             sampler = DeepEnsembleTrajectorySampler(model, diversify=diversify)
