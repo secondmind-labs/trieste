@@ -419,9 +419,7 @@ def test_dgp_decoupled_layer_returns_trajectory_with_correct_shapes(
 
     xs = _generate_xs_for_decoupled_trajectory(num_evals, batch_size)
 
-    tf.debugging.assert_shapes(
-        [(decoupled_layer(xs), [num_evals, batch_size, P])]
-    )
+    tf.debugging.assert_shapes([(decoupled_layer(xs), [num_evals, batch_size, P])])
 
 
 @random_seed
