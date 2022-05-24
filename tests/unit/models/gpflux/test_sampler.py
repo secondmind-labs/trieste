@@ -193,6 +193,12 @@ def test_dgp_decoupled_trajectory_sampler_raises_for_invalid_model(keras_float: 
         )
 
 
+def _generate_xs_for_decoupled_trajectory(num_evals: int, batch_size: int):
+    xs = tf.random.uniform([num_evals, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
+    xs = tf.expand_dims(xs, -2)
+    return tf.tile(xs, [1, batch_size, 1])
+
+
 @pytest.mark.parametrize("num_evals", [10, 100])
 def test_dgp_decoupled_trajectory_sampler_returns_trajectory_function_with_correct_shapes(
     num_evals: int,
@@ -206,11 +212,9 @@ def test_dgp_decoupled_trajectory_sampler_returns_trajectory_function_with_corre
     sampler = DeepGaussianProcessDecoupledTrajectorySampler(model)
 
     trajectory = sampler.get_trajectory()
-    xs = tf.random.uniform([num_evals, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)  # [N, D]
-    xs_with_dummy_batch_dim = tf.expand_dims(xs, -2)  # [N, 1, D]
-    xs_with_full_batch_dim = tf.tile(xs_with_dummy_batch_dim, [1, batch_size, 1])  # [N, B, D]
+    xs = _generate_xs_for_decoupled_trajectory(num_evals, batch_size)
 
-    tf.debugging.assert_shapes([(trajectory(xs_with_full_batch_dim), [num_evals, batch_size])])
+    tf.debugging.assert_shapes([(trajectory(xs), [num_evals, batch_size])])
 
     assert isinstance(trajectory, dgp_feature_decomposition_trajectory)
 
@@ -223,9 +227,7 @@ def test_dgp_decoupled_trajectory_sampler_returns_deterministic_trajectory(
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
     sampler = DeepGaussianProcessDecoupledTrajectorySampler(model)
-    xs = tf.random.uniform([10, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
-    xs = tf.expand_dims(xs, -2)  # [N, 1, D]
-    xs = tf.tile(xs, [1, 5, 1])  # [N, B, D]
+    xs = _generate_xs_for_decoupled_trajectory(10, 5)
 
     trajectory = sampler.get_trajectory()
     trajectory_eval_1 = trajectory(xs)
@@ -241,9 +243,7 @@ def test_dgp_decoupled_trajectory_sampler_sample_is_continuous(
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
     sampler = DeepGaussianProcessDecoupledTrajectorySampler(model)
-    xs = tf.random.uniform([10, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
-    xs = tf.expand_dims(xs, -2)  # [N, 1, D]
-    xs = tf.tile(xs, [1, 5, 1])  # [N, B, D]
+    xs = _generate_xs_for_decoupled_trajectory(10, 5)
 
     trajectory = sampler.get_trajectory()
     npt.assert_array_less(tf.abs(trajectory(xs + 1e-20) - trajectory(xs)), 1e-20)
@@ -297,9 +297,7 @@ def test_dgp_decoupled_trajectory_sampler_samples_are_distinct_for_new_instances
     sampler_2 = DeepGaussianProcessDecoupledTrajectorySampler(model)
     trajectory_2 = sampler_2.get_trajectory()
 
-    xs = tf.random.uniform([10, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
-    xs = tf.expand_dims(xs, -2)  # [N, 1, D]
-    xs = tf.tile(xs, [1, 2, 1])  # [N, B, D]
+    xs = _generate_xs_for_decoupled_trajectory(10, 2)
 
     npt.assert_array_less(
         1e-1, tf.reduce_max(tf.abs(trajectory_1(xs) - trajectory_2(xs)))
@@ -319,9 +317,7 @@ def test_dgp_decoupled_trajectory_resample_trajectory_provides_new_samples_witho
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
-    xs = tf.random.uniform([10, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
-    xs = tf.expand_dims(xs, -2)  # [N, 1, D]
-    xs = tf.tile(xs, [1, 5, 1])  # [N, B, D]
+    xs = _generate_xs_for_decoupled_trajectory(10, 5)
 
     sampler = DeepGaussianProcessDecoupledTrajectorySampler(model)
     trajectory = sampler.get_trajectory()
@@ -341,13 +337,11 @@ def test_dgp_decoupled_trajectory_update_trajectory_updates_and_doesnt_retrace(
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
-    xs = tf.random.uniform([10, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
-    xs = tf.expand_dims(xs, -2)  # [N, 1, D]
-    xs_with_batching = tf.tile(xs, [1, 5, 1])  # [N, B, D]
+    xs = _generate_xs_for_decoupled_trajectory(10, 5)
 
     sampler = DeepGaussianProcessDecoupledTrajectorySampler(model)
     trajectory = sampler.get_trajectory()
-    eval_before = trajectory(xs_with_batching)
+    eval_before = trajectory(xs)
 
     for _ in range(3):  # do three updates on new data and see if samples are new
         x_train = tf.random.uniform([20, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
@@ -357,7 +351,7 @@ def test_dgp_decoupled_trajectory_update_trajectory_updates_and_doesnt_retrace(
         model.optimize(new_dataset)
 
         trajectory_updated = sampler.update_trajectory(trajectory)
-        eval_after = trajectory(xs_with_batching)
+        eval_after = trajectory(xs)
 
         assert trajectory_updated is trajectory  # check update was in place
 
@@ -423,12 +417,10 @@ def test_dgp_decoupled_layer_returns_trajectory_with_correct_shapes(
 
     decoupled_layer = DeepGaussianProcessDecoupledLayer(layer)
 
-    xs = tf.random.uniform([num_evals, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)  # [N, D]
-    xs_with_dummy_batch_dim = tf.expand_dims(xs, -2)  # [N, 1, D]
-    xs_with_full_batch_dim = tf.tile(xs_with_dummy_batch_dim, [1, batch_size, 1])  # [N, B, D]
+    xs = _generate_xs_for_decoupled_trajectory(num_evals, batch_size)
 
     tf.debugging.assert_shapes(
-        [(decoupled_layer(xs_with_full_batch_dim), [num_evals, batch_size, P])]
+        [(decoupled_layer(xs), [num_evals, batch_size, P])]
     )
 
 
@@ -443,9 +435,7 @@ def test_dgp_decoupled_layer_returns_deterministic_trajectory(
 
     decoupled_layer = DeepGaussianProcessDecoupledLayer(layer)
 
-    xs = tf.random.uniform([10, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)  # [N, D]
-    xs = tf.expand_dims(xs, -2)
-    xs = tf.tile(xs, [1, 5, 1])
+    xs = _generate_xs_for_decoupled_trajectory(10, 5)
 
     eval_1 = decoupled_layer(xs)
     eval_2 = decoupled_layer(xs)
@@ -465,9 +455,7 @@ def test_dgp_decoupled_layer_samples_are_distinct_for_new_instances(
     decoupled_layer_1 = DeepGaussianProcessDecoupledLayer(layer)
     decoupled_layer_2 = DeepGaussianProcessDecoupledLayer(layer)
 
-    xs = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)  # [N, D]
-    xs = tf.expand_dims(xs, -2)
-    xs = tf.tile(xs, [1, 5, 1])
+    xs = _generate_xs_for_decoupled_trajectory(100, 5)
 
     npt.assert_array_less(
         1e-2, tf.reduce_sum(tf.abs(decoupled_layer_1(xs) - decoupled_layer_2(xs)))
@@ -491,9 +479,7 @@ def test_dgp_decoupled_layer_resample_provides_new_samples(
 
     decoupled_layer = DeepGaussianProcessDecoupledLayer(layer)
 
-    xs = tf.random.uniform([10, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)  # [N, D]
-    xs = tf.expand_dims(xs, -2)
-    xs = tf.tile(xs, [1, 5, 1])
+    xs = _generate_xs_for_decoupled_trajectory(10, 5)
 
     evals_1 = decoupled_layer(xs)
     for _ in range(5):
@@ -513,9 +499,7 @@ def test_dgp_decoupled_layer_update_updates(
 
     decoupled_layer = DeepGaussianProcessDecoupledLayer(layer)
 
-    xs = tf.random.uniform([10, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)  # [N, D]
-    xs = tf.expand_dims(xs, -2)
-    xs = tf.tile(xs, [1, 5, 1])
+    xs = _generate_xs_for_decoupled_trajectory(10, 5)
 
     evals_1 = decoupled_layer(xs)
 

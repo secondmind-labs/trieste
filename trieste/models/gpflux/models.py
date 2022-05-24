@@ -52,6 +52,7 @@ class DeepGaussianProcess(
         self,
         model: DeepGP,
         optimizer: KerasOptimizer | None = None,
+        num_rff_features: int = 1000,
         continuous_optimisation: bool = True,
     ):
         """
@@ -64,9 +65,15 @@ class DeepGaussianProcess(
             A custom callback that reduces the optimizer learning rate is used as well. See
             https://keras.io/api/models/model_training_apis/#fit-method for a list of possible
             arguments.
+        :param num_rff_features: The number of random Fourier features used to approximate the
+            kernel when calling :meth:`trajectory_sampler`. We use a default of 1000 as it typically
+            performs well for a wide range of kernels. Note that very smooth kernels (e.g. RBF) can
+            be well-approximated with fewer features.
         :param continuous_optimisation: if True (default), the optimizer will keep track of the
             number of epochs across BO iterations and use this number as initial_epoch. This is
             essential to allow monitoring of model training across BO iterations.
+        :raise ValueError: If ``model`` has unsupported layers, ``num_rff_features`` is less than 0,
+            or if the ``optimizer`` is not of a supported type.
         """
         for layer in model.f_layers:
             if not isinstance(layer, (GPLayer, LatentVariableLayer)):
@@ -76,6 +83,12 @@ class DeepGaussianProcess(
                 )
 
         super().__init__(optimizer)
+
+        if num_rff_features <= 0:
+            raise ValueError(
+                f"num_rff_features must be greater or equal to zero, got {num_rff_features}."
+            )
+        self._num_rff_features = num_rff_features
 
         if not isinstance(self.optimizer.optimizer, tf.optimizers.Optimizer):
             raise ValueError(
@@ -143,7 +156,7 @@ class DeepGaussianProcess(
 
         :return: The trajectory sampler.
         """
-        return DeepGaussianProcessDecoupledTrajectorySampler(self)
+        return DeepGaussianProcessDecoupledTrajectorySampler(self, self._num_rff_features)
 
     def update(self, dataset: Dataset) -> None:
         inputs = dataset.query_points

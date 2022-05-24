@@ -30,7 +30,6 @@ from gpflow.inducing_variables import InducingPoints
 from gpflux.layers import GPLayer, LatentVariableLayer
 from gpflux.math import compute_A_inv_b
 from gpflux.models import DeepGP
-from gpflux.sampling.sample import Sample
 
 from ...types import TensorType
 from ...utils import DEFAULTS, flatten_leading_dims
@@ -41,96 +40,6 @@ from ..interfaces import (
     TrajectorySampler,
 )
 from .interface import GPfluxPredictor
-
-
-def sample_consistent_lv_layer(layer: LatentVariableLayer) -> Sample:
-    r"""
-    Returns a :class:`~gpflux.sampling.sample.Sample` object which allows for consistent sampling
-    (i.e. function samples) from a given :class:`~gpflux.layers.LatentVariableLayer`.
-
-    :param layer: The GPflux latent variable layer to obtain samples from.
-    :return: The GPflux sampling object which can be called to obtain consistent samples.
-    """
-
-    class SampleLV(Sample):
-        def __call__(self, X: TensorType) -> tf.Tensor:
-            sample = layer.prior.sample()
-            batch_shape = tf.shape(X)[:-1]
-            sample_rank = tf.rank(sample)
-            for _ in range(len(batch_shape)):
-                sample = tf.expand_dims(sample, 0)
-            sample = tf.tile(
-                sample, tf.concat([batch_shape, tf.ones(sample_rank, dtype="int32")], -1)
-            )
-            return layer.compositor([X, sample])
-
-    return SampleLV()
-
-
-def sample_dgp(model: DeepGP) -> TrajectoryFunction:
-    r"""
-    Builds a :class:`TrajectoryFunction` that can be called for a :class:`~gpflux.models.DeepGP`,
-    which will give consistent (i.e. function) samples from a deep GP model.
-
-    :param model: The GPflux deep GP model to sample from.
-    :return: The trajectory function that gives a consistent sample function from the model.
-    """
-    function_draws = []
-    for layer in model.f_layers:
-        if isinstance(layer, GPLayer):
-            function_draws.append(layer.sample())
-        elif isinstance(layer, LatentVariableLayer):
-            function_draws.append(sample_consistent_lv_layer(layer))
-        else:
-            raise NotImplementedError(f"Sampling not implemented for {type(layer)}")
-
-    class ChainedSample(Sample):
-        def __call__(self, X: TensorType) -> tf.Tensor:
-            for f in function_draws:
-                X = f(X)
-            return X
-
-    return ChainedSample().__call__
-
-
-class DeepGaussianProcessTrajectorySampler(TrajectorySampler[GPfluxPredictor]):
-    r"""
-    This sampler provides trajectory samples from a :class:`GPfluxPredictor`\ 's predictive
-    distribution, for :class:`GPfluxPredictor`\s with an underlying
-    :class:`~gpflux.models.DeepGP` model.
-    """
-
-    def __init__(self, model: GPfluxPredictor):
-        """
-        :param model: The model to sample from.
-        :raise ValueError: If the model is not a :class:`GPfluxPredictor`, or its underlying
-            ``model_gpflux`` is not a :class:`~gpflux.models.DeepGP`.
-        """
-        if not isinstance(model, GPfluxPredictor):
-            raise ValueError(
-                f"Model must be a gpflux.interface.GPfluxPredictor, received {type(model)}"
-            )
-
-        super().__init__(model)
-
-        self._model_gpflux = model.model_gpflux
-
-        if not isinstance(self._model_gpflux, DeepGP):
-            raise ValueError(
-                f"GPflux model must be a gpflux.models.DeepGP, received {type(self._model_gpflux)}"
-            )
-
-    def get_trajectory(self) -> TrajectoryFunction:
-        """
-        Generate an approximate function draw (trajectory) by using the GPflux sampling
-        functionality. These trajectories are differentiable with respect to the input, so can be
-        used to e.g. find the minima of Thompson samples.
-
-        :return: A trajectory function representing an approximate trajectory from the deep Gaussian
-            process, taking an input of shape `[N, D]` and returning shape `[N, 1]`.
-        """
-
-        return sample_dgp(self._model_gpflux)
 
 
 class DeepGaussianProcessReparamSampler(ReparametrizationSampler[GPfluxPredictor]):
