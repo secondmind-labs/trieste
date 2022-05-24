@@ -35,8 +35,8 @@ def build_vanilla_dgp_model(
 
     acquisition_function = GreedyContinuousThompsonSampling()
     acquisition_rule = EfficientGlobalOptimization(acquisition_function,
-                                                   num_query_points=1,
-                                                   optimizer=generate_continuous_optimizer(1000))
+                                                   num_query_points=1)
+                                                   # optimizer=generate_continuous_optimizer(1000))
 
     batch_size = 1000
 
