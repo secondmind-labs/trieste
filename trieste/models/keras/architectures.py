@@ -44,14 +44,33 @@ class KerasEnsemble:
         """
         :param networks: A list of neural network specifications, one for each member of the
             ensemble. The ensemble will be built using these specifications.
+        :raise ValueError: If there are no objects in ``networks`` or we try to create
+            a model with networks whose input or output shapes are not the same.
         """
+        if not networks:
+            raise ValueError(
+                f"networks should consist of KerasEnsembleNetwork objects, however"
+                f"received {networks} instead."
+            )
+
+        input_shapes, output_shapes = [], []
         for index, network in enumerate(networks):
-            if not isinstance(network, KerasEnsembleNetwork):
-                raise ValueError(
-                    f"Individual networks must be an instance of KerasEnsembleNetwork, "
-                    f"received {type(network)} instead."
-                )
-            networks[index].network_name = f"model_{index}_"
+            network.network_name = f"model_{index}_"
+            input_shapes.append(network.input_tensor_spec.shape)
+            output_shapes.append(network.output_tensor_spec.shape)
+
+        if not all(x == input_shapes[0] for x in input_shapes):
+            raise ValueError(
+                f"Input shapes for all networks must be the same, however"
+                f"received {input_shapes} instead."
+            )
+        if not all(x == output_shapes[0] for x in output_shapes):
+            raise ValueError(
+                f"Output shapes for all networks must be the same, however"
+                f"received {output_shapes} instead."
+            )
+        self.num_outputs = networks[0].flattened_output_shape
+
         self._networks = networks
 
         self._model = self._build_ensemble()
@@ -215,7 +234,8 @@ class GaussianNetwork(KerasEnsembleNetwork):
             :class:`~tf.keras.layers.Dense` layers. Length of this sequence determines the number of
             hidden layers in the network. Default value is two hidden layers, 50 nodes each, with
             ReLu activation functions. Empty sequence needs to be passed to have no hidden layers.
-        :param independent: If set to `True` then :class:`~tfp.layers.IndependentNormal` layer
+        :param independent: In case multiple outputs are modeled, if set to `True` then
+            :class:`~tfp.layers.IndependentNormal` layer
             is used as the output layer. This models outputs as independent, only the diagonal
             elements of the covariance matrix are parametrized. If left as the default `False`,
             then :class:`~tfp.layers.MultivariateNormalTriL` layer is used where correlations
@@ -245,7 +265,7 @@ class GaussianNetwork(KerasEnsembleNetwork):
 
         return input_tensor
 
-    def _gen_output_layer(self, input_tensor: tf.Tensor) -> tf.Tensor:
+    def _gen_multi_output_layer(self, input_tensor: tf.Tensor) -> tf.Tensor:
 
         dist_layer = tfp.layers.IndependentNormal if self._independent else MultivariateNormalTriL
         n_params = dist_layer.params_size(self.flattened_output_shape)
@@ -262,6 +282,23 @@ class GaussianNetwork(KerasEnsembleNetwork):
 
         return distribution
 
+    def _gen_single_output_layer(self, input_tensor: tf.Tensor) -> tf.Tensor:
+
+        parameter_layer = tf.keras.layers.Dense(2, name=self.network_name + "dense_parameters")(
+            input_tensor
+        )
+
+        def distribution_fn(inputs: TensorType) -> tfp.distributions.Distribution:
+            return tfp.distributions.Normal(inputs[..., :1], tf.math.softplus(inputs[..., 1:]))
+
+        distribution = tfp.layers.DistributionLambda(
+            make_distribution_fn=distribution_fn,
+            convert_to_tensor_fn=tfp.distributions.Distribution.mean,
+            name=self.output_layer_name,
+        )(parameter_layer)
+
+        return distribution
+
     def connect_layers(self) -> tuple[tf.Tensor, tf.Tensor]:
         """
         Connect all layers in the network. We start by generating an input tensor based on input
@@ -273,6 +310,10 @@ class GaussianNetwork(KerasEnsembleNetwork):
         """
         input_tensor = self._gen_input_tensor()
         hidden_tensor = self._gen_hidden_layers(input_tensor)
-        output_tensor = self._gen_output_layer(hidden_tensor)
+
+        if self.flattened_output_shape == 1:
+            output_tensor = self._gen_single_output_layer(hidden_tensor)
+        else:
+            output_tensor = self._gen_multi_output_layer(hidden_tensor)
 
         return input_tensor, output_tensor
