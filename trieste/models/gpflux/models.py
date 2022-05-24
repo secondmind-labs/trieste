@@ -33,7 +33,6 @@ from .interface import GPfluxPredictor
 from .sampler import (
     DeepGaussianProcessDecoupledTrajectorySampler,
     DeepGaussianProcessReparamSampler,
-    sample_dgp,
 )
 
 
@@ -135,10 +134,10 @@ class DeepGaussianProcess(
         return self._model_keras
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
-        samples = []
-        for _ in range(num_samples):
-            samples.append(sample_dgp(self.model_gpflux)(query_points))
-        return tf.stack(samples)
+        trajectory = self.trajectory_sampler().get_trajectory()
+        expanded_query_points = tf.expand_dims(query_points, -2)
+        tiled_query_points = tf.tile(expanded_query_points, [1, num_samples, 1])
+        return tf.transpose(trajectory(tiled_query_points), [1, 0, 2])
 
     def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[GPfluxPredictor]:
         """

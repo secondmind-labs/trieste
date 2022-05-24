@@ -193,7 +193,7 @@ def test_dgp_decoupled_trajectory_sampler_raises_for_invalid_model(keras_float: 
         )
 
 
-def _generate_xs_for_decoupled_trajectory(num_evals: int, batch_size: int):
+def _generate_xs_for_decoupled_trajectory(num_evals: int, batch_size: int) -> TensorType:
     xs = tf.random.uniform([num_evals, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
     xs = tf.expand_dims(xs, -2)
     return tf.tile(xs, [1, batch_size, 1])
