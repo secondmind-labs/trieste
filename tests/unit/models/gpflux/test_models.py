@@ -190,7 +190,7 @@ def test_deep_gaussian_process_predict() -> None:
 def test_deep_gaussian_process_sample(two_layer_model: Callable[[TensorType], DeepGP]) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model = DeepGaussianProcess(two_layer_model(x))
-    num_samples = 50
+    num_samples = 100
     test_x = tf.constant([[2.5]], dtype=gpflow.default_float())
     samples = model.sample(test_x, num_samples)
 
