@@ -24,9 +24,9 @@ from typing import Optional
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
-from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, various_shapes
 from typing_extensions import Final
 
+from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, various_shapes
 from trieste.space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSpace
 from trieste.types import TensorType
 
