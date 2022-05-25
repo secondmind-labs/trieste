@@ -24,9 +24,9 @@ from typing import Optional
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
+from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, various_shapes
 from typing_extensions import Final
 
-from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, various_shapes
 from trieste.space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSpace
 from trieste.types import TensorType
 
@@ -174,6 +174,13 @@ def test_discrete_search_space_sampling_returns_same_points_for_same_seed(seed: 
     random_samples_1 = search_space.sample(num_samples=100, seed=seed)
     random_samples_2 = search_space.sample(num_samples=100, seed=seed)
     npt.assert_allclose(random_samples_1, random_samples_2)
+
+
+def test_discrete_search_space_sampling_returns_different_points_for_different_call() -> None:
+    search_space = DiscreteSearchSpace(_points_in_2D_search_space())
+    random_samples_1 = search_space.sample(num_samples=100)
+    random_samples_2 = search_space.sample(num_samples=100)
+    npt.assert_raises(AssertionError, npt.assert_allclose, random_samples_1, random_samples_2)
 
 
 def test_discrete_search_space___mul___points_is_the_concatenation_of_original_points() -> None:
@@ -447,6 +454,13 @@ def test_box_halton_sampling_returns_same_points_for_same_seed(seed: int) -> Non
     halton_samples_1 = box.sample_halton(num_samples=100, seed=seed)
     halton_samples_2 = box.sample_halton(num_samples=100, seed=seed)
     npt.assert_allclose(halton_samples_1, halton_samples_2)
+
+
+def test_box_sampling_returns_different_points_for_different_call() -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)))
+    random_samples_1 = box.sample(num_samples=100)
+    random_samples_2 = box.sample(num_samples=100)
+    npt.assert_raises(AssertionError, npt.assert_allclose, random_samples_1, random_samples_2)
 
 
 def test_box_sobol_sampling_returns_different_points_for_different_call() -> None:
@@ -821,6 +835,15 @@ def test_product_space_sampling_returns_same_points_for_same_seed(seed: int) -> 
     random_samples_1 = product_space.sample(num_samples=100, seed=seed)
     random_samples_2 = product_space.sample(num_samples=100, seed=seed)
     npt.assert_allclose(random_samples_1, random_samples_2)
+
+
+def test_product_space_sampling_returns_different_points_for_different_call() -> None:
+    space_A = Box([-1], [2])
+    space_B = DiscreteSearchSpace(tf.random.uniform([100, 2], dtype=tf.float64, seed=42))
+    product_space = TaggedProductSearchSpace(spaces=[space_A, space_B])
+    random_samples_1 = product_space.sample(num_samples=100)
+    random_samples_2 = product_space.sample(num_samples=100)
+    npt.assert_raises(AssertionError, npt.assert_allclose, random_samples_1, random_samples_2)
 
 
 def test_product_space___mul___() -> None:
