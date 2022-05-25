@@ -334,7 +334,7 @@ class Box(SearchSpace):
         Sample randomly from the space.
 
         :param num_samples: The number of points to sample from this search space.
-        :param seed: Random seed for reproducibility
+        :param seed: Random seed for reproducibility.
         :return: ``num_samples`` i.i.d. random points, sampled uniformly,
             from this search space with shape '[num_samples, D]' , where D is the search space
             dimension.
