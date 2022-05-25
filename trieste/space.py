@@ -180,7 +180,7 @@ class DiscreteSearchSpace(SearchSpace):
     def sample(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
         """
         :param num_samples: The number of points to sample from this search space.
-        :param seed: Random seed for reproducibility
+        :param seed: Random seed for reproducibility.
         :return: ``num_samples`` i.i.d. random points, sampled uniformly,
             from this search space.
         """
