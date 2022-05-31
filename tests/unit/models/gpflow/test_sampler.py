@@ -292,7 +292,12 @@ def test_rff_trajectory_sampler_returns_trajectory_function_with_correct_shapes(
     sampler = RandomFourierFeatureTrajectorySampler(model, num_features=num_features)
 
     trajectory = sampler.get_trajectory()
-    xs = tf.linspace([-10.0], [10.0], num_evals)  # [N, D]
+    xs = tf.linspace(
+        [-10.0],
+        [10.0],
+        num_evals,
+    )  # [N, D]
+    xs = tf.cast(xs, tf.float64)
     xs_with_dummy_batch_dim = tf.expand_dims(xs, -2)  # [N, 1, D]
     xs_with_full_batch_dim = tf.tile(xs_with_dummy_batch_dim, [1, batch_size, 1])  # [N, B, D]
 
@@ -469,7 +474,7 @@ def test_rff_trajectory_update_trajectory_updates_and_doesnt_retrace(batch_size:
             trajectory._feature_functions.kernel.lengthscales, new_lengthscales  # type: ignore
         )
         npt.assert_array_less(
-            0.1, tf.reduce_max(tf.abs(eval_before - eval_after))
+            0.09, tf.reduce_max(tf.abs(eval_before - eval_after))
         )  # two samples should be different
 
     assert trajectory.__call__._get_tracing_count() == 1  # type: ignore
@@ -680,25 +685,26 @@ def test_decoupled_trajectory_update_trajectory_updates_and_doesnt_retrace(batch
 
 
 @random_seed
-def test_rff_and_decoupled_trajectory_give_similar_results() -> None:
+@pytest.mark.parametrize("noise_var", [1e-5, 1e-1])
+def test_rff_and_decoupled_trajectory_give_similar_results(noise_var: float) -> None:
     x_range = tf.linspace(1.0, 2.0, 5)
     x_range = tf.cast(x_range, dtype=tf.float64)
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
     dataset = Dataset(xs, quadratic(xs))
 
     model = QuadraticMeanAndRBFKernelWithSamplers(
-        noise_variance=tf.constant(1e-10, dtype=tf.float64), dataset=dataset
+        noise_variance=tf.constant(noise_var, dtype=tf.float64), dataset=dataset
     )
     model.kernel = (
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
 
-    x_range = tf.linspace(1.4, 2.8, 3)
+    x_range = tf.linspace(1.4, 1.8, 3)
     x_range = tf.cast(x_range, dtype=tf.float64)
     xs_predict = tf.reshape(
         tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2)
     )
-    batch_size = 25
+    batch_size = 50
     xs_predict_with_batching = tf.expand_dims(xs_predict, -2)
     xs_predict_with_batching = tf.tile(xs_predict_with_batching, [1, batch_size, 1])  # [N, B, D]
 
@@ -711,5 +717,8 @@ def test_rff_and_decoupled_trajectory_give_similar_results() -> None:
     eval_2 = trajectory_2(xs_predict_with_batching)
 
     npt.assert_allclose(
-        tf.reduce_mean(eval_1, -1), tf.reduce_mean(eval_2, -1), rtol=0.1
-    )  # means across samples should agree
+        tf.reduce_mean(eval_1, -1), tf.reduce_mean(eval_2, -1), rtol=0.01
+    )  # means across samples should roughly agree for different samplers
+    npt.assert_allclose(
+        tf.math.reduce_variance(eval_1, -1), tf.math.reduce_variance(eval_2, -1), rtol=1.0
+    )  # variance across samples should (very) roughly agree for different samplers

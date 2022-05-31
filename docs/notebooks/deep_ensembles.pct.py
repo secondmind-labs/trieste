@@ -70,7 +70,7 @@ data = Dataset(inputs, outputs)
 
 
 # %% [markdown]
-# Next we define a deep ensemble model and train it. Trieste supports neural network models defined as TensorFlow's Keras models. Since creating ensemble models in Keras can be somewhat involved, Trieste provides some basic architectures. Here we use the `build_vanilla_keras_ensemble` function which builds a simple ensemble of neural networks in Keras where each network has the same architecture: number of hidden layers, nodes in hidden layers and activation function. It uses sensible defaults for many parameters and finally returns a model of `KerasEnsemble` class.
+# Next we define a deep ensemble model and train it. Trieste supports neural network models defined as TensorFlow's Keras models. Since creating ensemble models in Keras can be somewhat involved, Trieste provides some basic architectures. Here we use the `build_keras_ensemble` function which builds a simple ensemble of neural networks in Keras where each network has the same architecture: number of hidden layers, nodes in hidden layers and activation function. It uses sensible defaults for many parameters and finally returns a model of `KerasEnsemble` class.
 #
 # As with other supported types of models (e.g. Gaussian process models from GPflow), we cannot use `KerasEnsemble` directly in Bayesian optimization routines, we need to pass it through an appropriate wrapper, `DeepEnsemble` wrapper in this case. One difference with respect to other model types is that we need to use a Keras specific optimizer wrapper `KerasOptimizer` where we need to specify a stochastic optimizer (Adam is used by default, but we can use other stochastic optimizers from TensorFlow), objective function (here negative log likelihood) and we can provide custom arguments for the Keras `fit` method (here we modify the default arguments; check [Keras API documentation](https://keras.io/api/models/model_training_apis/#fit-method) for a list of possible arguments).
 #
@@ -81,7 +81,7 @@ data = Dataset(inputs, outputs)
 from trieste.models.keras import (
     DeepEnsemble,
     KerasPredictor,
-    build_vanilla_keras_ensemble,
+    build_keras_ensemble,
 )
 from trieste.models.optimizer import KerasOptimizer
 
@@ -91,7 +91,7 @@ def build_cubic_model(data: Dataset) -> DeepEnsemble:
     num_hidden_layers = 1
     num_nodes = 100
 
-    keras_ensemble = build_vanilla_keras_ensemble(
+    keras_ensemble = build_keras_ensemble(
         data, ensemble_size, num_hidden_layers, num_nodes
     )
 
@@ -191,7 +191,7 @@ initial_data = observer(initial_query_points)
 # %% [markdown]
 # ## Modelling the objective function
 #
-# The Bayesian optimization procedure estimates the next best points to query by using a probabilistic model of the objective. Here we use a deep ensemble instead of a typical probabilistic model. Same as above we use the `build_vanilla_keras_ensemble` function to build a simple ensemble of neural networks in Keras and wrap it with a `DeepEnsemble` wrapper so it can be used in Trieste's Bayesian optimization loop.
+# The Bayesian optimization procedure estimates the next best points to query by using a probabilistic model of the objective. Here we use a deep ensemble instead of a typical probabilistic model. Same as above we use the `build_keras_ensemble` function to build a simple ensemble of neural networks in Keras and wrap it with a `DeepEnsemble` wrapper so it can be used in Trieste's Bayesian optimization loop.
 #
 # Some notes on choosing the model architecture are necessary. Unfortunately, choosing an architecture that works well for small datasets, a common setting in Bayesian optimization, is not easy. Here we do demonstrate it can work with smaller datasets, but choosing the architecture and model optimization parameters was a lengthy process that does not necessarily generalize to other problems. Hence, we advise to use deep ensembles with larger datasets and ideally large batches so that the model is not retrained after adding a single point.
 #
@@ -207,7 +207,7 @@ def build_model(data: Dataset) -> DeepEnsemble:
     num_hidden_layers = 3
     num_nodes = 25
 
-    keras_ensemble = build_vanilla_keras_ensemble(
+    keras_ensemble = build_keras_ensemble(
         data, ensemble_size, num_hidden_layers, num_nodes
     )
 
