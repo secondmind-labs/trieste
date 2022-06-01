@@ -381,7 +381,7 @@ def test_bayesian_optimizer_with_dgp_finds_minima_of_simple_quadratic(
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule",
     [
-        pytest.param(35, EfficientGlobalOptimization(), id="EfficientGlobalOptimization"),
+        pytest.param(70, EfficientGlobalOptimization(), id="EfficientGlobalOptimization"),
         pytest.param(
             20,
             EfficientGlobalOptimization(
