@@ -395,11 +395,14 @@ class DividedAndConquerNonDominated(_BoundIndexPartition):
 
 class HypervolumeBoxDecompositionIncrementalDominated:
     """
-    A Hypervolume Box Decomposition Algorithm (incremental version) (HBDA in short).
-    The main idea is of using a set auxiliary points (which is referred to as local
-    upper bound set in the paper) associating to existing Pareto points to describe the
-    dominated region and to decompose it to disjoint hyper rectangles. Main reference:
-    Section 2.2.2 of :cite:`lacour2017box`.
+    A Hypervolume Box Decomposition Algorithm (incremental version) (HBDA in short) which
+    is used to partition the dominated space into disjoint hyperrectangles. Given the
+    dominated region D(N_nd, Z^r) constructed by non dominated set N_nd extracted from
+    ``observations`` set N, and a corresponding ``reference_point`` Z^r. HBDA use a
+    set U of auxiliary points (which is referred to as local upper bound set in the paper
+    and each element in U is defined by D number of points in N_nd) associated with the
+    non dominated set N_nd to describe the dominated region D(U, Z^r) and to decompose it
+    to disjoint hyper rectangles. Main reference: Section 2.2.2 of :cite:`lacour2017box`.
     """
 
     def __init__(
@@ -434,21 +437,24 @@ class HypervolumeBoxDecompositionIncrementalDominated:
         )
         self._reference_point = reference_point
 
-        # making sure objective space has been lower bounded by [-1e10, ..., -1e10]
-        tf.debugging.assert_greater_equal(
+        tf.debugging.assert_greater_equal(  # making sure objective space has been
+            # lower bounded by [dummy_anti_ref_value, ..., dummy_anti_ref_value]
             observations,
             self._dummy_anti_reference_point,
             f"observations: {observations} contains value smaller than dummy "
-            f"anti-reference point: {self._dummy_anti_reference_point}",
+            f"anti-reference point: {self._dummy_anti_reference_point}, try "
+            f"using a smaller dummy anti ref value.",
         )
-        # initialize local upper bound set using reference point (step 1 of Alg 1)
+
+        # initialize local upper bound set U using reference point Z^r (step 1 of Alg 1)
         self.U_set = reference_point[tf.newaxis]
 
-        self.Z_set = (  # initialize local upper bound's defining points _Z to be the dummy
-            # points \hat{z} (defined in Sec 2.1). Note: 1. the original defined objective space
-            # [0, reference_point] has been replaced by [-1e10, reference_point].  2. the dummy
-            # anti reference point value will not affect lower/upper bounds of this dominated
-            # partition method
+        self.Z_set = (  # initialize local upper bound set element's defining points Z, the
+            # defining points of Z^r is the dummy points \hat{z}^1, ..., \hat{z}^D defined
+            # in Sec 2.1. Note: 1. the original defined objective space [0, reference_point] has
+            # been replaced by [dummy anti-reference point, reference_point].
+            # 2. the dummy anti-reference point value will not affect lower/upper bounds of this
+            # dominated partition method
             dummy_anti_ref_value
             * tf.ones((1, observations.shape[-1], observations.shape[-1]), dtype=observations.dtype)
             - dummy_anti_ref_value
@@ -544,7 +550,7 @@ def _compute_new_local_upper_bounds(
     if not tf.reduce_any(z_bar_dominates_u_set_mask):  # z_bar does not dominate any point in set U
         return u_set, z_set
 
-    # elements in u that has been dominated by zbar and needs to be updated (step 5 of Alg. 2)
+    # elements in U that has been dominated by z_bar and needs to be updated (step 5 of Alg. 2)
     u_set_need_update = u_set[z_bar_dominates_u_set_mask]  # [M, D], same as A in the paper
     z_set_need_update = z_set[z_bar_dominates_u_set_mask]  # [M, D, D]
 
@@ -592,13 +598,13 @@ def _compute_new_local_upper_bounds(
             # add its (updated) defining point
             updated_z_set = tf.concat([updated_z_set, z_uj_new], 0)
 
-    # filter out elements of U (and it defining points) that are in A
+    # filter out elements of U (and its defining points) that are in A
     z_not_dominates_u_set_mask = ~z_bar_dominates_u_set_mask
     no_need_update_u_set = u_set[z_not_dominates_u_set_mask]
     no_need_update_z_set = z_set[z_not_dominates_u_set_mask]
 
-    # combine remained lub points with new lub points (as well as their corresponding
-    # defining points)
+    # combine remaining lub points with new lub points (as well as their
+    # corresponding defining points)
     if tf.shape(updated_u_set)[0] > 0:
         # add points from lub_new and lub_new_z
         u_set = tf.concat([no_need_update_u_set, updated_u_set], axis=0)
