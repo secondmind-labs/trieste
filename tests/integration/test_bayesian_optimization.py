@@ -108,14 +108,6 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                 id="MonteCarloExpectedImprovement",
             ),
             pytest.param(
-                20,
-                EfficientGlobalOptimization(
-                    MonteCarloAugmentedExpectedImprovement(int(1e3)).using(OBJECTIVE),
-                    generate_continuous_optimizer(100),
-                ),
-                id="MonteCarloAugmentedExpectedImprovement",
-            ),
-            pytest.param(
                 24,
                 EfficientGlobalOptimization(
                     MinValueEntropySearch(
