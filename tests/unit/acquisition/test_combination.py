@@ -74,6 +74,14 @@ class _Static(AcquisitionFunctionBuilder[ProbabilisticModel]):
     ) -> AcquisitionFunction:
         return self._f
 
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
+    ) -> AcquisitionFunction:
+        return lambda x: function(x) + 1
+
 
 def test_reducer__reduce() -> None:
     class Mean(Reducer):
@@ -101,6 +109,15 @@ def test_product() -> None:
     acq = prod.prepare_acquisition_function(models, datasets=data)
     xs = tf.random.uniform([3, 5, 1], minval=-1.0, dtype=tf.float64)
     npt.assert_allclose(acq(xs), (xs + 1) * (xs + 2))
+
+
+def test_reducer_calls_update() -> None:
+    prod = Product(_Static(lambda x: x + 1), _Static(lambda x: x + 2))
+    data, models = {"": empty_dataset([1], [1])}, {"": QuadraticMeanAndRBFKernel()}
+    acq = prod.prepare_acquisition_function(models, datasets=data)
+    acq = prod.update_acquisition_function(acq, models, datasets=data)
+    xs = tf.random.uniform([3, 5, 1], minval=-1.0, dtype=tf.float64)
+    npt.assert_allclose(acq(xs), (xs + 2) * (xs + 3))
 
 
 @pytest.mark.parametrize("reducer_class", [Sum, Product])

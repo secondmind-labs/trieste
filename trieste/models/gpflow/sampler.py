@@ -19,7 +19,7 @@ GPflow wrappers.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Callable, Optional, Tuple, Union, cast
+from typing import Callable, Optional, Tuple, TypeVar, Union, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -37,11 +37,11 @@ from ...types import TensorType
 from ...utils import DEFAULTS, flatten_leading_dims
 from ..interfaces import (
     ProbabilisticModel,
-    ProbabilisticModelType,
     ReparametrizationSampler,
     SupportsGetInducingVariables,
     SupportsGetInternalData,
     SupportsGetKernel,
+    SupportsGetMeanFunction,
     SupportsGetObservationNoise,
     SupportsPredictJoint,
     TrajectoryFunction,
@@ -196,8 +196,48 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
         return mean[..., None, :, :] + tf.transpose(variance_contribution, new_order)
 
 
+@runtime_checkable
+class FeatureDecompositionInternalDataModel(
+    SupportsGetKernel,
+    SupportsGetMeanFunction,
+    SupportsGetObservationNoise,
+    SupportsGetInternalData,
+    Protocol,
+):
+    """
+    A probabilistic model that supports get_kernel, get_mean_function, get_observation_noise
+    and get_internal_data methods.
+    """
+
+    pass
+
+
+@runtime_checkable
+class FeatureDecompositionInducingPointModel(
+    SupportsGetKernel, SupportsGetMeanFunction, SupportsGetInducingVariables, Protocol
+):
+    """
+    A probabilistic model that supports get_kernel, get_mean_function
+    and get_inducing_point methods.
+    """
+
+    pass
+
+
+FeatureDecompositionTrajectorySamplerModel = Union[
+    FeatureDecompositionInducingPointModel,
+    FeatureDecompositionInternalDataModel,
+]
+
+FeatureDecompositionTrajectorySamplerModelType = TypeVar(
+    "FeatureDecompositionTrajectorySamplerModelType",
+    bound=FeatureDecompositionTrajectorySamplerModel,
+    contravariant=True,
+)
+
+
 class FeatureDecompositionTrajectorySampler(
-    TrajectorySampler[ProbabilisticModelType],
+    TrajectorySampler[FeatureDecompositionTrajectorySamplerModelType],
     ABC,
 ):
     r"""
@@ -221,7 +261,7 @@ class FeatureDecompositionTrajectorySampler(
 
     def __init__(
         self,
-        model: ProbabilisticModelType,
+        model: FeatureDecompositionTrajectorySamplerModelType,
         feature_functions: ResampleableRandomFourierFeatureFunctions,
     ):
         """
@@ -233,6 +273,7 @@ class FeatureDecompositionTrajectorySampler(
         super().__init__(model)
         self._feature_functions = feature_functions
         self._weight_sampler: Optional[Callable[[int], TensorType]] = None  # lazy init
+        self._mean_function = model.get_mean_function()
 
     def __repr__(self) -> str:
         """"""
@@ -255,6 +296,7 @@ class FeatureDecompositionTrajectorySampler(
         return feature_decomposition_trajectory(
             feature_functions=self._feature_functions,
             weight_sampler=weight_sampler,
+            mean_function=self._mean_function,
         )
 
     def update_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction:
@@ -298,29 +340,6 @@ class FeatureDecompositionTrajectorySampler(
         the weights of each of the `L` features.
         """
         raise NotImplementedError
-
-
-@runtime_checkable
-class FeatureDecompositionInternalDataModel(
-    SupportsGetKernel, SupportsGetObservationNoise, SupportsGetInternalData, Protocol
-):
-    """
-    A probabilistic model that supports get_kernel, get_observation_noise
-    and get_internal_data methods.
-    """
-
-    pass
-
-
-@runtime_checkable
-class FeatureDecompositionInducingPointModel(
-    SupportsGetKernel, SupportsGetInducingVariables, Protocol
-):
-    """
-    A probabilistic model that supports get_kernel and get_inducing_point methods.
-    """
-
-    pass
 
 
 class RandomFourierFeatureTrajectorySampler(
@@ -422,9 +441,8 @@ class RandomFourierFeatureTrajectorySampler(
         L = tf.linalg.cholesky(D + s)
         D_inv = tf.linalg.cholesky_solve(L, tf.eye(self._num_features, dtype=phi.dtype))
 
-        theta_posterior_mean = tf.matmul(
-            D_inv, tf.matmul(phi, dataset.observations, transpose_a=True)
-        )[
+        residuals = dataset.observations - self._model.get_mean_function()(dataset.query_points)
+        theta_posterior_mean = tf.matmul(D_inv, tf.matmul(phi, residuals, transpose_a=True))[
             :, 0
         ]  # [m,]
         theta_posterior_chol_covariance = tf.linalg.cholesky(
@@ -452,7 +470,10 @@ class RandomFourierFeatureTrajectorySampler(
         s = self._model.get_observation_noise() * tf.eye(num_data, dtype=phi.dtype)
         L = tf.linalg.cholesky(G + s)
         L_inv_phi = tf.linalg.triangular_solve(L, phi)  # [n, m]
-        L_inv_y = tf.linalg.triangular_solve(L, dataset.observations)  # [n, 1]
+        residuals = dataset.observations - self._model.get_mean_function()(
+            dataset.query_points
+        )  # [n, 1]
+        L_inv_y = tf.linalg.triangular_solve(L, residuals)  # [n, 1]
 
         theta_posterior_mean = tf.tensordot(tf.transpose(L_inv_phi), L_inv_y, [[-1], [-2]])[
             :, 0
@@ -559,6 +580,9 @@ class DecoupledTrajectorySampler(
             internal_data = self._model.get_internal_data()
             inducing_points = internal_data.query_points  # [M, d]
             q_mu = self._model.get_internal_data().observations  # [M, 1]
+            q_mu = q_mu - self._model.get_mean_function()(
+                inducing_points
+            )  # account for mean function
             q_sqrt = tf.eye(tf.shape(inducing_points)[0], dtype=tf.float64)  # [M, M]
             q_sqrt = tf.math.sqrt(self._model.get_observation_noise()) * q_sqrt
             whiten = False
@@ -589,6 +613,7 @@ class DecoupledTrajectorySampler(
             )  # [M, B]
 
             u_sample = q_mu + u_noise_sample  # [M, B]
+
             if whiten:
                 Luu = tf.linalg.cholesky(Kmm)  # [M, M]
                 u_sample = tf.matmul(Luu, u_sample)  # [M, B]
@@ -597,6 +622,7 @@ class DecoupledTrajectorySampler(
             weight_space_prior_Z = phi_Z @ prior_weights  # [M, B]
 
             diff = u_sample - weight_space_prior_Z  # [M, B]
+
             v = compute_A_inv_b(Kmm, diff)  # [M, B]
 
             tf.debugging.assert_shapes([(v, ["M", "B"]), (prior_weights, ["L", "B"])])
@@ -739,12 +765,15 @@ class feature_decomposition_trajectory(TrajectoryFunctionClass):
         self,
         feature_functions: Callable[[TensorType], TensorType],
         weight_sampler: Callable[[int], TensorType],
+        mean_function: Callable[[TensorType], TensorType],
     ):
         """
         :param feature_functions: Set of feature function.
         :param weight_sampler: New sampler that generates feature weight samples.
+        :param mean_function: The underlying model's mean function.
         """
         self._feature_functions = feature_functions
+        self._mean_function = mean_function
         self._weight_sampler = weight_sampler
         self._initialized = tf.Variable(False)
 
@@ -768,8 +797,8 @@ class feature_decomposition_trajectory(TrajectoryFunctionClass):
         tf.debugging.assert_equal(
             tf.shape(x)[-2],
             self._batch_size.value(),
-            message="""
-            This trajectory only supports batch sizes of {self._batch_size}}.
+            message=f"""
+            This trajectory only supports batch sizes of {self._batch_size}.
             If you wish to change the batch size you must get a new trajectory
             by calling the get_trajectory method of the trajectory sampler.
             """,
@@ -778,8 +807,8 @@ class feature_decomposition_trajectory(TrajectoryFunctionClass):
         flat_x, unflatten = flatten_leading_dims(x)  # [N*B, d]
         flattened_feature_evaluations = self._feature_functions(flat_x)  # [N*B, m]
         feature_evaluations = unflatten(flattened_feature_evaluations)  # [N, B, m]
-
-        return tf.reduce_sum(feature_evaluations * self._weights_sample, -1)  # [N, B]
+        mean = tf.squeeze(self._mean_function(x), -1)  # account for the model's mean function
+        return tf.reduce_sum(feature_evaluations * self._weights_sample, -1) + mean  # [N, B]
 
     def resample(self) -> None:
         """

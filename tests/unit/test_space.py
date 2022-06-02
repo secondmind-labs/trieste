@@ -19,6 +19,7 @@ import operator
 from collections import Sequence
 from collections.abc import Container
 from functools import reduce
+from typing import Optional
 
 import numpy.testing as npt
 import pytest
@@ -43,8 +44,8 @@ class Integers(SearchSpace):
     def upper(self) -> None:
         pass
 
-    def sample(self, num_samples: int) -> tf.Tensor:
-        return tf.random.shuffle(tf.range(self.limit))[:num_samples]
+    def sample(self, num_samples: int, seed: Optional[int] = None) -> tf.Tensor:
+        return tf.random.shuffle(tf.range(self.limit), seed=seed)[:num_samples]
 
     def __contains__(self, point: tf.Tensor) -> bool | TensorType:
         tf.debugging.assert_integer(point)
@@ -165,6 +166,21 @@ def test_discrete_search_space_sampling(num_samples: int) -> None:
     samples = search_space.sample(num_samples)
     assert all(sample in search_space for sample in samples)
     assert len(samples) == num_samples
+
+
+@pytest.mark.parametrize("seed", [1, 42, 123])
+def test_discrete_search_space_sampling_returns_same_points_for_same_seed(seed: int) -> None:
+    search_space = DiscreteSearchSpace(_points_in_2D_search_space())
+    random_samples_1 = search_space.sample(num_samples=100, seed=seed)
+    random_samples_2 = search_space.sample(num_samples=100, seed=seed)
+    npt.assert_allclose(random_samples_1, random_samples_2)
+
+
+def test_discrete_search_space_sampling_returns_different_points_for_different_call() -> None:
+    search_space = DiscreteSearchSpace(_points_in_2D_search_space())
+    random_samples_1 = search_space.sample(num_samples=100)
+    random_samples_2 = search_space.sample(num_samples=100)
+    npt.assert_raises(AssertionError, npt.assert_allclose, random_samples_1, random_samples_2)
 
 
 def test_discrete_search_space___mul___points_is_the_concatenation_of_original_points() -> None:
@@ -416,6 +432,14 @@ def test_box_halton_sampling_raises_for_invalid_sample_size(num_samples: int) ->
         box.sample_halton(num_samples)
 
 
+@pytest.mark.parametrize("seed", [1, 42, 123])
+def test_box_sampling_returns_same_points_for_same_seed(seed: int) -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)))
+    random_samples_1 = box.sample(num_samples=100, seed=seed)
+    random_samples_2 = box.sample(num_samples=100, seed=seed)
+    npt.assert_allclose(random_samples_1, random_samples_2)
+
+
 @pytest.mark.parametrize("skip", [1, 10, 100])
 def test_box_sobol_sampling_returns_same_points_for_same_skip(skip: int) -> None:
     box = Box(tf.zeros((3,)), tf.ones((3,)))
@@ -432,6 +456,13 @@ def test_box_halton_sampling_returns_same_points_for_same_seed(seed: int) -> Non
     npt.assert_allclose(halton_samples_1, halton_samples_2)
 
 
+def test_box_sampling_returns_different_points_for_different_call() -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)))
+    random_samples_1 = box.sample(num_samples=100)
+    random_samples_2 = box.sample(num_samples=100)
+    npt.assert_raises(AssertionError, npt.assert_allclose, random_samples_1, random_samples_2)
+
+
 def test_box_sobol_sampling_returns_different_points_for_different_call() -> None:
     box = Box(tf.zeros((3,)), tf.ones((3,)))
     sobol_samples_1 = box.sample_sobol(num_samples=100)
@@ -439,7 +470,7 @@ def test_box_sobol_sampling_returns_different_points_for_different_call() -> Non
     npt.assert_raises(AssertionError, npt.assert_allclose, sobol_samples_1, sobol_samples_2)
 
 
-def test_box_haltom_sampling_returns_different_points_for_different_call() -> None:
+def test_box_halton_sampling_returns_different_points_for_different_call() -> None:
     box = Box(tf.zeros((3,)), tf.ones((3,)))
     halton_samples_1 = box.sample_halton(num_samples=100)
     halton_samples_2 = box.sample_halton(num_samples=100)
@@ -794,6 +825,25 @@ def test_product_space_discretize_returns_search_space_with_correct_number_of_po
     samples = dss.sample(num_samples)
 
     assert len(samples) == num_samples
+
+
+@pytest.mark.parametrize("seed", [1, 42, 123])
+def test_product_space_sampling_returns_same_points_for_same_seed(seed: int) -> None:
+    space_A = Box([-1], [2])
+    space_B = DiscreteSearchSpace(tf.random.uniform([100, 2], dtype=tf.float64, seed=42))
+    product_space = TaggedProductSearchSpace(spaces=[space_A, space_B])
+    random_samples_1 = product_space.sample(num_samples=100, seed=seed)
+    random_samples_2 = product_space.sample(num_samples=100, seed=seed)
+    npt.assert_allclose(random_samples_1, random_samples_2)
+
+
+def test_product_space_sampling_returns_different_points_for_different_call() -> None:
+    space_A = Box([-1], [2])
+    space_B = DiscreteSearchSpace(tf.random.uniform([100, 2], dtype=tf.float64, seed=42))
+    product_space = TaggedProductSearchSpace(spaces=[space_A, space_B])
+    random_samples_1 = product_space.sample(num_samples=100)
+    random_samples_2 = product_space.sample(num_samples=100)
+    npt.assert_raises(AssertionError, npt.assert_allclose, random_samples_1, random_samples_2)
 
 
 def test_product_space___mul___() -> None:
