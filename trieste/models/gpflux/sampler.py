@@ -85,19 +85,19 @@ class DeepGaussianProcessReparamSampler(ReparametrizationSampler[GPfluxPredictor
         produce the exact same samples. Calls to :meth:`sample` on *different*
         :class:`DeepGaussianProcessReparamSampler` instances will produce different samples.
 
-        :param at: Where to sample the predictive distribution, with shape `[N, D]`, for points
+        :param at: Where to sample the predictive distribution, with shape `[..., 1, D]`, for points
             of dimension `D`.
         :param jitter: The size of the jitter to use when stabilizing the Cholesky
             decomposition of the covariance matrix.
-        :return: The samples, of shape `[S, N, L]`, where `S` is the `sample_size` and `L` is
+        :return: The samples, of shape `[..., S, 1, L]`, where `S` is the `sample_size` and `L` is
             the number of latent model dimensions.
         :raise ValueError (or InvalidArgumentError): If ``at`` has an invalid shape or ``jitter``
             is negative.
         """
-        tf.debugging.assert_equal(len(tf.shape(at)), 2)
+        tf.debugging.assert_shapes([(at, [..., 1, None])])
         tf.debugging.assert_greater_equal(jitter, 0.0)
 
-        samples = tf.tile(tf.expand_dims(at, 0), [self._sample_size, 1, 1])
+        samples = tf.repeat(at[..., None, :, :], self._sample_size, axis=-3)  # [..., S, 1, D]
         for i, layer in enumerate(self._model_gpflux.f_layers):
             if isinstance(layer, LatentVariableLayer):
                 if not self._initialized:
@@ -106,18 +106,19 @@ class DeepGaussianProcessReparamSampler(ReparametrizationSampler[GPfluxPredictor
                 continue
 
             mean, var = layer.predict(samples, full_cov=False, full_output_cov=False)
+            var = var + jitter
 
             if not self._initialized:
                 self._eps_list[i].assign(
                     tf.random.normal([self._sample_size, tf.shape(mean)[-1]], dtype=tf.float64)
-                )
+                )  # [S, L]
 
             samples = mean + tf.sqrt(var) * tf.cast(self._eps_list[i][:, None, :], var.dtype)
 
         if not self._initialized:
             self._initialized.assign(True)
 
-        return samples
+        return samples  # [..., S, 1, L]
 
 
 class DeepGaussianProcessDecoupledTrajectorySampler(TrajectorySampler[GPfluxPredictor]):

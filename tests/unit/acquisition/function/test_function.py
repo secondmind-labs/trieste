@@ -268,6 +268,7 @@ def test_mc_expected_improvement_builds_expected_improvement_using_best_from_mod
     acq_fn = MonteCarloExpectedImprovement(int(1e6)).prepare_acquisition_function(model, dataset)
     xs = tf.linspace([[-10.0]], [[10.0]], 100)
     expected = expected_improvement(model, tf.constant([0.0]))(xs)
+
     npt.assert_allclose(acq_fn(xs), expected, rtol=1e-4, atol=2e-3)
 
 
@@ -502,11 +503,11 @@ def test_mc_augmented_expected_improvement_updater_raises_for_empty_data() -> No
         (0.1, 1e-4, 150_000, 0.01, 1e-3),
         (1.0, 1e-4, 150_000, 0.01, 1e-3),
         (10.0, 1e-4, 150_000, 0.01, 2e-3),
-        (100.0, 1e-4, 150_000, 0.01, 1e-2),
+        (100.0, 1e-4, 150_000, 0.01, 2e-2),
         (0.1, 1e-3, 150_000, 0.01, 1e-3),
         (1.0, 1e-3, 150_000, 0.01, 1e-3),
         (10.0, 1e-3, 150_000, 0.01, 2e-3),
-        (100.0, 1e-3, 150_000, 0.01, 1e-2),
+        (100.0, 1e-3, 150_000, 0.01, 2e-2),
     ],
 )
 def test_mc_augmented_expected_improvement_close_to_augmented_expected_improvement(
