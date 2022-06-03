@@ -424,12 +424,11 @@ class HypervolumeBoxDecompositionIncrementalDominated:
         tf.debugging.assert_type(reference_point, observations.dtype)
         tf.debugging.assert_shapes([(reference_point, ["D"])])
 
-        tf.debugging.assert_greater_equal(reference_point, observations)
         tf.debugging.assert_greater_equal(
             reference_point,
             observations,
-            message=f"reference_point: {reference_point} containing points below "
-            f"observations:\n {observations} ",
+            message=f"observations: {observations} contains at least one value larger "
+            f"than reference point: {reference_point}",
         )
 
         self._dummy_anti_reference_point = dummy_anti_ref_value * tf.ones(
