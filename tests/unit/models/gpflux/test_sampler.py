@@ -110,17 +110,18 @@ def test_dgp_reparam_sampler_samples_approximate_expected_distribution(
     two_layer_model: Callable[[TensorType], DeepGP],
     keras_float: None,
 ) -> None:
-    sample_size = 1000
+    sample_size = 250
     dataset, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
     samples = DeepGaussianProcessReparamSampler(sample_size, model).sample(
-        dataset.query_points
-    )  # [S, N, L]
+        dataset.query_points[:, None, :]
+    )  # [N, S, 1, L]
 
-    assert samples.shape == [sample_size, len(dataset.query_points), 1]
+    assert samples.shape == [len(dataset.query_points), sample_size, 1, 1]
 
-    sample_mean = tf.reduce_mean(samples, axis=0)
-    sample_variance = tf.reduce_mean((samples - sample_mean) ** 2, axis=0)
+    sample_mean = tf.reduce_mean(samples, axis=1, keepdims=True)
+    sample_variance = tf.squeeze(tf.reduce_mean((samples - sample_mean) ** 2, axis=1), -2)
+    sample_mean = tf.squeeze(sample_mean, [1, 2])
 
     num_samples = 50
     means = []
@@ -145,7 +146,7 @@ def test_dgp_reparam_sampler_sample_is_continuous(
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
     sampler = DeepGaussianProcessReparamSampler(100, model)
-    xs = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
+    xs = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)[:, None, :]
     npt.assert_array_less(tf.abs(sampler.sample(xs + 1e-20) - sampler.sample(xs)), 1e-20)
 
 
@@ -156,7 +157,7 @@ def test_dgp_reparam_sampler_sample_is_repeatable(
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
     sampler = DeepGaussianProcessReparamSampler(100, model)
-    xs = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
+    xs = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)[:, None, :]
     npt.assert_allclose(sampler.sample(xs), sampler.sample(xs))
 
 
@@ -170,7 +171,7 @@ def test_dgp_reparam_sampler_samples_are_distinct_for_new_instances(
     sampler1 = DeepGaussianProcessReparamSampler(100, model)
     sampler2 = DeepGaussianProcessReparamSampler(100, model)
 
-    xs = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
+    xs = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)[:, None, :]
     npt.assert_array_less(1e-9, tf.abs(sampler2.sample(xs) - sampler1.sample(xs)))
 
 

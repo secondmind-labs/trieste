@@ -636,14 +636,16 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSamp
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
-        samples_at_query_points = sampler.sample(dataset.query_points, jitter=self._jitter)
-        mean = tf.reduce_mean(samples_at_query_points, axis=0)
+        samples_at_query_points = sampler.sample(
+            dataset.query_points[..., None, :], jitter=self._jitter
+        )
+        mean = tf.reduce_mean(samples_at_query_points, axis=-3, keepdims=True)  # [N, 1, 1, L]
 
         tf.debugging.assert_shapes(
-            [(mean, ["_", 1])], message="Expected model with output dimension [1]."
+            [(mean, [..., 1])], message="Expected model with output dimension [1]."
         )
 
-        eta = tf.reduce_min(mean, axis=0)
+        eta = tf.squeeze(tf.reduce_min(mean, axis=0))
 
         return monte_carlo_expected_improvement(sampler, eta)
 
@@ -664,14 +666,16 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSamp
         tf.debugging.Assert(isinstance(function, monte_carlo_expected_improvement), [])
         sampler = function._sampler  # type: ignore
         sampler.reset_sampler()
-        samples_at_query_points = sampler.sample(dataset.query_points, jitter=self._jitter)
-        mean = tf.reduce_mean(samples_at_query_points, axis=0)
+        samples_at_query_points = sampler.sample(
+            dataset.query_points[..., None, :], jitter=self._jitter
+        )
+        mean = tf.reduce_mean(samples_at_query_points, axis=-3, keepdims=True)
 
         tf.debugging.assert_shapes(
-            [(mean, ["_", 1])], message="Expected model with output dimension [1]."
+            [(mean, [..., 1])], message="Expected model with output dimension [1]."
         )
 
-        eta = tf.reduce_min(mean, axis=0)
+        eta = tf.squeeze(tf.reduce_min(mean, axis=0))
         function.update(eta)  # type: ignore
         return function
 
@@ -711,9 +715,9 @@ class monte_carlo_expected_improvement(AcquisitionFunctionClass):
             [(at, [..., 1, None])],
             message="This acquisition function only supports batch sizes of one.",
         )
-        samples = self._sampler.sample(tf.squeeze(at, -2))  # [S, N, 1]
-        improvement = tf.maximum(self._eta - samples, 0.0)  # [S, N, 1]
-        return tf.reduce_mean(improvement, axis=0)  # [N, 1]
+        samples = tf.squeeze(self._sampler.sample(at), axis=-1)  # [..., S, 1]
+        improvement = tf.maximum(self._eta - samples, 0.0)  # [..., S, 1]
+        return tf.reduce_mean(improvement, axis=-2)  # [..., 1]
 
 
 class MonteCarloAugmentedExpectedImprovement(
@@ -774,14 +778,16 @@ class MonteCarloAugmentedExpectedImprovement(
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
-        samples_at_query_points = sampler.sample(dataset.query_points, jitter=self._jitter)
-        mean = tf.reduce_mean(samples_at_query_points, axis=0)
+        samples_at_query_points = sampler.sample(
+            dataset.query_points[..., None, :], jitter=self._jitter
+        )
+        mean = tf.reduce_mean(samples_at_query_points, axis=-3, keepdims=True)  # [N, 1, 1, L]
 
         tf.debugging.assert_shapes(
-            [(mean, ["_", 1])], message="Expected model with output dimension [1]."
+            [(mean, [..., 1])], message="Expected model with output dimension [1]."
         )
 
-        eta = tf.reduce_min(mean, axis=0)
+        eta = tf.squeeze(tf.reduce_min(mean, axis=0))
 
         return monte_carlo_augmented_expected_improvement(model, sampler, eta)
 
@@ -802,14 +808,16 @@ class MonteCarloAugmentedExpectedImprovement(
         tf.debugging.Assert(isinstance(function, monte_carlo_augmented_expected_improvement), [])
         sampler = function._sampler  # type: ignore
         sampler.reset_sampler()
-        samples_at_query_points = sampler.sample(dataset.query_points, jitter=self._jitter)
-        mean = tf.reduce_mean(samples_at_query_points, axis=0)
+        samples_at_query_points = sampler.sample(
+            dataset.query_points[..., None, :], jitter=self._jitter
+        )
+        mean = tf.reduce_mean(samples_at_query_points, axis=-3, keepdims=True)  # [N, 1, 1, L]
 
         tf.debugging.assert_shapes(
-            [(mean, ["_", 1])], message="Expected model with output dimension [1]."
+            [(mean, [..., 1])], message="Expected model with output dimension [1]."
         )
 
-        eta = tf.reduce_min(mean, axis=0)
+        eta = tf.squeeze(tf.reduce_min(mean, axis=0))
         function.update(eta)  # type: ignore
         return function
 
@@ -852,13 +860,13 @@ class monte_carlo_augmented_expected_improvement(AcquisitionFunctionClass):
             [(at, [..., 1, None])],
             message="This acquisition function only supports batch sizes of one.",
         )
-        samples = self._sampler.sample(tf.squeeze(at, -2))  # [S, N, 1]
-        improvement = tf.maximum(self._eta - samples, 0.0)  # [S, N, 1]
-        variance = tf.math.reduce_variance(samples, 0)  # [N, 1]
+        samples = tf.squeeze(self._sampler.sample(at), axis=-1)  # [..., S, 1]
+        improvement = tf.maximum(self._eta - samples, 0.0)  # [..., S, 1]
+        variance = tf.math.reduce_variance(samples, -2)  # [..., 1]
         augmentation = 1 - (
             tf.math.sqrt(self._noise_variance) / tf.math.sqrt(self._noise_variance + variance)
         )
-        return augmentation * tf.reduce_mean(improvement, axis=0)  # [N, 1]
+        return augmentation * tf.reduce_mean(improvement, axis=-2)  # [..., 1]
 
 
 class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSampler]):
