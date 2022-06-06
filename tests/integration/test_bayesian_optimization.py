@@ -329,7 +329,7 @@ def test_bayesian_optimizer_with_sgpr_finds_minima_of_simple_quadratic() -> None
     [
         pytest.param(25, DiscreteThompsonSampling(1000, 8), id="DiscreteThompsonSampling"),
         pytest.param(
-            20,
+            10,
             EfficientGlobalOptimization(
                 ParallelContinuousThompsonSampling(),
                 num_query_points=3,
@@ -337,7 +337,7 @@ def test_bayesian_optimizer_with_sgpr_finds_minima_of_simple_quadratic() -> None
             id="ParallelContinuousThompsonSampling",
         ),
         pytest.param(
-            12,
+            6,
             EfficientGlobalOptimization(
                 GreedyContinuousThompsonSampling(),
                 num_query_points=4,
@@ -406,9 +406,9 @@ def test_bayesian_optimizer_with_dgp_finds_minima_of_simple_quadratic(
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule",
     [
-        pytest.param(70, EfficientGlobalOptimization(), id="EfficientGlobalOptimization"),
+        pytest.param(50, EfficientGlobalOptimization(), id="EfficientGlobalOptimization"),
         pytest.param(
-            20,
+            30,
             EfficientGlobalOptimization(
                 ParallelContinuousThompsonSampling(),
                 num_query_points=4,
