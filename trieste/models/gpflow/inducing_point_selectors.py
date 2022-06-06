@@ -211,15 +211,14 @@ class KMeansInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
 
         centroids, _ = kmeans(shuffled_query_points, int(tf.math.minimum(M, N)))  # [C, d]
 
+        if normalize:
+            centroids *= query_points_stds  # [M, d]
+
         if len(centroids) < M:  # choose remaining points as random samples
             uniform_sampler = UniformInducingPointSelector(self._search_space)
             extra_centroids = uniform_sampler._recalculate_inducing_points(  # [M-C, d]
                 M - len(centroids), model, dataset
             )
-            extra_centroids = extra_centroids / query_points_stds  # remember to standardize
             centroids = tf.concat([centroids, extra_centroids], axis=0)  # [M, d]
 
-        if normalize:
-            return centroids * query_points_stds  # [M, d]
-        else:
-            return centroids  # [M, d]
+        return centroids  # [M, d]
