@@ -82,6 +82,7 @@ def test_inducing_point_selectors_returns_correctly_shaped_inducing_points(
     npt.assert_array_equal(inducing_points.shape, new_inducing_points.shape)
 
 
+@random_seed
 @pytest.mark.parametrize(
     "selector",
     [
@@ -93,14 +94,14 @@ def test_inducing_point_selectors_returns_correctly_shaped_inducing_points(
 def test_inducing_point_selectors_choose_points_still_in_space(
     selector: InducingPointSelector[SparseVariational],
 ) -> None:
-    X = tf.constant([[0.9, -0.5], [0.5, -0.9]], dtype=tf.float64)
+    X = tf.constant([[0.01, -0.99], [0.99, -0.01]], dtype=tf.float64)
     Y = fnc_3x_plus_10(X)
     dataset = Dataset(X, Y)
     svgp = svgp_model(X, Y)
     model = SparseVariational(svgp)
-    inducing_points = X
+    inducing_points = selector._search_space.sample(10)
     new_inducing_points = selector.calculate_inducing_points(inducing_points, model, dataset)
-    assert tf.reduce_all([point in Box([0.0, -1.0], [1.0, 0.0]) for point in new_inducing_points])
+    assert tf.reduce_all([point in selector._search_space for point in new_inducing_points])
 
 
 @random_seed
