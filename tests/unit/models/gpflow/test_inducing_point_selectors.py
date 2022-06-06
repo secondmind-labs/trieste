@@ -88,7 +88,7 @@ def test_inducing_point_selectors_returns_correctly_shaped_inducing_points(
     [
         UniformInducingPointSelector(Box([0.0, -1.0], [1.0, 0.0])),
         RandomSubSampleInducingPointSelector(Box([0.0, -1.0], [1.0, 0.0])),
-        KMeansInducingPointSelector(Box([0.0, -1.0], [10.0, 0.0])),
+        KMeansInducingPointSelector(Box([0.0, -1.0], [1.0, 0.0])),
     ],
 )
 def test_inducing_point_selectors_choose_points_still_in_space(
