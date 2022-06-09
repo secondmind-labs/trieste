@@ -108,6 +108,7 @@ class KerasEnsemble:
         # When pickling use to_json to save the model.
         state = self.__dict__.copy()
         state["_model"] = self._model.to_json()
+        state["_weights"] = self._model.get_weights()
         return state
 
     def __setstate__(self, state: dict[str, Any]) -> None:
@@ -116,6 +117,7 @@ class KerasEnsemble:
         self._model = tf.keras.models.model_from_json(
             state["_model"], custom_objects={"MultivariateNormalTriL": MultivariateNormalTriL}
         )
+        self._model.set_weights(state["_weights"])
 
 
 class KerasEnsembleNetwork:
