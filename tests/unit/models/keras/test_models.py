@@ -528,3 +528,22 @@ def test_deep_ensemble_deep_copies_optimizer_state() -> None:
     assert model.model.optimizer is not model_copy.model.optimizer
     npt.assert_allclose(model_copy.model.optimizer.iterations, 1)
     npt.assert_equal(model.model.optimizer.get_weights(), model_copy.model.optimizer.get_weights())
+
+
+def test_deep_ensemble_deep_copies_optimizer_callback_models() -> None:
+    example_data = empty_dataset([1], [1])
+    keras_ensemble = trieste_keras_ensemble_model(example_data, _ENSEMBLE_SIZE, False)
+    model = DeepEnsemble(keras_ensemble)
+
+    callback = model.optimizer.fit_args["callbacks"][0]
+    assert isinstance(callback, tf.keras.callbacks.EarlyStopping)
+    # default callback doesn't contain a model, so let's randomly add one
+    assert callback.model is None
+    callback.model = model.model
+
+    model_copy = copy.deepcopy(model)
+    assert len(model_copy.optimizer.fit_args.get("callbacks", [])) == 1
+    callback_copy = model_copy.optimizer.fit_args["callbacks"][0]
+    assert isinstance(callback_copy, tf.keras.callbacks.EarlyStopping)
+    assert callback_copy.model is not callback.model
+    npt.assert_equal(callback_copy.model.get_weights(), callback.model.get_weights())
