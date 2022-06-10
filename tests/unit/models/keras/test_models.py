@@ -515,3 +515,16 @@ def test_deep_ensemble_deep_copyable() -> None:
     npt.assert_allclose(variance_f_updated_2, variance_f_updated)
     npt.assert_array_compare(operator.__ne__, mean_f_copy_updated_2, mean_f_copy_updated)
     npt.assert_array_compare(operator.__ne__, variance_f_copy_updated_2, variance_f_copy_updated)
+
+
+def test_deep_ensemble_deep_copies_optimizer_state() -> None:
+    example_data = _get_example_data([10, 3], [10, 3])
+    model, _, _ = trieste_deep_ensemble_model(example_data, 2, False, False)
+    new_example_data = _get_example_data([20, 3], [20, 3])
+    model.update(new_example_data)
+    model.optimize(new_example_data)
+
+    model_copy = copy.deepcopy(model)
+    assert model.model.optimizer is not model_copy.model.optimizer
+    npt.assert_allclose(model_copy.model.optimizer.iterations, 1)
+    npt.assert_equal(model.model.optimizer.get_weights(), model_copy.model.optimizer.get_weights())
