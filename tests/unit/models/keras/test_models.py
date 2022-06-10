@@ -522,7 +522,9 @@ def test_deep_ensemble_deep_copies_optimizer_state() -> None:
     model, _, _ = trieste_deep_ensemble_model(example_data, 2, False, False)
     new_example_data = _get_example_data([20, 3], [20, 3])
     model.update(new_example_data)
+    assert not model.model.optimizer.get_weights()
     model.optimize(new_example_data)
+    assert model.model.optimizer.get_weights()
 
     model_copy = copy.deepcopy(model)
     assert model.model.optimizer is not model_copy.model.optimizer
