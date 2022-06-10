@@ -503,3 +503,15 @@ def test_deep_ensemble_deep_copyable() -> None:
     npt.assert_allclose(variance_f_copy_updated, variance_f_copy)
     npt.assert_array_compare(operator.__ne__, mean_f_updated, mean_f)
     npt.assert_array_compare(operator.__ne__, variance_f_updated, variance_f)
+
+    # check that we can also update the copy
+    newer_example_data = _get_example_data([30, 3], [30, 3])
+    model_copy.update(newer_example_data)
+    model_copy.optimize(newer_example_data)
+
+    mean_f_updated_2, variance_f_updated_2 = model.predict(example_data.query_points)
+    mean_f_copy_updated_2, variance_f_copy_updated_2 = model_copy.predict(example_data.query_points)
+    npt.assert_allclose(mean_f_updated_2, mean_f_updated)
+    npt.assert_allclose(variance_f_updated_2, variance_f_updated)
+    npt.assert_array_compare(operator.__ne__, mean_f_copy_updated_2, mean_f_copy_updated)
+    npt.assert_array_compare(operator.__ne__, variance_f_copy_updated_2, variance_f_copy_updated)
