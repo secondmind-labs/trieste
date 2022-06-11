@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import copy
+import operator
 from typing import Any, Optional
 
 import numpy as np
@@ -479,3 +480,72 @@ def test_deep_ensemble_prepare_data_call(
     assert len(inputs.keys()) == ensemble_size
     for member_data in inputs:
         assert tf.reduce_all(inputs[member_data] == x)
+
+
+def test_deep_ensemble_deep_copyable() -> None:
+    example_data = _get_example_data([10, 3], [10, 3])
+    model, _, _ = trieste_deep_ensemble_model(example_data, 2, False, False)
+    model_copy = copy.deepcopy(model)
+
+    mean_f, variance_f = model.predict(example_data.query_points)
+    mean_f_copy, variance_f_copy = model_copy.predict(example_data.query_points)
+    npt.assert_allclose(mean_f, mean_f_copy)
+    npt.assert_allclose(variance_f, variance_f_copy)
+
+    # check that updating the original doesn't break or change the deepcopy
+    new_example_data = _get_example_data([20, 3], [20, 3])
+    model.update(new_example_data)
+    model.optimize(new_example_data)
+
+    mean_f_updated, variance_f_updated = model.predict(example_data.query_points)
+    mean_f_copy_updated, variance_f_copy_updated = model_copy.predict(example_data.query_points)
+    npt.assert_allclose(mean_f_copy_updated, mean_f_copy)
+    npt.assert_allclose(variance_f_copy_updated, variance_f_copy)
+    npt.assert_array_compare(operator.__ne__, mean_f_updated, mean_f)
+    npt.assert_array_compare(operator.__ne__, variance_f_updated, variance_f)
+
+    # check that we can also update the copy
+    newer_example_data = _get_example_data([30, 3], [30, 3])
+    model_copy.update(newer_example_data)
+    model_copy.optimize(newer_example_data)
+
+    mean_f_updated_2, variance_f_updated_2 = model.predict(example_data.query_points)
+    mean_f_copy_updated_2, variance_f_copy_updated_2 = model_copy.predict(example_data.query_points)
+    npt.assert_allclose(mean_f_updated_2, mean_f_updated)
+    npt.assert_allclose(variance_f_updated_2, variance_f_updated)
+    npt.assert_array_compare(operator.__ne__, mean_f_copy_updated_2, mean_f_copy_updated)
+    npt.assert_array_compare(operator.__ne__, variance_f_copy_updated_2, variance_f_copy_updated)
+
+
+def test_deep_ensemble_deep_copies_optimizer_state() -> None:
+    example_data = _get_example_data([10, 3], [10, 3])
+    model, _, _ = trieste_deep_ensemble_model(example_data, 2, False, False)
+    new_example_data = _get_example_data([20, 3], [20, 3])
+    model.update(new_example_data)
+    assert not model.model.optimizer.get_weights()
+    model.optimize(new_example_data)
+    assert model.model.optimizer.get_weights()
+
+    model_copy = copy.deepcopy(model)
+    assert model.model.optimizer is not model_copy.model.optimizer
+    npt.assert_allclose(model_copy.model.optimizer.iterations, 1)
+    npt.assert_equal(model.model.optimizer.get_weights(), model_copy.model.optimizer.get_weights())
+
+
+def test_deep_ensemble_deep_copies_optimizer_callback_models() -> None:
+    example_data = empty_dataset([1], [1])
+    keras_ensemble = trieste_keras_ensemble_model(example_data, _ENSEMBLE_SIZE, False)
+    model = DeepEnsemble(keras_ensemble)
+
+    callback = model.optimizer.fit_args["callbacks"][0]
+    assert isinstance(callback, tf.keras.callbacks.EarlyStopping)
+    # default callback doesn't contain a model, so let's randomly add one
+    assert callback.model is None
+    callback.model = model.model
+
+    model_copy = copy.deepcopy(model)
+    assert len(model_copy.optimizer.fit_args.get("callbacks", [])) == 1
+    callback_copy = model_copy.optimizer.fit_args["callbacks"][0]
+    assert isinstance(callback_copy, tf.keras.callbacks.EarlyStopping)
+    assert callback_copy.model is not callback.model
+    npt.assert_equal(callback_copy.model.get_weights(), callback.model.get_weights())

@@ -369,15 +369,18 @@ class DeepEnsemble(
         self.optimizer.optimizer.lr.assign(self.original_lr)
 
     def __getstate__(self) -> dict[str, Any]:
-        # When pickling use to_json to save any optimizer fit_arg callback models
+        # When pickling use to_json and get_weights to save any optimizer fit_arg callback models
         state = self.__dict__.copy()
         if self._optimizer:
-            # jsonify all the callback models, pickle the optimizer(!), and revert (ugh!)
+            # serialize all the callback models, pickle the optimizer(!), and revert (ugh!)
             callback: Callback
             saved_models: list[KerasOptimizer] = []
             for callback in self._optimizer.fit_args["callbacks"]:
                 saved_models.append(callback.model)
-                callback.model = callback.model and callback.model.to_json()
+                callback.model = callback.model and (
+                    callback.model.to_json(),
+                    callback.model.get_weights(),
+                )
             state["_optimizer"] = dill.dumps(state["_optimizer"])
             for callback, model in zip(self._optimizer.fit_args["callbacks"], saved_models):
                 callback.model = model
@@ -391,10 +394,12 @@ class DeepEnsemble(
             self._optimizer = dill.loads(self._optimizer)
             for callback in self._optimizer.fit_args.get("callbacks", []):
                 if callback.model:
+                    model, weights = callback.model
                     callback.model = tf.keras.models.model_from_json(
-                        callback.model,
+                        model,
                         custom_objects={"MultivariateNormalTriL": MultivariateNormalTriL},
                     )
+                    callback.model.set_weights(weights)
         # Recompile the model
         self._model.model.compile(
             self.optimizer.optimizer,
