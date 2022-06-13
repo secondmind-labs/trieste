@@ -23,6 +23,7 @@ from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, SequenceN
 from trieste.acquisition.multi_objective.partition import (
     DividedAndConquerNonDominated,
     ExactPartition2dNonDominated,
+    HypervolumeBoxDecompositionIncrementalDominated,
     prepare_default_non_dominated_partition_bounds,
 )
 
@@ -356,3 +357,316 @@ def test_divide_conquer_non_dominated_three_dimension_case() -> None:
             ]
         ),
     )
+
+
+@pytest.mark.parametrize(
+    "reference",
+    [0.0, [0.0], [[0.0]]],
+)
+def test_hbda_incremental_dominated_raise_for_reference_with_invalid_shape(
+    reference: SequenceN[float],
+) -> None:
+    objectives = tf.constant(
+        [
+            [0.0, 2.0, 1.0],
+            [7.0, 6.0, 0.0],
+            [9.0, 0.0, 1.0],
+            [0.0, 0.0, 0.0],
+        ]
+    )
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        HypervolumeBoxDecompositionIncrementalDominated(objectives, tf.constant(reference))
+
+
+@pytest.mark.parametrize("reference", [[0.5, 0.65, 4], [11.0, 4.0, 2.0], [11.0, 11.0, 0.0]])
+def test_hbda_incremental_dominated_raises_for_reference_below_anti_ideal_point(
+    reference: list[float],
+) -> None:
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        HypervolumeBoxDecompositionIncrementalDominated(
+            tf.constant(
+                [
+                    [0.0, 2.0, 1.0],
+                    [7.0, 6.0, 0.0],
+                    [9.0, 0.0, 1.0],
+                ]
+            ),
+            tf.constant(reference),
+        )
+
+
+def test_hbda_incremental_dominated_raises_for_front_below_anti_reference_point() -> None:
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        HypervolumeBoxDecompositionIncrementalDominated(
+            tf.constant(
+                [
+                    [-1e11, 2.0, 1.0],
+                    [7.0, 6.0, 0.0],
+                    [9.0, 0.0, 1.0],
+                ]
+            ),
+            tf.constant([10.0, 10.0, 10.0]),
+        )
+
+
+@pytest.mark.parametrize(
+    "observations, reference, expected_lb, expected_ub",
+    [
+        pytest.param(
+            tf.constant([[2.0, 2.0]]),
+            tf.constant([10.0, 10.0]),
+            tf.constant([[2.0, 2.0]]),
+            tf.constant([[10.0, 10.0]]),
+            id="HBDA_Dominated_2d_only1points",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0], [5.0, 5.0]]),
+            tf.constant([10.0, 10.0]),
+            tf.constant([[2.0, 2.0]]),
+            tf.constant([[10.0, 10.0]]),
+            id="HBDA_Dominated_2d_only1PFpoints",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0], [5.0, 5.0], [1.0, 10.0], [10.0, 1.0]]),
+            tf.constant([10.0, 10.0]),
+            tf.constant([[2.0, 2.0]]),
+            tf.constant([[10.0, 10.0]]),
+            id="HBDA_Dominated_2d_pf_point_has_1d_same_as_reference",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0], [1.0, 3.0], [5.0, 10.0]]),
+            tf.constant([10.0, 10.0]),
+            tf.constant([[1.0, 3.0], [2.0, 2.0]]),
+            tf.constant([[10.0, 10.0], [10.0, 3.0]]),
+            id="HBDA_Dominated_2d_pf_common_case",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0]]),
+            tf.constant([2.0, 2.0]),
+            tf.zeros(shape=(0, 2)),
+            tf.zeros(shape=(0, 2)),
+            id="HBDA_Dominated_2d_pf_point_same_as_reference",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0, 2.0]]),
+            tf.constant([10.0, 10.0, 10.0]),
+            tf.constant([[2.0, 2.0, 2.0]]),
+            tf.constant([[10.0, 10.0, 10.0]]),
+            id="HBDA_Dominated_3d_only1points",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0, 2.0], [3.0, 3.0, 3.0]]),
+            tf.constant([10.0, 10.0, 10.0]),
+            tf.constant([[2.0, 2.0, 2.0]]),
+            tf.constant([[10.0, 10.0, 10.0]]),
+            id="HBDA_Dominated_3d_only1PFpoints",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0, 2.0], [1.0, 5.0, 10.0], [10.0, 1.0, 5.0], [1.0, 10.0, 1.0]]),
+            tf.constant([10.0, 10.0, 10.0]),
+            tf.constant([[2.0, 2.0, 2.0]]),
+            tf.constant([[10.0, 10.0, 10.0]]),
+            id="HBDA_Dominated_3d_pf_point_has_1d_same_as_reference",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0, 2.0], [1.0, 10.0, 10.0], [10.0, 1.0, 10.0], [10.0, 10.0, 1.0]]),
+            tf.constant([10.0, 10.0, 10.0]),
+            tf.constant([[2.0, 2.0, 2.0]]),
+            tf.constant([[10.0, 10.0, 10.0]]),
+            id="HBDA_Dominated_3d_pf_point_has_2d_same_as_reference",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0, 2.0]]),
+            tf.constant([2.0, 2.0, 2.0]),
+            tf.zeros(shape=(0, 3)),
+            tf.zeros(shape=(0, 3)),
+            id="HBDA_Dominated_3d_pf_point_same_as_reference",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0, 2.0], [4.0, 4.0, 4.0], [1.0, 3.0, 5.0]]),
+            tf.constant([10.0, 10.0, 10.0]),
+            tf.constant([[1.0, 3.0, 5.0], [2.0, 2.0, 5.0], [2.0, 2.0, 2.0]]),
+            tf.constant([[10.0, 10.0, 10.0], [10.0, 3.0, 10.0], [10.0, 10.0, 5.0]]),
+            id="HBDA_Dominated_3d_pf_common_case",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0, 2.0], [4.0, 4.0, 4.0], [2.0, 3.0, 1.0], [3.5, 2.0, 1.0]]),
+            tf.constant([10.0, 10.0, 10.0]),
+            tf.constant([[2.0, 2.0, 2.0], [2.0, 3.0, 1.0], [3.5, 2.0, 1.0]]),
+            tf.constant([[10.0, 10.0, 10.0], [10.0, 10.0, 2.0], [10.0, 3.0, 2.0]]),
+            id="HBDA_Dominated_3d_pf_have_same_at_1d_case",
+        ),
+    ],
+)
+def test_hbda_incremental_dominated_static_partition(
+    observations: tf.Tensor, reference: tf.Tensor, expected_lb: tf.Tensor, expected_ub: tf.Tensor
+) -> None:
+    lb, ub = HypervolumeBoxDecompositionIncrementalDominated(
+        observations, reference
+    ).partition_bounds()
+    npt.assert_allclose(lb, expected_lb)
+    npt.assert_allclose(ub, expected_ub)
+
+
+@pytest.mark.parametrize(
+    "observations, new_observations, reference, expected_lb, expected_ub",
+    [
+        pytest.param(
+            tf.constant([[2.0, 2.0]]),
+            tf.constant([[2.5, 2.5]]),
+            tf.constant([10.0, 10.0]),
+            tf.constant([[2.0, 2.0]]),
+            tf.constant([[10.0, 10.0]]),
+            id="HBDA_Dominated_2d_only1points_no_update",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0]]),
+            tf.constant([[1.5, 1.5]]),
+            tf.constant([10.0, 10.0]),
+            tf.constant([[1.5, 1.5]]),
+            tf.constant([[10.0, 10.0]]),
+            id="HBDA_Dominated_2d_only1points_update_replace_pf",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0]]),
+            tf.constant([[1.0, 3.0]]),
+            tf.constant([10.0, 10.0]),
+            tf.constant([[1.0, 3.0], [2.0, 2.0]]),
+            tf.constant([[10.0, 10.0], [10.0, 3.0]]),
+            id="HBDA_Dominated_2d_only1points_update_complement_pf",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0], [5.0, 5.0]]),
+            tf.constant([[1.0, 3.0]]),
+            tf.constant([10.0, 10.0]),
+            tf.constant([[1.0, 3.0], [2.0, 2.0]]),
+            tf.constant([[10.0, 10.0], [10.0, 3.0]]),
+            id="HBDA_Dominated_2d_only1PFpoints_update_complement_pf",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0], [5.0, 5.0]]),
+            tf.constant([[1.0, 10.0]]),
+            tf.constant([10.0, 10.0]),
+            tf.constant([[2.0, 2.0]]),
+            tf.constant([[10.0, 10.0]]),
+            id="HBDA_Dominated_2d_pf_point_update_new_obs_has_1d_same_as_reference",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0], [1.0, 3.0], [5.0, 10.0]]),
+            tf.constant([[3.1, 3.1]]),
+            tf.constant([10.0, 10.0]),
+            tf.constant([[1.0, 3.0], [2.0, 2.0]]),
+            tf.constant([[10.0, 10.0], [10.0, 3.0]]),
+            id="HBDA_Dominated_2d_pf_common_case_no_update",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0], [1.0, 3.0], [5.0, 10.0]]),
+            tf.constant([[3.1, 3.1], [1.0, 1.0]]),
+            tf.constant([10.0, 10.0]),
+            tf.constant([[1.0, 3.0], [1.0, 1.0]]),
+            tf.constant([[10.0, 10.0], [10.0, 3.0]]),
+            id="HBDA_Dominated_2d_pf_common_case_update_replace_pf",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0]]),
+            tf.constant([[1.0, 1.0]]),
+            tf.constant([2.0, 2.0]),
+            tf.constant([[1.0, 1.0]]),
+            tf.constant([[2.0, 2.0]]),
+            id="HBDA_Dominated_2d_pf_point_same_as_reference_replace_pf",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0, 2.0]]),
+            tf.constant([[2.0, 2.0, 2.0]]),
+            tf.constant([10.0, 10.0, 10.0]),
+            tf.constant([[2.0, 2.0, 2.0]]),
+            tf.constant([[10.0, 10.0, 10.0]]),
+            id="HBDA_Dominated_3d_only1points_no_update",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0, 2.0], [3.0, 3.0, 3.0]]),
+            tf.constant([[1.0, 1.0, 2.0]]),
+            tf.constant([10.0, 10.0, 10.0]),
+            tf.constant([[1.0, 1.0, 2.0]]),
+            tf.constant([[10.0, 10.0, 10.0]]),
+            id="HBDA_Dominated_3d_only1_pf_points_update_replace",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0, 2.0], [4.0, 4.0, 4.0]]),
+            tf.constant([[1.0, 3.0, 5.0]]),
+            tf.constant([10.0, 10.0, 10.0]),
+            tf.constant([[1.0, 3.0, 5.0], [2.0, 2.0, 5.0], [2.0, 2.0, 2.0]]),
+            tf.constant([[10.0, 10.0, 10.0], [10.0, 3.0, 10.0], [10.0, 10.0, 5.0]]),
+            id="HBDA_Dominated_3d_pf_common_case_update_complement_pf ",
+        ),
+    ],
+)
+def test_hbda_incremental_dominated_update(
+    observations: tf.Tensor,
+    new_observations: tf.Tensor,
+    reference: tf.Tensor,
+    expected_lb: tf.Tensor,
+    expected_ub: tf.Tensor,
+) -> None:
+    partition = HypervolumeBoxDecompositionIncrementalDominated(observations, reference)
+    partition.update(new_observations)
+    lb, ub = partition.partition_bounds()
+    npt.assert_allclose(lb, expected_lb)
+    npt.assert_allclose(ub, expected_ub)
+
+
+@pytest.mark.parametrize(
+    "observations, new_observations, reference",
+    [
+        pytest.param(
+            tf.constant([[2.0, 2.0]]),
+            tf.constant([[1.0, 1.0]]),
+            tf.constant([1.5, 1.5]),
+            id="HBDA_obs_above_ref_1_dim",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0]]),
+            tf.constant([[12.5, 2.5]]),
+            tf.constant([10.0, 10.0]),
+            id="HBDA_update_obs_above_ref_1_dim",
+        ),
+    ],
+)
+def test_hbda_raise_when_update_has_elements_larger_than_reference(
+    observations: tf.Tensor, new_observations: tf.Tensor, reference: tf.Tensor
+) -> None:
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        partition = HypervolumeBoxDecompositionIncrementalDominated(observations, reference)
+        partition.update(new_observations)
+
+
+@pytest.mark.parametrize(
+    "observations, new_observations, reference, dummy_anti_ref_value",
+    [
+        pytest.param(
+            tf.constant([[-1e20, 2.0]]),
+            tf.constant([[1.0, 1.0]]),
+            tf.constant([2.5, 2.5]),
+            -1e2,
+            id="HBDA_obs_below_anti_ref",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0]]),
+            tf.constant([[-1e22, 2.5]]),
+            tf.constant([10.0, 10.0]),
+            -1e10,
+            id="HBDA_update_below_anti_ref",
+        ),
+    ],
+)
+def test_hbda_raise_when_update_has_elements_lower_than_anti_reference(
+    observations: tf.Tensor,
+    new_observations: tf.Tensor,
+    reference: tf.Tensor,
+    dummy_anti_ref_value: float,
+) -> None:
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        partition = HypervolumeBoxDecompositionIncrementalDominated(
+            observations, reference, dummy_anti_ref_value
+        )
+        partition.update(new_observations)

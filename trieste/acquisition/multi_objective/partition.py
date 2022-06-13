@@ -391,3 +391,258 @@ class DividedAndConquerNonDominated(_BoundIndexPartition):
         )
 
         return divide_conquer_cells_final
+
+
+class HypervolumeBoxDecompositionIncrementalDominated:
+    """
+    A Hypervolume Box Decomposition Algorithm (incremental version) (HBDA in short) which
+    is used to partition the dominated space into disjoint hyperrectangles. Given the
+    dominated region D(N_nd, Z^r) constructed by non dominated set N_nd extracted from
+    ``observations`` set N, and a corresponding ``reference_point`` Z^r. HBDA use a
+    set U of auxiliary points (which is referred to as local upper bound set in the paper
+    and each element in U is defined by D number of points in N_nd) associated with the
+    non dominated set N_nd to describe the dominated region D(U, Z^r) and to decompose it
+    to disjoint hyper rectangles. Main reference: Section 2.2.2 of :cite:`lacour2017box`.
+    """
+
+    def __init__(
+        self,
+        observations: TensorType,
+        reference_point: TensorType,
+        dummy_anti_ref_value: float = -1e10,
+    ):
+        """
+        :param observations: the objective observations, preferably this can be a
+            non-dominated set, but any set is acceptable here.
+        :param reference_point: a reference point to use, with shape [D]
+            (same as p in the paper). Defines the upper bound of the hypervolume.
+        :param dummy_anti_ref_value: float, a value used to setup the dummy anti-reference point:
+            _dummy_anti_reference_point = [dummy_anti_ref_value, ..., dummy_anti_ref_value].
+            This anti-reference point will not affect the partitioned bounds, but it is required
+            to be smaller than any (potential) observations
+        """
+        tf.debugging.assert_type(reference_point, observations.dtype)
+        tf.debugging.assert_shapes([(reference_point, ["D"])])
+
+        tf.debugging.assert_greater_equal(
+            reference_point,
+            observations,
+            message=f"observations: {observations} contains at least one value larger "
+            f"than reference point: {reference_point}",
+        )
+
+        self._dummy_anti_reference_point = dummy_anti_ref_value * tf.ones(
+            (1, observations.shape[-1]), dtype=observations.dtype
+        )
+        self._reference_point = reference_point
+
+        tf.debugging.assert_greater_equal(  # making sure objective space has been
+            # lower bounded by [dummy_anti_ref_value, ..., dummy_anti_ref_value]
+            observations,
+            self._dummy_anti_reference_point,
+            f"observations: {observations} contains value smaller than dummy "
+            f"anti-reference point: {self._dummy_anti_reference_point}, try "
+            f"using a smaller dummy anti ref value.",
+        )
+
+        # initialize local upper bound set U using reference point Z^r (step 1 of Alg 1)
+        self.U_set = reference_point[tf.newaxis]
+
+        self.Z_set = (  # initialize local upper bound set element's defining points Z, the
+            # defining points of Z^r is the dummy points \hat{z}^1, ..., \hat{z}^D defined
+            # in Sec 2.1. Note: 1. the original defined objective space [0, reference_point] has
+            # been replaced by [dummy anti-reference point, reference_point].
+            # 2. the dummy anti-reference point value will not affect lower/upper bounds of this
+            # dominated partition method
+            dummy_anti_ref_value
+            * tf.ones((1, observations.shape[-1], observations.shape[-1]), dtype=observations.dtype)
+            - dummy_anti_ref_value
+            * tf.eye(
+                observations.shape[-1],
+                observations.shape[-1],
+                batch_shape=[1],
+                dtype=observations.dtype,
+            )
+            + tf.linalg.diag(reference_point)[tf.newaxis, ...]
+        )  # [1, D, D]
+
+        (
+            self.U_set,
+            self.Z_set,
+        ) = _update_local_upper_bounds_incremental(  # incrementally update local upper
+            new_observations=observations,  # bounds and defining points for each new observation
+            u_set=self.U_set,
+            z_set=self.Z_set,
+        )
+
+    def update(self, new_obs: TensorType) -> None:
+        """
+        Update with new observations, this can be computed with the incremental method
+
+        :param new_obs with shape [N, D]
+        """
+        tf.debugging.assert_greater_equal(self._reference_point, new_obs)
+        tf.debugging.assert_greater_equal(new_obs, self._dummy_anti_reference_point)
+        (
+            self.U_set,
+            self.Z_set,
+        ) = _update_local_upper_bounds_incremental(  # incrementally update local upper
+            new_observations=new_obs,  # bounds and defining points for each new Pareto point
+            u_set=self.U_set,
+            z_set=self.Z_set,
+        )
+
+    def partition_bounds(self) -> tuple[TensorType, TensorType]:
+        return _get_partition_bounds_hbda(self.Z_set, self.U_set, self._reference_point)
+
+
+def _update_local_upper_bounds_incremental(
+    new_observations: TensorType, u_set: TensorType, z_set: TensorType
+) -> tuple[TensorType, TensorType]:
+    r"""Update the current local upper bound with the new pareto points. (note:
+    this does not require the input: new_front_points must be non-dominated points)
+
+    :param new_observations: with shape [N, D].
+    :param u_set: with shape [N', D], the set containing all the existing local upper bounds.
+    :param z_set: with shape [N', D, D] contain the existing local upper bounds defining points,
+        note the meaning of the two D is different: first D denotes for any element
+        in u_set, it has D defining points; the second D denotes each defining point is
+        D dimensional.
+    :return: a new [N'', D] new local upper bounds set.
+             a new [N'', D, D] contain the new local upper bounds defining points
+    """
+
+    tf.debugging.assert_shapes([(new_observations, ["N", "D"])])
+    for new_obs in new_observations:  # incrementally update local upper bounds
+        u_set, z_set = _compute_new_local_upper_bounds(u_set, z_set, z_bar=new_obs)
+    return u_set, z_set
+
+
+def _compute_new_local_upper_bounds(
+    u_set: TensorType, z_set: TensorType, z_bar: TensorType
+) -> tuple[TensorType, TensorType]:
+    r"""Given new observation z_bar, compute new local upper bounds (and their defining points).
+    This uses the incremental algorithm (Alg. 1 and Theorem 2.2) from :cite:`lacour2017box`:
+    Given a new observation z_bar, if z_bar dominates any of the element in existing
+    local upper bounds set: u_set, we need to:
+    1. calculating the new local upper bounds set introduced by z_bar, and its corresponding
+    defining set z_set
+    2. remove the old local upper bounds set from u_set that has been dominated by z_bar and
+    their corresponding defining points from z_set
+    3. concatenate u_set, z_set with the new local upper bounds set and its corresponding
+    defining set
+    otherwise the u_set and z_set keep unchanged.
+
+    :param u_set: (U in the paper) with shape [N, D] dim tensor containing the local upper bounds.
+    :param z_set: (Z in the paper) with shape [N, D, D] dim tensor containing the local
+        upper bounds.
+    :param z_bar: with shape [D] denoting the new point (same notation in the paper)
+    :return: new u_set with shape [N', D], new defining z_set with shape [N', D, D].
+    """
+    tf.debugging.assert_shapes([(z_bar, ["D"])])
+    tf.debugging.assert_type(z_bar, u_set.dtype)
+
+    num_outcomes = u_set.shape[-1]
+
+    # condition check in Theorem 2.2: if not need to update (z_bar doesn't strict dominate anything)
+    z_bar_dominates_u_set_mask = tf.reduce_all(z_bar < u_set, -1)
+    if not tf.reduce_any(z_bar_dominates_u_set_mask):  # z_bar does not dominate any point in set U
+        return u_set, z_set
+
+    # elements in U that has been dominated by z_bar and needs to be updated (step 5 of Alg. 2)
+    u_set_need_update = u_set[z_bar_dominates_u_set_mask]  # [M, D], same as A in the paper
+    z_set_need_update = z_set[z_bar_dominates_u_set_mask]  # [M, D, D]
+
+    # Container of new local upper bound (lub) points and its defining set
+    updated_u_set = tf.zeros(shape=(0, num_outcomes), dtype=u_set.dtype)
+    updated_z_set = tf.zeros(shape=(0, num_outcomes, num_outcomes), dtype=u_set.dtype)
+
+    # update local upper bound and its corresponding defining points
+    for j in tf.range(num_outcomes):  # check update per dimension
+        # for jth output dimension, check if if zbar_j can form a new lub
+        # (if zbar_j ≥ max_{k≠j}{z_j^k(u)} get all lub's defining point and check:
+        indices = tf.constant([dim for dim in range(num_outcomes) if dim != j], dtype=tf.int32)
+        mask_j_dim = tf.constant(
+            [0 if dim != j else 1 for dim in range(num_outcomes)], dtype=z_bar.dtype
+        )
+        mask_not_j_dim = tf.constant(
+            [1 if dim != j else 0 for dim in range(num_outcomes)], dtype=z_bar.dtype
+        )
+        # get except jth defining point's jth dim
+        z_uj_k = tf.gather(z_set_need_update, indices, axis=-2, batch_dims=0)[
+            ..., j
+        ]  # [M, D, D] -> [M, D-1]
+        z_uj_max = tf.reduce_max(z_uj_k, -1)  # [M, D-1] -> [M]
+        u_mask_to_be_replaced_by_zbar_j = z_bar[j] >= z_uj_max  # [M]
+        # any of original local upper bounds (in A) can be updated
+        if tf.reduce_any(u_mask_to_be_replaced_by_zbar_j):
+            # update u with new lub: (zbar_j, u_{-j})
+            u_need_update_j_dim = u_set_need_update[u_mask_to_be_replaced_by_zbar_j]  # [M', D]
+            # tensorflow tricky to replace u_j's j dimension with z_bar[j]
+            new_u_updated_j_dim = u_need_update_j_dim * mask_not_j_dim + tf.repeat(
+                (mask_j_dim * z_bar[j])[tf.newaxis], u_need_update_j_dim.shape[0], axis=0
+            )
+            # add the new local upper bound point: u_j
+            updated_u_set = tf.concat([updated_u_set, new_u_updated_j_dim], 0)
+
+            # update u's defining point z
+            z_need_update = z_set_need_update[
+                u_mask_to_be_replaced_by_zbar_j
+            ]  # get its original defining point
+            # replace jth : [M', D - 1, D] & [1, D] -> [M', D, D]
+            z_uj_new = (
+                z_need_update * mask_not_j_dim[..., tf.newaxis]
+                + z_bar * mask_j_dim[..., tf.newaxis]
+            )
+            # add its (updated) defining point
+            updated_z_set = tf.concat([updated_z_set, z_uj_new], 0)
+
+    # filter out elements of U (and its defining points) that are in A
+    z_not_dominates_u_set_mask = ~z_bar_dominates_u_set_mask
+    no_need_update_u_set = u_set[z_not_dominates_u_set_mask]
+    no_need_update_z_set = z_set[z_not_dominates_u_set_mask]
+
+    # combine remaining lub points with new lub points (as well as their
+    # corresponding defining points)
+    if tf.shape(updated_u_set)[0] > 0:
+        # add points from lub_new and lub_new_z
+        u_set = tf.concat([no_need_update_u_set, updated_u_set], axis=0)
+        z_set = tf.concat([no_need_update_z_set, updated_z_set], axis=0)
+    return u_set, z_set
+
+
+def _get_partition_bounds_hbda(
+    z_set: TensorType, u_set: TensorType, reference_point: TensorType
+) -> tuple[TensorType, TensorType]:
+    r"""Get the hyper cell bounds through given the local upper bounds and the
+    defining points. Main referred from Equation 2 of :cite:`lacour2017box`.
+
+    :param u_set: with shape [N, D], local upper bounds set, N is the
+        sets number, D denotes the objective numbers.
+    :param z_set: with shape [N, D, D].
+    :param reference_point: z^r in the paper, with shape [D].
+    :return: lower, upper bounds of the partitioned cell, each with shape [N, D].
+    """
+    tf.debugging.assert_shapes([(reference_point, ["D"])])
+    l_bounds = tf.zeros(shape=[0, tf.shape(u_set)[-1]], dtype=u_set.dtype)
+    u_bounds = tf.zeros(shape=[0, tf.shape(u_set)[-1]], dtype=u_set.dtype)
+
+    for u_idx in range(tf.shape(u_set)[0]):  # get partition through each of the lub point
+        l_bound_new = tf.zeros(shape=0, dtype=u_set.dtype)
+        u_bound_new = tf.zeros(shape=0, dtype=u_set.dtype)
+        # for each (partitioned) hyper-cell, get its bounds through each objective dimension
+        # get bounds on 1st dim: [z_1^1(u), z_1^r]
+        l_bound_new = tf.concat([l_bound_new, z_set[u_idx, 0, 0][tf.newaxis]], 0)
+        u_bound_new = tf.concat([u_bound_new, reference_point[0][tf.newaxis]], 0)
+
+        for j in range(1, u_set.shape[-1]):  # get bounds on rest dim
+            l_bound_new = tf.concat(
+                [l_bound_new, tf.reduce_max(z_set[u_idx, :j, j])[tf.newaxis]], 0
+            )
+            u_bound_new = tf.concat([u_bound_new, u_set[u_idx, j][tf.newaxis]], 0)
+        l_bounds = tf.concat([l_bounds, l_bound_new[tf.newaxis]], 0)
+        u_bounds = tf.concat([u_bounds, u_bound_new[tf.newaxis]], 0)
+
+    # remove empty partitions (i.e., if lb_bounds == ub_bounds on certain obj dimension)
+    empty = tf.reduce_any(u_bounds <= l_bounds, axis=-1)
+    return l_bounds[~empty], u_bounds[~empty]
