@@ -375,7 +375,7 @@ class DeepEnsemble(
             # serialize all the callback models, pickle the optimizer(!), and revert (ugh!)
             callback: Callback
             saved_models: list[KerasOptimizer] = []
-            for callback in self._optimizer.fit_args["callbacks"]:
+            for callback in self._optimizer.fit_args.get("callbacks", []):
                 saved_models.append(callback.model)
                 if callback.model is self.model:
                     # no need to serialize the main model
@@ -383,7 +383,7 @@ class DeepEnsemble(
                 elif callback.model:
                     callback.model = (callback.model.to_json(), callback.model.get_weights())
             state["_optimizer"] = dill.dumps(state["_optimizer"])
-            for callback, model in zip(self._optimizer.fit_args["callbacks"], saved_models):
+            for callback, model in zip(self._optimizer.fit_args.get("callbacks", []), saved_models):
                 callback.model = model
         return state
 
