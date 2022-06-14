@@ -23,6 +23,7 @@ from __future__ import annotations
 import math
 from math import pi
 
+import numpy as np
 import tensorflow as tf
 
 from ..space import Box
@@ -280,6 +281,16 @@ SHEKEL_4_SEARCH_SPACE = Box([0.0], [1.0]) ** 4
 """ The search space for the :func:`shekel_4` function. """
 
 
+def noisy_shekel_4(x: TensorType) -> TensorType:
+
+    return shekel_4(x) + np.sqrt(0.1) * tf.random.normal([*tf.shape(x)[:-1], 1], dtype=x.dtype)
+
+
+NOISY_SHEKEL_MINIMIZER = SHEKEL_4_MINIMIZER
+NOISY_SHEKEL_MINIMUM = SHEKEL_4_MINIMUM
+NOISY_SHEKEL_SEARCH_SPACE = SHEKEL_4_SEARCH_SPACE
+
+
 def rosenbrock_4(x: TensorType) -> TensorType:
     """
     The Rosenbrock function, rescaled to have zero mean and unit variance over :math:`[0, 1]^4. See
@@ -365,6 +376,15 @@ ACKLEY_5_SEARCH_SPACE = Box([0.0], [1.0]) ** 5
 """ The search space for the :func:`ackley_5` function. """
 
 
+def noisy_ackley_5(x: TensorType) -> TensorType:
+    return ackley_5(x) + np.sqrt(0.5) * tf.random.normal([*tf.shape(x)[:-1], 1], dtype=x.dtype)
+
+
+NOISY_ACKLEY_5_MINIMIZER = ACKLEY_5_MINIMIZER
+NOISY_ACKLEY_5_MINIMUM = ACKLEY_5_MINIMUM
+NOISY_ACKLEY_5_SEARCH_SPACE = ACKLEY_5_SEARCH_SPACE
+
+
 def hartmann_6(x: TensorType) -> TensorType:
     """
     The Hartmann 6 test function over :math:`[0, 1]^6`. This function has
@@ -413,6 +433,15 @@ float64.
 
 HARTMANN_6_SEARCH_SPACE = Box([0.0], [1.0]) ** 6
 """ The search space for the :func:`hartmann_6` function. """
+
+
+def noisy_hartmann_6(x: TensorType) -> TensorType:
+    return hartmann_6(x) + np.sqrt(0.5) * tf.random.normal([*tf.shape(x)[:-1], 1], dtype=x.dtype)
+
+
+NOISY_HARTMANN_6_MINIMIZER = HARTMANN_6_MINIMIZER
+NOISY_HARTMANN_6_MINIMUM = HARTMANN_6_MINIMUM
+NOISY_HARTMANN_6_SEARCH_SPACE = HARTMANN_6_SEARCH_SPACE
 
 
 def michalewicz(x: TensorType, d: int = 2, m: int = 10) -> TensorType:
@@ -540,6 +569,15 @@ MICHALEWICZ_10_SEARCH_SPACE = Box([0.0], [pi]) ** 10
 """
 The search space for the 10-dimensional :func:`michalewicz` function.
 """
+
+
+def noisy_mich_5(x: TensorType) -> TensorType:
+    return michalewicz_5(x) + 0.1 * tf.random.normal([*tf.shape(x)[:-1], 1], dtype=x.dtype)
+
+
+NOISY_MICH_5_MINIMIZER = MICHALEWICZ_5_MINIMIZER
+NOISY_MICH_5_MINIMUM = MICHALEWICZ_5_MINIMUM
+NOISY_MICH_5_SEARCH_SPACE = MICHALEWICZ_5_SEARCH_SPACE
 
 
 def trid(x: TensorType, d: int = 10) -> TensorType:
