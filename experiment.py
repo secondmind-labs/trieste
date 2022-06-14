@@ -27,6 +27,9 @@ from trieste.objectives import (
 
 from exp_utils import (
     build_vanilla_dgp_model,
+    build_svgp_model,
+    build_gp_model,
+    build_sgpr_model,
     normalize
 )
 
@@ -44,17 +47,17 @@ tf.keras.backend.set_floatx("float64")
 parser = argparse.ArgumentParser()
 parser.add_argument('output_filename', type=str, help='output filename', nargs='?', default='test')
 parser.add_argument('--exp_name', type=str, help='experiment name', nargs='?', default='test')
-parser.add_argument('--function', type=str, help='objective function', nargs='?', default='branin')
-parser.add_argument('--model', type=str, help='model name', nargs='?', default='deepgp')
+parser.add_argument('--function', type=str, help='objective function', nargs='?', default='dgpmich2')
+parser.add_argument('--model', type=str, help='model name', nargs='?', default='gp')
 parser.add_argument('--lnt', dest='ln', help='whether to learn noise variance', action='store_true')
 parser.add_argument('--lnf', dest='ln', help='whether to learn noise variance', action='store_false')
 parser.add_argument('--rtt', dest='rt', help='whether to retrain', action='store_true')
 parser.add_argument('--rtf', dest='rt', help='whether to retrain', action='store_false')
-parser.add_argument('--rt_every', type=int, help='how often to retrain', nargs='?', default=2)
+parser.add_argument('--rt_every', type=int, help='how often to retrain', nargs='?', default=5)
 parser.add_argument('--normt', dest='norm', help='whether to normalize data', action='store_true')
 parser.add_argument('--normf', dest='norm', help='whether to normalize data', action='store_false')
 parser.add_argument('--epochs', type=int, help='number of gradient steps', nargs='?', default=2000)
-parser.add_argument('--run', type=int, help='run number', nargs='?', default=0)
+parser.add_argument('--run', type=int, help='run number', nargs='?', default=1)
 args = parser.parse_args()
 
 function_key = args.function
@@ -85,7 +88,9 @@ function_dict = {
 
 model_dict = {
     "deepgp": [build_vanilla_dgp_model],
-    # "gp": [build_gp_model]
+    "svgp": [build_svgp_model],
+    "gp": [build_gp_model],
+    "sgpr": [build_sgpr_model]
 }
 
 if not os.path.exists(os.path.join('results_{}'.format(args.exp_name), function_key)):
