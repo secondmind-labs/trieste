@@ -24,6 +24,9 @@ Trieste model).
 
 from __future__ import annotations
 
+import copy
+import operator
+from functools import partial
 from typing import Callable
 
 import gpflow
@@ -311,3 +314,61 @@ def test_deepgp_config_builds_and_default_optimizer_is_correct(
     assert isinstance(model.optimizer, KerasOptimizer)
     assert isinstance(model.optimizer.optimizer, tf.optimizers.Optimizer)
     assert model.optimizer.fit_args == fit_args
+
+
+def test_deepgp_deep_copyable(keras_float: None) -> None:
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    model = DeepGaussianProcess(partial(single_layer_dgp_model, x))
+    model_copy = copy.deepcopy(model)
+
+    test_x = tf.constant([[2.5]], dtype=gpflow.default_float())
+
+    mean_f, variance_f = model.predict(test_x)
+    mean_f_copy, variance_f_copy = model_copy.predict(test_x)
+    npt.assert_allclose(mean_f, mean_f_copy)
+    npt.assert_allclose(variance_f, variance_f_copy)
+
+    # check that updating the original doesn't break or change the deepcopy
+    dataset = Dataset(x, fnc_3x_plus_10(x))
+    model.update(dataset)
+    model.optimize(dataset)
+
+    mean_f_updated, variance_f_updated = model.predict(test_x)
+    mean_f_copy_updated, variance_f_copy_updated = model_copy.predict(test_x)
+    npt.assert_allclose(mean_f_copy_updated, mean_f_copy)
+    npt.assert_allclose(variance_f_copy_updated, variance_f_copy)
+    npt.assert_array_compare(operator.__ne__, mean_f_updated, mean_f)
+    npt.assert_array_compare(operator.__ne__, variance_f_updated, variance_f)
+
+    # # check that we can also update the copy
+    dataset2 = Dataset(x, fnc_2sin_x_over_3(x))
+    model_copy.update(dataset2)
+    model_copy.optimize(dataset2)
+
+    mean_f_updated_2, variance_f_updated_2 = model.predict(test_x)
+    mean_f_copy_updated_2, variance_f_copy_updated_2 = model_copy.predict(test_x)
+    npt.assert_allclose(mean_f_updated_2, mean_f_updated)
+    npt.assert_allclose(variance_f_updated_2, variance_f_updated)
+    npt.assert_array_compare(operator.__ne__, mean_f_copy_updated_2, mean_f_copy_updated)
+    npt.assert_array_compare(operator.__ne__, variance_f_copy_updated_2, variance_f_copy_updated)
+
+
+def test_deepgp_deep_copies_optimizer_state(keras_float: None) -> None:
+
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    model = DeepGaussianProcess(partial(single_layer_dgp_model, x))
+    dataset = Dataset(x, fnc_3x_plus_10(x))
+    model.update(dataset)
+    assert not model.optimizer.optimizer.get_weights()
+    model.optimize(dataset)
+    assert model.optimizer.optimizer.get_weights()
+    npt.assert_allclose(model.optimizer.optimizer.iterations, 400)
+    assert model.optimizer.fit_args["callbacks"][0].model is model.model_keras
+
+    model_copy = copy.deepcopy(model)
+    assert model.optimizer.optimizer is not model_copy.optimizer.optimizer
+    npt.assert_allclose(model_copy.optimizer.optimizer.iterations, 400)
+    npt.assert_equal(
+        model.optimizer.optimizer.get_weights(), model_copy.optimizer.optimizer.get_weights()
+    )
+    assert model_copy.optimizer.fit_args["callbacks"][0].model is model_copy.model_keras
