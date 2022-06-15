@@ -152,7 +152,7 @@ class DeepGaussianProcess(
             elif callback.model:
                 callback.model = (callback.model.to_json(), callback.model.get_weights())
         state["_optimizer"] = dill.dumps(state["_optimizer"])
-        for callback, model in zip(self._optimizer.get("callbacks", []), saved_models):
+        for callback, model in zip(self._optimizer.fit_args.get("callbacks", []), saved_models):
             callback.model = model
 
         return state
