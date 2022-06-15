@@ -605,7 +605,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         raise NotImplementedError(
                             "Failed to save the optimization state. Some models do not support "
                             "deecopying or serialization and cannot be saved. "
-                            "(This is particularly common for deep neural network models.) "
+                            "(This is particularly common for deep neural network models, "
+                            "though some of the model wrappers accept a model closure as a workaround.) "
                             "For these models, the `track_state`` argument of the "
                             ":meth:`~trieste.bayesian_optimizer.BayesianOptimizer.optimize` method "
                             "should be set to `False`. This means that only the final model "
