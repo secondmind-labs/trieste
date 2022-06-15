@@ -54,3 +54,26 @@ f_rs_run = $(foreach pre,$(f_rs),$(addprefix $(pre),$(run)))
 results_rs/%: experiment.py
 	$(base) python $< $@ --exp_name rs --function $(call a1,$*) --model $(call a2,$*) --run $(call a3,$*)
 rs_experiment: $(addprefix results_rs/,$(f_rs_run))
+
+
+########################## Large scale exp ##############################
+function_list = noisymich5_ noisyackley5_ noisyshekel_ noisyhart6_
+model_list = deepgp_
+num_inducing = 500_ #100_ 250_ 500_
+run = 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29
+
+f_m = $(foreach pre,$(function_list),$(addprefix $(pre),$(model_list)))
+f_m_i = $(foreach pre,$(f_m),$(addprefix $(pre),$(num_inducing)))
+f_m_l_run = $(foreach pre,$(f_m_i),$(addprefix $(pre),$(run)))
+
+results_largescale/%: experiment.py
+	$(base) python $< $@ --exp_name largescale --function $(call a1,$*) --model $(call a2,$*) --lnt --rtt --epochs 5000 --rt_every 1 --normf --num_query 100 --num_inducing $(call a3,$*) --fix_ips_t --run $(call a4,$*)
+ls_experiment: $(addprefix results_largescale/,$(f_m_l_run))
+
+f_rs = $(foreach pre,$(function_list),$(addprefix $(pre),$(random_search)))
+f_rs_run = $(foreach pre,$(f_rs),$(addprefix $(pre),$(run)))
+
+results_ls_rs/%: experiment.py
+	$(base) python $< $@ --exp_name ls_rs --function $(call a1,$*) --model $(call a2,$*) --num_query 100 --run $(call a3,$*)
+ls_rs_experiment: $(addprefix results_ls_rs/,$(f_rs_run))
+

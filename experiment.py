@@ -22,7 +22,19 @@ from trieste.objectives import (
     ACKLEY_5_SEARCH_SPACE,
     branin,
     BRANIN_MINIMUM,
-    BRANIN_SEARCH_SPACE
+    BRANIN_SEARCH_SPACE,
+    NOISY_HARTMANN_6_SEARCH_SPACE,
+    NOISY_HARTMANN_6_MINIMUM,
+    NOISY_ACKLEY_5_SEARCH_SPACE,
+    NOISY_ACKLEY_5_MINIMUM,
+    NOISY_SHEKEL_SEARCH_SPACE,
+    NOISY_SHEKEL_MINIMUM,
+    NOISY_MICH_5_SEARCH_SPACE,
+    NOISY_MICH_5_MINIMUM,
+    noisy_hartmann_6,
+    noisy_ackley_5,
+    noisy_mich_5,
+    noisy_shekel_4
 )
 
 from exp_utils import (
@@ -48,7 +60,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('output_filename', type=str, help='output filename', nargs='?', default='test')
 parser.add_argument('--exp_name', type=str, help='experiment name', nargs='?', default='test')
 parser.add_argument('--function', type=str, help='objective function', nargs='?', default='dgpmich2')
-parser.add_argument('--model', type=str, help='model name', nargs='?', default='gp')
+parser.add_argument('--model', type=str, help='model name', nargs='?', default='svgp')
 parser.add_argument('--lnt', dest='ln', help='whether to learn noise variance', action='store_true')
 parser.add_argument('--lnf', dest='ln', help='whether to learn noise variance', action='store_false')
 parser.add_argument('--rtt', dest='rt', help='whether to retrain', action='store_true')
@@ -57,6 +69,10 @@ parser.add_argument('--rt_every', type=int, help='how often to retrain', nargs='
 parser.add_argument('--normt', dest='norm', help='whether to normalize data', action='store_true')
 parser.add_argument('--normf', dest='norm', help='whether to normalize data', action='store_false')
 parser.add_argument('--epochs', type=int, help='number of gradient steps', nargs='?', default=2000)
+parser.add_argument('--num_query', type=int, help='batch size of acquistion', nargs='?', default=1)
+parser.add_argument('--num_inducing', type=int, help='number of inducing points (per layer)', nargs='?', default=100)
+parser.add_argument('--fix_ips_t', dest='fix_ips', help='whether to fix inducing points', action='store_true')
+parser.add_argument('--fix_ips_f', dest='fix_ips', help='whether to fix inducing points', action='store_false')
 parser.add_argument('--run', type=int, help='run number', nargs='?', default=1)
 args = parser.parse_args()
 
@@ -65,8 +81,11 @@ model_key = args.model
 learn_noise = args.ln
 retrain = args.rt
 norm = args.norm
+num_inducing = args.num_inducing
 retrain_every = args.rt_every
 epochs = args.epochs
+fix_ips = args.fix_ips
+num_query = args.num_query
 run = args.run
 
 np.random.seed(run)
@@ -83,7 +102,12 @@ function_dict = {
     "dgpack2": [build_dgp_prior_function('ackley_2'), DGP_ACKLEY_2_MINIMUM,
                 DGP_ACKLEY_2_SEARCH_SPACE, 10, 40],
     "dgpack5": [build_dgp_prior_function('ackley_5'), DGP_ACKLEY_5_MINIMUM,
-                DGP_ACKLEY_5_SEARCH_SPACE, 20, 180]
+                DGP_ACKLEY_5_SEARCH_SPACE, 20, 180],
+    "noisymich5": [noisy_mich_5, NOISY_MICH_5_MINIMUM, NOISY_MICH_5_SEARCH_SPACE, 100, 49],
+    "noisyackley5": [noisy_ackley_5, NOISY_ACKLEY_5_MINIMUM, NOISY_ACKLEY_5_SEARCH_SPACE, 100, 49],
+    "noisyshekel": [noisy_shekel_4, NOISY_SHEKEL_MINIMUM, NOISY_SHEKEL_SEARCH_SPACE, 100, 49],
+    "noisyhart6": [noisy_hartmann_6, NOISY_HARTMANN_6_MINIMUM, NOISY_HARTMANN_6_SEARCH_SPACE, 100,
+                   49]
 }
 
 model_dict = {
@@ -108,7 +132,7 @@ pd.DataFrame({
 }).to_csv(args.output_filename)
 
 function = function_dict[function_key][0]
-F_MINIMIZER = function_dict[function_key][1]
+F_MINIMUM = function_dict[function_key][1]
 
 search_space = function_dict[function_key][2]
 observer = mk_observer(function)
@@ -144,11 +168,15 @@ def run_bayes_opt(
     for step in range(num_acquisitions):
         if retrain and step % retrain_every == 0:
             model, acquisition_rule = builder(normalized_dataset, learn_noise=learn_noise,
-                                              search_space=search_space, epochs=epochs)
+                                              search_space=search_space, epochs=epochs,
+                                              num_inducing=num_inducing, num_query_points=num_query,
+                                              fix_ips=fix_ips)
             model.optimize(normalized_dataset)
         elif step == 0:
             model, acquisition_rule = builder(normalized_dataset, learn_noise=learn_noise,
-                                              search_space=search_space, epochs=epochs)
+                                              search_space=search_space, epochs=epochs,
+                                              num_inducing=num_inducing, num_query_points=num_query,
+                                              fix_ips=fix_ips)
             model.optimize(normalized_dataset)
         else:
             model.update(normalized_dataset)
@@ -179,13 +207,15 @@ def run_bayes_opt(
     result_arg_min_idx = tf.squeeze(tf.argmin(result_observations, axis=0))
 
     pd.DataFrame(result_query_points).to_csv(
-        'results_{}/{}/{}_ln{}_rt{}_{}_norm{}_query_points_{}'.format(args.exp_name, function_key,
+        'results_{}/{}/{}_ln{}_rt{}_{}_norm{}_nq{}_ni{}_query_points_{}'.format(args.exp_name, function_key,
                                                             model_key, learn_noise, retrain,
-                                                            retrain_every, norm, run))
+                                                            retrain_every, norm, num_query,
+                                                            num_inducing, run))
     pd.DataFrame(result_observations).to_csv(
-        'results_{}/{}/{}_ln{}_rt{}_{}_norm{}_observations_{}'.format(args.exp_name, function_key,
+        'results_{}/{}/{}_ln{}_rt{}_{}_norm{}_nq{}_ni{}_observations_{}'.format(args.exp_name, function_key,
                                                             model_key, learn_noise, retrain,
-                                                            retrain_every, norm, run))
+                                                            retrain_every, norm, num_query,
+                                                            num_inducing, run))
 
     print(f"{model_key} ln {learn_noise} rt {retrain} observation "
           f"{function_key} {run}: {result_observations[result_arg_min_idx, :]}")
@@ -196,7 +226,7 @@ initial_query_points = search_space.sample_sobol(num_initial_points)
 initial_data = observer(initial_query_points)
 
 if model_key == 'rs':
-    acquired_query_points = search_space.sample(num_acquisitions)
+    acquired_query_points = search_space.sample(num_acquisitions*num_query)
     acquired_data = observer(acquired_query_points)
 
     result_query_points = tf.concat([initial_data.query_points, acquired_data.query_points], 0).numpy()

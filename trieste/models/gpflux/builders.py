@@ -116,13 +116,14 @@ def build_vanilla_deep_gp(
 
     # Pad query_points with additional random values to provide enough inducing points
     if num_inducing_points > len(query_points):
-        if isinstance(search_space, Box):
-            additional_points = search_space.sample_sobol(
-                num_inducing_points - len(query_points)
-            ).numpy()
-        else:
-            additional_points = search_space.sample(num_inducing_points - len(query_points)).numpy()
-        query_points = np.concatenate([query_points, additional_points], 0)
+        num_inducing_points = len(query_points)
+        # if isinstance(search_space, Box):
+        #     additional_points = search_space.sample_sobol(
+        #         num_inducing_points - len(query_points)
+        #     ).numpy()
+        # else:
+        #     additional_points = search_space.sample(num_inducing_points - len(query_points)).numpy()
+        # query_points = np.concatenate([query_points, additional_points], 0)
 
     config = Config(
         num_inducing_points,

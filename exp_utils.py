@@ -1,6 +1,8 @@
 import tensorflow as tf
+import tensorflow_probability as tfp
 
 import gpflow
+from gpflow.utilities import set_trainable, print_summary
 from trieste.models.gpflow import (
     GaussianProcessRegression,
     SparseGaussianProcessRegression,
@@ -20,8 +22,11 @@ from trieste.acquisition.function import (
 )
 from trieste.models.optimizer import KerasOptimizer, Optimizer
 from trieste.acquisition.optimizer import generate_continuous_optimizer
+from trieste.acquisition.utils import split_acquisition_function_calls
 from trieste.space import SearchSpace
 from trieste.data import Dataset
+
+OPT_SPLIT_SIZE = 10_000
 
 
 def build_sgpr_model(
@@ -80,7 +85,9 @@ def build_vanilla_dgp_model(
         num_layers: int = 2,
         num_inducing: int = 100,
         learn_noise: bool = False,
-        epochs: int = 400
+        fix_ips: bool = False,
+        epochs: int = 400,
+        num_query_points: int = 1,
 ):
     if learn_noise:
         noise_variance = 1e-3
@@ -90,18 +97,27 @@ def build_vanilla_dgp_model(
     dgp = build_vanilla_deep_gp(data, search_space, num_layers, num_inducing,
                                 likelihood_variance=noise_variance, trainable_likelihood=learn_noise)
 
-    acquisition_function = GreedyContinuousThompsonSampling()
-    acquisition_rule = EfficientGlobalOptimization(acquisition_function,
-                                                   num_query_points=1)
-                                                   # optimizer=generate_continuous_optimizer(1000))
+    if fix_ips:
+        set_trainable(dgp.f_layers[0].inducing_variable, False)
+
+    acquisition_function = ParallelContinuousThompsonSampling()
+    acquisition_rule = EfficientGlobalOptimization(
+        acquisition_function,
+        num_query_points=num_query_points,
+        optimizer=split_acquisition_function_calls(
+            generate_continuous_optimizer(
+                1000 * tf.shape(search_space.lower)[-1],
+                5 * tf.shape(search_space.lower)[-1],
+                ),
+            split_size=OPT_SPLIT_SIZE
+        )
+    )
 
     batch_size = 1000
 
-    def scheduler(epoch: int, lr: float) -> float:
-        if epoch == epochs // 2:
-            return lr * 0.1
-        else:
-            return lr
+    scheduler = tf.keras.callbacks.ReduceLROnPlateau(
+            'loss', factor=0.95, patience=10, min_lr=1e-8, verbose=0
+    )
 
     keras_optimizer = tf.optimizers.Adam(0.01, beta_1=0.5, beta_2=0.5)
     fit_args = {
@@ -109,7 +125,7 @@ def build_vanilla_dgp_model(
         "epochs": epochs,
         "verbose": 0,
         "shuffle": True,
-        "callbacks": [tf.keras.callbacks.LearningRateScheduler(scheduler)]
+        "callbacks": [scheduler]
     }
     optimizer = KerasOptimizer(keras_optimizer, fit_args)
 
@@ -124,10 +140,64 @@ def build_svgp_model(
         search_space: SearchSpace,
         num_inducing: int = 100,
         learn_noise: bool = False,
-        epochs: int = 400
+        fix_ips: bool = False,
+        epochs: int = 400,
+        num_query_points: int = 1,
 ):
-    return build_vanilla_dgp_model(data, search_space, num_layers=1, num_inducing=num_inducing,
-                                   learn_noise=learn_noise, epochs=epochs)
+
+    if learn_noise:
+        noise_variance = 1e-3
+    else:
+        noise_variance = 1e-5
+
+    svgp = build_vanilla_deep_gp(data, search_space, 1, num_inducing,
+                                likelihood_variance=noise_variance, trainable_likelihood=learn_noise)
+
+    upper_lengthscale_lim = 100*(search_space.upper - search_space.lower)*tf.sqrt(tf.cast(len(search_space.upper), dtype=tf.float64))
+    lower_lengthscale_lim = upper_lengthscale_lim / 10000.
+    svgp.f_layers[0].kernel.kernel = gpflow.kernels.Matern52(
+        variance=svgp.f_layers[0].kernel.kernel.variance.numpy(),
+        lengthscales=gpflow.Parameter(svgp.f_layers[0].kernel.kernel.lengthscales.numpy(),
+                                      transform=tfp.bijectors.Sigmoid(low=lower_lengthscale_lim,
+                                                                      high=upper_lengthscale_lim))
+    )
+
+    if fix_ips:
+        set_trainable(svgp.f_layers[0].inducing_variable, False)
+
+    acquisition_function = ParallelContinuousThompsonSampling()
+    acquisition_rule = EfficientGlobalOptimization(
+        acquisition_function,
+        num_query_points=num_query_points,
+        optimizer=split_acquisition_function_calls(
+            generate_continuous_optimizer(
+                1000 * tf.shape(search_space.lower)[-1],
+                5 * tf.shape(search_space.lower)[-1],
+                ),
+            split_size=OPT_SPLIT_SIZE
+        )
+    )
+
+    batch_size = 1000
+
+    scheduler = tf.keras.callbacks.ReduceLROnPlateau(
+            'loss', factor=0.95, patience=10, min_lr=1e-8, verbose=0
+    )
+
+    keras_optimizer = tf.optimizers.Adam(0.01, beta_1=0.5, beta_2=0.5)
+    fit_args = {
+        "batch_size": batch_size,
+        "epochs": epochs,
+        "verbose": 0,
+        "shuffle": True,
+        "callbacks": [scheduler]
+    }
+    optimizer = KerasOptimizer(keras_optimizer, fit_args)
+
+    return (
+        DeepGaussianProcess(svgp, optimizer, continuous_optimisation=False),
+        acquisition_rule
+    )
 
 
 def normalize(x, mean=None, std=None):
