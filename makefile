@@ -58,8 +58,8 @@ rs_experiment: $(addprefix results_rs/,$(f_rs_run))
 
 ########################## Large scale exp ##############################
 function_list = noisymich5_ noisyackley5_ noisyshekel_ noisyhart6_
-model_list = deepgp_
-num_inducing = 500_ #100_ 250_ 500_
+model_list = svgp_ deepgp_
+num_inducing = 100_ 250_ 500_
 run = 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29
 
 f_m = $(foreach pre,$(function_list),$(addprefix $(pre),$(model_list)))
