@@ -33,6 +33,7 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflux.helpers import construct_basic_inducing_variables, construct_basic_kernel
 from gpflux.models import DeepGP
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, mk_dataset, quadratic, random_seed
@@ -379,23 +380,37 @@ def test_dgp_decoupled_layer_raises_for_invalid_layer() -> None:
 def test_dgp_decoupled_layer_raises_for_invalid_number_of_features(
     num_features: int,
 ) -> None:
+    kernel = construct_basic_kernel(
+        gpflow.kernels.SquaredExponential(), output_dim=1, share_hyperparams=True
+    )
+    inducing_var = construct_basic_inducing_variables(
+        num_inducing=5,
+        input_dim=1,
+        share_variables=True,
+        z_init=tf.random.normal([5, 1], dtype=gpflow.default_float()),
+    )
     layer = gpflux.layers.GPLayer(
-        gpflow.kernels.SquaredExponential(),
-        tf.random.normal([5, 2], dtype=tf.float64),
+        kernel,
+        inducing_var,
         num_data=10,
         num_latent_gps=2,
     )
-
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         DeepGaussianProcessDecoupledLayer(layer, num_features)
 
 
 def test_dgp_decoupled_layer_raises_for_invalid_kernel() -> None:
+    inducing_var = construct_basic_inducing_variables(
+        num_inducing=5,
+        input_dim=1,
+        share_variables=True,
+        z_init=tf.random.normal([5, 1], dtype=gpflow.default_float()),
+    )
     layer = gpflux.layers.GPLayer(
         gpflow.kernels.SeparateIndependent(
             [gpflow.kernels.SquaredExponential(), gpflow.kernels.SquaredExponential()]
         ),
-        tf.random.normal([5, 2], dtype=tf.float64),
+        inducing_var,
         num_data=10,
         num_latent_gps=2,
     )

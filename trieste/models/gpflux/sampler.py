@@ -15,16 +15,10 @@
 from __future__ import annotations
 
 from abc import ABC
-from typing import Callable, List, cast
+from typing import Any, Callable, List, cast
 
 import gpflow.kernels
-
-try:
-    from gpflux.layers.basis_functions.fourier_features import RandomFourierFeaturesCosine as RFF
-except (ModuleNotFoundError, ImportError):
-    # temporary support for gpflux 0.2.3
-    from gpflux.layers.basis_functions import RandomFourierFeatures as RFF
-
+import gpflux.layers.basis_functions
 import tensorflow as tf
 from gpflow.inducing_variables import InducingPoints
 from gpflux.layers import GPLayer, LatentVariableLayer
@@ -40,6 +34,15 @@ from ..interfaces import (
     TrajectorySampler,
 )
 from .interface import GPfluxPredictor
+
+try:
+    # temporary support for gpflux 0.2.3
+    # code ugliness is due to https://github.com/python/mypy/issues/8823
+    RFF: Any = getattr(gpflux.layers.basis_functions, "RandomFourierFeatures")
+except AttributeError:
+    RFF = getattr(
+        getattr(gpflux.layers.basis_functions, "fourier_features"), "RandomFourierFeaturesCosine"
+    )
 
 
 class DeepGaussianProcessReparamSampler(ReparametrizationSampler[GPfluxPredictor]):
