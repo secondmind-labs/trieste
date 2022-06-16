@@ -580,6 +580,15 @@ NOISY_MICH_5_MINIMUM = MICHALEWICZ_5_MINIMUM
 NOISY_MICH_5_SEARCH_SPACE = MICHALEWICZ_5_SEARCH_SPACE
 
 
+def noisy_mich_10(x: TensorType) -> TensorType:
+    return michalewicz_10(x) + 0.1 * tf.random.normal([*tf.shape(x)[:-1], 1], dtype=x.dtype)
+
+
+NOISY_MICH_10_MINIMIZER = MICHALEWICZ_10_MINIMIZER
+NOISY_MICH_10_MINIMUM = MICHALEWICZ_10_MINIMUM
+NOISY_MICH_10_SEARCH_SPACE = MICHALEWICZ_10_SEARCH_SPACE
+
+
 def trid(x: TensorType, d: int = 10) -> TensorType:
     """
     The Trid function over :math:`[-d^2, d^2]` for all i=1,...,d. Dimensionality is determined

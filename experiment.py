@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
+# os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import numpy as np
 import tensorflow as tf
 tf.config.threading.set_inter_op_parallelism_threads(1)
@@ -31,9 +31,12 @@ from trieste.objectives import (
     NOISY_SHEKEL_MINIMUM,
     NOISY_MICH_5_SEARCH_SPACE,
     NOISY_MICH_5_MINIMUM,
+    NOISY_MICH_10_SEARCH_SPACE,
+    NOISY_MICH_10_MINIMUM,
     noisy_hartmann_6,
     noisy_ackley_5,
     noisy_mich_5,
+    noisy_mich_10,
     noisy_shekel_4
 )
 
@@ -107,7 +110,8 @@ function_dict = {
     "noisyackley5": [noisy_ackley_5, NOISY_ACKLEY_5_MINIMUM, NOISY_ACKLEY_5_SEARCH_SPACE, 100, 49],
     "noisyshekel": [noisy_shekel_4, NOISY_SHEKEL_MINIMUM, NOISY_SHEKEL_SEARCH_SPACE, 100, 49],
     "noisyhart6": [noisy_hartmann_6, NOISY_HARTMANN_6_MINIMUM, NOISY_HARTMANN_6_SEARCH_SPACE, 100,
-                   49]
+                   49],
+    "noisymich10": [noisy_mich_10, NOISY_MICH_10_MINIMUM, NOISY_MICH_10_SEARCH_SPACE, 100, 49]
 }
 
 model_dict = {
