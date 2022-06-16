@@ -14,10 +14,15 @@
 
 from __future__ import annotations
 
+from typing import Any, Callable
+
+import dill
+import gpflow
 import tensorflow as tf
 from gpflow.inducing_variables import InducingPoints
 from gpflux.layers import GPLayer, LatentVariableLayer
 from gpflux.models import DeepGP
+from tensorflow.python.keras.callbacks import Callback
 
 from ...data import Dataset
 from ...types import TensorType
@@ -49,13 +54,14 @@ class DeepGaussianProcess(
 
     def __init__(
         self,
-        model: DeepGP,
+        model: DeepGP | Callable[[], DeepGP],
         optimizer: KerasOptimizer | None = None,
         num_rff_features: int = 1000,
         continuous_optimisation: bool = True,
     ):
         """
-        :param model: The underlying GPflux deep Gaussian process model.
+        :param model: The underlying GPflux deep Gaussian process model. Passing in a named closure
+            rather than a model can help when copying or serialising.
         :param optimizer: The optimizer configuration for training the model. Defaults to
             :class:`~trieste.models.optimizer.KerasOptimizer` wrapper with
             :class:`~tf.optimizers.Adam` optimizer. The ``optimizer`` argument to the wrapper is
@@ -74,6 +80,12 @@ class DeepGaussianProcess(
         :raise ValueError: If ``model`` has unsupported layers, ``num_rff_features`` is less than 0,
             or if the ``optimizer`` is not of a supported type.
         """
+        if isinstance(model, DeepGP):
+            self._model_closure = None
+        else:
+            self._model_closure = model
+            model = model()
+
         for layer in model.f_layers:
             if not isinstance(layer, (GPLayer, LatentVariableLayer)):
                 raise ValueError(
@@ -120,6 +132,54 @@ class DeepGaussianProcess(
         self._model_keras.compile(self.optimizer.optimizer)
         self._absolute_epochs = 0
         self._continuous_optimisation = continuous_optimisation
+
+    def __getstate__(self) -> dict[str, Any]:
+        state = self.__dict__.copy()
+
+        # when using a model closure, store the model parameters, not the model itself
+        if self._model_closure is not None:
+            state["_model_gpflux"] = gpflow.utilities.parameter_dict(self._model_gpflux)
+            state["_model_keras"] = gpflow.utilities.parameter_dict(self._model_keras)
+
+        # serialize all the callback models, pickle the optimizer(!), and revert (ugh!)
+        callback: Callback
+        saved_models: list[KerasOptimizer] = []
+        for callback in self._optimizer.fit_args.get("callbacks", []):
+            saved_models.append(callback.model)
+            if callback.model is self._model_keras:
+                # no need to serialize the main model (and it probably wouldn't work anyway)
+                callback.model = ...
+            elif callback.model:
+                callback.model = (callback.model.to_json(), callback.model.get_weights())
+        state["_optimizer"] = dill.dumps(state["_optimizer"])
+        for callback, model in zip(self._optimizer.fit_args.get("callbacks", []), saved_models):
+            callback.model = model
+
+        return state
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        self.__dict__.update(state)
+
+        if self._model_closure is not None:
+            dgp: DeepGP = state["_model_closure"]()
+            self._model_gpflux = dgp
+            self._model_keras = dgp.as_training_model()
+
+        self._optimizer = dill.loads(self._optimizer)
+        for callback in self._optimizer.fit_args.get("callbacks", []):
+            if callback.model is ...:
+                callback.model = self._model_keras
+            elif callback.model:
+                model, weights = callback.model
+                callback.model = tf.keras.models.model_from_json(
+                    model,
+                )
+                callback.model.set_weights(weights)
+        self._model_keras.compile(self._optimizer.optimizer)
+
+        if self._model_closure is not None:
+            gpflow.utilities.multiple_assign(self._model_gpflux, state["_model_gpflux"])
+            gpflow.utilities.multiple_assign(self._model_keras, state["_model_keras"])
 
     def __repr__(self) -> str:
         """"""

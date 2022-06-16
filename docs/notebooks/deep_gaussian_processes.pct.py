@@ -64,19 +64,19 @@ initial_data = observer(initial_query_points)
 #
 # The Bayesian optimization procedure estimates the next best points to query by using a probabilistic model of the objective. We'll use a two layer deep Gaussian process (DGP), built using GPflux. We also compare to a (shallow) GP.
 #
-# Since DGPs can be hard to build, Trieste provides some basic architectures: here we use the `build_vanilla_deep_gp` function which returns a GPflux model of `DeepGP` class. As with other models (e.g. GPflow), we cannot use it directly in Bayesian optimization routines, we need to pass it through an appropriate wrapper, `DeepGaussianProcess` wrapper in this case.
+# Since DGPs can be hard to build, Trieste provides some basic architectures: here we use the `build_vanilla_deep_gp` function which returns a GPflux model of `DeepGP` class. As with other models (e.g. GPflow), we cannot use it directly in Bayesian optimization routines, we need to pass it through an appropriate wrapper, `DeepGaussianProcess` wrapper in this case. Additionally, since the GPflux interface does not currently support copying DGP architectures, if we wish to have the Bayesian optimizer track the model state, we need to pass in the DGP as a callable closure so that the architecture can be recreated when required (alternatively, we can set `set_state=False` on the optimize call).
 #
-# Few other useful notes regarding building a DGP model. The DGP model requires us to specify the number of inducing points, as we don't have the true posterior. To train the model we have to use a stochastic optimizer; Adam is used by default, but we can use other stochastic optimizers from TensorFlow. GPflux allows us to use the Keras `fit` method, which makes optimizing a lot easier - this method is used in the background for training the model.
+# A few other useful notes regarding building a DGP model: The DGP model requires us to specify the number of inducing points, as we don't have the true posterior. To train the model we have to use a stochastic optimizer; Adam is used by default, but we can use other stochastic optimizers from TensorFlow. GPflux allows us to use the Keras `fit` method, which makes optimizing a lot easier - this method is used in the background for training the model.
 
 # %%
-from gpflow.utilities import set_trainable
+from functools import partial
 
 from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp
-from trieste.models.optimizer import KerasOptimizer
 
 
 def build_dgp_model(data, search_space):
-    dgp = build_vanilla_deep_gp(
+    dgp = partial(
+        build_vanilla_deep_gp,
         data,
         search_space,
         2,
@@ -105,14 +105,11 @@ bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 grid_size = 1000
 acquisition_rule = DiscreteThompsonSampling(grid_size, 1)
 
-# Note that the GPflux interface does not currently support using `track_state=True`. This will be
-# addressed in a future update.
 dgp_result = bo.optimize(
     num_steps,
     initial_data,
     dgp_model,
     acquisition_rule=acquisition_rule,
-    track_state=False,
 )
 dgp_dataset = dgp_result.try_get_final_dataset()
 
@@ -198,7 +195,6 @@ result = bo.optimize(
     initial_data,
     gp_model,
     acquisition_rule=acquisition_rule,
-    track_state=False,
 )
 gp_dataset = result.try_get_final_dataset()
 
@@ -298,7 +294,6 @@ dgp_result = bo.optimize(
     initial_data,
     dgp_model,
     acquisition_rule=acquisition_rule,
-    track_state=False,
 )
 dgp_dataset = dgp_result.try_get_final_dataset()
 
@@ -327,7 +322,6 @@ result = bo.optimize(
     initial_data,
     gp_model,
     acquisition_rule=acquisition_rule,
-    track_state=False,
 )
 gp_dataset = result.try_get_final_dataset()
 

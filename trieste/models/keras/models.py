@@ -375,33 +375,38 @@ class DeepEnsemble(
             # serialize all the callback models, pickle the optimizer(!), and revert (ugh!)
             callback: Callback
             saved_models: list[KerasOptimizer] = []
-            for callback in self._optimizer.fit_args["callbacks"]:
+            for callback in self._optimizer.fit_args.get("callbacks", []):
                 saved_models.append(callback.model)
-                callback.model = callback.model and (
-                    callback.model.to_json(),
-                    callback.model.get_weights(),
-                )
+                if callback.model is self.model:
+                    # no need to serialize the main model
+                    callback.model = ...
+                elif callback.model:
+                    callback.model = (callback.model.to_json(), callback.model.get_weights())
             state["_optimizer"] = dill.dumps(state["_optimizer"])
-            for callback, model in zip(self._optimizer.fit_args["callbacks"], saved_models):
+            for callback, model in zip(self._optimizer.fit_args.get("callbacks", []), saved_models):
                 callback.model = model
         return state
 
     def __setstate__(self, state: dict[str, Any]) -> None:
         # Restore optimizer and callback models after depickling, and recompile.
         self.__dict__.update(state)
-        if self._optimizer:
-            # unpickle the optimizer, and restore all the callback models
-            self._optimizer = dill.loads(self._optimizer)
-            for callback in self._optimizer.fit_args.get("callbacks", []):
-                if callback.model:
+
+        # Unpickle the optimizer, and restore all the callback models
+        self._optimizer = dill.loads(self._optimizer)
+        for callback in self._optimizer.fit_args.get("callbacks", []):
+            if callback.model:
+                if callback.model is ...:
+                    callback.model = self.model
+                elif callback.model:
                     model, weights = callback.model
                     callback.model = tf.keras.models.model_from_json(
                         model,
                         custom_objects={"MultivariateNormalTriL": MultivariateNormalTriL},
                     )
                     callback.model.set_weights(weights)
+
         # Recompile the model
-        self._model.model.compile(
+        self.model.compile(
             self.optimizer.optimizer,
             loss=[self.optimizer.loss] * self._model.ensemble_size,
             metrics=[self.optimizer.metrics] * self._model.ensemble_size,

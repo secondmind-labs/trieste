@@ -533,19 +533,30 @@ def test_deep_ensemble_deep_copies_optimizer_state() -> None:
 
 
 def test_deep_ensemble_deep_copies_optimizer_callback_models() -> None:
-    example_data = empty_dataset([1], [1])
+    example_data = _get_example_data([10, 3], [10, 3])
     keras_ensemble = trieste_keras_ensemble_model(example_data, _ENSEMBLE_SIZE, False)
     model = DeepEnsemble(keras_ensemble)
+    new_example_data = _get_example_data([20, 3], [20, 3])
+    model.update(new_example_data)
+    model.optimize(new_example_data)
 
     callback = model.optimizer.fit_args["callbacks"][0]
     assert isinstance(callback, tf.keras.callbacks.EarlyStopping)
-    # default callback doesn't contain a model, so let's randomly add one
-    assert callback.model is None
-    callback.model = model.model
+    assert callback.model is model.model
 
     model_copy = copy.deepcopy(model)
-    assert len(model_copy.optimizer.fit_args.get("callbacks", [])) == 1
     callback_copy = model_copy.optimizer.fit_args["callbacks"][0]
     assert isinstance(callback_copy, tf.keras.callbacks.EarlyStopping)
-    assert callback_copy.model is not callback.model
+    assert callback_copy.model is model_copy.model is not callback.model
     npt.assert_equal(callback_copy.model.get_weights(), callback.model.get_weights())
+
+
+def test_deep_ensemble_deep_copies_optimizer_without_callbacks() -> None:
+    example_data = _get_example_data([10, 3], [10, 3])
+    keras_ensemble = trieste_keras_ensemble_model(example_data, _ENSEMBLE_SIZE, False)
+    model = DeepEnsemble(keras_ensemble)
+    del model.optimizer.fit_args["callbacks"]
+
+    model_copy = copy.deepcopy(model)
+    assert model_copy.optimizer is not model.optimizer
+    assert model_copy.optimizer.fit_args == model.optimizer.fit_args

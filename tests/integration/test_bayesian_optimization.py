@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import tempfile
+from functools import partial
 from pathlib import Path
 from typing import Any, List, Mapping, Optional, Tuple, Type, cast
 
@@ -556,9 +557,9 @@ def _test_optimizer_finds_minimum(
         )
 
     elif model_type is DeepGaussianProcess:
-        track_state = False
-        dgp = build_vanilla_deep_gp(initial_data, search_space)
-        model = DeepGaussianProcess(dgp, **model_args)
+        model = DeepGaussianProcess(
+            partial(build_vanilla_deep_gp, initial_data, search_space), **model_args
+        )
 
     elif model_type is DeepEnsemble:
         keras_ensemble = build_keras_ensemble(initial_data, 5, 3, 25, "selu")
