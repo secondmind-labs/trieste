@@ -19,17 +19,11 @@ GPflow wrappers.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Callable, Optional, Tuple, TypeVar, Union, cast
+from typing import Any, Callable, Optional, Tuple, TypeVar, Union, cast
 
+import gpflux.layers.basis_functions
 import tensorflow as tf
 import tensorflow_probability as tfp
-
-try:
-    from gpflux.layers.basis_functions.fourier_features import RandomFourierFeaturesCosine as RFF
-except (ModuleNotFoundError, ImportError):
-    # temporary support for gpflux 0.2.3
-    from gpflux.layers.basis_functions import RandomFourierFeatures as RFF
-
 from gpflux.math import compute_A_inv_b
 from typing_extensions import Protocol, runtime_checkable
 
@@ -48,6 +42,15 @@ from ..interfaces import (
     TrajectoryFunctionClass,
     TrajectorySampler,
 )
+
+try:
+    # temporary support for gpflux 0.2.3
+    # code ugliness is due to https://github.com/python/mypy/issues/8823
+    RFF: Any = getattr(gpflux.layers.basis_functions, "RandomFourierFeatures")
+except AttributeError:
+    RFF = getattr(
+        getattr(gpflux.layers.basis_functions, "fourier_features"), "RandomFourierFeaturesCosine"
+    )
 
 
 class IndependentReparametrizationSampler(ReparametrizationSampler[ProbabilisticModel]):
