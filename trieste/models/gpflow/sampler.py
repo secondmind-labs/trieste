@@ -48,9 +48,7 @@ try:
     # code ugliness is due to https://github.com/python/mypy/issues/8823
     RFF: Any = getattr(gpflux.layers.basis_functions, "RandomFourierFeatures")
 except AttributeError:
-    RFF = getattr(
-        getattr(gpflux.layers.basis_functions, "fourier_features"), "RandomFourierFeaturesCosine"
-    )
+    from gpflux.layers.basis_functions.fourier_features import RandomFourierFeaturesCosine as RFF
 
 
 class IndependentReparametrizationSampler(ReparametrizationSampler[ProbabilisticModel]):
