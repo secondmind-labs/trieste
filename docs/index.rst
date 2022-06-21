@@ -68,4 +68,16 @@ Getting help
    :maxdepth: 1
    :hidden:
 
-   Tutorials <tutorials>
+   Introduction <introduction>
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+
+   Advanced <advanced>
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+
+   Development <development>
