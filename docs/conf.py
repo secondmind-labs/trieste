@@ -51,7 +51,7 @@ copyright = (
 author = "The Trieste Contributors"
 
 # The full version, including alpha/beta/rc tags
-release = "0.11.2"
+release = "0.11.3"
 
 # -- General configuration ---------------------------------------------------
 
