@@ -139,8 +139,8 @@ def test_scalar(mocked_summary_scalar: unittest.mock.MagicMock) -> None:
     scalar("this", 1, step=1)
     scalar("_that", 2, step=2)
     with tf.name_scope("foo"):
-        scalar("this", 3, step=3)
-        scalar("_that", 4, step=4)
+        scalar("this", lambda: 3, step=3)
+        scalar("_that", lambda: 4, step=4)
     assert len(mocked_summary_scalar.call_args_list) == 2
     for i, j in enumerate([1, 3]):
         assert mocked_summary_scalar.call_args_list[i][0] == ("this", j)
@@ -152,8 +152,8 @@ def test_histogram(mocked_summary_histogram: unittest.mock.MagicMock) -> None:
     histogram("this", tf.constant(1), step=1)
     histogram("_that", tf.constant(2), step=2)
     with tf.name_scope("foo"):
-        histogram("this", tf.constant(3), step=3)
-        histogram("_that", tf.constant(4), step=4)
+        histogram("this", lambda: tf.constant(3), step=3)
+        histogram("_that", lambda: tf.constant(4), step=4)
     assert len(mocked_summary_histogram.call_args_list) == 2
     for i, j in enumerate([1, 3]):
         assert mocked_summary_histogram.call_args_list[i][0] == ("this", tf.constant(j))
@@ -165,8 +165,8 @@ def test_text(mocked_summary_histogram: unittest.mock.MagicMock) -> None:
     text("this", "1", step=1)
     text("_that", "2", step=2)
     with tf.name_scope("foo"):
-        text("this", "3", step=3)
-        text("_that", "4", step=4)
+        text("this", lambda: "3", step=3)
+        text("_that", lambda: "4", step=4)
     assert len(mocked_summary_histogram.call_args_list) == 2
     for i, j in enumerate([1, 3]):
         assert mocked_summary_histogram.call_args_list[i][0] == ("this", str(j))
