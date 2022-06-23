@@ -27,8 +27,7 @@ import scipy.optimize as spo
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-import trieste.logging
-
+from .. import logging
 from ..space import Box, DiscreteSearchSpace, SearchSpace, SearchSpaceType, TaggedProductSearchSpace
 from ..types import TensorType
 from .interface import AcquisitionFunction
@@ -322,12 +321,19 @@ def generate_continuous_optimizer(
                     """
             )
 
-        summary_writer = trieste.logging.get_tensorboard_writer()
+        summary_writer = logging.get_tensorboard_writer()
         if summary_writer:
-            with summary_writer.as_default(step=trieste.logging.get_step_number()):
-                trieste.logging.scalar("scipy.optimizer/num_evaluations", total_nfev)
+            with summary_writer.as_default(step=logging.get_step_number()):
+
+                def improvement() -> tf.Tensor:
+                    best_initial_value = tf.math.reduce_max(target_func(initial_points))
+                    best_value = tf.math.reduce_max(fun_values)
+                    return best_value - best_initial_value
+
+                logging.scalar("scipy.optimizer/improvement_on_initial_samples", improvement)
+                logging.scalar("scipy.optimizer/af_evaluations", total_nfev)
                 if recovery_run:
-                    trieste.logging.text(
+                    logging.text(
                         "scipy.optimizer/recovery_run",
                         f"Acquisition function optimization failed after {num_optimization_runs} "
                         f"optimization runs, requiring recovery runs",
