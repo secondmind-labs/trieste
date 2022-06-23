@@ -325,8 +325,10 @@ def generate_continuous_optimizer(
         if summary_writer:
             with summary_writer.as_default(step=logging.get_step_number()):
 
+                _target_func: AcquisitionFunction = target_func  # make mypy happy
+
                 def improvement() -> tf.Tensor:
-                    best_initial_value = tf.math.reduce_max(target_func(initial_points))
+                    best_initial_value = tf.math.reduce_max(_target_func(initial_points))
                     best_value = tf.math.reduce_max(fun_values)
                     return best_value - best_initial_value
 
