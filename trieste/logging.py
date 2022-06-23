@@ -18,6 +18,7 @@ import io
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any, Callable, Iterator, Optional, TypeVar, Union
 
+import absl
 import tensorflow as tf
 from tensorflow.python.eager import context
 
@@ -162,7 +163,13 @@ def histogram(name: str, data: TensorType | Callable[[], TensorType], **kwargs: 
     Accepts either data or closures that only get evaluated when logged.
     """
     if include_summary(name):
-        return tf.summary.histogram(name, evaluate_data(data), **kwargs)
+        try:
+            return tf.summary.histogram(name, evaluate_data(data), **kwargs)
+        except Exception:
+            tf.print(
+                f"Failed to write tensorboard histogram summary '{name}'",
+                output_stream=absl.logging.INFO,
+            )
     return False
 
 
@@ -172,7 +179,13 @@ def scalar(name: str, data: float | Callable[[], float], **kwargs: Any) -> bool:
     Accepts either data or closures that only get evaluated when logged.
     """
     if include_summary(name):
-        return tf.summary.scalar(name, evaluate_data(data), **kwargs)
+        try:
+            return tf.summary.scalar(name, evaluate_data(data), **kwargs)
+        except Exception:
+            tf.print(
+                f"Failed to write tensorboard scalar summary '{name}'",
+                output_stream=absl.logging.INFO,
+            )
     return False
 
 
@@ -182,7 +195,13 @@ def text(name: str, data: str | Callable[[], str], **kwargs: Any) -> bool:
     Accepts either data or closures that only get evaluated when logged.
     """
     if include_summary(name):
-        return tf.summary.text(name, evaluate_data(data), **kwargs)
+        try:
+            return tf.summary.text(name, evaluate_data(data), **kwargs)
+        except Exception:
+            tf.print(
+                f"Failed to write tensorboard text summary '{name}'",
+                output_stream=absl.logging.INFO,
+            )
     return False
 
 
@@ -194,11 +213,17 @@ def pyplot(
     Accepts either data or closures that only get evaluated when logged.
     """
     if include_summary(name):
-        figure = evaluate_data(figure)
-        with io.BytesIO() as buffer:
-            figure.savefig(buffer, format="png")
-            buffer.seek(0)
-            image = tf.image.decode_png(buffer.getvalue(), channels=4)
-        image = tf.expand_dims(image, 0)
-        return tf.summary.image(name, image)
+        try:
+            figure = evaluate_data(figure)
+            with io.BytesIO() as buffer:
+                figure.savefig(buffer, format="png")
+                buffer.seek(0)
+                image = tf.image.decode_png(buffer.getvalue(), channels=4)
+            image = tf.expand_dims(image, 0)
+            return tf.summary.image(name, image)
+        except Exception:
+            tf.print(
+                f"Failed to write tensorboard image summary '{name}'",
+                output_stream=absl.logging.INFO,
+            )
     return False

@@ -330,7 +330,7 @@ def generate_continuous_optimizer(
                 def improvement() -> tf.Tensor:
                     best_initial_value = tf.math.reduce_max(_target_func(initial_points))
                     best_value = tf.math.reduce_max(fun_values)
-                    return best_value - best_initial_value
+                    return best_value - tf.cast(best_initial_value, best_value.dtype)
 
                 logging.scalar("scipy.optimizer/improvement_on_initial_samples", improvement)
                 logging.scalar("scipy.optimizer/af_evaluations", total_nfev)
