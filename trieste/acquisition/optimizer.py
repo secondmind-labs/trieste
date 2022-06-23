@@ -27,6 +27,8 @@ import scipy.optimize as spo
 import tensorflow as tf
 import tensorflow_probability as tfp
 
+import trieste.logging
+
 from ..space import Box, DiscreteSearchSpace, SearchSpace, SearchSpaceType, TaggedProductSearchSpace
 from ..types import TensorType
 from .interface import AcquisitionFunction
@@ -267,6 +269,7 @@ def generate_continuous_optimizer(
             successes,
             fun_values,
             chosen_x,
+            nfev,
         ) = _perform_parallel_continuous_optimization(  # [num_optimization_runs, V]
             target_func,
             space,
@@ -277,7 +280,9 @@ def generate_continuous_optimizer(
         successful_optimization = tf.reduce_all(
             tf.reduce_any(successes, axis=0)
         )  # Check that at least one optimization was successful for each function
+        total_nfev = tf.reduce_sum(nfev)
 
+        recovery_run = False
         if (
             not successful_optimization
         ):  # if all optimizations failed for a function then try again from random starts
@@ -288,6 +293,7 @@ def generate_continuous_optimizer(
                 recovery_successes,
                 recovery_fun_values,
                 recovery_chosen_x,
+                recovery_nfev,
             ) = _perform_parallel_continuous_optimization(
                 target_func, space, tiled_random_points, optimizer_args
             )
@@ -305,6 +311,8 @@ def generate_continuous_optimizer(
             successful_optimization = tf.reduce_all(
                 tf.reduce_any(successes, axis=0)
             )  # Check that at least one optimization was successful for each function
+            total_nfev += tf.reduce_sum(recovery_nfev)
+            recovery_run = True
 
         if not successful_optimization:  # return error if still failed
             raise FailedOptimizationError(
@@ -313,6 +321,17 @@ def generate_continuous_optimizer(
                     even after {num_recovery_runs + num_optimization_runs} restarts.
                     """
             )
+
+        summary_writer = trieste.logging.get_tensorboard_writer()
+        if summary_writer:
+            with summary_writer.as_default(step=trieste.logging.get_step_number()):
+                trieste.logging.scalar("scipy.optimizer/num_evaluations", total_nfev)
+                if recovery_run:
+                    trieste.logging.text(
+                        "scipy.optimizer/recovery_run",
+                        f"Acquisition function optimization failed after {num_optimization_runs} "
+                        f"optimization runs, requiring recovery runs",
+                    )
 
         best_run_ids = tf.math.argmax(fun_values, axis=0)  # [V]
         chosen_points = tf.gather(
@@ -329,7 +348,7 @@ def _perform_parallel_continuous_optimization(
     space: SearchSpace,
     starting_points: TensorType,
     optimizer_args: dict[str, Any],
-) -> Tuple[TensorType, TensorType, TensorType]:
+) -> Tuple[TensorType, TensorType, TensorType, TensorType]:
     """
     A function to perform parallel optimization of our acquisition functions
     using Scipy. We perform L-BFGS-B starting from each of the locations contained
@@ -363,8 +382,8 @@ def _perform_parallel_continuous_optimization(
         `starting_points` controls the number of individual optimization runs
         for each of the V target functions.
     :param optimizer_args: Keyword arguments to pass to the Scipy optimizer.
-    :return: A tuple containing the failure status, the maximum value
-        and the maximiser found my each of our optimziations.
+    :return: A tuple containing the failure statuses, maximum values, maximisers and
+        number of evaluations for each of our optimizations.
     """
 
     tf_dtype = starting_points.dtype  # type for communication with Trieste
@@ -446,12 +465,16 @@ def _perform_parallel_continuous_optimization(
     vectorized_chosen_x = tf.constant(
         [result.x for result in final_vectorized_child_results], dtype=tf_dtype
     )  # [num_optimization_runs, D]
+    vectorized_nfev = tf.constant(
+        [result.nfev for result in final_vectorized_child_results], dtype=tf_dtype
+    )
 
     successes = tf.reshape(vectorized_successes, [-1, V])  # [num_optimization_runs, V]
     fun_values = tf.reshape(vectorized_fun_values, [-1, V])  # [num_optimization_runs, V]
     chosen_x = tf.reshape(vectorized_chosen_x, [-1, V, D])  # [num_optimization_runs, V, D]
+    nfev = tf.reshape(vectorized_nfev, [-1, V])  # [num_optimization_runs, V]
 
-    return (successes, fun_values, chosen_x)
+    return (successes, fun_values, chosen_x, nfev)
 
 
 class ScipyLbfgsBGreenlet(gr.greenlet):  # type: ignore[misc]
