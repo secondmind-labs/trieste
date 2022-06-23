@@ -279,7 +279,7 @@ def generate_continuous_optimizer(
         )  # Check that at least one optimization was successful for each function
 
         if (
-            not successful_optimization
+            num_recovery_runs and not successful_optimization
         ):  # if all optimizations failed for a function then try again from random starts
             random_points = space.sample(num_recovery_runs)[:, None, :]  # [num_recovery_runs, 1, D]
             tiled_random_points = tf.tile(random_points, [1, V, 1])  # [num_recovery_runs, V, D]

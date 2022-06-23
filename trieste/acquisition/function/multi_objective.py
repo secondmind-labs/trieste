@@ -628,7 +628,8 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
             self._penalization, hippo_penalizer
         ):
             # if possible, just update the penalization function variables
-            self._penalization.update(pending_points)  # type: ignore[unreachable]  # (confused by tf.function)
+            # (the type ignore is due to mypy getting confused by tf.function)
+            self._penalization.update(pending_points)  # type: ignore[unreachable]
             return self._penalized_acquisition
         else:
             # otherwise construct a new penalized acquisition function
