@@ -259,19 +259,19 @@ def test_optimize_continuous_recovery_runs(
             )  # check that we do correct number of recovery runs
             currently_failing = False
 
-        if currently_failing:  # return function that is impossible to optimize
-            return _delta_function(10)
+        if currently_failing:  # use function that is impossible to optimize
+            return _delta_function(10)(x)
         else:
-            return _quadratic_sum([0.5, 0.5])  # return function that is easy to optimize
+            return _quadratic_sum([0.5, 0.5])(x)  # use function that is easy to optimize
 
-        optimizer = generate_continuous_optimizer(
-            num_optimization_runs=1, num_recovery_runs=num_recovery_runs
-        )
-        if failed_first_optimization and (num_recovery_runs == 0):
-            with pytest.raises(FailedOptimizationError):
-                optimizer(Box([-1], [1]), _target_fn)
-        else:
+    optimizer = generate_continuous_optimizer(
+        num_optimization_runs=1, num_recovery_runs=num_recovery_runs
+    )
+    if failed_first_optimization and (num_recovery_runs == 0):
+        with pytest.raises(FailedOptimizationError):
             optimizer(Box([-1], [1]), _target_fn)
+    else:
+        optimizer(Box([-1], [1]), _target_fn)
 
 
 def test_optimize_continuous_when_target_raises_exception() -> None:
