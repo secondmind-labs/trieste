@@ -161,7 +161,7 @@ def generate_continuous_optimizer(
     num_initial_samples: int = NUM_SAMPLES_MIN,
     num_optimization_runs: int = 10,
     num_recovery_runs: int = 10,
-    optimizer_args: dict[str, Any] = dict(),
+    optimizer_args: Optional[dict[str, Any]] = None,
 ) -> AcquisitionOptimizer[Box | TaggedProductSearchSpace]:
     """
     Generate a gradient-based optimizer for :class:'Box' and :class:'TaggedProductSearchSpace'
@@ -271,7 +271,7 @@ def generate_continuous_optimizer(
             target_func,
             space,
             initial_points,
-            optimizer_args,
+            optimizer_args or {},
         )
 
         successful_optimization = tf.reduce_all(
@@ -289,7 +289,7 @@ def generate_continuous_optimizer(
                 recovery_fun_values,
                 recovery_chosen_x,
             ) = _perform_parallel_continuous_optimization(
-                target_func, space, tiled_random_points, optimizer_args
+                target_func, space, tiled_random_points, optimizer_args or {}
             )
 
             successes = tf.concat(
@@ -466,7 +466,7 @@ class ScipyLbfgsBGreenlet(gr.greenlet):  # type: ignore[misc]
         self,
         start: "np.ndarray[Any, Any]",
         bounds: spo.Bounds,
-        optimizer_args: dict[str, Any] = dict(),
+        optimizer_args: Optional[dict[str, Any]] = None,
     ) -> spo.OptimizeResult:
         cache_x = start + 1  # Any value different from `start`.
         cache_y: Optional["np.ndarray[Any, Any]"] = None
@@ -493,7 +493,7 @@ class ScipyLbfgsBGreenlet(gr.greenlet):  # type: ignore[misc]
             jac=lambda x: value_and_gradient(x)[1],
             method="l-bfgs-b",
             bounds=bounds,
-            **optimizer_args,
+            **(optimizer_args or {}),
         )
 
 
