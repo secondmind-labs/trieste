@@ -628,7 +628,7 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
             self._penalization, hippo_penalizer
         ):
             # if possible, just update the penalization function variables
-            self._penalization.update(pending_points)
+            self._penalization.update(pending_points)  # type: ignore[unreachable]  # (confused by tf.function)
             return self._penalized_acquisition
         else:
             # otherwise construct a new penalized acquisition function
