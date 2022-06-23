@@ -247,15 +247,13 @@ class DeepGaussianProcessDecoupledLayer(ABC):
         self._num_features = num_features
         self._layer = layer
 
-        if isinstance(layer.kernel, gpflow.kernels.MultioutputKernel):
-            if not isinstance(layer.kernel, gpflow.kernels.SharedIndependent):
-                raise ValueError(
-                    f"Multioutput kernels other than gpflow.kernels.SharedIndependent are not"
-                    f"currently supported, received {type(layer.kernel)}"
-                )
-            self._kernel = layer.kernel.kernel
-        else:
-            self._kernel = layer.kernel
+        assert isinstance(layer.kernel, gpflow.kernels.MultioutputKernel)
+        if not isinstance(layer.kernel, gpflow.kernels.SharedIndependent):
+            raise ValueError(
+                f"Multioutput kernels other than gpflow.kernels.SharedIndependent are not"
+                f"currently supported, received {type(layer.kernel)}"
+            )
+        self._kernel = layer.kernel.kernel
 
         self._feature_functions = ResampleableDecoupledDeepGaussianProcessFeatureFunctions(
             layer, num_features
