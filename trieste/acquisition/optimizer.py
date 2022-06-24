@@ -279,7 +279,7 @@ def generate_continuous_optimizer(
         successful_optimization = tf.reduce_all(
             tf.reduce_any(successes, axis=0)
         )  # Check that at least one optimization was successful for each function
-        total_nfev = tf.reduce_sum(nfev)
+        total_nfev = tf.reduce_max(nfev)  # acquisition function is evaluated in parallel
 
         recovery_run = False
         if (
@@ -310,7 +310,7 @@ def generate_continuous_optimizer(
             successful_optimization = tf.reduce_all(
                 tf.reduce_any(successes, axis=0)
             )  # Check that at least one optimization was successful for each function
-            total_nfev += tf.reduce_sum(recovery_nfev)
+            total_nfev += tf.reduce_max(recovery_nfev)
             recovery_run = True
 
         if not successful_optimization:  # return error if still failed
