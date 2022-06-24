@@ -235,11 +235,13 @@ def test_optimize_continuous_correctly_uses_init_params(
     optimizer(Box([-1], [1]), _target_fn)
 
 
+@unittest.mock.patch("trieste.logging.tf.summary.text")
 @unittest.mock.patch("trieste.logging.tf.summary.scalar")
 @pytest.mark.parametrize("failed_first_optimization", [True, False])
 @pytest.mark.parametrize("num_recovery_runs", [0, 2, 10])
 def test_optimize_continuous_recovery_runs(
     mocked_summary_scalar: unittest.mock.MagicMock,
+    mocked_summary_text: unittest.mock.MagicMock,
     failed_first_optimization: bool,
     num_recovery_runs: int,
 ) -> None:
@@ -285,6 +287,7 @@ def test_optimize_continuous_recovery_runs(
         else:
             optimizer(Box([-1], [1]), _target_fn)
 
+    # check we also generated the expected tensorboard logs
     scalar_logs = {call[0][0]: call[0][1:] for call in mocked_summary_scalar.call_args_list}
     if failed_first_optimization and (num_recovery_runs == 0):
         assert not scalar_logs
@@ -295,6 +298,12 @@ def test_optimize_continuous_recovery_runs(
         }
         # also evaluated once for the initial points, and again when generating the log
         assert scalar_logs["scipy.optimizer/af_evaluations"][0] == num_evals - 2
+
+    text_logs = {call[0][0]: call[0][1:] for call in mocked_summary_text.call_args_list}
+    if failed_first_optimization and (num_recovery_runs > 0):
+        assert set(text_logs) == {"scipy.optimizer/recovery_run"}
+    else:
+        assert not text_logs
 
 
 def test_optimize_continuous_when_target_raises_exception() -> None:
