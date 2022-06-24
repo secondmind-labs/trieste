@@ -165,9 +165,9 @@ def histogram(name: str, data: TensorType | Callable[[], TensorType], **kwargs: 
     if include_summary(name):
         try:
             return tf.summary.histogram(name, evaluate_data(data), **kwargs)
-        except Exception:
+        except Exception as e:
             tf.print(
-                f"Failed to write tensorboard histogram summary '{name}'",
+                f"Failed to write tensorboard histogram summary '{name}':\n\n{e}",
                 output_stream=absl.logging.INFO,
             )
     return False
@@ -181,9 +181,9 @@ def scalar(name: str, data: float | Callable[[], float], **kwargs: Any) -> bool:
     if include_summary(name):
         try:
             return tf.summary.scalar(name, evaluate_data(data), **kwargs)
-        except Exception:
+        except Exception as e:
             tf.print(
-                f"Failed to write tensorboard scalar summary '{name}'",
+                f"Failed to write tensorboard scalar summary '{name}':\n\n{e}",
                 output_stream=absl.logging.INFO,
             )
     return False
@@ -197,9 +197,9 @@ def text(name: str, data: str | Callable[[], str], **kwargs: Any) -> bool:
     if include_summary(name):
         try:
             return tf.summary.text(name, evaluate_data(data), **kwargs)
-        except Exception:
+        except Exception as e:
             tf.print(
-                f"Failed to write tensorboard text summary '{name}'",
+                f"Failed to write tensorboard text summary '{name}':\n\n{e}",
                 output_stream=absl.logging.INFO,
             )
     return False
@@ -221,9 +221,9 @@ def pyplot(
                 image = tf.image.decode_png(buffer.getvalue(), channels=4)
             image = tf.expand_dims(image, 0)
             return tf.summary.image(name, image)
-        except Exception:
+        except Exception as e:
             tf.print(
-                f"Failed to write tensorboard image summary '{name}'",
+                f"Failed to write tensorboard image summary '{name}':\n\n{e}",
                 output_stream=absl.logging.INFO,
             )
     return False
