@@ -255,7 +255,9 @@ class DeepGaussianProcessDecoupledLayer(ABC):
                 )
             self._kernel = layer.kernel.kernel
         else:
-            self._kernel = layer.kernel
+            # GPLayers are supposed to only use multioutput kernels but we also use them with
+            # simple kernels
+            self._kernel = layer.kernel  # type: ignore[unreachable]
 
         self._feature_functions = ResampleableDecoupledDeepGaussianProcessFeatureFunctions(
             layer, num_features
