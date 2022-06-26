@@ -332,11 +332,11 @@ def generate_continuous_optimizer(
                     best_value = tf.math.reduce_max(fun_values)
                     return best_value - tf.cast(best_initial_value, best_value.dtype)
 
-                logging.scalar("scipy.optimizer/improvement_on_initial_samples", improvement)
-                logging.scalar("scipy.optimizer/af_evaluations", total_nfev)
+                logging.scalar("spo_improvement_on_initial_samples", improvement)
+                logging.scalar("spo_af_evaluations", total_nfev)
                 if recovery_run:
                     logging.text(
-                        "scipy.optimizer/recovery_run",
+                        "spo_recovery_run",
                         f"Acquisition function optimization failed after {num_optimization_runs} "
                         f"optimization runs, requiring recovery runs",
                     )

@@ -293,15 +293,15 @@ def test_optimize_continuous_recovery_runs(
         assert not scalar_logs
     else:
         assert set(scalar_logs) == {
-            "scipy.optimizer/af_evaluations",
-            "scipy.optimizer/improvement_on_initial_samples",
+            "spo_af_evaluations",
+            "spo_improvement_on_initial_samples",
         }
         # also evaluated once for the initial points, and again when generating the log
-        assert scalar_logs["scipy.optimizer/af_evaluations"][0] == num_evals - 2
+        assert scalar_logs["spo_af_evaluations"][0] == num_evals - 2
 
     text_logs = {call[0][0]: call[0][1:] for call in mocked_summary_text.call_args_list}
     if failed_first_optimization and (num_recovery_runs > 0):
-        assert set(text_logs) == {"scipy.optimizer/recovery_run"}
+        assert set(text_logs) == {"spo_recovery_run"}
     else:
         assert not text_logs
 
