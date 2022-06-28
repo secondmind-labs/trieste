@@ -55,6 +55,7 @@ from trieste.bayesian_optimizer import (
     OptimizationResult,
     TrainableProbabilisticModelType,
 )
+from trieste.data import Dataset
 from trieste.logging import tensorboard_writer
 from trieste.models import TrainableProbabilisticModel, TrajectoryFunctionClass
 from trieste.models.gpflow import (
@@ -583,6 +584,23 @@ def _test_optimizer_finds_minimum(
         summary_writer = tf.summary.create_file_writer(tmpdirname)
         with tensorboard_writer(summary_writer):
 
+            def early_stop_callback(
+                datasets: Mapping[str, Dataset],
+                _models: Mapping[str, TrainableProbabilisticModelType],
+                _acquisition_state: None,
+            ) -> bool:
+                dataset = datasets[OBJECTIVE]
+                arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
+                best_x = dataset.query_points[arg_min_idx]
+                best_y = dataset.observations[arg_min_idx]
+                minimizer_err = tf.abs((best_x - minimizers) / minimizers)
+                try:
+                    assert tf.reduce_any(tf.reduce_all(minimizer_err < 0.05, axis=-1), axis=0)
+                    npt.assert_allclose(best_y, minima, rtol=rtol_level)
+                    return True
+                except AssertionError:
+                    return False
+
             result = BayesianOptimizer(observer, search_space).optimize(
                 num_steps or 2,
                 initial_data,
@@ -590,6 +608,7 @@ def _test_optimizer_finds_minimum(
                 acquisition_rule,
                 track_state=track_state,
                 track_path=Path(tmpdirname) / "history" if track_state else None,
+                early_stop_callback=early_stop_callback,
             )
             best_x, best_y, _ = result.try_get_optimal_point()
 
@@ -598,19 +617,17 @@ def _test_optimizer_finds_minimum(
                 pass
             else:
                 minimizer_err = tf.abs((best_x - minimizers) / minimizers)
-                # these accuracies are the current best for the given number of optimization
-                # steps, which makes this is a regression test
                 assert tf.reduce_any(tf.reduce_all(minimizer_err < 0.05, axis=-1), axis=0)
                 npt.assert_allclose(best_y, minima, rtol=rtol_level)
 
                 if track_state:
-                    assert len(result.history) == num_steps
-                    assert len(result.loaded_history) == num_steps
+                    assert len(result.history) <= num_steps
+                    assert len(result.loaded_history) == len(result.history)
                     loaded_result: OptimizationResult[None] = OptimizationResult.from_path(
                         Path(tmpdirname) / "history"
                     )
                     assert loaded_result.final_result.is_ok
-                    assert len(loaded_result.history) == num_steps
+                    assert len(loaded_result.history) == len(result.history)
 
             # check that acquisition functions defined as classes aren't retraced unnecessarily
             # They should be retraced once for the optimzier's starting grid, L-BFGS, and logging.
