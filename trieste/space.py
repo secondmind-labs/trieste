@@ -487,7 +487,7 @@ class TaggedProductSearchSpace(SearchSpace):
 
         self._subspace_starting_indices = dict(zip(tags, tf.cumsum(subspace_sizes, exclusive=True)))
 
-        self._dimension = tf.reduce_sum(subspace_sizes)
+        self._dimension = tf.cast(tf.reduce_sum(subspace_sizes), dtype=tf.int32)
         self._tags = tuple(tags)  # avoid accidental modification by users
 
     def __repr__(self) -> str:
@@ -501,13 +501,21 @@ class TaggedProductSearchSpace(SearchSpace):
     def lower(self) -> TensorType:
         """The lowest values taken by each space dimension, concatenated across subspaces."""
         lower_for_each_subspace = [self.get_subspace(tag).lower for tag in self.subspace_tags]
-        return tf.concat(lower_for_each_subspace, axis=-1)
+        return (
+            tf.concat(lower_for_each_subspace, axis=-1)
+            if lower_for_each_subspace
+            else tf.constant([], dtype=tf.float64)
+        )
 
     @property
     def upper(self) -> TensorType:
         """The highest values taken by each space dimension, concatenated across subspaces."""
         upper_for_each_subspace = [self.get_subspace(tag).upper for tag in self.subspace_tags]
-        return tf.concat(upper_for_each_subspace, axis=-1)
+        return (
+            tf.concat(upper_for_each_subspace, axis=-1)
+            if upper_for_each_subspace
+            else tf.constant([], dtype=tf.float64)
+        )
 
     @property
     def subspace_tags(self) -> tuple[str, ...]:
