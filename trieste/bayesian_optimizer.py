@@ -959,3 +959,49 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             "wallclock/model_fitting",
             model_fitting_timer.time + initial_model_fitting_timer.time,
         )
+
+
+def stop_at_minimum(
+    minimum: Optional[tf.Tensor] = None,
+    minimizers: Optional[tf.Tensor] = None,
+    minimum_atol: float = 0,
+    minimum_rtol: float = 0.05,
+    minimizers_atol: float = 0,
+    minimizers_rtol: float = 0.05,
+    objective_tag: str = OBJECTIVE,
+) -> Callable[[Mapping[str, Dataset], Mapping[str, TrainableProbabilisticModel], None], bool]:
+    """
+    Generate an early stop function that terminates a BO loop when it gets close enough to the
+    given objective minimum and/or minimizer points.
+
+    :param minimum: Optional minimum to stop at, with shape [1].
+    :param minimizers: Optional minimizer points to stop at, with shape [N, D].
+    :param minimum_atol: Absolute tolerance for minimum.
+    :param minimum_rtol: Relative tolerance for minimum.
+    :param minimizers_atol: Absolute tolerance for minimizer point.
+    :param minimizers_rtol: Relative tolerance for minimizer point.
+    :param objective_tag: The tag for the objective data.
+    :return: An early stop function that terminates if we get close enough to both the minimum
+        and any of the minimizer points.
+    """
+
+    def early_stop_callback(
+        datasets: Mapping[str, Dataset],
+        _models: Mapping[str, TrainableProbabilisticModel],
+        _acquisition_state: object,
+    ) -> bool:
+        dataset = datasets[objective_tag]
+        arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
+        if minimum is not None:
+            best_y = dataset.observations[arg_min_idx]
+            close_y = np.isclose(best_y, minimum, atol=minimum_atol, rtol=minimum_rtol)
+            if not tf.reduce_all(close_y):
+                return False
+        if minimizers is not None:
+            best_x = dataset.query_points[arg_min_idx]
+            close_x = np.isclose(best_x, minimizers, atol=minimizers_atol, rtol=minimizers_rtol)
+            if not tf.reduce_any(tf.reduce_all(close_x, axis=-1), axis=0):
+                return False
+        return True
+
+    return early_stop_callback
