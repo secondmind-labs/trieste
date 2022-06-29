@@ -591,7 +591,7 @@ def _test_optimizer_finds_minimum(
                 acquisition_rule,
                 track_state=track_state,
                 track_path=Path(tmpdirname) / "history" if track_state else None,
-                early_stop_callback=stop_at_minimum(minima, minimizers, rtol_level),
+                early_stop_callback=stop_at_minimum(minima, minimizers, minimum_rtol=rtol_level),
             )
             best_x, best_y, _ = result.try_get_optimal_point()
 
