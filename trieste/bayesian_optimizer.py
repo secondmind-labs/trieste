@@ -21,7 +21,6 @@ from __future__ import annotations
 import copy
 import traceback
 from collections import Counter
-from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import (
@@ -29,6 +28,7 @@ from typing import (
     ClassVar,
     Dict,
     Generic,
+    Mapping,
     MutableMapping,
     Optional,
     TypeVar,
