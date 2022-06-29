@@ -71,6 +71,12 @@ TrainableProbabilisticModelType = TypeVar(
 )
 """ Contravariant type variable bound to :class:`TrainableProbabilisticModel`. """
 
+EarlyStopCallback = Callable[
+    [Mapping[str, Dataset], Mapping[str, TrainableProbabilisticModelType], Optional[StateType]],
+    bool,
+]
+""" Early stop callback type, generic in the model and state types. """
+
 
 @dataclass(frozen=True)
 class Record(Generic[StateType]):
@@ -315,9 +321,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
         early_stop_callback: Optional[
-            Callable[
-                [Mapping[str, Dataset], Mapping[str, TrainableProbabilisticModel], object], bool
-            ]
+            EarlyStopCallback[TrainableProbabilisticModel, object]
         ] = None,
     ) -> OptimizationResult[None]:
         ...
@@ -336,9 +340,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
         early_stop_callback: Optional[
-            Callable[
-                [Mapping[str, Dataset], Mapping[str, TrainableProbabilisticModelType], object], bool
-            ]
+            EarlyStopCallback[TrainableProbabilisticModelType, object]
         ] = None,
         # this should really be OptimizationResult[None], but tf.Tensor is untyped so the type
         # checker can't differentiate between TensorType and State[S | None, TensorType], and
@@ -361,9 +363,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
         early_stop_callback: Optional[
-            Callable[
-                [Mapping[str, Dataset], Mapping[str, TrainableProbabilisticModelType], object], bool
-            ]
+            EarlyStopCallback[TrainableProbabilisticModelType, object]
         ] = None,
     ) -> OptimizationResult[object]:
         ...
@@ -383,14 +383,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
         early_stop_callback: Optional[
-            Callable[
-                [
-                    Mapping[str, Dataset],
-                    Mapping[str, TrainableProbabilisticModelType],
-                    StateType | None,
-                ],
-                bool,
-            ]
+            EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
     ) -> OptimizationResult[StateType]:
         ...
@@ -411,14 +404,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
         early_stop_callback: Optional[
-            Callable[
-                [
-                    Mapping[str, Dataset],
-                    Mapping[str, TrainableProbabilisticModelType],
-                    StateType | None,
-                ],
-                bool,
-            ]
+            EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
     ) -> OptimizationResult[StateType]:
         ...
@@ -434,9 +420,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
         early_stop_callback: Optional[
-            Callable[
-                [Mapping[str, Dataset], Mapping[str, TrainableProbabilisticModel], object], bool
-            ]
+            EarlyStopCallback[TrainableProbabilisticModel, object]
         ] = None,
     ) -> OptimizationResult[None]:
         ...
@@ -455,9 +439,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
         early_stop_callback: Optional[
-            Callable[
-                [Mapping[str, Dataset], Mapping[str, TrainableProbabilisticModelType], object], bool
-            ]
+            EarlyStopCallback[TrainableProbabilisticModelType, object]
         ] = None,
     ) -> OptimizationResult[object]:
         ...
@@ -476,9 +458,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
         early_stop_callback: Optional[
-            Callable[
-                [Mapping[str, Dataset], Mapping[str, TrainableProbabilisticModelType], object], bool
-            ]
+            EarlyStopCallback[TrainableProbabilisticModelType, object]
         ] = None,
     ) -> OptimizationResult[object]:
         ...
@@ -498,14 +478,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
         early_stop_callback: Optional[
-            Callable[
-                [
-                    Mapping[str, Dataset],
-                    Mapping[str, TrainableProbabilisticModelType],
-                    StateType | None,
-                ],
-                bool,
-            ]
+            EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
     ) -> OptimizationResult[StateType]:
         ...
@@ -525,14 +498,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
         early_stop_callback: Optional[
-            Callable[
-                [
-                    Mapping[str, Dataset],
-                    Mapping[str, TrainableProbabilisticModelType],
-                    StateType | None,
-                ],
-                bool,
-            ]
+            EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
     ) -> OptimizationResult[StateType]:
         ...
@@ -557,14 +523,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
         early_stop_callback: Optional[
-            Callable[
-                [
-                    Mapping[str, Dataset],
-                    Mapping[str, TrainableProbabilisticModelType],
-                    StateType | None,
-                ],
-                bool,
-            ]
+            EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
     ) -> OptimizationResult[StateType] | OptimizationResult[None]:
         """
@@ -969,7 +928,7 @@ def stop_at_minimum(
     minimizers_atol: float = 0,
     minimizers_rtol: float = 0.05,
     objective_tag: str = OBJECTIVE,
-) -> Callable[[Mapping[str, Dataset], Mapping[str, TrainableProbabilisticModel], None], bool]:
+) -> EarlyStopCallback[TrainableProbabilisticModel, object]:
     """
     Generate an early stop function that terminates a BO loop when it gets close enough to the
     given objective minimum and/or minimizer points.
