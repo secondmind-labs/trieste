@@ -25,6 +25,7 @@ import yaml
 VERSION = Path("../../VERSION")
 VERSIONS = Path("../../versions.json")
 CITATION = Path("../../CITATION.cff")
+REDIRECT = Path("../../redirect.html")
 
 
 @pytest.fixture(name="version")
@@ -42,6 +43,11 @@ def _versions() -> list[dict[str, Any]]:
 def _citation() -> list[dict[str, Any]]:
     with open(CITATION) as f:
         return yaml.safe_load(f)
+
+
+@pytest.fixture(name="redirect")
+def _redirect() -> str:
+    return REDIRECT.read_text()
 
 
 def test_version_is_valid(version: str) -> None:
@@ -68,3 +74,7 @@ def test_version_in_versions(version: str, versions: list[dict[str, Any]]) -> No
 
 def test_citation_version(version: str, citation: dict[str, Any]) -> None:
     assert citation["version"] == version
+
+
+def test_redirect_version(version: str, redirect: str) -> None:
+    assert f"{version}/index.html" in redirect
