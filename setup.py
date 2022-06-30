@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from pathlib import Path
 
 from setuptools import find_packages, setup
 
@@ -19,7 +20,7 @@ with open("README.md", "r") as file:
 
 setup(
     name="trieste",
-    version="0.11.3",
+    version=Path("VERSION").read_text().strip(),
     author="The Trieste contributors",
     author_email="labs@secondmind.ai",
     description="A Bayesian optimization research toolbox built on TensorFlow",
