@@ -18,7 +18,6 @@ import re
 from pathlib import Path
 from typing import Any
 
-import jsonschema
 import pytest
 import yaml
 
@@ -55,16 +54,11 @@ def test_version_is_valid(version: str) -> None:
 
 
 def test_versions_is_valid(versions: list[dict[str, Any]]) -> None:
-    schema = {
-        "type": "array",
-        "items": {
-            "type": "object",
-            "required": ["version", "url"],
-            "properties": {"version": {"type": "string"}, "url": {"type": "string"}},
-        },
-    }
-    jsonschema.validate(versions, schema)
+    assert isinstance(versions, list)
     for v in versions:
+        assert isinstance(v, dict)
+        assert set(v.keys()) == {"version", "url"}
+        assert all(isinstance(value, str) for value in v.values())
         assert v["url"] == f"../{v['version']}/index.html"
 
 
