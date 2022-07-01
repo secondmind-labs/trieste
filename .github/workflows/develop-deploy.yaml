@@ -15,7 +15,7 @@
 on:
   workflow_dispatch:
   push:
-    tags: v[0-9]+.[0-9]+.[0-9]+*
+    branches: develop
 
 jobs:
   docs:
@@ -35,12 +35,14 @@ jobs:
         sudo dpkg -i "$TEMP_DEB"
         rm -f "$TEMP_DEB"
     - run: |
+        echo "develop" > VERSION
         (cd docs ; make html ; make html)
         TMP_DIR=$(mktemp -d -p $(pwd))
         VERSION=$(cat VERSION)
         mv docs/_build/html $TMP_DIR/$VERSION
         cp redirect.html $TMP_DIR/index.html
         cp versions.json $TMP_DIR/
+        git restore VERSION
         git checkout gh-pages-history
         git rm -r --ignore-unmatch docs/$VERSION
         mv -f $TMP_DIR/* docs/
