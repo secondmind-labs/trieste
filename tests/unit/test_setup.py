@@ -21,14 +21,16 @@ from typing import Any
 import pytest
 import yaml
 
-VERSION = Path("../../VERSION")
-VERSIONS = Path("../../versions.json")
-CITATION = Path("../../CITATION.cff")
-REDIRECT = Path("../../redirect.html")
+BASE_PATH = Path(__file__).parents[2]
+VERSION = BASE_PATH / "VERSION"
+VERSIONS = BASE_PATH / "versions.json"
+CITATION = BASE_PATH / "CITATION.cff"
+REDIRECT = BASE_PATH / "redirect.html"
 
 
 @pytest.fixture(name="version")
 def _version() -> str:
+    print(__file__)
     return VERSION.read_text().strip()
 
 
