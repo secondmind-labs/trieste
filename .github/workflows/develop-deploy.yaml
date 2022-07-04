@@ -43,7 +43,7 @@ jobs:
         cp redirect.html $TMP_DIR/index.html
         cp versions.json $TMP_DIR/
         git restore VERSION
-        git checkout gh-pages-history
+        git checkout origin/gh-pages-history
         git rm -r --ignore-unmatch docs/$VERSION
         mv -f $TMP_DIR/* docs/
         rmdir $TMP_DIR
