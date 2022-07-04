@@ -21,10 +21,20 @@ from __future__ import annotations
 import copy
 import traceback
 from collections import Counter
-from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import ClassVar, Dict, Generic, MutableMapping, Optional, TypeVar, cast, overload
+from typing import (
+    Callable,
+    ClassVar,
+    Dict,
+    Generic,
+    Mapping,
+    MutableMapping,
+    Optional,
+    TypeVar,
+    cast,
+    overload,
+)
 
 import absl
 import dill
@@ -60,6 +70,12 @@ TrainableProbabilisticModelType = TypeVar(
     "TrainableProbabilisticModelType", bound=TrainableProbabilisticModel, contravariant=True
 )
 """ Contravariant type variable bound to :class:`TrainableProbabilisticModel`. """
+
+EarlyStopCallback = Callable[
+    [Mapping[str, Dataset], Mapping[str, TrainableProbabilisticModelType], Optional[StateType]],
+    bool,
+]
+""" Early stop callback type, generic in the model and state types. """
 
 
 @dataclass(frozen=True)
@@ -304,6 +320,9 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
+        early_stop_callback: Optional[
+            EarlyStopCallback[TrainableProbabilisticModel, object]
+        ] = None,
     ) -> OptimizationResult[None]:
         ...
 
@@ -320,6 +339,9 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
+        early_stop_callback: Optional[
+            EarlyStopCallback[TrainableProbabilisticModelType, object]
+        ] = None,
         # this should really be OptimizationResult[None], but tf.Tensor is untyped so the type
         # checker can't differentiate between TensorType and State[S | None, TensorType], and
         # the return types clash. object is close enough to None that object will do.
@@ -340,9 +362,9 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
-        # this should really be OptimizationResult[None], but tf.Tensor is untyped so the type
-        # checker can't differentiate between TensorType and State[S | None, TensorType], and
-        # the return types clash. object is close enough to None that object will do.
+        early_stop_callback: Optional[
+            EarlyStopCallback[TrainableProbabilisticModelType, object]
+        ] = None,
     ) -> OptimizationResult[object]:
         ...
 
@@ -360,6 +382,9 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
+        early_stop_callback: Optional[
+            EarlyStopCallback[TrainableProbabilisticModelType, StateType]
+        ] = None,
     ) -> OptimizationResult[StateType]:
         ...
 
@@ -378,6 +403,9 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
+        early_stop_callback: Optional[
+            EarlyStopCallback[TrainableProbabilisticModelType, StateType]
+        ] = None,
     ) -> OptimizationResult[StateType]:
         ...
 
@@ -391,6 +419,9 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
+        early_stop_callback: Optional[
+            EarlyStopCallback[TrainableProbabilisticModel, object]
+        ] = None,
     ) -> OptimizationResult[None]:
         ...
 
@@ -407,6 +438,9 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
+        early_stop_callback: Optional[
+            EarlyStopCallback[TrainableProbabilisticModelType, object]
+        ] = None,
     ) -> OptimizationResult[object]:
         ...
 
@@ -423,6 +457,9 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
+        early_stop_callback: Optional[
+            EarlyStopCallback[TrainableProbabilisticModelType, object]
+        ] = None,
     ) -> OptimizationResult[object]:
         ...
 
@@ -440,6 +477,9 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
+        early_stop_callback: Optional[
+            EarlyStopCallback[TrainableProbabilisticModelType, StateType]
+        ] = None,
     ) -> OptimizationResult[StateType]:
         ...
 
@@ -457,6 +497,9 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
+        early_stop_callback: Optional[
+            EarlyStopCallback[TrainableProbabilisticModelType, StateType]
+        ] = None,
     ) -> OptimizationResult[StateType]:
         ...
 
@@ -479,6 +522,9 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
+        early_stop_callback: Optional[
+            EarlyStopCallback[TrainableProbabilisticModelType, StateType]
+        ] = None,
     ) -> OptimizationResult[StateType] | OptimizationResult[None]:
         """
         Attempt to find the minimizer of the ``observer`` in the ``search_space`` (both specified at
@@ -523,6 +569,9 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         :param fit_initial_model: If `False`, this method assumes that the initial models have
             already been optimized on the datasets and so do not require optimization before the
             first optimization step.
+        :param early_stop_callback: An optional callback that is evaluated with the current
+            datasets, models and optimization state before every optimization step. If this
+            returns `True` then the optimization loop is terminated early.
         :return: An :class:`OptimizationResult`. The :attr:`final_result` element contains either
             the final optimization data, models and acquisition state, or, if an exception was
             raised while executing the optimization loop, it contains the exception raised. In
@@ -586,6 +635,11 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
         for step in range(num_steps):
             logging.set_step_number(step)
+
+            if early_stop_callback and early_stop_callback(datasets, models, acquisition_state):
+                tf.print("Optimization terminated early", output_stream=absl.logging.INFO)
+                break
+
             try:
 
                 if track_state:
@@ -864,3 +918,49 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             "wallclock/model_fitting",
             model_fitting_timer.time + initial_model_fitting_timer.time,
         )
+
+
+def stop_at_minimum(
+    minimum: Optional[tf.Tensor] = None,
+    minimizers: Optional[tf.Tensor] = None,
+    minimum_atol: float = 0,
+    minimum_rtol: float = 0.05,
+    minimizers_atol: float = 0,
+    minimizers_rtol: float = 0.05,
+    objective_tag: str = OBJECTIVE,
+) -> EarlyStopCallback[TrainableProbabilisticModel, object]:
+    """
+    Generate an early stop function that terminates a BO loop when it gets close enough to the
+    given objective minimum and/or minimizer points.
+
+    :param minimum: Optional minimum to stop at, with shape [1].
+    :param minimizers: Optional minimizer points to stop at, with shape [N, D].
+    :param minimum_atol: Absolute tolerance for minimum.
+    :param minimum_rtol: Relative tolerance for minimum.
+    :param minimizers_atol: Absolute tolerance for minimizer point.
+    :param minimizers_rtol: Relative tolerance for minimizer point.
+    :param objective_tag: The tag for the objective data.
+    :return: An early stop function that terminates if we get close enough to both the minimum
+        and any of the minimizer points.
+    """
+
+    def early_stop_callback(
+        datasets: Mapping[str, Dataset],
+        _models: Mapping[str, TrainableProbabilisticModel],
+        _acquisition_state: object,
+    ) -> bool:
+        dataset = datasets[objective_tag]
+        arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
+        if minimum is not None:
+            best_y = dataset.observations[arg_min_idx]
+            close_y = np.isclose(best_y, minimum, atol=minimum_atol, rtol=minimum_rtol)
+            if not tf.reduce_all(close_y):
+                return False
+        if minimizers is not None:
+            best_x = dataset.query_points[arg_min_idx]
+            close_x = np.isclose(best_x, minimizers, atol=minimizers_atol, rtol=minimizers_rtol)
+            if not tf.reduce_any(tf.reduce_all(close_x, axis=-1), axis=0):
+                return False
+        return True
+
+    return early_stop_callback
