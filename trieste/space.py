@@ -28,6 +28,9 @@ from .utils import shapes_equal
 SearchSpaceType = TypeVar("SearchSpaceType", bound="SearchSpace")
 """ A type variable bound to :class:`SearchSpace`. """
 
+DEFAULT_DTYPE: tf.DType = tf.float64
+""" Default dtype to use when none is provided. """
+
 
 class SearchSpace(ABC):
     """
@@ -257,7 +260,7 @@ class Box(SearchSpace):
     ):
         r"""
         If ``lower`` and ``upper`` are `Sequence`\ s of floats (such as lists or tuples),
-        they will be converted to tensors of dtype `tf.float64`.
+        they will be converted to tensors of dtype `DEFAULT_DTYPE`.
 
         :param lower: The lower (inclusive) bounds of the box. Must have shape [D] for positive D,
             and if a tensor, must have float type.
@@ -275,8 +278,8 @@ class Box(SearchSpace):
         tf.assert_rank(upper, 1)
 
         if isinstance(lower, Sequence):
-            self._lower = tf.constant(lower, dtype=tf.float64)
-            self._upper = tf.constant(upper, dtype=tf.float64)
+            self._lower = tf.constant(lower, dtype=DEFAULT_DTYPE)
+            self._upper = tf.constant(upper, dtype=DEFAULT_DTYPE)
         else:
             self._lower = tf.convert_to_tensor(lower)
             self._upper = tf.convert_to_tensor(upper)
@@ -504,7 +507,7 @@ class TaggedProductSearchSpace(SearchSpace):
         return (
             tf.concat(lower_for_each_subspace, axis=-1)
             if lower_for_each_subspace
-            else tf.constant([], dtype=tf.float64)
+            else tf.constant([], dtype=DEFAULT_DTYPE)
         )
 
     @property
@@ -514,7 +517,7 @@ class TaggedProductSearchSpace(SearchSpace):
         return (
             tf.concat(upper_for_each_subspace, axis=-1)
             if upper_for_each_subspace
-            else tf.constant([], dtype=tf.float64)
+            else tf.constant([], dtype=DEFAULT_DTYPE)
         )
 
     @property
