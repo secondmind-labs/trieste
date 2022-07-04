@@ -116,10 +116,10 @@ def build_vanilla_dgp_model(
     batch_size = 1000
 
     scheduler = tf.keras.callbacks.ReduceLROnPlateau(
-            'loss', factor=0.95, patience=10, min_lr=1e-8, verbose=0
+            'loss', factor=0.5, patience=5, min_lr=1e-8, verbose=0
     )
 
-    keras_optimizer = tf.optimizers.Adam(0.01, beta_1=0.5, beta_2=0.5)
+    keras_optimizer = tf.optimizers.Adam(0.1, beta_1=0.5, beta_2=0.5)
     fit_args = {
         "batch_size": batch_size,
         "epochs": epochs,
@@ -181,10 +181,10 @@ def build_svgp_model(
     batch_size = 1000
 
     scheduler = tf.keras.callbacks.ReduceLROnPlateau(
-            'loss', factor=0.95, patience=10, min_lr=1e-8, verbose=0
+            'loss', factor=0.5, patience=5, min_lr=1e-8, verbose=0
     )
 
-    keras_optimizer = tf.optimizers.Adam(0.01, beta_1=0.5, beta_2=0.5)
+    keras_optimizer = tf.optimizers.Adam(0.1, beta_1=0.5, beta_2=0.5)
     fit_args = {
         "batch_size": batch_size,
         "epochs": epochs,

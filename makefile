@@ -67,7 +67,7 @@ f_m_i = $(foreach pre,$(f_m),$(addprefix $(pre),$(num_inducing)))
 f_m_l_run = $(foreach pre,$(f_m_i),$(addprefix $(pre),$(run)))
 
 results_largescale/%: experiment.py
-	$(base) python $< $@ --exp_name largescale --function $(call a1,$*) --model $(call a2,$*) --lnt --rtt --epochs 5000 --rt_every 1 --normf --num_query 100 --num_inducing $(call a3,$*) --fix_ips_t --run $(call a4,$*)
+	$(base) python $< $@ --exp_name largescale --function $(call a1,$*) --model $(call a2,$*) --lnt --rtt --epochs 400 --rt_every 1 --normf --num_query 100 --num_inducing $(call a3,$*) --fix_ips_t --run $(call a4,$*)
 ls_experiment: $(addprefix results_largescale/,$(f_m_l_run))
 
 f_rs = $(foreach pre,$(function_list),$(addprefix $(pre),$(random_search)))
