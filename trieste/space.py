@@ -28,6 +28,9 @@ from .utils import shapes_equal
 SearchSpaceType = TypeVar("SearchSpaceType", bound="SearchSpace")
 """ A type variable bound to :class:`SearchSpace`. """
 
+DEFAULT_DTYPE: tf.DType = tf.float64
+""" Default dtype to use when none is provided. """
+
 
 class SearchSpace(ABC):
     """
@@ -257,7 +260,7 @@ class Box(SearchSpace):
     ):
         r"""
         If ``lower`` and ``upper`` are `Sequence`\ s of floats (such as lists or tuples),
-        they will be converted to tensors of dtype `tf.float64`.
+        they will be converted to tensors of dtype `DEFAULT_DTYPE`.
 
         :param lower: The lower (inclusive) bounds of the box. Must have shape [D] for positive D,
             and if a tensor, must have float type.
@@ -275,8 +278,8 @@ class Box(SearchSpace):
         tf.assert_rank(upper, 1)
 
         if isinstance(lower, Sequence):
-            self._lower = tf.constant(lower, dtype=tf.float64)
-            self._upper = tf.constant(upper, dtype=tf.float64)
+            self._lower = tf.constant(lower, dtype=DEFAULT_DTYPE)
+            self._upper = tf.constant(upper, dtype=DEFAULT_DTYPE)
         else:
             self._lower = tf.convert_to_tensor(lower)
             self._upper = tf.convert_to_tensor(upper)
@@ -487,7 +490,7 @@ class TaggedProductSearchSpace(SearchSpace):
 
         self._subspace_starting_indices = dict(zip(tags, tf.cumsum(subspace_sizes, exclusive=True)))
 
-        self._dimension = tf.reduce_sum(subspace_sizes)
+        self._dimension = tf.cast(tf.reduce_sum(subspace_sizes), dtype=tf.int32)
         self._tags = tuple(tags)  # avoid accidental modification by users
 
     def __repr__(self) -> str:
@@ -501,13 +504,21 @@ class TaggedProductSearchSpace(SearchSpace):
     def lower(self) -> TensorType:
         """The lowest values taken by each space dimension, concatenated across subspaces."""
         lower_for_each_subspace = [self.get_subspace(tag).lower for tag in self.subspace_tags]
-        return tf.concat(lower_for_each_subspace, axis=-1)
+        return (
+            tf.concat(lower_for_each_subspace, axis=-1)
+            if lower_for_each_subspace
+            else tf.constant([], dtype=DEFAULT_DTYPE)
+        )
 
     @property
     def upper(self) -> TensorType:
         """The highest values taken by each space dimension, concatenated across subspaces."""
         upper_for_each_subspace = [self.get_subspace(tag).upper for tag in self.subspace_tags]
-        return tf.concat(upper_for_each_subspace, axis=-1)
+        return (
+            tf.concat(upper_for_each_subspace, axis=-1)
+            if upper_for_each_subspace
+            else tf.constant([], dtype=DEFAULT_DTYPE)
+        )
 
     @property
     def subspace_tags(self) -> tuple[str, ...]:
