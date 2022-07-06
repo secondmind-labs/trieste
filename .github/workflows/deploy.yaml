@@ -45,10 +45,11 @@ jobs:
         mv docs/_build/html $TMP_DIR/$VERSION
         cp redirect.html $TMP_DIR/index.html
         cp versions.json $TMP_DIR/
-        git rm -r --ignore-unmatch gh-pages-history/docs/$VERSION
-        mv -f $TMP_DIR/* gh-pages-history/docs/
-        rmdir $TMP_DIR
         cd gh-pages-history
+        git rm -r --ignore-unmatch docs/$VERSION
+        rm -rf docs/$VERSION
+        mv -f $TMP_DIR/* docs/
+        rmdir $TMP_DIR
         git add docs
         git config --global user.email "none"
         git config --global user.name "github-actions-bot"
