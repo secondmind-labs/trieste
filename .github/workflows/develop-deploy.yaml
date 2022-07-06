@@ -51,5 +51,5 @@ jobs:
         git add docs
         git config --global user.email "none"
         git config --global user.name "github-actions-bot"
-        git commit -m "build documentation for $VERSION"
+        git commit --amend --no-edit
         git push
