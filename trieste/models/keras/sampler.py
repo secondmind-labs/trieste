@@ -171,17 +171,17 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
             predicted_means = tf.convert_to_tensor([dist.mean() for dist in ensemble_distributions])
             predictions = tf.gather(predicted_means, self._indices)  # [B, N*B, 1]
 
-        tensor_predictions = tf.squeeze(tf.map_fn(unflatten, predictions), axis=-1)  # [B, N, B]
+        tensor_predictions = tf.map_fn(unflatten, predictions)  # [B, N, B, 1]
 
         # here we select simultaneously networks and batch dimension according to batch indices
         # this is needed because we compute a whole batch with each network
         batch_index = tf.range(self._batch_size)
         indices = tf.stack([batch_index, batch_index], axis=1)
         batch_predictions = tf.gather_nd(
-            tf.transpose(tensor_predictions, perm=[0, 2, 1]), indices
+            tf.transpose(tensor_predictions, perm=[0, 2, 1, 3]), indices
         )  # [B,N]
 
-        return tf.transpose(batch_predictions, perm=[1, 0])  # [N, B]
+        return tf.transpose(batch_predictions, perm=[1, 0, 2])  # [N, B, 1]
 
     def resample(self) -> None:
         """

@@ -42,6 +42,16 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTr
     :cite:`wilson2020efficiently`.
     """
 
+    def __init__(self, output_dim: int = 0):
+        """
+        :param output_dim: The output dimension of the model to be used.
+        """
+        self._output_dim = output_dim
+
+    def __repr__(self) -> str:
+        """"""
+        return f"GreedyContinuousThompsonSampling({self._output_dim!r})"
+
     def prepare_acquisition_function(
         self,
         model: HasTrajectorySampler,
@@ -62,7 +72,7 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTr
 
         self._trajectory_sampler = model.trajectory_sampler()
         function = self._trajectory_sampler.get_trajectory()
-        return negate_trajectory_function(function)
+        return negate_trajectory_function(function, self._output_dim)
 
     def update_acquisition_function(
         self,
@@ -89,7 +99,7 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTr
             new_function = self._trajectory_sampler.resample_trajectory(function)
 
         if new_function is not function:
-            function = negate_trajectory_function(new_function)
+            function = negate_trajectory_function(new_function, self._output_dim)
 
         return function
 
@@ -108,6 +118,16 @@ class ParallelContinuousThompsonSampling(
     For a convenient way to control the total memory usage of this acquisition function, see
     our :const:`split_acquisition_function_calls` wrapper.
     """
+
+    def __init__(self, output_dim: int = 0):
+        """
+        :param output_dim: The output dimension of the model to be used.
+        """
+        self._output_dim = output_dim
+
+    def __repr__(self) -> str:
+        """"""
+        return f"ParallelContinuousThompsonSampling({self._output_dim!r})"
 
     def prepare_acquisition_function(
         self,
@@ -154,7 +174,7 @@ class ParallelContinuousThompsonSampling(
         return self._negated_trajectory
 
 
-def negate_trajectory_function(function: TrajectoryFunction) -> TrajectoryFunction:
+def negate_trajectory_function(function: TrajectoryFunction, output_dim: int) -> TrajectoryFunction:
     """
     Return the negative of trajectories so that our acquisition optimizers (which are
     all maximizers) can be used to extract the minimizers of trajectories.
@@ -167,7 +187,7 @@ def negate_trajectory_function(function: TrajectoryFunction) -> TrajectoryFuncti
         class NegatedTrajectory(type(function)):  # type: ignore[misc]
             @tf.function
             def __call__(self, x: TensorType) -> TensorType:
-                return -1.0 * super().__call__(x)
+                return -1.0 * super().__call__(x)[..., output_dim]
 
         function.__class__ = NegatedTrajectory
 
@@ -177,6 +197,6 @@ def negate_trajectory_function(function: TrajectoryFunction) -> TrajectoryFuncti
 
         @tf.function
         def negated_trajectory(x: TensorType) -> TensorType:
-            return -1.0 * function(x)
+            return -1.0 * function(x)[..., output_dim]
 
         return negated_trajectory
