@@ -147,7 +147,7 @@ class ParallelContinuousThompsonSampling(
 
         self._trajectory_sampler = model.trajectory_sampler()
         self._trajectory = self._trajectory_sampler.get_trajectory()
-        self._negated_trajectory = negate_trajectory_function(self._trajectory)
+        self._negated_trajectory = negate_trajectory_function(self._trajectory, self._output_dim)
         return self._negated_trajectory
 
     def update_acquisition_function(
@@ -169,7 +169,7 @@ class ParallelContinuousThompsonSampling(
 
         if new_function is not self._trajectory:  # need to negate again if not modified in place
             self._trajectory = new_function
-            self._negated_trajectory = negate_trajectory_function(new_function)
+            self._negated_trajectory = negate_trajectory_function(new_function, self._output_dim)
 
         return self._negated_trajectory
 
