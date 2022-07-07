@@ -325,14 +325,6 @@ def generate_continuous_optimizer(
         if summary_writer:
             with summary_writer.as_default(step=logging.get_step_number()):
 
-                _target_func: AcquisitionFunction = target_func  # make mypy happy
-
-                def improvement() -> tf.Tensor:
-                    best_initial_value = tf.math.reduce_max(_target_func(initial_points))
-                    best_value = tf.math.reduce_max(fun_values)
-                    return best_value - tf.cast(best_initial_value, best_value.dtype)
-
-                logging.scalar("spo_improvement_on_initial_samples", improvement)
                 logging.scalar("spo_af_evaluations", total_nfev)
                 if recovery_run:
                     logging.text(
@@ -340,6 +332,16 @@ def generate_continuous_optimizer(
                         f"Acquisition function optimization failed after {num_optimization_runs} "
                         f"optimization runs, requiring recovery runs",
                     )
+
+                if V == 1:
+                    _target_func: AcquisitionFunction = target_func  # make mypy happy
+
+                    def improvement() -> tf.Tensor:
+                        best_initial_value = tf.math.reduce_max(_target_func(initial_points))
+                        best_value = tf.math.reduce_max(fun_values)
+                        return best_value - tf.cast(best_initial_value, best_value.dtype)
+
+                    logging.scalar("spo_improvement_on_initial_samples", improvement)
 
         best_run_ids = tf.math.argmax(fun_values, axis=0)  # [V]
         chosen_points = tf.gather(
