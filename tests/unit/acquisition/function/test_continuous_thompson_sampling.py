@@ -190,7 +190,7 @@ def test_negate_trajectory_function_negates_and_keeps_methods() -> None:
     query_at = tf.reshape(tf.linspace([[-10]], [[10]], 100), [10, 5, 2])
     evals = acq_fn(query_at)
 
-    neg_acq_fn = negate_trajectory_function(acq_fn)
+    neg_acq_fn = negate_trajectory_function(acq_fn, output_dim=0)
     neg_evals = acq_fn(query_at)
     npt.assert_array_equal(evals, -1.0 * neg_evals)
 
