@@ -49,14 +49,6 @@ from .improvement import (
     monte_carlo_expected_improvement,
 )
 from .misc import MakePositive, ProbabilityOfFeasibility, probability_of_feasibility
-from .multi_objective import (
-    HIPPO,
-    BatchMonteCarloExpectedHypervolumeImprovement,
-    ExpectedConstrainedHypervolumeImprovement,
-    ExpectedHypervolumeImprovement,
-    batch_ehvi,
-    expected_hv_improvement,
-)
 from .optimism import (
     MultipleOptimismNegativeLowerConfidenceBound,
     NegativeLowerConfidenceBound,

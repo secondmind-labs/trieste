@@ -38,15 +38,11 @@ from . import optimizer, rule
 from .combination import Product, Reducer, Sum
 from .function import (
     GIBBON,
-    HIPPO,
     AugmentedExpectedImprovement,
-    BatchMonteCarloExpectedHypervolumeImprovement,
     BatchMonteCarloExpectedImprovement,
     BayesianActiveLearningByDisagreement,
-    ExpectedConstrainedHypervolumeImprovement,
     ExpectedConstrainedImprovement,
     ExpectedFeasibility,
-    ExpectedHypervolumeImprovement,
     ExpectedImprovement,
     Fantasizer,
     GreedyContinuousThompsonSampling,
@@ -63,11 +59,9 @@ from .function import (
     PredictiveVariance,
     ProbabilityOfFeasibility,
     augmented_expected_improvement,
-    batch_ehvi,
     batch_monte_carlo_expected_improvement,
     bayesian_active_learning_by_disagreement,
     bichon_ranjan_criterion,
-    expected_hv_improvement,
     expected_improvement,
     gibbon_quality_term,
     gibbon_repulsion_term,
@@ -94,6 +88,15 @@ from .interface import (
     SingleModelVectorizedAcquisitionBuilder,
     UpdatablePenalizationFunction,
     VectorizedAcquisitionFunctionBuilder,
+)
+from .multi_objective import (
+    HIPPO,
+    BatchMonteCarloExpectedHypervolumeImprovement,
+    ExpectedConstrainedHypervolumeImprovement,
+    ExpectedHypervolumeImprovement,
+    batch_ehvi,
+    expected_hv_improvement,
+    hippo_penalizer,
 )
 from .sampler import (
     ExactThompsonSampler,
