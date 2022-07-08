@@ -44,7 +44,8 @@ from ..interface import (
     UpdatablePenalizationFunction,
 )
 from .entropy import MinValueEntropySearch
-from .function import ExpectedImprovement, MakePositive, expected_improvement
+from .improvement import ExpectedImprovement, expected_improvement
+from .misc import MakePositive
 
 
 class LocalPenalization(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]):

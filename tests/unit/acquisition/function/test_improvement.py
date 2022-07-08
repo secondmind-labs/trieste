@@ -16,22 +16,13 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from typing import Optional
-from unittest.mock import MagicMock
 
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from tests.util.misc import (
-    TF_DEBUGGING_ERROR_TYPES,
-    ShapeLike,
-    mk_dataset,
-    quadratic,
-    raise_exc,
-    random_seed,
-    various_shapes,
-)
+from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, mk_dataset, quadratic, raise_exc, random_seed
 from tests.util.models.gpflow.models import (
     GaussianProcess,
     GaussianProcessWithBatchSamplers,
@@ -42,29 +33,22 @@ from tests.util.models.gpflow.models import (
     QuadraticMeanAndRBFKernelWithSamplers,
     rbf,
 )
-from trieste.acquisition.function.function import (
+from trieste.acquisition import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
     AugmentedExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
-    MakePositive,
     MonteCarloAugmentedExpectedImprovement,
     MonteCarloExpectedImprovement,
-    MultipleOptimismNegativeLowerConfidenceBound,
-    NegativeLowerConfidenceBound,
     ProbabilityOfFeasibility,
     augmented_expected_improvement,
     expected_improvement,
-    lower_confidence_bound,
-    multiple_optimism_lower_confidence_bound,
-    probability_of_feasibility,
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.objectives import BRANIN_MINIMUM, branin
-from trieste.space import Box
 from trieste.types import TensorType
 
 
@@ -581,126 +565,6 @@ def test_mc_augmented_expected_improvement_updates_without_retracing() -> None:
     assert mcaei.__call__._get_tracing_count() == 1  # type: ignore
 
 
-def test_negative_lower_confidence_bound_builder_builds_negative_lower_confidence_bound() -> None:
-    model = QuadraticMeanAndRBFKernel()
-    beta = 1.96
-    acq_fn = NegativeLowerConfidenceBound(beta).prepare_acquisition_function(model)
-    query_at = tf.linspace([[-10]], [[10]], 100)
-    expected = -lower_confidence_bound(model, beta)(query_at)
-    npt.assert_array_almost_equal(acq_fn(query_at), expected)
-
-
-def test_negative_lower_confidence_bound_builder_updates_without_retracing() -> None:
-    model = QuadraticMeanAndRBFKernel()
-    beta = 1.96
-    builder = NegativeLowerConfidenceBound(beta)
-    acq_fn = builder.prepare_acquisition_function(model)
-    assert acq_fn._get_tracing_count() == 0  # type: ignore
-    query_at = tf.linspace([[-10]], [[10]], 100)
-    expected = -lower_confidence_bound(model, beta)(query_at)
-    npt.assert_array_almost_equal(acq_fn(query_at), expected)
-    assert acq_fn._get_tracing_count() == 1  # type: ignore
-
-    up_acq_fn = builder.update_acquisition_function(acq_fn, model)
-    assert up_acq_fn == acq_fn
-    npt.assert_array_almost_equal(acq_fn(query_at), expected)
-    assert acq_fn._get_tracing_count() == 1  # type: ignore
-
-
-@pytest.mark.parametrize("beta", [-0.1, -2.0])
-def test_lower_confidence_bound_raises_for_negative_beta(beta: float) -> None:
-    with pytest.raises(tf.errors.InvalidArgumentError):
-        lower_confidence_bound(QuadraticMeanAndRBFKernel(), beta)
-
-
-@pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
-def test_lower_confidence_bound_raises_for_invalid_batch_size(at: TensorType) -> None:
-    lcb = lower_confidence_bound(QuadraticMeanAndRBFKernel(), tf.constant(1.0))
-
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        lcb(at)
-
-
-@pytest.mark.parametrize("beta", [0.0, 0.1, 7.8])
-def test_lower_confidence_bound(beta: float) -> None:
-    query_at = tf.linspace([[-3]], [[3]], 10)
-    actual = lower_confidence_bound(QuadraticMeanAndRBFKernel(), beta)(query_at)
-    npt.assert_array_almost_equal(actual, tf.squeeze(query_at, -2) ** 2 - beta)
-
-
-@pytest.mark.parametrize(
-    "threshold, at, expected",
-    [
-        (0.0, tf.constant([[0.0]]), 0.5),
-        # values looked up on a standard normal table
-        (2.0, tf.constant([[1.0]]), 0.5 + 0.34134),
-        (-0.25, tf.constant([[-0.5]]), 0.5 - 0.19146),
-    ],
-)
-def test_probability_of_feasibility(threshold: float, at: tf.Tensor, expected: float) -> None:
-    actual = probability_of_feasibility(QuadraticMeanAndRBFKernel(), threshold)(at)
-    npt.assert_allclose(actual, expected, rtol=1e-4)
-
-
-@pytest.mark.parametrize(
-    "at",
-    [
-        tf.constant([[0.0]], tf.float64),
-        tf.constant([[-3.4]], tf.float64),
-        tf.constant([[0.2]], tf.float64),
-    ],
-)
-@pytest.mark.parametrize("threshold", [-2.3, 0.2])
-def test_probability_of_feasibility_builder_builds_pof(threshold: float, at: tf.Tensor) -> None:
-    builder = ProbabilityOfFeasibility(threshold)
-    acq = builder.prepare_acquisition_function(QuadraticMeanAndRBFKernel())
-    expected = probability_of_feasibility(QuadraticMeanAndRBFKernel(), threshold)(at)
-
-    npt.assert_allclose(acq(at), expected)
-
-
-@pytest.mark.parametrize("shape", various_shapes() - {()})
-def test_probability_of_feasibility_raises_on_non_scalar_threshold(shape: ShapeLike) -> None:
-    threshold = tf.ones(shape)
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        probability_of_feasibility(QuadraticMeanAndRBFKernel(), threshold)
-
-
-@pytest.mark.parametrize("shape", [[], [0], [2], [2, 1], [1, 2, 1]])
-def test_probability_of_feasibility_raises_on_invalid_at_shape(shape: ShapeLike) -> None:
-    at = tf.ones(shape)
-    pof = probability_of_feasibility(QuadraticMeanAndRBFKernel(), 0.0)
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        pof(at)
-
-
-@pytest.mark.parametrize("shape", various_shapes() - {()})
-def test_probability_of_feasibility_builder_raises_on_non_scalar_threshold(
-    shape: ShapeLike,
-) -> None:
-    threshold = tf.ones(shape)
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        ProbabilityOfFeasibility(threshold)
-
-
-@pytest.mark.parametrize("at", [tf.constant([[0.0]], tf.float64)])
-@pytest.mark.parametrize("threshold", [-2.3, 0.2])
-def test_probability_of_feasibility_builder_updates_without_retracing(
-    threshold: float, at: tf.Tensor
-) -> None:
-    builder = ProbabilityOfFeasibility(threshold)
-    model = QuadraticMeanAndRBFKernel()
-    expected = probability_of_feasibility(QuadraticMeanAndRBFKernel(), threshold)(at)
-    acq = builder.prepare_acquisition_function(model)
-    assert acq._get_tracing_count() == 0  # type: ignore
-    npt.assert_allclose(acq(at), expected)
-    assert acq._get_tracing_count() == 1  # type: ignore
-    up_acq = builder.update_acquisition_function(acq, model)
-    assert up_acq == acq
-    npt.assert_allclose(acq(at), expected)
-    assert acq._get_tracing_count() == 1  # type: ignore
-
-
 def test_expected_constrained_improvement_raises_for_non_scalar_min_pof() -> None:
     pof = ProbabilityOfFeasibility(0.0).using("")
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
@@ -990,87 +854,3 @@ def test_batch_monte_carlo_expected_improvement_updates_without_retracing() -> N
     assert batch_ei.__call__._get_tracing_count() == 1  # type: ignore
     npt.assert_allclose(batch_ei(xs), ei(xs), rtol=0.06)
     assert batch_ei.__call__._get_tracing_count() == 1  # type: ignore
-
-
-def test_multiple_optimism_builder_builds_negative_lower_confidence_bound() -> None:
-    model = QuadraticMeanAndRBFKernel()
-    search_space = Box([0, 0], [1, 1])
-    acq_fn = MultipleOptimismNegativeLowerConfidenceBound(
-        search_space
-    ).prepare_acquisition_function(model)
-    query_at = tf.reshape(tf.linspace([[-10]], [[10]], 100), [10, 5, 2])
-    expected = multiple_optimism_lower_confidence_bound(model, search_space.dimension)(query_at)
-    npt.assert_array_almost_equal(acq_fn(query_at), expected)
-
-
-def test_multiple_optimism_builder_updates_without_retracing() -> None:
-    model = QuadraticMeanAndRBFKernel()
-    search_space = Box([0, 0], [1, 1])
-    builder = MultipleOptimismNegativeLowerConfidenceBound(search_space)
-    acq_fn = builder.prepare_acquisition_function(model)
-    assert acq_fn.__call__._get_tracing_count() == 0  # type: ignore
-    query_at = tf.reshape(tf.linspace([[-10]], [[10]], 100), [10, 5, 2])
-    expected = multiple_optimism_lower_confidence_bound(model, search_space.dimension)(query_at)
-    npt.assert_array_almost_equal(acq_fn(query_at), expected)
-    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
-
-    up_acq_fn = builder.update_acquisition_function(acq_fn, model)
-    assert up_acq_fn == acq_fn
-    npt.assert_array_almost_equal(acq_fn(query_at), expected)
-    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
-
-
-def test_multiple_optimism_builder_raises_when_update_with_wrong_function() -> None:
-    model = QuadraticMeanAndRBFKernel()
-    search_space = Box([0, 0], [1, 1])
-    builder = MultipleOptimismNegativeLowerConfidenceBound(search_space)
-    builder.prepare_acquisition_function(model)
-    with pytest.raises(tf.errors.InvalidArgumentError):
-        builder.update_acquisition_function(lower_confidence_bound(model, 0.1), model)
-
-
-@pytest.mark.parametrize("d", [0, -5])
-def test_multiple_optimism_negative_confidence_bound_raises_for_negative_search_space_dim(
-    d: int,
-) -> None:
-    with pytest.raises(tf.errors.InvalidArgumentError):
-        multiple_optimism_lower_confidence_bound(QuadraticMeanAndRBFKernel(), d)
-
-
-def test_multiple_optimism_negative_confidence_bound_raises_for_changing_batch_size() -> None:
-    model = QuadraticMeanAndRBFKernel()
-    search_space = Box([0, 0], [1, 1])
-    acq_fn = MultipleOptimismNegativeLowerConfidenceBound(
-        search_space
-    ).prepare_acquisition_function(model)
-    query_at = tf.reshape(tf.linspace([[-10]], [[10]], 100), [10, 5, 2])
-    acq_fn(query_at)
-    with pytest.raises(tf.errors.InvalidArgumentError):
-        query_at = tf.reshape(tf.linspace([[-10]], [[10]], 100), [5, 10, 2])
-        acq_fn(query_at)
-
-
-@pytest.mark.parametrize("in_place_update", [False, True])
-def test_make_positive(in_place_update: bool) -> None:
-    base = MagicMock()
-    base.prepare_acquisition_function.side_effect = lambda *args: lambda x: x
-    if in_place_update:
-        base.update_acquisition_function.side_effect = lambda f, *args: f
-    else:
-        base.update_acquisition_function.side_effect = lambda *args: lambda x: 3.0
-    builder: MakePositive[ProbabilisticModel] = MakePositive(base)
-
-    model = QuadraticMeanAndRBFKernel()
-    acq_fn = builder.prepare_acquisition_function(model)
-    xs = tf.linspace([-1], [1], 10)
-    npt.assert_allclose(acq_fn(xs), tf.math.log(1 + tf.math.exp(xs)))
-    assert base.prepare_acquisition_function.call_count == 1
-    assert base.update_acquisition_function.call_count == 0
-
-    up_acq_fn = builder.update_acquisition_function(acq_fn, model)
-    assert base.prepare_acquisition_function.call_count == 1
-    assert base.update_acquisition_function.call_count == 1
-    if in_place_update:
-        assert up_acq_fn is acq_fn
-    else:
-        npt.assert_allclose(up_acq_fn(xs), tf.math.log(1 + tf.math.exp(3.0)))

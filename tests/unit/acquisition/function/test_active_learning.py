@@ -31,7 +31,7 @@ from tests.util.models.gpflow.models import (
     vgp_model_bernoulli,
 )
 from tests.util.models.models import binary_line, fnc_2sin_x_over_3
-from trieste.acquisition.function.active_learning import (
+from trieste.acquisition import (
     BayesianActiveLearningByDisagreement,
     ExpectedFeasibility,
     IntegratedVarianceReduction,

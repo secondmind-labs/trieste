@@ -28,14 +28,14 @@ from tests.util.models.gpflow.models import (
     QuadraticMeanAndRBFKernel,
     QuadraticMeanAndRBFKernelWithSamplers,
 )
-from trieste.acquisition.function.entropy import (
+from trieste.acquisition import (
     GIBBON,
     MinValueEntropySearch,
-    SupportsCovarianceObservationNoiseTrajectory,
     gibbon_quality_term,
     gibbon_repulsion_term,
     min_value_entropy_search,
 )
+from trieste.acquisition.function.entropy import SupportsCovarianceObservationNoiseTrajectory
 from trieste.acquisition.sampler import (
     ExactThompsonSampler,
     GumbelSampler,

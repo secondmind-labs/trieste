@@ -28,19 +28,20 @@ from tests.util.models.gpflow.models import QuadraticMeanAndRBFKernel, gpr_model
 from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.acquisition import (
     ExpectedImprovement,
-    MinValueEntropySearch,
-    PenalizationFunction,
-    UpdatablePenalizationFunction,
-)
-from trieste.acquisition.function import NegativePredictiveMean, PredictiveVariance
-from trieste.acquisition.function.greedy_batch import (
     Fantasizer,
-    FantasizerModelOrStack,
-    FantasizerModelStack,
     LocalPenalization,
-    _generate_fantasized_model,
+    MinValueEntropySearch,
+    NegativePredictiveMean,
+    PenalizationFunction,
+    PredictiveVariance,
+    UpdatablePenalizationFunction,
     hard_local_penalizer,
     soft_local_penalizer,
+)
+from trieste.acquisition.function.greedy_batch import (
+    FantasizerModelOrStack,
+    FantasizerModelStack,
+    _generate_fantasized_model,
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel

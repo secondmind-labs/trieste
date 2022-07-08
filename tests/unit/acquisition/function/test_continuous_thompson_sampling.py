@@ -24,12 +24,12 @@ from tests.util.models.gpflow.models import (
     QuadraticMeanAndRBFKernel,
     QuadraticMeanAndRBFKernelWithSamplers,
 )
-from trieste.acquisition.function.continuous_thompson_sampling import (
+from trieste.acquisition import (
     GreedyContinuousThompsonSampling,
     ParallelContinuousThompsonSampling,
+    lower_confidence_bound,
     negate_trajectory_function,
 )
-from trieste.acquisition.function.function import lower_confidence_bound
 from trieste.data import Dataset
 from trieste.models import TrajectoryFunction, TrajectoryFunctionClass, TrajectorySampler
 from trieste.models.gpflow import (

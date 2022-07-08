@@ -25,6 +25,7 @@ from .active_learning import (
 from .continuous_thompson_sampling import (
     GreedyContinuousThompsonSampling,
     ParallelContinuousThompsonSampling,
+    negate_trajectory_function,
 )
 from .entropy import (
     GIBBON,
@@ -33,25 +34,21 @@ from .entropy import (
     gibbon_repulsion_term,
     min_value_entropy_search,
 )
-from .function import (
+from .greedy_batch import Fantasizer, LocalPenalization, hard_local_penalizer, soft_local_penalizer
+from .improvement import (
     AugmentedExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
-    MakePositive,
     MonteCarloAugmentedExpectedImprovement,
     MonteCarloExpectedImprovement,
-    MultipleOptimismNegativeLowerConfidenceBound,
-    NegativeLowerConfidenceBound,
-    NegativePredictiveMean,
-    ProbabilityOfFeasibility,
     augmented_expected_improvement,
+    batch_monte_carlo_expected_improvement,
     expected_improvement,
-    lower_confidence_bound,
-    multiple_optimism_lower_confidence_bound,
-    probability_of_feasibility,
+    monte_carlo_augmented_expected_improvement,
+    monte_carlo_expected_improvement,
 )
-from .greedy_batch import Fantasizer, LocalPenalization, hard_local_penalizer, soft_local_penalizer
+from .misc import MakePositive, ProbabilityOfFeasibility, probability_of_feasibility
 from .multi_objective import (
     HIPPO,
     BatchMonteCarloExpectedHypervolumeImprovement,
@@ -59,4 +56,11 @@ from .multi_objective import (
     ExpectedHypervolumeImprovement,
     batch_ehvi,
     expected_hv_improvement,
+)
+from .optimism import (
+    MultipleOptimismNegativeLowerConfidenceBound,
+    NegativeLowerConfidenceBound,
+    NegativePredictiveMean,
+    lower_confidence_bound,
+    multiple_optimism_lower_confidence_bound,
 )
