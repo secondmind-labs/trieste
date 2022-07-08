@@ -32,8 +32,8 @@ from trieste.acquisition.function import (
     ExpectedFeasibility,
     IntegratedVarianceReduction,
     PredictiveVariance,
+    MakePositive,
 )
-from trieste.acquisition.function.function import MakePositive
 from trieste.acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset

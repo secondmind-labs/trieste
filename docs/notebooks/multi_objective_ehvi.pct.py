@@ -18,7 +18,7 @@ from util.plotting import (
 
 # %%
 import trieste
-from trieste.acquisition.function import ExpectedHypervolumeImprovement
+from trieste.acquisition import ExpectedHypervolumeImprovement
 from trieste.acquisition.rule import EfficientGlobalOptimization
 from trieste.data import Dataset
 from trieste.models import TrainableModelStack
@@ -361,7 +361,7 @@ models = {OBJECTIVE: objective_model, CONSTRAINT: constraint_model}
 # We utilize the `ExpectedConstrainedHypervolumeImprovement` acquisition function, which is the product of EHVI (based on the feasible Pareto set) with the probability of feasibility:
 
 # %%
-from trieste.acquisition.function import (
+from trieste.acquisition import (
     ExpectedConstrainedHypervolumeImprovement,
 )
 
