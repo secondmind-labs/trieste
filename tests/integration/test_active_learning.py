@@ -31,8 +31,8 @@ from trieste.acquisition.function import (
     BayesianActiveLearningByDisagreement,
     ExpectedFeasibility,
     IntegratedVarianceReduction,
-    PredictiveVariance,
     MakePositive,
+    PredictiveVariance,
 )
 from trieste.acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from trieste.bayesian_optimizer import BayesianOptimizer
