@@ -43,7 +43,7 @@ jobs:
         TMP_DIR=$(mktemp -d -p $(pwd))
         VERSION=$(cat VERSION)
         mv docs/_build/html $TMP_DIR/$VERSION
-        cp redirect.html $TMP_DIR/index.html
+        sed -e "s/\$VERSION/$VERSION/g" redirect.html > $TMP_DIR/index.html 
         cp versions.json $TMP_DIR/
         cd gh-pages-history
         git rm -r --ignore-unmatch docs/$VERSION

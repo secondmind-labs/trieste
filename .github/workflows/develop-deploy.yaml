@@ -40,7 +40,6 @@ jobs:
         TMP_DIR=$(mktemp -d -p $(pwd))
         VERSION=$(cat VERSION)
         mv docs/_build/html $TMP_DIR/$VERSION
-        cp redirect.html $TMP_DIR/index.html
         cp versions.json $TMP_DIR/
         git restore VERSION
         cd gh-pages-history

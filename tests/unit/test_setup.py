@@ -73,4 +73,4 @@ def test_citation_version(version: str, citation: dict[str, Any]) -> None:
 
 
 def test_redirect_version(version: str, redirect: str) -> None:
-    assert f"{version}/index.html" in redirect
+    assert "$VERSION/index.html" in redirect
