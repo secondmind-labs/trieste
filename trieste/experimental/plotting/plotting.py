@@ -376,11 +376,11 @@ def plot_mobo_points_in_obj_space(
 
 
 def plot_mobo_history(
-    obs_values : TensorType,
+    obs_values: TensorType,
     metric_func: Callable[[TensorType], TensorType],
     num_init: int,
-    mask_fail: Optional[TensorType]=None,
-    figsize: Optional[tuple[float, float]]=None,
+    mask_fail: Optional[TensorType] = None,
+    figsize: Optional[tuple[float, float]] = None,
 ) -> tuple[Figure, Axes]:
     """
     Draw the performance measure for multi-objective optimization.
@@ -409,14 +409,14 @@ def plot_regret(
     obs_values: TensorType,
     ax: Axes,
     num_init: int,
-    show_obs: bool=True,
-    mask_fail: Optional[TensorType]=None,
-    idx_best:Optional[int]=None,
-    m_init: str="x",
-    m_add: str="o",
-    c_pass: str="tab:green",
-    c_fail: str="tab:red",
-    c_best: str="tab:purple",
+    show_obs: bool = True,
+    mask_fail: Optional[TensorType] = None,
+    idx_best: Optional[int] = None,
+    m_init: str = "x",
+    m_add: str = "o",
+    c_pass: str = "tab:green",
+    c_fail: str = "tab:red",
+    c_best: str = "tab:purple",
 ) -> None:
     """
     Draws the simple regret with same colors / markers as the other plots.
@@ -455,12 +455,12 @@ def plot_gp_2d(
     model: GPModel,
     mins: TensorType,
     maxs: TensorType,
-    grid_density: int=20,
-    contour: bool=False,
-    xlabel: Optional[str]=None,
-    ylabel: Optional[str]=None,
-    figsize: Optional[tuple[float, float]]=None,
-    predict_y: bool=False,
+    grid_density: int = 20,
+    contour: bool = False,
+    xlabel: Optional[str] = None,
+    ylabel: Optional[str] = None,
+    figsize: Optional[tuple[float, float]] = None,
+    predict_y: bool = False,
 ) -> tuple[Figure, Axes]:
     """
     2D/3D plot of a gp model for a grid of size grid_density**2 between mins and maxs
