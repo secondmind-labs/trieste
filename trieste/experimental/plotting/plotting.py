@@ -382,13 +382,13 @@ def plot_mobo_history(
     figsize=None,
 ):
     """
-    Draw the performance measure for multi-objective optimization
+    Draw the performance measure for multi-objective optimization.
+
     :param obs_values:
     :param metric_func: a callable function calculate metric score
-                        metric = measure_func(observations)
     :param num_init:
     :param mask_fail:
-    :param figsize
+    :param figsize:
     """
 
     fig, ax = plt.subplots(figsize=figsize)
