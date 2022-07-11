@@ -17,12 +17,12 @@ from typing import Callable, Optional
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import tensorflow as tf
+from plotly.subplots import make_subplots
 
+from trieste.models.interfaces import ProbabilisticModel
 from trieste.types import TensorType
 from trieste.utils import to_numpy
-from trieste.models.interfaces import ProbabilisticModel
 
 from .plotting import create_grid
 
@@ -43,7 +43,7 @@ def format_point_markers(
     :param num_pts: total number of BO points
     :param num_init: initial number of BO points
     :param idx_best: index of the best BO point
-    :param mask_fail: Boolean vector, True if the corresponding observation violates the constraint(s)
+    :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)
     :param m_init: marker for the initial BO points
     :param m_add: marker for the other BO points
     :param c_pass: color for the regular BO points
@@ -88,14 +88,15 @@ def add_surface_plotly(xx, yy, f, fig, alpha=1.0, figrow=1, figcol=1):
 
 def add_bo_points_plotly(x, y, z, fig, num_init, idx_best=None, mask_fail=None, figrow=1, figcol=1):
     """
-    Adds scatter points to an existing subfigure. Markers and colors are chosen according to BO factors.
+    Adds scatter points to an existing subfigure. Markers and colors are chosen according to
+    BO factors.
     :param x: [N] x inputs
     :param y: [N] y inputs
     :param z: [N] z outputs
     :param fig: the current plotly figure
     :param num_init: initial number of BO points
     :param idx_best: index of the best BO point
-    :param mask_fail: Boolean vector, True if the corresponding observation violates the constraint(s)
+    :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)
     :param figrow: row index of the subfigure
     :param figcol: column index of the subfigure
     :return: a plotly figure

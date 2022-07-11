@@ -12,24 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 from matplotlib import cm
+from matplotlib.axes import Axes
 
 from trieste.acquisition import AcquisitionFunction
+from trieste.acquisition.multi_objective.dominance import non_dominated
 from trieste.types import TensorType
 from trieste.utils import to_numpy
-from trieste.acquisition.multi_objective.dominance import non_dominated
 
 
-def create_grid(mins: TensorType, maxs: TensorType, grid_density=20):
+def create_grid(
+    mins: TensorType, maxs: TensorType, grid_density: int = 20
+) -> tuple[TensorType, TensorType, TensorType]:
     """
     Creates a regular 2D grid of size `grid_density^2` between mins and maxs.
     :param mins: list of 2 lower bounds
     :param maxs: list of 2 upper bounds
     :param grid_density: scalar
-    :return: Xplot [grid_density**2, 2], xx, yy from meshgrid for the specific formatting of contour / surface plots
+    :return: Xplot [grid_density**2, 2], xx, yy from meshgrid for the specific formatting of
+        contour / surface plots
     """
     tf.debugging.assert_shapes([(mins, [2]), (maxs, [2])])
 
@@ -41,7 +47,15 @@ def create_grid(mins: TensorType, maxs: TensorType, grid_density=20):
     return Xplot, xx, yy
 
 
-def plot_surface(xx, yy, f, ax, contour=False, fill=False, alpha=1.0):
+def plot_surface(
+    xx: TensorType,
+    yy: TensorType,
+    f: TensorType,
+    ax: Axes,
+    contour: bool = False,
+    fill: bool = False,
+    alpha: float = 1.0,
+):
     """
     Adds either a contour or a surface to a given ax
     :param xx: input 1, from meshgrid
@@ -160,7 +174,8 @@ def plot_acq_function_2d(
     fill=False,
 ):
     """
-    Wrapper to produce a 2D/3D plot of an acq_func for a grid of size grid_density**2 between mins and maxs
+    Wrapper to produce a 2D/3D plot of an acq_func for a grid of size grid_density**2 between
+    mins and maxs.
     :param obj_func: a function that returns a n-array given a [n, d] array
     :param mins: 2 lower bounds
     :param maxs: 2 upper bounds
@@ -208,7 +223,7 @@ def format_point_markers(
     :param num_pts: total number of BO points
     :param num_init: initial number of BO points
     :param idx_best: index of the best BO point
-    :param mask_fail: Boolean vector, True if the corresponding observation violates the constraint(s)
+    :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)
     :param m_init: marker for the initial BO points
     :param m_add: marker for the other BO points
     :param c_pass: color for the regular BO points
@@ -244,12 +259,13 @@ def plot_bo_points(
     c_best="tab:purple",
 ):
     """
-    Adds scatter points to an existing subfigure. Markers and colors are chosen according to BO factors.
+    Adds scatter points to an existing subfigure. Markers and colors are chosen according to
+    BO factors.
     :param pts: [N, 2] x inputs
     :param ax: a plt axes object
     :param num_init: initial number of BO points
     :param idx_best: index of the best BO point
-    :param mask_fail: Boolean vector, True if the corresponding observation violates the constraint(s)
+    :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)
     :param obs_values: optional [N] outputs (for 3d plots)
     """
 
@@ -284,12 +300,12 @@ def plot_mobo_points_in_obj_space(
     only_plot_pareto=False,
 ):
     """
-    Adds scatter points in objective space, used for multi-objective optimization (2 or 3 objectives only).
-    Markers and colors are chosen according to BO factors.
+    Adds scatter points in objective space, used for multi-objective optimization (2 or 3
+    objectives only). Markers and colors are chosen according to BO factors.
 
     :param obs_values: TF Tensor or numpy array of objective values, shape (N, 2) or (N, 3).
     :param num_init: initial number of BO points
-    :param mask_fail: Boolean vector, True if the corresponding observation violates the constraint(s)
+    :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)
     :param figsize: Size of the figure.
     :param xlabel: Label of the X axis.
     :param ylabel: Label of the Y axis.
