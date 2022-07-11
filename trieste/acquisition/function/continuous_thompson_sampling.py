@@ -175,8 +175,7 @@ class ParallelContinuousThompsonSampling(
 
 
 def negate_trajectory_function(
-    function: TrajectoryFunction,
-    output_dim: Optional[int] = None
+    function: TrajectoryFunction, output_dim: Optional[int] = None
 ) -> TrajectoryFunction:
     """
     Return the negative of trajectories so that our acquisition optimizers (which are
