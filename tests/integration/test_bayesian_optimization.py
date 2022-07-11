@@ -54,7 +54,6 @@ from trieste.bayesian_optimizer import (
     BayesianOptimizer,
     OptimizationResult,
     TrainableProbabilisticModelType,
-    stop_at_minimum,
 )
 from trieste.logging import tensorboard_writer
 from trieste.models import TrainableProbabilisticModel, TrajectoryFunctionClass
@@ -95,71 +94,71 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
     return (
         "num_steps, acquisition_rule",
         [
-            # pytest.param(20, EfficientGlobalOptimization(), id="EfficientGlobalOptimization"),
-            # pytest.param(
-            #     30,
-            #     EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE)),
-            #     id="AugmentedExpectedImprovement",
-            # ),
-            # pytest.param(
-            #     20,
-            #     EfficientGlobalOptimization(
-            #         MonteCarloExpectedImprovement(int(1e3)).using(OBJECTIVE),
-            #         generate_continuous_optimizer(100),
-            #     ),
-            #     id="MonteCarloExpectedImprovement",
-            # ),
-            # pytest.param(
-            #     24,
-            #     EfficientGlobalOptimization(
-            #         MinValueEntropySearch(
-            #             BRANIN_SEARCH_SPACE,
-            #             min_value_sampler=ThompsonSamplerFromTrajectory(sample_min_value=True),
-            #         ).using(OBJECTIVE)
-            #     ),
-            #     id="MinValueEntropySearch",
-            # ),
-            # pytest.param(
-            #     12,
-            #     EfficientGlobalOptimization(
-            #         BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
-            #         num_query_points=3,
-            #     ),
-            #     id="BatchMonteCarloExpectedImprovement",
-            # ),
-            # pytest.param(
-            #     12, AsynchronousOptimization(num_query_points=3), id="AsynchronousOptimization"
-            # ),
-            # pytest.param(
-            #     10,
-            #     EfficientGlobalOptimization(
-            #         LocalPenalization(
-            #             BRANIN_SEARCH_SPACE,
-            #         ).using(OBJECTIVE),
-            #         num_query_points=3,
-            #     ),
-            #     id="LocalPenalization",
-            # ),
-            # pytest.param(
-            #     10,
-            #     AsynchronousGreedy(
-            #         LocalPenalization(
-            #             BRANIN_SEARCH_SPACE,
-            #         ).using(OBJECTIVE),
-            #         num_query_points=3,
-            #     ),
-            #     id="LocalPenalization/AsynchronousGreedy",
-            # ),
-            # pytest.param(
-            #     10,
-            #     EfficientGlobalOptimization(
-            #         GIBBON(
-            #             BRANIN_SEARCH_SPACE,
-            #         ).using(OBJECTIVE),
-            #         num_query_points=2,
-            #     ),
-            #     id="GIBBON",
-            # ),
+            pytest.param(20, EfficientGlobalOptimization(), id="EfficientGlobalOptimization"),
+            pytest.param(
+                30,
+                EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE)),
+                id="AugmentedExpectedImprovement",
+            ),
+            pytest.param(
+                20,
+                EfficientGlobalOptimization(
+                    MonteCarloExpectedImprovement(int(1e3)).using(OBJECTIVE),
+                    generate_continuous_optimizer(100),
+                ),
+                id="MonteCarloExpectedImprovement",
+            ),
+            pytest.param(
+                24,
+                EfficientGlobalOptimization(
+                    MinValueEntropySearch(
+                        BRANIN_SEARCH_SPACE,
+                        min_value_sampler=ThompsonSamplerFromTrajectory(sample_min_value=True),
+                    ).using(OBJECTIVE)
+                ),
+                id="MinValueEntropySearch",
+            ),
+            pytest.param(
+                12,
+                EfficientGlobalOptimization(
+                    BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
+                    num_query_points=3,
+                ),
+                id="BatchMonteCarloExpectedImprovement",
+            ),
+            pytest.param(
+                12, AsynchronousOptimization(num_query_points=3), id="AsynchronousOptimization"
+            ),
+            pytest.param(
+                10,
+                EfficientGlobalOptimization(
+                    LocalPenalization(
+                        BRANIN_SEARCH_SPACE,
+                    ).using(OBJECTIVE),
+                    num_query_points=3,
+                ),
+                id="LocalPenalization",
+            ),
+            pytest.param(
+                10,
+                AsynchronousGreedy(
+                    LocalPenalization(
+                        BRANIN_SEARCH_SPACE,
+                    ).using(OBJECTIVE),
+                    num_query_points=3,
+                ),
+                id="LocalPenalization/AsynchronousGreedy",
+            ),
+            pytest.param(
+                10,
+                EfficientGlobalOptimization(
+                    GIBBON(
+                        BRANIN_SEARCH_SPACE,
+                    ).using(OBJECTIVE),
+                    num_query_points=2,
+                ),
+                id="GIBBON",
+            ),
             pytest.param(
                 20,
                 EfficientGlobalOptimization(
@@ -591,7 +590,6 @@ def _test_optimizer_finds_minimum(
                 acquisition_rule,
                 track_state=track_state,
                 track_path=Path(tmpdirname) / "history" if track_state else None,
-                early_stop_callback=stop_at_minimum(minima, minimizers, minimum_rtol=rtol_level),
             )
             best_x, best_y, _ = result.try_get_optimal_point()
 
@@ -600,17 +598,19 @@ def _test_optimizer_finds_minimum(
                 pass
             else:
                 minimizer_err = tf.abs((best_x - minimizers) / minimizers)
+                # these accuracies are the current best for the given number of optimization
+                # steps, which makes this is a regression test
                 assert tf.reduce_any(tf.reduce_all(minimizer_err < 0.05, axis=-1), axis=0)
                 npt.assert_allclose(best_y, minima, rtol=rtol_level)
 
                 if track_state:
-                    assert len(result.history) <= num_steps
-                    assert len(result.loaded_history) == len(result.history)
+                    assert len(result.history) == num_steps
+                    assert len(result.loaded_history) == num_steps
                     loaded_result: OptimizationResult[None] = OptimizationResult.from_path(
                         Path(tmpdirname) / "history"
                     )
                     assert loaded_result.final_result.is_ok
-                    assert len(loaded_result.history) == len(result.history)
+                    assert len(loaded_result.history) == num_steps
 
             # check that acquisition functions defined as classes aren't retraced unnecessarily
             # They should be retraced once for the optimzier's starting grid, L-BFGS, and logging.
