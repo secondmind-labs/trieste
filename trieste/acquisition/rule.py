@@ -785,6 +785,7 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
         num_search_space_samples: int,
         num_query_points: int,
         thompson_sampler: None = None,
+        output_dim: int = 0,
     ):
         ...
 
@@ -794,6 +795,7 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
         num_search_space_samples: int,
         num_query_points: int,
         thompson_sampler: Optional[ThompsonSampler[ProbabilisticModelType]] = None,
+        output_dim: int = 0,
     ):
         ...
 
@@ -802,11 +804,13 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
         num_search_space_samples: int,
         num_query_points: int,
         thompson_sampler: Optional[ThompsonSampler[ProbabilisticModelType]] = None,
+        output_dim: int = 0,
     ):
         """
         :param num_search_space_samples: The number of points at which to sample the posterior.
         :param num_query_points: The number of points to acquire.
-        :thompson_sampler: Sampler to sample maximisers from the underlying model.
+        :param thompson_sampler: Sampler to sample maximisers from the underlying model.
+        :param output_dim: The output dimension of the model to be used.
         """
         if not num_search_space_samples > 0:
             raise ValueError(f"Search space must be greater than 0, got {num_search_space_samples}")
@@ -830,13 +834,15 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
         self._thompson_sampler = thompson_sampler
         self._num_search_space_samples = num_search_space_samples
         self._num_query_points = num_query_points
+        self._output_dim = output_dim
 
     def __repr__(self) -> str:
         """"""
         return f"""DiscreteThompsonSampling(
         {self._num_search_space_samples!r},
         {self._num_query_points!r},
-        {self._thompson_sampler!r})"""
+        {self._thompson_sampler!r},
+        {self._output_dim!r})"""
 
     def acquire(
         self,
@@ -868,7 +874,7 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
 
         query_points = search_space.sample(self._num_search_space_samples)
         thompson_samples = self._thompson_sampler.sample(
-            models[OBJECTIVE], self._num_query_points, query_points
+            models[OBJECTIVE], self._num_query_points, query_points, output_dim=self._output_dim
         )
 
         return thompson_samples

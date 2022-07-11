@@ -54,11 +54,14 @@ class ThompsonSampler(ABC, Generic[ProbabilisticModelType]):
         """
 
     @abstractmethod
-    def sample(self, model: ProbabilisticModelType, sample_size: int, at: TensorType) -> TensorType:
+    def sample(
+        self, model: ProbabilisticModelType, sample_size: int, at: TensorType, output_dim: int = 0
+    ) -> TensorType:
         """
         :param model: The model to sample from.
         :param sample_size: The desired number of samples.
         :param at: Input points that define the sampler.
+        :param output_dim: The output dimension of the model to be used.
         :return: Samples.
         """
 
@@ -72,7 +75,9 @@ class ExactThompsonSampler(ThompsonSampler[ProbabilisticModel]):
     with a sampling method.
     """
 
-    def sample(self, model: ProbabilisticModel, sample_size: int, at: TensorType) -> TensorType:
+    def sample(
+        self, model: ProbabilisticModel, sample_size: int, at: TensorType, output_dim: int = 0
+    ) -> TensorType:
         """
         Return exact samples from either the objective function's minimser or its minimal value
         over the candidate set `at`.
@@ -81,6 +86,7 @@ class ExactThompsonSampler(ThompsonSampler[ProbabilisticModel]):
         :param sample_size: The desired number of samples.
         :param at: Where to sample the predictive distribution, with shape `[N, D]`, for points
             of dimension `D`.
+        :param output_dim: The dimension of the model output to consider.
         :return: The samples, of shape `[S, D]` (where `S` is the `sample_size`) if sampling
             the function's minimser or shape `[S, 1]` if sampling the function's mimimal value.
         :raise ValueError: If ``at`` has an invalid shape or if ``sample_size`` is not positive.
@@ -88,7 +94,7 @@ class ExactThompsonSampler(ThompsonSampler[ProbabilisticModel]):
         tf.debugging.assert_positive(sample_size)
         tf.debugging.assert_shapes([(at, ["N", None])])
 
-        samples = model.sample(at, sample_size)  # [S, N, 1]
+        samples = model.sample(at, sample_size)[..., output_dim : output_dim + 1]  # [S, N, 1]
 
         if self._sample_min_value:
             thompson_samples = tf.reduce_min(samples, axis=1)  # [S, 1]
@@ -130,7 +136,9 @@ class GumbelSampler(ThompsonSampler[ProbabilisticModel]):
 
         super().__init__(sample_min_value)
 
-    def sample(self, model: ProbabilisticModel, sample_size: int, at: TensorType) -> TensorType:
+    def sample(
+        self, model: ProbabilisticModel, sample_size: int, at: TensorType, output_dim: int = 0
+    ) -> TensorType:
         """
         Return approximate samples from of the objective function's minimum value.
 
@@ -138,6 +146,7 @@ class GumbelSampler(ThompsonSampler[ProbabilisticModel]):
         :param sample_size: The desired number of samples.
         :param at: Points at where to fit the Gumbel distribution, with shape `[N, D]`, for points
             of dimension `D`. We recommend scaling `N` with search space dimension.
+        :param output_dim: The output dimension of the model to be used. Currently unused.
         :return: The samples, of shape `[S, 1]`, where `S` is the `sample_size`.
         :raise ValueError: If ``at`` has an invalid shape or if ``sample_size`` is not positive.
         """
@@ -186,7 +195,9 @@ class ThompsonSamplerFromTrajectory(ThompsonSampler[HasTrajectorySampler]):
     probabilistic model with a :meth:`trajectory_sampler` method.
     """
 
-    def sample(self, model: HasTrajectorySampler, sample_size: int, at: TensorType) -> TensorType:
+    def sample(
+        self, model: ProbabilisticModel, sample_size: int, at: TensorType, output_dim: int = 0
+    ) -> TensorType:
         """
         Return approximate samples from either the objective function's minimser or its minimal
         value over the candidate set `at`.
@@ -195,6 +206,7 @@ class ThompsonSamplerFromTrajectory(ThompsonSampler[HasTrajectorySampler]):
         :param sample_size: The desired number of samples.
         :param at: Where to sample the predictive distribution, with shape `[N, D]`, for points
             of dimension `D`.
+        :param output_dim: The output dimension of the model to be used.
         :return: The samples, of shape `[S, D]` (where `S` is the `sample_size`) if sampling
             the function's minimser or shape `[S, 1]` if sampling the function's mimimal value.
         :raise ValueError: If ``at`` has an invalid shape or if ``sample_size`` is not positive.
@@ -218,7 +230,7 @@ class ThompsonSamplerFromTrajectory(ThompsonSampler[HasTrajectorySampler]):
         for _ in tf.range(sample_size):
             sampled_trajectory = trajectory_sampler.get_trajectory()
             expanded_at = tf.expand_dims(at, -2)  # [N, 1, D]
-            evaluated_trajectory = sampled_trajectory(expanded_at)  # [N, 1]
+            evaluated_trajectory = sampled_trajectory(expanded_at)[..., output_dim]  # [N, 1]
             if self._sample_min_value:
                 sample = tf.reduce_min(evaluated_trajectory, keepdims=True)  # [1, 1]
             else:
