@@ -51,4 +51,4 @@ jobs:
         git config --global user.email "none"
         git config --global user.name "github-actions-bot"
         git commit --amend --no-edit
-        git push
+        git push --force-with-lease
