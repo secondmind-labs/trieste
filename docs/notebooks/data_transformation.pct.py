@@ -10,13 +10,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
-from util.plotting import plot_regret
+from trieste.experimental.plotting import plot_regret
 
 import trieste
 from trieste.ask_tell_optimization import AskTellOptimizer
 from trieste.data import Dataset
 from trieste.models.gpflow import GaussianProcessRegression
-from trieste.models.optimizer import Optimizer
 from trieste.objectives import TRID_10_MINIMUM, TRID_10_SEARCH_SPACE, trid_10
 from trieste.objectives.utils import mk_observer
 from trieste.space import Box

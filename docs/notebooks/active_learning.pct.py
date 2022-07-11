@@ -21,7 +21,6 @@ tf.random.set_seed(1793)
 # %%
 from trieste.objectives import BRANIN_SEARCH_SPACE, scaled_branin
 from trieste.experimental.plotting import plot_function_plotly
-from trieste.space import Box
 
 search_space = BRANIN_SEARCH_SPACE
 
@@ -92,9 +91,6 @@ observations = dataset.observations.numpy()
 # Finally, we can check the performance of our `PredictiveVariance` active learning acquisition function by plotting the predictive variance landscape of our model. We can see how it samples regions for which our model is highly uncertain.
 
 # %%
-from trieste.experimental.plotting import plot_bo_points, plot_function_2d
-
-
 def plot_active_learning_query(
     result, bo_iter, num_initial_points, query_points, num_query=1
 ):

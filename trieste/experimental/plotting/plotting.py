@@ -14,11 +14,16 @@
 
 from __future__ import annotations
 
+from typing import Callable, Optional, Sequence
+
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 from matplotlib import cm
 from matplotlib.axes import Axes
+from matplotlib.collections import Collection
+from matplotlib.contour import ContourSet
+from matplotlib.figure import Figure
 
 from trieste.acquisition import AcquisitionFunction
 from trieste.acquisition.multi_objective.dominance import non_dominated
@@ -31,6 +36,7 @@ def create_grid(
 ) -> tuple[TensorType, TensorType, TensorType]:
     """
     Creates a regular 2D grid of size `grid_density^2` between mins and maxs.
+
     :param mins: list of 2 lower bounds
     :param maxs: list of 2 upper bounds
     :param grid_density: scalar
@@ -55,16 +61,17 @@ def plot_surface(
     contour: bool = False,
     fill: bool = False,
     alpha: float = 1.0,
-):
+) -> ContourSet | Collection:
     """
-    Adds either a contour or a surface to a given ax
+    Adds either a contour or a surface to a given ax.
+
     :param xx: input 1, from meshgrid
     :param yy: input2, from meshgrid
     :param f: output, from meshgrid
     :param ax: plt axes object
     :param contour: Boolean
     :param alpha: transparency
-    :return:
+    :return: generated contour or surface
     """
 
     if contour:
@@ -85,34 +92,36 @@ def plot_surface(
 
 
 def plot_function_2d(
-    obj_func,
+    obj_func: Callable[[TensorType], TensorType],
     mins: TensorType,
     maxs: TensorType,
     grid_density: int = 20,
-    contour=False,
-    log=False,
-    title=None,
-    xlabel=None,
-    ylabel=None,
-    figsize=None,
-    colorbar=False,
-    alpha=1.0,
-    fill=False,
-):
+    contour: bool = False,
+    log: bool = False,
+    title: Optional[Sequence[str]] = None,
+    xlabel: Optional[str] = None,
+    ylabel: Optional[str] = None,
+    figsize: Optional[tuple[float, float]] = None,
+    colorbar: bool = False,
+    alpha: float = 1.0,
+    fill: bool = False,
+) -> tuple[Figure, Axes]:
     """
     2D/3D plot of an obj_func for a grid of size grid_density**2 between mins and maxs
+
     :param obj_func: a function that returns a n-array given a [n, d] array
     :param mins: 2 lower bounds
     :param maxs: 2 upper bounds
     :param grid_density: positive integer for the grid size
     :param contour: Boolean. If False, a 3d plot is produced
     :param log: Boolean. If True, the log transformation (log(f - min(f) + 0.1)) is applied
-    :param title:
-    :param xlabel:
-    :param ylabel:
-    :param figsize:
-    :param colorbar
+    :param title: optional titles
+    :param xlabel: optional xlabel
+    :param ylabel: optional ylabel
+    :param figsize: optional figsize
+    :param colorbar: whether to use colorbar
     :param alpha: transparency
+    :returns: figure and axes
     """
     mins = to_numpy(mins)
     maxs = to_numpy(maxs)

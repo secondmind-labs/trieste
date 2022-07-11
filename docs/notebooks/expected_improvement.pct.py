@@ -23,8 +23,7 @@ from trieste.objectives import (
     SCALED_BRANIN_MINIMUM,
     BRANIN_SEARCH_SPACE,
 )
-from trieste.objectives.utils import mk_observer
-from util.plotting_plotly import plot_function_plotly
+from trieste.experimental.plotting import plot_function_plotly
 from trieste.space import Box
 
 search_space = BRANIN_SEARCH_SPACE  # predefined search space, for convenience
@@ -134,7 +133,7 @@ print(f"observation: {observation}")
 # We can visualise how the optimizer performed by plotting all the acquired observations, along with the true function values and optima, either in a two-dimensional contour plot ...
 
 # %%
-from util.plotting import plot_bo_points, plot_function_2d
+from trieste.experimental.plotting import plot_bo_points, plot_function_2d
 
 query_points = dataset.query_points.numpy()
 observations = dataset.observations.numpy()
@@ -154,7 +153,7 @@ ax[0, 0].set_xlabel(r"$x_2$")
 # ... or as a three-dimensional plot
 
 # %%
-from util.plotting_plotly import add_bo_points_plotly
+from trieste.experimental.plotting import add_bo_points_plotly
 
 fig = plot_function_plotly(
     scaled_branin, search_space.lower, search_space.upper, grid_density=20
@@ -178,7 +177,7 @@ fig.show()
 
 # %%
 import matplotlib.pyplot as plt
-from util.plotting import plot_regret
+from trieste.experimental.plotting import plot_regret
 
 suboptimality = observations - SCALED_BRANIN_MINIMUM.numpy()
 _, ax = plt.subplots(1, 2)
@@ -198,7 +197,7 @@ ax[0].set_xlabel("# evaluations")
 # We can visualise the model over the objective function by plotting the mean and 95% confidence intervals of its predictive distribution. Like with the data before, we can get the model with `.try_get_final_model()`.
 
 # %%
-from util.plotting_plotly import plot_model_predictions_plotly
+from trieste.experimental.plotting import plot_model_predictions_plotly
 
 fig = plot_model_predictions_plotly(
     result.try_get_final_model(),

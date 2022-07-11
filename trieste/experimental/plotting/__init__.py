@@ -16,5 +16,28 @@ Experimental plotting package. Not intended for production code, as it is not ye
 tested and may change quickly.
 """
 
-from .plotting import plot_bo_points, plot_function_2d
-from .plotting_plotly import plot_function_plotly
+try:
+    from .inequality_constraints import (
+        plot_2obj_cst_query_points,
+        plot_init_query_points,
+        plot_objective_and_constraints,
+    )
+    from .plotting import (
+        plot_acq_function_2d,
+        plot_bo_points,
+        plot_function_2d,
+        plot_mobo_history,
+        plot_mobo_points_in_obj_space,
+        plot_regret,
+    )
+    from .plotting_plotly import (
+        add_bo_points_plotly,
+        plot_function_plotly,
+        plot_model_predictions_plotly,
+    )
+except Exception as e:
+    print(
+        "trieste.experimental.plotting requires matplotlib and plotly to be installed."
+        "\nOne way to do this is to install 'trieste[plotting]'."
+    )
+    raise e
