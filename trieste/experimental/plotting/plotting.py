@@ -19,6 +19,7 @@ from typing import Callable, Optional, Sequence
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+from gpflow.models import GPModel
 from matplotlib import cm
 from matplotlib.axes import Axes
 from matplotlib.collections import Collection
@@ -375,20 +376,21 @@ def plot_mobo_points_in_obj_space(
 
 
 def plot_mobo_history(
-    obs_values,
-    metric_func,
-    num_init=None,
-    mask_fail=None,
-    figsize=None,
-):
+    obs_values : TensorType,
+    metric_func: Callable[[TensorType], TensorType],
+    num_init: int,
+    mask_fail: Optional[TensorType]=None,
+    figsize: Optional[tuple[float, float]]=None,
+) -> tuple[Figure, Axes]:
     """
     Draw the performance measure for multi-objective optimization.
 
-    :param obs_values:
+    :param obs_values: TF Tensor or numpy array of objective values
     :param metric_func: a callable function calculate metric score
-    :param num_init:
-    :param mask_fail:
-    :param figsize:
+    :param num_init: initial number of BO points
+    :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)
+    :param figsize: Size of the figure.
+    :returns: figure and axes
     """
 
     fig, ax = plt.subplots(figsize=figsize)
@@ -404,32 +406,32 @@ def plot_mobo_history(
 
 
 def plot_regret(
-    obs_values,
-    ax,
-    show_obs=True,
-    num_init=None,
-    mask_fail=None,
-    idx_best=None,
-    m_init="x",
-    m_add="o",
-    c_pass="tab:green",
-    c_fail="tab:red",
-    c_best="tab:purple",
-):
+    obs_values: TensorType,
+    ax: Axes,
+    num_init: int,
+    show_obs: bool=True,
+    mask_fail: Optional[TensorType]=None,
+    idx_best:Optional[int]=None,
+    m_init: str="x",
+    m_add: str="o",
+    c_pass: str="tab:green",
+    c_fail: str="tab:red",
+    c_best: str="tab:purple",
+) -> None:
     """
     Draws the simple regret with same colors / markers as the other plots.
-    :param obs_values:
-    :param ax:
-    :param show_obs:
-    :param num_init:
-    :param mask_fail:
-    :param idx_best:
-    :param m_init:
-    :param m_add:
-    :param c_pass:
-    :param c_fail:
-    :param c_best:
-    :return:
+
+    :param obs_values: TF Tensor or numpy array of objective values
+    :param ax: a plt axes object
+    :param show_obs: show observations
+    :param num_init: initial number of BO points
+    :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)
+    :param idx_best: index of the best BO point
+    :param m_init: marker for the initial BO points
+    :param m_add: marker for the other BO points
+    :param c_pass: color for the regular BO points
+    :param c_fail: color for the failed BO points
+    :param c_best: color for the best BO points
     """
 
     col_pts, mark_pts = format_point_markers(
@@ -450,18 +452,19 @@ def plot_regret(
 
 
 def plot_gp_2d(
-    model,
+    model: GPModel,
     mins: TensorType,
     maxs: TensorType,
-    grid_density=20,
-    contour=False,
-    xlabel=None,
-    ylabel=None,
-    figsize=None,
-    predict_y=False,
-):
+    grid_density: int=20,
+    contour: bool=False,
+    xlabel: Optional[str]=None,
+    ylabel: Optional[str]=None,
+    figsize: Optional[tuple[float, float]]=None,
+    predict_y: bool=False,
+) -> tuple[Figure, Axes]:
     """
     2D/3D plot of a gp model for a grid of size grid_density**2 between mins and maxs
+
     :param model: a gpflow model
     :param mins: 2 lower bounds
     :param maxs: 2 upper bounds
@@ -469,7 +472,8 @@ def plot_gp_2d(
     :param contour: Boolean. If False, a 3d plot is produced
     :param xlabel: optional string
     :param ylabel: optional string
-    :param figsize:
+    :param figsize: optional figsize
+    :returns: figure and axes
     """
     mins = to_numpy(mins)
     maxs = to_numpy(maxs)

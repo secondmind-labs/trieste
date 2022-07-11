@@ -26,6 +26,7 @@ try:
         plot_acq_function_2d,
         plot_bo_points,
         plot_function_2d,
+        plot_gp_2d,
         plot_mobo_history,
         plot_mobo_points_in_obj_space,
         plot_regret,
