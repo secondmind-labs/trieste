@@ -216,7 +216,7 @@ def test_dgp_decoupled_trajectory_sampler_returns_trajectory_function_with_corre
     trajectory = sampler.get_trajectory()
     xs = _generate_xs_for_decoupled_trajectory(num_evals, batch_size)
 
-    tf.debugging.assert_shapes([(trajectory(xs), [num_evals, batch_size])])
+    tf.debugging.assert_shapes([(trajectory(xs), [num_evals, batch_size, 1])])
 
     assert isinstance(trajectory, dgp_feature_decomposition_trajectory)
 
@@ -267,10 +267,10 @@ def test_dgp_decoupled_trajectory_sampler_samples_approximate_expected_distribut
 
     samples = trajectory(xs)
 
-    assert samples.shape == [len(dataset.query_points), sample_size]
+    assert samples.shape == [len(dataset.query_points), sample_size, 1]
 
-    sample_mean = tf.reduce_mean(samples, axis=-1, keepdims=True)
-    sample_variance = tf.reduce_mean((samples - sample_mean) ** 2, axis=-1, keepdims=True)
+    sample_mean = tf.reduce_mean(samples, axis=1)
+    sample_variance = tf.math.reduce_variance(samples, axis=1)
 
     num_samples = 50
     means = []

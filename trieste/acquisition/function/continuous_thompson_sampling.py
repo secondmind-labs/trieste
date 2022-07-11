@@ -174,7 +174,10 @@ class ParallelContinuousThompsonSampling(
         return self._negated_trajectory
 
 
-def negate_trajectory_function(function: TrajectoryFunction, output_dim: int) -> TrajectoryFunction:
+def negate_trajectory_function(
+    function: TrajectoryFunction,
+    output_dim: Optional[int] = None
+) -> TrajectoryFunction:
     """
     Return the negative of trajectories so that our acquisition optimizers (which are
     all maximizers) can be used to extract the minimizers of trajectories.
@@ -187,7 +190,10 @@ def negate_trajectory_function(function: TrajectoryFunction, output_dim: int) ->
         class NegatedTrajectory(type(function)):  # type: ignore[misc]
             @tf.function
             def __call__(self, x: TensorType) -> TensorType:
-                return -1.0 * super().__call__(x)[..., output_dim]
+                if output_dim is not None:
+                    return -1.0 * super().__call__(x)[..., output_dim]
+                else:
+                    return -1.0 * super().__call__(x)
 
         function.__class__ = NegatedTrajectory
 
@@ -197,6 +203,9 @@ def negate_trajectory_function(function: TrajectoryFunction, output_dim: int) ->
 
         @tf.function
         def negated_trajectory(x: TensorType) -> TensorType:
-            return -1.0 * function(x)[..., output_dim]
+            if output_dim is not None:
+                return -1.0 * function(x)[..., output_dim]
+            else:
+                return -1.0 * function(x)
 
         return negated_trajectory
