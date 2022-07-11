@@ -94,71 +94,71 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
     return (
         "num_steps, acquisition_rule",
         [
-            pytest.param(20, EfficientGlobalOptimization(), id="EfficientGlobalOptimization"),
-            pytest.param(
-                30,
-                EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE)),
-                id="AugmentedExpectedImprovement",
-            ),
-            pytest.param(
-                20,
-                EfficientGlobalOptimization(
-                    MonteCarloExpectedImprovement(int(1e3)).using(OBJECTIVE),
-                    generate_continuous_optimizer(100),
-                ),
-                id="MonteCarloExpectedImprovement",
-            ),
-            pytest.param(
-                24,
-                EfficientGlobalOptimization(
-                    MinValueEntropySearch(
-                        BRANIN_SEARCH_SPACE,
-                        min_value_sampler=ThompsonSamplerFromTrajectory(sample_min_value=True),
-                    ).using(OBJECTIVE)
-                ),
-                id="MinValueEntropySearch",
-            ),
-            pytest.param(
-                12,
-                EfficientGlobalOptimization(
-                    BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
-                    num_query_points=3,
-                ),
-                id="BatchMonteCarloExpectedImprovement",
-            ),
-            pytest.param(
-                12, AsynchronousOptimization(num_query_points=3), id="AsynchronousOptimization"
-            ),
-            pytest.param(
-                10,
-                EfficientGlobalOptimization(
-                    LocalPenalization(
-                        BRANIN_SEARCH_SPACE,
-                    ).using(OBJECTIVE),
-                    num_query_points=3,
-                ),
-                id="LocalPenalization",
-            ),
-            pytest.param(
-                10,
-                AsynchronousGreedy(
-                    LocalPenalization(
-                        BRANIN_SEARCH_SPACE,
-                    ).using(OBJECTIVE),
-                    num_query_points=3,
-                ),
-                id="LocalPenalization/AsynchronousGreedy",
-            ),
-            pytest.param(
-                10,
-                EfficientGlobalOptimization(
-                    GIBBON(
-                        BRANIN_SEARCH_SPACE,
-                    ).using(OBJECTIVE),
-                    num_query_points=2,
-                ),
-                id="GIBBON",
-            ),
+            # pytest.param(20, EfficientGlobalOptimization(), id="EfficientGlobalOptimization"),
+            # pytest.param(
+            #     30,
+            #     EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE)),
+            #     id="AugmentedExpectedImprovement",
+            # ),
+            # pytest.param(
+            #     20,
+            #     EfficientGlobalOptimization(
+            #         MonteCarloExpectedImprovement(int(1e3)).using(OBJECTIVE),
+            #         generate_continuous_optimizer(100),
+            #     ),
+            #     id="MonteCarloExpectedImprovement",
+            # ),
+            # pytest.param(
+            #     24,
+            #     EfficientGlobalOptimization(
+            #         MinValueEntropySearch(
+            #             BRANIN_SEARCH_SPACE,
+            #             min_value_sampler=ThompsonSamplerFromTrajectory(sample_min_value=True),
+            #         ).using(OBJECTIVE)
+            #     ),
+            #     id="MinValueEntropySearch",
+            # ),
+            # pytest.param(
+            #     12,
+            #     EfficientGlobalOptimization(
+            #         BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
+            #         num_query_points=3,
+            #     ),
+            #     id="BatchMonteCarloExpectedImprovement",
+            # ),
+            # pytest.param(
+            #     12, AsynchronousOptimization(num_query_points=3), id="AsynchronousOptimization"
+            # ),
+            # pytest.param(
+            #     10,
+            #     EfficientGlobalOptimization(
+            #         LocalPenalization(
+            #             BRANIN_SEARCH_SPACE,
+            #         ).using(OBJECTIVE),
+            #         num_query_points=3,
+            #     ),
+            #     id="LocalPenalization",
+            # ),
+            # pytest.param(
+            #     10,
+            #     AsynchronousGreedy(
+            #         LocalPenalization(
+            #             BRANIN_SEARCH_SPACE,
+            #         ).using(OBJECTIVE),
+            #         num_query_points=3,
+            #     ),
+            #     id="LocalPenalization/AsynchronousGreedy",
+            # ),
+            # pytest.param(
+            #     10,
+            #     EfficientGlobalOptimization(
+            #         GIBBON(
+            #             BRANIN_SEARCH_SPACE,
+            #         ).using(OBJECTIVE),
+            #         num_query_points=2,
+            #     ),
+            #     id="GIBBON",
+            # ),
             pytest.param(
                 20,
                 EfficientGlobalOptimization(

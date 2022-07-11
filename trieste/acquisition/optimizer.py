@@ -333,15 +333,18 @@ def generate_continuous_optimizer(
                         f"optimization runs, requiring recovery runs",
                     )
 
+                _target_func: AcquisitionFunction = target_func  # make mypy happy
+
+                def improvements() -> tf.Tensor:
+                    best_initial_values = tf.math.reduce_max(_target_func(initial_points), axis=0)
+                    best_values = tf.math.reduce_max(fun_values, axis=0)
+                    improve = best_values - tf.cast(best_initial_values, best_values.dtype)
+                    return improve[0] if V == 1 else improve
+
                 if V == 1:
-                    _target_func: AcquisitionFunction = target_func  # make mypy happy
-
-                    def improvement() -> tf.Tensor:
-                        best_initial_value = tf.math.reduce_max(_target_func(initial_points))
-                        best_value = tf.math.reduce_max(fun_values)
-                        return best_value - tf.cast(best_initial_value, best_value.dtype)
-
-                    logging.scalar("spo_improvement_on_initial_samples", improvement)
+                    logging.scalar("spo_improvement_on_initial_samples", improvements)
+                else:
+                    logging.histogram("spo_improvement_on_initial_samples", improvements)
 
         best_run_ids = tf.math.argmax(fun_values, axis=0)  # [V]
         chosen_points = tf.gather(
