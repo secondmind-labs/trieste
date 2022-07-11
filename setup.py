@@ -47,6 +47,6 @@ setup(
         "greenlet>=1.1.0",
     ],
     extras_require={
-        "plotting": ["seaborn"],
+        "plotting": ["seaborn", "plotly"],
     },
 )

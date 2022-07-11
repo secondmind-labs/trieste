@@ -173,31 +173,36 @@ def plot_acq_function_2d(
     mins: TensorType,
     maxs: TensorType,
     grid_density: int = 20,
-    contour=False,
-    log=False,
-    title=None,
-    xlabel=None,
-    ylabel=None,
-    figsize=None,
-    colorbar=None,
-    fill=False,
-):
+    contour: bool = False,
+    log: bool = False,
+    title: Optional[Sequence[str]] = None,
+    xlabel: Optional[str] = None,
+    ylabel: Optional[str] = None,
+    figsize: Optional[tuple[float, float]] = None,
+    colorbar: bool = False,
+    alpha: float = 1.0,
+    fill: bool = False,
+) -> tuple[Figure, Axes]:
     """
     Wrapper to produce a 2D/3D plot of an acq_func for a grid of size grid_density**2 between
     mins and maxs.
+
     :param obj_func: a function that returns a n-array given a [n, d] array
     :param mins: 2 lower bounds
     :param maxs: 2 upper bounds
     :param grid_density: positive integer for the grid size
     :param contour: Boolean. If False, a 3d plot is produced
     :param log: Boolean. If True, the log transformation (log(f - min(f) + 0.1)) is applied
-    :param title:
-    :param xlabel:
-    :param ylabel:
-    :param figsize:
+    :param title: optional titles
+    :param xlabel: optional xlabel
+    :param ylabel: optional ylabel
+    :param figsize: optional figsize
+    :param colorbar: whether to use colorbar
+    :param alpha: transparency
+    :returns: figure and axes
     """
 
-    def batched_func(x):
+    def batched_func(x: TensorType) -> TensorType:
         return acq_func(tf.expand_dims(x, axis=-2))
 
     return plot_function_2d(
@@ -212,23 +217,25 @@ def plot_acq_function_2d(
         ylabel,
         figsize,
         colorbar,
-        fill=fill,
+        alpha,
+        fill,
     )
 
 
 def format_point_markers(
-    num_pts,
-    num_init=None,
-    idx_best=None,
-    mask_fail=None,
-    m_init="x",
-    m_add="o",
-    c_pass="tab:green",
-    c_fail="tab:red",
-    c_best="tab:purple",
-):
+    num_pts: int,
+    num_init: Optional[int] = None,
+    idx_best: Optional[int] = None,
+    mask_fail: Optional[TensorType] = None,
+    m_init: str = "x",
+    m_add: str = "o",
+    c_pass: str = "tab:green",
+    c_fail: str = "tab:red",
+    c_best: str = "tab:purple",
+) -> tuple[TensorType, TensorType]:
     """
-    Prepares point marker styles according to some BO factors
+    Prepares point marker styles according to some BO factors.
+
     :param num_pts: total number of BO points
     :param num_init: initial number of BO points
     :param idx_best: index of the best BO point
@@ -255,21 +262,22 @@ def format_point_markers(
 
 
 def plot_bo_points(
-    pts,
-    ax,
-    num_init=None,
-    idx_best=None,
-    mask_fail=None,
-    obs_values=None,
-    m_init="x",
-    m_add="o",
-    c_pass="tab:green",
-    c_fail="tab:red",
-    c_best="tab:purple",
-):
+    pts: TensorType,
+    ax: Axes,
+    num_init: Optional[int] = None,
+    idx_best: Optional[int] = None,
+    mask_fail: Optional[TensorType] = None,
+    obs_values: Optional[TensorType] = None,
+    m_init: str = "x",
+    m_add: str = "o",
+    c_pass: str = "tab:green",
+    c_fail: str = "tab:red",
+    c_best: str = "tab:purple",
+) -> None:
     """
     Adds scatter points to an existing subfigure. Markers and colors are chosen according to
     BO factors.
+
     :param pts: [N, 2] x inputs
     :param ax: a plt axes object
     :param num_init: initial number of BO points
@@ -293,21 +301,21 @@ def plot_bo_points(
 
 
 def plot_mobo_points_in_obj_space(
-    obs_values,
-    num_init=None,
-    mask_fail=None,
-    figsize=None,
-    xlabel="Obj 1",
-    ylabel="Obj 2",
-    zlabel="Obj 3",
-    title=None,
-    m_init="x",
-    m_add="o",
-    c_pass="tab:green",
-    c_fail="tab:red",
-    c_pareto="tab:purple",
-    only_plot_pareto=False,
-):
+    obs_values: TensorType,
+    num_init: Optional[int] = None,
+    mask_fail: Optional[TensorType] = None,
+    figsize: Optional[tuple[float, float]] = None,
+    xlabel: str = "Obj 1",
+    ylabel: str = "Obj 2",
+    zlabel: str = "Obj 3",
+    title: Optional[str] = None,
+    m_init: str = "x",
+    m_add: str = "o",
+    c_pass: str = "tab:green",
+    c_fail: str = "tab:red",
+    c_pareto: str = "tab:purple",
+    only_plot_pareto: bool = False,
+) -> tuple[Figure, Axes]:
     """
     Adds scatter points in objective space, used for multi-objective optimization (2 or 3
     objectives only). Markers and colors are chosen according to BO factors.
@@ -326,6 +334,7 @@ def plot_mobo_points_in_obj_space(
     :param c_fail: color for the failed BO points
     :param c_pareto: color for the Pareto front points
     :param only_plot_pareto: if set to `True`, only plot the pareto points. Default is `False`.
+    :returns: figure and axes
     """
     obj_num = obs_values.shape[-1]
     tf.debugging.assert_shapes([])
