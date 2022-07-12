@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import unittest
 from math import ceil
 from typing import Callable, Tuple, TypeVar, Union
 from unittest.mock import MagicMock
@@ -35,6 +36,7 @@ from trieste.acquisition.optimizer import (
     optimize_discrete,
 )
 from trieste.acquisition.utils import split_acquisition_function_calls
+from trieste.logging import tensorboard_writer
 from trieste.objectives import (
     ACKLEY_5_MINIMIZER,
     ACKLEY_5_SEARCH_SPACE,
@@ -233,18 +235,27 @@ def test_optimize_continuous_correctly_uses_init_params(
     optimizer(Box([-1], [1]), _target_fn)
 
 
+@unittest.mock.patch("trieste.logging.tf.summary.text")
+@unittest.mock.patch("trieste.logging.tf.summary.scalar")
 @pytest.mark.parametrize("failed_first_optimization", [True, False])
 @pytest.mark.parametrize("num_recovery_runs", [0, 2, 10])
 def test_optimize_continuous_recovery_runs(
-    failed_first_optimization: bool, num_recovery_runs: int
+    mocked_summary_scalar: unittest.mock.MagicMock,
+    mocked_summary_text: unittest.mock.MagicMock,
+    failed_first_optimization: bool,
+    num_recovery_runs: int,
 ) -> None:
 
     currently_failing = failed_first_optimization
     num_batch_evals = 0
+    num_evals = 0
 
     def _target_fn(x: TensorType) -> TensorType:
         nonlocal currently_failing
         nonlocal num_batch_evals
+        nonlocal num_evals
+
+        num_evals += 1
 
         if (
             tf.shape(x)[0] > 1
@@ -254,8 +265,9 @@ def test_optimize_continuous_recovery_runs(
         if (
             num_batch_evals > 1
         ):  # after random init, the next batch eval will be start of recovery run
-            assert (
-                tf.shape(x)[0] == num_recovery_runs
+            assert tf.shape(x)[0] in (
+                num_recovery_runs,
+                1,  # when generating improvement_on_initial_samples log
             )  # check that we do correct number of recovery runs
             currently_failing = False
 
@@ -264,14 +276,34 @@ def test_optimize_continuous_recovery_runs(
         else:
             return _quadratic_sum([0.5, 0.5])(x)  # use function that is easy to optimize
 
-    optimizer = generate_continuous_optimizer(
-        num_optimization_runs=1, num_recovery_runs=num_recovery_runs
-    )
-    if failed_first_optimization and (num_recovery_runs == 0):
-        with pytest.raises(FailedOptimizationError):
+    with tensorboard_writer(unittest.mock.MagicMock()):
+
+        optimizer = generate_continuous_optimizer(
+            num_optimization_runs=1, num_recovery_runs=num_recovery_runs
+        )
+        if failed_first_optimization and (num_recovery_runs == 0):
+            with pytest.raises(FailedOptimizationError):
+                optimizer(Box([-1], [1]), _target_fn)
+        else:
             optimizer(Box([-1], [1]), _target_fn)
+
+    # check we also generated the expected tensorboard logs
+    scalar_logs = {call[0][0]: call[0][1:] for call in mocked_summary_scalar.call_args_list}
+    if failed_first_optimization and (num_recovery_runs == 0):
+        assert not scalar_logs
     else:
-        optimizer(Box([-1], [1]), _target_fn)
+        assert set(scalar_logs) == {
+            "spo_af_evaluations",
+            "spo_improvement_on_initial_samples",
+        }
+        # also evaluated once for the initial points, and again when generating the log
+        assert scalar_logs["spo_af_evaluations"][0] == num_evals - 2
+
+    text_logs = {call[0][0]: call[0][1:] for call in mocked_summary_text.call_args_list}
+    if failed_first_optimization and (num_recovery_runs > 0):
+        assert set(text_logs) == {"spo_recovery_run"}
+    else:
+        assert not text_logs
 
 
 def test_optimize_continuous_when_target_raises_exception() -> None:
