@@ -15,17 +15,13 @@
 on:
   workflow_dispatch:
   push:
-    tags: v[0-9]+.[0-9]+.[0-9]+*
+    branches: develop
 
 jobs:
   docs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - uses: actions/checkout@v2
-      with:
-        ref: gh-pages-history
-        path: gh-pages-history
     - uses: actions/setup-python@v2
       with:
         python-version: 3.7
@@ -39,12 +35,13 @@ jobs:
         sudo dpkg -i "$TEMP_DEB"
         rm -f "$TEMP_DEB"
     - run: |
+        echo "develop" > VERSION
         (cd docs ; make html ; make html)
         TMP_DIR=$(mktemp -d -p $(pwd))
         VERSION=$(cat VERSION)
         mv docs/_build/html $TMP_DIR/$VERSION
-        sed -e "s/\$VERSION/$VERSION/g" redirect.html > $TMP_DIR/index.html 
         cp versions.json $TMP_DIR/
+        git restore VERSION
         cd gh-pages-history
         git rm -r --ignore-unmatch docs/$VERSION
         rm -rf docs/$VERSION
@@ -53,5 +50,5 @@ jobs:
         git add docs
         git config --global user.email "none"
         git config --global user.name "github-actions-bot"
-        git commit -m "build documentation for $VERSION"
-        git push
+        git commit --amend --no-edit
+        git push --force-with-lease
