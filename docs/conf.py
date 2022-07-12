@@ -124,7 +124,7 @@ html_theme_options = {
     "show_prev_next": False,
     "github_url": "https://github.com/secondmind-labs/trieste",
     "switcher": {
-        "json_url": "../versions.json",
+        "json_url": "https://secondmind-labs.github.io/trieste/versions.json",
         "version_match": release,
     },
     "navbar_end": ["version-switcher", "navbar-icon-links"],
