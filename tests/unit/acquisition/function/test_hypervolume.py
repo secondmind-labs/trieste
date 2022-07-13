@@ -43,16 +43,14 @@ from trieste.acquisition import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
     ProbabilityOfFeasibility,
-)
-from trieste.acquisition.multi_objective import (
     BatchMonteCarloExpectedHypervolumeImprovement,
     ExpectedConstrainedHypervolumeImprovement,
     ExpectedHypervolumeImprovement,
     batch_ehvi,
     expected_hv_improvement,
 )
-from trieste.acquisition.multi_objective.pareto import Pareto, get_reference_point
-from trieste.acquisition.multi_objective.partition import (
+from trieste.acquisition.function.multi_objective.pareto import Pareto, get_reference_point
+from trieste.acquisition.function.multi_objective.partition import (
     ExactPartition2dNonDominated,
     prepare_default_non_dominated_partition_bounds,
 )

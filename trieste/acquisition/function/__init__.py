@@ -34,7 +34,16 @@ from .entropy import (
     gibbon_repulsion_term,
     min_value_entropy_search,
 )
-from .greedy_batch import Fantasizer, LocalPenalization, hard_local_penalizer, soft_local_penalizer
+from .greedy_batch import (
+    Fantasizer, LocalPenalization, hard_local_penalizer, soft_local_penalizer, HIPPO, hippo_penalizer
+)
+from .hypervolume import (
+    BatchMonteCarloExpectedHypervolumeImprovement,
+    ExpectedConstrainedHypervolumeImprovement,
+    ExpectedHypervolumeImprovement,
+    batch_ehvi,
+    expected_hv_improvement,
+)
 from .improvement import (
     AugmentedExpectedImprovement,
     BatchMonteCarloExpectedImprovement,

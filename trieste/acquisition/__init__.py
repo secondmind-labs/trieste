@@ -76,6 +76,13 @@ from .function import (
     predictive_variance,
     probability_of_feasibility,
     soft_local_penalizer,
+    HIPPO,
+    BatchMonteCarloExpectedHypervolumeImprovement,
+    ExpectedConstrainedHypervolumeImprovement,
+    ExpectedHypervolumeImprovement,
+    batch_ehvi,
+    expected_hv_improvement,
+    hippo_penalizer,
 )
 from .interface import (
     AcquisitionFunction,
@@ -88,15 +95,6 @@ from .interface import (
     SingleModelVectorizedAcquisitionBuilder,
     UpdatablePenalizationFunction,
     VectorizedAcquisitionFunctionBuilder,
-)
-from .multi_objective import (
-    HIPPO,
-    BatchMonteCarloExpectedHypervolumeImprovement,
-    ExpectedConstrainedHypervolumeImprovement,
-    ExpectedHypervolumeImprovement,
-    batch_ehvi,
-    expected_hv_improvement,
-    hippo_penalizer,
 )
 from .sampler import (
     ExactThompsonSampler,
