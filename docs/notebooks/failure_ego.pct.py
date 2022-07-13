@@ -41,7 +41,7 @@ search_space = Box([0, 0], [1, 1])
 # region.
 
 # %%
-from util.plotting_plotly import plot_function_plotly
+from trieste.experimental.plotting import plot_function_plotly
 
 fig = plot_function_plotly(
     masked_branin, search_space.lower, search_space.upper, grid_density=70
@@ -178,7 +178,11 @@ print(f"query point: {result.datasets[OBJECTIVE].query_points[arg_min_idx, :]}")
 
 # %%
 import matplotlib.pyplot as plt
-from util.plotting import plot_gp_2d, plot_function_2d, plot_bo_points
+from trieste.experimental.plotting import (
+    plot_gp_2d,
+    plot_function_2d,
+    plot_bo_points,
+)
 
 mask_fail = (
     result.datasets[FAILURE].observations.numpy().flatten().astype(int) == 0
@@ -202,7 +206,7 @@ plt.show()
 # We can also plot the mean and variance of the predictive distribution over the search space, first for the objective data and model ...
 
 # %%
-from util.plotting_plotly import (
+from trieste.experimental.plotting import (
     plot_model_predictions_plotly,
     add_bo_points_plotly,
 )

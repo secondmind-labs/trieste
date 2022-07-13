@@ -12,24 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import Callable, Optional, Sequence
+
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+from gpflow.models import GPModel
 from matplotlib import cm
+from matplotlib.axes import Axes
+from matplotlib.collections import Collection
+from matplotlib.contour import ContourSet
+from matplotlib.figure import Figure
 
 from trieste.acquisition import AcquisitionFunction
+from trieste.acquisition.multi_objective.dominance import non_dominated
 from trieste.types import TensorType
 from trieste.utils import to_numpy
-from trieste.acquisition.multi_objective.dominance import non_dominated
 
 
-def create_grid(mins: TensorType, maxs: TensorType, grid_density=20):
+def create_grid(
+    mins: TensorType, maxs: TensorType, grid_density: int = 20
+) -> tuple[TensorType, TensorType, TensorType]:
     """
     Creates a regular 2D grid of size `grid_density^2` between mins and maxs.
+
     :param mins: list of 2 lower bounds
     :param maxs: list of 2 upper bounds
     :param grid_density: scalar
-    :return: Xplot [grid_density**2, 2], xx, yy from meshgrid for the specific formatting of contour / surface plots
+    :return: Xplot [grid_density**2, 2], xx, yy from meshgrid for the specific formatting of
+        contour / surface plots
     """
     tf.debugging.assert_shapes([(mins, [2]), (maxs, [2])])
 
@@ -41,16 +54,25 @@ def create_grid(mins: TensorType, maxs: TensorType, grid_density=20):
     return Xplot, xx, yy
 
 
-def plot_surface(xx, yy, f, ax, contour=False, fill=False, alpha=1.0):
+def plot_surface(
+    xx: TensorType,
+    yy: TensorType,
+    f: TensorType,
+    ax: Axes,
+    contour: bool = False,
+    fill: bool = False,
+    alpha: float = 1.0,
+) -> ContourSet | Collection:
     """
-    Adds either a contour or a surface to a given ax
+    Adds either a contour or a surface to a given ax.
+
     :param xx: input 1, from meshgrid
     :param yy: input2, from meshgrid
     :param f: output, from meshgrid
     :param ax: plt axes object
     :param contour: Boolean
     :param alpha: transparency
-    :return:
+    :return: generated contour or surface
     """
 
     if contour:
@@ -71,34 +93,36 @@ def plot_surface(xx, yy, f, ax, contour=False, fill=False, alpha=1.0):
 
 
 def plot_function_2d(
-    obj_func,
+    obj_func: Callable[[TensorType], TensorType],
     mins: TensorType,
     maxs: TensorType,
     grid_density: int = 20,
-    contour=False,
-    log=False,
-    title=None,
-    xlabel=None,
-    ylabel=None,
-    figsize=None,
-    colorbar=False,
-    alpha=1.0,
-    fill=False,
-):
+    contour: bool = False,
+    log: bool = False,
+    title: Optional[Sequence[str]] = None,
+    xlabel: Optional[str] = None,
+    ylabel: Optional[str] = None,
+    figsize: Optional[tuple[float, float]] = None,
+    colorbar: bool = False,
+    alpha: float = 1.0,
+    fill: bool = False,
+) -> tuple[Figure, Axes]:
     """
     2D/3D plot of an obj_func for a grid of size grid_density**2 between mins and maxs
+
     :param obj_func: a function that returns a n-array given a [n, d] array
     :param mins: 2 lower bounds
     :param maxs: 2 upper bounds
     :param grid_density: positive integer for the grid size
     :param contour: Boolean. If False, a 3d plot is produced
     :param log: Boolean. If True, the log transformation (log(f - min(f) + 0.1)) is applied
-    :param title:
-    :param xlabel:
-    :param ylabel:
-    :param figsize:
-    :param colorbar
+    :param title: optional titles
+    :param xlabel: optional xlabel
+    :param ylabel: optional ylabel
+    :param figsize: optional figsize
+    :param colorbar: whether to use colorbar
     :param alpha: transparency
+    :returns: figure and axes
     """
     mins = to_numpy(mins)
     maxs = to_numpy(maxs)
@@ -150,30 +174,36 @@ def plot_acq_function_2d(
     mins: TensorType,
     maxs: TensorType,
     grid_density: int = 20,
-    contour=False,
-    log=False,
-    title=None,
-    xlabel=None,
-    ylabel=None,
-    figsize=None,
-    colorbar=None,
-    fill=False,
-):
+    contour: bool = False,
+    log: bool = False,
+    title: Optional[Sequence[str]] = None,
+    xlabel: Optional[str] = None,
+    ylabel: Optional[str] = None,
+    figsize: Optional[tuple[float, float]] = None,
+    colorbar: bool = False,
+    alpha: float = 1.0,
+    fill: bool = False,
+) -> tuple[Figure, Axes]:
     """
-    Wrapper to produce a 2D/3D plot of an acq_func for a grid of size grid_density**2 between mins and maxs
+    Wrapper to produce a 2D/3D plot of an acq_func for a grid of size grid_density**2 between
+    mins and maxs.
+
     :param obj_func: a function that returns a n-array given a [n, d] array
     :param mins: 2 lower bounds
     :param maxs: 2 upper bounds
     :param grid_density: positive integer for the grid size
     :param contour: Boolean. If False, a 3d plot is produced
     :param log: Boolean. If True, the log transformation (log(f - min(f) + 0.1)) is applied
-    :param title:
-    :param xlabel:
-    :param ylabel:
-    :param figsize:
+    :param title: optional titles
+    :param xlabel: optional xlabel
+    :param ylabel: optional ylabel
+    :param figsize: optional figsize
+    :param colorbar: whether to use colorbar
+    :param alpha: transparency
+    :returns: figure and axes
     """
 
-    def batched_func(x):
+    def batched_func(x: TensorType) -> TensorType:
         return acq_func(tf.expand_dims(x, axis=-2))
 
     return plot_function_2d(
@@ -188,27 +218,29 @@ def plot_acq_function_2d(
         ylabel,
         figsize,
         colorbar,
-        fill=fill,
+        alpha,
+        fill,
     )
 
 
 def format_point_markers(
-    num_pts,
-    num_init=None,
-    idx_best=None,
-    mask_fail=None,
-    m_init="x",
-    m_add="o",
-    c_pass="tab:green",
-    c_fail="tab:red",
-    c_best="tab:purple",
-):
+    num_pts: int,
+    num_init: Optional[int] = None,
+    idx_best: Optional[int] = None,
+    mask_fail: Optional[TensorType] = None,
+    m_init: str = "x",
+    m_add: str = "o",
+    c_pass: str = "tab:green",
+    c_fail: str = "tab:red",
+    c_best: str = "tab:purple",
+) -> tuple[TensorType, TensorType]:
     """
-    Prepares point marker styles according to some BO factors
+    Prepares point marker styles according to some BO factors.
+
     :param num_pts: total number of BO points
     :param num_init: initial number of BO points
     :param idx_best: index of the best BO point
-    :param mask_fail: Boolean vector, True if the corresponding observation violates the constraint(s)
+    :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)
     :param m_init: marker for the initial BO points
     :param m_add: marker for the other BO points
     :param c_pass: color for the regular BO points
@@ -231,25 +263,27 @@ def format_point_markers(
 
 
 def plot_bo_points(
-    pts,
-    ax,
-    num_init=None,
-    idx_best=None,
-    mask_fail=None,
-    obs_values=None,
-    m_init="x",
-    m_add="o",
-    c_pass="tab:green",
-    c_fail="tab:red",
-    c_best="tab:purple",
-):
+    pts: TensorType,
+    ax: Axes,
+    num_init: Optional[int] = None,
+    idx_best: Optional[int] = None,
+    mask_fail: Optional[TensorType] = None,
+    obs_values: Optional[TensorType] = None,
+    m_init: str = "x",
+    m_add: str = "o",
+    c_pass: str = "tab:green",
+    c_fail: str = "tab:red",
+    c_best: str = "tab:purple",
+) -> None:
     """
-    Adds scatter points to an existing subfigure. Markers and colors are chosen according to BO factors.
+    Adds scatter points to an existing subfigure. Markers and colors are chosen according to
+    BO factors.
+
     :param pts: [N, 2] x inputs
     :param ax: a plt axes object
     :param num_init: initial number of BO points
     :param idx_best: index of the best BO point
-    :param mask_fail: Boolean vector, True if the corresponding observation violates the constraint(s)
+    :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)
     :param obs_values: optional [N] outputs (for 3d plots)
     """
 
@@ -268,28 +302,28 @@ def plot_bo_points(
 
 
 def plot_mobo_points_in_obj_space(
-    obs_values,
-    num_init=None,
-    mask_fail=None,
-    figsize=None,
-    xlabel="Obj 1",
-    ylabel="Obj 2",
-    zlabel="Obj 3",
-    title=None,
-    m_init="x",
-    m_add="o",
-    c_pass="tab:green",
-    c_fail="tab:red",
-    c_pareto="tab:purple",
-    only_plot_pareto=False,
-):
+    obs_values: TensorType,
+    num_init: Optional[int] = None,
+    mask_fail: Optional[TensorType] = None,
+    figsize: Optional[tuple[float, float]] = None,
+    xlabel: str = "Obj 1",
+    ylabel: str = "Obj 2",
+    zlabel: str = "Obj 3",
+    title: Optional[str] = None,
+    m_init: str = "x",
+    m_add: str = "o",
+    c_pass: str = "tab:green",
+    c_fail: str = "tab:red",
+    c_pareto: str = "tab:purple",
+    only_plot_pareto: bool = False,
+) -> tuple[Figure, Axes]:
     """
-    Adds scatter points in objective space, used for multi-objective optimization (2 or 3 objectives only).
-    Markers and colors are chosen according to BO factors.
+    Adds scatter points in objective space, used for multi-objective optimization (2 or 3
+    objectives only). Markers and colors are chosen according to BO factors.
 
     :param obs_values: TF Tensor or numpy array of objective values, shape (N, 2) or (N, 3).
     :param num_init: initial number of BO points
-    :param mask_fail: Boolean vector, True if the corresponding observation violates the constraint(s)
+    :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)
     :param figsize: Size of the figure.
     :param xlabel: Label of the X axis.
     :param ylabel: Label of the Y axis.
@@ -301,6 +335,7 @@ def plot_mobo_points_in_obj_space(
     :param c_fail: color for the failed BO points
     :param c_pareto: color for the Pareto front points
     :param only_plot_pareto: if set to `True`, only plot the pareto points. Default is `False`.
+    :returns: figure and axes
     """
     obj_num = obs_values.shape[-1]
     tf.debugging.assert_shapes([])
@@ -341,20 +376,21 @@ def plot_mobo_points_in_obj_space(
 
 
 def plot_mobo_history(
-    obs_values,
-    metric_func,
-    num_init=None,
-    mask_fail=None,
-    figsize=None,
-):
+    obs_values: TensorType,
+    metric_func: Callable[[TensorType], TensorType],
+    num_init: int,
+    mask_fail: Optional[TensorType] = None,
+    figsize: Optional[tuple[float, float]] = None,
+) -> tuple[Figure, Axes]:
     """
-    Draw the performance measure for multi-objective optimization
-    :param obs_values:
+    Draw the performance measure for multi-objective optimization.
+
+    :param obs_values: TF Tensor or numpy array of objective values
     :param metric_func: a callable function calculate metric score
-                        metric = measure_func(observations)
-    :param num_init:
-    :param mask_fail:
-    :param figsize
+    :param num_init: initial number of BO points
+    :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)
+    :param figsize: Size of the figure.
+    :returns: figure and axes
     """
 
     fig, ax = plt.subplots(figsize=figsize)
@@ -370,32 +406,32 @@ def plot_mobo_history(
 
 
 def plot_regret(
-    obs_values,
-    ax,
-    show_obs=True,
-    num_init=None,
-    mask_fail=None,
-    idx_best=None,
-    m_init="x",
-    m_add="o",
-    c_pass="tab:green",
-    c_fail="tab:red",
-    c_best="tab:purple",
-):
+    obs_values: TensorType,
+    ax: Axes,
+    num_init: int,
+    show_obs: bool = True,
+    mask_fail: Optional[TensorType] = None,
+    idx_best: Optional[int] = None,
+    m_init: str = "x",
+    m_add: str = "o",
+    c_pass: str = "tab:green",
+    c_fail: str = "tab:red",
+    c_best: str = "tab:purple",
+) -> None:
     """
     Draws the simple regret with same colors / markers as the other plots.
-    :param obs_values:
-    :param ax:
-    :param show_obs:
-    :param num_init:
-    :param mask_fail:
-    :param idx_best:
-    :param m_init:
-    :param m_add:
-    :param c_pass:
-    :param c_fail:
-    :param c_best:
-    :return:
+
+    :param obs_values: TF Tensor or numpy array of objective values
+    :param ax: a plt axes object
+    :param show_obs: show observations
+    :param num_init: initial number of BO points
+    :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)
+    :param idx_best: index of the best BO point
+    :param m_init: marker for the initial BO points
+    :param m_add: marker for the other BO points
+    :param c_pass: color for the regular BO points
+    :param c_fail: color for the failed BO points
+    :param c_best: color for the best BO points
     """
 
     col_pts, mark_pts = format_point_markers(
@@ -416,18 +452,19 @@ def plot_regret(
 
 
 def plot_gp_2d(
-    model,
+    model: GPModel,
     mins: TensorType,
     maxs: TensorType,
-    grid_density=20,
-    contour=False,
-    xlabel=None,
-    ylabel=None,
-    figsize=None,
-    predict_y=False,
-):
+    grid_density: int = 20,
+    contour: bool = False,
+    xlabel: Optional[str] = None,
+    ylabel: Optional[str] = None,
+    figsize: Optional[tuple[float, float]] = None,
+    predict_y: bool = False,
+) -> tuple[Figure, Axes]:
     """
     2D/3D plot of a gp model for a grid of size grid_density**2 between mins and maxs
+
     :param model: a gpflow model
     :param mins: 2 lower bounds
     :param maxs: 2 upper bounds
@@ -435,7 +472,8 @@ def plot_gp_2d(
     :param contour: Boolean. If False, a 3d plot is produced
     :param xlabel: optional string
     :param ylabel: optional string
-    :param figsize:
+    :param figsize: optional figsize
+    :returns: figure and axes
     """
     mins = to_numpy(mins)
     maxs = to_numpy(maxs)
