@@ -27,7 +27,6 @@ from ...models import ProbabilisticModel, ReparametrizationSampler
 from ...models.interfaces import HasReparamSampler
 from ...types import TensorType
 from ...utils import DEFAULTS
-from ..function import ExpectedConstrainedImprovement
 from ..interface import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
@@ -35,7 +34,12 @@ from ..interface import (
     ProbabilisticModelType,
     SingleModelAcquisitionBuilder,
 )
-from .pareto import Pareto, get_reference_point, prepare_default_non_dominated_partition_bounds
+from .improvement import ExpectedConstrainedImprovement
+from .multi_objective.pareto import (
+    Pareto,
+    get_reference_point,
+    prepare_default_non_dominated_partition_bounds,
+)
 
 
 class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):

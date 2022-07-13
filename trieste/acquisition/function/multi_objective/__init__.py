@@ -13,14 +13,6 @@
 # limitations under the License.
 """ This folder contains multi-objective optimization utilities. """
 from .dominance import non_dominated
-from .greedy_batch import HIPPO, hippo_penalizer
-from .hypervolume import (
-    BatchMonteCarloExpectedHypervolumeImprovement,
-    ExpectedConstrainedHypervolumeImprovement,
-    ExpectedHypervolumeImprovement,
-    batch_ehvi,
-    expected_hv_improvement,
-)
 from .pareto import Pareto, get_reference_point
 from .partition import (
     DividedAndConquerNonDominated,

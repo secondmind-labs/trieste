@@ -25,7 +25,7 @@ from trieste.models import TrainableModelStack
 from trieste.models.gpflow import build_gpr, GaussianProcessRegression
 from trieste.space import Box, SearchSpace
 from trieste.objectives.multi_objectives import VLMOP2
-from trieste.acquisition.multi_objective.pareto import (
+from trieste.acquisition.function.multi_objective import (
     Pareto,
     get_reference_point,
 )

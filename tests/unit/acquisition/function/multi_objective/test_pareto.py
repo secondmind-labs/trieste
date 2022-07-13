@@ -18,7 +18,7 @@ import pytest
 import tensorflow as tf
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, SequenceN
-from trieste.acquisition.multi_objective.pareto import Pareto, get_reference_point
+from trieste.acquisition.function.multi_objective import Pareto, get_reference_point
 
 
 @pytest.mark.parametrize("reference", [0.0, [0.0], [[0.0]]])

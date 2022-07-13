@@ -20,7 +20,7 @@ import pytest
 import tensorflow as tf
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, SequenceN
-from trieste.acquisition.multi_objective.partition import (
+from trieste.acquisition.function.multi_objective import (
     DividedAndConquerNonDominated,
     ExactPartition2dNonDominated,
     prepare_default_non_dominated_partition_bounds,

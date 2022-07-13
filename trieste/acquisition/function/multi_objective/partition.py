@@ -20,8 +20,8 @@ from typing import Any, Optional
 
 import tensorflow as tf
 
-from ...types import TensorType
-from ...utils.misc import DEFAULTS
+from ....types import TensorType
+from ....utils.misc import DEFAULTS
 from .dominance import non_dominated
 
 

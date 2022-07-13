@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import Callable, Mapping, Optional, Union
+from typing import Callable, Mapping, Optional, Union, cast
 
 import numpy as np
 import numpy.testing as npt
@@ -23,16 +23,20 @@ import tensorflow_probability as tfp
 from gpflow.utilities import to_default_float
 from gpflow.utilities.ops import leading_transpose
 
-from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, random_seed, empty_dataset, quadratic
+from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, empty_dataset, quadratic, random_seed
 from tests.util.models.gpflow.models import (
-    QuadraticMeanAndRBFKernel,
-    gpr_model,
     GaussianProcess,
     GaussianProcessWithBatchSamplers,
     QuadraticMeanAndRBFKernel,
+    gpr_model,
 )
 from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.acquisition import (
+    HIPPO,
+    AcquisitionFunction,
+    AcquisitionFunctionBuilder,
+    ExpectedConstrainedHypervolumeImprovement,
+    ExpectedHypervolumeImprovement,
     ExpectedImprovement,
     Fantasizer,
     LocalPenalization,
@@ -42,26 +46,20 @@ from trieste.acquisition import (
     PredictiveVariance,
     UpdatablePenalizationFunction,
     hard_local_penalizer,
-    soft_local_penalizer,
-    HIPPO,
-    ExpectedConstrainedHypervolumeImprovement,
-    ExpectedHypervolumeImprovement,
     hippo_penalizer,
+    soft_local_penalizer,
 )
 from trieste.acquisition.function.greedy_batch import (
     FantasizerModelOrStack,
     FantasizerModelStack,
     _generate_fantasized_model,
 )
+from trieste.acquisition.interface import GreedyAcquisitionFunctionBuilder
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.space import Box
 from trieste.types import TensorType
-
-
-from trieste.acquisition import AcquisitionFunction, AcquisitionFunctionBuilder
-from trieste.acquisition.interface import GreedyAcquisitionFunctionBuilder
 
 
 def test_locally_penalized_expected_improvement_builder_raises_for_empty_data() -> None:

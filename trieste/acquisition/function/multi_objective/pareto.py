@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import tensorflow as tf
 
-from ...types import TensorType
+from ....types import TensorType
 from .dominance import non_dominated
 from .partition import prepare_default_non_dominated_partition_bounds
 

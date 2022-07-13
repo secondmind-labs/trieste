@@ -16,6 +16,7 @@ This module contains local penalization-based acquisition function builders.
 """
 from __future__ import annotations
 
+import math
 from typing import Callable, Dict, Mapping, Optional, Union, cast
 
 import gpflow
@@ -45,12 +46,9 @@ from ..interface import (
     UpdatablePenalizationFunction,
 )
 from .entropy import MinValueEntropySearch
+from .hypervolume import ExpectedHypervolumeImprovement
 from .improvement import ExpectedImprovement, expected_improvement
 from .misc import MakePositive
-
-
-import math
-from .hypervolume import ExpectedHypervolumeImprovement
 
 
 class LocalPenalization(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]):

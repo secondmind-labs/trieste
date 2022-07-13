@@ -41,7 +41,7 @@ import dill
 import numpy as np
 import tensorflow as tf
 
-from .acquisition.multi_objective import non_dominated
+from .acquisition.function.multi_objective import non_dominated
 
 try:
     import pandas as pd

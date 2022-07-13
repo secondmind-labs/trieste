@@ -42,10 +42,10 @@ from tests.util.models.gpflow.models import (
 from trieste.acquisition import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
-    ProbabilityOfFeasibility,
     BatchMonteCarloExpectedHypervolumeImprovement,
     ExpectedConstrainedHypervolumeImprovement,
     ExpectedHypervolumeImprovement,
+    ProbabilityOfFeasibility,
     batch_ehvi,
     expected_hv_improvement,
 )

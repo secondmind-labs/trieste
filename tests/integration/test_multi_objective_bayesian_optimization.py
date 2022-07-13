@@ -22,7 +22,7 @@ from trieste.acquisition import (
     BatchMonteCarloExpectedHypervolumeImprovement,
     ExpectedHypervolumeImprovement,
 )
-from trieste.acquisition.multi_objective.pareto import Pareto, get_reference_point
+from trieste.acquisition.function.multi_objective import Pareto, get_reference_point
 from trieste.acquisition.optimizer import generate_continuous_optimizer
 from trieste.acquisition.rule import (
     AcquisitionRule,
