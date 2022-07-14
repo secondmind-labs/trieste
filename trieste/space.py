@@ -535,6 +535,7 @@ class TaggedProductSearchSpace(SearchSpace):
         Return the domain of a particular subspace.
 
         :param tag: The tag specifying the target subspace.
+        :return: Target subspace.
         """
         tf.debugging.assert_equal(
             tag in self.subspace_tags,
@@ -554,6 +555,8 @@ class TaggedProductSearchSpace(SearchSpace):
 
         :param tag: The tag specifying the target subspace.
         :param values: The  values used to populate the new discrete subspace.z
+        :return: New :class:`TaggedProductSearchSpace` with the specified subspace replaced with
+            a :class:`DiscreteSearchSpace` containing ``values`` as its points.
         """
 
         new_spaces = [

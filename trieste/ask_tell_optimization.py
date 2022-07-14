@@ -352,6 +352,7 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
             on each optimization step. Defaults to
             :class:`~trieste.acquisition.rule.EfficientGlobalOptimization` with default
             arguments.
+        :return: New instance of :class:`~AskTellOptimizer`.
         """
         # we are recovering previously saved optimization state
         # so the model was already trained

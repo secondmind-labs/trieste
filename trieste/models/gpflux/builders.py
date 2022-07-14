@@ -94,6 +94,7 @@ def build_vanilla_deep_gp(
     :param likelihood_variance: Initial noise variance in the likelihood function, see
         :class:`~gpflux.architectures.Config` for details. By default set to
         ``LIKELIHOOD_VARIANCE``.
+    :param trainable_likelihood: Trainable likelihood variance.
     :return: A :class:`~gpflux.models.DeepGP` model with sensible default settings.
     :raise: If non-positive ``num_layers``, ``inner_layer_sqrt_factor``, ``likelihood_variance``
         or ``num_inducing_points`` is provided.

@@ -71,6 +71,7 @@ def plot_surface(
     :param f: output, from meshgrid
     :param ax: plt axes object
     :param contour: Boolean
+    :param fill: filled contour
     :param alpha: transparency
     :return: generated contour or surface
     """
@@ -122,7 +123,8 @@ def plot_function_2d(
     :param figsize: optional figsize
     :param colorbar: whether to use colorbar
     :param alpha: transparency
-    :returns: figure and axes
+    :param fill: filled contour
+    :return: figure and axes
     """
     mins = to_numpy(mins)
     maxs = to_numpy(maxs)
@@ -188,7 +190,7 @@ def plot_acq_function_2d(
     Wrapper to produce a 2D/3D plot of an acq_func for a grid of size grid_density**2 between
     mins and maxs.
 
-    :param obj_func: a function that returns a n-array given a [n, d] array
+    :param acq_func: a function that returns a n-array given a [n, d] array
     :param mins: 2 lower bounds
     :param maxs: 2 upper bounds
     :param grid_density: positive integer for the grid size
@@ -200,7 +202,8 @@ def plot_acq_function_2d(
     :param figsize: optional figsize
     :param colorbar: whether to use colorbar
     :param alpha: transparency
-    :returns: figure and axes
+    :param fill: filled contour
+    :return: figure and axes
     """
 
     def batched_func(x: TensorType) -> TensorType:
@@ -285,6 +288,11 @@ def plot_bo_points(
     :param idx_best: index of the best BO point
     :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)
     :param obs_values: optional [N] outputs (for 3d plots)
+    :param m_init: marker for the initial BO points
+    :param m_add: marker for the other BO points
+    :param c_pass: color for the regular BO points
+    :param c_fail: color for the failed BO points
+    :param c_best: color for the best BO points
     """
 
     num_pts = pts.shape[0]
@@ -335,7 +343,7 @@ def plot_mobo_points_in_obj_space(
     :param c_fail: color for the failed BO points
     :param c_pareto: color for the Pareto front points
     :param only_plot_pareto: if set to `True`, only plot the pareto points. Default is `False`.
-    :returns: figure and axes
+    :return: figure and axes
     """
     obj_num = obs_values.shape[-1]
     tf.debugging.assert_shapes([])
@@ -390,7 +398,7 @@ def plot_mobo_history(
     :param num_init: initial number of BO points
     :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)
     :param figsize: Size of the figure.
-    :returns: figure and axes
+    :return: figure and axes
     """
 
     fig, ax = plt.subplots(figsize=figsize)
@@ -473,7 +481,8 @@ def plot_gp_2d(
     :param xlabel: optional string
     :param ylabel: optional string
     :param figsize: optional figsize
-    :returns: figure and axes
+    :param predict_y: predict_y or predict_f
+    :return: figure and axes
     """
     mins = to_numpy(mins)
     maxs = to_numpy(maxs)

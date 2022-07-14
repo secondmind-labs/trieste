@@ -164,6 +164,8 @@ def plot_model_predictions_plotly(
     :param maxs: List of 2 upper bounds for creating a grid of points for model predictions.
     :param grid_density: Number of points per dimension. This will result in a grid size of
         grid_density^2.
+    :param num_samples: Number of samples to use with deep GPs.
+    :param alpha: Transparency.
     :return: A plotly figure.
     """
     mins = to_numpy(mins)
@@ -217,11 +219,15 @@ def plot_function_plotly(
     Plots 2-dimensional plot of an objective function. To illustrate the function we create a
     regular grid of points and evaluate the function on these points.
 
-    :obj_func: The vectorized objective function.
+    :param obj_func: The vectorized objective function.
     :param mins: List of 2 lower bounds for creating a grid of points for model predictions.
     :param maxs: List of 2 upper bounds for creating a grid of points for model predictions.
     :param grid_density: Number of points per dimension. This will result in a grid size of
         grid_density^2.
+    :param title: optional titles
+    :param xlabel: optional xlabel
+    :param ylabel: optional ylabel
+    :param alpha: transparency
     :return: A plotly figure.
     """
 
