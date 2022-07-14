@@ -567,7 +567,8 @@ class TaggedProductSearchSpace(SearchSpace):
         """
         Returns the components of ``values`` lying in a particular subspace.
 
-        :param value: Points from the :class:`TaggedProductSearchSpace` of shape [N,Dprod].
+        :param tag: Subspace tag.
+        :param values: Points from the :class:`TaggedProductSearchSpace` of shape [N,Dprod].
         :return: The sub-components of ``values`` lying in the specified subspace, of shape
             [N, Dsub], where Dsub is the dimensionality of the specified subspace.
         """
@@ -611,6 +612,7 @@ class TaggedProductSearchSpace(SearchSpace):
         and concatenating the resulting samples.
 
         :param num_samples: The number of points to sample from this search space.
+        :param seed: Optional tf.random seed.
         :return: ``num_samples`` i.i.d. random points, sampled uniformly,
             from this search space with shape '[num_samples, D]' , where D is the search space
             dimension.

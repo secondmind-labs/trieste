@@ -405,8 +405,8 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
         return OptimizationResult(Ok(record), [])
 
     def ask(self) -> TensorType:
-        """Suggests a point (or points in batch mode) to observe by optimizing the acquisition function.
-        If the acquisition is stateful, its state is saved.
+        """Suggests a point (or points in batch mode) to observe by optimizing the acquisition
+        function. If the acquisition is stateful, its state is saved.
 
         :return: A :class:`TensorType` instance representing suggested point(s).
         """
