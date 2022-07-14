@@ -20,7 +20,7 @@ from trieste.objectives import scaled_branin, SCALED_BRANIN_MINIMUM
 from trieste.objectives.utils import mk_observer
 from trieste.space import Box
 
-from util.plotting import plot_regret
+from trieste.experimental.plotting import plot_regret
 
 np.random.seed(1234)
 tf.random.set_seed(1234)

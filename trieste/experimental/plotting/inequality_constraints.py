@@ -11,13 +11,48 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import annotations
+
+from abc import abstractmethod
+from typing import Optional, Type, cast
+
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.figure import Figure
+from typing_extensions import Protocol
 
+from ...space import SearchSpace
+from ...types import TensorType
 from .plotting import create_grid
 
 
-def plot_objective_and_constraints(search_space, simulation):
+class Simulation(Protocol):
+    """A representation of a constrained objective used for plotting."""
+
+    threshold: float
+
+    @staticmethod
+    @abstractmethod
+    def objective(input_data: TensorType) -> TensorType:
+        """Objective function."""
+
+    @staticmethod
+    @abstractmethod
+    def constraint(input_data: TensorType) -> TensorType:
+        """Constraint function."""
+
+
+def plot_objective_and_constraints(
+    search_space: SearchSpace, simulation: Type[Simulation]
+) -> Figure:
+    """
+    Plot constrained objective.
+
+    :param search_space: Search space
+    :param simulation: Constrained objective
+    :return: figure
+    """
     objective_fn = simulation.objective
     constraint_fn = simulation.constraint
     lower_bound = search_space.lower
@@ -54,8 +89,22 @@ def plot_objective_and_constraints(search_space, simulation):
 
 
 def plot_init_query_points(
-    search_space, simulation, objective_data, constraint_data, new_constraint_data=None
-):
+    search_space: SearchSpace,
+    simulation: Type[Simulation],
+    objective_data: TensorType,
+    constraint_data: TensorType,
+    new_constraint_data: Optional[TensorType] = None,
+) -> Figure:
+    """
+    Plot initial query points on constrained objective.
+
+    :param search_space: Search space
+    :param simulation: Constrained objective
+    :param objective_data: Objective data
+    :param constraint_data: Constraint data
+    :param new_constraint_data: Optional new constraint data
+    :return: figure
+    """
     objective_fn = simulation.objective
     constraint_fn = simulation.constraint
     lower_bound = search_space.lower
@@ -76,7 +125,9 @@ def plot_init_query_points(
     mask[mask_ids, :] = True
     objective_masked = np.ma.array(objective, mask=mask)
 
-    def in_out_points(x, constraint_points):
+    def in_out_points(
+        x: TensorType, constraint_points: TensorType
+    ) -> tuple[TensorType, TensorType]:
         ids_in = constraint_points[:, 0] <= simulation.threshold
         ids_out = constraint_points[:, 0] > simulation.threshold
         return x.T[..., ids_in], x.T[..., ids_out]
@@ -102,21 +153,35 @@ def plot_init_query_points(
     return fig
 
 
-def plot_2obj_cst_query_points(search_space, simulation, objective_data, constraint_data):
-    class Sim1(simulation):
+def plot_2obj_cst_query_points(
+    search_space: SearchSpace,
+    simulation: Type[Simulation],
+    objective_data: TensorType,
+    constraint_data: TensorType,
+) -> None:
+    """
+    Plot 2 objective constrainted query points.
+
+    :param search_space: Search space
+    :param simulation: Constrained objective
+    :param objective_data: Objective data
+    :param constraint_data: Constraint data
+    """
+
+    class Sim1(simulation):  # type: ignore
         @staticmethod
-        def objective(input_data):
+        def objective(input_data: TensorType) -> TensorType:
             return simulation.objective(input_data)[:, 0:1]
 
-    class Sim2(simulation):
+    class Sim2(simulation):  # type: ignore
         @staticmethod
-        def objective(input_data):
+        def objective(input_data: TensorType) -> TensorType:
             return simulation.objective(input_data)[:, 1:2]
 
     for sim in [Sim1, Sim2]:
         plot_init_query_points(
             search_space,
-            sim,
+            cast(Type[Simulation], sim),
             objective_data,
             constraint_data,
         )

@@ -70,7 +70,7 @@ The following tutorials (or sections thereof) explain how to use and extend spec
 Run the tutorials interactively
 -------------------------------
 
-The above tutorials are built from Jupytext notebooks in the notebooks directory of the repository. These notebooks can also be run interactively. To do so, install the library from sources, along with additional notebook dependencies, with (in the repository root)
+The above tutorials are built from Jupytext notebooks in the notebooks directory of the trieste repository. These notebooks can also be run interactively. To do so, install the library from sources, along with additional notebook dependencies, with (in the repository root)
 
 .. code::
 
@@ -81,3 +81,9 @@ then run
 .. code::
 
    $ jupyter-notebook notebooks
+
+Alternatively, you copy and paste the tutorials into fresh notebooks and avoid installing the library from source. To ensure you have the required plotting dependencies, simply run:
+
+.. code::
+
+   $ pip install trieste[plotting]
