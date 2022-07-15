@@ -28,6 +28,13 @@ from .interface import GPflowPredictor
 
 
 def assert_data_is_compatible(new_data: Dataset, existing_data: Dataset) -> None:
+    """
+    Checks that new data is compatible with existing data.
+
+    :param new_data: New data.
+    :param existing_data: Existing data.
+    :raise ValueError: if trailing dimensions of the query point or observation differ.
+    """
     if new_data.query_points.shape[-1] != existing_data.query_points.shape[-1]:
         raise ValueError(
             f"Shape {new_data.query_points.shape} of new query points is incompatible with"

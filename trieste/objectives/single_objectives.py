@@ -552,6 +552,7 @@ def trid(x: TensorType, d: int = 10) -> TensorType:
     and https://www.sfu.ca/~ssurjano/trid.html for details.
 
     :param x: The points at which to evaluate the function, with shape [..., d].
+    :param d: Dimensionality.
     :return: The function values at ``x``, with shape [..., 1].
     :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
     """
@@ -563,6 +564,12 @@ def trid(x: TensorType, d: int = 10) -> TensorType:
 
 
 def trid_10(x: TensorType) -> TensorType:
+    """The Trid function with dimension 10.
+
+    :param x: The points at which to evaluate the function, with shape [..., 10].
+    :return: The function values at ``x``, with shape [..., 1].
+    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+    """
     return trid(x, d=10)
 
 
