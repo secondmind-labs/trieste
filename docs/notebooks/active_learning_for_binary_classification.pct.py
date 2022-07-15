@@ -40,7 +40,7 @@ def circle(x):
 # Let's first illustrate how this two dimensional problem looks like. Class 1 is the area outside of the circle and class 0 is area inside the circle.
 
 # %%
-from util.plotting import plot_function_2d
+from trieste.experimental.plotting import plot_function_2d
 
 _, ax = plot_function_2d(
     circle,
@@ -85,7 +85,7 @@ model = VariationalGaussianProcess(
 # Lets see our model landscape using only those initial data
 
 # %%
-from util.plotting_plotly import (
+from trieste.experimental.plotting import (
     plot_model_predictions_plotly,
     add_bo_points_plotly,
 )
@@ -139,7 +139,7 @@ final_model = results.try_get_final_models()[OBJECTIVE]
 # Now, we can visualize our model after the active learning run. Points marked with a cross are initial points while circles are points queried by the optimizer.
 
 # %% Plot BO results
-from util.plotting import plot_bo_points
+from trieste.experimental.plotting import plot_bo_points
 
 _, ax = plot_function_2d(
     lambda x: gpflow.likelihoods.Bernoulli().invlink(final_model.predict(x)[0]),

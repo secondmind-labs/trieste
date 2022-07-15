@@ -29,6 +29,7 @@
 # sys.path.insert(0, os.path.abspath('../'))
 
 # -- Project information -----------------------------------------------------
+from pathlib import Path
 
 project = "trieste"
 # fmt: off
@@ -51,7 +52,7 @@ copyright = (
 author = "The Trieste Contributors"
 
 # The full version, including alpha/beta/rc tags
-release = "0.11.2"
+release = Path("../VERSION").read_text().strip()
 
 # -- General configuration ---------------------------------------------------
 
@@ -122,4 +123,9 @@ html_show_sourcelink = False
 html_theme_options = {
     "show_prev_next": False,
     "github_url": "https://github.com/secondmind-labs/trieste",
+    "switcher": {
+        "json_url": "https://secondmind-labs.github.io/trieste/versions.json",
+        "version_match": release,
+    },
+    "navbar_end": ["version-switcher", "navbar-icon-links"],
 }

@@ -114,7 +114,7 @@ if result.is_err:
 # We can repeat this until we've spent our optimization budget, using a loop if appropriate. But here, we'll just plot the data if it exists, safely by using `result`'s `is_ok` attribute.
 
 # %%
-from util.plotting import plot_bo_points, plot_function_2d
+from trieste.experimental.plotting import plot_bo_points, plot_function_2d
 
 if result.is_ok:
     data = result.unwrap().dataset

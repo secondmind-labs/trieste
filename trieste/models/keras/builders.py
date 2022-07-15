@@ -49,13 +49,13 @@ def build_keras_ensemble(
     only if one is modelling multiple output variables, as it simplifies the distribution by
     ignoring correlations between outputs.
 
-    :param dataset: Data for training, used for extracting input and output tensor specifications.
+    :param data: Data for training, used for extracting input and output tensor specifications.
     :param ensemble_size: The size of the ensemble, that is, the number of base learners or
         individual neural networks in the ensemble.
     :param num_hidden_layers: The number of hidden layers in each network.
     :param units: The number of nodes in each hidden layer.
     :param activation: The activation function in each hidden layer.
-    :param independent: If set to `True` then :class:`~tfp.layers.IndependentNormal` layer
+    :param independent_normal: If set to `True` then :class:`~tfp.layers.IndependentNormal` layer
         is used as the output layer. This models outputs as independent, only the diagonal
         elements of the covariance matrix are parametrized. If left as the default `False`,
         then :class:`~tfp.layers.MultivariateNormalTriL` layer is used where correlations

@@ -7,7 +7,7 @@
 # %%
 import numpy as np
 import tensorflow as tf
-from util.plotting import plot_acq_function_2d
+from trieste.experimental.plotting import plot_acq_function_2d
 import matplotlib.pyplot as plt
 import trieste
 
@@ -239,7 +239,7 @@ gibbon_result = bo.optimize(
 # For this particular problem (and random seed), we see that `GIBBON` provides the fastest initial optimization but all methods have overall a roughly similar performance.
 
 # %%
-from util.plotting import plot_regret
+from trieste.experimental.plotting import plot_regret
 
 qei_observations = (
     qei_result.try_get_final_dataset().observations - SCALED_BRANIN_MINIMUM

@@ -54,6 +54,7 @@ from trieste.bayesian_optimizer import (
     BayesianOptimizer,
     OptimizationResult,
     TrainableProbabilisticModelType,
+    stop_at_minimum,
 )
 from trieste.logging import tensorboard_writer
 from trieste.models import TrainableProbabilisticModel, TrajectoryFunctionClass
@@ -590,6 +591,7 @@ def _test_optimizer_finds_minimum(
                 acquisition_rule,
                 track_state=track_state,
                 track_path=Path(tmpdirname) / "history" if track_state else None,
+                early_stop_callback=stop_at_minimum(minima, minimizers, minimum_rtol=rtol_level),
             )
             best_x, best_y, _ = result.try_get_optimal_point()
 
@@ -598,19 +600,17 @@ def _test_optimizer_finds_minimum(
                 pass
             else:
                 minimizer_err = tf.abs((best_x - minimizers) / minimizers)
-                # these accuracies are the current best for the given number of optimization
-                # steps, which makes this is a regression test
                 assert tf.reduce_any(tf.reduce_all(minimizer_err < 0.05, axis=-1), axis=0)
                 npt.assert_allclose(best_y, minima, rtol=rtol_level)
 
                 if track_state:
-                    assert len(result.history) == num_steps
-                    assert len(result.loaded_history) == num_steps
+                    assert len(result.history) <= num_steps
+                    assert len(result.loaded_history) == len(result.history)
                     loaded_result: OptimizationResult[None] = OptimizationResult.from_path(
                         Path(tmpdirname) / "history"
                     )
                     assert loaded_result.final_result.is_ok
-                    assert len(loaded_result.history) == num_steps
+                    assert len(loaded_result.history) == len(result.history)
 
             # check that acquisition functions defined as classes aren't retraced unnecessarily
             # They should be retraced once for the optimzier's starting grid, L-BFGS, and logging.

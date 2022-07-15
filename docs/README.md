@@ -69,8 +69,8 @@ $ python notebooks/quickrun/quickrun.py
 ```
 Note that this will modify the notebook files.
 To revert them to what they were before, you can execute the following:
-```python
-python notebooks/quickrun/quickrun.py --revert
+```bash
+$ python notebooks/quickrun/quickrun.py --revert
 ```
 
 # License

@@ -31,6 +31,7 @@ module = ["trieste.*", "tests.*"]
 disallow_any_generics = true
 disallow_untyped_defs = true
 disallow_subclassing_any = true
+warn_unreachable = true
 
 [tool.pytest.ini_options]
 addopts = "--doctest-modules"

@@ -231,7 +231,7 @@ result = bo.optimize(
 # First, let's just plot observations of the expected reward, to ensure Trieste indeed found a better configuration of the controller. Remember that we flipped the sign of the reward.
 
 # %%
-from util import plotting
+from trieste.experimental import plotting
 import matplotlib.pyplot as plt
 
 ax = plt.gca()

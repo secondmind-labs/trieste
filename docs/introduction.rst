@@ -44,3 +44,9 @@ then run
 .. code::
 
    $ jupyter-notebook notebooks
+
+Alternatively, you can copy and paste the tutorials into fresh notebooks and avoid installing the library from source. To ensure you have the required plotting dependencies, simply run:
+
+.. code::
+
+   $ pip install trieste[plotting]

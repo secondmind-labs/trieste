@@ -9,7 +9,7 @@ import gpflow
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-from util.plotting import (
+from trieste.experimental.plotting import (
     plot_bo_points,
     plot_function_2d,
     plot_mobo_history,
@@ -314,7 +314,7 @@ initial_data_with_cst = observer_cst(initial_query_points)
 # As previously, we visualise the data across the design space: each figure contains the contour lines of each objective function and in the objective space. The `plot_mobo_points_in_obj_space` will automatically search for non-dominated points and colours them in purple, and the points in red violate the constraint.
 
 # %%
-from util.inequality_constraints_utils import plot_2obj_cst_query_points
+from trieste.experimental.plotting import plot_2obj_cst_query_points
 
 plot_2obj_cst_query_points(
     search_space,

@@ -887,6 +887,18 @@ def test_product_search_space_deepcopy() -> None:
     npt.assert_allclose(copied_space.get_subspace("B").points, space_B.points)  # type: ignore
 
 
+def test_product_space_handles_empty_spaces() -> None:
+    space_A = Box([-1, -2], [2, 3])
+    tag_A = TaggedProductSearchSpace(spaces=[space_A], tags=["A"])
+    tag_B = TaggedProductSearchSpace(spaces=[], tags=[])
+    tag_C = TaggedProductSearchSpace(spaces=[tag_A, tag_B], tags=["AA", "BB"])
+
+    assert tag_C.dimension == 2
+    npt.assert_array_equal(tag_C.lower, [-1, -2])
+    npt.assert_array_equal(tag_C.upper, [2, 3])
+    npt.assert_array_equal(tag_C.subspace_tags, ["AA", "BB"])
+
+
 @pytest.mark.parametrize(
     "a, b, equal",
     [
