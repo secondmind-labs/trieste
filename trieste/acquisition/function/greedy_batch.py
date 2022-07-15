@@ -935,6 +935,7 @@ class _fantasized_model(SupportsPredictJoint, SupportsGetKernel, SupportsGetObse
         We use map_fn to allow leading dimensions for query_points.
 
         :param query_points: shape [...*, N, D]
+        :param num_samples: number of samples.
         :return: samples of shape [...*, ..., S, N, L], where ... are the leading
             dimensions of fantasized_data
         """
