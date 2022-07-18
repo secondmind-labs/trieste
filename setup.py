@@ -31,6 +31,7 @@ setup(
     package_data={
         "trieste": ["py.typed"],
     },
+    data_files=[("", ["VERSION"])],
     classifiers=[
         "Programming Language :: Python :: 3.7",
         "License :: OSI Approved :: Apache Software License",
