@@ -135,6 +135,7 @@ pd.DataFrame({
     'rt_every': [args.rt_every],
     'norm': [norm],
     'epochs': [epochs],
+    'scale_var': [scale_var],
     'run': [run]
 }).to_csv(args.output_filename)
 
@@ -217,15 +218,15 @@ def run_bayes_opt(
     result_arg_min_idx = tf.squeeze(tf.argmin(result_observations, axis=0))
 
     pd.DataFrame(result_query_points).to_csv(
-        'results_{}/{}/{}_ln{}_rt{}_{}_norm{}_nq{}_ni{}_query_points_{}'.format(args.exp_name, function_key,
+        'results_{}/{}/{}_ln{}_rt{}_{}_norm{}_nq{}_ni{}_sv{}_query_points_{}'.format(args.exp_name, function_key,
                                                             model_key, learn_noise, retrain,
                                                             retrain_every, norm, num_query,
-                                                            num_inducing, run))
+                                                            num_inducing, scale_var, run))
     pd.DataFrame(result_observations).to_csv(
-        'results_{}/{}/{}_ln{}_rt{}_{}_norm{}_nq{}_ni{}_observations_{}'.format(args.exp_name, function_key,
+        'results_{}/{}/{}_ln{}_rt{}_{}_norm{}_nq{}_ni{}_sv{}_observations_{}'.format(args.exp_name, function_key,
                                                             model_key, learn_noise, retrain,
                                                             retrain_every, norm, num_query,
-                                                            num_inducing, run))
+                                                            num_inducing, scale_var, run))
 
     print(f"{model_key} ln {learn_noise} rt {retrain} observation "
           f"{function_key} {run}: {result_observations[result_arg_min_idx, :]}")
