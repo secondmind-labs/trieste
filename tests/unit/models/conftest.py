@@ -94,12 +94,3 @@ def _compile_fixture(request: Any) -> bool:
 @pytest.fixture(name="two_layer_model", params=[two_layer_dgp_model, simple_two_layer_dgp_model])
 def _two_layer_model_fixture(request: Any) -> Callable[[TensorType], DeepGP]:
     return request.param
-
-
-# Teardown fixture to set keras floatx to float64 then return it to previous value at test finish
-@pytest.fixture(name="keras_float")
-def _keras_float() -> Generator[None, None, None]:
-    current_float = tf.keras.backend.floatx()
-    tf.keras.backend.set_floatx("float64")
-    yield
-    tf.keras.backend.set_floatx(current_float)

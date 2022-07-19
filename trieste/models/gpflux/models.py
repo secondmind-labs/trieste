@@ -48,8 +48,6 @@ class DeepGaussianProcess(
     A :class:`TrainableProbabilisticModel` wrapper for a GPflux :class:`~gpflux.models.DeepGP` with
     :class:`GPLayer` or :class:`LatentVariableLayer`: this class does not support e.g. keras layers.
     We provide simple architectures that can be used with this class in the `architectures.py` file.
-    Note: the user should remember to set `tf.keras.backend.set_floatx()` with the desired value
-    (consistent with GPflow) so that dtype errors do not occur.
     """
 
     def __init__(
@@ -127,7 +125,19 @@ class DeepGaussianProcess(
             }
 
         self._model_gpflux = model
-
+        # inputs and targets need to be redone with a float64 dtype to avoid setting the keras
+        # backend to float64, this is likely to be fixed in GPflux, see issue:
+        # 
+        self._model_gpflux.inputs = tf.keras.Input(
+            tuple(self._model_gpflux.inputs.shape[:-1]),
+            name=self._model_gpflux.inputs.name,
+            dtype=tf.float64
+        )
+        self._model_gpflux.targets = tf.keras.Input(
+            tuple(self._model_gpflux.targets.shape[:-1]),
+            name=self._model_gpflux.targets.name,
+            dtype=tf.float64
+        )
         self._model_keras = model.as_training_model()
         self._model_keras.compile(self.optimizer.optimizer)
         self._absolute_epochs = 0

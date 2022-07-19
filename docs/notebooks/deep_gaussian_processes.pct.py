@@ -5,13 +5,8 @@
 import numpy as np
 import tensorflow as tf
 
-# %% [markdown]
-# For GPflux models we <strong>must</strong> use `tf.keras.backend.set_floatx()` to set the Keras backend float to the value consistent with GPflow (GPflow defaults to float64). Otherwise the code will crash with a ValueError!
-
-# %%
 np.random.seed(1794)
 tf.random.set_seed(1794)
-tf.keras.backend.set_floatx("float64")
 
 # %% [markdown]
 # ## Describe the problem
@@ -40,9 +35,9 @@ F_MINIMIZER = MICHALEWICZ_2_MINIMUM
 
 search_space = MICHALEWICZ_2_SEARCH_SPACE
 
-fig = plot_function_plotly(function, search_space.lower, search_space.upper)
-fig.update_layout(height=800, width=800)
-fig.show()
+# fig = plot_function_plotly(function, search_space.lower, search_space.upper)
+# fig.update_layout(height=800, width=800)
+# fig.show()
 
 # %% [markdown]
 # ## Sample the observer over the search space
