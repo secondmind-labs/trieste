@@ -52,9 +52,7 @@ from trieste.types import TensorType
 
 
 @pytest.mark.parametrize("sample_size", [0, -2])
-def test_dgp_reparam_sampler_raises_for_invalid_sample_size(
-    sample_size: int
-) -> None:
+def test_dgp_reparam_sampler_raises_for_invalid_sample_size(sample_size: int) -> None:
     search_space = Box([0.0], [1.0]) ** 4
     x = search_space.sample(10)
     data = mk_dataset(x, quadratic(x))
@@ -71,9 +69,7 @@ def test_dgp_reparam_sampler_raises_for_invalid_model() -> None:
 
 
 @pytest.mark.parametrize("shape", [[], [1], [2], [2, 3, 4]])
-def test_dgp_reparam_sampler_sample_raises_for_invalid_at_shape(
-    shape: ShapeLike
-) -> None:
+def test_dgp_reparam_sampler_sample_raises_for_invalid_at_shape(shape: ShapeLike) -> None:
     search_space = Box([0.0], [1.0])
     x = search_space.sample(10)
     data = mk_dataset(x, quadratic(x))
@@ -196,8 +192,7 @@ def _generate_xs_for_decoupled_trajectory(num_evals: int, batch_size: int) -> Te
 
 @pytest.mark.parametrize("num_evals", [10, 100])
 def test_dgp_decoupled_trajectory_sampler_returns_trajectory_function_with_correct_shapes(
-    num_evals: int,
-    two_layer_model: Callable[[TensorType], DeepGP]
+    num_evals: int, two_layer_model: Callable[[TensorType], DeepGP]
 ) -> None:
     batch_size = 5
 
@@ -363,9 +358,7 @@ def test_dgp_decoupled_layer_raises_for_invalid_layer() -> None:
 
 
 @pytest.mark.parametrize("num_features", [0, -2])
-def test_dgp_decoupled_layer_raises_for_invalid_number_of_features(
-    num_features: int
-) -> None:
+def test_dgp_decoupled_layer_raises_for_invalid_number_of_features(num_features: int) -> None:
     kernel = construct_basic_kernel(
         gpflow.kernels.SquaredExponential(), output_dim=1, share_hyperparams=True
     )

@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Any, Callable, Generator
+from typing import Any, Callable
 
 import pytest
 import tensorflow as tf

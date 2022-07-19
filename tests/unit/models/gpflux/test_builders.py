@@ -146,7 +146,7 @@ def test_build_vanilla_deep_gp_raises_for_incorrect_args() -> None:
 
 @pytest.mark.parametrize("multiplier", [1, 2, 5])
 def test_build_vanilla_deep_gp_gives_correct_num_inducing_points_and_num_data(
-    multiplier: int
+    multiplier: int,
 ) -> None:
     num_data = 5
     x = np.arange(num_data).reshape(-1, 1).astype(np.double)

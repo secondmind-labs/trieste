@@ -127,16 +127,16 @@ class DeepGaussianProcess(
         self._model_gpflux = model
         # inputs and targets need to be redone with a float64 dtype to avoid setting the keras
         # backend to float64, this is likely to be fixed in GPflux, see issue:
-        # 
+        # https://github.com/secondmind-labs/GPflux/issues/76
         self._model_gpflux.inputs = tf.keras.Input(
             tuple(self._model_gpflux.inputs.shape[:-1]),
             name=self._model_gpflux.inputs.name,
-            dtype=tf.float64
+            dtype=tf.float64,
         )
         self._model_gpflux.targets = tf.keras.Input(
             tuple(self._model_gpflux.targets.shape[:-1]),
             name=self._model_gpflux.targets.name,
-            dtype=tf.float64
+            dtype=tf.float64,
         )
         self._model_keras = model.as_training_model()
         self._model_keras.compile(self.optimizer.optimizer)
@@ -173,6 +173,19 @@ class DeepGaussianProcess(
         if self._model_closure is not None:
             dgp: DeepGP = state["_model_closure"]()
             self._model_gpflux = dgp
+            # inputs and targets need to be redone with a float64 dtype to avoid setting the keras
+            # backend to float64, this is likely to be fixed in GPflux, see issue:
+            # https://github.com/secondmind-labs/GPflux/issues/76
+            self._model_gpflux.inputs = tf.keras.Input(
+                tuple(self._model_gpflux.inputs.shape[:-1]),
+                name=self._model_gpflux.inputs.name,
+                dtype=tf.float64,
+            )
+            self._model_gpflux.targets = tf.keras.Input(
+                tuple(self._model_gpflux.targets.shape[:-1]),
+                name=self._model_gpflux.targets.name,
+                dtype=tf.float64,
+            )
             self._model_keras = dgp.as_training_model()
 
         self._optimizer = dill.loads(self._optimizer)
