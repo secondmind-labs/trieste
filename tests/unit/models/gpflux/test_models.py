@@ -323,6 +323,9 @@ def test_deepgp_deep_copyable() -> None:
 
     test_x = tf.constant([[2.5]], dtype=gpflow.default_float())
 
+    assert model.model_gpflux.inputs.dtype == model_copy.model_gpflux.inputs.dtype
+    assert model.model_gpflux.targets.dtype == model_copy.model_gpflux.targets.dtype
+
     mean_f, variance_f = model.predict(test_x)
     mean_f_copy, variance_f_copy = model_copy.predict(test_x)
     npt.assert_allclose(mean_f, mean_f_copy)
@@ -353,7 +356,7 @@ def test_deepgp_deep_copyable() -> None:
     npt.assert_array_compare(operator.__ne__, variance_f_copy_updated_2, variance_f_copy_updated)
 
 
-def test_deepgp_deep_copies_optimizer_state(keras_float: None) -> None:
+def test_deepgp_deep_copies_optimizer_state() -> None:
 
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model = DeepGaussianProcess(partial(single_layer_dgp_model, x))
