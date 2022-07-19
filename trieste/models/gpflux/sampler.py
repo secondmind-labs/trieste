@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import math
 from abc import ABC
 from typing import Callable, List, cast
 
@@ -270,9 +271,12 @@ class DeepGaussianProcessDecoupledTrajectorySampler(TrajectorySampler[GPfluxPred
             taking an input of shape `[N, B, D]` and returning shape `[N, B]`.
         """
 
-        return dgp_feature_decomposition_trajectory(self._sampling_layers)
+        return dgp_feature_decomposition_trajectory(self._sampling_layers, step=self._model._step)
 
-    def update_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction:
+    def update_trajectory(
+        self,
+        trajectory: TrajectoryFunction,
+    ) -> TrajectoryFunction:
         """
         Efficiently update a :const:`TrajectoryFunction` to reflect an update in its underlying
         :class:`ProbabilisticModel` and resample accordingly.
@@ -285,7 +289,7 @@ class DeepGaussianProcessDecoupledTrajectorySampler(TrajectorySampler[GPfluxPred
 
         tf.debugging.Assert(isinstance(trajectory, dgp_feature_decomposition_trajectory), [])
 
-        cast(dgp_feature_decomposition_trajectory, trajectory).update()
+        cast(dgp_feature_decomposition_trajectory, trajectory).update(step=self._model._step)
         return trajectory
 
     def resample_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction:
@@ -401,15 +405,17 @@ class DeepGaussianProcessDecoupledLayer(ABC):
         """
         self._weights_sample.assign(self._weight_sampler(self._batch_size))
 
-    def update(self) -> None:
+    def update(self, step: int = 1) -> None:
         """
         Efficiently update the trajectory with a new weight distribution and resample its weights.
         """
         self._feature_functions.resample()
-        self._weight_sampler = self._prepare_weight_sampler()
+        self._weight_sampler = self._prepare_weight_sampler(step=step)
         self.resample()
 
-    def _prepare_weight_sampler(self) -> Callable[[int], TensorType]:  # [B] -> [B, L+M, P]
+    def _prepare_weight_sampler(
+        self, step: int = 1
+    ) -> Callable[[int], TensorType]:  # [B] -> [B, L+M, P]
         """
         Prepare the sampler function that provides samples of the feature weights for both the
         RFF and canonical feature functions, i.e. we return a function that takes in a batch size
@@ -439,6 +445,9 @@ class DeepGaussianProcessDecoupledLayer(ABC):
         )
 
         def weight_sampler(batch_size: int) -> TensorType:
+            alpha = 1.0 + 0.1 * (tf.cast(inducing_points.shape[-1], tf.float64) + 1) * math.log(
+                step
+            )
             prior_weights = tf.random.normal([batch_size, self._num_features, P], dtype=tf.float64)
 
             u_noise_sample = tf.matmul(
@@ -446,6 +455,9 @@ class DeepGaussianProcessDecoupledLayer(ABC):
                 tf.random.normal([batch_size, P, M, 1], dtype=tf.float64),  # [B, P, M, 1]
             )  # [B, P, M, 1]
             u_sample = q_mu + tf.linalg.matrix_transpose(u_noise_sample[..., 0])  # [B, M, P]
+
+            # bit for scaling
+            u_sample += q_mu * (tf.cast(1.0, tf.float64) / alpha - tf.cast(1.0, tf.float64))
 
             if whiten:
                 Luu = tf.linalg.cholesky(Kmm)  # [M, M]
@@ -457,7 +469,7 @@ class DeepGaussianProcessDecoupledLayer(ABC):
             diff = u_sample - weight_space_prior_Z  # [B, M, P]
             v = compute_A_inv_b(Kmm, diff)  # [B, M, P]
 
-            return tf.concat([prior_weights, v], axis=1)  # [B, L + M, P]
+            return alpha * tf.concat([prior_weights, v], axis=1)  # [B, L + M, P]
 
         return weight_sampler
 
@@ -532,11 +544,12 @@ class dgp_feature_decomposition_trajectory(TrajectoryFunctionClass):
     resample. Note that we assume that the model only has one output.
     """
 
-    def __init__(self, sampling_layers: List[DeepGaussianProcessDecoupledLayer]):
+    def __init__(self, sampling_layers: List[DeepGaussianProcessDecoupledLayer], step: int = 1):
         """
         :param sampling_layers: Samplers corresponding to each layer of the DGP model.
         """
         self._sampling_layers = sampling_layers
+        self.update(step=step)
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:
@@ -551,10 +564,11 @@ class dgp_feature_decomposition_trajectory(TrajectoryFunctionClass):
             x = layer(x)
         return x[..., 0]  # Assume single output
 
-    def update(self) -> None:
+    def update(self, step: int = 1) -> None:
         """Update the layers with new features and weights."""
-        for layer in self._sampling_layers:
+        for layer in self._sampling_layers[:-1]:
             layer.update()
+        self._sampling_layers[-1].update(step=step)
 
     def resample(self) -> None:
         """Resample the layer weights."""

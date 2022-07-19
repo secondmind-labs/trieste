@@ -76,6 +76,8 @@ parser.add_argument('--num_query', type=int, help='batch size of acquistion', na
 parser.add_argument('--num_inducing', type=int, help='number of inducing points (per layer)', nargs='?', default=100)
 parser.add_argument('--fix_ips_t', dest='fix_ips', help='whether to fix inducing points', action='store_true')
 parser.add_argument('--fix_ips_f', dest='fix_ips', help='whether to fix inducing points', action='store_false')
+parser.add_argument('--scale_var_t', dest='scale_var', help='whether to use variance scaling for TS', action='store_true')
+parser.add_argument('--scale_var_f', dest='scale_var', help='whether to use variance scaling for TS', action='store_false')
 parser.add_argument('--run', type=int, help='run number', nargs='?', default=1)
 args = parser.parse_args()
 
@@ -89,6 +91,7 @@ retrain_every = args.rt_every
 epochs = args.epochs
 fix_ips = args.fix_ips
 num_query = args.num_query
+scale_var = args.scale_var
 run = args.run
 
 np.random.seed(run)
@@ -185,6 +188,9 @@ def run_bayes_opt(
         else:
             model.update(normalized_dataset)
             model.optimize(normalized_dataset)
+
+        if scale_var:
+            model._step = step + 1
 
         # Ask for a new point to observe
         ask_tell = AskTellOptimizer(search_space, normalized_dataset, model, acquisition_rule,

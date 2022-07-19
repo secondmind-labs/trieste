@@ -53,6 +53,7 @@ class DeepGaussianProcess(
         model: DeepGP,
         optimizer: KerasOptimizer | None = None,
         continuous_optimisation: bool = True,
+        step: int = 1,
     ):
         """
         :param model: The underlying GPflux deep Gaussian process model.
@@ -108,6 +109,8 @@ class DeepGaussianProcess(
         self._model_keras.compile(self.optimizer.optimizer)
         self._absolute_epochs = 0
         self._continuous_optimisation = continuous_optimisation
+
+        self._step = step
 
     def __repr__(self) -> str:
         """"""
