@@ -58,21 +58,36 @@ def build_sgpr_model(
 def build_gp_model(
         data: Dataset,
         search_space: SearchSpace,
+        num_layers: int = 2,
         num_inducing: int = 100,
         learn_noise: bool = False,
-        epochs: int = 400
+        fix_ips: bool = False,
+        epochs: int = 400,
+        num_query_points: int = 1,
 ):
     if learn_noise:
-        noise_variance = 1e-3
+        noise_variance = 1e-1
     else:
         noise_variance = 1e-5
+
+    gpflow.config.set_default_jitter(1.e-5)
+    gpflow.config.set_default_positive_minimum(1.e-5)
 
     gpr = build_gpr(data, search_space, likelihood_variance=noise_variance,
                     trainable_likelihood=learn_noise)
 
-    acquistion_function = GreedyContinuousThompsonSampling()
-    acquisition_rule = EfficientGlobalOptimization(acquistion_function,
-                                                   num_query_points=1)
+    acquisition_function = ParallelContinuousThompsonSampling()
+    acquisition_rule = EfficientGlobalOptimization(
+        acquisition_function,
+        num_query_points=num_query_points,
+        optimizer=split_acquisition_function_calls(
+            generate_continuous_optimizer(
+                1000 * tf.shape(search_space.lower)[-1],
+                5 * tf.shape(search_space.lower)[-1],
+                ),
+            split_size=OPT_SPLIT_SIZE
+        )
+    )
 
     optimizer = Optimizer(gpflow.optimizers.Scipy(), compile=True) #, minimize_args=dict(options=dict(disp=True)))
 
