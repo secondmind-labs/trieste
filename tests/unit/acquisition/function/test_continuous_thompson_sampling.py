@@ -30,6 +30,7 @@ from trieste.acquisition.function.continuous_thompson_sampling import (
     negate_trajectory_function,
 )
 from trieste.acquisition.function.function import lower_confidence_bound
+from trieste.acquisition.utils import select_first_output
 from trieste.data import Dataset
 from trieste.models import TrajectoryFunction, TrajectoryFunctionClass, TrajectorySampler
 from trieste.models.gpflow import (

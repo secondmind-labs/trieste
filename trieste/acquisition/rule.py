@@ -21,7 +21,7 @@ import copy
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Generic, Optional, TypeVar, Union, cast, overload
+from typing import Callable, Generic, Optional, TypeVar, Union, cast, overload
 
 import tensorflow as tf
 
@@ -49,6 +49,7 @@ from .optimizer import (
     batchify_vectorize,
 )
 from .sampler import ExactThompsonSampler, ThompsonSampler
+from .utils import select_first_output
 
 ResultType = TypeVar("ResultType", covariant=True)
 """ Unbound covariant type variable. """
@@ -785,7 +786,7 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
         num_search_space_samples: int,
         num_query_points: int,
         thompson_sampler: None = None,
-        output_dim: int = 0,
+        select_output: Callable[[TensorType], TensorType] = select_first_output,
     ):
         ...
 
@@ -795,7 +796,7 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
         num_search_space_samples: int,
         num_query_points: int,
         thompson_sampler: Optional[ThompsonSampler[ProbabilisticModelType]] = None,
-        output_dim: int = 0,
+        select_output: Callable[[TensorType], TensorType] = select_first_output,
     ):
         ...
 
@@ -804,13 +805,15 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
         num_search_space_samples: int,
         num_query_points: int,
         thompson_sampler: Optional[ThompsonSampler[ProbabilisticModelType]] = None,
-        output_dim: int = 0,
+        select_output: Callable[[TensorType], TensorType] = select_first_output,
     ):
         """
         :param num_search_space_samples: The number of points at which to sample the posterior.
         :param num_query_points: The number of points to acquire.
         :param thompson_sampler: Sampler to sample maximisers from the underlying model.
-        :param output_dim: The output dimension of the model to be used.
+        :param select_output: A method that returns the desired trajectory from a trajectory
+            sampler with shape [..., B], where B is a batch dimension. Defaults to a method that
+            returns the first output of a multi-output trajectory.
         """
         if not num_search_space_samples > 0:
             raise ValueError(f"Search space must be greater than 0, got {num_search_space_samples}")
@@ -834,7 +837,7 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
         self._thompson_sampler = thompson_sampler
         self._num_search_space_samples = num_search_space_samples
         self._num_query_points = num_query_points
-        self._output_dim = output_dim
+        self._select_output = select_output
 
     def __repr__(self) -> str:
         """"""
@@ -842,7 +845,7 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
         {self._num_search_space_samples!r},
         {self._num_query_points!r},
         {self._thompson_sampler!r},
-        {self._output_dim!r})"""
+        {self._select_output!r})"""
 
     def acquire(
         self,
@@ -874,7 +877,10 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
 
         query_points = search_space.sample(self._num_search_space_samples)
         thompson_samples = self._thompson_sampler.sample(
-            models[OBJECTIVE], self._num_query_points, query_points, output_dim=self._output_dim
+            models[OBJECTIVE],
+            self._num_query_points,
+            query_points,
+            select_output=self._select_output,
         )
 
         return thompson_samples

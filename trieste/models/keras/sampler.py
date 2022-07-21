@@ -67,7 +67,7 @@ class DeepEnsembleTrajectorySampler(TrajectorySampler[DeepEnsembleModel]):
         Generate an approximate function draw (trajectory) from the ensemble.
 
         :return: A trajectory function representing an approximate trajectory
-            from the model, taking an input of shape `[N, 1, D]` and returning shape `[N, 1]`.
+            from the model, taking an input of shape `[N, B, D]` and returning shape `[N, B, 1]`.
         """
         return deep_ensemble_trajectory(self._model, self._diversify)
 
@@ -130,7 +130,7 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
             )
 
     @tf.function
-    def __call__(self, x: TensorType) -> TensorType:  # [N, B, d] -> [N, B]
+    def __call__(self, x: TensorType) -> TensorType:  # [N, B, d] -> [N, B, 1]
         """
         Call trajectory function. Note that we are flattening the batch dimension and
         doing a forward pass with each network in the ensemble with the whole batch. This is

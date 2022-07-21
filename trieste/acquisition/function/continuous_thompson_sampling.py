@@ -16,7 +16,7 @@ This module contains acquisition function builders for continuous Thompson sampl
 """
 from __future__ import annotations
 
-from typing import Optional
+from typing import Callable, Optional
 
 import tensorflow as tf
 
@@ -24,6 +24,7 @@ from ...data import Dataset
 from ...models.interfaces import HasTrajectorySampler, TrajectoryFunction, TrajectoryFunctionClass
 from ...types import TensorType
 from ..interface import SingleModelGreedyAcquisitionBuilder, SingleModelVectorizedAcquisitionBuilder
+from ..utils import select_first_output
 
 
 class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTrajectorySampler]):
@@ -42,15 +43,17 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTr
     :cite:`wilson2020efficiently`.
     """
 
-    def __init__(self, output_dim: int = 0):
+    def __init__(self, select_output: Callable[[TensorType], TensorType] = select_first_output):
         """
-        :param output_dim: The output dimension of the model to be used.
+        :param select_output: A method that returns the desired trajectory from a trajectory
+            sampler with shape [..., B], where B is a batch dimension. Defaults to a method that
+            returns the first output of a multi-output trajectory.
         """
-        self._output_dim = output_dim
+        self._select_output = select_output
 
     def __repr__(self) -> str:
         """"""
-        return f"GreedyContinuousThompsonSampling({self._output_dim!r})"
+        return f"GreedyContinuousThompsonSampling({self._select_output!r})"
 
     def prepare_acquisition_function(
         self,
@@ -72,7 +75,7 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTr
 
         self._trajectory_sampler = model.trajectory_sampler()
         function = self._trajectory_sampler.get_trajectory()
-        return negate_trajectory_function(function, self._output_dim)
+        return negate_trajectory_function(function, self._select_output)
 
     def update_acquisition_function(
         self,
@@ -99,7 +102,7 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTr
             new_function = self._trajectory_sampler.resample_trajectory(function)
 
         if new_function is not function:
-            function = negate_trajectory_function(new_function, self._output_dim)
+            function = negate_trajectory_function(new_function, self._select_output)
 
         return function
 
@@ -119,15 +122,17 @@ class ParallelContinuousThompsonSampling(
     our :const:`split_acquisition_function_calls` wrapper.
     """
 
-    def __init__(self, output_dim: int = 0):
+    def __init__(self, select_output: Callable[[TensorType], TensorType] = select_first_output):
         """
-        :param output_dim: The output dimension of the model to be used.
+        :param select_output: A method that returns the desired trajectory from a trajectory
+            sampler with shape [..., B], where B is a batch dimension. Defaults to a method that
+            returns the first output of a multi-output trajectory.
         """
-        self._output_dim = output_dim
+        self._select_output = select_output
 
     def __repr__(self) -> str:
         """"""
-        return f"ParallelContinuousThompsonSampling({self._output_dim!r})"
+        return f"ParallelContinuousThompsonSampling({self._select_output!r})"
 
     def prepare_acquisition_function(
         self,
@@ -147,7 +152,7 @@ class ParallelContinuousThompsonSampling(
 
         self._trajectory_sampler = model.trajectory_sampler()
         self._trajectory = self._trajectory_sampler.get_trajectory()
-        self._negated_trajectory = negate_trajectory_function(self._trajectory, self._output_dim)
+        self._negated_trajectory = negate_trajectory_function(self._trajectory, self._select_output)
         return self._negated_trajectory
 
     def update_acquisition_function(
@@ -169,13 +174,13 @@ class ParallelContinuousThompsonSampling(
 
         if new_function is not self._trajectory:  # need to negate again if not modified in place
             self._trajectory = new_function
-            self._negated_trajectory = negate_trajectory_function(new_function, self._output_dim)
+            self._negated_trajectory = negate_trajectory_function(new_function, self._select_output)
 
         return self._negated_trajectory
 
 
 def negate_trajectory_function(
-    function: TrajectoryFunction, output_dim: Optional[int] = None
+    function: TrajectoryFunction, select_output: Optional[Callable[[TensorType], TensorType]] = None
 ) -> TrajectoryFunction:
     """
     Return the negative of trajectories so that our acquisition optimizers (which are
@@ -189,8 +194,8 @@ def negate_trajectory_function(
         class NegatedTrajectory(type(function)):  # type: ignore[misc]
             @tf.function
             def __call__(self, x: TensorType) -> TensorType:
-                if output_dim is not None:
-                    return -1.0 * super().__call__(x)[..., output_dim]
+                if select_output is not None:
+                    return -1.0 * select_output(super().__call__(x))
                 else:
                     return -1.0 * super().__call__(x)
 
@@ -202,8 +207,8 @@ def negate_trajectory_function(
 
         @tf.function
         def negated_trajectory(x: TensorType) -> TensorType:
-            if output_dim is not None:
-                return -1.0 * function(x)[..., output_dim]
+            if select_output is not None:
+                return -1.0 * select_output(function(x))
             else:
                 return -1.0 * function(x)
 

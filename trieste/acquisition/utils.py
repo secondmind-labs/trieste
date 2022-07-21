@@ -101,3 +101,15 @@ def split_acquisition_function_calls(
         return optimizer(search_space, (taf, n) if isinstance(f, tuple) else taf)
 
     return split_optimizer
+
+
+def select_first_output(x: TensorType) -> TensorType:
+    """
+    A utility function for trajectory sampler-related acquisition functions which selects the first
+    output as the trajectory to be used.
+
+    :param x: Input with shape [..., B, L], where L is the number of outputs of the model.
+    :return: TensorType with shape [..., B], where the first output has been selected to reduce the
+        input.
+    """
+    return x[..., 0]
