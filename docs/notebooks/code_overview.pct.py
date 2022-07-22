@@ -1,13 +1,13 @@
 # %% [markdown]
-# # Trieste code overview
+# # An overview of Trieste types
 
 # %% [markdown]
-# Trieste is dedicated to Bayesian optimization, the process of finding the *optimal values of an expensive, black-box objective function by employing probabilistic models over observations*. This notebook explains how the different parts of this process are represented by different classes, and how these classes can be extended.
+# Trieste is dedicated to Bayesian optimization, the process of finding the *optimal values of an expensive, black-box objective function by employing probabilistic models over observations*. This notebook explains how the different parts of this process are represented by different types in the code, and how these types can be extended.
 
 # %% [markdown]
-# ## Key classes
+# ## Key types
 #
-# The following classes represent the key concepts in Trieste. For a full listing of the classes in Trieste, see the API documentation.
+# The following types represent the key concepts in Trieste. For a full listing of all the types in Trieste, see the API documentation.
 
 # %% [markdown]
 # ### `Observer`
@@ -68,39 +68,98 @@
 #
 # `BayesianOptimizer` exposes an `optimize` method for running a Bayesian optimization loop with given initial datasets and models, and a given number of steps (and an optional early stop callback).
 #
-# `AskTellOptimizer` provides greater control over the loop, by providing separate `ask` and `tell` steps for suggesting points and updating the models with new observ
+# `AskTellOptimizer` provides greater control over the loop, by providing separate `ask` and `tell` steps for suggesting query points and updating the models with new observations.
 
 # %% [markdown]
-# ## Extending the key classes
+# ## Extending the key types
 
 # %%
+from __future__ import annotations
+
 import tensorflow as tf
 from trieste.types import TensorType
 
+# %% [markdown]
+# This section explains how to define new observers, model types and acqusition functions.
 
 # %% [markdown]
-# This section explains how to define new observers, acqusition functions and model types.
-
-# %% [markdown]
-# ### Observers
+# ### New observers
 #
-# Defining an observer is as simple as defining a function that returns observations:
+# Defining an observer with a single observation is as simple as defining a function that returns that observation:
 
 # %%
+from trieste.objectives.utils import mk_observer
+
 def simple_quadratic(x: TensorType) -> TensorType:
     "A trivial quadratic function over :math:`[0, 1]^2`."
     return -tf.math.reduce_sum(x, axis=-1, keepdims=True) ** 2
 
+observer = mk_observer(simple_quadratic)
+observer(tf.constant([[0, 1], [1, 1]], dtype=tf.float64))
+
 # %% [markdown]
-# A multi-observation observer returns instead a dictionary of observations:
+# A multi-observation observer can be constructed from multiple functions:
 
 # %%
+from trieste.objectives.utils import mk_multi_observer
+
+def simple_constraint(x: TensorType) -> TensorType:
+    "A trivial constraints over :math:`[0, 1]^2`."
+    return tf.math.reduce_min(x, axis=-1, keepdims=True)
+
+observer = mk_multi_observer(OBJECTIVE=simple_quadratic, CONSTRAINT=simple_constraint)
+observer(tf.constant([[0, 1], [1, 1]], dtype=tf.float64))
 
 # %% [markdown]
-# ### Acquisition function builders
+# ### New probabilistic model types
+#
+# Defining a new probabilistic model type simply involves writing a class that implements all the relevant methods (at the very least `predict` and `sample`). For clarity, it is best to also explicitly inherit from the supported feature protocols.
+
+# %%
+from trieste.models.interfaces import TrainableProbabilisticModel, HasReparamSampler, HasTrajectorySampler
+
+class GizmoModel(TrainableProbabilisticModel, HasReparamSampler, HasTrajectorySampler):
+    "A pretend trainable model type with reparametrization and trajectory samplers."
+    
+    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        ...
+        
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[GizmoModel]:
+        ...
+        
+    ...
+
 
 # %% [markdown]
-# ### Probabilistic model types
+# If the new model type has an additional feature on which you'd like to depend, e.g. in a new acquisition function, then you can define that feature as a protocol. Marking it runtime_checkable will alow you to check for the feature at runtime too.
+
+# %%
+from trieste.models.interfaces import ProbabilisticModel
+from typing_extensions import Protocol, runtime_checkable
+
+@runtime_checkable
+class HasGizmo(ProbabilisticModel, Protocol):
+    "A probabilistic model that has a 'gizmo' method."
+
+    def gizmo(self) -> int:
+        "A 'gizmo' method."
+        raise NotImplementedError
+
+
+# %% [markdown]
+# If your acquisition function depends on a combination of features, then you can define an intersection protocol and use it when defining the acquisition function:
+
+# %%
+@runtime_checkable
+class HasGizmoTrajectoryAndReparamSamplers(
+    HasGizmo, HasReparamSampler, HasTrajectorySampler, Protocol
+):
+    """A model that supports both gizmo, reparam_sampler and trajectory_sampler."""
+
+    pass
+
+# %% [markdown]
+# ### New acquisition function builders
 
 # %% [markdown]
 # ## LICENSE

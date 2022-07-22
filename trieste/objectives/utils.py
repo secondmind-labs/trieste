@@ -20,7 +20,7 @@ from objective functions, appropriately formatted for usage with the toolbox.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Optional, overload
+from typing import Optional, overload, Mapping
 
 from ..data import Dataset
 from ..observer import MultiObserver, Observer, SingleObserver
@@ -49,3 +49,11 @@ def mk_observer(
         return lambda qp: {key: Dataset(qp, objective(qp))}
     else:
         return lambda qp: Dataset(qp, objective(qp))
+
+
+def mk_multi_observer(**kwargs: Callable[[TensorType], TensorType]) -> MultiObserver:
+    """
+    :param kwargs: Observation functions.
+    :return: An multi-observer returning the data from ``kwargs``.
+    """
+    return lambda qp: {key: Dataset(qp, objective(qp)) for key, objective in kwargs.items()}
