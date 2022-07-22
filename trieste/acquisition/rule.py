@@ -267,8 +267,14 @@ class EfficientGlobalOptimization(
         if summary_writer:
             with summary_writer.as_default(step=step_number):
                 batched_points = tf.expand_dims(points, axis=0)
-                value = self._acquisition_function(batched_points)[0][0]
-                logging.scalar("EGO.acquisition_function/maximum_found" + "[0]" * greedy, value)
+                if isinstance(self._builder, VectorizedAcquisitionFunctionBuilder):
+                    values = self._acquisition_function(batched_points)[0]
+                    logging.histogram(
+                        "EGO.acquisition_function/maximum_found" + "[0]" * greedy, values
+                    )
+                else:
+                    value = self._acquisition_function(batched_points)[0][0]
+                    logging.scalar("EGO.acquisition_function/maximum_found" + "[0]" * greedy, value)
 
         if isinstance(self._builder, GreedyAcquisitionFunctionBuilder):
             for i in range(
@@ -288,8 +294,14 @@ class EfficientGlobalOptimization(
                 if summary_writer:
                     with summary_writer.as_default(step=step_number):
                         batched_points = tf.expand_dims(chosen_point, axis=0)
-                        value = self._acquisition_function(batched_points)[0][0]
-                        logging.scalar(f"EGO.acquisition_function/maximum_found[{i+1}]", value)
+                        if isinstance(self._builder, VectorizedAcquisitionFunctionBuilder):
+                            values = self._acquisition_function(batched_points)[0]
+                            logging.histogram(
+                                f"EGO.acquisition_function/maximum_found[{i+1}]", values
+                            )
+                        else:
+                            value = self._acquisition_function(batched_points)[0][0]
+                            logging.scalar(f"EGO.acquisition_function/maximum_found[{i+1}]", value)
 
         return points
 
