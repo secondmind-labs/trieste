@@ -35,9 +35,9 @@ F_MINIMIZER = MICHALEWICZ_2_MINIMUM
 
 search_space = MICHALEWICZ_2_SEARCH_SPACE
 
-# fig = plot_function_plotly(function, search_space.lower, search_space.upper)
-# fig.update_layout(height=800, width=800)
-# fig.show()
+fig = plot_function_plotly(function, search_space.lower, search_space.upper)
+fig.update_layout(height=800, width=800)
+fig.show()
 
 # %% [markdown]
 # ## Sample the observer over the search space
