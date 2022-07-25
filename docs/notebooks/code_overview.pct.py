@@ -90,9 +90,11 @@ from trieste.types import TensorType
 # %%
 from trieste.objectives.utils import mk_observer
 
+
 def simple_quadratic(x: TensorType) -> TensorType:
     "A trivial quadratic function over :math:`[0, 1]^2`."
     return -tf.math.reduce_sum(x, axis=-1, keepdims=True) ** 2
+
 
 observer = mk_observer(simple_quadratic)
 observer(tf.constant([[0, 1], [1, 1]], dtype=tf.float64))
@@ -103,12 +105,16 @@ observer(tf.constant([[0, 1], [1, 1]], dtype=tf.float64))
 # %%
 from trieste.objectives.utils import mk_multi_observer
 
+
 def simple_constraint(x: TensorType) -> TensorType:
     "A trivial constraints over :math:`[0, 1]^2`."
     return tf.math.reduce_min(x, axis=-1, keepdims=True)
 
-observer = mk_multi_observer(OBJECTIVE=simple_quadratic, CONSTRAINT=simple_constraint)
-observer(tf.constant([[0, 1], [1, 1]], dtype=tf.float64))
+
+multiobserver = mk_multi_observer(
+    OBJECTIVE=simple_quadratic, CONSTRAINT=simple_constraint
+)
+multiobserver(tf.constant([[0, 1], [1, 1]], dtype=tf.float64))
 
 # %% [markdown]
 # ### New probabilistic model types
@@ -116,17 +122,29 @@ observer(tf.constant([[0, 1], [1, 1]], dtype=tf.float64))
 # Defining a new probabilistic model type simply involves writing a class that implements all the relevant methods (at the very least `predict` and `sample`). For clarity, it is best to also explicitly inherit from the supported feature protocols.
 
 # %%
-from trieste.models.interfaces import TrainableProbabilisticModel, HasReparamSampler, HasTrajectorySampler
+from trieste.models.interfaces import (
+    TrainableProbabilisticModel,
+    HasReparamSampler,
+    HasTrajectorySampler,
+    ReparametrizationSampler,
+)
 
-class GizmoModel(TrainableProbabilisticModel, HasReparamSampler, HasTrajectorySampler):
+
+class GizmoModel(
+    TrainableProbabilisticModel, HasReparamSampler, HasTrajectorySampler
+):
     "A pretend trainable model type with reparametrization and trajectory samplers."
-    
-    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+
+    def predict(
+        self, query_points: TensorType
+    ) -> tuple[TensorType, TensorType]:
         ...
-        
-    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[GizmoModel]:
+
+    def reparam_sampler(
+        self, num_samples: int
+    ) -> ReparametrizationSampler[GizmoModel]:
         ...
-        
+
     ...
 
 
@@ -136,6 +154,7 @@ class GizmoModel(TrainableProbabilisticModel, HasReparamSampler, HasTrajectorySa
 # %%
 from trieste.models.interfaces import ProbabilisticModel
 from typing_extensions import Protocol, runtime_checkable
+
 
 @runtime_checkable
 class HasGizmo(ProbabilisticModel, Protocol):
@@ -157,6 +176,7 @@ class HasGizmoTrajectoryAndReparamSamplers(
     """A model that supports both gizmo, reparam_sampler and trajectory_sampler."""
 
     pass
+
 
 # %% [markdown]
 # ### New acquisition function builders

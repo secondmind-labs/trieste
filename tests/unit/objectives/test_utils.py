@@ -11,12 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Mapping
-
 import numpy.testing as npt
 import tensorflow as tf
 
-from trieste.objectives.utils import mk_observer, mk_multi_observer
+from trieste.objectives.utils import mk_multi_observer, mk_observer
 
 
 def test_mk_observer() -> None:

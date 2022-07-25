@@ -20,7 +20,7 @@ from objective functions, appropriately formatted for usage with the toolbox.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Optional, overload, Mapping
+from typing import Optional, overload
 
 from ..data import Dataset
 from ..observer import MultiObserver, Observer, SingleObserver
