@@ -12,29 +12,29 @@
 # %% [markdown]
 # ### `Observer`
 #
-# The `Observer` type definition represents the black box objective function. Observers are functions that accept query points and return observations. Observations are either a single objective vaue that we wish to optimize, or mutiple tagged values that must be combined somehow, for example an objective and an inequality constraint.
+# The `Observer` type definition represents the black box objective function. Observers are functions that accept query points and return observations. Observations are either a single objective value that we wish to optimize, or a dictionary of mutiple tagged values that must be combined somehow, for example an objective and an inequality constraint.
 
 # %% [markdown]
 # ### `Dataset`
 #
-# The `Dataset` container class represents the query points and observations from a single observer. Observers with multiple observations are represented by a dictionary of multiple, tagged `Dataset`s.
+# The `Dataset` container class represents the query points and observations from a single observer. Observers with multiple observations are represented by a dictionary of multiple tagged `Dataset`s.
 
 # %% [markdown]
 # ### `ProbabilisticModel`
 #
-# The `ProbabilisticModel` protocol represents any probabilistic model used to model observations. Like for `Dataset`, there may be multiple, tagged models stored in a dictionary.
+# The `ProbabilisticModel` protocol represents any probabilistic model used to model observations. Like for `Dataset`, there may be multiple tagged models stored in a dictionary.
 #
 # At it simplest, `ProbabilisticModel` is anything that implements a `predict` and `sample` method. However, many algorithms in Trieste depend on models with additional features, which are represented by the various subclasses of `ProbabilisticModel`. The standard Bayesian optimizer uses `TrainableProbabilisticModel` models, which also implement `update` and `optimize` methods. Specific acuqisition functions may require other features, represented by classes like `SupportsPredictJoint` and `SupportsGetObservationNoise`. Since these are defined as protocols, it is possible to define and depend on the intersections of different model types (e.g. only support models that are both `SupportsPredictJoint` and `SupportsGetObservationNoise`).
 
 # %% [markdown]
 # ### `SearchSpace`
 #
-# The `SearchSpace` base class represents the domain over which objective function is to be optimized. Spaces can currently be either continuous `Box` spaces, discrete `DiscreteSearchSpace` spaces or a `TaggedProductSearchSpace` product of multipe spaces.
+# The `SearchSpace` base class represents the domain over which the objective function is to be optimized. Spaces can currently be either continuous `Box` spaces, discrete `DiscreteSearchSpace` spaces, or a `TaggedProductSearchSpace` product of multipe spaces.
 
 # %% [markdown]
 # ### `AcquisitionRule`
 #
-# The `AcquisitionRule` base class represents a routine for generating new query points (via an `acquire` method). It is generic on three types:
+# The `AcquisitionRule` base class represents a routine for selecting new query points during a Bayesian optimization loop (via an `acquire` method). It is generic on three types:
 #
 # * **ResultType**: the output of the rule, typically this is just tensors representing the query points. However, it can also be functions that accept some *acquisition state* and return the query points with a new state.
 # * **SearchSpaceType**: the type of the search space; any optimizer that the rule uses must support this.
@@ -42,9 +42,9 @@
 #
 # Exampes of rules include:
 #
-# 1. `EfficientGlobalOptimization` (EGO) is the most commonly used rule, and uses acquisition functions and optimizers.
-# 1. `AsynchronousOptimization` is similar to EGO but uses acquisition state to keep track of pending points.
-# 1. `DiscreteThompsonSampling` uses Thompson samplers rather than acquisition functions.
+# 1. `EfficientGlobalOptimization` (EGO) is the most commonly used rule, and uses acquisition functions and optimizers to select new query points.
+# 1. `AsynchronousOptimization` is similar to EGO but uses acquisition state to keep track of points who observations are still pending.
+# 1. `DiscreteThompsonSampling` uses Thompson samplers rather than acquisition functions to select new query points.
 #
 
 # %% [markdown]
@@ -52,7 +52,7 @@
 #
 # The `AcquisitionFunction` type definition represents any acquisition function: that is, a function that maps a set of query points to a single value that describes how useful it would be evaluate all these points together.
 #
-# The `AcquisitionFunctionBuilder` base class, meanwhile, represents something that builds and updates acquisition functions. *Much of Trieste's codebase involves defining these builders.* At the start of the Bayesian optimization, the builder's `prepare_acquisition_function` method is called by the rule to create an acquisition function from the current observations and probabilistic models. For efficiency, most builders also defing an `update_acquisition_function` method for updating the function using the updated observations and models. (The ones that don't instead generate a new acquisition function when necessary.)
+# The `AcquisitionFunctionBuilder` base class, meanwhile, represents something that builds and updates acquisition functions. *Much of Trieste's codebase involves defining these builders.* At the start of the Bayesian optimization, the builder's `prepare_acquisition_function` method is called by the acquisition rule to create an acquisition function from the current observations and probabilistic models. For efficiency, most builders also define an `update_acquisition_function` method for updating the function using the updated observations and models. (The ones that don't instead generate a new acquisition function when necessary.)
 #
 # Acquisition functions that support only one probabilistic model are more easily defined using the `SingleModelAcquisitionBuilder` convenience class.
 
