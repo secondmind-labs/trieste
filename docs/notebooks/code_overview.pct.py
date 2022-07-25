@@ -76,6 +76,8 @@
 # %%
 from __future__ import annotations
 
+from typing import Optional
+
 import tensorflow as tf
 from trieste.types import TensorType
 
@@ -180,6 +182,53 @@ class HasGizmoTrajectoryAndReparamSamplers(
 
 # %% [markdown]
 # ### New acquisition function builders
+#
+# To define a new acquisition function builder, you simply need to define a class with a `prepare_acquisition_function` method that returns an `AcquisitionFunction`. If the acquisition function depends on just one model/dataset (as is often the case) then you can define it as a `SingleModelAcquisitionBuilder`; if it depends on more than one (e.g. both an objective and a constraint) then you must define it as a `ModelAcquisitionBuilder` instead. You can also specify, in brackets, the type of probabilistic models that the acquisition function supports (e.g. a `SingleModelAcquisitionBuilder[HasReparamSampler]` only supports models with a reparatemtrization sampler). This allows the type checker to warn you if you try to use it with an incompatible model type.
+
+# %%
+from trieste.acquisition import (
+    AcquisitionFunction,
+    SingleModelAcquisitionBuilder,
+)
+from trieste.data import Dataset
+
+
+class ProbabilityOfValidity(SingleModelAcquisitionBuilder[ProbabilisticModel]):
+    def prepare_acquisition_function(
+        self, model: ProbabilisticModel, dataset: Optional[Dataset] = None
+    ) -> AcquisitionFunction:
+        def acquisition(at: TensorType) -> TensorType:
+            mean, _ = model.predict_y(tf.squeeze(at, -2))
+            return mean
+
+        return acquisition
+
+
+# %% [markdown]
+# For efficiency, it usually makes sense to compile the generated acquisition function into a TensorFlow graph using `tf.function`. Furthermore, to avoid generating (and compiling) a new acquisition function on each Bayesian optimization loop, you can define an `update_acquisition_function` method that can instead update the previously generated acquisition function using the new models and data. This may involve updating the acquisition function's internal state (which you should store in `tf.Variable`s), though if the function has no internal state then it is suficient to simply return the old function unchanged.
+
+# %%
+class ProbabilityOfValidityEfficient(
+    SingleModelAcquisitionBuilder[ProbabilisticModel]
+):
+    def prepare_acquisition_function(
+        self, model: ProbabilisticModel, dataset: Optional[Dataset] = None
+    ) -> AcquisitionFunction:
+        @tf.function
+        def acquisition(at: TensorType) -> TensorType:
+            mean, _ = model.predict_y(tf.squeeze(at, -2))
+            return mean
+
+        return acquisition
+
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        return function  # no need to update anything
+
 
 # %% [markdown]
 # ## LICENSE
