@@ -133,7 +133,7 @@ def test_deep_gaussian_process_update_raises_for_invalid_shapes(
 
 
 def test_deep_gaussian_process_optimize_with_defaults(
-    two_layer_model: Callable[[TensorType], DeepGP], keras_float: None
+    two_layer_model: Callable[[TensorType], DeepGP]
 ) -> None:
     x_observed = np.linspace(0, 100, 100).reshape((-1, 1))
     y_observed = fnc_2sin_x_over_3(x_observed)
@@ -147,7 +147,7 @@ def test_deep_gaussian_process_optimize_with_defaults(
 
 @pytest.mark.parametrize("batch_size", [10, 100])
 def test_deep_gaussian_process_optimize(
-    two_layer_model: Callable[[TensorType], DeepGP], batch_size: int, keras_float: None
+    two_layer_model: Callable[[TensorType], DeepGP], batch_size: int
 ) -> None:
     x_observed = np.linspace(0, 100, 100).reshape((-1, 1))
     y_observed = fnc_2sin_x_over_3(x_observed)
@@ -222,7 +222,7 @@ def test_deep_gaussian_process_sample(two_layer_model: Callable[[TensorType], De
 
 
 def test_deep_gaussian_process_resets_lr_with_lr_schedule(
-    two_layer_model: Callable[[TensorType], DeepGP], keras_float: None
+    two_layer_model: Callable[[TensorType], DeepGP]
 ) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     y = fnc_3x_plus_10(x)
@@ -256,7 +256,7 @@ def test_deep_gaussian_process_resets_lr_with_lr_schedule(
 
 
 def test_deep_gaussian_process_default_optimizer_is_correct(
-    two_layer_model: Callable[[TensorType], DeepGP], keras_float: None
+    two_layer_model: Callable[[TensorType], DeepGP]
 ) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
 
@@ -275,7 +275,7 @@ def test_deep_gaussian_process_default_optimizer_is_correct(
 
 
 def test_deep_gaussian_process_subclass_default_optimizer_is_correct(
-    two_layer_model: Callable[[TensorType], DeepGP], keras_float: None
+    two_layer_model: Callable[[TensorType], DeepGP]
 ) -> None:
     class DummySubClass(DeepGaussianProcess):
         """Dummy subclass"""
@@ -298,7 +298,7 @@ def test_deep_gaussian_process_subclass_default_optimizer_is_correct(
 
 @pytest.mark.skip
 def test_deepgp_config_builds_and_default_optimizer_is_correct(
-    two_layer_model: Callable[[TensorType], DeepGP], keras_float: None
+    two_layer_model: Callable[[TensorType], DeepGP]
 ) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
 
@@ -316,12 +316,15 @@ def test_deepgp_config_builds_and_default_optimizer_is_correct(
     assert model.optimizer.fit_args == fit_args
 
 
-def test_deepgp_deep_copyable(keras_float: None) -> None:
+def test_deepgp_deep_copyable() -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model = DeepGaussianProcess(partial(single_layer_dgp_model, x))
     model_copy = copy.deepcopy(model)
 
     test_x = tf.constant([[2.5]], dtype=gpflow.default_float())
+
+    assert model.model_gpflux.inputs.dtype == model_copy.model_gpflux.inputs.dtype
+    assert model.model_gpflux.targets.dtype == model_copy.model_gpflux.targets.dtype
 
     mean_f, variance_f = model.predict(test_x)
     mean_f_copy, variance_f_copy = model_copy.predict(test_x)
@@ -353,7 +356,7 @@ def test_deepgp_deep_copyable(keras_float: None) -> None:
     npt.assert_array_compare(operator.__ne__, variance_f_copy_updated_2, variance_f_copy_updated)
 
 
-def test_deepgp_deep_copies_optimizer_state(keras_float: None) -> None:
+def test_deepgp_deep_copies_optimizer_state() -> None:
 
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model = DeepGaussianProcess(partial(single_layer_dgp_model, x))
