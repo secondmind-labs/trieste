@@ -14,10 +14,11 @@
 
 from __future__ import annotations
 
+import numpy as np
 import pytest
 import tensorflow as tf
 
-from tests.util.misc import branin_dataset, random_seed
+from tests.util.misc import hartmann_6_dataset, random_seed
 from trieste.models.keras import DeepEnsemble, build_keras_ensemble
 from trieste.models.optimizer import KerasOptimizer
 
@@ -25,28 +26,25 @@ from trieste.models.optimizer import KerasOptimizer
 @pytest.mark.slow
 @random_seed
 def test_neural_network_ensemble_predictions_close_to_actuals() -> None:
-    ensemble_size = 5
-    dataset_size = 1000
+    dataset_size = 2000
+    example_data = hartmann_6_dataset(dataset_size)
 
-    example_data = branin_dataset(dataset_size)
-
-    keras_ensemble = build_keras_ensemble(example_data, ensemble_size, 2, 50)
-    optimizer = tf.keras.optimizers.Adam()
+    keras_ensemble = build_keras_ensemble(example_data, 5, 3, 250)
     fit_args = {
-        "batch_size": 20,
-        "epochs": 1000,
-        "callbacks": [tf.keras.callbacks.EarlyStopping(monitor="loss", patience=20)],
+        "batch_size": 128,
+        "epochs": 1500,
+        "callbacks": [
+            tf.keras.callbacks.EarlyStopping(
+                monitor="loss", patience=100, restore_best_weights=True
+            )
+        ],
         "verbose": 0,
     }
     model = DeepEnsemble(
         keras_ensemble,
-        KerasOptimizer(optimizer, fit_args),
-        False,
+        KerasOptimizer(tf.keras.optimizers.Adam(), fit_args),
     )
     model.optimize(example_data)
-
     predicted_means, _ = model.predict(example_data.query_points)
-    mean_abs_deviation = tf.reduce_mean(tf.abs(predicted_means - example_data.observations))
 
-    # somewhat arbitrary accuracy level, seems good for the range of branin values
-    assert mean_abs_deviation < 2
+    np.testing.assert_allclose(predicted_means, example_data.observations, atol=0.2, rtol=0.2)
