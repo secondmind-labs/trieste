@@ -150,6 +150,9 @@ bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 num_initial_points = function_dict[function_key][3]
 num_acquisitions = function_dict[function_key][4]
 
+if model_key == 'gp':
+    num_acquisitions = 9
+
 if retrain:
     num_loops = num_acquisitions // retrain_every
 
