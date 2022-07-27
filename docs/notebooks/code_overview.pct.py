@@ -12,7 +12,7 @@
 # %% [markdown]
 # ### `Observer`
 #
-# The `Observer` type definition represents the black box objective function. Observers are functions that accept query points and return observations. Observations are either a single objective value that we wish to optimize, or a dictionary of mutiple tagged values that must be combined somehow, for example an objective and an inequality constraint. Objective values can be either single or multi-dimensional (see [multi-objective optimization](multi_objective_ehvi)).
+# The `Observer` type definition represents the black box objective function. Observers are functions that accept query points and return observations. Observations are either a single objective value that we wish to optimize, or a dictionary of mutiple tagged values that must be combined somehow, for example an objective and an inequality constraint. Objective values can be either single or multi-dimensional (see [multi-objective optimization](multi_objective_ehvi.ipynb)).
 
 # %% [markdown]
 # ### `Dataset`
