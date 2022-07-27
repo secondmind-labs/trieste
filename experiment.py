@@ -37,7 +37,10 @@ from trieste.objectives import (
     noisy_ackley_5,
     noisy_mich_5,
     noisy_mich_10,
-    noisy_shekel_4
+    noisy_shekel_4,
+    shekel_4,
+    hartmann_6,
+    michalewicz_10
 )
 
 from exp_utils import (
@@ -53,6 +56,7 @@ from trieste.ask_tell_optimization import AskTellOptimizer
 import trieste
 from trieste.data import Dataset
 from trieste.space import SearchSpace
+from trieste.types import TensorType
 import pandas as pd
 import time
 import argparse
@@ -76,9 +80,9 @@ parser.add_argument('--num_query', type=int, help='batch size of acquistion', na
 parser.add_argument('--num_inducing', type=int, help='number of inducing points (per layer)', nargs='?', default=100)
 parser.add_argument('--fix_ips_t', dest='fix_ips', help='whether to fix inducing points', action='store_true')
 parser.add_argument('--fix_ips_f', dest='fix_ips', help='whether to fix inducing points', action='store_false')
-parser.add_argument('--scale_var_t', dest='scale_var', help='whether to use variance scaling for TS', action='store_true')
-parser.add_argument('--scale_var_f', dest='scale_var', help='whether to use variance scaling for TS', action='store_false')
-parser.add_argument('--run', type=int, help='run number', nargs='?', default=1)
+parser.add_argument('--svt', dest='scale_var', help='whether to use variance scaling for TS', action='store_true')
+parser.add_argument('--svf', dest='scale_var', help='whether to use variance scaling for TS', action='store_false')
+parser.add_argument('--run', type=int, help='run number', nargs='?', default=0)
 args = parser.parse_args()
 
 function_key = args.function
@@ -109,12 +113,16 @@ function_dict = {
                 DGP_ACKLEY_2_SEARCH_SPACE, 10, 40],
     "dgpack5": [build_dgp_prior_function('ackley_5'), DGP_ACKLEY_5_MINIMUM,
                 DGP_ACKLEY_5_SEARCH_SPACE, 20, 180],
-    "noisymich5": [noisy_mich_5, NOISY_MICH_5_MINIMUM, NOISY_MICH_5_SEARCH_SPACE, 100, 49],
-    "noisyackley5": [noisy_ackley_5, NOISY_ACKLEY_5_MINIMUM, NOISY_ACKLEY_5_SEARCH_SPACE, 100, 49],
-    "noisyshekel": [noisy_shekel_4, NOISY_SHEKEL_MINIMUM, NOISY_SHEKEL_SEARCH_SPACE, 100, 49],
-    "noisyhart6": [noisy_hartmann_6, NOISY_HARTMANN_6_MINIMUM, NOISY_HARTMANN_6_SEARCH_SPACE, 100,
-                   49],
-    "noisymich10": [noisy_mich_10, NOISY_MICH_10_MINIMUM, NOISY_MICH_10_SEARCH_SPACE, 100, 49]
+    "noisymich5": [michalewicz_5, NOISY_MICH_5_MINIMUM, NOISY_MICH_5_SEARCH_SPACE, 100, 19,
+                   0.01],
+    "noisyackley5": [ackley_5, NOISY_ACKLEY_5_MINIMUM, NOISY_ACKLEY_5_SEARCH_SPACE, 100, 19,
+                     0.001],
+    "noisyshekel": [shekel_4, NOISY_SHEKEL_MINIMUM, NOISY_SHEKEL_SEARCH_SPACE, 100, 19,
+                    0.01],
+    "noisyhart6": [hartmann_6, NOISY_HARTMANN_6_MINIMUM, NOISY_HARTMANN_6_SEARCH_SPACE, 100,
+                   19, 0.1],
+    "noisymich10": [michalewicz_10, NOISY_MICH_10_MINIMUM, NOISY_MICH_10_SEARCH_SPACE, 100, 19,
+                    0.01]
 }
 
 model_dict = {
@@ -139,10 +147,28 @@ pd.DataFrame({
     'run': [run]
 }).to_csv(args.output_filename)
 
-function = function_dict[function_key][0]
 F_MINIMUM = function_dict[function_key][1]
+noiseless_function = function_dict[function_key][0]
 
 search_space = function_dict[function_key][2]
+
+if function_key[:5] == 'noisy':
+    observation_noise = function_dict[function_key][5]
+
+    def noisy_function(x: TensorType) -> TensorType:
+        return noiseless_function(x) + np.sqrt(observation_noise)*tf.random.normal([*tf.shape(x)[:-1], 1], dtype=x.dtype)
+
+    function = noisy_function
+else:
+    function = function_dict[function_key][0]
+
+if learn_noise:
+    observation_noise = 1e-3
+elif function_key[:5] == 'noisy':
+    observation_noise = function_dict[function_key][5]
+else:
+    observation_noise = 1e-5
+
 observer = mk_observer(function)
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
@@ -151,7 +177,7 @@ num_initial_points = function_dict[function_key][3]
 num_acquisitions = function_dict[function_key][4]
 
 if model_key == 'gp':
-    num_acquisitions = 9
+    num_acquisitions = 3
 
 if retrain:
     num_loops = num_acquisitions // retrain_every
@@ -176,22 +202,22 @@ def run_bayes_opt(
 
     normalized_dataset = Dataset(initial_data.query_points, y_sta)
 
+    model, acquisition_rule, predict_mean = builder(normalized_dataset, learn_noise=learn_noise,
+                                                    search_space=search_space, epochs=epochs,
+                                                    num_inducing=num_inducing,
+                                                    num_query_points=num_query,
+                                                    fix_ips=fix_ips, noise_init=observation_noise)
+    model.optimize(normalized_dataset)
+
+    # Calculate current mean predictions
+    current_best = []
+    mean_predictions = predict_mean(normalized_dataset.query_points, model)
+    idx = tf.argmin(mean_predictions)
+    location = tf.gather(normalized_dataset.query_points, idx)
+    score = noiseless_function(location).numpy()[0][0]
+    current_best.append(score)
+
     for step in range(num_acquisitions):
-        if retrain and step % retrain_every == 0:
-            model, acquisition_rule = builder(normalized_dataset, learn_noise=learn_noise,
-                                              search_space=search_space, epochs=epochs,
-                                              num_inducing=num_inducing, num_query_points=num_query,
-                                              fix_ips=fix_ips)
-            model.optimize(normalized_dataset)
-        elif step == 0:
-            model, acquisition_rule = builder(normalized_dataset, learn_noise=learn_noise,
-                                              search_space=search_space, epochs=epochs,
-                                              num_inducing=num_inducing, num_query_points=num_query,
-                                              fix_ips=fix_ips)
-            model.optimize(normalized_dataset)
-        else:
-            model.update(normalized_dataset)
-            model.optimize(normalized_dataset)
 
         if scale_var:
             model._step = step + 1
@@ -212,6 +238,24 @@ def run_bayes_opt(
         print(f"observation "
               f"{function_key} {run}: {dataset.observations.numpy()[result_arg_min_idx, :]}")
 
+        # Train model
+        if retrain and step + 1 % retrain_every == 0:
+            model, acquisition_rule, predict_mean = builder(normalized_dataset, learn_noise=learn_noise,
+                                              search_space=search_space, epochs=epochs,
+                                              num_inducing=num_inducing, num_query_points=num_query,
+                                              fix_ips=fix_ips, noise_init=observation_noise)
+            model.optimize(normalized_dataset)
+        else:
+            model.update(normalized_dataset)
+            model.optimize(normalized_dataset)
+
+        # Evaluate mean predictions with current model
+        mean_predictions = predict_mean(normalized_dataset.query_points, model)
+        idx = tf.argmin(mean_predictions)
+        location = tf.gather(normalized_dataset.query_points, idx)
+        score = noiseless_function(location).numpy()[0][0]
+        current_best.append(score)
+
     # Get results
     result_dataset = dataset
 
@@ -230,6 +274,13 @@ def run_bayes_opt(
                                                             model_key, learn_noise, retrain,
                                                             retrain_every, norm, num_query,
                                                             num_inducing, scale_var, run))
+
+    pd.DataFrame(current_best).to_csv(
+        'results_{}/{}/{}_ln{}_rt{}_{}_norm{}_nq{}_ni{}_sv{}_best_obs_{}'.format(args.exp_name, function_key,
+                                                            model_key, learn_noise, retrain,
+                                                            retrain_every, norm, num_query,
+                                                            num_inducing, scale_var, run)
+    )
 
     print(f"{model_key} ln {learn_noise} rt {retrain} observation "
           f"{function_key} {run}: {result_observations[result_arg_min_idx, :]}")

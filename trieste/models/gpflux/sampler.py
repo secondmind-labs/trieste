@@ -445,9 +445,7 @@ class DeepGaussianProcessDecoupledLayer(ABC):
         )
 
         def weight_sampler(batch_size: int) -> TensorType:
-            alpha = 1.0 + 0.1 * (tf.cast(inducing_points.shape[-1], tf.float64) + 1) * math.log(
-                step
-            )
+            alpha = 1.0 + 0.2*math.log(step)
             prior_weights = tf.random.normal([batch_size, self._num_features, P], dtype=tf.float64)
 
             u_noise_sample = tf.matmul(

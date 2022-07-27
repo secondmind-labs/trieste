@@ -25,6 +25,7 @@ from trieste.acquisition.optimizer import generate_continuous_optimizer
 from trieste.acquisition.utils import split_acquisition_function_calls
 from trieste.space import SearchSpace
 from trieste.data import Dataset
+from trieste.types import TensorType
 
 OPT_SPLIT_SIZE = 10_000
 
@@ -64,11 +65,12 @@ def build_gp_model(
         fix_ips: bool = False,
         epochs: int = 400,
         num_query_points: int = 1,
+        noise_init: float = 1e-5
 ):
     if learn_noise:
         noise_variance = 1e-1
     else:
-        noise_variance = 1e-5
+        noise_variance = noise_init
 
     gpflow.config.set_default_jitter(1.e-5)
     gpflow.config.set_default_positive_minimum(1.e-5)
@@ -91,7 +93,10 @@ def build_gp_model(
 
     optimizer = Optimizer(gpflow.optimizers.Scipy(), compile=True) #, minimize_args=dict(options=dict(disp=True)))
 
-    return GaussianProcessRegression(gpr, optimizer), acquisition_rule
+    def predict_mean(query_points: TensorType, model: GaussianProcessRegression) -> TensorType:
+        return model.predict(query_points)[0]
+
+    return GaussianProcessRegression(gpr, optimizer), acquisition_rule, predict_mean
 
 
 def build_vanilla_dgp_model(
@@ -103,11 +108,13 @@ def build_vanilla_dgp_model(
         fix_ips: bool = False,
         epochs: int = 400,
         num_query_points: int = 1,
+        num_predict_samples: int = 100,
+        noise_init: float = 1e-5
 ):
     if learn_noise:
         noise_variance = 1e-3
     else:
-        noise_variance = 1e-5
+        noise_variance = noise_init
 
     dgp = build_vanilla_deep_gp(data, search_space, num_layers, num_inducing,
                                 likelihood_variance=noise_variance, trainable_likelihood=learn_noise)
@@ -144,9 +151,16 @@ def build_vanilla_dgp_model(
     }
     optimizer = KerasOptimizer(keras_optimizer, fit_args)
 
+    def predict_mean(query_points: TensorType, model: DeepGaussianProcess) -> TensorType:
+        samples = []
+        for _ in range(num_predict_samples):
+            samples.append(model.predict(query_points)[0])
+        return tf.reduce_mean(tf.stack(samples), axis=0)
+
     return (
         DeepGaussianProcess(dgp, optimizer, continuous_optimisation=False),
-        acquisition_rule
+        acquisition_rule,
+        predict_mean
     )
 
 
@@ -158,12 +172,14 @@ def build_svgp_model(
         fix_ips: bool = False,
         epochs: int = 400,
         num_query_points: int = 1,
+        num_predict_samples: int = 100,
+        noise_init: float = 1e-5
 ):
 
     if learn_noise:
         noise_variance = 1e-3
     else:
-        noise_variance = 1e-5
+        noise_variance = noise_init
 
     svgp = build_vanilla_deep_gp(data, search_space, 1, num_inducing,
                                 likelihood_variance=noise_variance, trainable_likelihood=learn_noise)
@@ -209,9 +225,13 @@ def build_svgp_model(
     }
     optimizer = KerasOptimizer(keras_optimizer, fit_args)
 
+    def predict_mean(query_points: TensorType, model: DeepGaussianProcess) -> TensorType:
+        return model.predict(query_points)[0]
+
     return (
         DeepGaussianProcess(svgp, optimizer, continuous_optimisation=False),
-        acquisition_rule
+        acquisition_rule,
+        predict_mean
     )
 
 
