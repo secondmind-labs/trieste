@@ -553,9 +553,8 @@ class ReparametrizationSampler(ABC, Generic[ProbabilisticModelType]):
 
 TrajectoryFunction = Callable[[TensorType], TensorType]
 """
-Type alias for trajectory functions. These have similar behaviour to an 
-:const:`AcquisitionFunction`, but have additional sampling properties and support multiple model 
-outputs.
+Type alias for trajectory functions. These have similar behaviour to an :const:`AcquisitionFunction`
+but have additional sampling properties and support multiple model outputs.
 
 An :const:`TrajectoryFunction` evaluates a batch of `B` samples, each across different sets
 of `N` query points (of dimension `D`) i.e. takes input of shape `[N, B, D]` and returns

@@ -21,7 +21,7 @@ import pytest
 import tensorflow as tf
 
 from trieste.acquisition import AcquisitionFunction
-from trieste.acquisition.utils import split_acquisition_function, select_nth_output
+from trieste.acquisition.utils import select_nth_output, split_acquisition_function
 
 
 @pytest.mark.parametrize(
