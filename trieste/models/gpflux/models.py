@@ -195,9 +195,9 @@ class DeepGaussianProcess(
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         trajectory = self.trajectory_sampler().get_trajectory()
-        expanded_query_points = tf.expand_dims(query_points, -2)
-        tiled_query_points = tf.tile(expanded_query_points, [1, num_samples, 1])
-        return tf.transpose(trajectory(tiled_query_points), [1, 0, 2])
+        expanded_query_points = tf.expand_dims(query_points, -2)  # [N, 1, D]
+        tiled_query_points = tf.tile(expanded_query_points, [1, num_samples, 1])  # [N, S, D]
+        return tf.transpose(trajectory(tiled_query_points), [1, 0, 2])  # [S, N, L]
 
     def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[GPfluxPredictor]:
         """

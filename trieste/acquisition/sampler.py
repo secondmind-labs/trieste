@@ -28,7 +28,7 @@ from scipy.optimize import bisect
 from ..models import ProbabilisticModel
 from ..models.interfaces import HasTrajectorySampler, ProbabilisticModelType
 from ..types import TensorType
-from .utils import select_first_output
+from .utils import select_nth_output
 
 
 class ThompsonSampler(ABC, Generic[ProbabilisticModelType]):
@@ -60,7 +60,7 @@ class ThompsonSampler(ABC, Generic[ProbabilisticModelType]):
         model: ProbabilisticModelType,
         sample_size: int,
         at: TensorType,
-        select_output: Callable[[TensorType], TensorType] = select_first_output,
+        select_output: Callable[[TensorType], TensorType] = select_nth_output,
     ) -> TensorType:
         """
         :param model: The model to sample from.
@@ -68,6 +68,8 @@ class ThompsonSampler(ABC, Generic[ProbabilisticModelType]):
         :param at: Input points that define the sampler.
         :param select_output: A method that returns the desired output from the model sampler, with
             shape `[S, N]` where `S` is the number of samples and `N` is the number of locations.
+            Defaults to the :func:~`trieste.acquisition.utils.select_nth_output` function with
+            output dimension 0.
         :return: Samples.
         """
 
@@ -86,10 +88,10 @@ class ExactThompsonSampler(ThompsonSampler[ProbabilisticModel]):
         model: ProbabilisticModel,
         sample_size: int,
         at: TensorType,
-        select_output: Callable[[TensorType], TensorType] = select_first_output,
+        select_output: Callable[[TensorType], TensorType] = select_nth_output,
     ) -> TensorType:
         """
-        Return exact samples from either the objective function's minimser or its minimal value
+        Return exact samples from either the objective function's minimiser or its minimal value
         over the candidate set `at`.
 
         :param model: The model to sample from.
@@ -98,6 +100,8 @@ class ExactThompsonSampler(ThompsonSampler[ProbabilisticModel]):
             of dimension `D`.
         :param select_output: A method that returns the desired output from the model sampler, with
             shape `[S, N]` where `S` is the number of samples and `N` is the number of locations.
+            Defaults to the :func:~`trieste.acquisition.utils.select_nth_output` function with
+            output dimension 0.
         :return: The samples, of shape `[S, D]` (where `S` is the `sample_size`) if sampling
             the function's minimiser or shape `[S, 1]` if sampling the function's mimimal value.
         :raise ValueError: If ``at`` has an invalid shape or if ``sample_size`` is not positive.
@@ -152,7 +156,7 @@ class GumbelSampler(ThompsonSampler[ProbabilisticModel]):
         model: ProbabilisticModel,
         sample_size: int,
         at: TensorType,
-        select_output: Callable[[TensorType], TensorType] = select_first_output,
+        select_output: Callable[[TensorType], TensorType] = select_nth_output,
     ) -> TensorType:
         """
         Return approximate samples from of the objective function's minimum value.
@@ -217,7 +221,7 @@ class ThompsonSamplerFromTrajectory(ThompsonSampler[HasTrajectorySampler]):
         model: ProbabilisticModel,
         sample_size: int,
         at: TensorType,
-        select_output: Callable[[TensorType], TensorType] = select_first_output,
+        select_output: Callable[[TensorType], TensorType] = select_nth_output,
     ) -> TensorType:
         """
         Return approximate samples from either the objective function's minimser or its minimal
@@ -229,6 +233,8 @@ class ThompsonSamplerFromTrajectory(ThompsonSampler[HasTrajectorySampler]):
             of dimension `D`.
         :param select_output: A method that returns the desired output from the model sampler, with
             shape `[S, N]` where `S` is the number of samples and `N` is the number of locations.
+            Defaults to the :func:~`trieste.acquisition.utils.select_nth_output` function with
+            output dimension 0.
         :return: The samples, of shape `[S, D]` (where `S` is the `sample_size`) if sampling
             the function's minimser or shape `[S, 1]` if sampling the function's mimimal value.
         :raise ValueError: If ``at`` has an invalid shape or if ``sample_size`` is not positive.

@@ -49,7 +49,7 @@ from .optimizer import (
     batchify_vectorize,
 )
 from .sampler import ExactThompsonSampler, ThompsonSampler
-from .utils import select_first_output
+from .utils import select_nth_output
 
 ResultType = TypeVar("ResultType", covariant=True)
 """ Unbound covariant type variable. """
@@ -786,7 +786,7 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
         num_search_space_samples: int,
         num_query_points: int,
         thompson_sampler: None = None,
-        select_output: Callable[[TensorType], TensorType] = select_first_output,
+        select_output: Callable[[TensorType], TensorType] = select_nth_output,
     ):
         ...
 
@@ -796,7 +796,7 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
         num_search_space_samples: int,
         num_query_points: int,
         thompson_sampler: Optional[ThompsonSampler[ProbabilisticModelType]] = None,
-        select_output: Callable[[TensorType], TensorType] = select_first_output,
+        select_output: Callable[[TensorType], TensorType] = select_nth_output,
     ):
         ...
 
@@ -805,15 +805,15 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
         num_search_space_samples: int,
         num_query_points: int,
         thompson_sampler: Optional[ThompsonSampler[ProbabilisticModelType]] = None,
-        select_output: Callable[[TensorType], TensorType] = select_first_output,
+        select_output: Callable[[TensorType], TensorType] = select_nth_output,
     ):
         """
         :param num_search_space_samples: The number of points at which to sample the posterior.
         :param num_query_points: The number of points to acquire.
         :param thompson_sampler: Sampler to sample maximisers from the underlying model.
         :param select_output: A method that returns the desired trajectory from a trajectory
-            sampler with shape [..., B], where B is a batch dimension. Defaults to a method that
-            returns the first output of a multi-output trajectory.
+            sampler with shape [..., B], where B is a batch dimension. Defaults to the
+            :func:~`trieste.acquisition.utils.select_nth_output` function with output dimension 0.
         """
         if not num_search_space_samples > 0:
             raise ValueError(f"Search space must be greater than 0, got {num_search_space_samples}")

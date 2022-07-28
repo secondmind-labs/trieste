@@ -24,7 +24,7 @@ from ...data import Dataset
 from ...models.interfaces import HasTrajectorySampler, TrajectoryFunction, TrajectoryFunctionClass
 from ...types import TensorType
 from ..interface import SingleModelGreedyAcquisitionBuilder, SingleModelVectorizedAcquisitionBuilder
-from ..utils import select_first_output
+from ..utils import select_nth_output
 
 
 class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTrajectorySampler]):
@@ -43,11 +43,11 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTr
     :cite:`wilson2020efficiently`.
     """
 
-    def __init__(self, select_output: Callable[[TensorType], TensorType] = select_first_output):
+    def __init__(self, select_output: Callable[[TensorType], TensorType] = select_nth_output):
         """
         :param select_output: A method that returns the desired trajectory from a trajectory
-            sampler with shape [..., B], where B is a batch dimension. Defaults to a method that
-            returns the first output of a multi-output trajectory.
+            sampler with shape [..., B], where B is a batch dimension. Defaults to the
+            :func:~`trieste.acquisition.utils.select_nth_output` function with output dimension 0.
         """
         self._select_output = select_output
 
@@ -122,11 +122,11 @@ class ParallelContinuousThompsonSampling(
     our :const:`split_acquisition_function_calls` wrapper.
     """
 
-    def __init__(self, select_output: Callable[[TensorType], TensorType] = select_first_output):
+    def __init__(self, select_output: Callable[[TensorType], TensorType] = select_nth_output):
         """
         :param select_output: A method that returns the desired trajectory from a trajectory
-            sampler with shape [..., B], where B is a batch dimension. Defaults to a method that
-            returns the first output of a multi-output trajectory.
+            sampler with shape [..., B], where B is a batch dimension. Defaults to the
+            :func:~`trieste.acquisition.utils.select_nth_output` function with output dimension 0.
         """
         self._select_output = select_output
 
@@ -183,11 +183,12 @@ def negate_trajectory_function(
     function: TrajectoryFunction, select_output: Optional[Callable[[TensorType], TensorType]] = None
 ) -> TrajectoryFunction:
     """
-    Return the negative of trajectories so that our acquisition optimizers (which are
-    all maximizers) can be used to extract the minimizers of trajectories.
+    Return the negative of trajectories and select the output to form the acquisition function, so
+    that our acquisition optimizers (which are all maximizers) can be used to extract the minimizers
+    of trajectories.
 
-    We negate the trajectory function object's call method but otherwise leave it alone,
-    as it may have e.g. update and resample methods.
+    We negate the trajectory function object's call method, as it may have e.g. update and resample
+    methods, and select the output we wish to use.
     """
     if isinstance(function, TrajectoryFunctionClass):
 
