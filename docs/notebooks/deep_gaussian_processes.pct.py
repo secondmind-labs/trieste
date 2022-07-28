@@ -5,13 +5,8 @@
 import numpy as np
 import tensorflow as tf
 
-# %% [markdown]
-# For GPflux models we <strong>must</strong> use `tf.keras.backend.set_floatx()` to set the Keras backend float to the value consistent with GPflow (GPflow defaults to float64). Otherwise the code will crash with a ValueError!
-
-# %%
 np.random.seed(1794)
 tf.random.set_seed(1794)
-tf.keras.backend.set_floatx("float64")
 
 # %% [markdown]
 # ## Describe the problem
@@ -33,7 +28,7 @@ from trieste.objectives import (
     MICHALEWICZ_5_SEARCH_SPACE,
 )
 from trieste.objectives.utils import mk_observer
-from util.plotting_plotly import plot_function_plotly
+from trieste.experimental.plotting import plot_function_plotly
 
 function = michalewicz_2
 F_MINIMIZER = MICHALEWICZ_2_MINIMUM
@@ -131,7 +126,7 @@ print(f"observation: {dgp_observations[dgp_arg_min_idx, :]}")
 # We can visualise how the optimizer performed as a three-dimensional plot
 
 # %%
-from util.plotting_plotly import add_bo_points_plotly
+from trieste.experimental.plotting import add_bo_points_plotly
 
 fig = plot_function_plotly(
     function, search_space.lower, search_space.upper, alpha=0.5
@@ -153,8 +148,10 @@ fig.show()
 
 # %%
 import matplotlib.pyplot as plt
-from util.plotting import plot_regret
-from util.plotting_plotly import plot_model_predictions_plotly
+from trieste.experimental.plotting import (
+    plot_regret,
+    plot_model_predictions_plotly,
+)
 
 fig = plot_model_predictions_plotly(
     dgp_result.try_get_final_model(),

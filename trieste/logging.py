@@ -16,8 +16,9 @@ from __future__ import annotations
 
 import io
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, Callable, Iterator, Optional
+from typing import TYPE_CHECKING, Any, Callable, Iterator, Optional, TypeVar, Union
 
+import absl
 import tensorflow as tf
 from tensorflow.python.eager import context
 
@@ -148,34 +149,81 @@ def include_summary(name: str) -> bool:
     return _SUMMARY_FILTER(full_name)
 
 
-def histogram(name: str, data: TensorType, **kwargs: Any) -> bool:
-    """Wrapper for tf.summary.histogram that first filters out unwanted summaries by name."""
+T = TypeVar("T")
+
+
+def evaluate_data(data: T | Callable[[], T]) -> T:
+    """Return the passed in data, evaluating it if it's inside a closure."""
+    return data() if callable(data) else data
+
+
+def histogram(name: str, data: TensorType | Callable[[], TensorType], **kwargs: Any) -> bool:
+    """
+    Wrapper for tf.summary.histogram that first filters out unwanted summaries by name.
+    Accepts either data or closures that only get evaluated when logged.
+    """
     if include_summary(name):
-        return tf.summary.histogram(name, data, **kwargs)
+        try:
+            return tf.summary.histogram(name, evaluate_data(data), **kwargs)
+        except Exception as e:
+            tf.print(
+                f"Failed to write tensorboard histogram summary '{name}':\n\n{e}",
+                output_stream=absl.logging.INFO,
+            )
     return False
 
 
-def scalar(name: str, data: float, **kwargs: Any) -> bool:
-    """Wrapper for tf.summary.scalar that first filters out unwanted summaries by name."""
+def scalar(name: str, data: float | Callable[[], float], **kwargs: Any) -> bool:
+    """
+    Wrapper for tf.summary.scalar that first filters out unwanted summaries by name.
+    Accepts either data or closures that only get evaluated when logged.
+    """
     if include_summary(name):
-        return tf.summary.scalar(name, data, **kwargs)
+        try:
+            return tf.summary.scalar(name, evaluate_data(data), **kwargs)
+        except Exception as e:
+            tf.print(
+                f"Failed to write tensorboard scalar summary '{name}':\n\n{e}",
+                output_stream=absl.logging.INFO,
+            )
     return False
 
 
-def text(name: str, data: str, **kwargs: Any) -> bool:
-    """Wrapper for tf.summary.text that first filters out unwanted summaries by name."""
+def text(name: str, data: str | Callable[[], str], **kwargs: Any) -> bool:
+    """
+    Wrapper for tf.summary.text that first filters out unwanted summaries by name.
+    Accepts either data or closures that only get evaluated when logged.
+    """
     if include_summary(name):
-        return tf.summary.text(name, data, **kwargs)
+        try:
+            return tf.summary.text(name, evaluate_data(data), **kwargs)
+        except Exception as e:
+            tf.print(
+                f"Failed to write tensorboard text summary '{name}':\n\n{e}",
+                output_stream=absl.logging.INFO,
+            )
     return False
 
 
-def pyplot(name: str, figure: "matplotlib.figure.Figure") -> bool:
-    """Utility function for passing a matplotlib figure to tf.summary.image."""
+def pyplot(
+    name: str, figure: Union["matplotlib.figure.Figure", Callable[[], "matplotlib.figure.Figure"]]
+) -> bool:
+    """
+    Utility function for passing a matplotlib figure to tf.summary.image.
+    Accepts either data or closures that only get evaluated when logged.
+    """
     if include_summary(name):
-        with io.BytesIO() as buffer:
-            figure.savefig(buffer, format="png")
-            buffer.seek(0)
-            image = tf.image.decode_png(buffer.getvalue(), channels=4)
-        image = tf.expand_dims(image, 0)
-        return tf.summary.image(name, image)
+        try:
+            figure = evaluate_data(figure)
+            with io.BytesIO() as buffer:
+                figure.savefig(buffer, format="png")
+                buffer.seek(0)
+                image = tf.image.decode_png(buffer.getvalue(), channels=4)
+            image = tf.expand_dims(image, 0)
+            return tf.summary.image(name, image)
+        except Exception as e:
+            tf.print(
+                f"Failed to write tensorboard image summary '{name}':\n\n{e}",
+                output_stream=absl.logging.INFO,
+            )
     return False

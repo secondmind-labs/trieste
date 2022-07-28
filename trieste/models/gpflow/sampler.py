@@ -270,7 +270,6 @@ class FeatureDecompositionTrajectorySampler(
         feature_functions: ResampleableRandomFourierFeatureFunctions,
     ):
         """
-        :param sample_size: The desired number of samples.
         :param model: The model to sample from.
         :raise ValueError: If ``dataset`` is empty.
         """
@@ -387,7 +386,6 @@ class RandomFourierFeatureTrajectorySampler(
         num_features: int = 1000,
     ):
         """
-        :param sample_size: The desired number of samples.
         :param model: The model to sample from.
         :param num_features: The number of features used to approximate the kernel. We use a default
             of 1000 as it typically perfoms well for a wide range of kernels. Note that very smooth
@@ -540,7 +538,6 @@ class DecoupledTrajectorySampler(
         num_features: int = 1000,
     ):
         """
-        :param sample_size: The desired number of samples.
         :param model: The model to sample from.
         :param num_features: The number of features used to approximate the kernel. We use a default
             of 1000 as it typically perfoms well for a wide range of kernels. Note that very smooth

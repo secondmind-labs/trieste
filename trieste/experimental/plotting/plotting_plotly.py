@@ -12,38 +12,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from typing import Callable, Optional
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import tensorflow as tf
+from plotly.subplots import make_subplots
 
+from trieste.models.interfaces import ProbabilisticModel
 from trieste.types import TensorType
 from trieste.utils import to_numpy
-from trieste.models.interfaces import ProbabilisticModel
 
 from .plotting import create_grid
 
 
 def format_point_markers(
-    num_pts,
-    num_init,
-    idx_best=None,
-    mask_fail=None,
-    m_init="x",
-    m_add="circle",
-    c_pass="green",
-    c_fail="red",
-    c_best="darkmagenta",
-):
+    num_pts: int,
+    num_init: int,
+    idx_best: Optional[int] = None,
+    mask_fail: Optional[TensorType] = None,
+    m_init: str = "x",
+    m_add: str = "circle",
+    c_pass: str = "green",
+    c_fail: str = "red",
+    c_best: str = "darkmagenta",
+) -> tuple[TensorType, TensorType]:
     """
     Prepares point marker styles according to some BO factors
+
     :param num_pts: total number of BO points
     :param num_init: initial number of BO points
     :param idx_best: index of the best BO point
-    :param mask_fail: Boolean vector, True if the corresponding observation violates the constraint(s)
+    :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)
     :param m_init: marker for the initial BO points
     :param m_add: marker for the other BO points
     :param c_pass: color for the regular BO points
@@ -63,9 +66,18 @@ def format_point_markers(
     return col_pts, mark_pts
 
 
-def add_surface_plotly(xx, yy, f, fig, alpha=1.0, figrow=1, figcol=1):
+def add_surface_plotly(
+    xx: TensorType,
+    yy: TensorType,
+    f: TensorType,
+    fig: go.Figure,
+    alpha: float = 1.0,
+    figrow: int = 1,
+    figcol: int = 1,
+) -> go.Figure:
     """
     Adds a surface to an existing plotly subfigure
+
     :param xx: [n, n] array (input)
     :param yy: [n, n] array (input)
     :param f: [n, n] array (output)
@@ -86,16 +98,27 @@ def add_surface_plotly(xx, yy, f, fig, alpha=1.0, figrow=1, figcol=1):
     return fig
 
 
-def add_bo_points_plotly(x, y, z, fig, num_init, idx_best=None, mask_fail=None, figrow=1, figcol=1):
+def add_bo_points_plotly(
+    x: TensorType,
+    y: TensorType,
+    z: TensorType,
+    fig: go.Figure,
+    num_init: int,
+    idx_best: Optional[int] = None,
+    mask_fail: Optional[TensorType] = None,
+    figrow: int = 1,
+    figcol: int = 1,
+) -> go.Figure:
     """
-    Adds scatter points to an existing subfigure. Markers and colors are chosen according to BO factors.
+    Adds scatter points to an existing subfigure. Markers and colors are chosen according to
+    BO factors.
     :param x: [N] x inputs
     :param y: [N] y inputs
     :param z: [N] z outputs
     :param fig: the current plotly figure
     :param num_init: initial number of BO points
     :param idx_best: index of the best BO point
-    :param mask_fail: Boolean vector, True if the corresponding observation violates the constraint(s)
+    :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)
     :param figrow: row index of the subfigure
     :param figcol: column index of the subfigure
     :return: a plotly figure
@@ -141,6 +164,8 @@ def plot_model_predictions_plotly(
     :param maxs: List of 2 upper bounds for creating a grid of points for model predictions.
     :param grid_density: Number of points per dimension. This will result in a grid size of
         grid_density^2.
+    :param num_samples: Number of samples to use with deep GPs.
+    :param alpha: Transparency.
     :return: A plotly figure.
     """
     mins = to_numpy(mins)
@@ -185,20 +210,24 @@ def plot_function_plotly(
     mins: TensorType,
     maxs: TensorType,
     grid_density: int = 100,
-    title: str = None,
-    xlabel: str = None,
-    ylabel: str = None,
+    title: Optional[str] = None,
+    xlabel: Optional[str] = None,
+    ylabel: Optional[str] = None,
     alpha: float = 1.0,
-):
+) -> go.Figure:
     """
     Plots 2-dimensional plot of an objective function. To illustrate the function we create a
     regular grid of points and evaluate the function on these points.
 
-    :obj_func: The vectorized objective function.
+    :param obj_func: The vectorized objective function.
     :param mins: List of 2 lower bounds for creating a grid of points for model predictions.
     :param maxs: List of 2 upper bounds for creating a grid of points for model predictions.
     :param grid_density: Number of points per dimension. This will result in a grid size of
         grid_density^2.
+    :param title: optional titles
+    :param xlabel: optional xlabel
+    :param ylabel: optional ylabel
+    :param alpha: transparency
     :return: A plotly figure.
     """
 

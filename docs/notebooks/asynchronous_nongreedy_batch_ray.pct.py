@@ -182,7 +182,7 @@ while points_observed < num_observations:
 # Let's plot the objective function and the points the optimization procedure explored.
 
 # %%
-from util.plotting import plot_function_2d, plot_bo_points
+from trieste.experimental.plotting import plot_function_2d, plot_bo_points
 
 dataset = async_bo.to_result().try_get_final_dataset()
 arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))

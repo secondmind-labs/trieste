@@ -70,7 +70,7 @@ dataset = result.try_get_final_dataset()
 # We can take a look at where we queried the observer, both the original query points (crosses) and new query points (dots), and where they lie with respect to the contours of the Branin.
 
 # %%
-from util.plotting import plot_function_2d, plot_bo_points
+from trieste.experimental.plotting import plot_function_2d, plot_bo_points
 
 arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 query_points = dataset.query_points.numpy()
@@ -89,7 +89,7 @@ plot_bo_points(query_points, ax[0, 0], num_initial_data_points, arg_min_idx)
 # We can also visualise the observations on a three-dimensional plot of the Branin. We'll add the contours of the mean and variance of the model's predictive distribution as translucent surfaces.
 
 # %%
-from util.plotting_plotly import (
+from trieste.experimental.plotting import (
     plot_model_predictions_plotly,
     add_bo_points_plotly,
 )

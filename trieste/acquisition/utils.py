@@ -32,7 +32,7 @@ def split_acquisition_function(
     the results back together, so that it looks like `fn` was called with all of `x` in one batch.
     :param fn: Acquisition function to split.
     :param split_size: Call fn with tensors of at most this size.
-    :returns Split acquisition function.
+    :return: Split acquisition function.
     """
     if split_size <= 0:
         raise ValueError(f"split_size must be positive, got {split_size}")

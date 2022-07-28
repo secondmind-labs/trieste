@@ -352,6 +352,7 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
             on each optimization step. Defaults to
             :class:`~trieste.acquisition.rule.EfficientGlobalOptimization` with default
             arguments.
+        :return: New instance of :class:`~AskTellOptimizer`.
         """
         # we are recovering previously saved optimization state
         # so the model was already trained
@@ -405,8 +406,8 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
         return OptimizationResult(Ok(record), [])
 
     def ask(self) -> TensorType:
-        """Suggests a point (or points in batch mode) to observe by optimizing the acquisition function.
-        If the acquisition is stateful, its state is saved.
+        """Suggests a point (or points in batch mode) to observe by optimizing the acquisition
+        function. If the acquisition is stateful, its state is saved.
 
         :return: A :class:`TensorType` instance representing suggested point(s).
         """

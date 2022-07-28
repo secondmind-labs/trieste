@@ -328,7 +328,7 @@ print(f"Got {len(sync_lp_observations)} observations in {sync_lp_time:.2f}s")
 # To compare outcomes of sync and async runs, let's plot their respective regrets side by side, and print out the running time. For this toy problem we expect async scenario to run a little bit faster on machines with multiple CPU.
 
 # %%
-from util.plotting import plot_regret
+from trieste.experimental.plotting import plot_regret
 import matplotlib.pyplot as plt
 
 fig, ax = plt.subplots(1, 2)

@@ -258,17 +258,25 @@ class EfficientGlobalOptimization(
                 datasets=datasets,
             )
 
-        points = self._optimizer(search_space, self._acquisition_function)
-
         summary_writer = logging.get_tensorboard_writer()
         step_number = logging.get_step_number()
+        greedy = isinstance(self._builder, GreedyAcquisitionFunctionBuilder)
+
+        with tf.name_scope("EGO.optimizer" + "[0]" * greedy):
+            points = self._optimizer(search_space, self._acquisition_function)
 
         if summary_writer:
             with summary_writer.as_default(step=step_number):
                 batched_points = tf.expand_dims(points, axis=0)
-                value = self._acquisition_function(batched_points)[0][0]
-                greedy = isinstance(self._builder, GreedyAcquisitionFunctionBuilder)
-                logging.scalar("EGO.acquisition_function/maximum_found" + "[0]" * greedy, value)
+                values = self._acquisition_function(batched_points)[0]
+                if len(values) == 1:
+                    logging.scalar(
+                        "EGO.acquisition_function/maximum_found" + "[0]" * greedy, values[0]
+                    )
+                else:  # vectorized acquisition function
+                    logging.histogram(
+                        "EGO.acquisition_function/maximum_found" + "[0]" * greedy, values
+                    )
 
         if isinstance(self._builder, GreedyAcquisitionFunctionBuilder):
             for i in range(
@@ -281,14 +289,22 @@ class EfficientGlobalOptimization(
                     pending_points=points,
                     new_optimization_step=False,
                 )
-                chosen_point = self._optimizer(search_space, self._acquisition_function)
+                with tf.name_scope(f"EGO.optimizer[{i+1}]"):
+                    chosen_point = self._optimizer(search_space, self._acquisition_function)
                 points = tf.concat([points, chosen_point], axis=0)
 
                 if summary_writer:
                     with summary_writer.as_default(step=step_number):
                         batched_points = tf.expand_dims(chosen_point, axis=0)
-                        value = self._acquisition_function(batched_points)[0][0]
-                        logging.scalar(f"EGO.acquisition_function/maximum_found[{i+1}]", value)
+                        values = self._acquisition_function(batched_points)[0]
+                        if len(values) == 1:
+                            logging.scalar(
+                                f"EGO.acquisition_function/maximum_found[{i + 1}]", values[0]
+                            )
+                        else:  # vectorized acquisition function
+                            logging.histogram(
+                                f"EGO.acquisition_function/maximum_found[{i+1}]", values
+                            )
 
         return points
 
@@ -563,7 +579,8 @@ class AsynchronousOptimization(
             else:
                 acquisition_function = cast(AcquisitionFunction, self._acquisition_function)
 
-            new_points = self._optimizer(search_space, acquisition_function)
+            with tf.name_scope("AsynchronousOptimization.optimizer"):
+                new_points = self._optimizer(search_space, acquisition_function)
             state = state.add_pending_points(new_points)
 
             return state, new_points
@@ -692,7 +709,8 @@ class AsynchronousGreedy(
                     pending_points=state.pending_points,
                 )
 
-            new_points_batch = self._optimizer(search_space, self._acquisition_function)
+            with tf.name_scope("AsynchronousOptimization.optimizer[0]"):
+                new_points_batch = self._optimizer(search_space, self._acquisition_function)
             state = state.add_pending_points(new_points_batch)
 
             summary_writer = logging.get_tensorboard_writer()
@@ -707,7 +725,8 @@ class AsynchronousGreedy(
                     pending_points=state.pending_points,
                     new_optimization_step=False,
                 )
-                new_point = self._optimizer(search_space, self._acquisition_function)
+                with tf.name_scope(f"AsynchronousOptimization.optimizer[{i+1}]"):
+                    new_point = self._optimizer(search_space, self._acquisition_function)
                 if summary_writer:
                     with summary_writer.as_default(step=step_number):
                         batched_point = tf.expand_dims(new_point, axis=0)

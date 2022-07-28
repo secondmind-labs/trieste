@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from pathlib import Path
 
 from setuptools import find_packages, setup
 
@@ -19,7 +20,7 @@ with open("README.md", "r") as file:
 
 setup(
     name="trieste",
-    version="0.11.3",
+    version=Path("VERSION").read_text().strip(),
     author="The Trieste contributors",
     author_email="labs@secondmind.ai",
     description="A Bayesian optimization research toolbox built on TensorFlow",
@@ -30,6 +31,7 @@ setup(
     package_data={
         "trieste": ["py.typed"],
     },
+    data_files=[("", ["VERSION"])],
     classifiers=[
         "Programming Language :: Python :: 3.7",
         "License :: OSI Approved :: Apache Software License",
@@ -47,6 +49,6 @@ setup(
         "greenlet>=1.1.0",
     ],
     extras_require={
-        "plotting": ["seaborn"],
+        "plotting": ["seaborn", "plotly"],
     },
 )

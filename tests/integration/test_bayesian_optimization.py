@@ -351,7 +351,6 @@ def test_bayesian_optimizer_with_sgpr_finds_minima_of_simple_quadratic() -> None
 def test_bayesian_optimizer_with_dgp_finds_minima_of_scaled_branin(
     num_steps: int,
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepGaussianProcess],
-    keras_float: None,
 ) -> None:
     _test_optimizer_finds_minimum(
         DeepGaussianProcess, num_steps, acquisition_rule, optimize_branin=True
@@ -398,7 +397,6 @@ def test_bayesian_optimizer_with_dgp_finds_minima_of_scaled_branin(
 def test_bayesian_optimizer_with_dgp_finds_minima_of_simple_quadratic(
     num_steps: int,
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepGaussianProcess],
-    keras_float: None,
 ) -> None:
     _test_optimizer_finds_minimum(DeepGaussianProcess, num_steps, acquisition_rule)
 

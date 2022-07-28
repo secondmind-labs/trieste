@@ -118,7 +118,7 @@ dataset = result.try_get_final_dataset()
 # By plotting the regret achieved by the algorithm, we see the convergence over five BO steps after the initial design (denoted by a vertical line and cross). At least one element from each batch of evaluations (dots) achieves better objective values than its predecessor. The evolution of the best solution is highlighted with an orange line.
 
 # %%
-from util.plotting import plot_regret
+from trieste.experimental.plotting import plot_regret
 from matplotlib import pyplot as plt
 
 ground_truth_regret = hartmann_6(dataset.query_points) - HARTMANN_6_MINIMUM

@@ -23,7 +23,7 @@ from trieste.objectives import HARTMANN_6_SEARCH_SPACE
 @pytest.mark.slow
 @random_seed
 @pytest.mark.parametrize("depth", [2, 3])
-def test_dgp_model_close_to_actuals(depth: int, keras_float: None) -> None:
+def test_dgp_model_close_to_actuals(depth: int) -> None:
     dataset_size = 50
     num_inducing = 50
 

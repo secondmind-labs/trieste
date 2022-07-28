@@ -20,14 +20,8 @@ import trieste
 # https://stackoverflow.com/questions/35911252/disable-tensorflow-debugging-information
 tf.get_logger().setLevel("ERROR")
 
-
-# %% [markdown]
-# Trieste works with `tf.float64` as a default. It is advised to set the Keras backend float to the same value using `tf.keras.backend.set_floatx()`. Otherwise code might crash with a ValueError!
-
-# %%
 np.random.seed(1794)
 tf.random.set_seed(1794)
-tf.keras.backend.set_floatx("float64")
 
 
 # %% [markdown]
@@ -158,7 +152,7 @@ from trieste.objectives import (
     MICHALEWICZ_2_MINIMUM,
     MICHALEWICZ_2_SEARCH_SPACE,
 )
-from util.plotting_plotly import plot_function_plotly
+from trieste.experimental.plotting import plot_function_plotly
 
 search_space = MICHALEWICZ_2_SEARCH_SPACE
 function = michalewicz_2
@@ -287,7 +281,7 @@ print(f"True minimum: {MINIMUM}")
 # We can visualise how the optimizer performed as a three-dimensional plot. Crosses mark the initial data points while dots mark the points chosen during the Bayesian optimization run. You can see that there are some samples on the flat regions of the space, while most of the points are exploring the ridges, in particular in the vicinity of the minimum point.
 
 # %%
-from util.plotting_plotly import add_bo_points_plotly
+from trieste.experimental.plotting import add_bo_points_plotly
 
 fig = plot_function_plotly(
     function,
@@ -314,8 +308,7 @@ fig.show()
 
 # %%
 import matplotlib.pyplot as plt
-from util.plotting import plot_regret
-from util.plotting_plotly import plot_model_predictions_plotly
+from trieste.experimental.plotting import plot_model_predictions_plotly
 
 fig = plot_model_predictions_plotly(
     result.try_get_final_model(),
@@ -341,7 +334,7 @@ fig.show()
 # Finally, let's plot the regret over time, i.e. difference between the minimum of the objective function and lowest observations found by the Bayesian optimization over time. Below you can see two plots. The left hand plot shows the regret over time: the observations (crosses and dots), the current best (orange line), and the start of the optimization loop (blue line). The right hand plot is a two-dimensional search space that shows where in the search space initial points were located (crosses again) and where Bayesian optimization allocated samples (dots). The best point is shown in each (purple dot) and on the left plot you can see that we come very close to 0 which is the minimum of the objective function.
 
 # %%
-from util.plotting import plot_regret, plot_bo_points
+from trieste.experimental.plotting import plot_regret, plot_bo_points
 
 suboptimality = observations - MINIMUM.numpy()
 

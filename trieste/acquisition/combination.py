@@ -80,8 +80,8 @@ class Reducer(AcquisitionFunctionBuilder[ProbabilisticModel]):
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
-        :param model: The model.
-        :param dataset: Unused.
+        :param models: The model.
+        :param datasets: Unused.
         """
         self.functions = tuple(
             acq.update_acquisition_function(function, models, datasets=datasets)

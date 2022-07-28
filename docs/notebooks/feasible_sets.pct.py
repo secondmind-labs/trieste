@@ -36,8 +36,7 @@ tf.random.set_seed(1793)
 
 # %%
 from trieste.objectives import branin, BRANIN_SEARCH_SPACE
-from util.plotting_plotly import plot_function_plotly
-from trieste.space import Box
+from trieste.experimental.plotting import plot_function_plotly
 
 search_space = BRANIN_SEARCH_SPACE
 
@@ -127,7 +126,7 @@ result = bo.optimize(num_steps, initial_data, model, rule)
 # We first define helper functions for computing excursion probabilities and plotting, and then plot the thresholded Branin function as a reference. White area represents the failure region.
 
 # %%
-from util.plotting import plot_bo_points, plot_function_2d
+from trieste.experimental.plotting import plot_bo_points, plot_function_2d
 import tensorflow_probability as tfp
 
 

@@ -41,7 +41,7 @@ search_space = Box([0, 0], [6, 6])
 # %%
 import trieste
 import matplotlib.pyplot as plt
-from util.inequality_constraints_utils import plot_objective_and_constraints
+from trieste.experimental.plotting import plot_objective_and_constraints
 
 plot_objective_and_constraints(search_space, Sim)
 plt.show()
@@ -74,7 +74,7 @@ initial_data = observer(search_space.sample(num_initial_points))
 # ... and visualise those points on the constrained objective. Note how the generated data is labelled, like the observer.
 
 # %%
-from util.inequality_constraints_utils import plot_init_query_points
+from trieste.experimental.plotting import plot_init_query_points
 
 plot_init_query_points(
     search_space,
@@ -237,7 +237,7 @@ plt.show()
 # In the following plots each marker represents a query point. The x-axis is the index of the query point (where the first queried point has index 0), and the y-axis is the observed value. The vertical blue line denotes the end of initialisation/start of optimisation. Green points satisfy the constraint, red points do not.
 
 # %%
-from util.plotting import plot_regret
+from trieste.experimental.plotting import plot_regret
 
 mask_fail = constraint_data.observations.numpy() > Sim.threshold
 batch_mask_fail = batch_constraint_data.observations.numpy() > Sim.threshold
@@ -339,7 +339,7 @@ mask_fail2 = (
 mask_fail = np.logical_or(mask_fail1, mask_fail2)
 
 import matplotlib.pyplot as plt
-from util.plotting import plot_function_2d, plot_bo_points
+from trieste.experimental.plotting import plot_function_2d, plot_bo_points
 
 fig, ax = plot_function_2d(
     masked_objective,
