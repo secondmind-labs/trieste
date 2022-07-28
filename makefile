@@ -84,11 +84,13 @@ ls_rs_experiment: $(addprefix results_ls_rs/,$(f_rs_run))
 gp_regression = gp_
 
 f_gpr = $(foreach pre,$(function_list),$(addprefix $(pre),$(gp_regression)))
-f_gpr_run = $(foreach pre,$(f_gpr),$(addprefix $(pre),$(run)))
+f_gpr_l = $(foreach pre,$(f_gpr),$(addprefix $(pre),$(learn_noise)))
+f_gpr_l_s = $(foreach pre,$(f_gpr_l),$(addprefix $(pre),$(scale_var)))
+f_gpr_l_s_run = $(foreach pre,$(f_gpr_l),$(addprefix $(pre),$(run)))
 
 results_ls_gpr/%: experiment.py
-	$(base) python $< $@ --exp_name ls_gpr --function $(call a1,$*) --model $(call a2,$*) --lnt --rtt --rt_every 1 --normf --num_query 100 --run $(call a3,$*)
-ls_gpr_experiment: $(addprefix results_ls_gpr/,$(f_gpr_run))
+	$(base) python $< $@ --exp_name ls_gpr --function $(call a1,$*) --model $(call a2,$*) --$(call a3,$*) --rtt --rt_every 1 --normf --num_query 100 --$(call a4,$*) --run $(call a5,$*)
+ls_gpr_experiment: $(addprefix results_ls_gpr/,$(f_gpr_l_s_run))
 
 ########################### Exp with variance scaling #######################
 

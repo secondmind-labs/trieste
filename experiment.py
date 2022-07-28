@@ -177,8 +177,7 @@ num_initial_points = function_dict[function_key][3]
 num_acquisitions = function_dict[function_key][4]
 
 if model_key == 'gp':
-    num_acquisitions = 3
-
+    num_acquisitions = 19
 if retrain:
     num_loops = num_acquisitions // retrain_every
 
@@ -239,7 +238,7 @@ def run_bayes_opt(
               f"{function_key} {run}: {dataset.observations.numpy()[result_arg_min_idx, :]}")
 
         # Train model
-        if retrain and step + 1 % retrain_every == 0:
+        if retrain and (step + 1) % retrain_every == 0:
             model, acquisition_rule, predict_mean = builder(normalized_dataset, learn_noise=learn_noise,
                                               search_space=search_space, epochs=epochs,
                                               num_inducing=num_inducing, num_query_points=num_query,

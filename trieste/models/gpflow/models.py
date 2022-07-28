@@ -81,6 +81,7 @@ class GaussianProcessRegression(
         num_kernel_samples: int = 10,
         num_rff_features: int = 1000,
         use_decoupled_sampler: bool = True,
+        step: int = 1
     ):
         """
         :param model: The GPflow model to wrap.
@@ -116,6 +117,8 @@ class GaussianProcessRegression(
         self._use_decoupled_sampler = use_decoupled_sampler
         self._ensure_variable_model_data()
         self.create_posterior_cache()
+
+        self._step = step
 
     def __repr__(self) -> str:
         """"""

@@ -21,6 +21,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Callable, Optional, Tuple, Union, cast
 
+import math
 import tensorflow as tf
 import tensorflow_probability as tfp
 
@@ -250,7 +251,7 @@ class FeatureDecompositionTrajectorySampler(
             process, taking an input of shape `[N, D]` and returning shape `[N, 1]`
         """
 
-        weight_sampler = self._prepare_weight_sampler()  # prep feature weight distribution
+        weight_sampler = self._prepare_weight_sampler(step=self._model._step)  # prep feature weight distribution
 
         return feature_decomposition_trajectory(
             feature_functions=self._feature_functions,
@@ -272,7 +273,7 @@ class FeatureDecompositionTrajectorySampler(
         tf.debugging.Assert(isinstance(trajectory, feature_decomposition_trajectory), [])
 
         self._feature_functions.resample()  # resample Fourier feature decomposition
-        weight_sampler = self._prepare_weight_sampler()  # recalculate weight distribution
+        weight_sampler = self._prepare_weight_sampler(step=self._model._step)  # recalculate weight distribution
 
         cast(feature_decomposition_trajectory, trajectory).update(weight_sampler=weight_sampler)
 
@@ -291,7 +292,7 @@ class FeatureDecompositionTrajectorySampler(
         return trajectory  # return trajectory with resampled weights
 
     @abstractmethod
-    def _prepare_weight_sampler(self) -> Callable[[int], TensorType]:  # [B] -> [L, B]
+    def _prepare_weight_sampler(self, step: int = 1) -> Callable[[int], TensorType]:  # [B] -> [L, B]
         """
         Calculate the posterior of the feature weights for the specified feature functions,
         returning a function that takes in a batch size `B` and returns `B` samples for
@@ -386,7 +387,7 @@ class RandomFourierFeatureTrajectorySampler(
         )
         super().__init__(self._model, feature_functions)
 
-    def _prepare_weight_sampler(self) -> Callable[[int], TensorType]:  # [B] -> [L, B]
+    def _prepare_weight_sampler(self, step: int = 1) -> Callable[[int], TensorType]:  # [B] -> [L, B]
         """
         Calculate the posterior of theta (the feature weights) for the RFFs, returning
         a function that takes in a batch size `B` and returns `B` samples for
@@ -537,7 +538,7 @@ class DecoupledTrajectorySampler(
 
         super().__init__(self._model, feature_functions)
 
-    def _prepare_weight_sampler(self) -> Callable[[int], TensorType]:
+    def _prepare_weight_sampler(self, step: int = 1) -> Callable[[int], TensorType]:
         """
         Prepare the sampler function that provides samples of the feature weights
         for both the RFF and cannonical feature functions, i.e. we return a function
@@ -577,6 +578,8 @@ class DecoupledTrajectorySampler(
 
         def weight_sampler(batch_size: int) -> Tuple[TensorType, TensorType]:
 
+            alpha = 1.0 + 0.2*math.log(step)
+
             prior_weights = tf.random.normal(  # Non-RFF features will require scaling here
                 [self._num_features, batch_size], dtype=tf.float64
             )  # [L, B]
@@ -589,6 +592,9 @@ class DecoupledTrajectorySampler(
             )  # [M, B]
 
             u_sample = q_mu + u_noise_sample  # [M, B]
+
+            u_sample += q_mu * (tf.cast(1.0, tf.float64) / alpha - tf.cast(1.0, tf.float64))
+
             if whiten:
                 Luu = tf.linalg.cholesky(Kmm)  # [M, M]
                 u_sample = tf.matmul(Luu, u_sample)  # [M, B]
@@ -601,7 +607,7 @@ class DecoupledTrajectorySampler(
 
             tf.debugging.assert_shapes([(v, ["M", "B"]), (prior_weights, ["L", "B"])])
 
-            return tf.transpose(tf.concat([prior_weights, v], axis=0))  # [B, L + M]
+            return alpha*tf.transpose(tf.concat([prior_weights, v], axis=0))  # [B, L + M]
 
         return weight_sampler
 
