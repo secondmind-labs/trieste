@@ -24,6 +24,7 @@ from typing_extensions import Protocol, runtime_checkable
 from ...types import TensorType
 from ..interfaces import ProbabilisticModel
 from ..optimizer import KerasOptimizer
+from ... import logging
 
 
 class KerasPredictor(ProbabilisticModel, ABC):
@@ -72,6 +73,24 @@ class KerasPredictor(ProbabilisticModel, ABC):
             such subclasses should overwrite this method.
             """
         )
+
+    def log(self) -> None:
+        """
+        Log model-specific information at a given optimization step.
+        """
+        summary_writer = logging.get_tensorboard_writer()
+        breakpoint()
+        if summary_writer:
+            with summary_writer.as_default(step=logging.get_step_number()):
+                tb_callback = tf.keras.callbacks.TensorBoard(
+                    log_dir=str(logdir),
+                    histogram_freq=0,
+                    update_freq="epoch",
+                    write_graph=False,
+                    write_images=False,
+                    embeddings_freq=0,
+                )
+                self._optimizer.fit_args["callbacks"] = self._optimizer.fit_args["callbacks"] + [tb_callback]
 
 
 @runtime_checkable
