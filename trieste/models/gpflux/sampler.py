@@ -135,8 +135,6 @@ class DeepGaussianProcessDecoupledTrajectorySampler(TrajectorySampler[GPfluxPred
     random Fourier features and canonical features centered at inducing point locations. This allows
     for cheap approximate trajectory samples, as opposed to exact trajectory sampling, which scales
     cubically in the number of query points.
-
-    Note that we do not currently support deep GP models with multiple outputs.
     """
 
     def __init__(
@@ -181,7 +179,7 @@ class DeepGaussianProcessDecoupledTrajectorySampler(TrajectorySampler[GPfluxPred
         Generate an approximate function draw (trajectory) from the deep GP model.
 
         :return: A trajectory function representing an approximate trajectory from the deep GP,
-            taking an input of shape `[N, B, D]` and returning shape `[N, B]`.
+            taking an input of shape `[N, B, D]` and returning shape `[N, B, L]`.
         """
 
         return dgp_feature_decomposition_trajectory(self._sampling_layers)
@@ -445,7 +443,7 @@ class dgp_feature_decomposition_trajectory(TrajectoryFunctionClass):
     An approximate sample from a deep Gaussian process's posterior, where the samples are
     represented as a finite weighted sum of features. This class essentially takes a list of
     :class:`DeepGaussianProcessDecoupledLayer`\s and iterates through them to sample, update and
-    resample. Note that we assume that the model only has one output.
+    resample.
     """
 
     def __init__(self, sampling_layers: List[DeepGaussianProcessDecoupledLayer]):
@@ -461,11 +459,11 @@ class dgp_feature_decomposition_trajectory(TrajectoryFunctionClass):
 
         :param x: Input location with shape `[N, B, D]`, where `N` is the number of points, `B` is
             the batch dimension, and `D` is the input dimensionality.
-        :return: Trajectory samples with shape `[N, B]`.
+        :return: Trajectory samples with shape `[N, B, L]`, where `L` is the number of outputs.
         """
         for layer in self._sampling_layers:
             x = layer(x)
-        return x[..., 0]  # Assume single output
+        return x
 
     def update(self) -> None:
         """Update the layers with new features and weights."""
