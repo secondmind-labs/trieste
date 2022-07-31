@@ -675,6 +675,13 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                                 model.update(dataset)
                                 model.optimize(dataset)
 
+                            # summary_writer = logging.get_tensorboard_writer()
+                            # if summary_writer:
+                            #     with summary_writer.as_default(step=-1):
+                            #         for tag, model in models.items():
+                            #             with tf.name_scope(f"{tag}.model"):
+                            #                 model.log()
+
                     with Timer() as query_point_generation_timer:
                         points_or_stateful = acquisition_rule.acquire(
                             self._search_space, models, datasets=datasets

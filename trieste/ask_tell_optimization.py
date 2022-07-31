@@ -294,6 +294,13 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
                 model.update(dataset)
                 model.optimize(dataset)
 
+            # summary_writer = logging.get_tensorboard_writer()
+            # if summary_writer:
+            #     with summary_writer.as_default(step=-1):
+            #         for tag, model in self._models.items():
+            #             with tf.name_scope(f"{tag}.model"):
+            #                 model.log()
+
     def __repr__(self) -> str:
         """Print-friendly string representation"""
         return f"""AskTellOptimizer({self._search_space!r}, {self._datasets!r},

@@ -24,6 +24,7 @@ from tensorflow.python.keras.callbacks import Callback
 
 from ...data import Dataset
 from ...types import TensorType
+from ... import logging
 from ..interfaces import HasTrajectorySampler, TrainableProbabilisticModel, TrajectorySampler
 from ..optimizer import KerasOptimizer
 from .architectures import KerasEnsemble, MultivariateNormalTriL
@@ -69,9 +70,7 @@ class DeepEnsemble(
     behaviour you would like, you will need to subclass the model and overwrite the
     :meth:`optimize` method.
 
-    Currently we do not support setting up the model with dictionary configs and saving
-    the model during Bayesian optimization loop (``track_state`` argument in
-    :meth:`~trieste.bayesian_optimizer.BayesianOptimizer.optimize` method should be set to `False`).
+    Currently we do not support setting up the model with dictionary config.
     """
 
     def __init__(
@@ -80,15 +79,16 @@ class DeepEnsemble(
         optimizer: Optional[KerasOptimizer] = None,
         bootstrap: bool = False,
         diversify: bool = False,
+        continuous_optimisation: bool = True,
     ) -> None:
         """
         :param model: A Keras ensemble model with probabilistic networks as ensemble members. The
             model has to be built but not compiled.
         :param optimizer: The optimizer wrapper with necessary specifications for compiling and
             training the model. Defaults to :class:`~trieste.models.optimizer.KerasOptimizer` with
-            :class:`~tf.optimizers.Adam` optimizer, negative log likelihood loss and a dictionary
-            of default arguments for Keras `fit` method: 1000 epochs, batch size 16, early stopping
-            callback with patience of 50, and verbose 0.
+            :class:`~tf.optimizers.Adam` optimizer, negative log likelihood loss, mean squared
+            error metric and a dictionary of default arguments for Keras `fit` method: 3000 epochs,
+            batch size 16, early stopping callback with patience of 50, and verbose 0.
             See https://keras.io/api/models/model_training_apis/#fit-method for a list of possible
             arguments.
         :param bootstrap: Sample with replacement data for training each network in the ensemble.
@@ -99,6 +99,9 @@ class DeepEnsemble(
             in case of optimizing very large batches of trajectories. When batch size is larger
             than the ensemble size, multiple quantiles will be used with the same network. By
             default set to `False`.
+        :param continuous_optimisation: If True (default), the optimizer will keep track of the
+            number of epochs across BO iterations and use this number as initial_epoch. This is
+            essential to allow monitoring of model training across BO iterations.
         :raise ValueError: If ``model`` is not an instance of
             :class:`~trieste.models.keras.KerasEnsemble` or ensemble has less than two base
             learners (networks).
@@ -111,7 +114,7 @@ class DeepEnsemble(
         if not self.optimizer.fit_args:
             self.optimizer.fit_args = {
                 "verbose": 0,
-                "epochs": 1000,
+                "epochs": 3000,
                 "batch_size": 16,
                 "callbacks": [
                     tf.keras.callbacks.EarlyStopping(
@@ -123,12 +126,17 @@ class DeepEnsemble(
         if self.optimizer.loss is None:
             self.optimizer.loss = negative_log_likelihood
 
+        if self.optimizer.metrics is None:
+            self.optimizer.metrics = ['mse']
+
         model.model.compile(
             self.optimizer.optimizer,
             loss=[self.optimizer.loss] * model.ensemble_size,
             metrics=[self.optimizer.metrics] * model.ensemble_size,
         )
         self.original_lr = self.optimizer.optimizer.lr.numpy()
+        self._absolute_epochs = 0
+        self._continuous_optimisation = continuous_optimisation
 
         self._model = model
         self._bootstrap = bootstrap
@@ -359,9 +367,23 @@ class DeepEnsemble(
 
         :param dataset: The data with which to optimize the model.
         """
+        fit_args = dict(self.optimizer.fit_args)
+
+        # Tell optimizer how many epochs have been used before: the optimizer will "continue"
+        # optimization across multiple BO iterations rather than start fresh at each iteration.
+        # This allows us to monitor training across iterations.
+
+        if "epochs" in fit_args:
+            fit_args["epochs"] = fit_args["epochs"] + self._absolute_epochs
 
         x, y = self.prepare_dataset(dataset)
-        self.model.fit(x=x, y=y, **self.optimizer.fit_args)
+        history = self.model.fit(
+            x=x, y=y, 
+            **fit_args,
+            initial_epoch=self._absolute_epochs,
+        )
+        if self._continuous_optimisation:
+            self._absolute_epochs = self._absolute_epochs + len(history.history["loss"])
 
         # Reset lr in case there was an lr schedule: a schedule will have change the learning rate,
         # so that the next time we call `optimize` the starting learning rate would be different.

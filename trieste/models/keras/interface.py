@@ -76,21 +76,20 @@ class KerasPredictor(ProbabilisticModel, ABC):
 
     def log(self) -> None:
         """
-        Log model-specific information at a given optimization step.
+        Log basic model training information at a given optimization step. Note that epoch 
+        losses and metrics cannot be recorded exactly, only summary statistics. Best approximation
+        available is to log histograms of epoch losses and metrics.
         """
         summary_writer = logging.get_tensorboard_writer()
-        breakpoint()
         if summary_writer:
             with summary_writer.as_default(step=logging.get_step_number()):
-                tb_callback = tf.keras.callbacks.TensorBoard(
-                    log_dir=str(logdir),
-                    histogram_freq=0,
-                    update_freq="epoch",
-                    write_graph=False,
-                    write_images=False,
-                    embeddings_freq=0,
-                )
-                self._optimizer.fit_args["callbacks"] = self._optimizer.fit_args["callbacks"] + [tb_callback]
+                logging.scalar(f"num_epochs", len(self.model.history.epoch))
+                for k, v in self.model.history.history.items():
+                    logging.histogram(f"epoch_{k}", v)
+                    logging.scalar(f"{k}_final", v[-1])
+                    logging.scalar(f"{k}_diff", v[0] - v[-1])
+                    logging.scalar(f"{k}_min", tf.reduce_min(v))
+                    logging.scalar(f"{k}_max", tf.reduce_max(v))
 
 
 @runtime_checkable
