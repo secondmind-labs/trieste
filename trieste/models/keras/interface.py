@@ -76,14 +76,14 @@ class KerasPredictor(ProbabilisticModel, ABC):
 
     def log(self) -> None:
         """
-        Log basic model training information at a given optimization step. Note that epoch 
+        Log basic model training information at a given optimization step. Note that epoch
         losses and metrics cannot be recorded exactly, only summary statistics. Best approximation
         available is to log histograms of epoch losses and metrics.
         """
         summary_writer = logging.get_tensorboard_writer()
         if summary_writer:
             with summary_writer.as_default(step=logging.get_step_number()):
-                logging.scalar(f"num_epochs", len(self.model.history.epoch))
+                logging.scalar("num_epochs", len(self.model.history.epoch))
                 for k, v in self.model.history.history.items():
                     logging.histogram(f"epoch_{k}", v)
                     logging.scalar(f"{k}_final", v[-1])

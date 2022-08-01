@@ -24,7 +24,6 @@ from tensorflow.python.keras.callbacks import Callback
 
 from ...data import Dataset
 from ...types import TensorType
-from ... import logging
 from ..interfaces import HasTrajectorySampler, TrainableProbabilisticModel, TrajectorySampler
 from ..optimizer import KerasOptimizer
 from .architectures import KerasEnsemble, MultivariateNormalTriL
@@ -127,7 +126,7 @@ class DeepEnsemble(
             self.optimizer.loss = negative_log_likelihood
 
         if self.optimizer.metrics is None:
-            self.optimizer.metrics = ['mse']
+            self.optimizer.metrics = ["mse"]
 
         model.model.compile(
             self.optimizer.optimizer,
@@ -378,7 +377,8 @@ class DeepEnsemble(
 
         x, y = self.prepare_dataset(dataset)
         history = self.model.fit(
-            x=x, y=y, 
+            x=x,
+            y=y,
             **fit_args,
             initial_epoch=self._absolute_epochs,
         )
