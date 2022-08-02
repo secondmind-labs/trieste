@@ -41,6 +41,57 @@ from ..interface import (
     SingleModelVectorizedAcquisitionBuilder,
 )
 
+class ProbabilityOfImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
+    """
+    Builder for the probability of improvement function, where the "best" value is the
+    current minimum from the dataset
+    """
+
+    def __repr__(self) -> str:
+        """"""
+        return "ProbabilityOfImprovement()"
+
+    def prepare_acquisition_function(
+        self,
+        model: ProbabilisticModelType,
+        dataset: Optional[Dataset] = None
+    ) -> AcquisitionFunction:
+        """
+        :param model: The model.
+        :param dataset: The data from the observer. Must be populated.
+        :return: The probability of improvement function. This function will raise
+            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+            greater than one.
+        :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
+        """
+        tf.debugging.Assert(dataset is not None, [])
+        dataset = cast(Dataset, dataset)
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
+        eta = tf.reduce_min(dataset.observations, axis = 0)
+        return probability_of_improvement(model, eta)
+
+class probability_of_improvement(AcquisitionFunctionClass):
+
+    def __init__(self, model: ProbabilisticModel, eta: TensorType):
+        """
+        """
+    
+        self._model = model
+        self._eta = tf.Variable(eta, dtype="float64")
+
+    def update(self, model: ProbabilisticModel, eta: TensorType) -> None:
+        """Update the acqusition function with a new model and eta value"""
+        self._model = model
+        self._eta.assign(eta)
+
+    @tf.function
+    def __call__(self, x: TensorType) -> TensorType:
+        tf.debugging.assert_shapes([(x, [..., 1, None])],
+            message="This acquisition function only supports batch sizes of one.")
+        mean, variance = self._model.predict(tf.squeeze(x, -2))
+        normal = tfp.distributions.Normal(mean, tf.sqrt(variance))
+        return normal.cdf(self._eta)
+        
 
 class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     """

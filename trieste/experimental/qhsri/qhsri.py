@@ -7,27 +7,7 @@ from cvxopt.solvers import qp
 import matplotlib.pyplot as plt
 from scipy.stats import norm
 from trieste.acquisition.multi_objective import Pareto
-
-class ProbabilityOfImprovement:
-
-    def __init__(self, model, current_best):
-
-        self.current_best = current_best
-        self.model = model
-
-    def __call__(self, x):
-        
-        mean, var = self.model.predict_y(x)
-        mean, std = np.array(mean), np.sqrt(np.array(var))
-        pi = norm.cdf((self.current_best - mean)/std)
-
-        return pi
-
-    def update(self, new_model, new_best):
-
-        self.model = new_model
-        self.current_best = new_best
-
+from trieste.acquisition.function.function import probability_of_improvement
 
 class MeanStdTradeoff(pymoo.core.problem.Problem):
     def __init__(self, probabilistic_model):
@@ -50,7 +30,7 @@ class BatchHypervolumeSharpeRatioIndicator:
         self.current_best = current_best
         self.pi_threshold = pi_threshold
 
-        self.pi = ProbabilityOfImprovement(self.model, self.current_best)
+        self.pi = probability_of_improvement(self.model, self.current_best)
 
     def _find_non_dominated_points(self, model, plot=False):
         """Uses NSGA-II to find high-quality non-dominated points
@@ -74,7 +54,7 @@ class BatchHypervolumeSharpeRatioIndicator:
 
         # Filter based on probability of improvement
         print(f"Points pre-filtering = {len(nd_points)}")
-        filtered_points, filtered_mean_std = self.filter_points(nd_points, nd_mean_std)
+        filtered_points, filtered_mean_std = self._filter_points(nd_points, nd_mean_std)
         print(f"Points post-filtering = {len(filtered_points)}")
 
         # set up Pareto set
@@ -86,9 +66,9 @@ class BatchHypervolumeSharpeRatioIndicator:
 
         return batch
 
-    def filter_points(self, nd_points, nd_mean_std):
+    def _filter_points(self, nd_points, nd_mean_std):
 
-        probs_of_improvement = self.pi(nd_points)
+        probs_of_improvement = np.array(self.pi(np.expand_dims(nd_points, axis=-2)))
 
         above_threshold = probs_of_improvement > self.pi_threshold
 
