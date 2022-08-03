@@ -18,6 +18,7 @@ import tensorflow as tf
 import numpy as np
 from cvxopt import matrix
 from cvxopt.solvers import qp
+import cvxopt.solvers as solvers
 
 from ...types import TensorType
 from .dominance import non_dominated
@@ -119,6 +120,8 @@ class Pareto:
         p_diag = np.expand_dims(np.diagonal(p), axis=1)
         q = p - np.dot(p_diag, np.transpose(p_diag))
 
+        # Silence the cvxopt solver
+        solvers.options["show_progress"] = False
         # Solve quadratic programming problem for y*
         P = matrix(np.array(q))
         q = matrix(np.zeros([front_size, 1]))
@@ -126,7 +129,7 @@ class Pareto:
         h = matrix(np.zeros([front_size, 1]))
         A = matrix(np.transpose(p_diag))
         b = matrix(np.ones([1,1]))
-        optim = qp(P=P,q=q,G=G,h=h,A=A,b=b)
+        optim = solvers.qp(P=P,q=q,G=G,h=h,A=A,b=b)
         
         # Extract y*
         y_star = np.array(optim["x"])

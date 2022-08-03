@@ -70,6 +70,25 @@ class ProbabilityOfImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         eta = tf.reduce_min(dataset.observations, axis = 0)
         return probability_of_improvement(model, eta)
 
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        model: ProbabilisticModelType,
+        dataset: Optional[Dataset] = None
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param model: The model.
+        :param dataset: The data from the observer.  Must be populated.
+        """
+        tf.debugging.Assert(dataset is not None, []) 
+        dataset = cast(Dataset, dataset)
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
+        eta = tf.reduce_min(dataset.observations, axis = 0)
+        function.update(eta)  # type: ignore
+        return function
+        
+
 class probability_of_improvement(AcquisitionFunctionClass):
 
     def __init__(self, model: ProbabilisticModel, eta: TensorType):
@@ -79,9 +98,8 @@ class probability_of_improvement(AcquisitionFunctionClass):
         self._model = model
         self._eta = tf.Variable(eta, dtype="float64")
 
-    def update(self, model: ProbabilisticModel, eta: TensorType) -> None:
+    def update(self, eta: TensorType) -> None:
         """Update the acqusition function with a new model and eta value"""
-        self._model = model
         self._eta.assign(eta)
 
     @tf.function

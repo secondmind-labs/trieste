@@ -24,6 +24,10 @@ from dataclasses import dataclass
 from typing import Callable, Generic, Optional, TypeVar, Union, cast, overload
 
 import tensorflow as tf
+import numpy as np
+import pymoo
+from pymoo.algorithms.moo.nsga2 import NSGA2
+from pymoo.optimize import minimize
 
 from .. import logging, types
 from ..data import Dataset
@@ -50,6 +54,8 @@ from .optimizer import (
 )
 from .sampler import ExactThompsonSampler, ThompsonSampler
 from .utils import select_nth_output
+from .function.function import ProbabilityOfImprovement
+from .multi_objective.pareto import Pareto
 
 ResultType = TypeVar("ResultType", covariant=True)
 """ Unbound covariant type variable. """
@@ -1068,3 +1074,93 @@ class TrustRegion(
             return state_, points
 
         return state_func
+
+class BatchHypervolumeSharpeRatioIndicator(
+    AcquisitionRule[TensorType, SearchSpaceType, ProbabilisticModelType]
+    ):
+
+    def __init__(
+        self,
+        batch_size: int = 5,
+        population_size: int = 500,
+        filter_threshold: float = 0.4
+    ):
+
+        builder = ProbabilityOfImprovement().using(OBJECTIVE)
+
+        self._builder: AcquisitionFunctionBuilder[ProbabilisticModelType] = builder
+        self._batch_size: int = batch_size
+        self._population_size: int = population_size
+        self._filter_threshold: float = filter_threshold
+        self._acquisition_function: Optional[AcquisitionFunction] = None
+
+    def __repr__(self) -> str:
+        """"""
+        return f"""BatchHypervolumeSharpeRatioIndicator(
+        {self._batch_size!r})"""
+
+    class MeanStdTradeoff(pymoo.core.problem.Problem):
+
+        def __init__(self, probabilistic_model, search_space):
+            super().__init__(n_var=2, n_obj=2, n_constr=0, xl=np.array(search_space.lower), xu=np.array(search_space.upper))
+            self.probabilistic_model = probabilistic_model
+
+        def _evaluate(self, x, out, *args, **kwargs):
+            mean,var = self.probabilistic_model.predict_y(x)
+            # Flip sign on std so that minimising is increasing std
+            std = -1*np.sqrt(np.array(var))
+            out["F"] = np.concatenate([np.array(mean), std], axis=1)
+
+    def _find_non_dominated_points(self, model, search_space):
+        """Uses NSGA-II to find high-quality non-dominated points
+        """
+
+        problem = self.MeanStdTradeoff(model, search_space)
+        algorithm = NSGA2(pop_size=self._population_size)
+        res = minimize(problem, algorithm, ('n_gen', 200), seed=1, verbose=False)
+
+        return res.X, res.F
+
+    def _filter_points(self, nd_points, nd_mean_std):
+
+        probs_of_improvement = np.array(self._acquisition_function(np.expand_dims(nd_points, axis=-2)))
+
+        above_threshold = probs_of_improvement > self._filter_threshold
+
+        return nd_points[above_threshold.squeeze(),:], nd_mean_std[above_threshold.squeeze(),:]
+
+    def acquire(
+        self,
+        search_space: SearchSpaceType, 
+        models: Mapping[str, ProbabilisticModelType], 
+        datasets: Optional[Mapping[str, Dataset]] = None
+    ) -> TensorType:
+        
+        if self._acquisition_function is None:
+            self._acquisition_function = self._builder.prepare_acquisition_function(
+                models,
+                datasets=datasets
+            )
+        else:
+            self._acquisition_function = self._builder.update_acquisition_function(
+                self._acquisition_function,
+                models,
+                datasets=datasets,
+            )
+
+        
+        # Find non-dominated points
+        nd_points, nd_mean_std = self._find_non_dominated_points(models[OBJECTIVE], search_space)
+        
+        # Filter out points below a threshold probability of improvement
+        filtered_points, filtered_mean_std = self._filter_points(nd_points, nd_mean_std)
+        print(f"There are {len(filtered_points)} after PI filtering")
+        # Set up a Pareto set of the filtered points
+        pareto_set = Pareto(filtered_mean_std, already_non_dominated=True)
+
+        # Sample points from set using qHSRI
+        _, batch_ids = pareto_set.sample(self._batch_size)
+
+        batch = filtered_points[batch_ids]
+
+        return batch
