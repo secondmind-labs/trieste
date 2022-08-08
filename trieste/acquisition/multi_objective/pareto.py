@@ -14,11 +14,10 @@
 """ This module contains functions and classes for Pareto based multi-objective optimization. """
 from __future__ import annotations
 
-import tensorflow as tf
-import numpy as np
-from cvxopt import matrix
-from cvxopt.solvers import qp
 import cvxopt.solvers as solvers
+import numpy as np
+import tensorflow as tf
+from cvxopt import matrix
 
 from ...types import TensorType
 from .dominance import non_dominated
@@ -32,11 +31,7 @@ class Pareto:
     specified reference point
     """
 
-    def __init__(
-        self,
-        observations: TensorType,
-        already_non_dominated: bool = False
-    ):
+    def __init__(self, observations: TensorType, already_non_dominated: bool = False):
         """
         :param observations: The observations for all objectives, with shape [N, D].
         :param already_non_dominated: Bool of whether the points are already non dominated
@@ -96,23 +91,28 @@ class Pareto:
         lower_bound = [float(min(self.front[:, i])) for i in range(front_dims)]
 
         # Calculate the deltas to add to the upper bound to get the reference point
-        u_deltas = [(float(max(self.front[:, i])) - float(min(self.front[:, i]))) * 0.2 for i in range(front_dims)]
+        u_deltas = [
+            (float(max(self.front[:, i])) - float(min(self.front[:, i]))) * 0.2
+            for i in range(front_dims)
+        ]
 
         # Use deltas and max values to create reference point
-        reference_point = [float(max(self.front[:,i])) + u_deltas[i] for i in range(front_dims)]
+        reference_point = [float(max(self.front[:, i])) + u_deltas[i] for i in range(front_dims)]
 
         # Calculate p matrix
         p = np.zeros([front_size, front_size])
 
-        # Calcualte denominator value for p matrix elements 
+        # Calcualte denominator value for p matrix elements
         denominator = 1
         for i in range(front_dims):
             denominator *= reference_point[i] - lower_bound[i]
-        
+
         # Fill entries of p
         for i in range(front_size):
             for j in range(front_size):
-                p[i,j] = ((reference_point[0] - max(self.front[i, 0],self.front[j, 0])) * ([1] - max(self.front[i, 1], self.front[j, 1])))
+                p[i, j] = (reference_point[0] - max(self.front[i, 0], self.front[j, 0])) * (
+                    [1] - max(self.front[i, 1], self.front[j, 1])
+                )
 
         p = p / denominator
 
@@ -125,12 +125,12 @@ class Pareto:
         # Solve quadratic programming problem for y*
         P = matrix(np.array(q))
         q = matrix(np.zeros([front_size, 1]))
-        G = matrix(-1*np.eye(front_size))
+        G = matrix(-1 * np.eye(front_size))
         h = matrix(np.zeros([front_size, 1]))
         A = matrix(np.transpose(p_diag))
-        b = matrix(np.ones([1,1]))
-        optim = solvers.qp(P=P,q=q,G=G,h=h,A=A,b=b)
-        
+        b = matrix(np.ones([1, 1]))
+        optim = solvers.qp(P=P, q=q, G=G, h=h, A=A, b=b)
+
         # Extract y*
         y_star = np.array(optim["x"])
         # Calculate x*
@@ -143,13 +143,12 @@ class Pareto:
         stitched_array = np.concatenate([id_arr, x_star, np.array(self.front)], axis=1)
 
         # Sort array by x_star descending
-        sorted_array = stitched_array[stitched_array[:,0].argsort()[::-1]]
+        sorted_array = stitched_array[stitched_array[:, 0].argsort()[::-1]]
 
         samples = sorted_array[:sample_size, 2:]
         sample_ids = sorted_array[:sample_size, 0].astype(int)
 
         return samples, sample_ids
-
 
 
 def get_reference_point(

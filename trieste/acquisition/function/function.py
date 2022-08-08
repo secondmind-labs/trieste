@@ -41,6 +41,7 @@ from ..interface import (
     SingleModelVectorizedAcquisitionBuilder,
 )
 
+
 class ProbabilityOfImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     """
     Builder for the probability of improvement function, where the "best" value is the
@@ -52,9 +53,7 @@ class ProbabilityOfImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         return "ProbabilityOfImprovement()"
 
     def prepare_acquisition_function(
-        self,
-        model: ProbabilisticModelType,
-        dataset: Optional[Dataset] = None
+        self, model: ProbabilisticModelType, dataset: Optional[Dataset] = None
     ) -> AcquisitionFunction:
         """
         :param model: The model.
@@ -67,34 +66,32 @@ class ProbabilityOfImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         tf.debugging.Assert(dataset is not None, [])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
-        eta = tf.reduce_min(dataset.observations, axis = 0)
+        eta = tf.reduce_min(dataset.observations, axis=0)
         return probability_of_improvement(model, eta)
 
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
         model: ProbabilisticModelType,
-        dataset: Optional[Dataset] = None
+        dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
         :param model: The model.
         :param dataset: The data from the observer.  Must be populated.
         """
-        tf.debugging.Assert(dataset is not None, []) 
+        tf.debugging.Assert(dataset is not None, [])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
-        eta = tf.reduce_min(dataset.observations, axis = 0)
+        eta = tf.reduce_min(dataset.observations, axis=0)
         function.update(eta)  # type: ignore
         return function
-        
+
 
 class probability_of_improvement(AcquisitionFunctionClass):
-
     def __init__(self, model: ProbabilisticModel, eta: TensorType):
-        """
-        """
-    
+        """ """
+
         self._model = model
         self._eta = tf.Variable(eta, dtype="float64")
 
@@ -104,12 +101,14 @@ class probability_of_improvement(AcquisitionFunctionClass):
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:
-        tf.debugging.assert_shapes([(x, [..., 1, None])],
-            message="This acquisition function only supports batch sizes of one.")
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="This acquisition function only supports batch sizes of one.",
+        )
         mean, variance = self._model.predict(tf.squeeze(x, -2))
         normal = tfp.distributions.Normal(mean, tf.sqrt(variance))
         return normal.cdf(self._eta)
-        
+
 
 class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     """
