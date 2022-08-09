@@ -21,7 +21,7 @@ import copy
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Callable, Generic, Optional, TypeVar, Union, cast, overload
+from typing import Any, Callable, Generic, Optional, TypeVar, Union, cast, overload
 
 import numpy as np
 import pymoo
@@ -1096,8 +1096,8 @@ class BatchHypervolumeSharpeRatioIndicator(
         return f"""BatchHypervolumeSharpeRatioIndicator(
         {self._batch_size!r})"""
 
-    class MeanStdTradeoff(pymoo.core.problem.Problem):
-        def __init__(self, probabilistic_model, search_space):
+    class MeanStdTradeoff(pymoo.core.problem.Problem): # type: ignore[misc]
+        def __init__(self, probabilistic_model: ProbabilisticModel, search_space: SearchSpaceType):
             super().__init__(
                 n_var=2,
                 n_obj=2,
@@ -1107,13 +1107,13 @@ class BatchHypervolumeSharpeRatioIndicator(
             )
             self.probabilistic_model = probabilistic_model
 
-        def _evaluate(self, x, out, *args, **kwargs):
+        def _evaluate(self, x: TensorType, out: dict[str, TensorType], *args: Any, **kwargs: Any) -> None:
             mean, var = self.probabilistic_model.predict_y(x)
             # Flip sign on std so that minimising is increasing std
             std = -1 * np.sqrt(np.array(var))
             out["F"] = np.concatenate([np.array(mean), std], axis=1)
 
-    def _find_non_dominated_points(self, model, search_space):
+    def _find_non_dominated_points(self, model: ProbabilisticModel, search_space: SearchSpaceType) -> tuple[TensorType,TensorType]:
         """Uses NSGA-II to find high-quality non-dominated points"""
 
         problem = self.MeanStdTradeoff(model, search_space)
@@ -1122,7 +1122,10 @@ class BatchHypervolumeSharpeRatioIndicator(
 
         return res.X, res.F
 
-    def _filter_points(self, nd_points, nd_mean_std):
+    def _filter_points(self, nd_points: TensorType, nd_mean_std: TensorType) -> tuple[TensorType, TensorType]:
+
+        if self._acquisition_function is None:
+            raise ValueError("Acquisition function has not been defined yet")
 
         probs_of_improvement = np.array(
             self._acquisition_function(np.expand_dims(nd_points, axis=-2))

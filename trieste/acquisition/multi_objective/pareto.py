@@ -13,6 +13,7 @@
 # limitations under the License.
 """ This module contains functions and classes for Pareto based multi-objective optimization. """
 from __future__ import annotations
+from typing import Tuple
 
 import cvxopt.solvers as solvers
 import numpy as np
@@ -77,7 +78,7 @@ class Pareto:
         )
         return hypervolume_indicator
 
-    def sample(self, sample_size: int):
+    def sample(self, sample_size: int) -> Tuple[TensorType,TensorType]:
         """
         Sample a set of diverse points from the Pareto set using
         Hypervolume Sharpe-Ratio Indicator
@@ -103,7 +104,7 @@ class Pareto:
         p = np.zeros([front_size, front_size])
 
         # Calcualte denominator value for p matrix elements
-        denominator = 1
+        denominator: float = 1
         for i in range(front_dims):
             denominator *= reference_point[i] - lower_bound[i]
 
