@@ -24,10 +24,17 @@ from dataclasses import dataclass
 from typing import Any, Callable, Generic, Optional, TypeVar, Union, cast, overload
 
 import numpy as np
-import pymoo
+
+try:
+    import pymoo
+    from pymoo.algorithms.moo.nsga2 import NSGA2
+    from pymoo.optimize import minimize
+    from pymoo.core.problem import Problem as PymooProblem
+except ImportError:
+    pymoo = None
+    PymooProblem = object
+
 import tensorflow as tf
-from pymoo.algorithms.moo.nsga2 import NSGA2
-from pymoo.optimize import minimize
 
 from .. import logging, types
 from ..data import Dataset
@@ -1082,7 +1089,11 @@ class BatchHypervolumeSharpeRatioIndicator(
     def __init__(
         self, batch_size: int = 5, population_size: int = 500, filter_threshold: float = 0.4
     ):
-
+        if pymoo is None:
+            raise ImportError(
+                "BatchHypervolumeSharpeRatioIndicator requires pymoo, "
+                "which can be installed via `pip install trieste[qhsri]`"
+            )
         builder = ProbabilityOfImprovement().using(OBJECTIVE)
 
         self._builder: AcquisitionFunctionBuilder[ProbabilisticModelType] = builder
@@ -1096,7 +1107,7 @@ class BatchHypervolumeSharpeRatioIndicator(
         return f"""BatchHypervolumeSharpeRatioIndicator(
         {self._batch_size!r})"""
 
-    class MeanStdTradeoff(pymoo.core.problem.Problem):  # type: ignore[misc]
+    class MeanStdTradeoff(PymooProblem):  # type: ignore[misc]
         def __init__(self, probabilistic_model: ProbabilisticModel, search_space: SearchSpaceType):
             super().__init__(
                 n_var=2,

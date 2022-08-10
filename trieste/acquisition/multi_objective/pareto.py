@@ -16,7 +16,10 @@ from __future__ import annotations
 
 from typing import Tuple
 
-import cvxpy as cp
+try:
+    import cvxpy as cp
+except ImportError:
+    cp = None
 import numpy as np
 import tensorflow as tf
 
@@ -83,6 +86,12 @@ class Pareto:
         Sample a set of diverse points from the Pareto set using
         Hypervolume Sharpe-Ratio Indicator
         """
+
+        if cp is None:
+            raise ImportError(
+                "Pareto.sample method requires cvxpy, "
+                "this can be installed via `pip install trieste[qhsri]`"
+            )
 
         front_size, front_dims = self.front.shape
 
