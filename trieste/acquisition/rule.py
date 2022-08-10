@@ -1096,7 +1096,7 @@ class BatchHypervolumeSharpeRatioIndicator(
         return f"""BatchHypervolumeSharpeRatioIndicator(
         {self._batch_size!r})"""
 
-    class MeanStdTradeoff(pymoo.core.problem.Problem): # type: ignore[misc]
+    class MeanStdTradeoff(pymoo.core.problem.Problem):  # type: ignore[misc]
         def __init__(self, probabilistic_model: ProbabilisticModel, search_space: SearchSpaceType):
             super().__init__(
                 n_var=2,
@@ -1107,13 +1107,17 @@ class BatchHypervolumeSharpeRatioIndicator(
             )
             self.probabilistic_model = probabilistic_model
 
-        def _evaluate(self, x: TensorType, out: dict[str, TensorType], *args: Any, **kwargs: Any) -> None:
+        def _evaluate(
+            self, x: TensorType, out: dict[str, TensorType], *args: Any, **kwargs: Any
+        ) -> None:
             mean, var = self.probabilistic_model.predict_y(x)
             # Flip sign on std so that minimising is increasing std
             std = -1 * np.sqrt(np.array(var))
             out["F"] = np.concatenate([np.array(mean), std], axis=1)
 
-    def _find_non_dominated_points(self, model: ProbabilisticModel, search_space: SearchSpaceType) -> tuple[TensorType,TensorType]:
+    def _find_non_dominated_points(
+        self, model: ProbabilisticModel, search_space: SearchSpaceType
+    ) -> tuple[TensorType, TensorType]:
         """Uses NSGA-II to find high-quality non-dominated points"""
 
         problem = self.MeanStdTradeoff(model, search_space)
@@ -1122,7 +1126,9 @@ class BatchHypervolumeSharpeRatioIndicator(
 
         return res.X, res.F
 
-    def _filter_points(self, nd_points: TensorType, nd_mean_std: TensorType) -> tuple[TensorType, TensorType]:
+    def _filter_points(
+        self, nd_points: TensorType, nd_mean_std: TensorType
+    ) -> tuple[TensorType, TensorType]:
 
         if self._acquisition_function is None:
             raise ValueError("Acquisition function has not been defined yet")
@@ -1133,7 +1139,17 @@ class BatchHypervolumeSharpeRatioIndicator(
 
         above_threshold = probs_of_improvement > self._filter_threshold
 
-        return nd_points[above_threshold.squeeze(), :], nd_mean_std[above_threshold.squeeze(), :]
+        if np.sum(above_threshold) >= self._batch_size:
+            # There are enough points above the threshold to get a batch
+            out_points, out_mean_std = (
+                nd_points[above_threshold.squeeze(), :],
+                nd_mean_std[above_threshold.squeeze(), :],
+            )
+        else:
+            # We don't filter
+            out_points, out_mean_std = nd_points, nd_mean_std
+
+        return out_points, out_mean_std
 
     def acquire(
         self,
@@ -1159,6 +1175,7 @@ class BatchHypervolumeSharpeRatioIndicator(
         # Filter out points below a threshold probability of improvement
         filtered_points, filtered_mean_std = self._filter_points(nd_points, nd_mean_std)
         print(f"There are {len(filtered_points)} after PI filtering")
+
         # Set up a Pareto set of the filtered points
         pareto_set = Pareto(filtered_mean_std, already_non_dominated=True)
 

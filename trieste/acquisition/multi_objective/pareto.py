@@ -13,12 +13,12 @@
 # limitations under the License.
 """ This module contains functions and classes for Pareto based multi-objective optimization. """
 from __future__ import annotations
+
 from typing import Tuple
 
-import cvxopt.solvers as solvers
+import cvxpy as cp
 import numpy as np
 import tensorflow as tf
-from cvxopt import matrix
 
 from ...types import TensorType
 from .dominance import non_dominated
@@ -78,7 +78,7 @@ class Pareto:
         )
         return hypervolume_indicator
 
-    def sample(self, sample_size: int) -> Tuple[TensorType,TensorType]:
+    def sample(self, sample_size: int) -> Tuple[TensorType, TensorType]:
         """
         Sample a set of diverse points from the Pareto set using
         Hypervolume Sharpe-Ratio Indicator
@@ -112,30 +112,32 @@ class Pareto:
         for i in range(front_size):
             for j in range(front_size):
                 p[i, j] = (reference_point[0] - max(self.front[i, 0], self.front[j, 0])) * (
-                    [1] - max(self.front[i, 1], self.front[j, 1])
+                    reference_point[1] - max(self.front[i, 1], self.front[j, 1])
                 )
 
         p = p / denominator
 
         # Calculate q
         p_diag = np.expand_dims(np.diagonal(p), axis=1)
-        q = p - np.dot(p_diag, np.transpose(p_diag))
+        Q = p - np.dot(p_diag, np.transpose(p_diag))
 
-        # Silence the cvxopt solver
-        solvers.options["show_progress"] = False
-        # Solve quadratic programming problem for y*
-        P = matrix(np.array(q))
-        q = matrix(np.zeros([front_size, 1]))
-        G = matrix(-1 * np.eye(front_size))
-        h = matrix(np.zeros([front_size, 1]))
-        A = matrix(np.transpose(p_diag))
-        b = matrix(np.ones([1, 1]))
-        optim = solvers.qp(P=P, q=q, G=G, h=h, A=A, b=b)
+        # Solve quadratic program for y*
 
-        # Extract y*
-        y_star = np.array(optim["x"])
+        P = cp.atoms.affine.wraps.psd_wrap(Q)
+        G = np.eye(front_size)
+        h = np.zeros(front_size)
+        A = np.transpose(p_diag)
+        b = np.ones(1)
+
+        # Define and solve the CVXPY problem.
+        y = cp.Variable(front_size)
+        prob = cp.Problem(cp.Minimize((1 / 2) * cp.quad_form(y, P)), [G @ y >= h, A @ y == b])
+        prob.solve()
+
+        y_star = y.value
+
         # Calculate x*
-        x_star = y_star / np.sum(y_star)
+        x_star = np.expand_dims(y_star, axis=1) / np.sum(y_star)
 
         # Create id array to keep track of points
         id_arr = np.expand_dims(np.arange(front_size), axis=1)
