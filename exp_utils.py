@@ -6,8 +6,7 @@ from gpflow.utilities import set_trainable, print_summary
 from trieste.models.gpflow import (
     GaussianProcessRegression,
     SparseGaussianProcessRegression,
-    build_gpr,
-    build_sgpr
+    build_gpr
 )
 from trieste.models.gpflux import (
     DeepGaussianProcess,
@@ -26,6 +25,9 @@ from trieste.acquisition.utils import split_acquisition_function_calls
 from trieste.space import SearchSpace
 from trieste.data import Dataset
 from trieste.types import TensorType
+from scipy.cluster.vq import kmeans2
+from trieste.models.gpflow.builders import _get_data_stats, _get_kernel, _get_mean_function, _set_gaussian_likelihood_variance
+from trieste.models.gpflow.utils import SafeSGPR as SPGR
 
 OPT_SPLIT_SIZE = 10_000
 
@@ -33,27 +35,55 @@ OPT_SPLIT_SIZE = 10_000
 def build_sgpr_model(
     data: Dataset,
     search_space: SearchSpace,
+    num_layers: int = 2,
     num_inducing: int = 100,
     learn_noise: bool = False,
-    epochs: int = 400
+    fix_ips: bool = False,
+    epochs: int = 400,
+    num_query_points: int = 1,
+    noise_init: float = 1e-5
 ):
+    if num_inducing > len(data.query_points):
+        num_inducing = len(data.query_points)
+
     if learn_noise:
         noise_variance = 1e-3
     else:
-        noise_variance = 1e-5
+        noise_variance = noise_init
 
-    sgpr = build_sgpr(data, search_space, likelihood_variance=noise_variance,
-                    trainable_likelihood=learn_noise,
-                      num_inducing_points=num_inducing,
-                      trainable_inducing_points=True)
+    centroids, _ = kmeans2(data.query_points.numpy(), k=num_inducing, minit="points")
 
-    acquistion_function = GreedyContinuousThompsonSampling()
-    acquisition_rule = EfficientGlobalOptimization(acquistion_function,
-                                                   num_query_points=1)
+    emp_mean, emp_var, _ = _get_data_stats(data)
+    kernel = _get_kernel(emp_var, search_space, True, True)
+    mean = _get_mean_function(emp_mean)
 
-    optimizer = Optimizer(gpflow.optimizers.Scipy(), compile=True) #, minimize_args=dict(options=dict(disp=True)))
+    inducing_points = gpflow.inducing_variables.InducingPoints(centroids)
 
-    return SparseGaussianProcessRegression(sgpr, optimizer), acquisition_rule
+    sgpr = SPGR(data.astuple(), kernel, inducing_points, mean_function=mean)
+
+    _set_gaussian_likelihood_variance(sgpr, emp_var, noise_variance)
+    set_trainable(sgpr.likelihood, learn_noise)
+    set_trainable(sgpr.inducing_variable, (not fix_ips))
+
+    acquisition_function = ParallelContinuousThompsonSampling()
+    acquisition_rule = EfficientGlobalOptimization(
+        acquisition_function,
+        num_query_points=num_query_points,
+        optimizer=split_acquisition_function_calls(
+            generate_continuous_optimizer(
+                1000 * tf.shape(search_space.lower)[-1],
+                5 * tf.shape(search_space.lower)[-1],
+                ),
+            split_size=OPT_SPLIT_SIZE
+        )
+    )
+
+    optimizer = Optimizer(gpflow.optimizers.Scipy(), compile=True, minimize_args=dict(options=dict(maxiter=50)))
+
+    def predict_mean(query_points: TensorType, model: SparseGaussianProcessRegression) -> TensorType:
+        return model.predict(query_points)[0]
+
+    return SparseGaussianProcessRegression(sgpr, optimizer), acquisition_rule, predict_mean
 
 
 def build_gp_model(

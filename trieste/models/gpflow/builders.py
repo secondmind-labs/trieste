@@ -26,7 +26,8 @@ from typing import Optional
 import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
-from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
+from gpflow.models import GPR, SVGP, VGP, GPModel
+from .utils import SafeSGPR as SGPR
 
 from ...data import Dataset
 from ...space import Box, SearchSpace

@@ -16,9 +16,17 @@ from __future__ import annotations
 
 from typing import Tuple, Union
 
+import numpy as np
 import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflow.config import default_float, default_jitter
+from gpflow.covariances import Kuf, Kuu
+from gpflow.utilities import to_default_float
+from gpflow.inducing_variables import InducingPoints
+from gpflow.models import SGPR
+from gpflow.models.training_mixins import RegressionData
+from gpflow.kernels import Kernel
 
 from ...data import Dataset
 from ...types import TensorType
@@ -326,3 +334,156 @@ def _whiten_points(
     new_q_sqrt = tf.linalg.cholesky(S_v + jitter_mat)  # [L, N, N]
 
     return new_q_mu, new_q_sqrt
+
+
+def _cholesky(matrix):
+    """Return a Cholesky factor and boolean success."""
+    try:
+        chol = tf.linalg.cholesky(matrix)
+        ok = tf.reduce_all(tf.math.is_finite(chol))
+        return chol, ok
+    except tf.errors.InvalidArgumentError:
+        return matrix, False
+
+
+def cholesky(matrix, max_attempts: int = 7, jitter: float = 1e-8):
+    def update_diag(matrix, jitter):
+        diag = tf.linalg.diag_part(matrix)
+        diag_add = tf.ones_like(diag) * jitter
+        new_diag = diag_add + diag
+        new_matrix = tf.linalg.set_diag(matrix, new_diag)
+        return new_matrix
+
+    def cond(state):
+        return state[0]
+
+    def body(state):
+
+        _, matrix, jitter, _ = state
+        res, ok = _cholesky(matrix)
+        new_matrix = tf.cond(ok, lambda: matrix, lambda: update_diag(matrix, jitter))
+        break_flag = tf.logical_not(ok)
+        return [(break_flag, new_matrix, jitter * 10, res)]
+
+    jitter = tf.cast(jitter, matrix.dtype)
+    init_state = (True, matrix, jitter, matrix)
+    result = tf.while_loop(cond, body, [init_state], maximum_iterations=max_attempts)
+
+    return result[-1][-1]
+
+
+class SafeSGPR(SGPR):
+    def __init__(
+        self,
+        data: RegressionData,
+        kernel: Kernel,
+        inducing_variable: InducingPoints,
+        **kwargs,
+    ):
+        ips = (
+            InducingPoints(inducing_variable)
+            if not isinstance(inducing_variable, InducingPoints)
+            else inducing_variable
+        )
+
+        super().__init__(data, kernel, ips, **kwargs)
+
+    def elbo(self) -> tf.Tensor:
+        """
+        Construct a tensorflow function to compute the bound on the marginal
+        likelihood. For a derivation of the terms in here, see the associated
+        SGPR notebook.
+        """
+        X_data, Y_data = self.data
+
+        num_inducing = tf.shape(self.inducing_variable.Z)[0]
+        num_data = to_default_float(tf.shape(Y_data)[0])
+        output_dim = to_default_float(tf.shape(Y_data)[1])
+
+        err = Y_data - self.mean_function(X_data)
+        Kdiag = self.kernel(X_data, full_cov=False)
+        kuf = Kuf(self.inducing_variable, self.kernel, X_data)
+        kuu = Kuu(self.inducing_variable, self.kernel, jitter=default_jitter())
+        # TODO(awav): w/o jitter with safe Cholesky
+        # kuu = Kuu(self.inducing_variable, self.kernel)
+        L = cholesky(kuu)
+        sigma = tf.sqrt(self.likelihood.variance)
+
+        # Compute intermediate matrices
+        A = tf.linalg.triangular_solve(L, kuf, lower=True) / sigma
+        AAT = tf.linalg.matmul(A, A, transpose_b=True)
+        B = AAT + tf.eye(num_inducing, dtype=default_float())
+        LB = cholesky(B, jitter=0)
+        Aerr = tf.linalg.matmul(A, err)
+        c = tf.linalg.triangular_solve(LB, Aerr, lower=True) / sigma
+
+        # compute log marginal bound
+        bound = -0.5 * num_data * output_dim * np.log(2 * np.pi)
+        bound += tf.negative(output_dim) * tf.reduce_sum(tf.math.log(tf.linalg.diag_part(LB)))
+        bound -= 0.5 * num_data * output_dim * tf.math.log(self.likelihood.variance)
+        bound += -0.5 * tf.reduce_sum(tf.square(err)) / self.likelihood.variance
+        bound += 0.5 * tf.reduce_sum(tf.square(c))
+        bound += -0.5 * output_dim * tf.reduce_sum(Kdiag) / self.likelihood.variance
+        bound += 0.5 * output_dim * tf.reduce_sum(tf.linalg.diag_part(AAT))
+
+        return bound
+
+    def upper_lower_bounds_and_trace(self, inducing_variable: InducingPoints):
+        x_data, y_data = self.data
+        num_inducing = tf.shape(inducing_variable.Z)[0]
+        num_data = to_default_float(tf.shape(y_data)[0])
+        # output_dim = to_default_float(tf.shape(y_data)[1])
+
+        sigma_sq = self.likelihood.variance
+        sigma = tf.sqrt(sigma_sq)
+
+        # Function shortcuts
+        rsum = tf.reduce_sum
+        sq = tf.math.square
+        matmul = tf.linalg.matmul
+        trisolve = tf.linalg.triangular_solve
+        log = tf.math.log
+        diag_part = tf.linalg.diag_part
+
+        # Common calculations
+        Kdiag = self.kernel(x_data, full_cov=False)
+        kuu = Kuu(inducing_variable, self.kernel, jitter=default_jitter())
+        kuf = Kuf(inducing_variable, self.kernel, x_data)
+
+        I = tf.eye(num_inducing, dtype=default_float())
+        L = cholesky(kuu)
+        A = trisolve(L, kuf, lower=True)
+        AAT = matmul(A, A, transpose_b=True)
+        B = AAT / sigma_sq + I
+        LB = cholesky(B, jitter=0)
+
+        logdet_q = -rsum(log(diag_part(LB)))
+        const = -0.5 * num_data * (np.log(2 * np.pi) + log(sigma_sq))
+        const_logdet_q = logdet_q + const
+
+        # Part 1: Upper bound
+
+        c = rsum(Kdiag) - rsum(sq(A))
+        corrected_noise = sigma_sq + c  # Because
+
+        err = y_data - self.mean_function(x_data)
+        LC = cholesky(AAT / corrected_noise + I, jitter=0)
+        v = trisolve(LC, (A @ err) / corrected_noise, lower=True)
+        upper = -0.5 * rsum(sq(err)) / corrected_noise
+        upper += 0.5 * rsum(sq(v))
+
+        # Part 2: Lower bound
+
+        A_err = (A / sigma) @ err
+        tmp = trisolve(LB, A_err, lower=True) / sigma
+
+        trace_kq = (rsum(Kdiag) - rsum(diag_part(AAT))) / sigma_sq
+        lower_quad = rsum(sq(err)) / sigma_sq
+        lower_quad -= rsum(sq(tmp))
+        lower = -0.5 * (lower_quad + trace_kq)
+
+        # Lower bound, upper bound and gap
+        lower_bound = const_logdet_q + lower
+        upper_bound = const_logdet_q + upper
+
+        return lower_bound, upper_bound, trace_kq

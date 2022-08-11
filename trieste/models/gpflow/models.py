@@ -24,7 +24,7 @@ from gpflow.inducing_variables import (
     SeparateIndependentInducingVariables,
     SharedIndependentInducingVariables,
 )
-from gpflow.models import GPR, SGPR, SVGP, VGP
+from gpflow.models import GPR, SVGP, VGP
 from gpflow.models.vgp import update_vgp_data
 from gpflow.utilities import is_variable, multiple_assign, read_values
 from gpflow.utilities.ops import leading_transpose
@@ -52,6 +52,7 @@ from .utils import (
     randomize_hyperparameters,
     squeeze_hyperparameters,
 )
+from .utils import SafeSGPR as SGPR
 
 
 class GaussianProcessRegression(
@@ -545,6 +546,7 @@ class SparseGaussianProcessRegression(
         inducing_point_selector: Optional[
             InducingPointSelector[SparseGaussianProcessRegression]
         ] = None,
+        step: int = 1
     ):
         """
         :param model: The GPflow model to wrap.
@@ -585,6 +587,8 @@ class SparseGaussianProcessRegression(
 
         self._ensure_variable_model_data()
         self.create_posterior_cache()
+
+        self._step = step
 
     def __repr__(self) -> str:
         """"""
