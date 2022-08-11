@@ -58,7 +58,7 @@ rs_experiment: $(addprefix results_rs/,$(f_rs_run))
 
 ########################## Large scale exp ##############################
 function_list = noisymich5_ noisyackley5_ noisyshekel_ noisyhart6_ noisymich10_
-model_list = svgp_ deepgp_
+model_list = svgp_ deepgp_ sgpr_
 learn_noise = lnt_ lnf_
 num_inducing = 500_ #100_ 250_ 500_
 scale_var = svt_ svf_
