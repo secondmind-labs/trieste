@@ -113,15 +113,15 @@ function_dict = {
                 DGP_ACKLEY_2_SEARCH_SPACE, 10, 40],
     "dgpack5": [build_dgp_prior_function('ackley_5'), DGP_ACKLEY_5_MINIMUM,
                 DGP_ACKLEY_5_SEARCH_SPACE, 20, 180],
-    "noisymich5": [michalewicz_5, NOISY_MICH_5_MINIMUM, NOISY_MICH_5_SEARCH_SPACE, 100, 19,
+    "noisymich5": [michalewicz_5, NOISY_MICH_5_MINIMUM, NOISY_MICH_5_SEARCH_SPACE, 100, 49,
                    0.01],
-    "noisyackley5": [ackley_5, NOISY_ACKLEY_5_MINIMUM, NOISY_ACKLEY_5_SEARCH_SPACE, 100, 19,
+    "noisyackley5": [ackley_5, NOISY_ACKLEY_5_MINIMUM, NOISY_ACKLEY_5_SEARCH_SPACE, 100, 49,
                      0.001],
-    "noisyshekel": [shekel_4, NOISY_SHEKEL_MINIMUM, NOISY_SHEKEL_SEARCH_SPACE, 100, 19,
+    "noisyshekel": [shekel_4, NOISY_SHEKEL_MINIMUM, NOISY_SHEKEL_SEARCH_SPACE, 100, 49,
                     0.01],
     "noisyhart6": [hartmann_6, NOISY_HARTMANN_6_MINIMUM, NOISY_HARTMANN_6_SEARCH_SPACE, 100,
-                   19, 0.1],
-    "noisymich10": [michalewicz_10, NOISY_MICH_10_MINIMUM, NOISY_MICH_10_SEARCH_SPACE, 100, 19,
+                   49, 0.1],
+    "noisymich10": [michalewicz_10, NOISY_MICH_10_MINIMUM, NOISY_MICH_10_SEARCH_SPACE, 100, 49,
                     0.01]
 }
 
