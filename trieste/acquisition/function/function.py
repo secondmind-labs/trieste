@@ -44,8 +44,8 @@ from ..interface import (
 
 class ProbabilityOfImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     """
-    Builder for the probability of improvement function, where the "best" value is the
-    current minimum from the dataset
+    Builder for the probability of improvement function, where the "best" value
+     is taken to be the minimum of the posterior mean at observed points.
     """
 
     def __repr__(self) -> str:
@@ -66,7 +66,8 @@ class ProbabilityOfImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         tf.debugging.Assert(dataset is not None, [])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
-        eta = tf.reduce_min(dataset.observations, axis=0)
+        mean, _ = model.predict(dataset.query_points)
+        eta = tf.reduce_min(mean, axis=0)
         return probability_of_improvement(model, eta)
 
     def update_acquisition_function(
@@ -83,7 +84,8 @@ class ProbabilityOfImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         tf.debugging.Assert(dataset is not None, [])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
-        eta = tf.reduce_min(dataset.observations, axis=0)
+        mean, _ = model.predict(dataset.query_points)
+        eta = tf.reduce_min(mean, axis=0)
         function.update(eta)  # type: ignore
         return function
 

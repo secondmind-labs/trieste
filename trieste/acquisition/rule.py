@@ -28,8 +28,8 @@ import numpy as np
 try:
     import pymoo
     from pymoo.algorithms.moo.nsga2 import NSGA2
-    from pymoo.optimize import minimize
     from pymoo.core.problem import Problem as PymooProblem
+    from pymoo.optimize import minimize
 except ImportError:
     pymoo = None
     PymooProblem = object
