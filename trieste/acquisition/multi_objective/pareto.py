@@ -97,17 +97,18 @@ class Pareto:
 
         if front_dims != 2:
             raise NotImplementedError("Pareto front sampling is only supported in the 2D case")
-        # Define lower bound and reference point
-        lower_bound = [float(min(self.front[:, i])) for i in range(front_dims)]
 
-        # Calculate the deltas to add to the upper bound to get the reference point
-        u_deltas = [
+        # Calculate the deltas to add to the bounds to get the reference point and lower bound
+        deltas = [
             (float(max(self.front[:, i])) - float(min(self.front[:, i]))) * 0.2
             for i in range(front_dims)
         ]
 
+        # Define lower bound and reference point
+        lower_bound = [float(min(self.front[:, i])) - deltas[i] for i in range(front_dims)]
+
         # Use deltas and max values to create reference point
-        reference_point = [float(max(self.front[:, i])) + u_deltas[i] for i in range(front_dims)]
+        reference_point = [float(max(self.front[:, i])) + deltas[i] for i in range(front_dims)]
 
         # Calculate p matrix
         p = np.zeros([front_size, front_size])
