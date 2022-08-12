@@ -1087,7 +1087,11 @@ class BatchHypervolumeSharpeRatioIndicator(
     AcquisitionRule[TensorType, SearchSpaceType, ProbabilisticModelType]
 ):
     def __init__(
-        self, batch_size: int = 5, population_size: int = 500, filter_threshold: float = 0.4
+        self,
+        batch_size: int = 5,
+        ga_population_size: int = 500,
+        ga_n_generations: int = 200,
+        filter_threshold: float = 0.4
     ):
         if pymoo is None:
             raise ImportError(
@@ -1098,7 +1102,8 @@ class BatchHypervolumeSharpeRatioIndicator(
 
         self._builder: AcquisitionFunctionBuilder[ProbabilisticModelType] = builder
         self._batch_size: int = batch_size
-        self._population_size: int = population_size
+        self._population_size: int = ga_population_size
+        self._n_generations: int = ga_n_generations
         self._filter_threshold: float = filter_threshold
         self._acquisition_function: Optional[AcquisitionFunction] = None
 
@@ -1110,7 +1115,7 @@ class BatchHypervolumeSharpeRatioIndicator(
     class MeanStdTradeoff(PymooProblem):  # type: ignore[misc]
         def __init__(self, probabilistic_model: ProbabilisticModel, search_space: SearchSpaceType):
             super().__init__(
-                n_var=2,
+                n_var=search_space.dimension,
                 n_obj=2,
                 n_constr=0,
                 xl=np.array(search_space.lower),
@@ -1133,7 +1138,7 @@ class BatchHypervolumeSharpeRatioIndicator(
 
         problem = self.MeanStdTradeoff(model, search_space)
         algorithm = NSGA2(pop_size=self._population_size)
-        res = minimize(problem, algorithm, ("n_gen", 200), seed=1, verbose=False)
+        res = minimize(problem, algorithm, ("n_gen", self._n_generations), seed=1, verbose=False)
 
         return res.X, res.F
 
