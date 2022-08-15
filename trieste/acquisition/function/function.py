@@ -53,7 +53,7 @@ class ProbabilityOfImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         return "ProbabilityOfImprovement()"
 
     def prepare_acquisition_function(
-        self, model: ProbabilisticModelType, dataset: Optional[Dataset] = None
+        self, model: ProbabilisticModel, dataset: Optional[Dataset] = None
     ) -> AcquisitionFunction:
         """
         :param model: The model.
@@ -73,7 +73,7 @@ class ProbabilityOfImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        model: ProbabilisticModelType,
+        model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
@@ -91,8 +91,21 @@ class ProbabilityOfImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
 
 
 class probability_of_improvement(AcquisitionFunctionClass):
-    def __init__(self, model: ProbabilisticModel, eta: TensorType):
-        """ """
+    def __init__(self, model: ProbabilisticModel, eta: TensorType): 
+        """ Return the Probability of Improvement (PI) acquisition function for
+        single-objective global optimisation. Improvment is with respect ot current
+        "best" observation `eta`, where an improvement moves towards the objective
+        functions minimum and probability is is caculated with respect to the `model`
+        posterior. For model posterior :math:`f`, this is
+
+        .. math:: x \mapsto \mathbb P \left (f(x) < \eta)\right]
+
+        :param model: The model of the objective function.
+        :param eta: The "best" observation.
+        :return: The probability of improvement function. This function will raise
+            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+            greater than one.
+        """
 
         self._model = model
         self._eta = tf.Variable(eta, dtype="float64")

@@ -1086,13 +1086,23 @@ class TrustRegion(
 class BatchHypervolumeSharpeRatioIndicator(
     AcquisitionRule[TensorType, SearchSpaceType, ProbabilisticModelType]
 ):
+    """Implements the Batch Hypervolume Sharpe-ratio indicator acquisition rule, designed for large batches"""
     def __init__(
         self,
         batch_size: int = 5,
         ga_population_size: int = 500,
         ga_n_generations: int = 200,
-        filter_threshold: float = 0.4
+        filter_threshold: float = 0.1
     ):
+        """
+        :param batch_size: The number of points in a batch. Defaults to 5.
+        :param ga_population_size: The population size used in the genetic algorithm
+             that finds points on the Pareto front. Defaults to 500.
+        :param ga_n_generations: The number of genenrations to run in the genetic
+             algorithm. Defaults to 200.
+        :param filter_threshold: The probability of improvement below which to exlude
+             points from the Sharpe ratio optimisation. Defaults to 0.1.
+        """
         if pymoo is None:
             raise ImportError(
                 "BatchHypervolumeSharpeRatioIndicator requires pymoo, "
@@ -1100,7 +1110,7 @@ class BatchHypervolumeSharpeRatioIndicator(
             )
         builder = ProbabilityOfImprovement().using(OBJECTIVE)
 
-        self._builder: AcquisitionFunctionBuilder[ProbabilisticModelType] = builder
+        self._builder: AcquisitionFunctionBuilder[ProbabilisticModel] = builder
         self._batch_size: int = batch_size
         self._population_size: int = ga_population_size
         self._n_generations: int = ga_n_generations
@@ -1110,9 +1120,15 @@ class BatchHypervolumeSharpeRatioIndicator(
     def __repr__(self) -> str:
         """"""
         return f"""BatchHypervolumeSharpeRatioIndicator(
-        {self._batch_size!r})"""
+        batch_size={self._batch_size}, ga_population_size={self._population_size},
+        ga_n_generations={self._n_generations}, filter_threshold={self._filter_threshold}
+        )
+        """
 
     class MeanStdTradeoff(PymooProblem):  # type: ignore[misc]
+        """Inner class that formulates the mean/std optimisation problem as a
+         pymoo problem
+        """
         def __init__(self, probabilistic_model: ProbabilisticModel, search_space: SearchSpaceType):
             super().__init__(
                 n_var=search_space.dimension,
@@ -1173,6 +1189,18 @@ class BatchHypervolumeSharpeRatioIndicator(
         models: Mapping[str, ProbabilisticModelType],
         datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> TensorType:
+        """ Acquire a batch of points to observe based on the batch hypervolume 
+        Sharpe ratio indicator method.
+
+        This method uses NSGA-II to create a Pareto set of the mean and standard
+        deviation of the posterior of the probabilistic model, and then selects
+        points to observe based on maximising the Sharpe ratio.
+
+        :param search_space: The local acquisition search space for *this step*.
+        :param models: The model for each tag.
+        :param datasets: The known observer query points and observations.
+        :return: The batch of points to query.
+        """
 
         if self._acquisition_function is None:
             self._acquisition_function = self._builder.prepare_acquisition_function(
