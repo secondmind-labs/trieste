@@ -243,10 +243,28 @@ def run_bayes_opt(
                                               search_space=search_space, epochs=epochs,
                                               num_inducing=num_inducing, num_query_points=num_query,
                                               fix_ips=fix_ips, noise_init=observation_noise)
-            model.optimize(normalized_dataset)
+            try:
+                model.optimize(normalized_dataset)
+            except tf.errors.InvalidArgumentError as e:
+                e_msg = e.message
+                if ("Cholesky" not in e_msg) and ("not invertible" not in e_msg):
+                    raise e  # something terrible has happened
+                else:  # repeat last best obtained point and break from loop
+                    for _ in range(num_acquisitions - step):
+                        current_best.append(score)
+                    break
         else:
             model.update(normalized_dataset)
-            model.optimize(normalized_dataset)
+            try:
+                model.optimize(normalized_dataset)
+            except tf.errors.InvalidArgumentError as e:
+                e_msg = e.message
+                if ("Cholesky" not in e_msg) and ("not invertible" not in e_msg):
+                    raise e  # something terrible has happened
+                else:  # repeat last best obtained point and break from loop
+                    for _ in range(num_acquisitions - step):
+                        current_best.append(score)
+                    break
 
         # Evaluate mean predictions with current model
         mean_predictions = predict_mean(normalized_dataset.query_points, model)
