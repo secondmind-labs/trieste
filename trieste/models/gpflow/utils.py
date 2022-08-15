@@ -487,3 +487,34 @@ class SafeSGPR(SGPR):
         upper_bound = const_logdet_q + upper
 
         return lower_bound, upper_bound, trace_kq
+
+    def compute_qu(self) -> Tuple[tf.Tensor, tf.Tensor]:
+        """
+        Computes the mean and variance of q(u) = N(mu, cov), the variational distribution on
+        inducing outputs.
+        SVGP with this q(u) should predict identically to SGPR.
+        :return: mu, cov
+        """
+        X_data, Y_data = self.data
+
+        kuf = Kuf(self.inducing_variable, self.kernel, X_data)
+        kuu = Kuu(self.inducing_variable, self.kernel, jitter=default_jitter())
+
+        var = tf.squeeze(self.likelihood.variance_at(X_data), axis=-1)
+        std = tf.sqrt(var)
+        scaled_kuf = kuf / std
+        sig = kuu + tf.matmul(scaled_kuf, scaled_kuf, transpose_b=True)
+        sig_sqrt = cholesky(sig)
+
+        sig_sqrt_kuu = tf.linalg.triangular_solve(sig_sqrt, kuu)
+
+        cov = tf.linalg.matmul(sig_sqrt_kuu, sig_sqrt_kuu, transpose_a=True)
+        err = Y_data - self.mean_function(X_data)
+        scaled_err = err / std[..., None]
+        mu = tf.linalg.matmul(
+            sig_sqrt_kuu,
+            tf.linalg.triangular_solve(sig_sqrt, tf.linalg.matmul(scaled_kuf, scaled_err)),
+            transpose_a=True,
+        )
+
+        return mu, cov
