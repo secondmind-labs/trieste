@@ -90,9 +90,11 @@ class ProbabilisticModel(Protocol):
             f"Model {self!r} does not support predicting observations, just the latent function"
         )
 
-    def log(self) -> None:
+    def log(self, dataset: Dataset) -> None:
         """
         Log model-specific information at a given optimization step.
+
+        :param dataset: The data that can be used to log additional data-based model summaries.
         """
         pass
 
@@ -369,13 +371,15 @@ class ModelStack(ProbabilisticModel, Generic[ProbabilisticModelType]):
         means, vars_ = zip(*[model.predict_y(query_points) for model in self._models])
         return tf.concat(means, axis=-1), tf.concat(vars_, axis=-1)
 
-    def log(self) -> None:
+    def log(self, dataset: Dataset) -> None:
         """
         Log model-specific information at a given optimization step.
+
+        :param dataset: The data that can be used to log additional data-based model summaries.
         """
         for i, model in enumerate(self._models):
             with tf.name_scope(f"{i}"):
-                model.log()
+                model.log(dataset)
 
 
 class TrainableModelStack(ModelStack[TrainableProbabilisticModel], TrainableProbabilisticModel):

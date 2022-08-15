@@ -144,9 +144,11 @@ class GPflowPredictor(
         """
         self.optimizer.optimize(self.model, dataset)
 
-    def log(self) -> None:
+    def log(self, dataset: Dataset) -> None:
         """
         Log model-specific information at a given optimization step.
+
+        :param dataset: The data that can be used to log additional data-based model summaries.
         """
         summary_writer = logging.get_tensorboard_writer()
         if summary_writer:
