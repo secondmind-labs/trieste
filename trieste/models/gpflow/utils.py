@@ -500,21 +500,20 @@ class SafeSGPR(SGPR):
         kuf = Kuf(self.inducing_variable, self.kernel, X_data)
         kuu = Kuu(self.inducing_variable, self.kernel, jitter=default_jitter())
 
-        var = tf.squeeze(self.likelihood.variance_at(X_data), axis=-1)
-        std = tf.sqrt(var)
-        scaled_kuf = kuf / std
-        sig = kuu + tf.matmul(scaled_kuf, scaled_kuf, transpose_b=True)
-        sig_sqrt = cholesky(sig)
+        sig = kuu + (self.likelihood.variance ** -1) * tf.matmul(kuf, kuf, transpose_b=True)
+        sig_sqrt = tf.linalg.cholesky(sig)
 
         sig_sqrt_kuu = tf.linalg.triangular_solve(sig_sqrt, kuu)
 
         cov = tf.linalg.matmul(sig_sqrt_kuu, sig_sqrt_kuu, transpose_a=True)
         err = Y_data - self.mean_function(X_data)
-        scaled_err = err / std[..., None]
-        mu = tf.linalg.matmul(
-            sig_sqrt_kuu,
-            tf.linalg.triangular_solve(sig_sqrt, tf.linalg.matmul(scaled_kuf, scaled_err)),
-            transpose_a=True,
+        mu = (
+            tf.linalg.matmul(
+                sig_sqrt_kuu,
+                tf.linalg.triangular_solve(sig_sqrt, tf.linalg.matmul(kuf, err)),
+                transpose_a=True,
+            )
+            / self.likelihood.variance
         )
 
         return mu, cov
