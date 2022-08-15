@@ -88,11 +88,6 @@ def test_set_get_step_number(step: int) -> None:
     assert get_step_number() == 0
 
 
-def test_set_step_number_error() -> None:
-    with pytest.raises(ValueError):
-        set_step_number(-1)
-
-
 @pytest.mark.parametrize("step", [0, 1, 42])
 def test_step_number(step: int) -> None:
     assert get_step_number() == 0
