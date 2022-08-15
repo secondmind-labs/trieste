@@ -346,7 +346,7 @@ def _cholesky(matrix):
         return matrix, False
 
 
-def cholesky(matrix, max_attempts: int = 7, jitter: float = 1e-8):
+def cholesky(matrix, max_attempts: int = 10, jitter: float = 1e-6):
     def update_diag(matrix, jitter):
         diag = tf.linalg.diag_part(matrix)
         diag_add = tf.ones_like(diag) * jitter
@@ -366,7 +366,7 @@ def cholesky(matrix, max_attempts: int = 7, jitter: float = 1e-8):
         return [(break_flag, new_matrix, jitter * 10, res)]
 
     jitter = tf.cast(jitter, matrix.dtype)
-    init_state = (True, matrix, jitter, matrix)
+    init_state = (True, update_diag(matrix, jitter), jitter, matrix)
     result = tf.while_loop(cond, body, [init_state], maximum_iterations=max_attempts)
 
     return result[-1][-1]
