@@ -676,12 +676,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     if summary_writer:
                         logging.set_step_number(0)
                         with summary_writer.as_default(step=0):
-                            for tag, model in models.items():
-                                with tf.name_scope(f"{tag}.model"):
-                                    model.log(datasets[tag])
-                            logging.scalar(
-                                "wallclock/model_fitting",
-                                initial_model_fitting_timer.time,
+                            self._write_summary_initial_model_fit(
+                                datasets, models, initial_model_fitting_timer
                             )
                         logging.set_step_number(step)
 
@@ -803,6 +799,21 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                 "\nOne way to do this is to install 'trieste[plotting]'.",
                 output_stream=absl.logging.INFO,
             )
+
+    def _write_summary_initial_model_fit(
+        self,
+        datasets: Mapping[str, Dataset],
+        models: Mapping[str, TrainableProbabilisticModel],
+        model_fitting_timer: Timer,
+    ) -> None:
+        """Write TensorBoard summary for the model fitting to the initial data."""
+        for tag, model in models.items():
+            with tf.name_scope(f"{tag}.model"):
+                model.log(datasets[tag])
+        logging.scalar(
+            "wallclock/model_fitting",
+            model_fitting_timer.time,
+        )
 
     def _write_summary_step(
         self,

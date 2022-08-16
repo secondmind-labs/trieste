@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Callable, Generic, TypeVar
+from typing import Callable, Generic, Optional, TypeVar
 
 import gpflow
 import tensorflow as tf
@@ -90,11 +90,11 @@ class ProbabilisticModel(Protocol):
             f"Model {self!r} does not support predicting observations, just the latent function"
         )
 
-    def log(self, dataset: Dataset) -> None:
+    def log(self, dataset: Optional[Dataset] = None) -> None:
         """
         Log model-specific information at a given optimization step.
 
-        :param dataset: The data that can be used to log additional data-based model summaries.
+        :param dataset: Optional data that can be used to log additional data-based model summaries.
         """
         pass
 
@@ -371,11 +371,11 @@ class ModelStack(ProbabilisticModel, Generic[ProbabilisticModelType]):
         means, vars_ = zip(*[model.predict_y(query_points) for model in self._models])
         return tf.concat(means, axis=-1), tf.concat(vars_, axis=-1)
 
-    def log(self, dataset: Dataset) -> None:
+    def log(self, dataset: Optional[Dataset] = None) -> None:
         """
         Log model-specific information at a given optimization step.
 
-        :param dataset: The data that can be used to log additional data-based model summaries.
+        :param dataset: Optional data that can be used to log additional data-based model summaries.
         """
         for i, model in enumerate(self._models):
             with tf.name_scope(f"{i}"):

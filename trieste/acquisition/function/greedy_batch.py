@@ -726,7 +726,7 @@ class _fantasized_model(SupportsPredictJoint, SupportsGetKernel, SupportsGetObse
     def get_kernel(self) -> gpflow.kernels.Kernel:
         return self._model.get_kernel()
 
-    def log(self, dataset: Dataset) -> None:
+    def log(self, dataset: Optional[Dataset] = None) -> None:
         return self._model.log(dataset)
 
 
