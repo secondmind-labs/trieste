@@ -520,7 +520,6 @@ def test_deep_ensemble_deep_copyable() -> None:
 def test_deep_ensemble_deep_copies_optimizer_state() -> None:
     example_data = _get_example_data([10, 3], [10, 3])
     model, _, _ = trieste_deep_ensemble_model(example_data, 2, False, False)
-
     new_example_data = _get_example_data([20, 3], [20, 3])
     model.update(new_example_data)
     assert not model.model.optimizer.get_weights()
