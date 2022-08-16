@@ -190,9 +190,9 @@ def test_tensorboard_logging(mocked_summary_scalar: unittest.mock.MagicMock) -> 
         "wallclock/query_point_generation",
         "wallclock/model_fitting",
     ]
-
-    for call_arg, (_, scalar_name) in zip_longest(
-        mocked_summary_scalar.call_args_list, product(range(steps), ordered_scalar_names)
+    for call_arg, scalar_name in zip_longest(
+        mocked_summary_scalar.call_args_list, 
+        ["wallclock/model_fitting"] + steps*ordered_scalar_names,
     ):
         assert call_arg[0][0] == scalar_name
         assert isinstance(call_arg[0][1], float)
@@ -238,26 +238,25 @@ def test_wallclock_time_logging(
     for i, call_arg in enumerate(mocked_summary_scalar.call_args_list):
         name = call_arg[0][0]
         value = call_arg[0][1]
+        if fit_initial_model and i == 0:
+            assert name == "wallclock/model_fitting"
         step = i // (len(mocked_summary_scalar.call_args_list) / steps)
         if name.startswith("wallclock"):
             assert value > 0  # want positive wallclock times
         if name == "wallclock/step":
-            if fit_initial_model and step == 0:
-                npt.assert_allclose(value, 2.0 * model_fit_time + acq_time, rtol=0.1)
-            else:
-                npt.assert_allclose(value, model_fit_time + acq_time, rtol=0.1)
+            npt.assert_allclose(value, model_fit_time + acq_time, rtol=0.1)
         elif name == "wallclock/query_point_generation":
             npt.assert_allclose(value, acq_time, rtol=0.01)
         elif name == "wallclock/model_fitting":
-            if fit_initial_model and step == 0:
-                npt.assert_allclose(value, 2.0 * model_fit_time, rtol=0.1)
-            else:
-                npt.assert_allclose(value, model_fit_time, rtol=0.1)
+            npt.assert_allclose(value, model_fit_time, rtol=0.1)
         else:
             other_scalars += 1
 
     # check that we processed all the wallclocks we were expecting
-    assert len(mocked_summary_scalar.call_args_list) == other_scalars + 3 * steps
+    total_wallclocks = other_scalars + 3 * steps
+    if fit_initial_model:
+        total_wallclocks += 1
+    assert len(mocked_summary_scalar.call_args_list) == total_wallclocks
 
 
 @unittest.mock.patch("trieste.models.gpflow.interface.tf.summary.scalar")
@@ -272,6 +271,7 @@ def test_tensorboard_logging_ask_tell(mocked_summary_scalar: unittest.mock.Magic
             ask_tell.tell({"A": Dataset(new_point, new_point ** 2)})
 
     ordered_scalar_names = [
+        "wallclock/model_fitting",
         "query_points/[0]",
         "wallclock/query_point_generation",
         "A.observation/best_new_observation",

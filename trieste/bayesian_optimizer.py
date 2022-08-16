@@ -667,15 +667,13 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                             "will be available."
                         ) from e
 
-                with Timer() as total_step_wallclock_timer:
+                if step == 1 and fit_initial_model:
                     with Timer() as initial_model_fitting_timer:
-                        if step == 1 and fit_initial_model:
-                            for tag, model in models.items():
-                                dataset = datasets[tag]
-                                model.update(dataset)
-                                model.optimize(dataset)
-                            
-                    if step == 1 and fit_initial_model and summary_writer:
+                        for tag, model in models.items():
+                            dataset = datasets[tag]
+                            model.update(dataset)
+                            model.optimize(dataset)
+                    if summary_writer:
                         logging.set_step_number(0)
                         with summary_writer.as_default(step=0):
                             for tag, model in models.items():
@@ -687,6 +685,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                             )
                         logging.set_step_number(step)
 
+                with Timer() as total_step_wallclock_timer:
                     with Timer() as query_point_generation_timer:
                         points_or_stateful = acquisition_rule.acquire(
                             self._search_space, models, datasets=datasets
