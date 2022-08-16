@@ -545,7 +545,7 @@ def test_deep_ensemble_deep_copies_different_callback_types() -> None:
         tf.keras.callbacks.History(),
         tf.keras.callbacks.LambdaCallback(lambda epoch, lr: lr),
         tf.keras.callbacks.LearningRateScheduler(lambda epoch, lr: lr),
-        tf.keras.callbacks.ModelCheckpoint("weights"),
+        # tf.keras.callbacks.ModelCheckpoint("weights"),
         tf.keras.callbacks.ProgbarLogger(),
         tf.keras.callbacks.ReduceLROnPlateau(),
         tf.keras.callbacks.RemoteMonitor(),
