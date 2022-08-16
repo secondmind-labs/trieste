@@ -21,7 +21,7 @@ import pytest
 import tensorflow as tf
 
 from trieste.acquisition import AcquisitionFunction
-from trieste.acquisition.utils import split_acquisition_function
+from trieste.acquisition.utils import select_nth_output, split_acquisition_function
 
 
 @pytest.mark.parametrize(
@@ -58,3 +58,10 @@ def test_split_acquisition_function(
 def test_split_acquisition_function__invalid_split_size(split_size: int) -> None:
     with pytest.raises(ValueError):
         split_acquisition_function(MagicMock(), split_size=split_size)
+
+
+def test_select_nth_output() -> None:
+    a = tf.random.normal([5, 6])
+
+    assert np.all(select_nth_output(a) == a[..., 0])
+    assert np.all(select_nth_output(a, 3) == a[..., 3])

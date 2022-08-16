@@ -61,7 +61,7 @@ def test_ensemble_trajectory_sampler_returns_trajectory_function_with_correctly_
     sampler = DeepEnsembleTrajectorySampler(model, diversify=diversify)
     trajectory = sampler.get_trajectory()
 
-    assert trajectory(test_data).shape == (num_evals, batch_size)
+    assert trajectory(test_data).shape == (num_evals, batch_size, 1)
 
 
 def test_ensemble_trajectory_sampler_returns_deterministic_trajectory(

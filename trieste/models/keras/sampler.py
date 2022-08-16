@@ -67,7 +67,7 @@ class DeepEnsembleTrajectorySampler(TrajectorySampler[DeepEnsembleModel]):
         Generate an approximate function draw (trajectory) from the ensemble.
 
         :return: A trajectory function representing an approximate trajectory
-            from the model, taking an input of shape `[N, 1, D]` and returning shape `[N, 1]`.
+            from the model, taking an input of shape `[N, B, D]` and returning shape `[N, B, 1]`.
         """
         return deep_ensemble_trajectory(self._model, self._diversify)
 
@@ -130,7 +130,7 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
             )
 
     @tf.function
-    def __call__(self, x: TensorType) -> TensorType:  # [N, B, d] -> [N, B]
+    def __call__(self, x: TensorType) -> TensorType:  # [N, B, d] -> [N, B, 1]
         """
         Call trajectory function. Note that we are flattening the batch dimension and
         doing a forward pass with each network in the ensemble with the whole batch. This is
@@ -171,17 +171,17 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
             predicted_means = tf.convert_to_tensor([dist.mean() for dist in ensemble_distributions])
             predictions = tf.gather(predicted_means, self._indices)  # [B, N*B, 1]
 
-        tensor_predictions = tf.squeeze(tf.map_fn(unflatten, predictions), axis=-1)  # [B, N, B]
+        tensor_predictions = tf.map_fn(unflatten, predictions)  # [B, N, B, 1]
 
         # here we select simultaneously networks and batch dimension according to batch indices
         # this is needed because we compute a whole batch with each network
         batch_index = tf.range(self._batch_size)
         indices = tf.stack([batch_index, batch_index], axis=1)
         batch_predictions = tf.gather_nd(
-            tf.transpose(tensor_predictions, perm=[0, 2, 1]), indices
+            tf.transpose(tensor_predictions, perm=[0, 2, 1, 3]), indices
         )  # [B,N]
 
-        return tf.transpose(batch_predictions, perm=[1, 0])  # [N, B]
+        return tf.transpose(batch_predictions, perm=[1, 0, 2])  # [N, B, 1]
 
     def resample(self) -> None:
         """
