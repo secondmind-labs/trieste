@@ -369,7 +369,7 @@ class DeepEnsemble(
         self.optimizer.optimizer.lr.assign(self.original_lr)
 
     def __getstate__(self) -> dict[str, Any]:
-        # When pickling use to_json and get_weights to save any optimizer fit_arg callback models
+        # use to_json and get_weights to save any optimizer fit_arg callback models
         state = self.__dict__.copy()
         if self._optimizer:
             callbacks: list[Callback] = self._optimizer.fit_args.get("callbacks", [])
