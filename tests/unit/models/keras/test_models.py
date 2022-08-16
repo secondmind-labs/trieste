@@ -549,7 +549,7 @@ def test_deep_ensemble_deep_copies_different_callback_types() -> None:
         tf.keras.callbacks.ProgbarLogger(),
         tf.keras.callbacks.ReduceLROnPlateau(),
         tf.keras.callbacks.RemoteMonitor(),
-        # tf.keras.callbacks.TensorBoard(),
+        tf.keras.callbacks.TensorBoard(),
         tf.keras.callbacks.TerminateOnNaN(),
     ]
 

@@ -365,26 +365,39 @@ class DeepEnsemble(
 
         # Reset lr in case there was an lr schedule: a schedule will have change the learning rate,
         # so that the next time we call `optimize` the starting learning rate would be different.
-        # Therefore we make sure the learning rate is set back to its initial value.
+        # Therefore, we make sure the learning rate is set back to its initial value.
         self.optimizer.optimizer.lr.assign(self.original_lr)
 
     def __getstate__(self) -> dict[str, Any]:
         # When pickling use to_json and get_weights to save any optimizer fit_arg callback models
         state = self.__dict__.copy()
         if self._optimizer:
-            # serialize all the callback models, pickle the optimizer(!), and revert (ugh!)
-            callback: Callback
+            callbacks: list[Callback] = self._optimizer.fit_args.get("callbacks", [])
             saved_models: list[KerasOptimizer] = []
-            for callback in self._optimizer.fit_args.get("callbacks", []):
-                saved_models.append(callback.model)
-                if callback.model is self.model:
-                    # no need to serialize the main model
-                    callback.model = ...
-                elif callback.model:
-                    callback.model = (callback.model.to_json(), callback.model.get_weights())
-            state["_optimizer"] = dill.dumps(state["_optimizer"])
-            for callback, model in zip(self._optimizer.fit_args.get("callbacks", []), saved_models):
-                callback.model = model
+            tensorboard_writers: list[dict[str, Any]] = []
+            try:
+                for callback in callbacks:
+                    # serialize the callback models before pickling the optimizer
+                    saved_models.append(callback.model)
+                    if callback.model is self.model:
+                        # no need to serialize the main model, just use a special value instead
+                        callback.model = ...
+                    elif callback.model:
+                        callback.model = (callback.model.to_json(), callback.model.get_weights())
+                    # don't pickle tensorboard writers either; they'll be recreated when needed
+                    if isinstance(callback, tf.keras.callbacks.TensorBoard):
+                        tensorboard_writers.append(callback._writers)
+                        callback._writers = {}
+                state["_optimizer"] = dill.dumps(state["_optimizer"])
+            finally:
+                # revert original state, even if the pickling failed
+                for callback, model in zip(callbacks, saved_models):
+                    callback.model = model
+                for callback, writers in zip(
+                    (cb for cb in callbacks if isinstance(cb, tf.keras.callbacks.TensorBoard)),
+                    tensorboard_writers,
+                ):
+                    callback._writers = writers
         return state
 
     def __setstate__(self, state: dict[str, Any]) -> None:
@@ -396,14 +409,15 @@ class DeepEnsemble(
         for callback in self._optimizer.fit_args.get("callbacks", []):
             if callback.model:
                 if callback.model is ...:
-                    callback.model = self.model
+                    callback.set_model(self.model)
                 elif callback.model:
-                    model, weights = callback.model
-                    callback.model = tf.keras.models.model_from_json(
-                        model,
+                    model_json, weights = callback.model
+                    model = tf.keras.models.model_from_json(
+                        model_json,
                         custom_objects={"MultivariateNormalTriL": MultivariateNormalTriL},
                     )
-                    callback.model.set_weights(weights)
+                    model.set_weights(weights)
+                    callback.set_model(model)
 
         # Recompile the model
         self.model.compile(
