@@ -1086,13 +1086,15 @@ class TrustRegion(
 class BatchHypervolumeSharpeRatioIndicator(
     AcquisitionRule[TensorType, SearchSpaceType, ProbabilisticModelType]
 ):
-    """Implements the Batch Hypervolume Sharpe-ratio indicator acquisition rule, designed for large batches"""
+    """Implements the Batch Hypervolume Sharpe-ratio indicator acquisition
+    rule, designed for large batches"""
+
     def __init__(
         self,
         batch_size: int = 5,
         ga_population_size: int = 500,
         ga_n_generations: int = 200,
-        filter_threshold: float = 0.1
+        filter_threshold: float = 0.1,
     ):
         """
         :param batch_size: The number of points in a batch. Defaults to 5.
@@ -1127,8 +1129,9 @@ class BatchHypervolumeSharpeRatioIndicator(
 
     class MeanStdTradeoff(PymooProblem):  # type: ignore[misc]
         """Inner class that formulates the mean/std optimisation problem as a
-         pymoo problem
+        pymoo problem
         """
+
         def __init__(self, probabilistic_model: ProbabilisticModel, search_space: SearchSpaceType):
             super().__init__(
                 n_var=search_space.dimension,
@@ -1189,7 +1192,7 @@ class BatchHypervolumeSharpeRatioIndicator(
         models: Mapping[str, ProbabilisticModelType],
         datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> TensorType:
-        """ Acquire a batch of points to observe based on the batch hypervolume 
+        """Acquire a batch of points to observe based on the batch hypervolume
         Sharpe ratio indicator method.
 
         This method uses NSGA-II to create a Pareto set of the mean and standard

@@ -91,8 +91,8 @@ class ProbabilityOfImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
 
 
 class probability_of_improvement(AcquisitionFunctionClass):
-    def __init__(self, model: ProbabilisticModel, eta: TensorType): 
-        """ Return the Probability of Improvement (PI) acquisition function for
+    def __init__(self, model: ProbabilisticModel, eta: TensorType):
+        r"""Return the Probability of Improvement (PI) acquisition function for
         single-objective global optimisation. Improvment is with respect ot current
         "best" observation `eta`, where an improvement moves towards the objective
         functions minimum and probability is is caculated with respect to the `model`

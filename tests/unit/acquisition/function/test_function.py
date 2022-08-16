@@ -55,17 +55,32 @@ from trieste.acquisition.function.function import (
     MultipleOptimismNegativeLowerConfidenceBound,
     NegativeLowerConfidenceBound,
     ProbabilityOfFeasibility,
+    ProbabilityOfImprovement,
     augmented_expected_improvement,
     expected_improvement,
     lower_confidence_bound,
     multiple_optimism_lower_confidence_bound,
     probability_of_feasibility,
+    probability_of_improvement,
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.objectives import BRANIN_MINIMUM, branin
 from trieste.space import Box
 from trieste.types import TensorType
+
+
+def test_probability_of_improvement_builder_builds_pi_using_best_from_model() -> None:
+
+    dataset = Dataset(
+        tf.constant([[-2.0], [-1.0], [0.0], [1.0], [2.0]]),
+        tf.constant([[4.1], [0.9], [0.1], [1.1], [3.9]]),
+    )
+    model = QuadraticMeanAndRBFKernel()
+    acq_fn = ProbabilityOfImprovement().prepare_acquisition_function(model, dataset=dataset)
+    xs = tf.linspace([[-10.0]], [[10.0]], 100)
+    expected = probability_of_improvement(model, tf.constant([0.1]))(xs)
+    npt.assert_allclose(acq_fn(xs), expected)
 
 
 def test_expected_improvement_builder_builds_expected_improvement_using_best_from_model() -> None:

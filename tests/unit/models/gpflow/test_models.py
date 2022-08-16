@@ -371,7 +371,7 @@ def test_gpflow_models_cached_predictions_faster(
     x = np.linspace(0, 10, 10).reshape((-1, 1))
     y = fnc_2sin_x_over_3(x)
     model, _ = gpflow_interface_factory(x, y)
-    n_calls = 100
+    n_calls = 150
 
     x_predict = np.linspace(0, 5, 2).reshape((-1, 1))
     t_0 = time()
