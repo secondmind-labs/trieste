@@ -16,7 +16,7 @@ from __future__ import annotations
 import tempfile
 import unittest.mock
 from collections.abc import Mapping
-from itertools import product, zip_longest
+from itertools import zip_longest
 from time import sleep
 from typing import Optional
 
@@ -191,8 +191,8 @@ def test_tensorboard_logging(mocked_summary_scalar: unittest.mock.MagicMock) -> 
         "wallclock/model_fitting",
     ]
     for call_arg, scalar_name in zip_longest(
-        mocked_summary_scalar.call_args_list, 
-        ["wallclock/model_fitting"] + steps*ordered_scalar_names,
+        mocked_summary_scalar.call_args_list,
+        ["wallclock/model_fitting"] + steps * ordered_scalar_names,
     ):
         assert call_arg[0][0] == scalar_name
         assert isinstance(call_arg[0][1], float)
@@ -240,7 +240,6 @@ def test_wallclock_time_logging(
         value = call_arg[0][1]
         if fit_initial_model and i == 0:
             assert name == "wallclock/model_fitting"
-        step = i // (len(mocked_summary_scalar.call_args_list) / steps)
         if name.startswith("wallclock"):
             assert value > 0  # want positive wallclock times
         if name == "wallclock/step":

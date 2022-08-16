@@ -263,6 +263,7 @@ def test_gpflow_wrappers_log(
 ) -> None:
     x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
     model, _ = gpflow_interface_factory(x, fnc_3x_plus_10(x))
+    data = Dataset(x, fnc_3x_plus_10(x))
 
     if kernel is not None:
         model.model.kernel = kernel
@@ -270,7 +271,7 @@ def test_gpflow_wrappers_log(
     mocked_summary_writer = unittest.mock.MagicMock()
     with tensorboard_writer(mocked_summary_writer):
         with step_number(42):
-            model.log()
+            model.log(data)
 
     assert len(mocked_summary_writer.method_calls) == 1
     assert mocked_summary_writer.method_calls[0][0] == "as_default"
