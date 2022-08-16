@@ -381,7 +381,8 @@ class AsynchronousRuleState:
 
         tf.debugging.assert_shapes(
             [(self.pending_points, [None, "D"]), (points_to_remove, [None, "D"])],
-            message=f"""Point to remove shall be 1xD where D is the last dimension of pending points.
+            message=f"""Point to remove shall be 1xD where D is the last dimension
+                        of pending points.
                         Got {tf.shape(self.pending_points)} for pending points
                         and {tf.shape(points_to_remove)} for other points.""",
         )
