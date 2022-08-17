@@ -1135,7 +1135,7 @@ class BatchHypervolumeSharpeRatioIndicator(
 
         def __init__(self, probabilistic_model: ProbabilisticModel, search_space: SearchSpaceType):
             super().__init__(
-                n_var=search_space.dimension,
+                n_var=int(search_space.dimension),
                 n_obj=2,
                 n_constr=0,
                 xl=np.array(search_space.lower),
@@ -1222,7 +1222,6 @@ class BatchHypervolumeSharpeRatioIndicator(
 
         # Filter out points below a threshold probability of improvement
         filtered_points, filtered_mean_std = self._filter_points(nd_points, nd_mean_std)
-        print(f"There are {len(filtered_points)} after PI filtering")
 
         # Set up a Pareto set of the filtered points
         pareto_set = Pareto(filtered_mean_std, already_non_dominated=True)

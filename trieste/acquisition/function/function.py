@@ -108,7 +108,7 @@ class probability_of_improvement(AcquisitionFunctionClass):
         """
 
         self._model = model
-        self._eta = tf.Variable(eta, dtype="float64")
+        self._eta = tf.Variable(eta)
 
     def update(self, eta: TensorType) -> None:
         """Update the acqusition function with a new model and eta value"""
