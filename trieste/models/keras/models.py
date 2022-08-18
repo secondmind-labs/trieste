@@ -389,6 +389,10 @@ class DeepEnsemble(
                         tensorboard_writers.append(callback._writers)
                         callback._writers = {}
                 state["_optimizer"] = dill.dumps(state["_optimizer"])
+            except Exception as e:
+                raise NotImplementedError(
+                    "Failed to copy DeepEnsemble optimizer due to unsupported callbacks."
+                ) from e
             finally:
                 # revert original state, even if the pickling failed
                 for callback, model in zip(callbacks, saved_models):
