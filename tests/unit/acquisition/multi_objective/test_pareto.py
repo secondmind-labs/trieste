@@ -104,3 +104,48 @@ def test_get_reference_point_extract_based_on_pareto_front(
     observations: tf.Tensor, expected: tf.Tensor
 ) -> None:
     tf.debugging.assert_equal(get_reference_point(observations), expected)
+
+
+def test_pareto_sample_raises_too_large_sample_size() -> None:
+    observations = tf.constant([[1.0, -1.0], [-1.0, 1.0]])
+    pareto_set = Pareto(observations)
+    with pytest.raises(ValueError):
+        pareto_set.sample(3)
+
+
+def test_pareto_sample_raises_zero_range() -> None:
+    observations = tf.constant([[1.0, 1.0], [1.0, 1.0]])
+    pareto_set = Pareto(observations)
+    with pytest.raises(ValueError):
+        pareto_set.sample(1)
+
+
+def test_pareto_sample_get_bounds() -> None:
+    observations = tf.constant([[1.0, -1.0], [-1.0, 1.0]])
+    pareto_set = Pareto(observations)
+    lower_bounds, reference_point = pareto_set._get_bounds()
+    expected_lower_bounds = tf.constant([-1.4, -1.4])
+    expected_reference_point = tf.constant([1.4, 1.4])
+    npt.assert_allclose(expected_lower_bounds, lower_bounds)
+    npt.assert_allclose(expected_reference_point, reference_point)
+
+
+def test_pareto_sample_calculate_p() -> None:
+    observations = tf.constant([[1.0, -1.0], [-1.0, 1.0]])
+    lower_bound = tf.constant([-2.0, -2.0])
+    reference_point = tf.constant([2.0, 2.0])
+    pareto_set = Pareto(observations)
+    output = pareto_set._calculate_p_matrix(lower_bound, reference_point)
+    expected_output = tf.constant([[3 / 16, 1 / 16], [1 / 16, 3 / 16]])
+    npt.assert_array_equal(expected_output, output)
+
+
+def test_pareto_sample_choose_batch() -> None:
+    observations = tf.constant([[2.0, -2.0], [1.0, -1.0], [0.0, 0.0], [-1.0, 1.0], [-2.0, 2.0]])
+    x_star = tf.constant([[0.15], [0.25], [0.2], [0.3], [0.1]])
+    pareto_set = Pareto(observations)
+    sample, sample_ids = pareto_set._choose_batch(x_star, sample_size=2)
+    expected_sample = tf.constant([[-1.0, 1.0], [1.0, -1.0]])
+    expected_sample_ids = tf.constant([3, 1])
+    npt.assert_array_equal(expected_sample, sample)
+    npt.assert_array_equal(expected_sample_ids, sample_ids)

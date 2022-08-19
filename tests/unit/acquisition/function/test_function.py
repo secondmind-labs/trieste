@@ -82,6 +82,7 @@ def test_probability_of_improvement_builder_builds_pi_using_best_from_model() ->
     expected = probability_of_improvement(model, tf.constant([0.0]))(xs)
     npt.assert_allclose(acq_fn(xs), expected)
 
+
 def test_probability_of_improvement_builder_updates_pi_using_best_from_model() -> None:
     dataset = Dataset(
         tf.constant([[-2.0], [-1.0]]),
@@ -107,6 +108,7 @@ def test_probability_of_improvement_builder_updates_pi_using_best_from_model() -
     npt.assert_allclose(acq_fn(xs), expected)
     assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
 
+
 def test_probability_of_improvement_builder_raises_for_empty_data() -> None:
     data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
 
@@ -117,12 +119,14 @@ def test_probability_of_improvement_builder_raises_for_empty_data() -> None:
     with pytest.raises(tf.errors.InvalidArgumentError):
         ProbabilityOfImprovement().prepare_acquisition_function(QuadraticMeanAndRBFKernel())
 
+
 @pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
 def test_probability_of_improvement_raises_for_invalid_batch_size(at: TensorType) -> None:
     pi = probability_of_improvement(QuadraticMeanAndRBFKernel(), tf.constant([1.0]))
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         pi(at)
+
 
 @random_seed
 @pytest.mark.parametrize("best", [tf.constant([50.0]), BRANIN_MINIMUM, BRANIN_MINIMUM * 1.01])
@@ -167,6 +171,7 @@ def test_probability_of_improvement(
     pi = pif(xs[..., None, :])
 
     npt.assert_allclose(pi, pi_approx, rtol=rtol, atol=atol)
+
 
 def test_expected_improvement_builder_builds_expected_improvement_using_best_from_model() -> None:
     dataset = Dataset(

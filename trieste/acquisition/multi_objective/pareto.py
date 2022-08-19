@@ -38,7 +38,7 @@ class Pareto:
     def __init__(self, observations: TensorType, already_non_dominated: bool = False):
         """
         :param observations: The observations for all objectives, with shape [N, D].
-        :param already_non_dominated: Bool of whether the points are already non dominated
+        :param already_non_dominated: Whether the observations are already non dominated
         :raise ValueError (or InvalidArgumentError): If ``observations`` has an invalid shape.
         """
         tf.debugging.assert_rank(observations, 2)
@@ -95,45 +95,58 @@ class Pareto:
 
         front_size, front_dims = self.front.shape
 
+        if front_size < sample_size:
+            raise ValueError(
+                f"Tried to sample {sample_size} points from a Pareto"
+                f" set of size {front_size}, please ensure sample size is smaller than"
+                " Pareto set size."
+            )
+
         if front_dims != 2:
             raise NotImplementedError("Pareto front sampling is only supported in the 2D case")
 
-        # Calculate the deltas to add to the bounds to get the reference point and lower bound
-        deltas = [
-            (float(max(self.front[:, i])) - float(min(self.front[:, i]))) * 0.2
-            for i in range(front_dims)
-        ]
+        lower_bound, reference_point = self._get_bounds()
 
-        # Define lower bound and reference point
-        lower_bound = [float(min(self.front[:, i])) - deltas[i] for i in range(front_dims)]
+        p = self._calculate_p_matrix(lower_bound, reference_point)
 
-        # Use deltas and max values to create reference point
-        reference_point = [float(max(self.front[:, i])) + deltas[i] for i in range(front_dims)]
-
-        # Calculate p matrix
-        p = np.zeros([front_size, front_size])
-
-        # Calcualte denominator value for p matrix elements
-        denominator: float = 1
-        for i in range(front_dims):
-            denominator *= reference_point[i] - lower_bound[i]
-
-        # Fill entries of p
-        for i in range(front_size):
-            for j in range(front_size):
-                p[i, j] = (reference_point[0] - max(self.front[i, 0], self.front[j, 0])) * (
-                    reference_point[1] - max(self.front[i, 1], self.front[j, 1])
-                )
-
-        p = p / denominator
-
-        # Calculate q
+        # Calculate q matrix
         p_diag = np.expand_dims(np.diagonal(p), axis=1)
-        Q = p - np.dot(p_diag, np.transpose(p_diag))
+        q = p - np.dot(p_diag, np.transpose(p_diag))
+
+        x_star = self._find_x_star(q, p)
+
+        samples, sample_ids = self._choose_batch(x_star, sample_size)
+
+        return samples, sample_ids
+
+    def _choose_batch(self, x_star: TensorType, sample_size: int) -> Tuple[TensorType, TensorType]:
+
+        front_size = self.front.shape[0]
+
+        # Create id array to keep track of points
+        id_arr = np.expand_dims(np.arange(front_size), axis=1)
+
+        # Stitch id array, x_star and the front together
+        stitched_array = np.concatenate([id_arr, x_star, np.array(self.front)], axis=1)
+        print(stitched_array)
+
+        # Sort array by x_star descending
+        sorted_array = stitched_array[stitched_array[:, 1].argsort()[::-1]]
+        print(sorted_array)
+
+        samples = sorted_array[:sample_size, 2:]
+        sample_ids = sorted_array[:sample_size, 0].astype(int)
+
+        return samples, sample_ids
+
+    def _find_x_star(self, q: TensorType, p: TensorType) -> TensorType:
+
+        front_size = self.front.shape[0]
+
+        p_diag = np.expand_dims(np.diagonal(p), axis=1)
 
         # Solve quadratic program for y*
-
-        P = cp.atoms.affine.wraps.psd_wrap(Q)
+        P = cp.atoms.affine.wraps.psd_wrap(q)
         G = np.eye(front_size)
         h = np.zeros(front_size)
         A = np.transpose(p_diag)
@@ -149,19 +162,55 @@ class Pareto:
         # Calculate x*
         x_star = np.expand_dims(y_star, axis=1) / np.sum(y_star)
 
-        # Create id array to keep track of points
-        id_arr = np.expand_dims(np.arange(front_size), axis=1)
+        return x_star
 
-        # Stitch id array, x_star and the front together
-        stitched_array = np.concatenate([id_arr, x_star, np.array(self.front)], axis=1)
+    def _calculate_p_matrix(
+        self, lower_bound: TensorType, reference_point: TensorType
+    ) -> TensorType:
 
-        # Sort array by x_star descending
-        sorted_array = stitched_array[stitched_array[:, 0].argsort()[::-1]]
+        front_size, front_dims = self.front.shape
 
-        samples = sorted_array[:sample_size, 2:]
-        sample_ids = sorted_array[:sample_size, 0].astype(int)
+        p = np.zeros([front_size, front_size])
 
-        return samples, sample_ids
+        # Calculate denominator value for p matrix elements
+        denominator: float = 1
+        for i in range(front_dims):
+            if reference_point[i] - lower_bound[i] == 0:
+                raise ValueError(
+                    "Pareto set has identical upper and lower bounds"
+                    " in a dimension, this means you either have multiples"
+                    " of a single point, or only one point"
+                )
+            denominator *= reference_point[i] - lower_bound[i]
+
+        # Fill entries of p
+        for i in range(front_size):
+            for j in range(front_size):
+                p[i, j] = (reference_point[0] - max(self.front[i, 0], self.front[j, 0])) * (
+                    reference_point[1] - max(self.front[i, 1], self.front[j, 1])
+                )
+
+        p = p / denominator
+
+        return p
+
+    def _get_bounds(self) -> Tuple[TensorType, TensorType]:
+
+        front_dims = self.front.shape[1]
+
+        # Calculate the deltas to add to the bounds to get the reference point and lower bound
+        deltas = [
+            (float(max(self.front[:, i])) - float(min(self.front[:, i]))) * 0.2
+            for i in range(front_dims)
+        ]
+
+        # Define lower bound and reference point
+        lower_bound = [float(min(self.front[:, i])) - deltas[i] for i in range(front_dims)]
+
+        # Use deltas and max values to create reference point
+        reference_point = [float(max(self.front[:, i])) + deltas[i] for i in range(front_dims)]
+
+        return lower_bound, reference_point
 
 
 def get_reference_point(
