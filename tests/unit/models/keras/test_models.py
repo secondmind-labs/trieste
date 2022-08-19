@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import copy
 import operator
 from typing import Any, Optional
@@ -20,6 +22,7 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
+from tensorflow.python.keras.callbacks import Callback
 
 from tests.util.misc import ShapeLike, empty_dataset, random_seed
 from tests.util.models.keras.models import trieste_deep_ensemble_model, trieste_keras_ensemble_model
@@ -530,6 +533,47 @@ def test_deep_ensemble_deep_copies_optimizer_state() -> None:
     assert model.model.optimizer is not model_copy.model.optimizer
     npt.assert_allclose(model_copy.model.optimizer.iterations, 1)
     npt.assert_equal(model.model.optimizer.get_weights(), model_copy.model.optimizer.get_weights())
+
+
+@pytest.mark.parametrize(
+    "callbacks",
+    [
+        [
+            tf.keras.callbacks.CSVLogger("csv"),
+            tf.keras.callbacks.EarlyStopping(monitor="loss", patience=100),
+            tf.keras.callbacks.History(),
+            tf.keras.callbacks.LambdaCallback(lambda epoch, lr: lr),
+            tf.keras.callbacks.LearningRateScheduler(lambda epoch, lr: lr),
+            tf.keras.callbacks.ProgbarLogger(),
+            tf.keras.callbacks.ReduceLROnPlateau(),
+            tf.keras.callbacks.RemoteMonitor(),
+            tf.keras.callbacks.TensorBoard(),
+            tf.keras.callbacks.TerminateOnNaN(),
+        ],
+        pytest.param(
+            [
+                tf.keras.callbacks.experimental.BackupAndRestore("backup"),
+                tf.keras.callbacks.BaseLogger(),
+                tf.keras.callbacks.ModelCheckpoint("weights"),
+            ],
+            marks=pytest.mark.skip(reason="callbacks currently causing optimize to fail"),
+        ),
+    ],
+)
+def test_deep_ensemble_deep_copies_different_callback_types(callbacks: list[Callback]) -> None:
+    example_data = _get_example_data([10, 3], [10, 3])
+    model, _, _ = trieste_deep_ensemble_model(example_data, 2, False, False)
+    model.optimizer.fit_args["callbacks"] = callbacks
+
+    new_example_data = _get_example_data([20, 3], [20, 3])
+    model.update(new_example_data)
+    model.optimize(new_example_data)
+
+    model_copy = copy.deepcopy(model)
+    assert model.model.optimizer is not model_copy.model.optimizer
+    assert tuple(type(callback) for callback in model.optimizer.fit_args["callbacks"]) == tuple(
+        type(callback) for callback in model_copy.optimizer.fit_args["callbacks"]
+    )
 
 
 def test_deep_ensemble_deep_copies_optimizer_callback_models() -> None:
