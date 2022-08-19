@@ -42,6 +42,7 @@ from trieste.acquisition.rule import (
     AsynchronousGreedy,
     AsynchronousOptimization,
     AsynchronousRuleState,
+    BatchHypervolumeSharpeRatioIndicator,
     DiscreteThompsonSampling,
     EfficientGlobalOptimization,
     RandomSampling,
@@ -817,3 +818,77 @@ def test_asynchronous_rule_add_pending_points() -> None:
     state = AsynchronousRuleState(tf.constant([[1, 1], [2, 2]]))
     state = state.add_pending_points(tf.constant([[3, 3], [4, 4]]))
     npt.assert_array_equal(state.pending_points, [[1, 1], [2, 2], [3, 3], [4, 4]])
+
+
+@pytest.mark.parametrize(
+    "batch_size,ga_population_size,ga_n_generations,filter_threshold",
+    [
+        (-2, 500, 200, 0.1),
+        (0, 500, 200, 0.1),
+        (10, -2, 200, 0.1),
+        (10, 0, 200, 0.1),
+        (10, 500, -2, 0.1),
+        (10, 500, 0, 0.1),
+        (10, 500, 200, -0.1),
+        (10, 500, 200, 1.1),
+    ],
+)
+def test_qhsri_raises_invalid_parameters(
+    batch_size: int, ga_population_size: int, ga_n_generations: int, filter_threshold: float
+) -> None:
+
+    with pytest.raises(ValueError):
+        BatchHypervolumeSharpeRatioIndicator(
+            batch_size, ga_population_size, ga_n_generations, filter_threshold
+        )
+
+
+@pytest.mark.parametrize(
+    "models",
+    [
+        {},
+        {"foo": QuadraticMeanAndRBFKernel()},
+        {"foo": QuadraticMeanAndRBFKernel(), OBJECTIVE: QuadraticMeanAndRBFKernel()},
+    ],
+)
+@pytest.mark.parametrize("datasets", [{}, {OBJECTIVE: empty_dataset([1], [1])}])
+def test_qhsri_raises_for_invalid_models_keys(
+    datasets: dict[str, Dataset], models: dict[str, ProbabilisticModel]
+) -> None:
+    search_space = Box([-1], [1])
+    rule = BatchHypervolumeSharpeRatioIndicator()
+    with pytest.raises(ValueError):
+        rule.acquire(search_space, models, datasets=datasets)
+
+
+@pytest.mark.parametrize("models", [{}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}])
+@pytest.mark.parametrize(
+    "datasets",
+    [
+        {},
+        {"foo": empty_dataset([1], [1])},
+        {"foo": empty_dataset([1], [1]), OBJECTIVE: empty_dataset([1], [1])},
+    ],
+)
+def test_qhsri_raises_for_invalid_dataset_keys(
+    datasets: dict[str, Dataset], models: dict[str, ProbabilisticModel]
+) -> None:
+    search_space = Box([-1], [1])
+    rule = BatchHypervolumeSharpeRatioIndicator()
+    with pytest.raises(ValueError):
+        rule.acquire(search_space, models, datasets=datasets)
+
+
+# @pytest.mark.parametrize("num_query_points", [5, 10])
+# def test_qhsri_acquire_returns_correct_shape(
+#     num_query_points: int
+# ) -> None:
+#     search_space = Box([-2.2, -1.0], [1.3, 3.3])
+#     qhsri = BatchHypervolumeSharpeRatioIndicator(batch_size=num_query_points)
+#     dataset = Dataset(tf.zeros([1, 2], dtype=tf.float64), tf.zeros([1, 1], dtype=tf.float64))
+#     model = QuadraticMeanAndRBFKernel(
+#         noise_variance=tf.constant(1.0, dtype=tf.float64)
+#     )
+#     query_points = qhsri.acquire_single(search_space, model, dataset=dataset)
+
+#     npt.assert_array_equal(query_points.shape, tf.constant([num_query_points, 2]))

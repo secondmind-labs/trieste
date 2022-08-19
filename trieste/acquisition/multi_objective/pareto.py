@@ -128,11 +128,9 @@ class Pareto:
 
         # Stitch id array, x_star and the front together
         stitched_array = np.concatenate([id_arr, x_star, np.array(self.front)], axis=1)
-        print(stitched_array)
 
         # Sort array by x_star descending
         sorted_array = stitched_array[stitched_array[:, 1].argsort()[::-1]]
-        print(sorted_array)
 
         samples = sorted_array[:sample_size, 2:]
         sample_ids = sorted_array[:sample_size, 0].astype(int)

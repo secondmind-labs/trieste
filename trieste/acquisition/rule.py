@@ -1106,6 +1106,17 @@ class BatchHypervolumeSharpeRatioIndicator(
         :param filter_threshold: The probability of improvement below which to exlude
              points from the Sharpe ratio optimisation. Defaults to 0.1.
         """
+        if not batch_size > 0:
+            raise ValueError(f"Batch size must be greater than 0, got {batch_size}")
+        if not ga_population_size >= batch_size:
+            raise ValueError(
+                "Population size must be greater or equal to batch size, got "
+                f"batch size as {batch_size} and population size as {ga_population_size}"
+            )
+        if not ga_n_generations > 0:
+            raise ValueError(f"Number of generation must be greater than 0, got {ga_n_generations}")
+        if not 0.0 <= filter_threshold < 1.0:
+            raise ValueError(f"Filter threshold must be in range [0.0,1.0), got {filter_threshold}")
         if pymoo is None:
             raise ImportError(
                 "BatchHypervolumeSharpeRatioIndicator requires pymoo, "
@@ -1205,6 +1216,15 @@ class BatchHypervolumeSharpeRatioIndicator(
         :param datasets: The known observer query points and observations.
         :return: The batch of points to query.
         """
+        if models.keys() != {OBJECTIVE}:
+            raise ValueError(
+                f"dict of models must contain the single key {OBJECTIVE}, got keys {models.keys()}"
+            )
+
+        if datasets is None or datasets.keys() != {OBJECTIVE}:
+            raise ValueError(
+                f"""datasets must be provided and contain the single key {OBJECTIVE}"""
+            )
 
         if self._acquisition_function is None:
             self._acquisition_function = self._builder.prepare_acquisition_function(
