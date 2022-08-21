@@ -49,7 +49,7 @@ TrainableProbabilisticModelType = TypeVar(
 """ Contravariant type variable bound to :class:`TrainableProbabilisticModel`. """
 
 
-class AskTellOptimizer(Generic[SearchSpaceType]):
+class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]):
     """
     This class provides Ask/Tell optimization interface. It is designed for those use cases
     when control of the optimization loop by Trieste is impossible or not desirable.
@@ -69,7 +69,7 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
 
     @overload
     def __init__(
-        self,
+        self: AskTellOptimizer[SearchSpaceType, TrainableProbabilisticModel],
         search_space: SearchSpaceType,
         datasets: Mapping[str, Dataset],
         model_specs: Mapping[str, ModelConfigType],
@@ -149,24 +149,10 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
 
     @overload
     def __init__(
-        self,
+        self: AskTellOptimizer[SearchSpaceType, TrainableProbabilisticModel],
         search_space: SearchSpaceType,
         datasets: Dataset,
         model_specs: ModelConfigType,
-        *,
-        fit_model: bool = True,
-    ):
-        ...
-
-    @overload
-    def __init__(
-        self,
-        search_space: SearchSpaceType,
-        datasets: Dataset,
-        model_specs: TrainableProbabilisticModelType,
-        acquisition_rule: AcquisitionRule[
-            TensorType, SearchSpaceType, TrainableProbabilisticModelType
-        ],
         *,
         fit_model: bool = True,
     ):
@@ -289,17 +275,22 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
             self._acquisition_rule = acquisition_rule
 
         if fit_model:
-            for tag, model in self._models.items():
-                dataset = datasets[tag]
-                model.update(dataset)
-                model.optimize(dataset)
+            with Timer() as initial_model_fitting_timer:
+                for tag, model in self._models.items():
+                    dataset = datasets[tag]
+                    model.update(dataset)
+                    model.optimize(dataset)
 
-            # summary_writer = logging.get_tensorboard_writer()
-            # if summary_writer:
-            #     with summary_writer.as_default(step=-1):
-            #         for tag, model in self._models.items():
-            #             with tf.name_scope(f"{tag}.model"):
-            #                 model.log()
+            summary_writer = logging.get_tensorboard_writer()
+            if summary_writer:
+                with summary_writer.as_default(step=logging.get_step_number()):
+                    for tag, model in self._models.items():
+                        with tf.name_scope(f"{tag}.model"):
+                            model.log(datasets[tag])
+                    logging.scalar(
+                        "wallclock/model_fitting",
+                        initial_model_fitting_timer.time,
+                    )
 
     def __repr__(self) -> str:
         """Print-friendly string representation"""
@@ -321,9 +312,19 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
             raise ValueError(f"Expected a single dataset, found {len(self.datasets)}")
 
     @property
-    def models(self) -> Mapping[str, TrainableProbabilisticModel]:
+    def models(self) -> Mapping[str, TrainableProbabilisticModelType]:
         """The current models."""
         return self._models
+
+    @models.setter
+    def models(self, models: Mapping[str, TrainableProbabilisticModelType]) -> None:
+        """Update the current models."""
+        if models.keys() != self.models.keys():
+            raise ValueError(
+                f"New models contain incorrect keys. Expected {self.models.keys()}, "
+                f"received {models.keys()}."
+            )
+        self._models = dict(models)
 
     @property
     def model(self) -> TrainableProbabilisticModel:
@@ -332,6 +333,18 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
             return next(iter(self.models.values()))
         else:
             raise ValueError(f"Expected a single model, found {len(self.models)}")
+
+    @model.setter
+    def model(self, model: TrainableProbabilisticModelType) -> None:
+        """Update the current model, using the OBJECTIVE tag."""
+        if len(self.models) != 1:
+            raise ValueError(f"Expected a single model, found {len(self.models)}")
+        elif self.models.keys() != {OBJECTIVE}:
+            raise ValueError(
+                f"Expected a single model tagged OBJECTIVE, found {self.models.keys()}. "
+                "To update this, pass in a dictionary to the models property instead."
+            )
+        self._models = {OBJECTIVE: model}
 
     @property
     def acquisition_state(self) -> StateType | None:
@@ -349,7 +362,7 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
             TrainableProbabilisticModelType,
         ]
         | None = None,
-    ) -> AskTellOptimizer[SearchSpaceType]:
+    ) -> AskTellOptimizer[SearchSpaceType, TrainableProbabilisticModelType]:
         """Creates new :class:`~AskTellOptimizer` instance from provided optimization state.
         Model training isn't triggered upon creation of the instance.
 
@@ -480,7 +493,7 @@ class AskTellOptimizer(Generic[SearchSpaceType]):
             with summary_writer.as_default(step=logging.get_step_number()):
                 for tag in self._datasets:
                     with tf.name_scope(f"{tag}.model"):
-                        self._models[tag].log()
+                        self._models[tag].log(self._datasets[tag])
                     output_dim = tf.shape(new_data[tag].observations)[-1]
                     for i in tf.range(output_dim):
                         suffix = f"[{i}]" if output_dim > 1 else ""

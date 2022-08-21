@@ -151,25 +151,44 @@ class DeepGaussianProcess(
             state["_model_gpflux"] = gpflow.utilities.parameter_dict(self._model_gpflux)
             state["_model_keras"] = gpflow.utilities.parameter_dict(self._model_keras)
 
-        # serialize all the callback models, pickle the optimizer(!), and revert (ugh!)
+        # use to_json and get_weights to save any optimizer fit_arg callback models
+        callbacks: list[Callback] = self._optimizer.fit_args.get("callbacks", [])
         callback: Callback
         saved_models: list[KerasOptimizer] = []
-        for callback in self._optimizer.fit_args.get("callbacks", []):
-            saved_models.append(callback.model)
-            if callback.model is self._model_keras:
-                # no need to serialize the main model (and it probably wouldn't work anyway)
-                callback.model = ...
-            elif callback.model:
-                callback.model = (callback.model.to_json(), callback.model.get_weights())
-        state["_optimizer"] = dill.dumps(state["_optimizer"])
-        for callback, model in zip(self._optimizer.fit_args.get("callbacks", []), saved_models):
-            callback.model = model
-
+        tensorboard_writers: list[dict[str, Any]] = []
+        try:
+            for callback in callbacks:
+                # serialize the callback models before pickling the optimizer
+                saved_models.append(callback.model)
+                if callback.model is self._model_keras:
+                    # no need to serialize the main model, just use a special value instead
+                    callback.model = ...
+                elif callback.model:
+                    callback.model = (callback.model.to_json(), callback.model.get_weights())
+                # don't pickle tensorboard writers either; they'll be recreated when needed
+                if isinstance(callback, tf.keras.callbacks.TensorBoard):
+                    tensorboard_writers.append(callback._writers)
+                    callback._writers = {}
+            state["_optimizer"] = dill.dumps(state["_optimizer"])
+        except Exception as e:
+            raise NotImplementedError(
+                "Failed to copy DeepGaussianProcess optimizer due to unsupported callbacks."
+            ) from e
+        finally:
+            # revert original state, even if the pickling failed
+            for callback, model in zip(self._optimizer.fit_args.get("callbacks", []), saved_models):
+                callback.model = model
+            for callback, writers in zip(
+                (cb for cb in callbacks if isinstance(cb, tf.keras.callbacks.TensorBoard)),
+                tensorboard_writers,
+            ):
+                callback._writers = writers
         return state
 
     def __setstate__(self, state: dict[str, Any]) -> None:
         self.__dict__.update(state)
 
+        # regenerate the models using the model closure
         if self._model_closure is not None:
             dgp: DeepGP = state["_model_closure"]()
             self._model_gpflux = dgp
@@ -188,18 +207,21 @@ class DeepGaussianProcess(
             )
             self._model_keras = dgp.as_training_model()
 
+        # Unpickle the optimizer, and restore all the callback models
         self._optimizer = dill.loads(self._optimizer)
         for callback in self._optimizer.fit_args.get("callbacks", []):
             if callback.model is ...:
-                callback.model = self._model_keras
+                callback.set_model(self._model_keras)
             elif callback.model:
-                model, weights = callback.model
-                callback.model = tf.keras.models.model_from_json(
-                    model,
-                )
-                callback.model.set_weights(weights)
+                model_json, weights = callback.model
+                model = tf.keras.models.model_from_json(model_json)
+                model.set_weights(weights)
+                callback.set_model(model)
+
+        # recompile the model
         self._model_keras.compile(self._optimizer.optimizer)
 
+        # assign the model parameters
         if self._model_closure is not None:
             gpflow.utilities.multiple_assign(self._model_gpflux, state["_model_gpflux"])
             gpflow.utilities.multiple_assign(self._model_keras, state["_model_keras"])
@@ -218,9 +240,9 @@ class DeepGaussianProcess(
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         trajectory = self.trajectory_sampler().get_trajectory()
-        expanded_query_points = tf.expand_dims(query_points, -2)
-        tiled_query_points = tf.tile(expanded_query_points, [1, num_samples, 1])
-        return tf.expand_dims(tf.transpose(trajectory(tiled_query_points), [1, 0]), -1)
+        expanded_query_points = tf.expand_dims(query_points, -2)  # [N, 1, D]
+        tiled_query_points = tf.tile(expanded_query_points, [1, num_samples, 1])  # [N, S, D]
+        return tf.transpose(trajectory(tiled_query_points), [1, 0, 2])  # [S, N, L]
 
     def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[GPfluxPredictor]:
         """

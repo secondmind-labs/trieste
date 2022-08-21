@@ -657,9 +657,9 @@ def test_gaussian_process_regression_trajectory_sampler_has_correct_samples(
     x_predict = tf.constant([[1.0], [2.0], [3.0], [1.5], [2.5], [3.5]], gpflow.default_float())
     x_predict_parallel = tf.expand_dims(x_predict, -2)  # [N, 1, D]
     x_predict_parallel = tf.tile(x_predict_parallel, [1, num_samples, 1])  # [N, B, D]
-    samples = trajectory(x_predict_parallel)  # [N, B]
-    sample_mean = tf.reduce_mean(samples, axis=1, keepdims=True)
-    sample_variance = tf.math.reduce_variance(samples, axis=1, keepdims=True)
+    samples = trajectory(x_predict_parallel)  # [N, B, 1]
+    sample_mean = tf.reduce_mean(samples, axis=1)  # [N, 1]
+    sample_variance = tf.math.reduce_variance(samples, axis=1)  # [N, 1]
 
     true_mean, true_variance = model.predict(x_predict)
 
@@ -923,9 +923,9 @@ def test_sparse_gaussian_process_regression_trajectory_sampler_has_correct_sampl
     x_predict = tf.constant([[1.0], [2.0], [3.0], [1.5], [2.5], [3.5]], gpflow.default_float())
     x_predict_parallel = tf.expand_dims(x_predict, -2)  # [N, 1, D]
     x_predict_parallel = tf.tile(x_predict_parallel, [1, num_samples, 1])  # [N, B, D]
-    samples = trajectory(x_predict_parallel)  # [N, B]
-    sample_mean = tf.reduce_mean(samples, axis=1, keepdims=True)
-    sample_variance = tf.math.reduce_variance(samples, axis=1, keepdims=True)
+    samples = trajectory(x_predict_parallel)  # [N, B, 1]
+    sample_mean = tf.reduce_mean(samples, axis=1)  # [N, 1]
+    sample_variance = tf.math.reduce_variance(samples, axis=1)  # [N, 1]
 
     true_mean, true_variance = model.predict(x_predict)
 
@@ -1185,9 +1185,9 @@ def test_variational_gaussian_process_trajectory_sampler_has_correct_samples(
     x_predict = tf.constant([[1.0], [2.0], [3.0], [1.5], [2.5], [3.5]], gpflow.default_float())
     x_predict_parallel = tf.expand_dims(x_predict, -2)  # [N, 1, D]
     x_predict_parallel = tf.tile(x_predict_parallel, [1, num_samples, 1])  # [N, B, D]
-    samples = trajectory(x_predict_parallel)  # [N, B]
-    sample_mean = tf.reduce_mean(samples, axis=1, keepdims=True)
-    sample_variance = tf.math.reduce_variance(samples, axis=1, keepdims=True)
+    samples = trajectory(x_predict_parallel)  # [N, B, 1]
+    sample_mean = tf.reduce_mean(samples, axis=1)  # [N, 1]
+    sample_variance = tf.math.reduce_variance(samples, axis=1)  # [N, 1]
 
     true_mean, true_variance = model.predict(x_predict)
 
@@ -1585,9 +1585,9 @@ def test_sparse_variational_trajectory_sampler_has_correct_samples(
     x_predict = tf.constant([[1.0], [2.0], [3.0], [1.5], [2.5], [3.5]], gpflow.default_float())
     x_predict_parallel = tf.expand_dims(x_predict, -2)  # [N, 1, D]
     x_predict_parallel = tf.tile(x_predict_parallel, [1, num_samples, 1])  # [N, B, D]
-    samples = trajectory(x_predict_parallel)  # [N, B]
-    sample_mean = tf.reduce_mean(samples, axis=1, keepdims=True)
-    sample_variance = tf.math.reduce_variance(samples, axis=1, keepdims=True)
+    samples = trajectory(x_predict_parallel)  # [N, B, 1]
+    sample_mean = tf.reduce_mean(samples, axis=1)  # [N, 1]
+    sample_variance = tf.math.reduce_variance(samples, axis=1)  # [N, 1]
 
     true_mean, true_variance = model.predict(x_predict)
 

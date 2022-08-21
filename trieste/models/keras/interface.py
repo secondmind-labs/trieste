@@ -74,11 +74,13 @@ class KerasPredictor(ProbabilisticModel, ABC):
             """
         )
 
-    def log(self) -> None:
+    def log(self, dataset: Optional[Dataset] = None) -> None:
         """
         Log basic model training information at a given optimization step. Note that epoch
         losses and metrics cannot be recorded exactly, only summary statistics. Best approximation
         available is to log histograms of epoch losses and metrics.
+
+        :param dataset: Optional data that can be used to log additional data-based model summaries.
         """
         summary_writer = logging.get_tensorboard_writer()
         if summary_writer:
@@ -90,6 +92,13 @@ class KerasPredictor(ProbabilisticModel, ABC):
                     logging.scalar(f"{k}_diff", v[0] - v[-1])
                     logging.scalar(f"{k}_min", tf.reduce_min(v))
                     logging.scalar(f"{k}_max", tf.reduce_max(v))
+                if dataset:
+                    empirical_variance = tf.reduce_variance(dataset.observations)
+                    predict_variance = model.predict(dataset.query_points)[1]
+                    breakpoint()
+                    logging.histogram("predict_variance", predict_variance)
+                    logging.scalar("model_variance_mean", tf.reduce_mean(predict_variance))
+                    logging.scalar("empirical_variance", empirical_variance)
 
 
 @runtime_checkable
