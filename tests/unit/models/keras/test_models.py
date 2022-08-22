@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import copy
 import operator
+import unittest.mock
 from typing import Any, Optional
 
 import numpy as np
@@ -27,6 +28,7 @@ from tensorflow.python.keras.callbacks import Callback
 from tests.util.misc import ShapeLike, empty_dataset, random_seed
 from tests.util.models.keras.models import trieste_deep_ensemble_model, trieste_keras_ensemble_model
 from trieste.data import Dataset
+from trieste.logging import step_number, tensorboard_writer
 from trieste.models import create_model
 from trieste.models.keras import (
     DeepEnsemble,
@@ -604,3 +606,52 @@ def test_deep_ensemble_deep_copies_optimizer_without_callbacks() -> None:
     model_copy = copy.deepcopy(model)
     assert model_copy.optimizer is not model.optimizer
     assert model_copy.optimizer.fit_args == model.optimizer.fit_args
+
+
+@unittest.mock.patch("trieste.logging.tf.summary.histogram")
+@unittest.mock.patch("trieste.logging.tf.summary.scalar")
+@pytest.mark.parametrize("use_dataset", [True, False])
+def test_deep_ensemble_log(
+    mocked_summary_scalar: unittest.mock.MagicMock,
+    mocked_summary_histogram: unittest.mock.MagicMock,
+    use_dataset: bool,
+) -> None:
+    example_data = _get_example_data([10, 3], [10, 3])
+    keras_ensemble = trieste_keras_ensemble_model(example_data, _ENSEMBLE_SIZE, False)
+    model = DeepEnsemble(keras_ensemble)
+    model.optimize(example_data)
+
+    mocked_summary_writer = unittest.mock.MagicMock()
+    with tensorboard_writer(mocked_summary_writer):
+        with step_number(42):
+            if use_dataset:
+                model.log(example_data)
+            else:
+                model.log(None)
+
+    assert len(mocked_summary_writer.method_calls) == 1
+    assert mocked_summary_writer.method_calls[0][0] == "as_default"
+    assert mocked_summary_writer.method_calls[0][-1]["step"] == 42
+
+    loss_names = ["loss_diff", "loss_final", "loss_min", "loss_max"]
+    metrics_names = ["mse_diff", "mse_final", "mse_min", "mse_max"]
+    accuracy_names = ["accuracy_root_mean_square_error", "accuracy_mean_absolute_error"]
+    variance_stats = ["variance_predict_mean", "variance_empirical"]
+
+    names_scalars = ["num_epochs"] + loss_names + metrics_names
+    num_scalars = 1 + len(loss_names) + _ENSEMBLE_SIZE * len(loss_names + metrics_names)
+    names_histogram = ["loss_epoch"] + ["mse_epoch"]
+    num_histogram = 1 + 2 * _ENSEMBLE_SIZE
+    if use_dataset:
+        names_scalars = names_scalars + accuracy_names + variance_stats
+        num_scalars = num_scalars + len(accuracy_names) + len(variance_stats) + _ENSEMBLE_SIZE
+        names_histogram = names_histogram + ["accuracy_absolute_errors"] + ["variance_predict"]
+        num_histogram = num_histogram + 2 + _ENSEMBLE_SIZE
+
+    assert mocked_summary_scalar.call_count == num_scalars
+    for i in range(len(mocked_summary_scalar.call_args_list)):
+        assert any([j in mocked_summary_scalar.call_args_list[i][0][0] for j in names_scalars])
+
+    assert mocked_summary_histogram.call_count == num_histogram
+    for i in range(len(mocked_summary_histogram.call_args_list)):
+        assert any([j in mocked_summary_histogram.call_args_list[i][0][0] for j in names_histogram])

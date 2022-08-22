@@ -22,6 +22,7 @@ import tensorflow_probability as tfp
 import tensorflow_probability.python.distributions as tfd
 from tensorflow.python.keras.callbacks import Callback
 
+from ... import logging
 from ...data import Dataset
 from ...types import TensorType
 from ..interfaces import HasTrajectorySampler, TrainableProbabilisticModel, TrajectorySampler
@@ -389,6 +390,58 @@ class DeepEnsemble(
         # so that the next time we call `optimize` the starting learning rate would be different.
         # Therefore, we make sure the learning rate is set back to its initial value.
         self.optimizer.optimizer.lr.assign(self.original_lr)
+
+    def log(self, dataset: Optional[Dataset] = None) -> None:
+        """
+        Log basic model training information at a given optimization step. We log several summary
+        statistics of losses and metrics given in ``fit_args`` to ``optimizer``
+        (final, difference between inital and final loss, min and max), for the whole ensemble and
+        individual models. We also log epoch statistics, but as histograms, rather than time series.
+
+        We also log several training data based metrics, such as root mean square error and mean
+        aboslute error between predictions and observations, as well as variances for predictions
+        (means and histograms of individual values).
+
+        For custom logs user will need to subclass the model and overwrite this method.
+
+        :param dataset: Optional data that can be used to log additional data-based model summaries.
+        """
+        summary_writer = logging.get_tensorboard_writer()
+        if summary_writer:
+            with summary_writer.as_default(step=logging.get_step_number()):
+                logging.scalar("num_epochs", len(self.model.history.epoch))
+                for k, v in self.model.history.history.items():
+                    logging.histogram(f"{k}_epoch", v)
+                    logging.scalar(f"{k}_final", v[-1])
+                    logging.scalar(f"{k}_diff", v[0] - v[-1])
+                    logging.scalar(f"{k}_min", tf.reduce_min(v))
+                    logging.scalar(f"{k}_max", tf.reduce_max(v))
+                if dataset:
+                    predict = self.predict(dataset.query_points)
+                    # training accuracy
+                    diffs = predict[0] - tf.cast(dataset.observations, predict[0].dtype)
+                    logging.histogram("accuracy_absolute_errors", tf.math.abs(diffs))
+                    logging.scalar(
+                        "accuracy_root_mean_square_error", tf.math.sqrt(tf.reduce_mean(diffs ** 2))
+                    )
+                    logging.scalar(
+                        "accuracy_mean_absolute_error", tf.reduce_mean(tf.math.abs(diffs))
+                    )
+                    # training variance
+                    logging.histogram("variance_predict", predict[1])
+                    logging.scalar("variance_predict_mean", tf.reduce_mean(predict[1]))
+                    predict_ensemble_variance = self.predict_ensemble(dataset.query_points)[1]
+                    for i in range(predict_ensemble_variance.shape[0]):
+                        logging.histogram(
+                            f"variance_predict_{i}", predict_ensemble_variance[i, ...]
+                        )
+                        logging.scalar(
+                            f"variance_predict_mean_{i}",
+                            tf.reduce_mean(predict_ensemble_variance[i, ...]),
+                        )
+                    # data stats
+                    empirical_variance = tf.math.reduce_variance(dataset.observations)
+                    logging.scalar("variance_empirical", empirical_variance)
 
     def __getstate__(self) -> dict[str, Any]:
         # use to_json and get_weights to save any optimizer fit_arg callback models
