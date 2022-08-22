@@ -633,7 +633,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     acquisition_rule, datasets, models, num_steps, observation_plot_dfs
                 )
 
-        for step in range(num_steps):
+        for step in range(1, num_steps + 1):
             logging.set_step_number(step)
 
             if early_stop_callback and early_stop_callback(datasets, models, acquisition_state):
@@ -667,14 +667,21 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                             "will be available."
                         ) from e
 
-                with Timer() as total_step_wallclock_timer:
+                if step == 1 and fit_initial_model:
                     with Timer() as initial_model_fitting_timer:
-                        if step == 0 and fit_initial_model:
-                            for tag, model in models.items():
-                                dataset = datasets[tag]
-                                model.update(dataset)
-                                model.optimize(dataset)
+                        for tag, model in models.items():
+                            dataset = datasets[tag]
+                            model.update(dataset)
+                            model.optimize(dataset)
+                    if summary_writer:
+                        logging.set_step_number(0)
+                        with summary_writer.as_default(step=0):
+                            self._write_summary_initial_model_fit(
+                                datasets, models, initial_model_fitting_timer
+                            )
+                        logging.set_step_number(step)
 
+                with Timer() as total_step_wallclock_timer:
                     with Timer() as query_point_generation_timer:
                         points_or_stateful = acquisition_rule.acquire(
                             self._search_space, models, datasets=datasets
@@ -707,7 +714,6 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                             models,
                             query_points,
                             tagged_output,
-                            initial_model_fitting_timer,
                             model_fitting_timer,
                             query_point_generation_timer,
                             total_step_wallclock_timer,
@@ -794,13 +800,27 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                 output_stream=absl.logging.INFO,
             )
 
+    def _write_summary_initial_model_fit(
+        self,
+        datasets: Mapping[str, Dataset],
+        models: Mapping[str, TrainableProbabilisticModel],
+        model_fitting_timer: Timer,
+    ) -> None:
+        """Write TensorBoard summary for the model fitting to the initial data."""
+        for tag, model in models.items():
+            with tf.name_scope(f"{tag}.model"):
+                model.log(datasets[tag])
+        logging.scalar(
+            "wallclock/model_fitting",
+            model_fitting_timer.time,
+        )
+
     def _write_summary_step(
         self,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, TrainableProbabilisticModel],
         query_points: TensorType,
         tagged_output: Mapping[str, TensorType],
-        initial_model_fitting_timer: Timer,
         model_fitting_timer: Timer,
         query_point_generation_timer: Timer,
         total_step_wallclock_timer: Timer,
@@ -811,7 +831,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         for tag in datasets:
 
             with tf.name_scope(f"{tag}.model"):
-                models[tag].log()
+                models[tag].log(datasets[tag])
 
             output_dim = tf.shape(tagged_output[tag].observations)[-1]
             for i in tf.range(output_dim):
@@ -916,7 +936,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         )
         logging.scalar(
             "wallclock/model_fitting",
-            model_fitting_timer.time + initial_model_fitting_timer.time,
+            model_fitting_timer.time,
         )
 
 
