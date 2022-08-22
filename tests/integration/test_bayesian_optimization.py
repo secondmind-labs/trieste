@@ -613,9 +613,10 @@ def _test_optimizer_finds_minimum(
 
             if isinstance(acquisition_rule, EfficientGlobalOptimization):
                 acq_function = acquisition_rule.acquisition_function
+                assert acq_function is not None
 
                 # check that acquisition functions defined as classes aren't retraced unnecessarily
-                # They should be retraced once for the optimzier's starting grid, L-BFGS, and logging.
+                # they should be retraced for the optimzier's starting grid, L-BFGS, and logging
                 if isinstance(acq_function, (AcquisitionFunctionClass, TrajectoryFunctionClass)):
                     assert acq_function.__call__._get_tracing_count() == 3  # type: ignore
 
