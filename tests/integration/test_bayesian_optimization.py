@@ -18,6 +18,7 @@ from functools import partial
 from pathlib import Path
 from typing import Any, List, Mapping, Optional, Tuple, Type, cast
 
+import dill
 import gpflow
 import numpy.testing as npt
 import pytest
@@ -610,9 +611,20 @@ def _test_optimizer_finds_minimum(
                     assert loaded_result.final_result.is_ok
                     assert len(loaded_result.history) == len(result.history)
 
-            # check that acquisition functions defined as classes aren't retraced unnecessarily
-            # They should be retraced once for the optimzier's starting grid, L-BFGS, and logging.
             if isinstance(acquisition_rule, EfficientGlobalOptimization):
-                acq_function = acquisition_rule._acquisition_function
+                acq_function = acquisition_rule.acquisition_function
+
+                # check that acquisition functions defined as classes aren't retraced unnecessarily
+                # They should be retraced once for the optimzier's starting grid, L-BFGS, and logging.
                 if isinstance(acq_function, (AcquisitionFunctionClass, TrajectoryFunctionClass)):
                     assert acq_function.__call__._get_tracing_count() == 3  # type: ignore
+
+                # check that acquisition functions can be saved
+                acq_function_copy = dill.loads(dill.dumps(acq_function))
+                if acquisition_rule._num_query_points == 1:
+                    initial_points = tf.expand_dims(initial_data.query_points, 1)
+                    npt.assert_allclose(
+                        acq_function(initial_points), acq_function_copy(initial_points)
+                    )
+                    best_point = tf.expand_dims(tf.expand_dims(best_x, 0), 0)
+                    npt.assert_allclose(acq_function(best_point), acq_function_copy(best_point))
