@@ -16,7 +16,7 @@ This module contains acquisition function builders for continuous Thompson sampl
 """
 from __future__ import annotations
 
-from typing import Callable, Optional
+from typing import Any, Callable, Optional, Type
 
 import tensorflow as tf
 
@@ -179,8 +179,16 @@ class ParallelContinuousThompsonSampling(
         return self._negated_trajectory
 
 
+class _DummyTrajectoryFunctionClass(TrajectoryFunctionClass):
+    # dummy trajectory function class used while pickling NegatedTrajectory
+    def __call__(self, x: TensorType) -> TensorType:
+        return x
+
+
 def negate_trajectory_function(
-    function: TrajectoryFunction, select_output: Optional[Callable[[TensorType], TensorType]] = None
+    function: TrajectoryFunction,
+    select_output: Optional[Callable[[TensorType], TensorType]] = None,
+    function_type: Optional[Type[TrajectoryFunction]] = None,
 ) -> TrajectoryFunction:
     """
     Return the negative of trajectories and select the output to form the acquisition function, so
@@ -192,13 +200,32 @@ def negate_trajectory_function(
     """
     if isinstance(function, TrajectoryFunctionClass):
 
-        class NegatedTrajectory(type(function)):  # type: ignore[misc]
+        class NegatedTrajectory(function_type or type(function)):  # type: ignore[misc]
             @tf.function
             def __call__(self, x: TensorType) -> TensorType:
                 if select_output is not None:
                     return -1.0 * select_output(super().__call__(x))
                 else:
                     return -1.0 * super().__call__(x)
+
+            def __reduce__(
+                self,
+            ) -> tuple[
+                Callable[..., TrajectoryFunction],
+                tuple[
+                    TrajectoryFunction,
+                    Optional[Callable[[TensorType], TensorType]],
+                    Optional[Type[TrajectoryFunction]],
+                ],
+                dict[str, Any],
+            ]:
+                # make this pickleable
+                state = self.__dict__.copy()
+                return (
+                    negate_trajectory_function,
+                    (_DummyTrajectoryFunctionClass(), select_output, function_type),
+                    state,
+                )
 
         function.__class__ = NegatedTrajectory
 
