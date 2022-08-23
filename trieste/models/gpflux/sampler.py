@@ -69,8 +69,6 @@ class DeepGaussianProcessReparamSampler(ReparametrizationSampler[GPfluxPredictor
 
         super().__init__(sample_size, model)
 
-        self._model_gpflux = model.model_gpflux
-
         if not isinstance(self._model_gpflux, DeepGP):
             raise ValueError(
                 f"GPflux model must be a gpflux.models.DeepGP, received {type(self._model_gpflux)}"
@@ -82,6 +80,10 @@ class DeepGaussianProcessReparamSampler(ReparametrizationSampler[GPfluxPredictor
             tf.Variable(tf.ones([sample_size, 0], dtype=tf.float64), shape=[sample_size, None])
             for _ in range(len(self._model_gpflux.f_layers))
         ]
+
+    @property
+    def _model_gpflux(self) -> tf.Module:
+        return self._model.model_gpflux
 
     def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
         """
@@ -161,11 +163,14 @@ class DeepGaussianProcessDecoupledTrajectorySampler(TrajectorySampler[GPfluxPred
         super().__init__(model)
         tf.debugging.assert_positive(num_features)
         self._num_features = num_features
-        self._model_gpflux = model.model_gpflux
         self._sampling_layers = [
             DeepGaussianProcessDecoupledLayer(layer, num_features)
             for layer in self._model_gpflux.f_layers
         ]
+
+    @property
+    def _model_gpflux(self) -> tf.Module:
+        return self._model.model_gpflux
 
     def __repr__(self) -> str:
         """"""
