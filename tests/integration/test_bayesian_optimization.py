@@ -32,6 +32,7 @@ from trieste.acquisition import (
     AugmentedExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
     Fantasizer,
+    GreedyAcquisitionFunctionBuilder,
     GreedyContinuousThompsonSampling,
     LocalPenalization,
     MinValueEntropySearch,
@@ -622,10 +623,10 @@ def _test_optimizer_finds_minimum(
 
                 # check that acquisition functions can be saved
                 acq_function_copy = dill.loads(dill.dumps(acq_function))
-                if acquisition_rule._num_query_points == 1:
-                    initial_points = tf.expand_dims(initial_data.query_points, 1)
-                    npt.assert_allclose(
-                        acq_function(initial_points), acq_function_copy(initial_points)
-                    )
-                    best_point = tf.expand_dims(tf.expand_dims(best_x, 0), 0)
-                    npt.assert_allclose(acq_function(best_point), acq_function_copy(best_point))
+                batch_size = (
+                    1
+                    if isinstance(acquisition_rule._builder, GreedyAcquisitionFunctionBuilder)
+                    else acquisition_rule._num_query_points
+                )
+                random_batch = tf.expand_dims(search_space.sample(batch_size), 0)
+                npt.assert_allclose(acq_function(random_batch), acq_function_copy(random_batch))
