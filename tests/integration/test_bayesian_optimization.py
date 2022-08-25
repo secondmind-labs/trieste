@@ -621,7 +621,14 @@ def _test_optimizer_finds_minimum(
                 if isinstance(acq_function, (AcquisitionFunctionClass, TrajectoryFunctionClass)):
                     assert acq_function.__call__._get_tracing_count() == 3  # type: ignore
 
-                # check that acquisition functions can be saved
+                # update trajectory function if necessary, so we can test it
+                if isinstance(acq_function, TrajectoryFunctionClass):
+                    sampler = (
+                        acquisition_rule._builder.single_builder._trajectory_sampler  # type: ignore
+                    )
+                    sampler.update_trajectory(acq_function)
+
+                # check that acquisition functions can be saved and reloaded
                 acq_function_copy = dill.loads(dill.dumps(acq_function))
                 batch_size = (
                     1
@@ -629,4 +636,6 @@ def _test_optimizer_finds_minimum(
                     else acquisition_rule._num_query_points
                 )
                 random_batch = tf.expand_dims(search_space.sample(batch_size), 0)
-                npt.assert_allclose(acq_function(random_batch), acq_function_copy(random_batch))
+                npt.assert_allclose(
+                    acq_function(random_batch), acq_function_copy(random_batch), rtol=2e-7
+                )

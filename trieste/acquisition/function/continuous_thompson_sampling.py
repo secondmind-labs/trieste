@@ -223,7 +223,7 @@ def negate_trajectory_function(
                 state = self.__dict__.copy()
                 return (
                     negate_trajectory_function,
-                    (_DummyTrajectoryFunctionClass(), select_output, function_type),
+                    (_DummyTrajectoryFunctionClass(), select_output, self.__class__.__bases__[0]),
                     state,
                 )
 
