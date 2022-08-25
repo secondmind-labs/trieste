@@ -23,7 +23,11 @@ import tensorflow as tf
 from tests.util.misc import empty_dataset, quadratic, random_seed
 from tests.util.models.keras.models import trieste_deep_ensemble_model
 from trieste.data import Dataset
-from trieste.models.keras import DeepEnsemble, DeepEnsembleTrajectorySampler
+from trieste.models.keras import (
+    DeepEnsemble,
+    DeepEnsembleTrajectorySampler,
+    deep_ensemble_trajectory,
+)
 from trieste.types import TensorType
 
 _ENSEMBLE_SIZE = 3
@@ -353,9 +357,7 @@ def test_ensemble_trajectory_sampler_trajectory_is_continuous(diversify: bool) -
     npt.assert_array_less(tf.abs(trajectory(test_data + 1e-20) - trajectory(test_data)), 1e-20)
 
 
-def test_ensemble_trajectory_sampler_returns_state(
-    batch_size: int, diversify: bool
-) -> None:
+def test_ensemble_trajectory_sampler_returns_state(batch_size: int, diversify: bool) -> None:
     dim = 3
     num_evals = 10
 
@@ -365,7 +367,7 @@ def test_ensemble_trajectory_sampler_returns_state(
     model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE)
 
     sampler = DeepEnsembleTrajectorySampler(model, diversify=diversify)
-    trajectory = sampler.get_trajectory()
+    trajectory = cast(deep_ensemble_trajectory, sampler.get_trajectory())
 
     if diversify:
         dtype = tf.float32
@@ -374,15 +376,15 @@ def test_ensemble_trajectory_sampler_returns_state(
 
     # before calling the trajectory internal state should not be initialized
     state_pre_call = trajectory.get_state()
-    assert state_pre_call['initialized'] == False
-    assert state_pre_call['batch_size'] == 0
-    assert tf.equal(tf.size(state_pre_call['indices']), 0)
-    assert state_pre_call['indices'].dtype == dtype
+    assert not state_pre_call["initialized"]
+    assert state_pre_call["batch_size"] == 0
+    assert tf.equal(tf.size(state_pre_call["indices"]), 0)
+    assert state_pre_call["indices"].dtype == dtype
 
     # after calling the trajectory internal state should be initialized
-    values = trajectory(test_data)
+    _ = trajectory(test_data)
     state_post_call = trajectory.get_state()
-    assert state_post_call['initialized'] == True
-    assert state_post_call['batch_size'] == batch_size
-    assert tf.equal(tf.size(state_post_call['indices']), batch_size)
-    assert state_post_call['indices'].dtype == dtype
+    assert state_post_call["initialized"]
+    assert state_post_call["batch_size"] == batch_size
+    assert tf.equal(tf.size(state_post_call["indices"]), batch_size)
+    assert state_post_call["indices"].dtype == dtype

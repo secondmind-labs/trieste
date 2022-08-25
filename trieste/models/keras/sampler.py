@@ -19,6 +19,8 @@ of the Trieste's Keras model wrappers.
 
 from __future__ import annotations
 
+from typing import Dict
+
 import tensorflow as tf
 import tensorflow_probability as tfp
 
@@ -205,9 +207,9 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
         Return internal state variables.
         """
         state = {
-            'initialized': self._initialized,
-            'batch_size': self._batch_size,
-            'indices': self._indices,
+            "initialized": self._initialized,
+            "batch_size": self._batch_size,
+            "indices": self._indices,
         }
 
         return state

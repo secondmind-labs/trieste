@@ -21,3 +21,10 @@ from . import config
 from .builders import build_vanilla_deep_gp
 from .interface import GPfluxPredictor
 from .models import DeepGaussianProcess
+from .sampler import (
+    DeepGaussianProcessDecoupledLayer,
+    DeepGaussianProcessDecoupledTrajectorySampler,
+    DeepGaussianProcessReparamSampler,
+    ResampleableDecoupledDeepGaussianProcessFeatureFunctions,
+    dgp_feature_decomposition_trajectory,
+)
