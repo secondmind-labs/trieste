@@ -630,6 +630,8 @@ def _test_optimizer_finds_minimum(
 
                 # check that acquisition functions can be saved and reloaded
                 acq_function_copy = dill.loads(dill.dumps(acq_function))
+
+                # and that the copy gives the same values as the original
                 batch_size = (
                     1
                     if isinstance(acquisition_rule._builder, GreedyAcquisitionFunctionBuilder)

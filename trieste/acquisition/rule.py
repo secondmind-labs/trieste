@@ -136,6 +136,7 @@ class EfficientGlobalOptimization(
         builder: None = None,
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
+        initial_acquisition_function: Optional[AcquisitionFunction] = None,
     ):
         ...
 
@@ -150,6 +151,7 @@ class EfficientGlobalOptimization(
         ),
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
+        initial_acquisition_function: Optional[AcquisitionFunction] = None,
     ):
         ...
 
