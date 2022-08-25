@@ -44,16 +44,27 @@ def _batch_size_fixture(request: Any) -> int:
     return request.param
 
 
+def test_ensemble_trajectory_sampler_raises_for_multi_output_model() -> None:
+    example_data = empty_dataset([2], [2])
+    model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE)
+
+    with pytest.raises(NotImplementedError):
+        DeepEnsembleTrajectorySampler(model, diversify=True)
+
+
+@pytest.mark.parametrize("diversify, num_outputs", [(True, 1), (False, 1), (False, 2)])
 def test_ensemble_trajectory_sampler_returns_trajectory_function_with_correctly_shaped_output(
     num_evals: int,
     batch_size: int,
     dim: int,
     diversify: bool,
+    num_outputs: int,
 ) -> None:
     """
-    Inputs should be [N,B,d] while output should be [N,B]
+    Inputs should be [N,B,d] while output should be [N,B,M]. Note that for diversify
+    option only single output models are allowed.
     """
-    example_data = empty_dataset([dim], [1])
+    example_data = empty_dataset([dim], [num_outputs])
     test_data = tf.random.uniform([num_evals, batch_size, dim])  # [N, B, d]
 
     model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE)
@@ -61,7 +72,7 @@ def test_ensemble_trajectory_sampler_returns_trajectory_function_with_correctly_
     sampler = DeepEnsembleTrajectorySampler(model, diversify=diversify)
     trajectory = sampler.get_trajectory()
 
-    assert trajectory(test_data).shape == (num_evals, batch_size, 1)
+    assert trajectory(test_data).shape == (num_evals, batch_size, num_outputs)
 
 
 def test_ensemble_trajectory_sampler_returns_deterministic_trajectory(
@@ -340,3 +351,38 @@ def test_ensemble_trajectory_sampler_trajectory_is_continuous(diversify: bool) -
     trajectory = trajectory_sampler.get_trajectory()
 
     npt.assert_array_less(tf.abs(trajectory(test_data + 1e-20) - trajectory(test_data)), 1e-20)
+
+
+def test_ensemble_trajectory_sampler_returns_state(
+    batch_size: int, diversify: bool
+) -> None:
+    dim = 3
+    num_evals = 10
+
+    example_data = empty_dataset([dim], [1])
+    test_data = tf.random.uniform([num_evals, batch_size, dim])  # [N, B, d]
+
+    model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE)
+
+    sampler = DeepEnsembleTrajectorySampler(model, diversify=diversify)
+    trajectory = sampler.get_trajectory()
+
+    if diversify:
+        dtype = tf.float32
+    else:
+        dtype = tf.int32
+
+    # before calling the trajectory internal state should not be initialized
+    state_pre_call = trajectory.get_state()
+    assert state_pre_call['initialized'] == False
+    assert state_pre_call['batch_size'] == 0
+    assert tf.equal(tf.size(state_pre_call['indices']), 0)
+    assert state_pre_call['indices'].dtype == dtype
+
+    # after calling the trajectory internal state should be initialized
+    values = trajectory(test_data)
+    state_post_call = trajectory.get_state()
+    assert state_post_call['initialized'] == True
+    assert state_post_call['batch_size'] == batch_size
+    assert tf.equal(tf.size(state_post_call['indices']), batch_size)
+    assert state_post_call['indices'].dtype == dtype
