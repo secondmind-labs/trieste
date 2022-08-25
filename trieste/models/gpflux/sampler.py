@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from abc import ABC
-from typing import Any, Callable, List, cast
+from typing import Any, Callable, cast
 
 import gpflow.kernels
 import gpflux.layers.basis_functions
@@ -163,14 +163,6 @@ class DeepGaussianProcessDecoupledTrajectorySampler(TrajectorySampler[GPfluxPred
         super().__init__(model)
         tf.debugging.assert_positive(num_features)
         self._num_features = num_features
-        self._sampling_layers = [
-            DeepGaussianProcessDecoupledLayer(layer, num_features)
-            for layer in self._model_gpflux.f_layers
-        ]
-
-    @property
-    def _model_gpflux(self) -> tf.Module:
-        return self._model.model_gpflux
 
     def __repr__(self) -> str:
         """"""
@@ -187,7 +179,7 @@ class DeepGaussianProcessDecoupledTrajectorySampler(TrajectorySampler[GPfluxPred
             taking an input of shape `[N, B, D]` and returning shape `[N, B, L]`.
         """
 
-        return dgp_feature_decomposition_trajectory(self._sampling_layers)
+        return dgp_feature_decomposition_trajectory(self._model, self._num_features)
 
     def update_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction:
         """
@@ -451,11 +443,32 @@ class dgp_feature_decomposition_trajectory(TrajectoryFunctionClass):
     resample.
     """
 
-    def __init__(self, sampling_layers: List[DeepGaussianProcessDecoupledLayer]):
+    def __init__(self, model: GPfluxPredictor, num_features: int):
         """
         :param sampling_layers: Samplers corresponding to each layer of the DGP model.
         """
-        self._sampling_layers = sampling_layers
+        self._model = model
+        self._num_features = num_features
+        self._sampling_layers = [
+            DeepGaussianProcessDecoupledLayer(layer, num_features)
+            for layer in self._model_gpflux.f_layers
+        ]
+
+    @property
+    def _model_gpflux(self) -> tf.Module:
+        return self._model.model_gpflux
+
+    def __getstate__(self) -> dict[str, Any]:
+        state = self.__dict__.copy()
+        del state["_sampling_layers"]
+        return state
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        self.__dict__.update(state)
+        self._sampling_layers = [
+            DeepGaussianProcessDecoupledLayer(layer, self._num_features)
+            for layer in self._model_gpflux.f_layers
+        ]
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:

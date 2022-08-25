@@ -220,10 +220,12 @@ def negate_trajectory_function(
                 dict[str, Any],
             ]:
                 # make this pickleable
-                state = self.__dict__.copy()
+                state = (
+                    self.__getstate__() if hasattr(self, "__getstate__") else self.__dict__.copy()
+                )
                 return (
                     negate_trajectory_function,
-                    (_DummyTrajectoryFunctionClass(), select_output, self.__class__.__bases__[0]),
+                    (_DummyTrajectoryFunctionClass(), select_output, self.__class__.__base__),
                     state,
                 )
 
