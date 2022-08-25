@@ -399,8 +399,8 @@ class DeepEnsemble(
         individual models. We also log epoch statistics, but as histograms, rather than time series.
 
         We also log several training data based metrics, such as root mean square error and mean
-        aboslute error between predictions and observations, as well as variances for predictions
-        (means and histograms of individual values).
+        aboslute error between predictions and observations, variances for predictions and several
+        others.
 
         For custom logs user will need to subclass the model and overwrite this method.
 
