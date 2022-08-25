@@ -155,7 +155,7 @@ def test_deep_ensemble_default_optimizer_is_correct() -> None:
     default_loss = negative_log_likelihood
     default_fit_args = {
         "verbose": 0,
-        "epochs": 1000,
+        "epochs": 3000,
         "batch_size": 16,
     }
     del model.optimizer.fit_args["callbacks"]
@@ -387,7 +387,7 @@ def test_deep_ensemble_loss(bootstrap_data: bool) -> None:
     tranformed_x, tranformed_y = _ensemblise_data(
         reference_model, example_data, _ENSEMBLE_SIZE, bootstrap_data
     )
-    loss = model.model.evaluate(tranformed_x, tranformed_y)
+    loss = model.model.evaluate(tranformed_x, tranformed_y)[: _ENSEMBLE_SIZE + 1]
     reference_loss = reference_model.model.evaluate(tranformed_x, tranformed_y)
 
     npt.assert_allclose(loss, reference_loss, rtol=1e-6)
