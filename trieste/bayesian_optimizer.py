@@ -39,8 +39,8 @@ from typing import (
 import absl
 import dill
 import numpy as np
-from scipy.spatial.distance import pdist
 import tensorflow as tf
+from scipy.spatial.distance import pdist
 
 from .acquisition.multi_objective import non_dominated
 
@@ -911,16 +911,14 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     logging.scalar(f"query_points/[{i}]", float(query_points[0, i]))
                 else:
                     logging.histogram(f"query_points/[{i}]", query_points[:, i])
-            logging.histogram(f"query_points/euclidean_distances", pdist(query_points))
-
+            logging.histogram("query_points/euclidean_distances", pdist(query_points))
 
         if pd and sns and logging.include_summary("query_points/_pairplot"):
             columns = [f"x{i}" for i in range(tf.shape(query_points)[1])]
             qp_preds = query_points
             for tag in datasets:
                 qp_preds = tf.concat(
-                    [qp_preds, tf.cast(models[tag].predict(query_points)[0], query_points.dtype)],
-                    1
+                    [qp_preds, tf.cast(models[tag].predict(query_points)[0], query_points.dtype)], 1
                 )
                 columns.append(f"{tag} predicted")
             query_new_df = pd.DataFrame(qp_preds, columns=columns).applymap(float)
