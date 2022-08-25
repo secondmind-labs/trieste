@@ -222,16 +222,22 @@ class DeepGaussianProcessDecoupledLayer(ABC):
 
     def __init__(
         self,
-        layer: GPLayer,
+        model: GPfluxPredictor,
+        layer_number: int,
         num_features: int = 1000,
     ):
         """
-        :param layer: The layer that we wish to sample from.
+        :param model: The model to sample from.
+        :param layer_number: The index of the layer that we wish to sample from.
         :param num_features: The number of features to use in the random feature approximation.
         :raise ValueError (or InvalidArgumentError): If the layer is not a
             :class:`~gpflux.layers.GPLayer`, the layer's kernel is not supported, or if
             ``num_features`` is not positive.
         """
+        self._model = model
+        self._layer_number = layer_number
+        layer = self._layer
+
         if not isinstance(layer, GPLayer):
             raise ValueError(
                 f"Layers other than gpflux.layers.GPLayer are not currently supported, received"
@@ -240,7 +246,6 @@ class DeepGaussianProcessDecoupledLayer(ABC):
 
         tf.debugging.assert_positive(num_features)
         self._num_features = num_features
-        self._layer = layer
 
         if isinstance(layer.kernel, gpflow.kernels.MultioutputKernel):
             if not isinstance(layer.kernel, gpflow.kernels.SharedIndependent):
@@ -267,6 +272,10 @@ class DeepGaussianProcessDecoupledLayer(ABC):
         )
 
         self._batch_size = tf.Variable(0, dtype=tf.int32)
+
+    @property
+    def _layer(self) -> GPLayer:
+        return self._model.model_gpflux.f_layers[self._layer_number]
 
     def __call__(self, x: TensorType) -> TensorType:  # [N, B, D] -> [N, B, P]
         """
@@ -445,29 +454,12 @@ class dgp_feature_decomposition_trajectory(TrajectoryFunctionClass):
 
     def __init__(self, model: GPfluxPredictor, num_features: int):
         """
-        :param sampling_layers: Samplers corresponding to each layer of the DGP model.
+        :param model: The model to sample from.
+        :param num_features: The number of random Fourier features to use.
         """
-        self._model = model
-        self._num_features = num_features
         self._sampling_layers = [
-            DeepGaussianProcessDecoupledLayer(layer, num_features)
-            for layer in self._model_gpflux.f_layers
-        ]
-
-    @property
-    def _model_gpflux(self) -> tf.Module:
-        return self._model.model_gpflux
-
-    def __getstate__(self) -> dict[str, Any]:
-        state = self.__dict__.copy()
-        del state["_sampling_layers"]
-        return state
-
-    def __setstate__(self, state: dict[str, Any]) -> None:
-        self.__dict__.update(state)
-        self._sampling_layers = [
-            DeepGaussianProcessDecoupledLayer(layer, self._num_features)
-            for layer in self._model_gpflux.f_layers
+            DeepGaussianProcessDecoupledLayer(model, i, num_features)
+            for i in range(len(model.model_gpflux.f_layers))
         ]
 
     @tf.function
