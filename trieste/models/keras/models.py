@@ -409,39 +409,59 @@ class DeepEnsemble(
         summary_writer = logging.get_tensorboard_writer()
         if summary_writer:
             with summary_writer.as_default(step=logging.get_step_number()):
-                logging.scalar("num_epochs", len(self.model.history.epoch))
+                logging.scalar("epochs/num_epochs", len(self.model.history.epoch))
                 for k, v in self.model.history.history.items():
-                    logging.histogram(f"{k}_epoch", v)
-                    logging.scalar(f"{k}_final", v[-1])
-                    logging.scalar(f"{k}_diff", v[0] - v[-1])
-                    logging.scalar(f"{k}_min", tf.reduce_min(v))
-                    logging.scalar(f"{k}_max", tf.reduce_max(v))
+                    k_sep = k.split("_")
+                    if "loss" in k and "model" in k:
+                        pre = "loss"
+                        post = f"_{k_sep[0]}_{k_sep[1]}"
+                    elif "loss" not in k and "model" in k:
+                        pre = k_sep[-1]
+                        post = f"_{k_sep[0]}_{k_sep[1]}"
+                    else:
+                        pre = k
+                        post = ""
+                    logging.histogram(f"{pre}/epoch{post}", lambda: v)
+                    logging.scalar(f"{pre}/final{post}", lambda: v[-1])
+                    logging.scalar(f"{pre}/diff{post}", lambda: v[0] - v[-1])
+                    logging.scalar(f"{pre}/min{post}", lambda: tf.reduce_min(v))
+                    logging.scalar(f"{pre}/max{post}", lambda: tf.reduce_max(v))
                 if dataset:
                     predict = self.predict(dataset.query_points)
                     # training accuracy
-                    diffs = predict[0] - tf.cast(dataset.observations, predict[0].dtype)
-                    logging.histogram("accuracy_absolute_errors", tf.math.abs(diffs))
+                    diffs = tf.cast(dataset.observations, predict[0].dtype) - predict[0]
+                    z_residuals = diffs / tf.math.sqrt(predict[1])
+                    logging.histogram("accuracy/absolute_errors", tf.math.abs(diffs))
+                    logging.histogram("accuracy/z_residuals", z_residuals)
                     logging.scalar(
-                        "accuracy_root_mean_square_error", tf.math.sqrt(tf.reduce_mean(diffs ** 2))
+                        "accuracy/root_mean_square_error", tf.math.sqrt(tf.reduce_mean(diffs ** 2))
                     )
                     logging.scalar(
-                        "accuracy_mean_absolute_error", tf.reduce_mean(tf.math.abs(diffs))
+                        "accuracy/mean_absolute_error", tf.reduce_mean(tf.math.abs(diffs))
                     )
+                    logging.scalar("accuracy/z_residuals_std", tf.math.reduce_std(z_residuals))
                     # training variance
-                    logging.histogram("variance_predict", predict[1])
-                    logging.scalar("variance_predict_mean", tf.reduce_mean(predict[1]))
+                    variance_error = predict[1] - diffs ** 2
+                    logging.histogram("variance/predict_variance", predict[1])
+                    logging.histogram("variance/variance_error", variance_error)
+                    logging.scalar("variance/predict_variance_mean", tf.reduce_mean(predict[1]))
+                    logging.scalar(
+                        "variance/root_mean_variance_error",
+                        tf.math.sqrt(tf.reduce_mean(variance_error ** 2)),
+                    )
                     predict_ensemble_variance = self.predict_ensemble(dataset.query_points)[1]
                     for i in range(predict_ensemble_variance.shape[0]):
                         logging.histogram(
-                            f"variance_predict_{i}", predict_ensemble_variance[i, ...]
+                            f"variance/predict_variance_model_{i}",
+                            predict_ensemble_variance[i, ...],
                         )
                         logging.scalar(
-                            f"variance_predict_mean_{i}",
+                            f"variance/predict_variance_mean_model_{i}",
                             tf.reduce_mean(predict_ensemble_variance[i, ...]),
                         )
                     # data stats
                     empirical_variance = tf.math.reduce_variance(dataset.observations)
-                    logging.scalar("variance_empirical", empirical_variance)
+                    logging.scalar("variance/empirical", empirical_variance)
 
     def __getstate__(self) -> dict[str, Any]:
         # use to_json and get_weights to save any optimizer fit_arg callback models
