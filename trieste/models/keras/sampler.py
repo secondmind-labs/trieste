@@ -133,7 +133,7 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
         self._batch_size = tf.Variable(0, dtype=tf.int32, trainable=False)
 
         if self._diversify:
-            self._indices = tf.Variable(
+            self._quantiles = tf.Variable(
                 tf.zeros([0], dtype=tf.float32), shape=[None], trainable=False
             )
         else:
@@ -168,7 +168,7 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
         if self._diversify:
             predicted_means, predicted_vars = self._model.predict(flat_x)  # ([N*B, 1], [N*B, 1])
             normal = tfp.distributions.Normal(predicted_means, tf.sqrt(predicted_vars))
-            predictions = tf.map_fn(normal.quantile, self._indices)  # [B, N*B, 1]
+            predictions = tf.map_fn(normal.quantile, self._quantiles)  # [B, N*B, 1]
         else:
             ensemble_distributions = self._model.ensemble_distributions(flat_x)
             predicted_means = tf.convert_to_tensor([dist.mean() for dist in ensemble_distributions])
@@ -191,7 +191,7 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
         Efficiently resample network indices in-place, without retracing.
         """
         if self._diversify:
-            self._indices.assign(
+            self._quantiles.assign(
                 tf.random.uniform(
                     shape=(self._batch_size,),
                     minval=0.000001,
@@ -209,7 +209,10 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
         state = {
             "initialized": self._initialized,
             "batch_size": self._batch_size,
-            "indices": self._indices,
         }
+        if self._diversify:
+            state["quantiles"] = self._quantiles
+        else:
+            state["indices"] = self._indices
 
         return state
