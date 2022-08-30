@@ -371,20 +371,22 @@ def test_ensemble_trajectory_sampler_returns_state(batch_size: int, diversify: b
 
     if diversify:
         dtype = tf.float32
+        rnd_state_name = "quantiles"
     else:
         dtype = tf.int32
+        rnd_state_name = "indices"
 
     # before calling the trajectory internal state should not be initialized
     state_pre_call = trajectory.get_state()
     assert not state_pre_call["initialized"]
     assert state_pre_call["batch_size"] == 0
-    assert tf.equal(tf.size(state_pre_call["indices"]), 0)
-    assert state_pre_call["indices"].dtype == dtype
+    assert tf.equal(tf.size(state_pre_call[rnd_state_name]), 0)
+    assert state_pre_call[rnd_state_name].dtype == dtype
 
     # after calling the trajectory internal state should be initialized
     _ = trajectory(test_data)
     state_post_call = trajectory.get_state()
     assert state_post_call["initialized"]
     assert state_post_call["batch_size"] == batch_size
-    assert tf.equal(tf.size(state_post_call["indices"]), batch_size)
-    assert state_post_call["indices"].dtype == dtype
+    assert tf.equal(tf.size(state_post_call[rnd_state_name]), batch_size)
+    assert state_post_call[rnd_state_name].dtype == dtype
