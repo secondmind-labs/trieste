@@ -604,3 +604,21 @@ def test_deep_ensemble_deep_copies_optimizer_without_callbacks() -> None:
     model_copy = copy.deepcopy(model)
     assert model_copy.optimizer is not model.optimizer
     assert model_copy.optimizer.fit_args == model.optimizer.fit_args
+
+
+def test_deep_ensemble_deep_copies_optimization_history() -> None:
+    example_data = _get_example_data([10, 3], [10, 3])
+    keras_ensemble = trieste_keras_ensemble_model(example_data, _ENSEMBLE_SIZE, False)
+    model = DeepEnsemble(keras_ensemble)
+    model.optimize(example_data)
+
+    assert model.model.history.history
+    expected_history = model.model.history.history
+
+    model_copy = copy.deepcopy(model)
+    assert model_copy.model.history.history
+    history = model_copy.model.history.history
+
+    assert history.keys() == expected_history.keys()
+    for k, v in expected_history.items():
+        assert history[k] == v
