@@ -52,7 +52,7 @@ copyright = (
 author = "The Trieste Contributors"
 
 # The full version, including alpha/beta/rc tags
-release = Path("../VERSION").read_text().strip()
+release = Path("../trieste/VERSION").read_text().strip()
 
 # -- General configuration ---------------------------------------------------
 
