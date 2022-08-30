@@ -1139,35 +1139,12 @@ class BatchHypervolumeSharpeRatioIndicator(
         )
         """
 
-    class MeanStdTradeoff(PymooProblem):  # type: ignore[misc]
-        """Inner class that formulates the mean/std optimisation problem as a
-        pymoo problem
-        """
-
-        def __init__(self, probabilistic_model: ProbabilisticModel, search_space: SearchSpaceType):
-            super().__init__(
-                n_var=int(search_space.dimension),
-                n_obj=2,
-                n_constr=0,
-                xl=np.array(search_space.lower),
-                xu=np.array(search_space.upper),
-            )
-            self.probabilistic_model = probabilistic_model
-
-        def _evaluate(
-            self, x: TensorType, out: dict[str, TensorType], *args: Any, **kwargs: Any
-        ) -> None:
-            mean, var = self.probabilistic_model.predict_y(x)
-            # Flip sign on std so that minimising is increasing std
-            std = -1 * np.sqrt(np.array(var))
-            out["F"] = np.concatenate([np.array(mean), std], axis=1)
-
     def _find_non_dominated_points(
         self, model: ProbabilisticModel, search_space: SearchSpaceType
     ) -> tuple[TensorType, TensorType]:
         """Uses NSGA-II to find high-quality non-dominated points"""
 
-        problem = self.MeanStdTradeoff(model, search_space)
+        problem = _MeanStdTradeoff(model, search_space)
         algorithm = NSGA2(pop_size=self._population_size)
         res = minimize(problem, algorithm, ("n_gen", self._n_generations), seed=1, verbose=False)
 
@@ -1252,3 +1229,28 @@ class BatchHypervolumeSharpeRatioIndicator(
         batch = filtered_points[batch_ids]
 
         return batch
+
+class _MeanStdTradeoff(PymooProblem):  # type: ignore[misc]
+    """Inner class that formulates the mean/std optimisation problem as a
+    pymoo problem"""
+    def __init__(self, probabilistic_model: ProbabilisticModel, search_space: SearchSpaceType):
+        """
+        :param probabilistic_model: The probabilistic model to find optimal mean/stds from
+        :param search_space: The search space for the optimisation
+        """
+        super().__init__(
+            n_var=int(search_space.dimension),
+            n_obj=2,
+            n_constr=0,
+            xl=np.array(search_space.lower),
+            xu=np.array(search_space.upper),
+        )
+        self.probabilistic_model = probabilistic_model
+
+    def _evaluate(
+        self, x: TensorType, out: dict[str, TensorType], *args: Any, **kwargs: Any
+    ) -> None:
+        mean, var = self.probabilistic_model.predict_y(x)
+        # Flip sign on std so that minimising is increasing std
+        std = -1 * np.sqrt(np.array(var))
+        out["F"] = np.concatenate([np.array(mean), std], axis=1)
