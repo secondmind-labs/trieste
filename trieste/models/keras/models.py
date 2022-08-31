@@ -411,17 +411,16 @@ class DeepEnsemble(
         # Unpickle the optimizer, and restore all the callback models
         self._optimizer = dill.loads(self._optimizer)
         for callback in self._optimizer.fit_args.get("callbacks", []):
-            if callback.model:
-                if callback.model is ...:
-                    callback.set_model(self.model)
-                elif callback.model:
-                    model_json, weights = callback.model
-                    model = tf.keras.models.model_from_json(
-                        model_json,
-                        custom_objects={"MultivariateNormalTriL": MultivariateNormalTriL},
-                    )
-                    model.set_weights(weights)
-                    callback.set_model(model)
+            if callback.model is ...:
+                callback.set_model(self.model)
+            elif callback.model:
+                model_json, weights = callback.model
+                model = tf.keras.models.model_from_json(
+                    model_json,
+                    custom_objects={"MultivariateNormalTriL": MultivariateNormalTriL},
+                )
+                model.set_weights(weights)
+                callback.set_model(model)
 
         # Recompile the model
         self.model.compile(
