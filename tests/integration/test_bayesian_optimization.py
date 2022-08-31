@@ -45,6 +45,7 @@ from trieste.acquisition.rule import (
     AsynchronousGreedy,
     AsynchronousOptimization,
     AsynchronousRuleState,
+    BatchHypervolumeSharpeRatioIndicator,
     DiscreteThompsonSampling,
     EfficientGlobalOptimization,
     TrustRegion,
@@ -206,6 +207,9 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                     num_query_points=5,
                 ),
                 id="ParallelContinuousThompsonSampling",
+            ),
+            pytest.param(
+                15, BatchHypervolumeSharpeRatioIndicator(), id="BatchHypevolumeSharpeRatioIndicator"
             ),
         ],
     )
