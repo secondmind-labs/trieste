@@ -833,6 +833,7 @@ def test_asynchronous_rule_add_pending_points() -> None:
         (10, 500, 200, 1.1),
     ],
 )
+@pytest.mark.qhsri
 def test_qhsri_raises_invalid_parameters(
     batch_size: int, ga_population_size: int, ga_n_generations: int, filter_threshold: float
 ) -> None:
@@ -852,6 +853,7 @@ def test_qhsri_raises_invalid_parameters(
     ],
 )
 @pytest.mark.parametrize("datasets", [{}, {OBJECTIVE: empty_dataset([1], [1])}])
+@pytest.mark.qhsri
 def test_qhsri_raises_for_invalid_models_keys(
     datasets: dict[str, Dataset], models: dict[str, ProbabilisticModel]
 ) -> None:
@@ -870,6 +872,7 @@ def test_qhsri_raises_for_invalid_models_keys(
         {"foo": empty_dataset([1], [1]), OBJECTIVE: empty_dataset([1], [1])},
     ],
 )
+@pytest.mark.qhsri
 def test_qhsri_raises_for_invalid_dataset_keys(
     datasets: dict[str, Dataset], models: dict[str, ProbabilisticModel]
 ) -> None:

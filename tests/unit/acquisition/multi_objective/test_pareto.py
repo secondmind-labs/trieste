@@ -106,6 +106,7 @@ def test_get_reference_point_extract_based_on_pareto_front(
     tf.debugging.assert_equal(get_reference_point(observations), expected)
 
 
+@pytest.mark.qhsri
 def test_pareto_sample_raises_too_large_sample_size() -> None:
     observations = tf.constant([[1.0, -1.0], [-1.0, 1.0]])
     pareto_set = Pareto(observations)
@@ -113,6 +114,7 @@ def test_pareto_sample_raises_too_large_sample_size() -> None:
         pareto_set.sample(3)
 
 
+@pytest.mark.qhsri
 def test_pareto_sample_raises_zero_range() -> None:
     observations = tf.constant([[1.0, 1.0], [1.0, 1.0]])
     pareto_set = Pareto(observations)
@@ -120,6 +122,7 @@ def test_pareto_sample_raises_zero_range() -> None:
         pareto_set.sample(1)
 
 
+@pytest.mark.qhsri
 def test_pareto_sample_get_bounds() -> None:
     observations = tf.constant([[1.0, -1.0], [-1.0, 1.0]])
     pareto_set = Pareto(observations)
@@ -130,6 +133,7 @@ def test_pareto_sample_get_bounds() -> None:
     npt.assert_allclose(expected_reference_point, reference_point)
 
 
+@pytest.mark.qhsri
 def test_pareto_sample_calculate_p() -> None:
     observations = tf.constant([[1.0, -1.0], [-1.0, 1.0]])
     lower_bound = tf.constant([-2.0, -2.0])
@@ -140,6 +144,7 @@ def test_pareto_sample_calculate_p() -> None:
     npt.assert_array_equal(expected_output, output)
 
 
+@pytest.mark.qhsri
 def test_pareto_sample_choose_batch() -> None:
     observations = tf.constant([[2.0, -2.0], [1.0, -1.0], [0.0, 0.0], [-1.0, 1.0], [-2.0, 2.0]])
     x_star = tf.constant([[0.15], [0.25], [0.2], [0.3], [0.1]])
