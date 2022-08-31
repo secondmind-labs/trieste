@@ -92,6 +92,14 @@ class DeepEnsembleModel(ProbabilisticModel, Protocol):
         """
         raise NotImplementedError
 
+    @property
+    @abstractmethod
+    def num_outputs(self) -> int:
+        """
+        Returns the number of outputs trained on by each member network.
+        """
+        raise NotImplementedError
+
     @abstractmethod
     def ensemble_distributions(
         self, query_points: TensorType

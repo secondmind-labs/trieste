@@ -127,14 +127,6 @@ def test_deep_ensemble_model_attributes() -> None:
     assert model.model is keras_ensemble.model
 
 
-def test_deep_ensemble_trajectory_sampler_raises_for_multi_output_model() -> None:
-    example_data = empty_dataset([2], [2])
-    model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE, False, False)
-
-    with pytest.raises(NotImplementedError):
-        model.trajectory_sampler()
-
-
 def test_deep_ensemble_ensemble_size_attributes(ensemble_size: int) -> None:
     example_data = empty_dataset([1], [1])
     model, _, _ = trieste_deep_ensemble_model(example_data, ensemble_size, False, False)

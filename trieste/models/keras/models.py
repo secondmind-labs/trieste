@@ -240,7 +240,7 @@ class DeepEnsemble(
             + \mu^2_{\theta_m}(\mathbf{x})) - \mu^2_{*}(\mathbf{x})
 
         This method assumes that the final layer in each member of the ensemble is
-        probabilistic, an instance of :class:`¬tfp.distributions.Distribution`. In particular, given
+        probabilistic, an instance of :class:`~tfp.distributions.Distribution`. In particular, given
         the nature of the approximations stated above the final layer should be a Gaussian
         distribution with `mean` and `variance` methods.
 
@@ -326,21 +326,10 @@ class DeepEnsemble(
         Return a trajectory sampler. For :class:`DeepEnsemble`, we use an ensemble
         sampler that randomly picks a network from the ensemble and uses its predicted means
         for generating a trajectory, or optionally randomly sampled quantiles rather than means.
-
-        At the moment only models with single output are supported.
+        Only models with single output are supported with diversify option.
 
         :return: The trajectory sampler.
-        :raise NotImplementedError: If we try to use the sampler with a model that has more than
-            one output.
         """
-        if self.num_outputs > 1:
-            raise NotImplementedError(
-                f"""
-                Trajectory sampler does not currently support models with multiple outputs,
-                however received a model with {self.num_outputs} outputs.
-                """
-            )
-
         return DeepEnsembleTrajectorySampler(self, self._diversify)
 
     def update(self, dataset: Dataset) -> None:
