@@ -911,7 +911,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     logging.scalar(f"query_points/[{i}]", float(query_points[0, i]))
                 else:
                     logging.histogram(f"query_points/[{i}]", query_points[:, i])
-            logging.histogram("query_points/euclidean_distances", pdist(query_points))
+            logging.histogram("query_points/euclidean_distances", lambda: pdist(query_points))
 
         if pd and sns and logging.include_summary("query_points/_pairplot"):
             columns = [f"x{i}" for i in range(tf.shape(query_points)[1])]

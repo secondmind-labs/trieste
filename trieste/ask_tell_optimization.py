@@ -458,7 +458,9 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
                             logging.scalar(f"query_points/[{i}]", float(query_points[0, i]))
                         else:
                             logging.histogram(f"query_points/[{i}]", query_points[:, i])
-                    logging.histogram("query_points/euclidean_distances", pdist(query_points))
+                    logging.histogram(
+                        "query_points/euclidean_distances", lambda: pdist(query_points)
+                    )
                 logging.scalar(
                     "wallclock/query_point_generation",
                     query_point_generation_timer.time,
