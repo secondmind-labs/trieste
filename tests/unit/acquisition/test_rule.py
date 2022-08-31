@@ -255,6 +255,53 @@ def test_efficient_global_optimization(optimizer: AcquisitionOptimizer[Box]) -> 
     assert function._updated
 
 
+def test_efficient_global_optimization_initial_acquisition_function() -> None:
+    class NoisyNegQuadratic(SingleModelAcquisitionBuilder[ProbabilisticModel]):
+        def prepare_acquisition_function(
+            self,
+            model: ProbabilisticModel,
+            dataset: Optional[Dataset] = None,
+        ) -> AcquisitionFunction:
+            noise = tf.random.uniform([], -0.05, 0.05, dtype=tf.float64)
+            return lambda x: -quadratic(tf.squeeze(x, -2) - 1) + noise
+
+        def update_acquisition_function(
+            self,
+            function: AcquisitionFunction,
+            model: ProbabilisticModel,
+            dataset: Optional[Dataset] = None,
+        ) -> AcquisitionFunction:
+            return function
+
+    builder = NoisyNegQuadratic()
+    search_space = Box([-10], [10])
+    ego = EfficientGlobalOptimization[Box, ProbabilisticModel](builder)
+    data, model = empty_dataset([1], [1]), QuadraticMeanAndRBFKernel(x_shift=1)
+    ego.acquire_single(search_space, model, dataset=data)
+    assert ego.acquisition_function is not None
+
+    # check that we can create a new EGO with the exact same AF state
+    acq_func = copy.deepcopy(ego.acquisition_function)
+    ego_copy = EfficientGlobalOptimization[Box, ProbabilisticModel](
+        builder, initial_acquisition_function=acq_func
+    )
+    ego_copy.acquire_single(search_space, model, dataset=data)
+    assert ego_copy.acquisition_function is not None
+    x = search_space.sample(1)
+    npt.assert_allclose(ego.acquisition_function(x), ego_copy.acquisition_function(x))
+
+    # check that if we don't do this, the AF state might vary
+    ego_non_copy = EfficientGlobalOptimization[Box, ProbabilisticModel](builder)
+    ego_non_copy.acquire_single(search_space, model, dataset=data)
+    assert ego_non_copy.acquisition_function is not None
+    npt.assert_raises(
+        AssertionError,
+        npt.assert_allclose,
+        ego.acquisition_function(x),
+        ego_non_copy.acquisition_function(x),
+    )
+
+
 class _JointBatchModelMinusMeanMaximumSingleBuilder(AcquisitionFunctionBuilder[ProbabilisticModel]):
     def prepare_acquisition_function(
         self,
