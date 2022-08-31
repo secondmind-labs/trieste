@@ -1085,7 +1085,7 @@ class TrustRegion(
 
 
 class BatchHypervolumeSharpeRatioIndicator(
-    AcquisitionRule[TensorType, SearchSpaceType, ProbabilisticModelType]
+    AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel]
 ):
     """Implements the Batch Hypervolume Sharpe-ratio indicator acquisition
     rule, designed for large batches"""
@@ -1177,8 +1177,8 @@ class BatchHypervolumeSharpeRatioIndicator(
 
     def acquire(
         self,
-        search_space: SearchSpaceType,
-        models: Mapping[str, ProbabilisticModelType],
+        search_space: SearchSpace,
+        models: Mapping[str, ProbabilisticModel],
         datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> TensorType:
         """Acquire a batch of points to observe based on the batch hypervolume
@@ -1230,9 +1230,11 @@ class BatchHypervolumeSharpeRatioIndicator(
 
         return batch
 
+
 class _MeanStdTradeoff(PymooProblem):  # type: ignore[misc]
     """Inner class that formulates the mean/std optimisation problem as a
     pymoo problem"""
+
     def __init__(self, probabilistic_model: ProbabilisticModel, search_space: SearchSpaceType):
         """
         :param probabilistic_model: The probabilistic model to find optimal mean/stds from
