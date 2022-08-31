@@ -112,16 +112,20 @@ class KerasEnsemble:
         state["_weights"] = self._model.get_weights()
 
         # Save the history callback (serializing any model)
-        history_model = self._model.history.model
-        try:
-            if history_model is self._model:
-                # no need to serialize the main model, just use a special value instead
-                self._model.history.model = ...
-            elif history_model:
-                self._model.history.model = (history_model.to_json(), history_model.get_weights())
-            state["_history"] = dill.dumps(self._model.history)
-        finally:
-            self._model.history.model = history_model
+        if self._model.history:
+            history_model = self._model.history.model
+            try:
+                if history_model is self._model:
+                    # no need to serialize the main model, just use a special value instead
+                    self._model.history.model = ...
+                elif history_model:
+                    self._model.history.model = (
+                        history_model.to_json(),
+                        history_model.get_weights(),
+                    )
+                state["_history"] = dill.dumps(self._model.history)
+            finally:
+                self._model.history.model = history_model
 
         return state
 
@@ -134,17 +138,18 @@ class KerasEnsemble:
         self._model.set_weights(state["_weights"])
 
         # Restore the history (including any model it contains)
-        self._model.history = dill.loads(state["_history"])
-        if self._model.history.model is ...:
-            self._model.history.set_model(self._model)
-        elif self._model.history.model:
-            model_json, weights = self._model.history.model
-            model = tf.keras.models.model_from_json(
-                model_json,
-                custom_objects={"MultivariateNormalTriL": MultivariateNormalTriL},
-            )
-            model.set_weights(weights)
-            self._model.history.set_model(model)
+        if "_history" in state:
+            self._model.history = dill.loads(state["_history"])
+            if self._model.history.model is ...:
+                self._model.history.set_model(self._model)
+            elif self._model.history.model:
+                model_json, weights = self._model.history.model
+                model = tf.keras.models.model_from_json(
+                    model_json,
+                    custom_objects={"MultivariateNormalTriL": MultivariateNormalTriL},
+                )
+                model.set_weights(weights)
+                self._model.history.set_model(model)
 
 
 class KerasEnsembleNetwork:

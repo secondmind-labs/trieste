@@ -185,19 +185,20 @@ class DeepGaussianProcess(
                 callback._writers = writers
 
         # do the same thing for the history callback
-        history_model = self._model_keras.history.model
-        try:
-            if history_model is self._model_keras:
-                # no need to serialize the main model, just use a special value instead
-                self._model_keras.history.model = ...
-            elif history_model:
-                self._model_keras.history.model = (
-                    history_model.to_json(),
-                    history_model.get_weights(),
-                )
-            state["_history"] = dill.dumps(self._model_keras.history)
-        finally:
-            self._model_keras.history.model = history_model
+        if self._model_keras.history:
+            history_model = self._model_keras.history.model
+            try:
+                if history_model is self._model_keras:
+                    # no need to serialize the main model, just use a special value instead
+                    self._model_keras.history.model = ...
+                elif history_model:
+                    self._model_keras.history.model = (
+                        history_model.to_json(),
+                        history_model.get_weights(),
+                    )
+                state["_history"] = dill.dumps(self._model_keras.history)
+            finally:
+                self._model_keras.history.model = history_model
 
         return state
 
@@ -243,14 +244,15 @@ class DeepGaussianProcess(
             gpflow.utilities.multiple_assign(self._model_keras, state["_model_keras"])
 
         # restore the history (including any model it contains)
-        self._model_keras.history = dill.loads(state["_history"])
-        if self._model_keras.history.model is ...:
-            self._model_keras.history.set_model(self._model_keras)
-        elif self._model_keras.history.model:
-            model_json, weights = self._model_keras.history.model
-            model = tf.keras.models.model_from_json(model_json)
-            model.set_weights(weights)
-            self._model_keras.history.set_model(model)
+        if "_history" in state:
+            self._model_keras.history = dill.loads(state["_history"])
+            if self._model_keras.history.model is ...:
+                self._model_keras.history.set_model(self._model_keras)
+            elif self._model_keras.history.model:
+                model_json, weights = self._model_keras.history.model
+                model = tf.keras.models.model_from_json(model_json)
+                model.set_weights(weights)
+                self._model_keras.history.set_model(model)
 
     def __repr__(self) -> str:
         """"""
