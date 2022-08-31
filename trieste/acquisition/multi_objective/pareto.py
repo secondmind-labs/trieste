@@ -14,8 +14,6 @@
 """ This module contains functions and classes for Pareto based multi-objective optimization. """
 from __future__ import annotations
 
-from typing import Tuple
-
 try:
     import cvxpy as cp
 except ImportError:
@@ -81,7 +79,7 @@ class Pareto:
         )
         return hypervolume_indicator
 
-    def sample(self, sample_size: int) -> Tuple[TensorType, TensorType]:
+    def sample(self, sample_size: int) -> tuple[TensorType, TensorType]:
         """
         Sample a set of diverse points from the Pareto set using
         Hypervolume Sharpe-Ratio Indicator
@@ -119,7 +117,7 @@ class Pareto:
 
         return samples, sample_ids
 
-    def _choose_batch(self, x_star: TensorType, sample_size: int) -> Tuple[TensorType, TensorType]:
+    def _choose_batch(self, x_star: TensorType, sample_size: int) -> tuple[TensorType, TensorType]:
 
         front_size = self.front.shape[0]
 
@@ -192,7 +190,7 @@ class Pareto:
 
         return p
 
-    def _get_bounds(self) -> Tuple[TensorType, TensorType]:
+    def _get_bounds(self) -> tuple[TensorType, TensorType]:
 
         front_dims = self.front.shape[1]
 
