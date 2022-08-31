@@ -133,8 +133,8 @@ class KerasEnsemble:
         )
         self._model.set_weights(state["_weights"])
 
-        # Restore the history (including any model)
-        self._model.history = dill.loads(self._history)
+        # Restore the history (including any model it contains)
+        self._model.history = dill.loads(state["_history"])
         if self._model.history.model is ...:
             self._model.history.set_model(self._model)
         elif self._model.history.model:

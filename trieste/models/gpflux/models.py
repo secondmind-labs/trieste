@@ -183,6 +183,22 @@ class DeepGaussianProcess(
                 tensorboard_writers,
             ):
                 callback._writers = writers
+
+        # do the same thing for the history callback
+        history_model = self._model_keras.history.model
+        try:
+            if history_model is self._model_keras:
+                # no need to serialize the main model, just use a special value instead
+                self._model_keras.history.model = ...
+            elif history_model:
+                self._model_keras.history.model = (
+                    history_model.to_json(),
+                    history_model.get_weights(),
+                )
+            state["_history"] = dill.dumps(self._model_keras.history)
+        finally:
+            self._model_keras.history.model = history_model
+
         return state
 
     def __setstate__(self, state: dict[str, Any]) -> None:
@@ -207,7 +223,7 @@ class DeepGaussianProcess(
             )
             self._model_keras = dgp.as_training_model()
 
-        # Unpickle the optimizer, and restore all the callback models
+        # unpickle the optimizer, and restore all the callback models
         self._optimizer = dill.loads(self._optimizer)
         for callback in self._optimizer.fit_args.get("callbacks", []):
             if callback.model is ...:
@@ -225,6 +241,16 @@ class DeepGaussianProcess(
         if self._model_closure is not None:
             gpflow.utilities.multiple_assign(self._model_gpflux, state["_model_gpflux"])
             gpflow.utilities.multiple_assign(self._model_keras, state["_model_keras"])
+
+        # restore the history (including any model it contains)
+        self._model_keras.history = dill.loads(state["_history"])
+        if self._model_keras.history.model is ...:
+            self._model_keras.history.set_model(self._model_keras)
+        elif self._model_keras.history.model:
+            model_json, weights = self._model_keras.history.model
+            model = tf.keras.models.model_from_json(model_json)
+            model.set_weights(weights)
+            self._model_keras.history.set_model(model)
 
     def __repr__(self) -> str:
         """"""
