@@ -1089,7 +1089,9 @@ class BatchHypervolumeSharpeRatioIndicator(
     AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel]
 ):
     """Implements the Batch Hypervolume Sharpe-ratio indicator acquisition
-    rule, designed for large batches"""
+    rule, designed for large batches, introduced by Binois et al, 2021.
+    See :cite:`binois2021portfolio` for details.
+    """
 
     def __init__(
         self,
