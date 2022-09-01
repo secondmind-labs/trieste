@@ -214,7 +214,7 @@ def pyplot(
         try:
             figure = evaluate_data(figure)
             with io.BytesIO() as buffer:
-                figure.savefig(buffer, format="png")
+                figure.savefig(buffer, dpi=150.0, format="png")
                 buffer.seek(0)
                 image = tf.image.decode_png(buffer.getvalue(), channels=4)
             image = tf.expand_dims(image, 0)
