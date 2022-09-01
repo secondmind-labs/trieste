@@ -88,6 +88,11 @@ from trieste.observer import OBJECTIVE
 from trieste.space import Box, SearchSpace
 from trieste.types import State, TensorType
 
+try:
+    import pymoo
+except ImportError:
+    pymoo = None
+
 
 # Optimizer parameters for testing GPR against the branin function.
 # We also use these for a quicker test against a simple quadratic function
@@ -210,7 +215,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
             ),
             pytest.param(
                 15,
-                BatchHypervolumeSharpeRatioIndicator(),
+                BatchHypervolumeSharpeRatioIndicator() if pymoo else None,
                 id="BatchHypevolumeSharpeRatioIndicator",
                 marks=pytest.mark.qhsri,
             ),
