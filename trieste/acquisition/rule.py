@@ -1255,7 +1255,7 @@ class _MeanStdTradeoff(PymooProblem):  # type: ignore[misc]
     def _evaluate(
         self, x: TensorType, out: dict[str, TensorType], *args: Any, **kwargs: Any
     ) -> None:
-        mean, var = self.probabilistic_model.predict_y(x)
+        mean, var = self.probabilistic_model.predict(x)
         # Flip sign on std so that minimising is increasing std
         std = -1 * np.sqrt(np.array(var))
         out["F"] = np.concatenate([np.array(mean), std], axis=1)
