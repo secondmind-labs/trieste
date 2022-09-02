@@ -25,6 +25,7 @@ from typing import Dict, Generic, Mapping, TypeVar, cast, overload
 
 import numpy as np
 import tensorflow as tf
+from scipy.spatial.distance import pdist
 
 from . import logging
 from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
@@ -457,6 +458,9 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
                             logging.scalar(f"query_points/[{i}]", float(query_points[0, i]))
                         else:
                             logging.histogram(f"query_points/[{i}]", query_points[:, i])
+                    logging.histogram(
+                        "query_points/euclidean_distances", lambda: pdist(query_points)
+                    )
                 logging.scalar(
                     "wallclock/query_point_generation",
                     query_point_generation_timer.time,
