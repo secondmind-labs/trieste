@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any, Dict, Optional
 
 import dill
@@ -382,14 +383,17 @@ class DeepEnsemble(
 
     def log(self, dataset: Optional[Dataset] = None) -> None:
         """
-        Log basic model training information at a given optimization step. We log several summary
-        statistics of losses and metrics given in ``fit_args`` to ``optimizer``
-        (final, difference between inital and final loss, min and max), for the whole ensemble and
-        individual models. We also log epoch statistics, but as histograms, rather than time series.
+        Log model training information at a given optimization step to the Tensorboard.
+        We log several summary statistics of losses and metrics given in ``fit_args`` to
+        ``optimizer`` (final, difference between inital and final loss, min and max). We also log
+        epoch statistics, but as histograms, rather than time series. We also log several training
+        data based metrics, such as root mean square error between predictions and observations,
+        and several others.
 
-        We also log several training data based metrics, such as root mean square error and mean
-        aboslute error between predictions and observations, variances for predictions and several
-        others.
+        We do not log statistics of individual models in the ensemble unless specifically switched
+        on with
+
+            >>> trieste.logging.set_summary_filter(lambda name: True)
 
         For custom logs user will need to subclass the model and overwrite this method.
 
@@ -400,21 +404,33 @@ class DeepEnsemble(
             with summary_writer.as_default(step=logging.get_step_number()):
                 logging.scalar("epochs/num_epochs", len(self.model.history.epoch))
                 for k, v in self.model.history.history.items():
-                    k_sep = k.split("_")
-                    if "loss" in k and "model" in k:
-                        pre = "loss"
-                        post = f"_{k_sep[0]}_{k_sep[1]}"
-                    elif "loss" not in k and "model" in k:
-                        pre = k_sep[-1]
-                        post = f"_{k_sep[0]}_{k_sep[1]}"
+                    KEY_SPLITTER = {
+                        # map history keys to prefix and suffix
+                        "loss": ("loss", ""),
+                        r"(?P<model>model_\d+)_output_loss": ("loss", r"_\g<model>"),
+                        r"(?P<model>model_\d+)_output_(?P<metric>.+)": (
+                            r"\g<metric>",
+                            r"_\g<model>",
+                        ),
+                    }
+                    for pattern, (pre_sub, post_sub) in KEY_SPLITTER.items():
+                        if re.match(pattern, k):
+                            pre = re.sub(pattern, pre_sub, k)
+                            post = re.sub(pattern, post_sub, k)
+                            break
                     else:
-                        pre = k
-                        post = ""
-                    logging.histogram(f"{pre}/epoch{post}", lambda: v)
-                    logging.scalar(f"{pre}/final{post}", lambda: v[-1])
-                    logging.scalar(f"{pre}/diff{post}", lambda: v[0] - v[-1])
-                    logging.scalar(f"{pre}/min{post}", lambda: tf.reduce_min(v))
-                    logging.scalar(f"{pre}/max{post}", lambda: tf.reduce_max(v))
+                        # unrecognised history key; ignore
+                        continue
+                    if "model" in post and not logging.include_summary("_ensemble"):
+                        break
+                    else:
+                        if "model" in post:
+                            pre = pre + "/_ensemble"
+                        logging.histogram(f"{pre}/epoch{post}", lambda: v)
+                        logging.scalar(f"{pre}/final{post}", lambda: v[-1])
+                        logging.scalar(f"{pre}/diff{post}", lambda: v[0] - v[-1])
+                        logging.scalar(f"{pre}/min{post}", lambda: tf.reduce_min(v))
+                        logging.scalar(f"{pre}/max{post}", lambda: tf.reduce_max(v))
                 if dataset:
                     predict = self.predict(dataset.query_points)
                     # training accuracy
@@ -438,16 +454,17 @@ class DeepEnsemble(
                         "variance/root_mean_variance_error",
                         tf.math.sqrt(tf.reduce_mean(variance_error ** 2)),
                     )
-                    predict_ensemble_variance = self.predict_ensemble(dataset.query_points)[1]
-                    for i in range(predict_ensemble_variance.shape[0]):
-                        logging.histogram(
-                            f"variance/predict_variance_model_{i}",
-                            predict_ensemble_variance[i, ...],
-                        )
-                        logging.scalar(
-                            f"variance/predict_variance_mean_model_{i}",
-                            tf.reduce_mean(predict_ensemble_variance[i, ...]),
-                        )
+                    if logging.include_summary("_ensemble"):
+                        predict_ensemble_variance = self.predict_ensemble(dataset.query_points)[1]
+                        for i in range(predict_ensemble_variance.shape[0]):
+                            logging.histogram(
+                                f"variance/_ensemble/predict_variance_model_{i}",
+                                predict_ensemble_variance[i, ...],
+                            )
+                            logging.scalar(
+                                f"variance/_ensemble/predict_variance_mean_model_{i}",
+                                tf.reduce_mean(predict_ensemble_variance[i, ...]),
+                            )
                     # data stats
                     empirical_variance = tf.math.reduce_variance(dataset.observations)
                     logging.scalar("variance/empirical", empirical_variance)

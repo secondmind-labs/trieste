@@ -639,18 +639,18 @@ def test_deep_ensemble_log(
     ]
 
     names_scalars = ["epochs/num_epochs"] + loss_names + metrics_names
-    num_scalars = 1 + len(loss_names) + _ENSEMBLE_SIZE * len(loss_names + metrics_names)
+    num_scalars = 1 + len(loss_names)
     names_histogram = ["loss/epoch"] + ["mse/epoch"]
-    num_histogram = 1 + 2 * _ENSEMBLE_SIZE
+    num_histogram = 1
     if use_dataset:
         names_scalars = names_scalars + accuracy_names + variance_stats
-        num_scalars = num_scalars + len(accuracy_names) + len(variance_stats) + _ENSEMBLE_SIZE
+        num_scalars = num_scalars + len(accuracy_names) + len(variance_stats)
         names_histogram = (
             names_histogram
             + ["accuracy/absolute_errors", "accuracy/z_residuals"]
             + ["variance/predict_variance", "variance/variance_error"]
         )
-        num_histogram = num_histogram + 4 + _ENSEMBLE_SIZE
+        num_histogram += 4
 
     assert mocked_summary_scalar.call_count == num_scalars
     for i in range(len(mocked_summary_scalar.call_args_list)):
