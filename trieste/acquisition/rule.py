@@ -1099,6 +1099,7 @@ class BatchHypervolumeSharpeRatioIndicator(
         ga_population_size: int = 500,
         ga_n_generations: int = 200,
         filter_threshold: float = 0.1,
+        noisy_observations: bool = True,
     ):
         """
         :param batch_size: The number of points in a batch. Defaults to 5.
@@ -1108,6 +1109,7 @@ class BatchHypervolumeSharpeRatioIndicator(
              algorithm. Defaults to 200.
         :param filter_threshold: The probability of improvement below which to exlude
              points from the Sharpe ratio optimisation. Defaults to 0.1.
+        :param noisy_observations: Whether the observations have noise. Defaults to True.
         """
         if not batch_size > 0:
             raise ValueError(f"Batch size must be greater than 0, got {batch_size}")
@@ -1132,6 +1134,7 @@ class BatchHypervolumeSharpeRatioIndicator(
         self._population_size: int = ga_population_size
         self._n_generations: int = ga_n_generations
         self._filter_threshold: float = filter_threshold
+        self._noisy_observations: bool = noisy_observations
         self._acquisition_function: Optional[AcquisitionFunction] = None
 
     def __repr__(self) -> str:
@@ -1227,7 +1230,7 @@ class BatchHypervolumeSharpeRatioIndicator(
         pareto_set = Pareto(filtered_mean_std, already_non_dominated=True)
 
         # Sample points from set using qHSRI
-        _, batch_ids = pareto_set.sample(self._batch_size)
+        _, batch_ids = pareto_set.sample(self._batch_size, allow_repeats=self._noisy_observations)
 
         batch = filtered_points[batch_ids]
 

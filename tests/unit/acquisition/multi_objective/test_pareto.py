@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import numpy as np
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
@@ -145,12 +146,31 @@ def test_pareto_sample_calculate_p() -> None:
 
 
 @pytest.mark.qhsri
-def test_pareto_sample_choose_batch() -> None:
+def test_pareto_sample_choose_batch_no_repeats() -> None:
     observations = tf.constant([[2.0, -2.0], [1.0, -1.0], [0.0, 0.0], [-1.0, 1.0], [-2.0, 2.0]])
     x_star = tf.constant([[0.15], [0.25], [0.2], [0.3], [0.1]])
     pareto_set = Pareto(observations)
-    sample, sample_ids = pareto_set._choose_batch(x_star, sample_size=2)
+    sample, sample_ids = pareto_set._choose_batch_no_repeats(x_star, sample_size=2)
     expected_sample = tf.constant([[-1.0, 1.0], [1.0, -1.0]])
     expected_sample_ids = tf.constant([3, 1])
     npt.assert_array_equal(expected_sample, sample)
     npt.assert_array_equal(expected_sample_ids, sample_ids)
+
+
+@pytest.mark.parametrize(
+    "x_star,expected_ids",
+    (
+        ([[0.25], [0.1], [0.09], [0.51], [0.05]], [0, 3, 3]),
+        ([[0.25], [0.24], [0.25], [0.01], [0.25]], [0, 1, 2, 4]),
+        ([[0.1], [0.2], [0.3], [0.4], [0.0]], [1, 2, 3, 3]),
+    ),
+)
+@pytest.mark.qhsri
+def test_pareto_sample_choose_batch_with_repeats(x_star: list[list[float]], expected_ids: list[int]) -> None:
+    observations = tf.constant([[2.0, -2.0], [1.0, -1.0], [0.0, 0.0], [-1.0, 1.0], [-2.0, 2.0]])
+    pareto_set = Pareto(observations)
+    _, sample_ids = pareto_set._choose_batch_with_repeats(np.array(x_star), sample_size=4)
+    sample_ids_list = list(sample_ids)
+    for expected_id in expected_ids:
+        assert expected_id in sample_ids_list
+        sample_ids_list.remove(expected_id)

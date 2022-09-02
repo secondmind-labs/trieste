@@ -79,10 +79,13 @@ class Pareto:
         )
         return hypervolume_indicator
 
-    def sample(self, sample_size: int) -> tuple[TensorType, TensorType]:
+    def sample(self, sample_size: int, allow_repeats: bool = True) -> tuple[TensorType, TensorType]:
         """
         Sample a set of diverse points from the Pareto set using
         Hypervolume Sharpe-Ratio Indicator
+
+        :param sample_size: The number of point to sample from the Pareto front
+        :param allow_repeats: Whether the sample may contain repeats
         """
 
         if cp is None:
@@ -113,11 +116,59 @@ class Pareto:
 
         x_star = self._find_x_star(q, p)
 
-        samples, sample_ids = self._choose_batch(x_star, sample_size)
+        if allow_repeats:
+            samples, sample_ids = self._choose_batch_with_repeats(x_star, sample_size)
+        else:
+            samples, sample_ids = self._choose_batch_no_repeats(x_star, sample_size)
 
         return samples, sample_ids
 
-    def _choose_batch(self, x_star: TensorType, sample_size: int) -> tuple[TensorType, TensorType]:
+    def _choose_batch_with_repeats(
+        self, x_star: TensorType, sample_size: int
+    ) -> tuple[TensorType, TensorType]:
+
+        # Calculate number of times each point is sampled
+        n_times_sampled = x_star * float(sample_size)
+
+        # Round each number to an int
+        n_times_sampled = np.round(n_times_sampled)
+
+        # Check difference in number of samples and required sample size
+        n_samples_difference = sample_size - int(np.sum(n_times_sampled))
+
+        if n_samples_difference < 0:
+            # We need to randomly remove samples
+            # Get indices of point that were to be sampled >0 times
+            non_zero_indices = np.flatnonzero(n_times_sampled)
+            # Choose indices to decrement
+            samples_to_decr = np.random.choice(non_zero_indices, size=-n_samples_difference)
+            # Decrement indices
+            for idx in samples_to_decr:
+                n_times_sampled[idx] -= 1
+        elif n_samples_difference > 0:
+            # We need to randomly add samples
+            samples_to_incr = np.random.choice(
+                np.arange(len(n_times_sampled)), size=n_samples_difference
+            )
+            for idx in samples_to_incr:
+                n_times_sampled[idx] += 1
+
+        # Create a list of the sample indices
+        sample_ids = list()
+        for idx, repeats in enumerate(n_times_sampled):
+            for _ in range(int(repeats)):
+                sample_ids.append(idx)
+        # Convert to array for indexing and return
+        sample_ids_array = np.array(sample_ids)
+
+        # Create batch with each of the selected samples
+        samples = np.array(self.front)[sample_ids_array]
+
+        return samples, sample_ids_array
+
+    def _choose_batch_no_repeats(
+        self, x_star: TensorType, sample_size: int
+    ) -> tuple[TensorType, TensorType]:
 
         front_size = self.front.shape[0]
 
