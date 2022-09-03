@@ -391,9 +391,7 @@ class DeepEnsemble(
         and several others.
 
         We do not log statistics of individual models in the ensemble unless specifically switched
-        on with
-
-            >>> trieste.logging.set_summary_filter(lambda name: True)
+        on with ``trieste.logging.set_summary_filter(lambda name: True)``.
 
         For custom logs user will need to subclass the model and overwrite this method.
 
