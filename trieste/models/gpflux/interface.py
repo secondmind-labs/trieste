@@ -19,7 +19,6 @@ from abc import ABC, abstractmethod
 import tensorflow as tf
 from gpflow.base import Module
 
-from ... import logging
 from ...types import TensorType
 from ..interfaces import SupportsGetObservationNoise
 from ..optimizer import KerasOptimizer
@@ -87,32 +86,3 @@ class GPfluxPredictor(SupportsGetObservationNoise, ABC):
             raise NotImplementedError(f"Model {self!r} does not have scalar observation noise")
 
         return noise_variance
-
-    def log(self) -> None:
-        """
-        Log basic model training information at a given optimization step. Note that epoch 
-        losses and metrics cannot be recorded exactly, only summary statistics. Best approximation
-        available is to log histograms of epoch losses and metrics.
-        """
-        summary_writer = logging.get_tensorboard_writer()
-        if summary_writer:
-            with summary_writer.as_default(step=logging.get_step_number()):
-                # breakpoint()
-                logging.scalar(f"num_epochs", len(self.model_keras.history.epoch))
-                for k, v in self.model_keras.history.history.items():
-                    logging.histogram(f"epoch_{k}", v)
-                    logging.scalar(f"{k}_final", v[-1])
-                    logging.scalar(f"{k}_diff", v[0] - v[-1])
-                    logging.scalar(f"{k}_min", tf.reduce_min(v))
-                    logging.scalar(f"{k}_max", tf.reduce_max(v))
-                # breakpoint()
-                # for layer in self.model_gpflux.f_layers:
-                #     kernel = layer.kernel()
-                #     components = _merge_leaf_components(leaf_components(kernel))
-                #     for k, v in components.items():
-                #         if v.trainable:
-                #             if tf.rank(v) == 0:
-                #                 logging.scalar(f"kernel.{k}", v)
-                #             elif tf.rank(v) == 1:
-                #                 for i, vi in enumerate(v):
-                #                     logging.scalar(f"kernel.{k}[{i}]", vi)

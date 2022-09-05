@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 import dill
 import gpflow
@@ -23,7 +23,9 @@ from gpflow.inducing_variables import InducingPoints
 from gpflux.layers import GPLayer, LatentVariableLayer
 from gpflux.models import DeepGP
 from tensorflow.python.keras.callbacks import Callback
+from gpflow.utilities.traversal import _merge_leaf_components, leaf_components
 
+from ... import logging
 from ...data import Dataset
 from ...types import TensorType
 from ..interfaces import (
@@ -60,11 +62,10 @@ class DeepGaussianProcess(
         """
         :param model: The underlying GPflux deep Gaussian process model. Passing in a named closure
             rather than a model can help when copying or serialising.
-        :param optimizer: The optimizer configuration for training the model. Defaults to
-            :class:`~trieste.models.optimizer.KerasOptimizer` wrapper with
-            :class:`~tf.optimizers.Adam` optimizer. The ``optimizer`` argument to the wrapper is
-            used when compiling the model and ``fit_args`` is a dictionary of arguments to be used
-            in the Keras ``fit`` method. Defaults to 400 epochs, batch size of 1000, and verbose 0.
+        :param optimizer: The optimizer wrapper with necessary specifications for compiling and
+            training the model. Defaults to :class:`~trieste.models.optimizer.KerasOptimizer` with
+            :class:`~tf.optimizers.Adam` optimizer, mean squared error metric and a dictionary of
+            default arguments for Keras `fit` method: 400 epochs, batch size of 1000, and verbose 0.
             A custom callback that reduces the optimizer learning rate is used as well. See
             https://keras.io/api/models/model_training_apis/#fit-method for a list of possible
             arguments.
@@ -124,6 +125,9 @@ class DeepGaussianProcess(
                 "callbacks": [tf.keras.callbacks.LearningRateScheduler(scheduler)],
             }
 
+        if self.optimizer.metrics is None:
+            self.optimizer.metrics = ["mse"]
+
         self._model_gpflux = model
         # inputs and targets need to be redone with a float64 dtype to avoid setting the keras
         # backend to float64, this is likely to be fixed in GPflux, see issue:
@@ -139,7 +143,7 @@ class DeepGaussianProcess(
             dtype=tf.float64,
         )
         self._model_keras = model.as_training_model()
-        self._model_keras.compile(self.optimizer.optimizer)
+        self._model_keras.compile(self.optimizer.optimizer, metrics=self.optimizer.metrics)
         self._absolute_epochs = 0
         self._continuous_optimisation = continuous_optimisation
 
@@ -354,3 +358,69 @@ class DeepGaussianProcess(
         # so that the next time we call `optimize` the starting learning rate would be different.
         # Therefore we make sure the learning rate is set back to its initial value.
         self.optimizer.optimizer.lr.assign(self.original_lr)
+
+    def log(self, dataset: Optional[Dataset] = None) -> None:
+        """
+        Log model training information at a given optimization step to the Tensorboard.
+        We log few summary statistics of losses, layer KL divergences and metrics (as provided in
+        ``optimizer``): ``final`` value at the end of the training, ``diff`` value as a difference
+        between inital and final epoch. We also log epoch statistics, but as histograms, rather
+        than time series. We also log several training data based metrics, such as root mean square
+        error between predictions and observations and several others.
+
+        For custom logs user will need to subclass the model and overwrite this method.
+
+        :param dataset: Optional data that can be used to log additional data-based model summaries.
+        """
+        summary_writer = logging.get_tensorboard_writer()
+        if summary_writer:
+            with summary_writer.as_default(step=logging.get_step_number()):
+                logging.scalar("epochs/num_epochs", len(self.model_keras.history.epoch))
+                # parameters
+                for idx, layer in enumerate(self.model_gpflux.f_layers):
+                    components = _merge_leaf_components(leaf_components(layer.kernel))
+                    for k, v in components.items():
+                        if v.trainable:
+                            if tf.rank(v) == 0:
+                                logging.scalar(f"layer[{idx}]/kernel.{k}", v)
+                            elif tf.rank(v) == 1:
+                                for i, vi in enumerate(v):
+                                    logging.scalar(f"layer[{idx}]/kernel.{k}[{i}]", vi)
+                # TODO check if works for het likelihoods
+                if self.model_gpflux.likelihood_layer.likelihood.variance.trainable:
+                    logging.scalar(
+                        "likelihood.variance",
+                        lambda: self.model_gpflux.likelihood_layer.likelihood.variance,
+                    )
+                # losses and metrics
+                for k, v in self.model_keras.history.history.items():
+                    logging.histogram(f"{k}/epoch", lambda: v)
+                    logging.scalar(f"{k}/final", lambda: v[-1])
+                    logging.scalar(f"{k}/diff", lambda: v[0] - v[-1])
+                # training data based diagnostics
+                if dataset:
+                    predict = self.predict(dataset.query_points)
+                    # training accuracy
+                    diffs = dataset.observations - predict[0]
+                    z_residuals = diffs / tf.math.sqrt(predict[1])
+                    logging.histogram("accuracy/absolute_errors", tf.math.abs(diffs))
+                    logging.histogram("accuracy/z_residuals", z_residuals)
+                    logging.scalar(
+                        "accuracy/root_mean_square_error", tf.math.sqrt(tf.reduce_mean(diffs ** 2))
+                    )
+                    logging.scalar(
+                        "accuracy/mean_absolute_error", tf.reduce_mean(tf.math.abs(diffs))
+                    )
+                    logging.scalar("accuracy/z_residuals_std", tf.math.reduce_std(z_residuals))
+                    # training variance
+                    variance_error = predict[1] - diffs ** 2
+                    logging.histogram("variance/predict_variance", predict[1])
+                    logging.histogram("variance/variance_error", variance_error)
+                    logging.scalar("variance/predict_variance_mean", tf.reduce_mean(predict[1]))
+                    logging.scalar(
+                        "variance/root_mean_variance_error",
+                        tf.math.sqrt(tf.reduce_mean(variance_error ** 2)),
+                    )
+                    # data stats
+                    empirical_variance = tf.math.reduce_variance(dataset.observations)
+                    logging.scalar("variance/empirical", empirical_variance)
