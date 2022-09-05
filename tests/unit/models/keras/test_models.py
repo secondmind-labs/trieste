@@ -11,8 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import copy
 import operator
+import unittest.mock
 from typing import Any, Optional
 
 import numpy as np
@@ -20,10 +23,12 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
+from tensorflow.python.keras.callbacks import Callback
 
 from tests.util.misc import ShapeLike, empty_dataset, random_seed
 from tests.util.models.keras.models import trieste_deep_ensemble_model, trieste_keras_ensemble_model
 from trieste.data import Dataset
+from trieste.logging import step_number, tensorboard_writer
 from trieste.models import create_model
 from trieste.models.keras import (
     DeepEnsemble,
@@ -122,14 +127,6 @@ def test_deep_ensemble_model_attributes() -> None:
     assert model.model is keras_ensemble.model
 
 
-def test_deep_ensemble_trajectory_sampler_raises_for_multi_output_model() -> None:
-    example_data = empty_dataset([2], [2])
-    model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE, False, False)
-
-    with pytest.raises(NotImplementedError):
-        model.trajectory_sampler()
-
-
 def test_deep_ensemble_ensemble_size_attributes(ensemble_size: int) -> None:
     example_data = empty_dataset([1], [1])
     model, _, _ = trieste_deep_ensemble_model(example_data, ensemble_size, False, False)
@@ -150,7 +147,7 @@ def test_deep_ensemble_default_optimizer_is_correct() -> None:
     default_loss = negative_log_likelihood
     default_fit_args = {
         "verbose": 0,
-        "epochs": 1000,
+        "epochs": 3000,
         "batch_size": 16,
     }
     del model.optimizer.fit_args["callbacks"]
@@ -382,7 +379,7 @@ def test_deep_ensemble_loss(bootstrap_data: bool) -> None:
     tranformed_x, tranformed_y = _ensemblise_data(
         reference_model, example_data, _ENSEMBLE_SIZE, bootstrap_data
     )
-    loss = model.model.evaluate(tranformed_x, tranformed_y)
+    loss = model.model.evaluate(tranformed_x, tranformed_y)[: _ENSEMBLE_SIZE + 1]
     reference_loss = reference_model.model.evaluate(tranformed_x, tranformed_y)
 
     npt.assert_allclose(loss, reference_loss, rtol=1e-6)
@@ -532,6 +529,47 @@ def test_deep_ensemble_deep_copies_optimizer_state() -> None:
     npt.assert_equal(model.model.optimizer.get_weights(), model_copy.model.optimizer.get_weights())
 
 
+@pytest.mark.parametrize(
+    "callbacks",
+    [
+        [
+            tf.keras.callbacks.CSVLogger("csv"),
+            tf.keras.callbacks.EarlyStopping(monitor="loss", patience=100),
+            tf.keras.callbacks.History(),
+            tf.keras.callbacks.LambdaCallback(lambda epoch, lr: lr),
+            tf.keras.callbacks.LearningRateScheduler(lambda epoch, lr: lr),
+            tf.keras.callbacks.ProgbarLogger(),
+            tf.keras.callbacks.ReduceLROnPlateau(),
+            tf.keras.callbacks.RemoteMonitor(),
+            tf.keras.callbacks.TensorBoard(),
+            tf.keras.callbacks.TerminateOnNaN(),
+        ],
+        pytest.param(
+            [
+                tf.keras.callbacks.experimental.BackupAndRestore("backup"),
+                tf.keras.callbacks.BaseLogger(),
+                tf.keras.callbacks.ModelCheckpoint("weights"),
+            ],
+            marks=pytest.mark.skip(reason="callbacks currently causing optimize to fail"),
+        ),
+    ],
+)
+def test_deep_ensemble_deep_copies_different_callback_types(callbacks: list[Callback]) -> None:
+    example_data = _get_example_data([10, 3], [10, 3])
+    model, _, _ = trieste_deep_ensemble_model(example_data, 2, False, False)
+    model.optimizer.fit_args["callbacks"] = callbacks
+
+    new_example_data = _get_example_data([20, 3], [20, 3])
+    model.update(new_example_data)
+    model.optimize(new_example_data)
+
+    model_copy = copy.deepcopy(model)
+    assert model.model.optimizer is not model_copy.model.optimizer
+    assert tuple(type(callback) for callback in model.optimizer.fit_args["callbacks"]) == tuple(
+        type(callback) for callback in model_copy.optimizer.fit_args["callbacks"]
+    )
+
+
 def test_deep_ensemble_deep_copies_optimizer_callback_models() -> None:
     example_data = _get_example_data([10, 3], [10, 3])
     keras_ensemble = trieste_keras_ensemble_model(example_data, _ENSEMBLE_SIZE, False)
@@ -560,3 +598,82 @@ def test_deep_ensemble_deep_copies_optimizer_without_callbacks() -> None:
     model_copy = copy.deepcopy(model)
     assert model_copy.optimizer is not model.optimizer
     assert model_copy.optimizer.fit_args == model.optimizer.fit_args
+
+
+def test_deep_ensemble_deep_copies_optimization_history() -> None:
+    example_data = _get_example_data([10, 3], [10, 3])
+    keras_ensemble = trieste_keras_ensemble_model(example_data, _ENSEMBLE_SIZE, False)
+    model = DeepEnsemble(keras_ensemble)
+    model.optimize(example_data)
+
+    assert model.model.history.history
+    expected_history = model.model.history.history
+
+    model_copy = copy.deepcopy(model)
+    assert model_copy.model.history.history
+    history = model_copy.model.history.history
+
+    assert history.keys() == expected_history.keys()
+    for k, v in expected_history.items():
+        assert history[k] == v
+
+
+@unittest.mock.patch("trieste.logging.tf.summary.histogram")
+@unittest.mock.patch("trieste.logging.tf.summary.scalar")
+@pytest.mark.parametrize("use_dataset", [True, False])
+def test_deep_ensemble_log(
+    mocked_summary_scalar: unittest.mock.MagicMock,
+    mocked_summary_histogram: unittest.mock.MagicMock,
+    use_dataset: bool,
+) -> None:
+    example_data = _get_example_data([10, 3], [10, 3])
+    keras_ensemble = trieste_keras_ensemble_model(example_data, _ENSEMBLE_SIZE, False)
+    model = DeepEnsemble(keras_ensemble)
+    model.optimize(example_data)
+
+    mocked_summary_writer = unittest.mock.MagicMock()
+    with tensorboard_writer(mocked_summary_writer):
+        with step_number(42):
+            if use_dataset:
+                model.log(example_data)
+            else:
+                model.log(None)
+
+    assert len(mocked_summary_writer.method_calls) == 1
+    assert mocked_summary_writer.method_calls[0][0] == "as_default"
+    assert mocked_summary_writer.method_calls[0][-1]["step"] == 42
+
+    loss_names = ["loss/diff", "loss/final", "loss/min", "loss/max"]
+    metrics_names = ["mse/diff", "mse/final", "mse/min", "mse/max"]
+    accuracy_names = [
+        "accuracy/root_mean_square_error",
+        "accuracy/mean_absolute_error",
+        "accuracy/z_residuals_std",
+    ]
+    variance_stats = [
+        "variance/predict_variance_mean",
+        "variance/empirical",
+        "variance/root_mean_variance_error",
+    ]
+
+    names_scalars = ["epochs/num_epochs"] + loss_names + metrics_names
+    num_scalars = 1 + len(loss_names)
+    names_histogram = ["loss/epoch"] + ["mse/epoch"]
+    num_histogram = 1
+    if use_dataset:
+        names_scalars = names_scalars + accuracy_names + variance_stats
+        num_scalars = num_scalars + len(accuracy_names) + len(variance_stats)
+        names_histogram = (
+            names_histogram
+            + ["accuracy/absolute_errors", "accuracy/z_residuals"]
+            + ["variance/predict_variance", "variance/variance_error"]
+        )
+        num_histogram += 4
+
+    assert mocked_summary_scalar.call_count == num_scalars
+    for i in range(len(mocked_summary_scalar.call_args_list)):
+        assert any([j in mocked_summary_scalar.call_args_list[i][0][0] for j in names_scalars])
+
+    assert mocked_summary_histogram.call_count == num_histogram
+    for i in range(len(mocked_summary_histogram.call_args_list)):
+        assert any([j in mocked_summary_histogram.call_args_list[i][0][0] for j in names_histogram])

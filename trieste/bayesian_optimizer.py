@@ -40,6 +40,7 @@ import absl
 import dill
 import numpy as np
 import tensorflow as tf
+from scipy.spatial.distance import pdist
 
 from .acquisition.multi_objective import non_dominated
 
@@ -633,7 +634,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     acquisition_rule, datasets, models, num_steps, observation_plot_dfs
                 )
 
-        for step in range(num_steps):
+        for step in range(1, num_steps + 1):
             logging.set_step_number(step)
 
             if early_stop_callback and early_stop_callback(datasets, models, acquisition_state):
@@ -667,14 +668,21 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                             "will be available."
                         ) from e
 
-                with Timer() as total_step_wallclock_timer:
+                if step == 1 and fit_initial_model:
                     with Timer() as initial_model_fitting_timer:
-                        if step == 0 and fit_initial_model:
-                            for tag, model in models.items():
-                                dataset = datasets[tag]
-                                model.update(dataset)
-                                model.optimize(dataset)
+                        for tag, model in models.items():
+                            dataset = datasets[tag]
+                            model.update(dataset)
+                            model.optimize(dataset)
+                    if summary_writer:
+                        logging.set_step_number(0)
+                        with summary_writer.as_default(step=0):
+                            self._write_summary_initial_model_fit(
+                                datasets, models, initial_model_fitting_timer
+                            )
+                        logging.set_step_number(step)
 
+                with Timer() as total_step_wallclock_timer:
                     with Timer() as query_point_generation_timer:
                         points_or_stateful = acquisition_rule.acquire(
                             self._search_space, models, datasets=datasets
@@ -707,7 +715,6 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                             models,
                             query_points,
                             tagged_output,
-                            initial_model_fitting_timer,
                             model_fitting_timer,
                             query_point_generation_timer,
                             total_step_wallclock_timer,
@@ -794,13 +801,27 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                 output_stream=absl.logging.INFO,
             )
 
+    def _write_summary_initial_model_fit(
+        self,
+        datasets: Mapping[str, Dataset],
+        models: Mapping[str, TrainableProbabilisticModel],
+        model_fitting_timer: Timer,
+    ) -> None:
+        """Write TensorBoard summary for the model fitting to the initial data."""
+        for tag, model in models.items():
+            with tf.name_scope(f"{tag}.model"):
+                model.log(datasets[tag])
+        logging.scalar(
+            "wallclock/model_fitting",
+            model_fitting_timer.time,
+        )
+
     def _write_summary_step(
         self,
         datasets: Mapping[str, Dataset],
         models: Mapping[str, TrainableProbabilisticModel],
         query_points: TensorType,
         tagged_output: Mapping[str, TensorType],
-        initial_model_fitting_timer: Timer,
         model_fitting_timer: Timer,
         query_point_generation_timer: Timer,
         total_step_wallclock_timer: Timer,
@@ -811,7 +832,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         for tag in datasets:
 
             with tf.name_scope(f"{tag}.model"):
-                models[tag].log()
+                models[tag].log(datasets[tag])
 
             output_dim = tf.shape(tagged_output[tag].observations)[-1]
             for i in tf.range(output_dim):
@@ -890,15 +911,22 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     logging.scalar(f"query_points/[{i}]", float(query_points[0, i]))
                 else:
                     logging.histogram(f"query_points/[{i}]", query_points[:, i])
+            logging.histogram("query_points/euclidean_distances", lambda: pdist(query_points))
 
         if pd and sns and logging.include_summary("query_points/_pairplot"):
             columns = [f"x{i}" for i in range(tf.shape(query_points)[1])]
-            query_new_df = pd.DataFrame(query_points, columns=columns).applymap(float)
+            qp_preds = query_points
+            for tag in datasets:
+                qp_preds = tf.concat(
+                    [qp_preds, tf.cast(models[tag].predict(query_points)[0], query_points.dtype)], 1
+                )
+                columns.append(f"{tag} predicted")
+            query_new_df = pd.DataFrame(qp_preds, columns=columns).applymap(float)
             query_new_df["query points"] = "new"
             query_plot_df = pd.concat(
                 (query_plot_dfs.get(0), query_new_df), copy=False, ignore_index=True
             )
-            pairplot = sns.pairplot(query_plot_df, hue="query points")
+            pairplot = sns.pairplot(query_plot_df, hue="query points", height=2.25)
             padding = 0.025 * (self._search_space.upper - self._search_space.lower)
             upper_limits = self._search_space.upper + padding
             lower_limits = self._search_space.lower - padding
@@ -916,7 +944,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         )
         logging.scalar(
             "wallclock/model_fitting",
-            model_fitting_timer.time + initial_model_fitting_timer.time,
+            model_fitting_timer.time,
         )
 
 

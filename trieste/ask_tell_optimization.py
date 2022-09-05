@@ -25,6 +25,7 @@ from typing import Dict, Generic, Mapping, TypeVar, cast, overload
 
 import numpy as np
 import tensorflow as tf
+from scipy.spatial.distance import pdist
 
 from . import logging
 from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
@@ -275,10 +276,22 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
             self._acquisition_rule = acquisition_rule
 
         if fit_model:
-            for tag, model in self._models.items():
-                dataset = datasets[tag]
-                model.update(dataset)
-                model.optimize(dataset)
+            with Timer() as initial_model_fitting_timer:
+                for tag, model in self._models.items():
+                    dataset = datasets[tag]
+                    model.update(dataset)
+                    model.optimize(dataset)
+
+            summary_writer = logging.get_tensorboard_writer()
+            if summary_writer:
+                with summary_writer.as_default(step=logging.get_step_number()):
+                    for tag, model in self._models.items():
+                        with tf.name_scope(f"{tag}.model"):
+                            model.log(datasets[tag])
+                    logging.scalar(
+                        "wallclock/model_fitting",
+                        initial_model_fitting_timer.time,
+                    )
 
     def __repr__(self) -> str:
         """Print-friendly string representation"""
@@ -445,6 +458,9 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
                             logging.scalar(f"query_points/[{i}]", float(query_points[0, i]))
                         else:
                             logging.histogram(f"query_points/[{i}]", query_points[:, i])
+                    logging.histogram(
+                        "query_points/euclidean_distances", lambda: pdist(query_points)
+                    )
                 logging.scalar(
                     "wallclock/query_point_generation",
                     query_point_generation_timer.time,
@@ -481,7 +497,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
             with summary_writer.as_default(step=logging.get_step_number()):
                 for tag in self._datasets:
                     with tf.name_scope(f"{tag}.model"):
-                        self._models[tag].log()
+                        self._models[tag].log(self._datasets[tag])
                     output_dim = tf.shape(new_data[tag].observations)[-1]
                     for i in tf.range(output_dim):
                         suffix = f"[{i}]" if output_dim > 1 else ""

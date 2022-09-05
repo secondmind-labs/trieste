@@ -37,6 +37,7 @@ import pytest
 import tensorflow as tf
 from gpflux.models import DeepGP
 from gpflux.models.deep_gp import sample_dgp
+from tensorflow.python.keras.callbacks import Callback
 
 from tests.util.misc import random_seed
 from tests.util.models.gpflux.models import single_layer_dgp_model
@@ -375,3 +376,63 @@ def test_deepgp_deep_copies_optimizer_state() -> None:
         model.optimizer.optimizer.get_weights(), model_copy.optimizer.optimizer.get_weights()
     )
     assert model_copy.optimizer.fit_args["callbacks"][0].model is model_copy.model_keras
+
+
+@pytest.mark.parametrize(
+    "callbacks",
+    [
+        [
+            tf.keras.callbacks.CSVLogger("csv"),
+            tf.keras.callbacks.EarlyStopping(monitor="loss", patience=100),
+            tf.keras.callbacks.History(),
+            tf.keras.callbacks.LambdaCallback(lambda epoch, lr: lr),
+            tf.keras.callbacks.LearningRateScheduler(lambda epoch, lr: lr),
+            tf.keras.callbacks.ProgbarLogger(),
+            tf.keras.callbacks.ReduceLROnPlateau(),
+            tf.keras.callbacks.RemoteMonitor(),
+            tf.keras.callbacks.TensorBoard(),
+            tf.keras.callbacks.TerminateOnNaN(),
+        ],
+        pytest.param(
+            [
+                tf.keras.callbacks.experimental.BackupAndRestore("backup"),
+                tf.keras.callbacks.BaseLogger(),
+                tf.keras.callbacks.ModelCheckpoint("weights"),
+            ],
+            marks=pytest.mark.skip(reason="callbacks currently causing optimize to fail"),
+        ),
+    ],
+)
+def test_deepgp_deep_copies_different_callback_types(callbacks: list[Callback]) -> None:
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    model = DeepGaussianProcess(partial(single_layer_dgp_model, x))
+    model.optimizer.fit_args["callbacks"] = callbacks
+
+    dataset = Dataset(x, fnc_3x_plus_10(x))
+    model.update(dataset)
+    model.optimize(dataset)
+
+    model_copy = copy.deepcopy(model)
+    assert model.optimizer is not model_copy.optimizer
+    assert tuple(type(callback) for callback in model.optimizer.fit_args["callbacks"]) == tuple(
+        type(callback) for callback in model_copy.optimizer.fit_args["callbacks"]
+    )
+
+
+def test_deepgp_deep_copies_optimization_history() -> None:
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    model = DeepGaussianProcess(partial(single_layer_dgp_model, x))
+    dataset = Dataset(x, fnc_3x_plus_10(x))
+    model.update(dataset)
+    model.optimize(dataset)
+
+    assert model.model_keras.history.history
+    expected_history = model.model_keras.history.history
+
+    model_copy = copy.deepcopy(model)
+    assert model_copy.model_keras.history.history
+    history = model_copy.model_keras.history.history
+
+    assert history.keys() == expected_history.keys()
+    for k, v in expected_history.items():
+        assert history[k] == v

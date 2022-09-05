@@ -83,8 +83,6 @@ def set_step_number(step_number: int) -> None:
     :raise ValueError: if step_number < 0
     """
     global _STEP_NUMBER
-    if step_number < 0:
-        raise ValueError(f"step_number must be non-negative (got {step_number})")
     _STEP_NUMBER = step_number
 
 
@@ -216,7 +214,7 @@ def pyplot(
         try:
             figure = evaluate_data(figure)
             with io.BytesIO() as buffer:
-                figure.savefig(buffer, format="png")
+                figure.savefig(buffer, dpi=150.0, format="png")
                 buffer.seek(0)
                 image = tf.image.decode_png(buffer.getvalue(), channels=4)
             image = tf.expand_dims(image, 0)
