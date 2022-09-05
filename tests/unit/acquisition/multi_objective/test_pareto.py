@@ -166,7 +166,9 @@ def test_pareto_sample_choose_batch_no_repeats() -> None:
     ),
 )
 @pytest.mark.qhsri
-def test_pareto_sample_choose_batch_with_repeats(x_star: list[list[float]], expected_ids: list[int]) -> None:
+def test_pareto_sample_choose_batch_with_repeats(
+    x_star: list[list[float]], expected_ids: list[int]
+) -> None:
     observations = tf.constant([[2.0, -2.0], [1.0, -1.0], [0.0, 0.0], [-1.0, 1.0], [-2.0, 2.0]])
     pareto_set = Pareto(observations)
     _, sample_ids = pareto_set._choose_batch_with_repeats(np.array(x_star), sample_size=4)
