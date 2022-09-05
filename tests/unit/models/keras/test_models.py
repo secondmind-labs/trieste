@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import copy
 import operator
+import unittest.mock
 from typing import Any, Optional
 
 import numpy as np
@@ -27,6 +28,7 @@ from tensorflow.python.keras.callbacks import Callback
 from tests.util.misc import ShapeLike, empty_dataset, random_seed
 from tests.util.models.keras.models import trieste_deep_ensemble_model, trieste_keras_ensemble_model
 from trieste.data import Dataset
+from trieste.logging import step_number, tensorboard_writer
 from trieste.models import create_model
 from trieste.models.keras import (
     DeepEnsemble,
@@ -145,7 +147,7 @@ def test_deep_ensemble_default_optimizer_is_correct() -> None:
     default_loss = negative_log_likelihood
     default_fit_args = {
         "verbose": 0,
-        "epochs": 1000,
+        "epochs": 3000,
         "batch_size": 16,
     }
     del model.optimizer.fit_args["callbacks"]
@@ -377,7 +379,7 @@ def test_deep_ensemble_loss(bootstrap_data: bool) -> None:
     tranformed_x, tranformed_y = _ensemblise_data(
         reference_model, example_data, _ENSEMBLE_SIZE, bootstrap_data
     )
-    loss = model.model.evaluate(tranformed_x, tranformed_y)
+    loss = model.model.evaluate(tranformed_x, tranformed_y)[: _ENSEMBLE_SIZE + 1]
     reference_loss = reference_model.model.evaluate(tranformed_x, tranformed_y)
 
     npt.assert_allclose(loss, reference_loss, rtol=1e-6)
@@ -614,3 +616,64 @@ def test_deep_ensemble_deep_copies_optimization_history() -> None:
     assert history.keys() == expected_history.keys()
     for k, v in expected_history.items():
         assert history[k] == v
+
+
+@unittest.mock.patch("trieste.logging.tf.summary.histogram")
+@unittest.mock.patch("trieste.logging.tf.summary.scalar")
+@pytest.mark.parametrize("use_dataset", [True, False])
+def test_deep_ensemble_log(
+    mocked_summary_scalar: unittest.mock.MagicMock,
+    mocked_summary_histogram: unittest.mock.MagicMock,
+    use_dataset: bool,
+) -> None:
+    example_data = _get_example_data([10, 3], [10, 3])
+    keras_ensemble = trieste_keras_ensemble_model(example_data, _ENSEMBLE_SIZE, False)
+    model = DeepEnsemble(keras_ensemble)
+    model.optimize(example_data)
+
+    mocked_summary_writer = unittest.mock.MagicMock()
+    with tensorboard_writer(mocked_summary_writer):
+        with step_number(42):
+            if use_dataset:
+                model.log(example_data)
+            else:
+                model.log(None)
+
+    assert len(mocked_summary_writer.method_calls) == 1
+    assert mocked_summary_writer.method_calls[0][0] == "as_default"
+    assert mocked_summary_writer.method_calls[0][-1]["step"] == 42
+
+    loss_names = ["loss/diff", "loss/final", "loss/min", "loss/max"]
+    metrics_names = ["mse/diff", "mse/final", "mse/min", "mse/max"]
+    accuracy_names = [
+        "accuracy/root_mean_square_error",
+        "accuracy/mean_absolute_error",
+        "accuracy/z_residuals_std",
+    ]
+    variance_stats = [
+        "variance/predict_variance_mean",
+        "variance/empirical",
+        "variance/root_mean_variance_error",
+    ]
+
+    names_scalars = ["epochs/num_epochs"] + loss_names + metrics_names
+    num_scalars = 1 + len(loss_names)
+    names_histogram = ["loss/epoch"] + ["mse/epoch"]
+    num_histogram = 1
+    if use_dataset:
+        names_scalars = names_scalars + accuracy_names + variance_stats
+        num_scalars = num_scalars + len(accuracy_names) + len(variance_stats)
+        names_histogram = (
+            names_histogram
+            + ["accuracy/absolute_errors", "accuracy/z_residuals"]
+            + ["variance/predict_variance", "variance/variance_error"]
+        )
+        num_histogram += 4
+
+    assert mocked_summary_scalar.call_count == num_scalars
+    for i in range(len(mocked_summary_scalar.call_args_list)):
+        assert any([j in mocked_summary_scalar.call_args_list[i][0][0] for j in names_scalars])
+
+    assert mocked_summary_histogram.call_count == num_histogram
+    for i in range(len(mocked_summary_histogram.call_args_list)):
+        assert any([j in mocked_summary_histogram.call_args_list[i][0][0] for j in names_histogram])

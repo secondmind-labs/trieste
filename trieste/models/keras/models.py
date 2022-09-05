@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any, Dict, Optional
 
 import dill
@@ -22,6 +23,7 @@ import tensorflow_probability as tfp
 import tensorflow_probability.python.distributions as tfd
 from tensorflow.python.keras.callbacks import Callback
 
+from ... import logging
 from ...data import Dataset
 from ...types import TensorType
 from ..interfaces import HasTrajectorySampler, TrainableProbabilisticModel, TrajectorySampler
@@ -69,9 +71,7 @@ class DeepEnsemble(
     behaviour you would like, you will need to subclass the model and overwrite the
     :meth:`optimize` method.
 
-    Currently we do not support setting up the model with dictionary configs and saving
-    the model during Bayesian optimization loop (``track_state`` argument in
-    :meth:`~trieste.bayesian_optimizer.BayesianOptimizer.optimize` method should be set to `False`).
+    Currently we do not support setting up the model with dictionary config.
     """
 
     def __init__(
@@ -80,15 +80,16 @@ class DeepEnsemble(
         optimizer: Optional[KerasOptimizer] = None,
         bootstrap: bool = False,
         diversify: bool = False,
+        continuous_optimisation: bool = True,
     ) -> None:
         """
         :param model: A Keras ensemble model with probabilistic networks as ensemble members. The
             model has to be built but not compiled.
         :param optimizer: The optimizer wrapper with necessary specifications for compiling and
             training the model. Defaults to :class:`~trieste.models.optimizer.KerasOptimizer` with
-            :class:`~tf.optimizers.Adam` optimizer, negative log likelihood loss and a dictionary
-            of default arguments for Keras `fit` method: 1000 epochs, batch size 16, early stopping
-            callback with patience of 50, and verbose 0.
+            :class:`~tf.optimizers.Adam` optimizer, negative log likelihood loss, mean squared
+            error metric and a dictionary of default arguments for Keras `fit` method: 3000 epochs,
+            batch size 16, early stopping callback with patience of 50, and verbose 0.
             See https://keras.io/api/models/model_training_apis/#fit-method for a list of possible
             arguments.
         :param bootstrap: Sample with replacement data for training each network in the ensemble.
@@ -99,6 +100,9 @@ class DeepEnsemble(
             in case of optimizing very large batches of trajectories. When batch size is larger
             than the ensemble size, multiple quantiles will be used with the same network. By
             default set to `False`.
+        :param continuous_optimisation: If True (default), the optimizer will keep track of the
+            number of epochs across BO iterations and use this number as initial_epoch. This is
+            essential to allow monitoring of model training across BO iterations.
         :raise ValueError: If ``model`` is not an instance of
             :class:`~trieste.models.keras.KerasEnsemble` or ensemble has less than two base
             learners (networks).
@@ -111,7 +115,7 @@ class DeepEnsemble(
         if not self.optimizer.fit_args:
             self.optimizer.fit_args = {
                 "verbose": 0,
-                "epochs": 1000,
+                "epochs": 3000,
                 "batch_size": 16,
                 "callbacks": [
                     tf.keras.callbacks.EarlyStopping(
@@ -123,12 +127,17 @@ class DeepEnsemble(
         if self.optimizer.loss is None:
             self.optimizer.loss = negative_log_likelihood
 
+        if self.optimizer.metrics is None:
+            self.optimizer.metrics = ["mse"]
+
         model.model.compile(
             self.optimizer.optimizer,
             loss=[self.optimizer.loss] * model.ensemble_size,
             metrics=[self.optimizer.metrics] * model.ensemble_size,
         )
         self.original_lr = self.optimizer.optimizer.lr.numpy()
+        self._absolute_epochs = 0
+        self._continuous_optimisation = continuous_optimisation
 
         self._model = model
         self._bootstrap = bootstrap
@@ -348,14 +357,115 @@ class DeepEnsemble(
 
         :param dataset: The data with which to optimize the model.
         """
+        fit_args = dict(self.optimizer.fit_args)
+
+        # Tell optimizer how many epochs have been used before: the optimizer will "continue"
+        # optimization across multiple BO iterations rather than start fresh at each iteration.
+        # This allows us to monitor training across iterations.
+
+        if "epochs" in fit_args:
+            fit_args["epochs"] = fit_args["epochs"] + self._absolute_epochs
 
         x, y = self.prepare_dataset(dataset)
-        self.model.fit(x=x, y=y, **self.optimizer.fit_args)
+        history = self.model.fit(
+            x=x,
+            y=y,
+            **fit_args,
+            initial_epoch=self._absolute_epochs,
+        )
+        if self._continuous_optimisation:
+            self._absolute_epochs = self._absolute_epochs + len(history.history["loss"])
 
         # Reset lr in case there was an lr schedule: a schedule will have change the learning rate,
         # so that the next time we call `optimize` the starting learning rate would be different.
         # Therefore, we make sure the learning rate is set back to its initial value.
         self.optimizer.optimizer.lr.assign(self.original_lr)
+
+    def log(self, dataset: Optional[Dataset] = None) -> None:
+        """
+        Log model training information at a given optimization step to the Tensorboard.
+        We log several summary statistics of losses and metrics given in ``fit_args`` to
+        ``optimizer`` (final, difference between inital and final loss, min and max). We also log
+        epoch statistics, but as histograms, rather than time series. We also log several training
+        data based metrics, such as root mean square error between predictions and observations,
+        and several others.
+
+        We do not log statistics of individual models in the ensemble unless specifically switched
+        on with ``trieste.logging.set_summary_filter(lambda name: True)``.
+
+        For custom logs user will need to subclass the model and overwrite this method.
+
+        :param dataset: Optional data that can be used to log additional data-based model summaries.
+        """
+        summary_writer = logging.get_tensorboard_writer()
+        if summary_writer:
+            with summary_writer.as_default(step=logging.get_step_number()):
+                logging.scalar("epochs/num_epochs", len(self.model.history.epoch))
+                for k, v in self.model.history.history.items():
+                    KEY_SPLITTER = {
+                        # map history keys to prefix and suffix
+                        "loss": ("loss", ""),
+                        r"(?P<model>model_\d+)_output_loss": ("loss", r"_\g<model>"),
+                        r"(?P<model>model_\d+)_output_(?P<metric>.+)": (
+                            r"\g<metric>",
+                            r"_\g<model>",
+                        ),
+                    }
+                    for pattern, (pre_sub, post_sub) in KEY_SPLITTER.items():
+                        if re.match(pattern, k):
+                            pre = re.sub(pattern, pre_sub, k)
+                            post = re.sub(pattern, post_sub, k)
+                            break
+                    else:
+                        # unrecognised history key; ignore
+                        continue
+                    if "model" in post and not logging.include_summary("_ensemble"):
+                        break
+                    else:
+                        if "model" in post:
+                            pre = pre + "/_ensemble"
+                        logging.histogram(f"{pre}/epoch{post}", lambda: v)
+                        logging.scalar(f"{pre}/final{post}", lambda: v[-1])
+                        logging.scalar(f"{pre}/diff{post}", lambda: v[0] - v[-1])
+                        logging.scalar(f"{pre}/min{post}", lambda: tf.reduce_min(v))
+                        logging.scalar(f"{pre}/max{post}", lambda: tf.reduce_max(v))
+                if dataset:
+                    predict = self.predict(dataset.query_points)
+                    # training accuracy
+                    diffs = tf.cast(dataset.observations, predict[0].dtype) - predict[0]
+                    z_residuals = diffs / tf.math.sqrt(predict[1])
+                    logging.histogram("accuracy/absolute_errors", tf.math.abs(diffs))
+                    logging.histogram("accuracy/z_residuals", z_residuals)
+                    logging.scalar(
+                        "accuracy/root_mean_square_error", tf.math.sqrt(tf.reduce_mean(diffs ** 2))
+                    )
+                    logging.scalar(
+                        "accuracy/mean_absolute_error", tf.reduce_mean(tf.math.abs(diffs))
+                    )
+                    logging.scalar("accuracy/z_residuals_std", tf.math.reduce_std(z_residuals))
+                    # training variance
+                    variance_error = predict[1] - diffs ** 2
+                    logging.histogram("variance/predict_variance", predict[1])
+                    logging.histogram("variance/variance_error", variance_error)
+                    logging.scalar("variance/predict_variance_mean", tf.reduce_mean(predict[1]))
+                    logging.scalar(
+                        "variance/root_mean_variance_error",
+                        tf.math.sqrt(tf.reduce_mean(variance_error ** 2)),
+                    )
+                    if logging.include_summary("_ensemble"):
+                        predict_ensemble_variance = self.predict_ensemble(dataset.query_points)[1]
+                        for i in range(predict_ensemble_variance.shape[0]):
+                            logging.histogram(
+                                f"variance/_ensemble/predict_variance_model_{i}",
+                                predict_ensemble_variance[i, ...],
+                            )
+                            logging.scalar(
+                                f"variance/_ensemble/predict_variance_mean_model_{i}",
+                                tf.reduce_mean(predict_ensemble_variance[i, ...]),
+                            )
+                    # data stats
+                    empirical_variance = tf.math.reduce_variance(dataset.observations)
+                    logging.scalar("variance/empirical", empirical_variance)
 
     def __getstate__(self) -> dict[str, Any]:
         # use to_json and get_weights to save any optimizer fit_arg callback models
