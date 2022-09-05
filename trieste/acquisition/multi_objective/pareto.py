@@ -103,9 +103,6 @@ class Pareto:
                 " Pareto set size."
             )
 
-        if front_dims != 2:
-            raise NotImplementedError("Pareto front sampling is only supported in the 2D case")
-
         lower_bound, reference_point = self._get_bounds()
 
         p = self._calculate_p_matrix(lower_bound, reference_point)
@@ -233,9 +230,10 @@ class Pareto:
         # Fill entries of p
         for i in range(front_size):
             for j in range(front_size):
-                p[i, j] = (reference_point[0] - max(self.front[i, 0], self.front[j, 0])) * (
-                    reference_point[1] - max(self.front[i, 1], self.front[j, 1])
-                )
+                pij = 1
+                for k in range(front_dims):
+                    pij *= reference_point[k] - max(self.front[i, k], self.front[j, k])
+                p[i, j] = pij
 
         p = p / denominator
 

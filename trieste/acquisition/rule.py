@@ -39,7 +39,7 @@ import tensorflow as tf
 from .. import logging, types
 from ..data import Dataset
 from ..models import ProbabilisticModel
-from ..models.interfaces import HasReparamSampler, ProbabilisticModelType
+from ..models.interfaces import HasReparamSampler, ProbabilisticModelType, TrainableModelStack
 from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace
 from ..types import State, TensorType
@@ -1169,7 +1169,7 @@ class BatchHypervolumeSharpeRatioIndicator(
 
         above_threshold = probs_of_improvement > self._filter_threshold
 
-        if np.sum(above_threshold) >= self._batch_size:
+        if np.sum(above_threshold) >= self._batch_size and nd_mean_std.shape[1] == 2:
             # There are enough points above the threshold to get a batch
             out_points, out_mean_std = (
                 nd_points[above_threshold.squeeze(), :],
@@ -1246,9 +1246,14 @@ class _MeanStdTradeoff(PymooProblem):  # type: ignore[misc]
         :param probabilistic_model: The probabilistic model to find optimal mean/stds from
         :param search_space: The search space for the optimisation
         """
+        # If we have a stack of models we have mean and std for each
+        if type(probabilistic_model) == TrainableModelStack:
+            n_obj = 2 * len(probabilistic_model._models)
+        else:
+            n_obj = 2
         super().__init__(
             n_var=int(search_space.dimension),
-            n_obj=2,
+            n_obj=n_obj,
             n_constr=0,
             xl=np.array(search_space.lower),
             xu=np.array(search_space.upper),
