@@ -442,7 +442,7 @@ def test_deepgp_deep_copies_optimization_history() -> None:
 
 @unittest.mock.patch("trieste.logging.tf.summary.histogram")
 @unittest.mock.patch("trieste.logging.tf.summary.scalar")
-@pytest.mark.parametrize("use_dataset", [True, False])
+@pytest.mark.parametrize("use_dataset", [False, True])
 def test_deepgp_log(
     mocked_summary_scalar: unittest.mock.MagicMock,
     mocked_summary_histogram: unittest.mock.MagicMock,
@@ -451,7 +451,11 @@ def test_deepgp_log(
     x_observed = np.linspace(0, 100, 100).reshape((-1, 1))
     y_observed = fnc_2sin_x_over_3(x_observed)
     dataset = Dataset(x_observed, y_observed)
-    model = DeepGaussianProcess(single_layer_dgp_model(x_observed))
+
+    model = DeepGaussianProcess(
+        single_layer_dgp_model(x_observed),
+        KerasOptimizer(tf.optimizers.Adam(), {"batch_size": 200, "epochs": 3, "verbose": 0}),
+    )
     model.optimize(dataset)
 
     mocked_summary_writer = unittest.mock.MagicMock()
@@ -467,7 +471,7 @@ def test_deepgp_log(
     assert mocked_summary_writer.method_calls[0][-1]["step"] == 42
 
     loss_names = ["loss/diff", "loss/final", "prior_kl/diff", "prior_kl/final"]
-    metrics_names = ["mse/diff", "mse/final", "lr/diff", "lr/final"]
+    metrics_names = ["mse/diff", "mse/final"]
     accuracy_names = [
         "accuracy/root_mean_square_error",
         "accuracy/mean_absolute_error",
@@ -478,11 +482,11 @@ def test_deepgp_log(
         "variance/empirical",
         "variance/root_mean_variance_error",
     ]
-    par_names = ["kernel.variance", "kernel.lengthscales", "likelihood.variance"]
+    par_names = ["kernel.variance", "kernel.lengthscales", "likelihood"]
 
     names_scalars = ["epochs/num_epochs"] + loss_names + metrics_names + par_names
     num_scalars = len(names_scalars)
-    names_histogram = ["loss/epoch", "mse/epoch", "lr/epoch", "prior_kl/epoch"]
+    names_histogram = ["loss/epoch", "mse/epoch", "prior_kl/epoch"]
     num_histogram = len(names_histogram)
     if use_dataset:
         names_scalars = names_scalars + accuracy_names + variance_stats

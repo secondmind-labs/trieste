@@ -376,22 +376,24 @@ class DeepGaussianProcess(
         if summary_writer:
             with summary_writer.as_default(step=logging.get_step_number()):
                 logging.scalar("epochs/num_epochs", len(self.model_keras.history.epoch))
-                # parameters
+                # kernel parameters
                 for idx, layer in enumerate(self.model_gpflux.f_layers):
-                    components = _merge_leaf_components(leaf_components(layer.kernel))
-                    for k, v in components.items():
+                    kernel_components = _merge_leaf_components(leaf_components(layer.kernel))
+                    for k, v in kernel_components.items():
                         if v.trainable:
                             if tf.rank(v) == 0:
                                 logging.scalar(f"layer[{idx}]/kernel.{k}", v)
                             elif tf.rank(v) == 1:
                                 for i, vi in enumerate(v):
                                     logging.scalar(f"layer[{idx}]/kernel.{k}[{i}]", vi)
-                # TODO check if works for het likelihoods
-                if self.model_gpflux.likelihood_layer.likelihood.variance.trainable:
-                    logging.scalar(
-                        "likelihood.variance",
-                        lambda: self.model_gpflux.likelihood_layer.likelihood.variance,
-                    )
+                # likelihood parameters
+                likelihood_components = _merge_leaf_components(
+                    leaf_components(self.model_gpflux.likelihood_layer.likelihood)
+                )
+                for k, v in likelihood_components.items():
+                    if v.trainable:
+                        logging.scalar(f"likelihood/{k}", v)
+
                 # losses and metrics
                 for k, v in self.model_keras.history.history.items():
                     logging.histogram(f"{k}/epoch", lambda: v)
