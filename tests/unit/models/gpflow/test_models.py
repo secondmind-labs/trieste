@@ -254,7 +254,7 @@ def test_gpflow_wrappers_predict_y(gpflow_interface_factory: ModelFactoryType) -
         ),
     ],
 )
-def test_gpflow_wrappers_log(
+def test_gpflow_wrappers_log_kernel(
     mocked_summary_scalar: unittest.mock.MagicMock,
     gpflow_interface_factory: ModelFactoryType,
     kernel: Optional[gpflow.kernels.Kernel],
@@ -280,6 +280,71 @@ def test_gpflow_wrappers_log(
     for i, (n, v) in enumerate(zip(names, values)):
         assert mocked_summary_scalar.call_args_list[i][0][0] == n
         assert mocked_summary_scalar.call_args_list[i][0][1].numpy() == v
+
+
+@unittest.mock.patch("trieste.logging.tf.summary.histogram")
+@unittest.mock.patch("trieste.logging.tf.summary.scalar")
+@pytest.mark.parametrize("use_dataset", [False, True])
+def test_gpflow_wrappers_log_all(
+    mocked_summary_scalar: unittest.mock.MagicMock,
+    mocked_summary_histogram: unittest.mock.MagicMock,
+    use_dataset: bool,
+    gpflow_interface_factory: ModelFactoryType,
+) -> None:
+    x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
+    y = fnc_3x_plus_10(x)
+    dataset = Dataset(x, y)
+
+    model, _ = gpflow_interface_factory(x, y)
+    model.optimize(dataset)
+
+    mocked_summary_writer = unittest.mock.MagicMock()
+    with tensorboard_writer(mocked_summary_writer):
+        with step_number(42):
+            if use_dataset:
+                model.log(dataset)
+            else:
+                model.log(None)
+
+    assert len(mocked_summary_writer.method_calls) == 1
+    assert mocked_summary_writer.method_calls[0][0] == "as_default"
+    assert mocked_summary_writer.method_calls[0][-1]["step"] == 42
+
+    loss_names = ["loss/diff", "loss/final", "prior_kl/diff", "prior_kl/final"]
+    metrics_names = ["mse/diff", "mse/final"]
+    accuracy_names = [
+        "accuracy/root_mean_square_error",
+        "accuracy/mean_absolute_error",
+        "accuracy/z_residuals_std",
+    ]
+    variance_stats = [
+        "variance/predict_variance_mean",
+        "variance/empirical",
+        "variance/root_mean_variance_error",
+    ]
+    par_names = ["kernel.variance", "kernel.lengthscales", "likelihood"]
+
+    names_scalars = ["epochs/num_epochs"] + loss_names + metrics_names + par_names
+    num_scalars = len(names_scalars)
+    names_histogram = ["loss/epoch", "mse/epoch", "prior_kl/epoch"]
+    num_histogram = len(names_histogram)
+    if use_dataset:
+        names_scalars = names_scalars + accuracy_names + variance_stats
+        num_scalars = num_scalars + len(accuracy_names) + len(variance_stats)
+        names_histogram = (
+            names_histogram
+            + ["accuracy/absolute_errors", "accuracy/z_residuals"]
+            + ["variance/predict_variance", "variance/variance_error"]
+        )
+        num_histogram += 4
+
+    assert mocked_summary_scalar.call_count == num_scalars
+    for i in range(len(mocked_summary_scalar.call_args_list)):
+        assert any([j in mocked_summary_scalar.call_args_list[i][0][0] for j in names_scalars])
+
+    assert mocked_summary_histogram.call_count == num_histogram
+    for i in range(len(mocked_summary_histogram.call_args_list)):
+        assert any([j in mocked_summary_histogram.call_args_list[i][0][0] for j in names_histogram])
 
 
 @random_seed

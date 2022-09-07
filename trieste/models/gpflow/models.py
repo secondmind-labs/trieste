@@ -274,7 +274,7 @@ class GaussianProcessRegression(
             self.find_best_model_initialization(
                 self._num_kernel_samples * num_trainable_params_with_priors_or_constraints
             )
-
+        # breakpoint()
         self.optimizer.optimize(self.model, dataset)
         self.update_posterior_cache()
 
