@@ -20,10 +20,10 @@ import dill
 import gpflow
 import tensorflow as tf
 from gpflow.inducing_variables import InducingPoints
+from gpflow.utilities.traversal import _merge_leaf_components, leaf_components
 from gpflux.layers import GPLayer, LatentVariableLayer
 from gpflux.models import DeepGP
 from tensorflow.python.keras.callbacks import Callback
-from gpflow.utilities.traversal import _merge_leaf_components, leaf_components
 
 from ... import logging
 from ...data import Dataset
