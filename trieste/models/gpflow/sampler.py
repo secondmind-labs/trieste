@@ -315,8 +315,8 @@ class FeatureDecompositionTrajectorySampler(
         :param trajectory: The trajectory function to be resampled.
         :return: The new resampled trajectory function.
         """
-        tf.debugging.Assert(isinstance(
-            trajectory, feature_decomposition_trajectory), [tf.constant([])]
+        tf.debugging.Assert(
+            isinstance(trajectory, feature_decomposition_trajectory), [tf.constant([])]
         )
 
         self._feature_functions.resample()  # resample Fourier feature decomposition
