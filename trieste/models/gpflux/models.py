@@ -65,7 +65,7 @@ class DeepGaussianProcess(
         :param optimizer: The optimizer wrapper with necessary specifications for compiling and
             training the model. Defaults to :class:`~trieste.models.optimizer.KerasOptimizer` with
             :class:`~tf.optimizers.Adam` optimizer, mean squared error metric and a dictionary of
-            default arguments for Keras `fit` method: 400 epochs, batch size of 1000, and verbose 0.
+            default arguments for the Keras `fit` method: 400 epochs, batch size of 1000, and verbose 0.
             A custom callback that reduces the optimizer learning rate is used as well. See
             https://keras.io/api/models/model_training_apis/#fit-method for a list of possible
             arguments.
