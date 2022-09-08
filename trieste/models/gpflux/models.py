@@ -362,7 +362,7 @@ class DeepGaussianProcess(
     def log(self, dataset: Optional[Dataset] = None) -> None:
         """
         Log model training information at a given optimization step to the Tensorboard.
-        We log few summary statistics of losses, layer KL divergences and metrics (as provided in
+        We log a few summary statistics of losses, layer KL divergences and metrics (as provided in
         ``optimizer``): ``final`` value at the end of the training, ``diff`` value as a difference
         between inital and final epoch. We also log epoch statistics, but as histograms, rather
         than time series. We also log several training data based metrics, such as root mean square
