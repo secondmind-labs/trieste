@@ -127,7 +127,7 @@ class LocalPenalization(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel])
         :return: The (log) expected improvement penalized with respect to the pending points.
         :raise tf.errors.InvalidArgumentError: If the ``dataset`` is empty.
         """
-        tf.debugging.Assert(dataset is not None, [])
+        tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
@@ -156,10 +156,10 @@ class LocalPenalization(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel])
             for the current step. Defaults to ``True``.
         :return: The updated acquisition function.
         """
-        tf.debugging.Assert(dataset is not None, [])
+        tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
-        tf.debugging.Assert(self._base_acquisition_function is not None, [])
+        tf.debugging.Assert(self._base_acquisition_function is not None, [tf.constant([])])
 
         if new_optimization_step:
             self._update_base_acquisition_function(dataset, model)
@@ -437,7 +437,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
             See class docs for more details.
         :raise tf.errors.InvalidArgumentError: If ``fantasize_method`` is not "KB" or "sample".
         """
-        tf.debugging.Assert(fantasize_method in ["KB", "sample"], [])
+        tf.debugging.Assert(fantasize_method in ["KB", "sample"], [tf.constant([])])
 
         if base_acquisition_function_builder is None:
             base_acquisition_function_builder = ExpectedImprovement()
