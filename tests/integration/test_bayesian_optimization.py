@@ -406,16 +406,20 @@ def test_bayesian_optimizer_with_dgp_finds_minima_of_simple_quadratic(
 @random_seed
 @pytest.mark.slow
 @pytest.mark.parametrize(
-    "num_steps, acquisition_rule, check_regret",
+    "num_steps, acquisition_rule",
     [
-        pytest.param(60, EfficientGlobalOptimization(), True, id="EfficientGlobalOptimization"),
+        pytest.param(
+            60,
+            EfficientGlobalOptimization(),
+            id="EfficientGlobalOptimization",
+            marks=pytest.mark.skip(reason="too fragile"),
+        ),
         pytest.param(
             30,
             EfficientGlobalOptimization(
                 ParallelContinuousThompsonSampling(),
                 num_query_points=4,
             ),
-            False,
             id="ParallelContinuousThompsonSampling",
         ),
     ],
@@ -423,7 +427,6 @@ def test_bayesian_optimizer_with_dgp_finds_minima_of_simple_quadratic(
 def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_scaled_branin(
     num_steps: int,
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepEnsemble],
-    check_regret: bool,
 ) -> None:
     _test_optimizer_finds_minimum(
         DeepEnsemble,
@@ -431,7 +434,6 @@ def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_scaled_branin(
         acquisition_rule,
         optimize_branin=True,
         model_args={"bootstrap": True, "diversify": False},
-        check_regret=check_regret,
     )
 
 
