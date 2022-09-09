@@ -54,6 +54,7 @@ from trieste.acquisition.rule import (
 from trieste.acquisition.sampler import ThompsonSamplerFromTrajectory
 from trieste.bayesian_optimizer import (
     BayesianOptimizer,
+    FrozenRecord,
     OptimizationResult,
     TrainableProbabilisticModelType,
     stop_at_minimum,
@@ -613,12 +614,15 @@ def _test_optimizer_finds_minimum(
                 pass
             elif check_regret:
                 # this just check that the new observations are mostly better than the initial ones
+                assert isinstance(result.history[0], FrozenRecord)
                 initial_observations = result.history[0].load().dataset.observations
                 best_initial = tf.math.reduce_min(initial_observations)
                 better_than_initial = 0
                 num_points = len(initial_observations)
                 for i in range(1, len(result.history)):
-                    step_observations = result.history[i].load().dataset.observations
+                    step_history = result.history[i]
+                    assert isinstance(step_history, FrozenRecord)
+                    step_observations = step_history.load().dataset.observations
                     new_observations = step_observations[num_points:]
                     if tf.math.reduce_min(new_observations) < best_initial:
                         better_than_initial += 1
