@@ -309,7 +309,7 @@ def test_bayesian_optimizer_with_sgpr_finds_minima_of_scaled_branin() -> None:
     )
     _test_optimizer_finds_minimum(
         SparseGaussianProcessRegression,
-        12,
+        20,
         EfficientGlobalOptimization[SearchSpace, SparseGaussianProcessRegression](
             builder=ParallelContinuousThompsonSampling(), num_query_points=5
         ),
@@ -598,7 +598,7 @@ def _test_optimizer_finds_minimum(
             )
 
             # check history saved ok
-            assert len(result.history) <= num_steps or 2
+            assert len(result.history) <= (num_steps or 2)
             assert len(result.loaded_history) == len(result.history)
             loaded_result: OptimizationResult[None] = OptimizationResult.from_path(
                 Path(tmpdirname) / "history"
