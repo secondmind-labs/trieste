@@ -12,7 +12,7 @@
 #     name: python3
 # ---
 
-# + pycharm={"name": "#%%\n", "is_executing": true}
+# + pycharm={"name": "#%%\n"}
 from __future__ import annotations
 
 import abc
@@ -53,8 +53,7 @@ import concurrent.futures
 tf.experimental.numpy.experimental_enable_numpy_behavior()  # NOTE: This depends on tf 2.5 and trieste currently depends on 2.4
 #np_config.enable_numpy_behavior()
 
-
-# + pycharm={"name": "#%%\n", "is_executing": true}
+# + pycharm={"name": "#%%\n"}
 # Should live in its own file, i.e. multifidelity dataset and associated utilities
 @dataclass(frozen=True)
 class MultifidelityDataset(Dataset):
@@ -85,7 +84,7 @@ def convert_query_points_for_fidelity(query_points: TensorType, fidelity: int) -
 
 
 
-# + pycharm={"name": "#%%\n", "is_executing": true}
+# + pycharm={"name": "#%%\n"}
 class AR1(TrainableProbabilisticModel):
     def __init__(
             self,
@@ -123,6 +122,11 @@ class AR1(TrainableProbabilisticModel):
 
         return signal_mean, signal_var
 
+    def calculate_residual(self, dataset: Dataset, fidelity: int) -> TensorType:
+        fidelity_query_points = convert_query_points_for_fidelity(dataset.query_points, fidelity-1)
+        residuals = dataset.observations - self.rho[fidelity]*self.predict(fidelity_query_points)[0]
+        return residuals
+
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         raise NotImplementedError("not yet coded up functionality for sampling")
 
@@ -145,9 +149,10 @@ class AR1(TrainableProbabilisticModel):
                 self.lowest_fidelity_signal_model.update(dataset_for_fidelity)
             else:
                 # Make query points but with final column corresponding to fidelity we wish to predict at
-                fidelity_query_points = convert_query_points_for_fidelity(dataset_for_fidelity.query_points, fidelity)
-                residuals = dataset_for_fidelity.observations - self.predict(fidelity_query_points)[0]
-                self.fidelity_residual_models[fidelity].update(Dataset(dataset_for_fidelity.query_points, residuals))
+                #dataset_for_fidelity.query_points
+                self.fidelity_residual_models[fidelity].update(
+                    Dataset(dataset_for_fidelity.query_points, self.calculate_residual(dataset_for_fidelity, fidelity))
+                )
 
     def optimize_not_quite_working(self, dataset: MultifidelityDataset) -> None:
         """
@@ -208,6 +213,7 @@ class AR1(TrainableProbabilisticModel):
         dataset_per_fidelity = dataset.split_dataset_by_fidelity()
 
         for fidelity, dataset_for_fidelity in enumerate(dataset_per_fidelity):
+            print(f"Working on fidelity {fidelity}")
             if fidelity == 0:
                 self.lowest_fidelity_signal_model.optimize(dataset_for_fidelity)
             else:
@@ -215,10 +221,15 @@ class AR1(TrainableProbabilisticModel):
 
                 fidelity_observations = dataset_for_fidelity.observations
                 fidelity_query_points = dataset_for_fidelity.query_points
-                predictions_from_low_fidelity = self.lowest_fidelity_signal_model.predict(dataset_for_fidelity.query_points)[0]
+                prev_fidelity_query_points = convert_query_points_for_fidelity(dataset_for_fidelity.query_points, fidelity-1)
+                predictions_from_lower_fidelity = self.predict(prev_fidelity_query_points)[0]
+                #residuals = self.calculate_residual(dataset_for_fidelity, fidelity)
 
                 def loss(): # hardcoded log liklihood calculation for the residual model
-                    residuals = fidelity_observations - self.rho[fidelity] * predictions_from_low_fidelity
+                    # Would like to do this, but it is slower as we make predictions through all the fidelities on *each* call
+                    # even though the earlier ones *shouldn't* change during this optimisation routine
+                    #residuals = self.calculate_residual(dataset_for_fidelity, fidelity)
+                    residuals = fidelity_observations - self.rho[fidelity] * predictions_from_lower_fidelity
                     K = gpf_residual_model.kernel(fidelity_query_points)
                     ks = gpf_residual_model._add_noise_cov(K)
                     L = tf.linalg.cholesky(ks)
@@ -228,11 +239,14 @@ class AR1(TrainableProbabilisticModel):
 
                 trainable_variables = gpf_residual_model.trainable_variables + self.rho[fidelity].variables
                 self.fidelity_residual_models[fidelity].optimizer.optimizer.minimize(loss, trainable_variables)
-                self.fidelity_residual_models[fidelity].update(Dataset(fidelity_query_points, fidelity_observations - self.rho[fidelity] * predictions_from_low_fidelity))
+                residuals = self.calculate_residual(dataset_for_fidelity, fidelity)
+                self.fidelity_residual_models[fidelity].update(Dataset(fidelity_query_points, residuals))
+
+                # self.fidelity_residual_models[fidelity].update(Dataset(fidelity_query_points, fidelity_observations - self.rho[fidelity] * predictions_from_low_fidelity))
 
 
 
-# + pycharm={"name": "#%%\n", "is_executing": true}
+# + pycharm={"name": "#%%\n"}
 
 def filter_by_fidelity(query_points: TensorType):
 
@@ -256,8 +270,8 @@ def my_simulator(x_input, fidelity):
     # this is a dummy objective
     f = 0.5 * ((6.0*x_input-2.0)**2)*tf.math.sin(12.0*x_input - 4.0) + 10.0*(x_input -1.0)
     f = f + fidelity * (f - 20.0*(x_input -1.0))
-    #noise = tf.random.normal(f.shape, stddev=1e-6, dtype=f.dtype)
-    #f = tf.where(fidelity > 0, f + noise, f)
+    noise = tf.random.normal(f.shape, stddev=1e-1, dtype=f.dtype)
+    f = tf.where(fidelity > 0, f + noise, f)
     return f
 
 
@@ -291,7 +305,7 @@ initial_data = observer(initial_sample, num_fidelities=n_fidelities)
 points, masks, indices = filter_by_fidelity(initial_data.query_points)
 data = [Dataset(points[fidelity], tf.gather(initial_data.observations, indices[fidelity])) for fidelity in range(n_fidelities)]
 
-gprs = [GaussianProcessRegression(build_gpr(data[fidelity], input_search_space,  likelihood_variance = 1e-5, kernel_priors=False)) for fidelity in range(n_fidelities)]
+gprs = [GaussianProcessRegression(build_gpr(data[fidelity], input_search_space,  likelihood_variance = 1e-6, kernel_priors=False)) for fidelity in range(n_fidelities)]
 
 model = AR1(
     lowest_fidelity_signal_model = gprs[0],
@@ -306,15 +320,18 @@ model.optimize(initial_data)
 X = tf.linspace(0,1,200)[:, None]
 X_list = [tf.concat([X, tf.ones_like(X) * i], 1) for i in range(n_fidelities)]
 predictions = [model.predict(x) for x in X_list]
+fig, ax = plt.subplots(1,1, figsize=(10, 7))
 for fidelity, prediction in enumerate(predictions):
     mean, var = prediction
-    plt.plot(X,mean, label=f"Predicted fidelity {fidelity}")
-    plt.plot(X,mean+1.96*tf.math.sqrt(var), alpha=0.2)
-    plt.plot(X,mean-1.96*tf.math.sqrt(var), alpha=0.2)
-    plt.plot(X,observer(X_list[fidelity], num_fidelities=n_fidelities).observations, label=f"True fidelity {fidelity}")
-    plt.scatter(points[fidelity], tf.gather(initial_data.observations, indices[fidelity]), label=f"fidelity {fidelity} data")
-plt.legend()
-plt.title(f"chosen rho as {model.rho[1].numpy()}")
+    ax.plot(X,mean, label=f"Predicted fidelity {fidelity}")
+    ax.plot(X,mean+1.96*tf.math.sqrt(var), alpha=0.2)
+    ax.plot(X,mean-1.96*tf.math.sqrt(var), alpha=0.2)
+    ax.plot(X,observer(X_list[fidelity], num_fidelities=n_fidelities).observations, label=f"True fidelity {fidelity}")
+    ax.scatter(points[fidelity], tf.gather(initial_data.observations, indices[fidelity]), label=f"fidelity {fidelity} data")
+ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+print(f"Optimised rho for fidelity 2 as {model.rho[1].numpy()}")
+print(f"Optimised rho for fidelity 3 as {model.rho[2].numpy()}")
+#print(f"Optimised rho for fidelity 4 as {model.rho[3].numpy()}")
 plt.show()
 
 # + pycharm={"name": "#%%\n"}
