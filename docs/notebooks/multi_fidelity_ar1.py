@@ -214,20 +214,21 @@ class AR1(TrainableProbabilisticModel):
                 gpf_residual_model = self.fidelity_residual_models[fidelity].model
 
                 fidelity_observations = dataset_for_fidelity.observations
+                fidelity_query_points = dataset_for_fidelity.query_points
                 predictions_from_low_fidelity = self.lowest_fidelity_signal_model.predict(dataset_for_fidelity.query_points)[0]
 
                 def loss(): # hardcoded log liklihood calculation for the residual model
                     residuals = fidelity_observations - self.rho[fidelity] * predictions_from_low_fidelity
-                    K = gpf_residual_model.kernel(highfi_points)
+                    K = gpf_residual_model.kernel(fidelity_query_points)
                     ks = gpf_residual_model._add_noise_cov(K)
                     L = tf.linalg.cholesky(ks)
-                    m = gpf_residual_model.mean_function(highfi_points)
+                    m = gpf_residual_model.mean_function(fidelity_query_points)
                     log_prob = multivariate_normal(residuals, m, L)
                     return -1.0 * tf.reduce_sum(log_prob)
 
                 trainable_variables = gpf_residual_model.trainable_variables + self.rho[fidelity].variables
                 self.fidelity_residual_models[fidelity].optimizer.optimizer.minimize(loss, trainable_variables)
-                self.fidelity_residual_models[fidelity].update(Dataset(highfi_points, fidelity_observations - self.rho[fidelity] * predictions_from_low_fidelity))
+                self.fidelity_residual_models[fidelity].update(Dataset(fidelity_query_points, fidelity_observations - self.rho[fidelity] * predictions_from_low_fidelity))
 
 
 
@@ -236,14 +237,19 @@ class AR1(TrainableProbabilisticModel):
 def filter_by_fidelity(query_points: TensorType):
 
     input_points = query_points[:, :-1]  # [..., D+1]
-    fidelities = query_points[:, -1:]  # [..., 1]
-    lowfi_mask = (fidelities[:, 0] == 0.)
-    ind_lowfi = tf.where(lowfi_mask)[:, 0]
-    highfi_mask = (fidelities[:, 0] == 1.)
-    ind_highfi = tf.where(highfi_mask)[:, 0]
-    lowfi_points = tf.gather(input_points, ind_lowfi, axis=0)
-    highfi_points = tf.gather(input_points, ind_highfi, axis=0)
-    return lowfi_points, highfi_points, lowfi_mask, highfi_mask, ind_lowfi, ind_highfi
+    fidelities = query_points[:, -1]  # [..., 1]
+    max_fid = int(tf.reduce_max(fidelities))
+    masks = list()
+    indices = list()
+    points = list()
+    for fidelity in range(max_fid+1):
+        fid_mask = (fidelities == fidelity)
+        fid_ind = tf.where(fid_mask)[:, 0]
+        fid_points = tf.gather(input_points, fid_ind, axis=0)
+        masks.append(fid_mask)
+        indices.append(fid_ind)
+        points.append(fid_points)
+    return points, masks, indices
 
 # Replace this with your own observer
 def my_simulator(x_input, fidelity):
@@ -255,7 +261,7 @@ def my_simulator(x_input, fidelity):
     return f
 
 
-def observer(x):
+def observer(x, num_fidelities):
     # last dimension is the fidelity value
     x_input = x[..., :-1]
     x_fidelity = x[...,-1:]
@@ -263,59 +269,53 @@ def observer(x):
     # note: this assumes that my_simulator broadcasts, i.e. accept matrix inputs.
     # If not you need to replace this by a for loop over all rows of "input"
     observations = my_simulator(x_input, x_fidelity)
-    return MultifidelityDataset(num_fidelities=2, query_points=x, observations=observations)
+    return MultifidelityDataset(num_fidelities=num_fidelities, query_points=x, observations=observations)
 
 
-num_init = 12
 input_dim = 1
 lb = np.zeros(input_dim)
 ub = np.ones(input_dim)
+n_fidelities = 4
 
 input_search_space = trieste.space.Box(lb, ub)
-fidelity_search_space = trieste.space.DiscreteSearchSpace(np.array([0., 1.]).reshape(-1, 1))
+fidelity_search_space = trieste.space.DiscreteSearchSpace(np.array([np.arange(n_fidelities, dtype=float)]).reshape(-1, 1))
 search_space = trieste.space.TaggedProductSearchSpace([input_search_space, fidelity_search_space],
                                                       ["input", "fidelity"])
+n_samples_per_fidelity = [2**((n_fidelities - fidelity) + 1) + 3 for fidelity in range(n_fidelities)]
 
-X = tf.linspace(0,1,11)[:, None]
-initial_sample_low = tf.concat([X,tf.zeros_like(X)],1)
-X = tf.linspace(0,1,4)[:, None]
-initial_sample_high = tf.concat([X,tf.ones_like(X)],1)
-initial_sample = tf.concat([initial_sample_low,initial_sample_high],0)
-initial_data = observer(initial_sample)
+xs = [tf.linspace(0, 1, samples)[:, None] for samples in n_samples_per_fidelity]
+initial_samples_list = [tf.concat([x, tf.ones_like(x) * i], 1) for i, x in enumerate(xs)]
+initial_sample = tf.concat(initial_samples_list,0)
+initial_data = observer(initial_sample, num_fidelities=n_fidelities)
 
-lowfi_points, highfi_points, lowfi_mask, highfi_mask, ind_lowfi, ind_highfi = filter_by_fidelity(initial_data.query_points)
-lf_data = Dataset(lowfi_points, tf.gather(initial_data.observations, ind_lowfi))
-hf_data = Dataset(highfi_points, tf.gather(initial_data.observations, ind_highfi))
+points, masks, indices = filter_by_fidelity(initial_data.query_points)
+data = [Dataset(points[fidelity], tf.gather(initial_data.observations, indices[fidelity])) for fidelity in range(n_fidelities)]
 
-low_fidelity_gpr = GaussianProcessRegression(build_gpr(lf_data, input_search_space,  likelihood_variance = 1e-5, kernel_priors=False))
-high_fidelity_residual_gpr = GaussianProcessRegression(build_gpr(hf_data, input_search_space, likelihood_variance = 1e-5, kernel_priors=False)) # ignore this
-
+gprs = [GaussianProcessRegression(build_gpr(data[fidelity], input_search_space,  likelihood_variance = 1e-5, kernel_priors=False)) for fidelity in range(n_fidelities)]
 
 model = AR1(
-    lowest_fidelity_signal_model = low_fidelity_gpr,
-    fidelity_residual_models = [high_fidelity_residual_gpr],
+    lowest_fidelity_signal_model = gprs[0],
+    fidelity_residual_models = gprs[1:],
+
 )
+
 model.update(initial_data)
 model.optimize(initial_data)
 
 
 X = tf.linspace(0,1,200)[:, None]
-X_low = tf.concat([X,tf.zeros_like(X)],1)
-X_high = tf.concat([X,tf.ones_like(X)],1)
-mean, var = model.predict(X_low)
-plt.plot(X,mean, label="Predicted low", color="blue")
-plt.plot(X,mean+1.96*tf.math.sqrt(var),color="blue",alpha=0.2)
-plt.plot(X,mean-1.96*tf.math.sqrt(var), color="blue", alpha=0.2)
-plt.plot(X,observer(X_low).observations, label="True low")
-mean, var = model.predict(X_high)
-plt.plot(X,mean, label="Predicted high", color="red")
-plt.plot(X,mean+1.96*tf.math.sqrt(var),color="red",alpha=0.2)
-plt.plot(X,mean-1.96*tf.math.sqrt(var), color="red", alpha=0.2)
-plt.plot(X,observer(X_high).observations, label="True high")
-plt.scatter(lowfi_points, tf.gather(initial_data.observations, ind_lowfi), label="lf data")
-plt.scatter(highfi_points, tf.gather(initial_data.observations, ind_highfi), label="hf data")
+X_list = [tf.concat([X, tf.ones_like(X) * i], 1) for i in range(n_fidelities)]
+predictions = [model.predict(x) for x in X_list]
+for fidelity, prediction in enumerate(predictions):
+    mean, var = prediction
+    plt.plot(X,mean, label=f"Predicted fidelity {fidelity}")
+    plt.plot(X,mean+1.96*tf.math.sqrt(var), alpha=0.2)
+    plt.plot(X,mean-1.96*tf.math.sqrt(var), alpha=0.2)
+    plt.plot(X,observer(X_list[fidelity], num_fidelities=n_fidelities).observations, label=f"True fidelity {fidelity}")
+    plt.scatter(points[fidelity], tf.gather(initial_data.observations, indices[fidelity]), label=f"fidelity {fidelity} data")
 plt.legend()
 plt.title(f"chosen rho as {model.rho[1].numpy()}")
+plt.show()
 
 # + pycharm={"name": "#%%\n"}
 
