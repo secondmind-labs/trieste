@@ -348,6 +348,7 @@ def test_bayesian_optimizer_with_sgpr_finds_minima_of_simple_quadratic() -> None
                 num_query_points=4,
             ),
             id="GreedyContinuousThompsonSampling",
+            marks=pytest.mark.skip(reason="too fragile"),
         ),
     ],
 )
