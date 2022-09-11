@@ -42,7 +42,9 @@ class DumbTrajectorySampler(RandomFourierFeatureTrajectorySampler):
     """A RandomFourierFeatureTrajectorySampler that doesn't update trajectories in place."""
 
     def update_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction:
-        tf.debugging.Assert(isinstance(trajectory, feature_decomposition_trajectory), [])
+        tf.debugging.Assert(
+            isinstance(trajectory, feature_decomposition_trajectory), [tf.constant([])]
+        )
         return self.get_trajectory()
 
 
