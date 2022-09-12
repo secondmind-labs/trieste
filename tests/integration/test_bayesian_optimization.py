@@ -54,6 +54,7 @@ from trieste.acquisition.rule import (
 from trieste.acquisition.sampler import ThompsonSamplerFromTrajectory
 from trieste.bayesian_optimizer import (
     BayesianOptimizer,
+    FrozenRecord,
     OptimizationResult,
     TrainableProbabilisticModelType,
     stop_at_minimum,
@@ -309,7 +310,7 @@ def test_bayesian_optimizer_with_sgpr_finds_minima_of_scaled_branin() -> None:
     )
     _test_optimizer_finds_minimum(
         SparseGaussianProcessRegression,
-        11,
+        20,
         EfficientGlobalOptimization[SearchSpace, SparseGaussianProcessRegression](
             builder=ParallelContinuousThompsonSampling(), num_query_points=5
         ),
@@ -347,6 +348,7 @@ def test_bayesian_optimizer_with_sgpr_finds_minima_of_simple_quadratic() -> None
                 num_query_points=4,
             ),
             id="GreedyContinuousThompsonSampling",
+            marks=pytest.mark.skip(reason="too fragile"),
         ),
     ],
 )
@@ -408,7 +410,12 @@ def test_bayesian_optimizer_with_dgp_finds_minima_of_simple_quadratic(
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule",
     [
-        pytest.param(60, EfficientGlobalOptimization(), id="EfficientGlobalOptimization"),
+        pytest.param(
+            60,
+            EfficientGlobalOptimization(),
+            id="EfficientGlobalOptimization",
+            marks=pytest.mark.skip(reason="too fragile"),
+        ),
         pytest.param(
             30,
             EfficientGlobalOptimization(
@@ -497,9 +504,9 @@ def _test_optimizer_finds_minimum(
     ],
     optimize_branin: bool = False,
     model_args: Optional[Mapping[str, Any]] = None,
+    check_regret: bool = False,
 ) -> None:
     model_args = model_args or {}
-    track_state = True
 
     if optimize_branin:
         search_space = BRANIN_SEARCH_SPACE
@@ -589,28 +596,46 @@ def _test_optimizer_finds_minimum(
                 initial_data,
                 cast(TrainableProbabilisticModelType, model),
                 acquisition_rule,
-                track_state=track_state,
-                track_path=Path(tmpdirname) / "history" if track_state else None,
+                track_state=True,
+                track_path=Path(tmpdirname) / "history",
                 early_stop_callback=stop_at_minimum(minima, minimizers, minimum_rtol=rtol_level),
             )
-            best_x, best_y, _ = result.try_get_optimal_point()
+
+            # check history saved ok
+            assert len(result.history) <= (num_steps or 2)
+            assert len(result.loaded_history) == len(result.history)
+            loaded_result: OptimizationResult[None] = OptimizationResult.from_path(
+                Path(tmpdirname) / "history"
+            )
+            assert loaded_result.final_result.is_ok
+            assert len(loaded_result.history) == len(result.history)
 
             if num_steps is None:
                 # this test is just being run to check for crashes, not performance
                 pass
+            elif check_regret:
+                # this just check that the new observations are mostly better than the initial ones
+                assert isinstance(result.history[0], FrozenRecord)
+                initial_observations = result.history[0].load().dataset.observations
+                best_initial = tf.math.reduce_min(initial_observations)
+                better_than_initial = 0
+                num_points = len(initial_observations)
+                for i in range(1, len(result.history)):
+                    step_history = result.history[i]
+                    assert isinstance(step_history, FrozenRecord)
+                    step_observations = step_history.load().dataset.observations
+                    new_observations = step_observations[num_points:]
+                    if tf.math.reduce_min(new_observations) < best_initial:
+                        better_than_initial += 1
+                    num_points = len(step_observations)
+
+                assert better_than_initial / len(result.history) > 0.6
             else:
+                # this actually checks that we solved the problem
+                best_x, best_y, _ = result.try_get_optimal_point()
                 minimizer_err = tf.abs((best_x - minimizers) / minimizers)
                 assert tf.reduce_any(tf.reduce_all(minimizer_err < 0.05, axis=-1), axis=0)
                 npt.assert_allclose(best_y, minima, rtol=rtol_level)
-
-                if track_state:
-                    assert len(result.history) <= num_steps
-                    assert len(result.loaded_history) == len(result.history)
-                    loaded_result: OptimizationResult[None] = OptimizationResult.from_path(
-                        Path(tmpdirname) / "history"
-                    )
-                    assert loaded_result.final_result.is_ok
-                    assert len(loaded_result.history) == len(result.history)
 
             if isinstance(acquisition_rule, EfficientGlobalOptimization):
                 acq_function = acquisition_rule.acquisition_function
