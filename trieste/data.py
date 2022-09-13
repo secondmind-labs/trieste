@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Sequence
 
 import tensorflow as tf
 
@@ -108,3 +109,31 @@ class Dataset:
         :return: A 2-tuple of the :attr:`query_points` and :attr:`observations`.
         """
         return self.query_points, self.observations
+
+
+@dataclass(frozen=True)
+class MultifidelityDataset(Dataset):
+    num_fidelities: int
+
+    def split_dataset_by_fidelity(self) -> Sequence[Dataset]:
+        datasets = []
+        for fidelity in range(self.num_fidelities):
+            dataset_i = get_dataset_for_fidelity(self, fidelity)
+            datasets.append(dataset_i)
+        return datasets
+
+
+def get_dataset_for_fidelity(dataset: Dataset, fidelity: int) -> Dataset:
+    input_points = dataset.query_points[:, :-1]  # [..., D+1]
+    fidelity_col = dataset.query_points[:, -1]  # [...,]
+    mask = (fidelity_col == fidelity)  # [..., ]
+    inds = tf.where(mask)[:, 0]  # [..., ]
+    inputs_for_fidelity = tf.gather(input_points, inds, axis=0)  # [..., D]
+    observations_for_fidelity = tf.gather(dataset.observations, inds, axis=0)  # [..., 1]
+    return Dataset(query_points=inputs_for_fidelity, observations=observations_for_fidelity)
+
+
+def convert_query_points_for_fidelity(query_points: TensorType, fidelity: int) -> TensorType:
+    fidelity_col = tf.ones((tf.shape(query_points)[0], 1), dtype=query_points.dtype)*fidelity
+    query_points_for_fidelity = tf.concat([query_points, fidelity_col], axis=-1)
+    return query_points_for_fidelity

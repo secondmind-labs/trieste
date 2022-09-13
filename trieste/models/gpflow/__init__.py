@@ -31,6 +31,7 @@ from .models import (
     SparseGaussianProcessRegression,
     SparseVariational,
     VariationalGaussianProcess,
+    AR1,
 )
 from .sampler import (
     BatchReparametrizationSampler,
