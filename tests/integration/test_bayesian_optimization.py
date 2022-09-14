@@ -52,7 +52,6 @@ from trieste.acquisition.rule import (
     TrustRegion,
 )
 from trieste.acquisition.sampler import ThompsonSamplerFromTrajectory
-from trieste.acquisition.utils import split_acquisition_function_calls
 from trieste.bayesian_optimizer import (
     BayesianOptimizer,
     OptimizationResult,
@@ -368,16 +367,14 @@ def test_bayesian_optimizer_with_dgp_finds_minima_of_scaled_branin(
         pytest.param(
             5,
             EfficientGlobalOptimization(
-                MonteCarloExpectedImprovement(int(1e2)),
-                split_acquisition_function_calls(generate_continuous_optimizer(100), 100),
+                MonteCarloExpectedImprovement(int(1e2)), generate_continuous_optimizer(100)
             ),
             id="MonteCarloExpectedImprovement",
         ),
         pytest.param(
             5,
             EfficientGlobalOptimization(
-                MonteCarloAugmentedExpectedImprovement(int(1e2)),
-                split_acquisition_function_calls(generate_continuous_optimizer(100), 100),
+                MonteCarloAugmentedExpectedImprovement(int(1e2)), generate_continuous_optimizer(100)
             ),
             id="MonteCarloAugmentedExpectedImprovement",
         ),
