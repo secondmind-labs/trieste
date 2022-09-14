@@ -166,9 +166,9 @@ class DeepGaussianProcess(
                 elif callback.model:
                     callback.model = (callback.model.to_json(), callback.model.get_weights())
                 # don't pickle tensorboard writers either; they'll be recreated when needed
-                if isinstance(callback, tf.keras.callbacks.TensorBoard):
-                    tensorboard_writers.append(callback._writers)
-                    callback._writers = {}
+                # if isinstance(callback, tf.keras.callbacks.TensorBoard):
+                #     tensorboard_writers.append(callback._writers)
+                #     callback._writers = {}
             state["_optimizer"] = dill.dumps(state["_optimizer"])
         except Exception as e:
             raise NotImplementedError(
@@ -178,11 +178,11 @@ class DeepGaussianProcess(
             # revert original state, even if the pickling failed
             for callback, model in zip(self._optimizer.fit_args.get("callbacks", []), saved_models):
                 callback.model = model
-            for callback, writers in zip(
-                (cb for cb in callbacks if isinstance(cb, tf.keras.callbacks.TensorBoard)),
-                tensorboard_writers,
-            ):
-                callback._writers = writers
+            # for callback, writers in zip(
+            #     (cb for cb in callbacks if isinstance(cb, tf.keras.callbacks.TensorBoard)),
+            #     tensorboard_writers,
+            # ):
+            #     callback._writers = writers
 
         # do the same thing for the history callback
         if self._model_keras.history:
