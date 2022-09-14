@@ -15,7 +15,9 @@
 from __future__ import annotations
 
 from abc import ABC
+from email.policy import default
 from typing import Any, Callable, List, cast
+from collections import defaultdict
 
 import gpflow.kernels
 import gpflux.layers.basis_functions
@@ -127,7 +129,6 @@ class DeepGaussianProcessReparamSampler(ReparametrizationSampler[GPfluxPredictor
 
         return samples  # [..., S, 1, L]
 
-
 class DeepGaussianProcessDecoupledTrajectorySampler(TrajectorySampler[GPfluxPredictor]):
     r"""
     This sampler employs decoupled sampling (see :cite:`wilson2020efficiently`) to build functions
@@ -216,7 +217,6 @@ class DeepGaussianProcessDecoupledTrajectorySampler(TrajectorySampler[GPfluxPred
         cast(dgp_feature_decomposition_trajectory, trajectory).resample()
         return trajectory
 
-
 class DeepGaussianProcessDecoupledLayer(ABC):
     """
     Layer that samples an approximate decoupled trajectory for a GPflux
@@ -253,7 +253,7 @@ class DeepGaussianProcessDecoupledLayer(ABC):
             if isinstance(layer.kernel, gpflow.kernels.SharedIndependent):
                 # Single kernel
                 self._kernel = layer.kernel.kernel
-            elif isinstance(layer.kernel, gpflow.kernels.SeparateIndependet):
+            elif isinstance(layer.kernel, gpflow.kernels.SeparateIndependent):
                 # List of kernels
                 self._kernel = layer.kernel.kernels
         else:
@@ -308,8 +308,6 @@ class DeepGaussianProcessDecoupledLayer(ABC):
         ]  # [N, B, L + M, 1] if Shared or [N, B, L + M, P]
 
         #TODO -- should probably introduce a tf.debugging.assert_equal just to be sure
-
-
         return tf.reduce_sum(
             feature_evaluations * # [N, B, L + M, 1] or [N, B, L + M, P] pending on Shared/Separate 
             self._weights_sample, # [B, L + M, P]
@@ -421,7 +419,7 @@ class DeepGaussianProcessDecoupledLayer(ABC):
 
         return weight_sampler
 
-class ResampleableDecoupledDeepGaussianProcessFeatureFunctions():  # type: ignore[misc]
+class ResampleableDecoupledDeepGaussianProcessFeatureFunctions(): 
     """
     A wrapper around GPflux's random Fourier feature function that allows for efficient in-place
     updating when generating new decompositions. In addition to providing Fourier features,
@@ -453,7 +451,7 @@ class ResampleableDecoupledDeepGaussianProcessFeatureFunctions():  # type: ignor
             self._inducing_points = layer.inducing_variable.Z # [M, D]
             self._canonical_feature_functions = lambda x: tf.linalg.matrix_transpose(
                 Kuf(layer.inducing_variable, layer.kernel, x)
-            )
+            ) # [M, N]
             dummy_X = self._inducing_points[0:1, :]
 
         elif isinstance(layer.inducing_variable, gpflow.inducing_variables.SeparateIndependentInducingVariables):
@@ -461,30 +459,62 @@ class ResampleableDecoupledDeepGaussianProcessFeatureFunctions():  # type: ignor
 
             self._canonical_feature_functions = lambda x: tf.linalg.matrix_transpose(
                 Kuf(layer.inducing_variable, layer.kernel, x)
-            )
+            ) # [P, M, N]
+
             dummy_X = self._inducing_points[0][0:1, :]
 
         else:
-            self._inducing_points = layer.inducing_variable.inducing_variable.Z 
+            self._inducing_points = layer.inducing_variable.inducing_variable.Z  # [M, D]
             self._canonical_feature_functions = lambda x: tf.linalg.matrix_transpose(
                 Kuf(layer.inducing_variable, layer.kernel, x)
-            )
-            dummy_X = self._inducing_points[0:1, :]
+            ) # [M, N]
+            dummy_X = self._inducing_points[0:1, :] 
+
+
+        # Build the RFF objects
+        if isinstance(self._kernel, list):
+
+            self._rff = defaultdict()
+            for counter, ker in enumerate(self._kernel):
+                self._rff[counter] = RFF(ker, self._n_components, dtype=tf.float64)
+        
+        else:
+
+            self._rff = RFF(self._kernel, self._n_components, dtype=tf.float64)
+
 
         self.__call__(dummy_X)
-        self.b: TensorType = tf.Variable(self.b)
-        self.W: TensorType = tf.Variable(self.W)
+        if isinstance(self._kernel, list):
+            for counter, ker in enumerate(self._kernel):
+                
+                self._rff[counter].b: TensorType = tf.Variable(self._rff[counter].b)
+                self._rff[counter].W: TensorType = tf.Variable(self._rff[counter].W)
+        else:
+            self._rff.b: TensorType = tf.Variable(self._rff.b)
+            self._rff.W: TensorType = tf.Variable(self._rff.W)
+
 
     def resample(self) -> None:
         """
         Resample weights and biases.
         """
-        if not hasattr(self, "_bias_init"):
-            self.b.assign(self._sample_bias(tf.shape(self.b), dtype=self._dtype))
-            self.W.assign(self._sample_weights(tf.shape(self.W), dtype=self._dtype))
-        else:
-            self.b.assign(self._bias_init(tf.shape(self.b), dtype=self._dtype))
-            self.W.assign(self._weights_init(tf.shape(self.W), dtype=self._dtype))
+        if isinstance(self._kernel, list):
+
+            for counter, ker in enumerate(self._kernel):
+                if not hasattr(self._rff[counter], "_bias_init"):
+                    self._rff[counter].b.assign(self._rff[counter]._sample_bias(tf.shape(self._rff[counter].b), dtype=self._rff[counter]._dtype))
+                    self._rff[counter].W.assign(self._rff[counter]._sample_weights(tf.shape(self._rff[counter].W), dtype=self._rff[counter]._dtype))
+                else:
+                    self._rff[counter].b.assign(self._rff[counter]._bias_init(tf.shape(self._rff[counter].b), dtype=self._rff[counter]._dtype))
+                    self._rff[counter].W.assign(self._rff[counter]._weights_init(tf.shape(self._rff[counter].W), dtype=self._rff[counter]._dtype))        
+        
+        else:        
+            if not hasattr(self._rff, "_bias_init"):
+                self._rff.b.assign(self._rff._sample_bias(tf.shape(self._rff.b), dtype=self._rff._dtype))
+                self._rff.W.assign(self._rff._sample_weights(tf.shape(self._rff.W), dtype=self._rff._dtype))
+            else:
+                self._rff.b.assign(self._rff._bias_init(tf.shape(self._rff.b), dtype=self._rff._dtype))
+                self._rff.W.assign(self._rff._weights_init(tf.shape(self._rff.W), dtype=self._rff._dtype))
 
     def __call__(self, x: TensorType) -> TensorType:  # [N, D] -> [N, L + M]
         """
@@ -506,13 +536,10 @@ class ResampleableDecoupledDeepGaussianProcessFeatureFunctions():  # type: ignor
         else:
             #Shared Kernel & Inducing Variables case
             
-            _rff = RFF(self._kernel, self._n_components, dtype=tf.float64)
-
             fourier_feature_eval = _rff.__call__(x)  # [N, L]
             canonical_feature_eval = self._canonical_feature_functions(x)  # [N, M]
             
             return tf.concat([fourier_feature_eval, canonical_feature_eval], axis=-1)  # [N, L + M]
-
 
 
 class dgp_feature_decomposition_trajectory(TrajectoryFunctionClass):
