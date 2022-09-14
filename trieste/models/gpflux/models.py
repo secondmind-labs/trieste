@@ -232,12 +232,11 @@ class DeepGaussianProcess(
         self._optimizer = dill.loads(self._optimizer)
         for callback in self._optimizer.fit_args.get("callbacks", []):
             if callback.model is ...:
-                callback.set_model(self._model_keras)
+                callback.model = self._model_keras
             elif callback.model:
                 model_json, weights = callback.model
-                model = tf.keras.models.model_from_json(model_json)
-                model.set_weights(weights)
-                callback.set_model(model)
+                callback.model = tf.keras.models.model_from_json(model_json)
+                callback.model.set_weights(weights)
 
         # recompile the model
         self._model_keras.compile(self._optimizer.optimizer)
