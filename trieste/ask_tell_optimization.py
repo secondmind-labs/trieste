@@ -140,8 +140,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         self,
         search_space: SearchSpaceType,
         datasets: Mapping[str, Dataset] | Dataset,
-        models: Mapping[str, TrainableProbabilisticModelType]
-        | TrainableProbabilisticModelType,
+        models: Mapping[str, TrainableProbabilisticModelType] | TrainableProbabilisticModelType,
         acquisition_rule: AcquisitionRule[
             TensorType | State[StateType | None, TensorType],
             SearchSpaceType,
