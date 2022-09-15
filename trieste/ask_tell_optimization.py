@@ -31,12 +31,11 @@ from . import logging
 from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from .bayesian_optimizer import FrozenRecord, OptimizationResult, Record
 from .data import Dataset
-from .models import ModelSpec, TrainableProbabilisticModel, create_model
-from .models.config import ModelConfigType
+from .models import TrainableProbabilisticModel
 from .observer import OBJECTIVE
 from .space import SearchSpace
 from .types import State, TensorType
-from .utils import Ok, Timer, map_values
+from .utils import Ok, Timer
 
 StateType = TypeVar("StateType")
 """ Unbound type variable. """
@@ -70,35 +69,10 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
 
     @overload
     def __init__(
-        self: AskTellOptimizer[SearchSpaceType, TrainableProbabilisticModel],
-        search_space: SearchSpaceType,
-        datasets: Mapping[str, Dataset],
-        model_specs: Mapping[str, ModelConfigType],
-        *,
-        fit_model: bool = True,
-    ):
-        ...
-
-    @overload
-    def __init__(
         self,
         search_space: SearchSpaceType,
         datasets: Mapping[str, Dataset],
         model_specs: Mapping[str, TrainableProbabilisticModelType],
-        acquisition_rule: AcquisitionRule[
-            TensorType, SearchSpaceType, TrainableProbabilisticModelType
-        ],
-        *,
-        fit_model: bool = True,
-    ):
-        ...
-
-    @overload
-    def __init__(
-        self,
-        search_space: SearchSpaceType,
-        datasets: Mapping[str, Dataset],
-        model_specs: Mapping[str, ModelConfigType],
         acquisition_rule: AcquisitionRule[
             TensorType, SearchSpaceType, TrainableProbabilisticModelType
         ],
@@ -126,34 +100,8 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
     def __init__(
         self,
         search_space: SearchSpaceType,
-        datasets: Mapping[str, Dataset],
-        model_specs: Mapping[str, ModelConfigType],
-        acquisition_rule: AcquisitionRule[
-            State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
-        ],
-        acquisition_state: StateType | None = None,
-        *,
-        fit_model: bool = True,
-    ):
-        ...
-
-    @overload
-    def __init__(
-        self,
-        search_space: SearchSpaceType,
         datasets: Dataset,
         model_specs: TrainableProbabilisticModelType,
-        *,
-        fit_model: bool = True,
-    ):
-        ...
-
-    @overload
-    def __init__(
-        self: AskTellOptimizer[SearchSpaceType, TrainableProbabilisticModel],
-        search_space: SearchSpaceType,
-        datasets: Dataset,
-        model_specs: ModelConfigType,
         *,
         fit_model: bool = True,
     ):
@@ -183,21 +131,6 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
             State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
         ],
         acquisition_state: StateType | None = None,
-        *,
-        fit_model: bool = True,
-    ):
-        ...
-
-    @overload
-    def __init__(
-        self,
-        search_space: SearchSpaceType,
-        datasets: Dataset,
-        model_specs: ModelConfigType,
-        acquisition_rule: AcquisitionRule[
-            State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
-        ],
-        acquisition_state: StateType | None,
         *,
         fit_model: bool = True,
     ):
@@ -207,7 +140,8 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         self,
         search_space: SearchSpaceType,
         datasets: Mapping[str, Dataset] | Dataset,
-        model_specs: Mapping[str, ModelSpec] | ModelSpec,
+        model_specs: Mapping[str, TrainableProbabilisticModelType]
+        | TrainableProbabilisticModelType,
         acquisition_rule: AcquisitionRule[
             TensorType | State[StateType | None, TensorType],
             SearchSpaceType,
@@ -244,11 +178,11 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
 
         if isinstance(datasets, Dataset):
             datasets = {OBJECTIVE: datasets}
-            model_specs = {OBJECTIVE: model_specs}
+            model_specs = {OBJECTIVE: model_specs}  # type: ignore[dict-item]
 
         # reassure the type checker that everything is tagged
         datasets = cast(Dict[str, Dataset], datasets)
-        model_specs = cast(Dict[str, ModelSpec], model_specs)
+        model_specs = cast(Dict[str, TrainableProbabilisticModelType], model_specs)
 
         if datasets.keys() != model_specs.keys():
             raise ValueError(
@@ -257,9 +191,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
             )
 
         self._datasets = datasets
-        self._models = cast(
-            Dict[str, TrainableProbabilisticModelType], map_values(create_model, model_specs)
-        )
+        self._models = model_specs
 
         if acquisition_rule is None:
             if self._datasets.keys() != {OBJECTIVE}:

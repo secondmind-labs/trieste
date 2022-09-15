@@ -54,12 +54,11 @@ except ModuleNotFoundError:
 from . import logging
 from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from .data import Dataset
-from .models import ModelSpec, TrainableProbabilisticModel, create_model
-from .models.config import ModelConfigType
+from .models import TrainableProbabilisticModel
 from .observer import OBJECTIVE, Observer
 from .space import SearchSpace
 from .types import State, TensorType
-from .utils import Err, Ok, Result, Timer, map_values
+from .utils import Err, Ok, Result, Timer
 
 StateType = TypeVar("StateType")
 """ Unbound type variable. """
@@ -316,7 +315,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         self,
         num_steps: int,
         datasets: Mapping[str, Dataset],
-        model_specs: Mapping[str, ModelSpec],
+        models: Mapping[str, TrainableProbabilisticModel],
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
@@ -332,7 +331,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         self,
         num_steps: int,
         datasets: Mapping[str, Dataset],
-        model_specs: Mapping[str, TrainableProbabilisticModelType],
+        models: Mapping[str, TrainableProbabilisticModelType],
         acquisition_rule: AcquisitionRule[
             TensorType, SearchSpaceType, TrainableProbabilisticModelType
         ],
@@ -354,8 +353,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         self,
         num_steps: int,
         datasets: Mapping[str, Dataset],
-        # there's no way to statically check config-based models
-        model_specs: Mapping[str, ModelConfigType],
+        models: Mapping[str, TrainableProbabilisticModelType],
         acquisition_rule: AcquisitionRule[
             TensorType, SearchSpaceType, TrainableProbabilisticModelType
         ],
@@ -374,7 +372,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         self,
         num_steps: int,
         datasets: Mapping[str, Dataset],
-        model_specs: Mapping[str, TrainableProbabilisticModelType],
+        models: Mapping[str, TrainableProbabilisticModelType],
         acquisition_rule: AcquisitionRule[
             State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
         ],
@@ -394,8 +392,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         self,
         num_steps: int,
         datasets: Mapping[str, Dataset],
-        # there's no way to statically check config-based models
-        model_specs: Mapping[str, ModelConfigType],
+        models: Mapping[str, TrainableProbabilisticModelType],
         acquisition_rule: AcquisitionRule[
             State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
         ],
@@ -415,7 +412,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         self,
         num_steps: int,
         datasets: Dataset,
-        model_specs: ModelSpec,
+        models: TrainableProbabilisticModel,
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
@@ -431,7 +428,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         self,
         num_steps: int,
         datasets: Dataset,
-        model_specs: TrainableProbabilisticModelType,
+        models: TrainableProbabilisticModelType,
         acquisition_rule: AcquisitionRule[
             TensorType, SearchSpaceType, TrainableProbabilisticModelType
         ],
@@ -450,7 +447,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         self,
         num_steps: int,
         datasets: Dataset,
-        model_specs: ModelConfigType,
+        models: TrainableProbabilisticModelType,
         acquisition_rule: AcquisitionRule[
             TensorType, SearchSpaceType, TrainableProbabilisticModelType
         ],
@@ -469,7 +466,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         self,
         num_steps: int,
         datasets: Dataset,
-        model_specs: TrainableProbabilisticModelType,
+        models: TrainableProbabilisticModelType,
         acquisition_rule: AcquisitionRule[
             State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
         ],
@@ -489,7 +486,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         self,
         num_steps: int,
         datasets: Dataset,
-        model_specs: ModelConfigType,
+        models: TrainableProbabilisticModelType,
         acquisition_rule: AcquisitionRule[
             State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
         ],
@@ -508,10 +505,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         self,
         num_steps: int,
         datasets: Mapping[str, Dataset] | Dataset,
-        model_specs: Mapping[str, TrainableProbabilisticModelType]
-        | Mapping[str, ModelSpec]
-        | TrainableProbabilisticModelType
-        | ModelConfigType,
+        models: Mapping[str, TrainableProbabilisticModelType] | TrainableProbabilisticModelType,
         acquisition_rule: AcquisitionRule[
             TensorType | State[StateType | None, TensorType],
             SearchSpaceType,
@@ -534,7 +528,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         For each step in ``num_steps``, this method:
             - Finds the next points with which to query the ``observer`` using the
               ``acquisition_rule``'s :meth:`acquire` method, passing it the ``search_space``,
-              ``datasets``, models built from the ``model_specs``, and current acquisition state.
+              ``datasets``, ``models``, and current acquisition state.
             - Queries the ``observer`` *once* at those points.
             - Updates the datasets and models with the data from the ``observer``.
 
@@ -552,7 +546,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
         :param num_steps: The number of optimization steps to run.
         :param datasets: The known observer query points and observations for each tag.
-        :param model_specs: The model to use for each :class:`~trieste.data.Dataset` in
+        :param models: The model to use for each :class:`~trieste.data.Dataset` in
             ``datasets``.
         :param acquisition_rule: The acquisition rule, which defines how to search for a new point
             on each optimization step. Defaults to
@@ -582,29 +576,29 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         :raise ValueError: If any of the following are true:
 
             - ``num_steps`` is negative.
-            - the keys in ``datasets`` and ``model_specs`` do not match
-            - ``datasets`` or ``model_specs`` are empty
+            - the keys in ``datasets`` and ``models`` do not match
+            - ``datasets`` or ``models`` are empty
             - the default `acquisition_rule` is used and the tags are not `OBJECTIVE`.
         """
         if isinstance(datasets, Dataset):
             datasets = {OBJECTIVE: datasets}
-            model_specs = {OBJECTIVE: model_specs}
+            models = {OBJECTIVE: models}  # type: ignore[dict-item]
 
         # reassure the type checker that everything is tagged
         datasets = cast(Dict[str, Dataset], datasets)
-        model_specs = cast(Dict[str, ModelSpec], model_specs)
+        models = cast(Dict[str, TrainableProbabilisticModelType], models)
 
         if num_steps < 0:
             raise ValueError(f"num_steps must be at least 0, got {num_steps}")
 
-        if datasets.keys() != model_specs.keys():
+        if datasets.keys() != models.keys():
             raise ValueError(
-                f"datasets and model_specs should contain the same keys. Got {datasets.keys()} and"
-                f" {model_specs.keys()} respectively."
+                f"datasets and models should contain the same keys. Got {datasets.keys()} and"
+                f" {models.keys()} respectively."
             )
 
         if not datasets:
-            raise ValueError("dicts of datasets and model_specs must be populated.")
+            raise ValueError("dicts of datasets and models must be populated.")
 
         if acquisition_rule is None:
             if datasets.keys() != {OBJECTIVE}:
@@ -616,12 +610,6 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             acquisition_rule = EfficientGlobalOptimization[
                 SearchSpaceType, TrainableProbabilisticModelType
             ]()
-
-        # note that this cast is justified for explicit models but not for models created
-        # from config, which can't be statically type checked; those will fail at runtime instead
-        models = cast(
-            Dict[str, TrainableProbabilisticModelType], map_values(create_model, model_specs)
-        )
 
         history: list[FrozenRecord[StateType] | Record[StateType]] = []
         query_plot_dfs: dict[int, pd.DataFrame] = {}

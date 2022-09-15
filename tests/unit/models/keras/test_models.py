@@ -29,7 +29,6 @@ from tests.util.misc import ShapeLike, empty_dataset, random_seed
 from tests.util.models.keras.models import trieste_deep_ensemble_model, trieste_keras_ensemble_model
 from trieste.data import Dataset
 from trieste.logging import step_number, tensorboard_writer
-from trieste.models import create_model
 from trieste.models.keras import (
     DeepEnsemble,
     KerasEnsemble,
@@ -185,26 +184,6 @@ def test_deep_ensemble_is_compiled() -> None:
     assert model.model.compiled_loss is not None
     assert model.model.compiled_metrics is not None
     assert model.model.optimizer is not None
-
-
-@pytest.mark.skip
-def test_config_builds_deep_ensemble_and_default_optimizer_is_correct() -> None:
-    example_data = empty_dataset([1], [1])
-
-    keras_ensemble = trieste_keras_ensemble_model(example_data, _ENSEMBLE_SIZE)
-
-    model_config = {"model": keras_ensemble}
-    model = create_model(model_config)
-    default_fit_args = {
-        "verbose": 0,
-        "epochs": 100,
-        "batch_size": 100,
-    }
-
-    assert isinstance(model, DeepEnsemble)
-    assert isinstance(model.optimizer, KerasOptimizer)
-    assert isinstance(model.optimizer.optimizer, tf.keras.optimizers.Optimizer)
-    assert model.optimizer.fit_args == default_fit_args
 
 
 def test_deep_ensemble_resets_lr_with_lr_schedule() -> None:

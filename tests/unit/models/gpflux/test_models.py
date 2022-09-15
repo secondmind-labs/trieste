@@ -45,7 +45,6 @@ from tests.util.models.gpflux.models import single_layer_dgp_model
 from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.data import Dataset
 from trieste.logging import step_number, tensorboard_writer
-from trieste.models.config import create_model
 from trieste.models.gpflux import DeepGaussianProcess
 from trieste.models.optimizer import KerasOptimizer
 from trieste.types import TensorType
@@ -297,26 +296,6 @@ def test_deep_gaussian_process_subclass_default_optimizer_is_correct(
     assert isinstance(model.optimizer, KerasOptimizer)
     assert isinstance(model.optimizer.optimizer, tf.optimizers.Optimizer)
     assert model_fit_args == fit_args
-
-
-@pytest.mark.skip
-def test_deepgp_config_builds_and_default_optimizer_is_correct(
-    two_layer_model: Callable[[TensorType], DeepGP]
-) -> None:
-    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
-
-    model_config = {"model": two_layer_model(x)}
-    model = create_model(model_config)
-    fit_args = {
-        "verbose": 0,
-        "epochs": 100,
-        "batch_size": 100,
-    }
-
-    assert isinstance(model, DeepGaussianProcess)
-    assert isinstance(model.optimizer, KerasOptimizer)
-    assert isinstance(model.optimizer.optimizer, tf.optimizers.Optimizer)
-    assert model.optimizer.fit_args == fit_args
 
 
 def test_deepgp_deep_copyable() -> None:
