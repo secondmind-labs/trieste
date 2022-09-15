@@ -111,17 +111,12 @@ class Dataset:
         return self.query_points, self.observations
 
 
-@dataclass(frozen=True)
-class MultifidelityDataset(Dataset):
-    num_fidelities: int
-
-    def split_dataset_by_fidelity(self) -> Sequence[Dataset]:
-        datasets = []
-        for fidelity in range(self.num_fidelities):
-            dataset_i = get_dataset_for_fidelity(self, fidelity)
-            datasets.append(dataset_i)
-        return datasets
-
+def split_dataset_by_fidelity(dataset: Dataset, num_fidelities: int) -> Sequence[Dataset]:
+    datasets = []
+    for fidelity in range(num_fidelities):
+        dataset_i = get_dataset_for_fidelity(dataset, fidelity)
+        datasets.append(dataset_i)
+    return datasets
 
 def get_dataset_for_fidelity(dataset: Dataset, fidelity: int) -> Dataset:
     input_points = dataset.query_points[:, :-1]  # [..., D+1]

@@ -30,7 +30,7 @@ from gpflow.models.vgp import update_vgp_data
 from gpflow.utilities import is_variable, multiple_assign, read_values
 from gpflow.utilities.ops import leading_transpose
 
-from ...data import Dataset, convert_query_points_for_fidelity, MultifidelityDataset
+from ...data import Dataset, convert_query_points_for_fidelity, split_dataset_by_fidelity
 from ...types import TensorType
 from ...utils import DEFAULTS, jit
 from ..interfaces import (
@@ -1414,16 +1414,14 @@ class AR1(TrainableProbabilisticModel):
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         raise NotImplementedError("not yet coded up functionality for predict_y")
 
-    def update(self, dataset: MultifidelityDataset) -> None:
+    def update(self, dataset: Dataset) -> None:
         """
         Update the models on their corresponding data. The data for each model is
         extracted by splitting the observations in ``dataset`` by fidelity level.
 
         :param dataset: The query points and observations for *all* the wrapped models.
         """
-        assert dataset.num_fidelities == self.num_fidelities
-
-        dataset_per_fidelity = dataset.split_dataset_by_fidelity()
+        dataset_per_fidelity = split_dataset_by_fidelity(dataset, self.num_fidelities)
         for fidelity, dataset_for_fidelity in enumerate(dataset_per_fidelity):
             if fidelity == 0:
                 self.lowest_fidelity_signal_model.update(dataset_for_fidelity)
@@ -1434,7 +1432,7 @@ class AR1(TrainableProbabilisticModel):
                     Dataset(dataset_for_fidelity.query_points, self.calculate_residual(dataset_for_fidelity, fidelity))
                 )
 
-    def optimize_not_quite_working(self, dataset: MultifidelityDataset) -> None:
+    def optimize_not_quite_working(self, dataset: Dataset) -> None:
         """
         Optimize all the models on their corresponding data. The data for each model is
         extracted by splitting the observations in ``dataset``  by fidelity level.
@@ -1444,9 +1442,7 @@ class AR1(TrainableProbabilisticModel):
 
         :param dataset: The query points and observations for *all* the wrapped models.
         """
-        assert dataset.num_fidelities == self.num_fidelities
-
-        dataset_per_fidelity = dataset.split_dataset_by_fidelity()
+        dataset_per_fidelity = split_dataset_by_fidelity(dataset, self.num_fidelities)
         for fidelity, dataset_for_fidelity in enumerate(dataset_per_fidelity):
             if fidelity == 0:
                 self.lowest_fidelity_signal_model.optimize(dataset_for_fidelity)
@@ -1464,8 +1460,13 @@ class AR1(TrainableProbabilisticModel):
 
                     fidelity_residual_model.update(
                         Dataset(dataset_for_fidelity.query_points, residual_for_fidelity)
-                    )  # I think the tf.assign means there is no gradient flow?
+                    )  # I think the tf.assign means there is no gradient flow, which is unfortunate
                     log_prob = fidelity_residual_model.model.maximum_log_likelihood_objective()
+
+                    # ((y - f-1) - m) = (y - (f-1 - m))
+                    # So would need to make the mean function of the current gp, use the predict function of
+                    # up to the previous layer
+                    # fidelity_residual_model.model.mean_function = lambda x: self.predict(x, fidelity=fidelity-1) - fidelity_residual_model.model.mean_function(x)
                     return log_prob
 
                 trainable_variables = fidelity_residual_model.model.trainable_variables + self.rho[fidelity].variables
@@ -1478,7 +1479,7 @@ class AR1(TrainableProbabilisticModel):
                     Dataset(dataset_for_fidelity.query_points, new_residuals_for_fidelity)
                 )
 
-    def optimize(self, dataset: MultifidelityDataset) -> None:
+    def optimize(self, dataset: Dataset) -> None:
         """
         Optimize all the models on their corresponding data. The data for each model is
         extracted by splitting the observations in ``dataset``  by fidelity level.
@@ -1488,9 +1489,7 @@ class AR1(TrainableProbabilisticModel):
 
         :param dataset: The query points and observations for *all* the wrapped models.
         """
-        assert dataset.num_fidelities == self.num_fidelities
-
-        dataset_per_fidelity = dataset.split_dataset_by_fidelity()
+        dataset_per_fidelity = split_dataset_by_fidelity(dataset, self.num_fidelities)
 
         for fidelity, dataset_for_fidelity in enumerate(dataset_per_fidelity):
             print(f"Working on fidelity {fidelity}")

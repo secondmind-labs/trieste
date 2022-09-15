@@ -19,7 +19,7 @@ import trieste
 import tensorflow as tf
 import numpy as np
 from typing import TypeVar
-from trieste.data import Dataset, MultifidelityDataset
+from trieste.data import Dataset
 from trieste.models.gpflow.models import AR1
 from trieste.types import TensorType
 from trieste.models.gpflow.builders import build_gpr
@@ -78,7 +78,7 @@ def observer(x, num_fidelities):
     # note: this assumes that my_simulator broadcasts, i.e. accept matrix inputs.
     # If not you need to replace this by a for loop over all rows of "input"
     observations = my_simulator(x_input, x_fidelity)
-    return MultifidelityDataset(num_fidelities=num_fidelities, query_points=x, observations=observations)
+    return Dataset(query_points=x, observations=observations)
 
 
 input_dim = 1
