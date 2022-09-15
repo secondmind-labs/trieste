@@ -61,7 +61,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         self,
         search_space: SearchSpaceType,
         datasets: Mapping[str, Dataset],
-        model_specs: Mapping[str, TrainableProbabilisticModelType],
+        models: Mapping[str, TrainableProbabilisticModelType],
         *,
         fit_model: bool = True,
     ):
@@ -72,7 +72,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         self,
         search_space: SearchSpaceType,
         datasets: Mapping[str, Dataset],
-        model_specs: Mapping[str, TrainableProbabilisticModelType],
+        models: Mapping[str, TrainableProbabilisticModelType],
         acquisition_rule: AcquisitionRule[
             TensorType, SearchSpaceType, TrainableProbabilisticModelType
         ],
@@ -86,7 +86,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         self,
         search_space: SearchSpaceType,
         datasets: Mapping[str, Dataset],
-        model_specs: Mapping[str, TrainableProbabilisticModelType],
+        models: Mapping[str, TrainableProbabilisticModelType],
         acquisition_rule: AcquisitionRule[
             State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
         ],
@@ -101,7 +101,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         self,
         search_space: SearchSpaceType,
         datasets: Dataset,
-        model_specs: TrainableProbabilisticModelType,
+        models: TrainableProbabilisticModelType,
         *,
         fit_model: bool = True,
     ):
@@ -112,7 +112,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         self,
         search_space: SearchSpaceType,
         datasets: Dataset,
-        model_specs: TrainableProbabilisticModelType,
+        models: TrainableProbabilisticModelType,
         acquisition_rule: AcquisitionRule[
             TensorType, SearchSpaceType, TrainableProbabilisticModelType
         ],
@@ -126,7 +126,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         self,
         search_space: SearchSpaceType,
         datasets: Dataset,
-        model_specs: TrainableProbabilisticModelType,
+        models: TrainableProbabilisticModelType,
         acquisition_rule: AcquisitionRule[
             State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
         ],
@@ -140,7 +140,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         self,
         search_space: SearchSpaceType,
         datasets: Mapping[str, Dataset] | Dataset,
-        model_specs: Mapping[str, TrainableProbabilisticModelType]
+        models: Mapping[str, TrainableProbabilisticModelType]
         | TrainableProbabilisticModelType,
         acquisition_rule: AcquisitionRule[
             TensorType | State[StateType | None, TensorType],
@@ -155,7 +155,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         """
         :param search_space: The space over which to search for the next query point.
         :param datasets: Already observed input-output pairs for each tag.
-        :param model_specs: The model to use for each :class:`~trieste.data.Dataset` in
+        :param models: The model to use for each :class:`~trieste.data.Dataset` in
             ``datasets``.
         :param acquisition_rule: The acquisition rule, which defines how to search for a new point
             on each optimization step. Defaults to
@@ -166,32 +166,32 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         :param fit_model: If `True` (default), models passed in will be optimized on the given data.
             If `False`, the models are assumed to be optimized already.
         :raise ValueError: If any of the following are true:
-            - the keys in ``datasets`` and ``model_specs`` do not match
-            - ``datasets`` or ``model_specs`` are empty
+            - the keys in ``datasets`` and ``models`` do not match
+            - ``datasets`` or ``models`` are empty
             - default acquisition is used but incompatible with other inputs
         """
         self._search_space = search_space
         self._acquisition_state = acquisition_state
 
-        if not datasets or not model_specs:
-            raise ValueError("dicts of datasets and model_specs must be populated.")
+        if not datasets or not models:
+            raise ValueError("dicts of datasets and models must be populated.")
 
         if isinstance(datasets, Dataset):
             datasets = {OBJECTIVE: datasets}
-            model_specs = {OBJECTIVE: model_specs}  # type: ignore[dict-item]
+            models = {OBJECTIVE: models}  # type: ignore[dict-item]
 
         # reassure the type checker that everything is tagged
         datasets = cast(Dict[str, Dataset], datasets)
-        model_specs = cast(Dict[str, TrainableProbabilisticModelType], model_specs)
+        models = cast(Dict[str, TrainableProbabilisticModelType], models)
 
-        if datasets.keys() != model_specs.keys():
+        if datasets.keys() != models.keys():
             raise ValueError(
-                f"datasets and model_specs should contain the same keys. Got {datasets.keys()} and"
-                f" {model_specs.keys()} respectively."
+                f"datasets and models should contain the same keys. Got {datasets.keys()} and"
+                f" {models.keys()} respectively."
             )
 
         self._datasets = datasets
-        self._models = model_specs
+        self._models = models
 
         if acquisition_rule is None:
             if self._datasets.keys() != {OBJECTIVE}:
