@@ -15,8 +15,7 @@
 from __future__ import annotations
 
 from abc import ABC
-from email.policy import default
-from typing import Any, Callable, List, cast
+from typing import Any, Callable, DefaultDict, List, cast
 from collections import defaultdict
 
 import gpflow.kernels
@@ -220,9 +219,9 @@ class DeepGaussianProcessDecoupledTrajectorySampler(TrajectorySampler[GPfluxPred
 class DeepGaussianProcessDecoupledLayer(ABC):
     """
     Layer that samples an approximate decoupled trajectory for a GPflux
-    :class:`~gpflux.layers.GPLayer` using Matheron's rule (:cite:`wilson2020efficiently`). Note
-    that the only multi-output kernel that is supported is a
-    :class:`~gpflow.kernels.SharedIndependent` kernel.
+    :class:`~gpflux.layers.GPLayer` using Matheron's rule (:cite:`wilson2020efficiently`). Supports multi-output kernels that are part of
+    :class:`~gpflow.kernels.SharedIndependent` kernel and
+    :class:`~gpflow.kernels.SeparateIndependent` kernel.
     """
 
     def __init__(
@@ -248,18 +247,20 @@ class DeepGaussianProcessDecoupledLayer(ABC):
         self._layer = layer
 
         if isinstance(layer.kernel, gpflow.kernels.MultioutputKernel):
-            # GPLayers are supposed to only use multioutput kernel
 
             if isinstance(layer.kernel, gpflow.kernels.SharedIndependent):
                 # Single kernel
                 self._kernel = layer.kernel.kernel
+                self.separate_case = False
             elif isinstance(layer.kernel, gpflow.kernels.SeparateIndependent):
                 # List of kernels
                 self._kernel = layer.kernel.kernels
+                self.separate_case = True
         else:
             # GPLayers are supposed to only use multioutput kernels but we also use them with
             # simple kernels
             self._kernel = layer.kernel  # type: ignore[unreachable]
+            self.separate_case = False
 
         self._feature_functions = ResampleableDecoupledDeepGaussianProcessFeatureFunctions(
             layer, num_features
@@ -340,14 +341,14 @@ class DeepGaussianProcessDecoupledLayer(ABC):
 
         if isinstance(self._layer.inducing_variable, SharedIndependentInducingVariables):
             inducing_points = self._layer.inducing_variable.Z  # [M, D]
-            separate_case = False
+            
         elif isinstance(self._layer.inducing_variable, SeparateIndependentInducingVariables):
             #inducing_points = tf.self._layer.inducing_variable.Z  # [P, M, D]
             inducing_points = tf.stack([ind_var.Z for ind_var in self._layer.inducing_variable_list], axis = 0)  # [P, M, D]
-            separate_case = True
+            
         else:
             inducing_points = self._layer.inducing_variable.inducing_variable.Z  # [M, D]
-            separate_case = False
+            
 
         q_mu = self._layer.q_mu  # [M, P]
         q_sqrt = self._layer.q_sqrt  # [P, M, M]
@@ -393,14 +394,14 @@ class DeepGaussianProcessDecoupledLayer(ABC):
 
             if whiten:
                 Luu = tf.linalg.cholesky(Kmm)  # [M, M] if Shared or [P, M, M] if Separate
-                if separate_case:
+                if self.separate_case:
                     u_sample = tf.linalg.matrix_transpose(tf.matmul(Luu,
                         tf.expand_dims(tf.linalg.matrix_transpose(u_sample), axis=-1) # [B, P, M, 1]
                     )[..., 0]) # [B, M, P]
                 else:
                     u_sample = tf.matmul(Luu, u_sample) # [B, M, P]
 
-            if separate_case:
+            if self.separate_case:
                 phi_Z = self._feature_functions(inducing_points)[:, : self._num_features] #[P, B, M, L]
 
                 weight_space_prior_Z = tf.matmul(phi_Z, #[P, B, M, L]
@@ -474,7 +475,7 @@ class ResampleableDecoupledDeepGaussianProcessFeatureFunctions():
         # Build the RFF objects
         if isinstance(self._kernel, list):
 
-            self._rff = defaultdict()
+            self._rff: DefaultDict[int, RFF] = defaultdict()
             for counter, ker in enumerate(self._kernel):
                 self._rff[counter] = RFF(ker, self._n_components, dtype=tf.float64)
         

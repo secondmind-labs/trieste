@@ -38,7 +38,7 @@ from gpflux.models import DeepGP
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, mk_dataset, quadratic, random_seed
 from tests.util.models.gpflow.models import QuadraticMeanAndRBFKernel
-from tests.util.models.gpflux.models import two_layer_trieste_dgp
+from tests.util.models.gpflux.models import two_layer_trieste_flexible_dgp
 from trieste.data import Dataset
 from trieste.models.gpflux import DeepGaussianProcess
 from trieste.models.gpflux.sampler import (
@@ -55,15 +55,16 @@ from trieste.types import TensorType
 def test_dgp_reparam_sampler_raises_for_invalid_sample_size(sample_size: int) -> None:
     search_space = Box([0.0], [1.0]) ** 4
     x = search_space.sample(10)
-    data = mk_dataset(x, quadratic(x))
+    print('--- shape of samples ----')
+    print(x.shape)
+    data = mk_dataset(x, tf.tile(quadratic(x), [1, 4]) )
+    print(data.astuple)
 
-    dgp = two_layer_trieste_dgp(data, search_space)
+    dgp = two_layer_trieste_flexible_dgp(data, search_space, 4)
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         DeepGaussianProcessReparamSampler(sample_size, dgp)
 
-
-"""
 
 def test_dgp_reparam_sampler_raises_for_invalid_model() -> None:
     with pytest.raises(ValueError, match="Model must be .*"):
@@ -76,7 +77,7 @@ def test_dgp_reparam_sampler_sample_raises_for_invalid_at_shape(shape: ShapeLike
     x = search_space.sample(10)
     data = mk_dataset(x, quadratic(x))
 
-    dgp = two_layer_trieste_dgp(data, search_space)
+    dgp = two_layer_trieste_flexible_dgp(data, search_space)
     sampler = DeepGaussianProcessReparamSampler(1, dgp)
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
@@ -87,7 +88,7 @@ def _build_dataset_and_train_deep_gp(
     two_layer_model: Callable[[TensorType], DeepGP]
 ) -> Tuple[Dataset, DeepGaussianProcess]:
     x = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
-    y = tf.random.normal([100, 1], dtype=tf.float64)
+    y = tf.random.normal([100, 2], dtype=tf.float64)
     dataset = Dataset(x, y)
 
     dgp = two_layer_model(x)
@@ -111,14 +112,14 @@ def test_dgp_reparam_sampler_samples_approximate_expected_distribution(
     dataset, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
     samples = DeepGaussianProcessReparamSampler(sample_size, model).sample(
-        dataset.query_points[:, None, :]
-    )  # [N, S, 1, L]
+        dataset.query_points[:, None, :] # [N,1,D]
+    )  # [N, S, 1, L] #NOTE -- again I think this should be P instead of L; in the docstrings L was used to refear to the number of Fourier Features
 
-    assert samples.shape == [len(dataset.query_points), sample_size, 1, 1]
+    assert samples.shape == [len(dataset.query_points), sample_size, 1, 2]
 
-    sample_mean = tf.reduce_mean(samples, axis=1, keepdims=True)
-    sample_variance = tf.squeeze(tf.reduce_mean((samples - sample_mean) ** 2, axis=1), -2)
-    sample_mean = tf.squeeze(sample_mean, [1, 2])
+    sample_mean = tf.reduce_mean(samples, axis=1, keepdims=True) #[N, 1, 1, L]
+    sample_variance = tf.squeeze(tf.reduce_mean((samples - sample_mean) ** 2, axis=1), -2) #[N, L]
+    sample_mean = tf.squeeze(sample_mean, [1, 2]) #[N, L]
 
     num_samples = 50
     means = []
@@ -133,7 +134,6 @@ def test_dgp_reparam_sampler_samples_approximate_expected_distribution(
     error = 1 / tf.sqrt(tf.cast(num_samples, tf.float32))
     npt.assert_allclose(sample_mean, ref_mean, atol=2 * error)
     npt.assert_allclose(sample_variance, ref_variance, atol=4 * error)
-
 
 @random_seed
 def test_dgp_reparam_sampler_sample_is_continuous(
@@ -154,6 +154,10 @@ def test_dgp_reparam_sampler_sample_is_repeatable(
     sampler = DeepGaussianProcessReparamSampler(100, model)
     xs = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)[:, None, :]
     npt.assert_allclose(sampler.sample(xs), sampler.sample(xs))
+
+
+"""
+
 
 
 @random_seed
@@ -513,5 +517,4 @@ def test_dgp_decoupled_layer_update_updates(
         npt.assert_array_less(
             1e-2, tf.reduce_sum(tf.abs(original_W - decoupled_layer._feature_functions.W))
         )
-
 """

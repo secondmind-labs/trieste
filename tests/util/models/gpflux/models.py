@@ -27,7 +27,7 @@ from gpflux.layers import GPLayer
 from gpflux.models import DeepGP
 
 from trieste.data import Dataset, TensorType
-from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp
+from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp, build_vanilla_flexible_deep_gp
 from trieste.models.optimizer import KerasOptimizer
 from trieste.space import SearchSpace
 
@@ -125,3 +125,41 @@ def trieste_deep_gaussian_process(
 
 def two_layer_trieste_dgp(data: Dataset, search_space: SearchSpace) -> DeepGaussianProcess:
     return trieste_deep_gaussian_process(data, search_space, 2, 10, 0.01, 5, 10)[0]
+
+def trieste_flexible_deep_gaussian_process(
+    data: Dataset,
+    search_space: SearchSpace,
+    num_layers: int,
+    num_inducing_points: int,
+    learning_rate: float,
+    batch_size: int,
+    epochs: int,
+    dim_output: int,
+    fix_noise: bool = False,
+) -> Tuple[DeepGaussianProcess, Dict[str, Any]]:
+    dgp = build_vanilla_flexible_deep_gp(dim_output, data, search_space, num_layers, num_inducing_points)
+    if fix_noise:
+        dgp.likelihood_layer.likelihood.variance.assign(1e-5)
+        set_trainable(dgp.likelihood_layer, False)
+
+    def scheduler(epoch: int, lr: float) -> float:
+        if epoch == epochs // 2:
+            return lr * 0.1
+        else:
+            return lr
+
+    fit_args = {
+        "batch_size": batch_size,
+        "epochs": epochs,
+        "verbose": 0,
+        "callbacks": tf.keras.callbacks.LearningRateScheduler(scheduler),
+    }
+    optimizer = KerasOptimizer(tf.optimizers.Adam(learning_rate), fit_args)
+
+    model = DeepGaussianProcess(dgp, optimizer)
+
+    return model, fit_args
+
+
+def two_layer_trieste_flexible_dgp(data: Dataset, search_space: SearchSpace, dim_output: int) -> DeepGaussianProcess:
+    return trieste_flexible_deep_gaussian_process(data, search_space, 2, 10, 0.01, 5, 10, dim_output)[0]
