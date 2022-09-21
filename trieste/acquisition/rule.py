@@ -39,7 +39,7 @@ import tensorflow as tf
 from .. import logging, types
 from ..data import Dataset
 from ..models import ProbabilisticModel
-from ..models.interfaces import HasReparamSampler, ProbabilisticModelType, TrainableModelStack
+from ..models.interfaces import HasReparamSampler, ModelStack, ProbabilisticModelType
 from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace
 from ..types import State, TensorType
@@ -1247,7 +1247,7 @@ class _MeanStdTradeoff(PymooProblem):  # type: ignore[misc]
         :param search_space: The search space for the optimisation
         """
         # If we have a stack of models we have mean and std for each
-        if type(probabilistic_model) == TrainableModelStack:
+        if isinstance(probabilistic_model, ModelStack):
             n_obj = 2 * len(probabilistic_model._models)
         else:
             n_obj = 2
