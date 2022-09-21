@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import trieste
 import tensorflow as tf
+import tensorflow_probability as tfp
 import numpy as np
 from typing import TypeVar
 from trieste.data import Dataset
@@ -61,23 +62,26 @@ def filter_by_fidelity(query_points: TensorType):
     return points, masks, indices
 
 # Replace this with your own observer
-def my_simulator(x_input, fidelity):
+def my_simulator(x_input, fidelity, add_noise):
     # this is a dummy objective
     f = 0.5 * ((6.0*x_input-2.0)**2)*tf.math.sin(12.0*x_input - 4.0) + 10.0*(x_input -1.0)
     f = f + fidelity * (f - 20.0*(x_input -1.0))
-    noise = tf.random.normal(f.shape, stddev=1e-1, dtype=f.dtype)
+    if add_noise:
+        noise = tf.random.normal(f.shape, stddev=1e-1, dtype=f.dtype)
+    else:
+        noise = 0
     f = tf.where(fidelity > 0, f + noise, f)
     return f
 
 
-def observer(x, num_fidelities):
+def observer(x, num_fidelities, add_noise=True):
     # last dimension is the fidelity value
     x_input = x[..., :-1]
     x_fidelity = x[...,-1:]
 
     # note: this assumes that my_simulator broadcasts, i.e. accept matrix inputs.
     # If not you need to replace this by a for loop over all rows of "input"
-    observations = my_simulator(x_input, x_fidelity)
+    observations = my_simulator(x_input, x_fidelity, add_noise)
     return Dataset(query_points=x, observations=observations)
 
 
@@ -121,7 +125,7 @@ for fidelity, prediction in enumerate(predictions):
     ax.plot(X,mean, label=f"Predicted fidelity {fidelity}")
     ax.plot(X,mean+1.96*tf.math.sqrt(var), alpha=0.2)
     ax.plot(X,mean-1.96*tf.math.sqrt(var), alpha=0.2)
-    ax.plot(X,observer(X_list[fidelity], num_fidelities=n_fidelities).observations, label=f"True fidelity {fidelity}")
+    ax.plot(X,observer(X_list[fidelity], num_fidelities=n_fidelities, add_noise=False).observations, label=f"True fidelity {fidelity}")
     ax.scatter(points[fidelity], tf.gather(initial_data.observations, indices[fidelity]), label=f"fidelity {fidelity} data")
 ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 print(f"Optimised rho for fidelity 2 as {model.rho[1].numpy()}")
@@ -130,4 +134,13 @@ print(f"Optimised rho for fidelity 3 as {model.rho[2].numpy()}")
 plt.show()
 
 # + pycharm={"name": "#%%\n"}
+
+X_fids = tf.concat([X, tf.ones_like(X) * 3], 1)
+samples_0 = tf.squeeze(model.sample(X_fids, 1))
+samples_1 = tf.squeeze(model.sample(X_fids, 1))
+fig, ax = plt.subplots(1,1, figsize=(10, 7))
+ax.scatter(X, samples_0, marker="x")
+ax.scatter(X, samples_1, marker="x")
+ax.plot(X,observer(X_fids, num_fidelities=n_fidelities, add_noise=False).observations, label=f"True fidelity {fidelity}")
+plt.show()
 

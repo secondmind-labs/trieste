@@ -1408,7 +1408,25 @@ class AR1(TrainableProbabilisticModel):
         return residuals
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
-        raise NotImplementedError("not yet coded up functionality for sampling")
+
+        query_points_wo_fidelity = query_points[:, :-1]
+        query_points_fidelity_col = query_points[:, -1:]
+
+        signal_sample = self.lowest_fidelity_signal_model.sample(query_points_wo_fidelity, num_samples)
+
+        for fidelity in range(self.num_fidelities): # Could just get max from fidelity col
+            if fidelity > 0:
+                fidelity_residual_sample = self.fidelity_residual_models[fidelity].sample(query_points_wo_fidelity, num_samples)
+            else:
+                fidelity_residual_sample = 0
+
+            new_fidelity_signal_sample = self.rho[fidelity]*signal_sample + fidelity_residual_sample
+
+            mask = query_points_fidelity_col >= fidelity
+
+            signal_sample = tf.where(mask, new_fidelity_signal_sample, signal_sample)
+
+        return signal_sample
 
     # Don't HAVE to do this, but may be required
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
