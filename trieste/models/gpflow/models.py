@@ -1367,34 +1367,43 @@ class VariationalGaussianProcess(
 
 class AR1(TrainableProbabilisticModel):
     def __init__(
-            self,
-            lowest_fidelity_signal_model: GaussianProcessRegression,
-            fidelity_residual_models: Sequence[GaussianProcessRegression],
+        self,
+        lowest_fidelity_signal_model: GaussianProcessRegression,
+        fidelity_residual_models: Sequence[GaussianProcessRegression],
     ):
         self.num_fidelities = len(fidelity_residual_models) + 1
 
         self.lowest_fidelity_signal_model = lowest_fidelity_signal_model
-        self.fidelity_residual_models: Sequence[Union[Optional[GaussianProcessRegression]]] = [None, *fidelity_residual_models]
+        self.fidelity_residual_models: Sequence[Union[Optional[GaussianProcessRegression]]] = [
+            None,
+            *fidelity_residual_models,
+        ]
         # set this as a Parameter so that we can optimize it
-        rho = [gpflow.Parameter(1.0, trainable=True, name=f'rho_{i}')
-                    for i in range(self.num_fidelities - 1)]
+        rho = [
+            gpflow.Parameter(1.0, trainable=True, name=f"rho_{i}")
+            for i in range(self.num_fidelities - 1)
+        ]
         self.rho = [1, *rho]
 
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         query_points_wo_fidelity = query_points[:, :-1]
         query_points_fidelity_col = query_points[:, -1:]
 
-        signal_mean, signal_var = self.lowest_fidelity_signal_model.predict(query_points_wo_fidelity)
+        signal_mean, signal_var = self.lowest_fidelity_signal_model.predict(
+            query_points_wo_fidelity
+        )
 
         for fidelity in range(self.num_fidelities):
             if fidelity > 0:
-                fidelity_residual_mean, fidelity_residual_var = self.fidelity_residual_models[fidelity].predict(query_points_wo_fidelity)
+                fidelity_residual_mean, fidelity_residual_var = self.fidelity_residual_models[
+                    fidelity
+                ].predict(query_points_wo_fidelity)
             else:
                 fidelity_residual_mean = 0
                 fidelity_residual_var = 0
 
-            new_fidelity_signal_mean = self.rho[fidelity]*signal_mean + fidelity_residual_mean
-            new_fidelity_signal_var = fidelity_residual_var + (self.rho[fidelity]**2)*signal_var
+            new_fidelity_signal_mean = self.rho[fidelity] * signal_mean + fidelity_residual_mean
+            new_fidelity_signal_var = fidelity_residual_var + (self.rho[fidelity] ** 2) * signal_var
 
             mask = query_points_fidelity_col >= fidelity
             signal_mean = tf.where(mask, new_fidelity_signal_mean, signal_mean)
@@ -1403,8 +1412,12 @@ class AR1(TrainableProbabilisticModel):
         return signal_mean, signal_var
 
     def calculate_residual(self, dataset: Dataset, fidelity: int) -> TensorType:
-        fidelity_query_points = convert_query_points_for_fidelity(dataset.query_points, fidelity - 1)
-        residuals = dataset.observations - self.rho[fidelity]*self.predict(fidelity_query_points)[0]
+        fidelity_query_points = convert_query_points_for_fidelity(
+            dataset.query_points, fidelity - 1
+        )
+        residuals = (
+            dataset.observations - self.rho[fidelity] * self.predict(fidelity_query_points)[0]
+        )
         return residuals
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
@@ -1412,15 +1425,21 @@ class AR1(TrainableProbabilisticModel):
         query_points_wo_fidelity = query_points[:, :-1]
         query_points_fidelity_col = query_points[:, -1:]
 
-        signal_sample = self.lowest_fidelity_signal_model.sample(query_points_wo_fidelity, num_samples)
+        signal_sample = self.lowest_fidelity_signal_model.sample(
+            query_points_wo_fidelity, num_samples
+        )
 
-        for fidelity in range(self.num_fidelities): # Could just get max from fidelity col
+        for fidelity in range(self.num_fidelities):  # Could just get max from fidelity col
             if fidelity > 0:
-                fidelity_residual_sample = self.fidelity_residual_models[fidelity].sample(query_points_wo_fidelity, num_samples)
+                fidelity_residual_sample = self.fidelity_residual_models[fidelity].sample(
+                    query_points_wo_fidelity, num_samples
+                )
             else:
                 fidelity_residual_sample = 0
 
-            new_fidelity_signal_sample = self.rho[fidelity]*signal_sample + fidelity_residual_sample
+            new_fidelity_signal_sample = (
+                self.rho[fidelity] * signal_sample + fidelity_residual_sample
+            )
 
             mask = query_points_fidelity_col >= fidelity
 
@@ -1445,9 +1464,12 @@ class AR1(TrainableProbabilisticModel):
                 self.lowest_fidelity_signal_model.update(dataset_for_fidelity)
             else:
                 # Make query points but with final column corresponding to fidelity we wish to predict at
-                #dataset_for_fidelity.query_points
+                # dataset_for_fidelity.query_points
                 self.fidelity_residual_models[fidelity].update(
-                    Dataset(dataset_for_fidelity.query_points, self.calculate_residual(dataset_for_fidelity, fidelity))
+                    Dataset(
+                        dataset_for_fidelity.query_points,
+                        self.calculate_residual(dataset_for_fidelity, fidelity),
+                    )
                 )
 
     def optimize_not_quite_working(self, dataset: Dataset) -> None:
@@ -1466,11 +1488,15 @@ class AR1(TrainableProbabilisticModel):
                 self.lowest_fidelity_signal_model.optimize(dataset_for_fidelity)
             else:
                 fidelity_residual_model = self.fidelity_residual_models[fidelity]
-                query_points_for_fidelity = convert_query_points_for_fidelity(dataset_for_fidelity.query_points, fidelity)
+                query_points_for_fidelity = convert_query_points_for_fidelity(
+                    dataset_for_fidelity.query_points, fidelity
+                )
 
                 def loss():
                     predicted_mean_for_fidelity, _ = self.predict(query_points_for_fidelity)
-                    residual_for_fidelity = dataset_for_fidelity.observations - predicted_mean_for_fidelity
+                    residual_for_fidelity = (
+                        dataset_for_fidelity.observations - predicted_mean_for_fidelity
+                    )
 
                     # log_prob = fidelity_residual_model.model.predict_log_density(
                     #     data=(dataset_for_fidelity.query_points, residual_for_fidelity),  # full_cov=True
@@ -1487,12 +1513,16 @@ class AR1(TrainableProbabilisticModel):
                     # fidelity_residual_model.model.mean_function = lambda x: self.predict(x, fidelity=fidelity-1) - fidelity_residual_model.model.mean_function(x)
                     return log_prob
 
-                trainable_variables = fidelity_residual_model.model.trainable_variables + self.rho[fidelity].variables
+                trainable_variables = (
+                    fidelity_residual_model.model.trainable_variables + self.rho[fidelity].variables
+                )
                 fidelity_residual_model.optimizer.optimizer.minimize(loss, trainable_variables)
 
                 # Is this supposed to be here??
                 new_pred_mean_for_fidelity = self.predict(query_points_for_fidelity)[0]
-                new_residuals_for_fidelity = dataset_for_fidelity.observations - new_pred_mean_for_fidelity
+                new_residuals_for_fidelity = (
+                    dataset_for_fidelity.observations - new_pred_mean_for_fidelity
+                )
                 fidelity_residual_model.update(
                     Dataset(dataset_for_fidelity.query_points, new_residuals_for_fidelity)
                 )
@@ -1518,15 +1548,19 @@ class AR1(TrainableProbabilisticModel):
 
                 fidelity_observations = dataset_for_fidelity.observations
                 fidelity_query_points = dataset_for_fidelity.query_points
-                prev_fidelity_query_points = convert_query_points_for_fidelity(dataset_for_fidelity.query_points, fidelity - 1)
+                prev_fidelity_query_points = convert_query_points_for_fidelity(
+                    dataset_for_fidelity.query_points, fidelity - 1
+                )
                 predictions_from_lower_fidelity = self.predict(prev_fidelity_query_points)[0]
-                #residuals = self.calculate_residual(dataset_for_fidelity, fidelity)
+                # residuals = self.calculate_residual(dataset_for_fidelity, fidelity)
 
-                def loss(): # hardcoded log liklihood calculation for the residual model
+                def loss():  # hardcoded log liklihood calculation for the residual model
                     # Would like to do this, but it is slower as we make predictions through all the fidelities on *each* call
                     # even though the earlier ones *shouldn't* change during this optimisation routine
-                    #residuals = self.calculate_residual(dataset_for_fidelity, fidelity)
-                    residuals = fidelity_observations - self.rho[fidelity] * predictions_from_lower_fidelity
+                    # residuals = self.calculate_residual(dataset_for_fidelity, fidelity)
+                    residuals = (
+                        fidelity_observations - self.rho[fidelity] * predictions_from_lower_fidelity
+                    )
                     K = gpf_residual_model.kernel(fidelity_query_points)
                     ks = gpf_residual_model._add_noise_cov(K)
                     L = tf.linalg.cholesky(ks)
@@ -1534,9 +1568,15 @@ class AR1(TrainableProbabilisticModel):
                     log_prob = multivariate_normal(residuals, m, L)
                     return -1.0 * tf.reduce_sum(log_prob)
 
-                trainable_variables = gpf_residual_model.trainable_variables + self.rho[fidelity].variables
-                self.fidelity_residual_models[fidelity].optimizer.optimizer.minimize(loss, trainable_variables)
+                trainable_variables = (
+                    gpf_residual_model.trainable_variables + self.rho[fidelity].variables
+                )
+                self.fidelity_residual_models[fidelity].optimizer.optimizer.minimize(
+                    loss, trainable_variables
+                )
                 residuals = self.calculate_residual(dataset_for_fidelity, fidelity)
-                self.fidelity_residual_models[fidelity].update(Dataset(fidelity_query_points, residuals))
+                self.fidelity_residual_models[fidelity].update(
+                    Dataset(fidelity_query_points, residuals)
+                )
 
                 # self.fidelity_residual_models[fidelity].update(Dataset(fidelity_query_points, fidelity_observations - self.rho[fidelity] * predictions_from_low_fidelity))

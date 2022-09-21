@@ -17,9 +17,15 @@ import copy
 
 import pytest
 import tensorflow as tf
+import numpy.testing as npt
 
 from tests.util.misc import ShapeLike, assert_datasets_allclose
-from trieste.data import Dataset
+from trieste.data import (
+    Dataset,
+    split_dataset_by_fidelity,
+    get_dataset_for_fidelity,
+    convert_query_points_for_fidelity,
+)
 from trieste.utils import shapes_equal
 
 
@@ -196,3 +202,57 @@ def test_dataset_astuple() -> None:
     qp_from_astuple, obs_from_astuple = Dataset(qp, obs).astuple()
     assert qp_from_astuple is qp
     assert obs_from_astuple is obs
+
+
+def test_multifidelity_split_dataset_by_fidelity() -> None:
+    fidelity_0 = Dataset(tf.constant([[0.456, 0.0]]), tf.constant([[0.2]]))
+    fidelity_1 = Dataset(tf.constant([[0.123, 1.0]]), tf.constant([[0.1]]))
+    fidelity_0_out_truth = Dataset(fidelity_0.query_points[:, :-1], fidelity_0.observations)
+    fidelity_1_out_truth = Dataset(fidelity_1.query_points[:, :-1], fidelity_1.observations)
+    data = fidelity_1 + fidelity_0
+    fidelity_0_out, fidelity_1_out = split_dataset_by_fidelity(data, 2)
+    assert_datasets_allclose(fidelity_0_out, fidelity_0_out_truth)
+    assert_datasets_allclose(fidelity_1_out, fidelity_1_out_truth)
+
+
+def test_multifidelity_split_dataset_by_fidelity_bad_fidelity() -> None:
+    fidelity_0 = Dataset(tf.constant([[0.456, 0.1]]), tf.constant([[0.2]]))
+    fidelity_1 = Dataset(tf.constant([[0.123, 1.1]]), tf.constant([[0.1]]))
+    data = fidelity_1 + fidelity_0
+    with pytest.raises(AssertionError):
+        split_dataset_by_fidelity(data, 2)
+
+
+def test_multifidelity_get_dataset_for_fidelity() -> None:
+    mixed_fidelity_dataset = Dataset(
+        tf.constant([[0.0, 0.0], [1.0, 1.0], [2.0, 2.0], [3.0, 0.0], [4.0, 2.0]]),
+        tf.constant([[0.1], [0.2], [0.3], [0.4], [0.5]]),
+    )
+    fidelity_zero_truth_dataset = Dataset(tf.constant([[0.0], [3.0]]), tf.constant([[0.1], [0.4]]))
+    fidelity_zero_out_dataset = get_dataset_for_fidelity(mixed_fidelity_dataset, fidelity=0)
+    assert_datasets_allclose(fidelity_zero_out_dataset, fidelity_zero_truth_dataset)
+
+
+def test_multifidelity_get_dataset_for_bad_fidelity() -> None:
+    mixed_fidelity_dataset = Dataset(
+        tf.constant([[0.0, 0.0], [1.0, 1.01], [2.0, 2.0], [3.0, 0.0], [4.0, 2.0]]),
+        tf.constant([[0.1], [0.2], [0.3], [0.4], [0.5]]),
+    )
+    with pytest.raises(AssertionError):
+        get_dataset_for_fidelity(mixed_fidelity_dataset, fidelity=0)
+
+
+def test_multifidelity_convert_query_points_for_fidelity() -> None:
+    fidelity_zero_query_points = tf.constant([[0.0, 0.0], [1.0, 0.0]])
+    fidelity_removed_query_points = fidelity_zero_query_points[:, :-1]
+    fidelity_zero_out_query_points = convert_query_points_for_fidelity(
+        fidelity_removed_query_points, fidelity=0
+    )
+    npt.assert_allclose(fidelity_zero_out_query_points, fidelity_zero_query_points)
+
+
+def test_multifidelity_convert_query_points_for_bad_fidelity() -> None:
+    fidelity_zero_query_points = tf.constant([[0.0, 0.0], [1.0, 0.0]])
+    fidelity_removed_query_points = fidelity_zero_query_points[:, :-1]
+    with pytest.raises(TypeError):
+        convert_query_points_for_fidelity(fidelity_removed_query_points, fidelity=0.5)

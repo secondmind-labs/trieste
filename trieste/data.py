@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from typing import Sequence
 
 import tensorflow as tf
+import numpy.testing as npt
 
 from trieste.types import TensorType
 
@@ -112,16 +113,30 @@ class Dataset:
 
 
 def split_dataset_by_fidelity(dataset: Dataset, num_fidelities: int) -> Sequence[Dataset]:
+    # Check that the dataset is a fidelity dataset
+    fidelity_col = dataset.query_points[:, -1]
+    npt.assert_allclose(
+        tf.round(fidelity_col),
+        fidelity_col,
+        err_msg="Fidelity column should be float(int), but got a float that was not close to an int",
+    )
     datasets = []
     for fidelity in range(num_fidelities):
         dataset_i = get_dataset_for_fidelity(dataset, fidelity)
         datasets.append(dataset_i)
     return datasets
 
+
 def get_dataset_for_fidelity(dataset: Dataset, fidelity: int) -> Dataset:
     input_points = dataset.query_points[:, :-1]  # [..., D+1]
     fidelity_col = dataset.query_points[:, -1]  # [...,]
-    mask = (fidelity_col == fidelity)  # [..., ]
+    # Check that the dataset is a fidelity dataset
+    npt.assert_allclose(
+        tf.round(fidelity_col),
+        fidelity_col,
+        err_msg="Fidelity column should be float(int), but got a float that was not close to an int",
+    )
+    mask = fidelity_col == fidelity  # [..., ]
     inds = tf.where(mask)[:, 0]  # [..., ]
     inputs_for_fidelity = tf.gather(input_points, inds, axis=0)  # [..., D]
     observations_for_fidelity = tf.gather(dataset.observations, inds, axis=0)  # [..., 1]
@@ -129,6 +144,8 @@ def get_dataset_for_fidelity(dataset: Dataset, fidelity: int) -> Dataset:
 
 
 def convert_query_points_for_fidelity(query_points: TensorType, fidelity: int) -> TensorType:
-    fidelity_col = tf.ones((tf.shape(query_points)[0], 1), dtype=query_points.dtype)*fidelity
+    if not isinstance(fidelity, int):
+        raise TypeError("Fidelity must be an integer")
+    fidelity_col = tf.ones((tf.shape(query_points)[0], 1), dtype=query_points.dtype) * fidelity
     query_points_for_fidelity = tf.concat([query_points, fidelity_col], axis=-1)
     return query_points_for_fidelity
