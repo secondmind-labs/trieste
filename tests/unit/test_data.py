@@ -25,6 +25,7 @@ from trieste.data import (
     split_dataset_by_fidelity,
     get_dataset_for_fidelity,
     convert_query_points_for_fidelity,
+    assert_valid_fidelity_dataset
 )
 from trieste.utils import shapes_equal
 
@@ -204,6 +205,15 @@ def test_dataset_astuple() -> None:
     assert obs_from_astuple is obs
 
 
+@pytest.mark.parametrize("dataset,is_valid", ((Dataset(tf.constant([[0.456, 0.0]]), tf.constant([[0.2]])), True), (Dataset(tf.constant([[0.456, 0.001]]), tf.constant([[0.2]])), False)))
+def test_assert_valid_multifidelity_dataset(dataset: Dataset, is_valid: bool) -> None:
+    if is_valid:
+        assert_valid_fidelity_dataset(dataset)
+    else:
+        with pytest.raises(AssertionError):
+            assert_valid_fidelity_dataset(dataset)
+
+
 def test_multifidelity_split_dataset_by_fidelity() -> None:
     fidelity_0 = Dataset(tf.constant([[0.456, 0.0]]), tf.constant([[0.2]]))
     fidelity_1 = Dataset(tf.constant([[0.123, 1.0]]), tf.constant([[0.1]]))
@@ -215,14 +225,6 @@ def test_multifidelity_split_dataset_by_fidelity() -> None:
     assert_datasets_allclose(fidelity_1_out, fidelity_1_out_truth)
 
 
-def test_multifidelity_split_dataset_by_fidelity_bad_fidelity() -> None:
-    fidelity_0 = Dataset(tf.constant([[0.456, 0.1]]), tf.constant([[0.2]]))
-    fidelity_1 = Dataset(tf.constant([[0.123, 1.1]]), tf.constant([[0.1]]))
-    data = fidelity_1 + fidelity_0
-    with pytest.raises(AssertionError):
-        split_dataset_by_fidelity(data, 2)
-
-
 def test_multifidelity_get_dataset_for_fidelity() -> None:
     mixed_fidelity_dataset = Dataset(
         tf.constant([[0.0, 0.0], [1.0, 1.0], [2.0, 2.0], [3.0, 0.0], [4.0, 2.0]]),
@@ -231,15 +233,6 @@ def test_multifidelity_get_dataset_for_fidelity() -> None:
     fidelity_zero_truth_dataset = Dataset(tf.constant([[0.0], [3.0]]), tf.constant([[0.1], [0.4]]))
     fidelity_zero_out_dataset = get_dataset_for_fidelity(mixed_fidelity_dataset, fidelity=0)
     assert_datasets_allclose(fidelity_zero_out_dataset, fidelity_zero_truth_dataset)
-
-
-def test_multifidelity_get_dataset_for_bad_fidelity() -> None:
-    mixed_fidelity_dataset = Dataset(
-        tf.constant([[0.0, 0.0], [1.0, 1.01], [2.0, 2.0], [3.0, 0.0], [4.0, 2.0]]),
-        tf.constant([[0.1], [0.2], [0.3], [0.4], [0.5]]),
-    )
-    with pytest.raises(AssertionError):
-        get_dataset_for_fidelity(mixed_fidelity_dataset, fidelity=0)
 
 
 def test_multifidelity_convert_query_points_for_fidelity() -> None:

@@ -111,15 +111,17 @@ class Dataset:
         """
         return self.query_points, self.observations
 
+def assert_valid_fidelity_dataset(dataset: Dataset) -> None:
 
-def split_dataset_by_fidelity(dataset: Dataset, num_fidelities: int) -> Sequence[Dataset]:
-    # Check that the dataset is a fidelity dataset
     fidelity_col = dataset.query_points[:, -1]
     npt.assert_allclose(
         tf.round(fidelity_col),
         fidelity_col,
         err_msg="Fidelity column should be float(int), but got a float that was not close to an int",
     )
+
+def split_dataset_by_fidelity(dataset: Dataset, num_fidelities: int) -> Sequence[Dataset]:
+    assert_valid_fidelity_dataset(dataset)
     datasets = []
     for fidelity in range(num_fidelities):
         dataset_i = get_dataset_for_fidelity(dataset, fidelity)
@@ -128,14 +130,9 @@ def split_dataset_by_fidelity(dataset: Dataset, num_fidelities: int) -> Sequence
 
 
 def get_dataset_for_fidelity(dataset: Dataset, fidelity: int) -> Dataset:
+    assert_valid_fidelity_dataset(dataset)
     input_points = dataset.query_points[:, :-1]  # [..., D+1]
     fidelity_col = dataset.query_points[:, -1]  # [...,]
-    # Check that the dataset is a fidelity dataset
-    npt.assert_allclose(
-        tf.round(fidelity_col),
-        fidelity_col,
-        err_msg="Fidelity column should be float(int), but got a float that was not close to an int",
-    )
     mask = fidelity_col == fidelity  # [..., ]
     inds = tf.where(mask)[:, 0]  # [..., ]
     inputs_for_fidelity = tf.gather(input_points, inds, axis=0)  # [..., D]
