@@ -30,7 +30,12 @@ from gpflow.models.vgp import update_vgp_data
 from gpflow.utilities import is_variable, multiple_assign, read_values
 from gpflow.utilities.ops import leading_transpose
 
-from ...data import Dataset, convert_query_points_for_fidelity, split_dataset_by_fidelity
+from ...data import (
+    Dataset,
+    convert_query_points_for_fidelity,
+    split_dataset_by_fidelity,
+    assert_valid_fidelity_query_points,
+)
 from ...types import TensorType
 from ...utils import DEFAULTS, jit
 from ..interfaces import (
@@ -1386,6 +1391,7 @@ class AR1(TrainableProbabilisticModel):
         self.rho = [1, *rho]
 
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        assert_valid_fidelity_query_points(query_points)
         query_points_wo_fidelity = query_points[:, :-1]
         query_points_fidelity_col = query_points[:, -1:]
 
@@ -1421,7 +1427,7 @@ class AR1(TrainableProbabilisticModel):
         return residuals
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
-
+        assert_valid_fidelity_query_points(query_points)
         query_points_wo_fidelity = query_points[:, :-1]
         query_points_fidelity_col = query_points[:, -1:]
 
@@ -1458,6 +1464,7 @@ class AR1(TrainableProbabilisticModel):
 
         :param dataset: The query points and observations for *all* the wrapped models.
         """
+        assert_valid_fidelity_query_points(dataset.query_points)
         dataset_per_fidelity = split_dataset_by_fidelity(dataset, self.num_fidelities)
         for fidelity, dataset_for_fidelity in enumerate(dataset_per_fidelity):
             if fidelity == 0:
@@ -1537,6 +1544,7 @@ class AR1(TrainableProbabilisticModel):
 
         :param dataset: The query points and observations for *all* the wrapped models.
         """
+        assert_valid_fidelity_query_points(dataset.query_points)
         dataset_per_fidelity = split_dataset_by_fidelity(dataset, self.num_fidelities)
 
         for fidelity, dataset_for_fidelity in enumerate(dataset_per_fidelity):

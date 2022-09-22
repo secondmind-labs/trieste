@@ -25,7 +25,7 @@ from trieste.data import (
     split_dataset_by_fidelity,
     get_dataset_for_fidelity,
     convert_query_points_for_fidelity,
-    assert_valid_fidelity_dataset
+    assert_valid_fidelity_query_points,
 )
 from trieste.utils import shapes_equal
 
@@ -205,13 +205,16 @@ def test_dataset_astuple() -> None:
     assert obs_from_astuple is obs
 
 
-@pytest.mark.parametrize("dataset,is_valid", ((Dataset(tf.constant([[0.456, 0.0]]), tf.constant([[0.2]])), True), (Dataset(tf.constant([[0.456, 0.001]]), tf.constant([[0.2]])), False)))
-def test_assert_valid_multifidelity_dataset(dataset: Dataset, is_valid: bool) -> None:
+@pytest.mark.parametrize(
+    "query_points,is_valid",
+    ((tf.constant([[0.456, 0.0]]), True), (tf.constant([[0.456, 0.001]]), False)),
+)
+def test_assert_valid_multifidelity_dataset(query_points: Dataset, is_valid: bool) -> None:
     if is_valid:
-        assert_valid_fidelity_dataset(dataset)
+        assert_valid_fidelity_query_points(query_points)
     else:
         with pytest.raises(AssertionError):
-            assert_valid_fidelity_dataset(dataset)
+            assert_valid_fidelity_query_points(query_points)
 
 
 def test_multifidelity_split_dataset_by_fidelity() -> None:
