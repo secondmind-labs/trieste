@@ -138,7 +138,7 @@ def test_multi_objective_optimizer_finds_pareto_front_of_the_VLMOP2_function(
 
         return TrainablePredictJointReparamModelStack(*gprs)
 
-    observer = mk_observer(VLMOP2().objective(), OBJECTIVE)
+    observer = mk_observer(VLMOP2().objective, OBJECTIVE)
 
     initial_query_points = search_space.sample(10)
     initial_data = observer(initial_query_points)

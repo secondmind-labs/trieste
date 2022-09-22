@@ -21,12 +21,33 @@ taken from `this Virtual Library of Simulation Experiments
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 from math import pi
+from typing import Callable
 
 import tensorflow as tf
 
 from ..space import Box
 from ..types import TensorType
+
+
+@dataclass(frozen=True)
+class SingleObjectiveTestProblem:
+    """
+    Convenience container class for synthetic single-objective test functions.
+    """
+
+    objective: Callable[[TensorType], TensorType]
+    """The synthetic test function"""
+
+    search_space: Box
+    """The (continuous) search space of the test function"""
+
+    minimizers: TensorType
+    """The global minimizers of the test function."""
+
+    minimum: TensorType
+    """The global minimum of the test function."""
 
 
 def _branin_internals(x: TensorType, scale: TensorType, translate: TensorType) -> TensorType:
@@ -93,6 +114,16 @@ BRANIN_SEARCH_SPACE = Box([0.0], [1.0]) ** 2
 """ The search space for the :func:`branin` function. """
 
 
+Branin = SingleObjectiveTestProblem(branin, BRANIN_SEARCH_SPACE, BRANIN_MINIMIZERS, BRANIN_MINIMUM)
+"""The Branin-Hoo function over :math:`[0, 1]^2`. See :cite:`Picheny2013` for details."""
+
+ScaledBranin = SingleObjectiveTestProblem(
+    scaled_branin, BRANIN_SEARCH_SPACE, BRANIN_MINIMIZERS, SCALED_BRANIN_MINIMUM
+)
+"""The Branin-Hoo function, rescaled to have zero mean and unit variance over :math:`[0, 1]^2`. See
+:cite:`Picheny2013` for details."""
+
+
 def simple_quadratic(x: TensorType) -> TensorType:
     """
     A trivial quadratic function over :math:`[0, 1]^2`. Useful for quick testing.
@@ -120,6 +151,14 @@ and dtype float64.
 
 SIMPLE_QUADRATIC_SEARCH_SPACE = BRANIN_SEARCH_SPACE
 """ The search space for the :func:`simple_quadratic` function. """
+
+SimpleQuadratic = SingleObjectiveTestProblem(
+    simple_quadratic,
+    SIMPLE_QUADRATIC_SEARCH_SPACE,
+    SIMPLE_QUADRATIC_MINIMIZER,
+    SIMPLE_QUADRATIC_MINIMUM,
+)
+"""A trivial quadratic function over :math:`[0, 1]^2`. Useful for quick testing."""
 
 
 def gramacy_lee(x: TensorType) -> TensorType:

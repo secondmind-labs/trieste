@@ -42,7 +42,7 @@ tf.random.set_seed(1793)
 
 
 # %%
-vlmop2 = VLMOP2().objective()
+vlmop2 = VLMOP2().objective
 observer = trieste.objectives.utils.mk_observer(vlmop2)
 
 # %%

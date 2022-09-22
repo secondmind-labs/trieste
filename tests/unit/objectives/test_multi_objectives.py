@@ -75,7 +75,7 @@ def test_vlmop2_has_expected_output(test_x: TensorType, expected: TensorType) ->
 def test_dtlz1_has_expected_output(
     test_x: TensorType, input_dim: int, num_obj: int, expected: TensorType
 ) -> None:
-    f = DTLZ1(input_dim, num_obj).objective()
+    f = DTLZ1(input_dim, num_obj).objective
     npt.assert_allclose(f(test_x), expected, rtol=1e-5)
 
 
@@ -107,7 +107,7 @@ def test_dtlz1_has_expected_output(
 def test_dtlz2_has_expected_output(
     test_x: TensorType, input_dim: int, num_obj: int, expected: TensorType
 ) -> None:
-    f = DTLZ2(input_dim, num_obj).objective()
+    f = DTLZ2(input_dim, num_obj).objective
     npt.assert_allclose(f(test_x), expected, rtol=1e-4)
 
 
@@ -142,4 +142,4 @@ def test_func_raises_specified_input_dim_not_align_with_actual_input_dim(
     obj_inst: MultiObjectiveTestProblem, actual_x: TensorType
 ) -> None:
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        obj_inst.objective()(actual_x)
+        obj_inst.objective(actual_x)

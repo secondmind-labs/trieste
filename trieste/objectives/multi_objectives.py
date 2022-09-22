@@ -48,6 +48,7 @@ class MultiObjectiveTestProblem(ABC):
         The input space bounds of the test function
         """
 
+    @property
     @abstractmethod
     def objective(self) -> Callable[[TensorType], TensorType]:
         """
@@ -79,6 +80,7 @@ class VLMOP2(MultiObjectiveTestProblem):
     bounds = [[-2.0] * 2, [2.0] * 2]
     dim = 2
 
+    @property
     def objective(self) -> Callable[[TensorType], TensorType]:
         return vlmop2
 
@@ -138,6 +140,7 @@ class DTLZ1(DTLZ):
     See :cite:deb2002scalable for details.
     """
 
+    @property
     def objective(self) -> Callable[[TensorType], TensorType]:
         return partial(dtlz1, m=self.M, k=self.k, d=self.dim)
 
@@ -192,6 +195,7 @@ class DTLZ2(DTLZ):
     See :cite:deb2002scalable for details.
     """
 
+    @property
     def objective(self) -> Callable[[TensorType], TensorType]:
         return partial(dtlz2, m=self.M, d=self.dim)
 

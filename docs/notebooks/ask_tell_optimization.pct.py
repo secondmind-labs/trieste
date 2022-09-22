@@ -16,7 +16,7 @@ from trieste.ask_tell_optimization import AskTellOptimizer
 from trieste.bayesian_optimizer import Record
 from trieste.data import Dataset
 from trieste.models.gpflow.models import GaussianProcessRegression
-from trieste.objectives import scaled_branin, SCALED_BRANIN_MINIMUM
+from trieste.objectives import ScaledBranin
 from trieste.objectives.utils import mk_observer
 from trieste.space import Box
 
@@ -45,7 +45,7 @@ def build_model(data, kernel_func=None):
 
 num_initial_points = 5
 initial_query_points = search_space.sample(num_initial_points)
-observer = mk_observer(scaled_branin)
+observer = mk_observer(ScaledBranin.objective)
 initial_data = observer(initial_query_points)
 
 # %% [markdown]
@@ -78,7 +78,7 @@ def plot_ask_tell_regret(ask_tell_result):
     observations = ask_tell_result.try_get_final_dataset().observations.numpy()
     arg_min_idx = tf.squeeze(tf.argmin(observations, axis=0))
 
-    suboptimality = observations - SCALED_BRANIN_MINIMUM.numpy()
+    suboptimality = observations - ScaledBranin.minimum.numpy()
     ax = plt.gca()
     plot_regret(
         suboptimality, ax, num_init=num_initial_points, idx_best=arg_min_idx
@@ -154,7 +154,7 @@ for step in range(n_steps):
     saved_state = pickle.dumps(state)
 
     print(f"In the lab running the experiment #{step}.")
-    new_datapoint = scaled_branin(new_config)
+    new_datapoint = ScaledBranin.objective(new_config)
 
     print("Back from the lab")
     print("Restore optimizer from the saved state")
