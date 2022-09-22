@@ -114,11 +114,19 @@ BRANIN_SEARCH_SPACE = Box([0.0], [1.0]) ** 2
 """ The search space for the :func:`branin` function. """
 
 
-Branin = SingleObjectiveTestProblem(branin, BRANIN_SEARCH_SPACE, BRANIN_MINIMIZERS, BRANIN_MINIMUM)
+Branin = SingleObjectiveTestProblem(
+    objective=branin,
+    search_space=BRANIN_SEARCH_SPACE,
+    minimizers=BRANIN_MINIMIZERS,
+    minimum=BRANIN_MINIMUM,
+)
 """The Branin-Hoo function over :math:`[0, 1]^2`. See :cite:`Picheny2013` for details."""
 
 ScaledBranin = SingleObjectiveTestProblem(
-    scaled_branin, BRANIN_SEARCH_SPACE, BRANIN_MINIMIZERS, SCALED_BRANIN_MINIMUM
+    objective=scaled_branin,
+    search_space=BRANIN_SEARCH_SPACE,
+    minimizers=BRANIN_MINIMIZERS,
+    minimum=SCALED_BRANIN_MINIMUM,
 )
 """The Branin-Hoo function, rescaled to have zero mean and unit variance over :math:`[0, 1]^2`. See
 :cite:`Picheny2013` for details."""
@@ -153,10 +161,10 @@ SIMPLE_QUADRATIC_SEARCH_SPACE = BRANIN_SEARCH_SPACE
 """ The search space for the :func:`simple_quadratic` function. """
 
 SimpleQuadratic = SingleObjectiveTestProblem(
-    simple_quadratic,
-    SIMPLE_QUADRATIC_SEARCH_SPACE,
-    SIMPLE_QUADRATIC_MINIMIZER,
-    SIMPLE_QUADRATIC_MINIMUM,
+    objective=simple_quadratic,
+    search_space=SIMPLE_QUADRATIC_SEARCH_SPACE,
+    minimizers=SIMPLE_QUADRATIC_MINIMIZER,
+    minimum=SIMPLE_QUADRATIC_MINIMUM,
 )
 """A trivial quadratic function over :math:`[0, 1]^2`. Useful for quick testing."""
 
@@ -190,6 +198,16 @@ dtype float64.
 
 GRAMACY_LEE_SEARCH_SPACE = Box([0.5], [2.5])
 """ The search space for the :func:`gramacy_lee` function. """
+
+
+GramacyLee = SingleObjectiveTestProblem(
+    objective=gramacy_lee,
+    search_space=GRAMACY_LEE_SEARCH_SPACE,
+    minimizers=GRAMACY_LEE_MINIMIZER,
+    minimum=GRAMACY_LEE_MINIMUM,
+)
+"""The Gramacy & Lee function, typically evaluated over :math:`[0.5, 2.5]`. See
+:cite:`gramacy2012cases` for details."""
 
 
 def logarithmic_goldstein_price(x: TensorType) -> TensorType:
@@ -229,6 +247,16 @@ float64.
 
 LOGARITHMIC_GOLDSTEIN_PRICE_SEARCH_SPACE = Box([0.0], [1.0]) ** 2
 """ The search space for the :func:`logarithmic_goldstein_price` function. """
+
+
+LogarithmicGoldsteinPrice = SingleObjectiveTestProblem(
+    objective=logarithmic_goldstein_price,
+    search_space=LOGARITHMIC_GOLDSTEIN_PRICE_SEARCH_SPACE,
+    minimizers=LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZER,
+    minimum=LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM,
+)
+"""A logarithmic form of the Goldstein-Price function, with zero mean and unit variance over
+:math:`[0, 1]^2`. See :cite:`Picheny2013` for details."""
 
 
 def hartmann_3(x: TensorType) -> TensorType:
@@ -271,6 +299,16 @@ float64.
 
 HARTMANN_3_SEARCH_SPACE = Box([0.0], [1.0]) ** 3
 """ The search space for the :func:`hartmann_3` function. """
+
+
+Hartmann3 = SingleObjectiveTestProblem(
+    objective=hartmann_3,
+    search_space=HARTMANN_3_SEARCH_SPACE,
+    minimizers=HARTMANN_3_MINIMIZER,
+    minimum=HARTMANN_3_MINIMUM,
+)
+"""The Hartmann 3 test function over :math:`[0, 1]^3`. This function has 3 local
+and one global minima. See https://www.sfu.ca/~ssurjano/hart3.html for details."""
 
 
 def shekel_4(x: TensorType) -> TensorType:
@@ -319,6 +357,18 @@ SHEKEL_4_SEARCH_SPACE = Box([0.0], [1.0]) ** 4
 """ The search space for the :func:`shekel_4` function. """
 
 
+Shekel4 = SingleObjectiveTestProblem(
+    objective=shekel_4,
+    search_space=SHEKEL_4_SEARCH_SPACE,
+    minimizers=SHEKEL_4_MINIMIZER,
+    minimum=SHEKEL_4_MINIMUM,
+)
+"""The Shekel test function over :math:`[0, 1]^4`. This function has ten local
+minima and a single global minimum. See https://www.sfu.ca/~ssurjano/shekel.html for details.
+Note that we rescale the original problem, which is typically defined
+over `[0, 10]^4`."""
+
+
 def rosenbrock_4(x: TensorType) -> TensorType:
     """
     The Rosenbrock function, rescaled to have zero mean and unit variance over :math:`[0, 1]^4. See
@@ -355,6 +405,18 @@ float64.
 
 ROSENBROCK_4_SEARCH_SPACE = Box([0.0], [1.0]) ** 4
 """ The search space for the :func:`rosenbrock_4` function. """
+
+
+Rosenbrock4 = SingleObjectiveTestProblem(
+    objective=rosenbrock_4,
+    search_space=ROSENBROCK_4_SEARCH_SPACE,
+    minimizers=ROSENBROCK_4_MINIMIZER,
+    minimum=ROSENBROCK_4_MINIMUM,
+)
+"""The Rosenbrock function, rescaled to have zero mean and unit variance over :math:`[0, 1]^4. See
+:cite:`Picheny2013` for details.
+This function (also known as the Banana function) is unimodal, however the minima
+lies in a narrow valley."""
 
 
 def ackley_5(x: TensorType) -> TensorType:
@@ -402,6 +464,19 @@ float64.
 
 ACKLEY_5_SEARCH_SPACE = Box([0.0], [1.0]) ** 5
 """ The search space for the :func:`ackley_5` function. """
+
+
+Ackley5 = SingleObjectiveTestProblem(
+    objective=ackley_5,
+    search_space=ACKLEY_5_SEARCH_SPACE,
+    minimizers=ACKLEY_5_MINIMIZER,
+    minimum=ACKLEY_5_MINIMUM,
+)
+"""The Ackley test function over :math:`[0, 1]^5`. This function has
+many local minima and a global minima. See https://www.sfu.ca/~ssurjano/ackley.html
+for details.
+Note that we rescale the original problem, which is typically defined
+over `[-32.768, 32.768]`."""
 
 
 def hartmann_6(x: TensorType) -> TensorType:
@@ -452,6 +527,17 @@ float64.
 
 HARTMANN_6_SEARCH_SPACE = Box([0.0], [1.0]) ** 6
 """ The search space for the :func:`hartmann_6` function. """
+
+
+Hartmann6 = SingleObjectiveTestProblem(
+    objective=hartmann_6,
+    search_space=HARTMANN_6_SEARCH_SPACE,
+    minimizers=HARTMANN_6_MINIMIZER,
+    minimum=HARTMANN_6_MINIMUM,
+)
+"""The Hartmann 6 test function over :math:`[0, 1]^6`. This function has
+6 local and one global minima. See https://www.sfu.ca/~ssurjano/hart6.html
+for details."""
 
 
 def michalewicz(x: TensorType, d: int = 2, m: int = 10) -> TensorType:
