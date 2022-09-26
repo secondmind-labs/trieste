@@ -667,6 +667,31 @@ The search space for the 10-dimensional :func:`michalewicz` function.
 """
 
 
+Michalewicz2 = SingleObjectiveTestProblem(
+    objective=michalewicz_2,
+    search_space=MICHALEWICZ_2_SEARCH_SPACE,
+    minimizers=MICHALEWICZ_2_MINIMIZER,
+    minimum=MICHALEWICZ_2_MINIMUM,
+)
+"""Convenience function for the 2-dimensional :func:`michalewicz` function with steepness 10."""
+
+Michalewicz5 = SingleObjectiveTestProblem(
+    objective=michalewicz_5,
+    search_space=MICHALEWICZ_5_SEARCH_SPACE,
+    minimizers=MICHALEWICZ_5_MINIMIZER,
+    minimum=MICHALEWICZ_5_MINIMUM,
+)
+"""Convenience function for the 5-dimensional :func:`michalewicz` function with steepness 10."""
+
+Michalewicz10 = SingleObjectiveTestProblem(
+    objective=michalewicz_10,
+    search_space=MICHALEWICZ_10_SEARCH_SPACE,
+    minimizers=MICHALEWICZ_10_MINIMIZER,
+    minimum=MICHALEWICZ_10_MINIMUM,
+)
+"""Convenience function for the 10-dimensional :func:`michalewicz` function with steepness 10."""
+
+
 def trid(x: TensorType, d: int = 10) -> TensorType:
     """
     The Trid function over :math:`[-d^2, d^2]` for all i=1,...,d. Dimensionality is determined
@@ -719,3 +744,11 @@ TRID_10_SEARCH_SPACE = Box([-(10 ** 2)], [10 ** 2]) ** 10
 The search space for :func:`trid` function is defined over :math:`[-d^2, d^2]` for all i=1,...,d.
 Here, we define it specifically for the 10-dimensional variant.
 """
+
+Trid10 = SingleObjectiveTestProblem(
+    objective=trid_10,
+    search_space=TRID_10_SEARCH_SPACE,
+    minimizers=TRID_10_MINIMIZER,
+    minimum=TRID_10_MINIMUM,
+)
+"""The Trid function with dimension 10."""
