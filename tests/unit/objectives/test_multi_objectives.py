@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Callable
 
 import numpy.testing as npt
 import pytest
@@ -112,28 +113,33 @@ def test_dtlz2_has_expected_output(
 
 
 @pytest.mark.parametrize(
-    "obj_inst, input_dim, num_obj, gen_pf_num",
+    "obj_type, input_dim, num_obj, gen_pf_num",
     [
-        (DTLZ1(3, 2), 3, 2, 1000),
-        (DTLZ1(5, 3), 5, 3, 1000),
-        (DTLZ2(3, 2), 3, 2, 1000),
-        (DTLZ2(12, 6), 12, 6, 1000),
+        (DTLZ1, 3, 2, 1000),
+        (DTLZ1, 5, 3, 1000),
+        (DTLZ2, 3, 2, 1000),
+        (DTLZ2, 12, 6, 1000),
     ],
 )
 def test_gen_pareto_front_is_equal_to_math_defined(
-    obj_inst: MultiObjectiveTestProblem, input_dim: int, num_obj: int, gen_pf_num: int
+    obj_type: Callable[[int, int], MultiObjectiveTestProblem],
+    input_dim: int,
+    num_obj: int,
+    gen_pf_num: int,
 ) -> None:
-    pfs = obj_inst.gen_pareto_optimal_points(gen_pf_num)
-    if isinstance(obj_inst, DTLZ1):
+    obj_inst = obj_type(input_dim, num_obj)
+    pfs = obj_inst.gen_pareto_optimal_points(gen_pf_num, None)
+    if obj_type == DTLZ1:
         tf.assert_equal(tf.reduce_sum(pfs, axis=1), 0.5)
-    elif isinstance(obj_inst, DTLZ2):
+    else:
+        assert obj_type == DTLZ2
         tf.debugging.assert_near(tf.norm(pfs, axis=1), 1.0, rtol=1e-6)
 
 
 @pytest.mark.parametrize(
     "obj_inst, actual_x",
     [
-        (VLMOP2(), tf.constant([[0.4, 0.2, 0.5]])),
+        (VLMOP2, tf.constant([[0.4, 0.2, 0.5]])),
         (DTLZ1(3, 2), tf.constant([[0.3, 0.1]])),
         (DTLZ2(5, 2), tf.constant([[0.3, 0.1]])),
     ],

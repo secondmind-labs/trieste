@@ -32,16 +32,37 @@ from ..types import TensorType
 
 
 @dataclass(frozen=True)
-class SingleObjectiveTestProblem:
+class ObjectiveTestProblem:
     """
-    Convenience container class for synthetic single-objective test functions.
+    Convenience container class for synthetic objective test functions.
     """
+
+    name: str
+    """The test function name"""
 
     objective: Callable[[TensorType], TensorType]
     """The synthetic test function"""
 
     search_space: Box
     """The (continuous) search space of the test function"""
+
+    @property
+    def dim(self) -> int:
+        """The input dimensionality of the test function"""
+        return self.search_space.dimension
+
+    @property
+    def bounds(self) -> list[list[float]]:
+        """The input space bounds of the test function"""
+        return [self.search_space.lower, self.search_space.upper]
+
+
+@dataclass(frozen=True)
+class SingleObjectiveTestProblem(ObjectiveTestProblem):
+    """
+    Convenience container class for synthetic single-objective test functions,
+    including the global minimizers and minimum.
+    """
 
     minimizers: TensorType
     """The global minimizers of the test function."""
@@ -115,6 +136,7 @@ BRANIN_SEARCH_SPACE = Box([0.0], [1.0]) ** 2
 
 
 Branin = SingleObjectiveTestProblem(
+    name="Branin",
     objective=branin,
     search_space=BRANIN_SEARCH_SPACE,
     minimizers=BRANIN_MINIMIZERS,
@@ -123,6 +145,7 @@ Branin = SingleObjectiveTestProblem(
 """The Branin-Hoo function over :math:`[0, 1]^2`. See :cite:`Picheny2013` for details."""
 
 ScaledBranin = SingleObjectiveTestProblem(
+    name="Scaled Branin",
     objective=scaled_branin,
     search_space=BRANIN_SEARCH_SPACE,
     minimizers=BRANIN_MINIMIZERS,
@@ -161,6 +184,7 @@ SIMPLE_QUADRATIC_SEARCH_SPACE = BRANIN_SEARCH_SPACE
 """ The search space for the :func:`simple_quadratic` function. """
 
 SimpleQuadratic = SingleObjectiveTestProblem(
+    name="Simple Quadratic",
     objective=simple_quadratic,
     search_space=SIMPLE_QUADRATIC_SEARCH_SPACE,
     minimizers=SIMPLE_QUADRATIC_MINIMIZER,
@@ -201,6 +225,7 @@ GRAMACY_LEE_SEARCH_SPACE = Box([0.5], [2.5])
 
 
 GramacyLee = SingleObjectiveTestProblem(
+    name="Gramacy & Lee",
     objective=gramacy_lee,
     search_space=GRAMACY_LEE_SEARCH_SPACE,
     minimizers=GRAMACY_LEE_MINIMIZER,
@@ -250,6 +275,7 @@ LOGARITHMIC_GOLDSTEIN_PRICE_SEARCH_SPACE = Box([0.0], [1.0]) ** 2
 
 
 LogarithmicGoldsteinPrice = SingleObjectiveTestProblem(
+    name="Logarithmic Goldstein-Price",
     objective=logarithmic_goldstein_price,
     search_space=LOGARITHMIC_GOLDSTEIN_PRICE_SEARCH_SPACE,
     minimizers=LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZER,
@@ -302,6 +328,7 @@ HARTMANN_3_SEARCH_SPACE = Box([0.0], [1.0]) ** 3
 
 
 Hartmann3 = SingleObjectiveTestProblem(
+    name="Hartmann 3",
     objective=hartmann_3,
     search_space=HARTMANN_3_SEARCH_SPACE,
     minimizers=HARTMANN_3_MINIMIZER,
@@ -358,6 +385,7 @@ SHEKEL_4_SEARCH_SPACE = Box([0.0], [1.0]) ** 4
 
 
 Shekel4 = SingleObjectiveTestProblem(
+    name="Shekel 4",
     objective=shekel_4,
     search_space=SHEKEL_4_SEARCH_SPACE,
     minimizers=SHEKEL_4_MINIMIZER,
@@ -408,6 +436,7 @@ ROSENBROCK_4_SEARCH_SPACE = Box([0.0], [1.0]) ** 4
 
 
 Rosenbrock4 = SingleObjectiveTestProblem(
+    name="Rosenbrock 4",
     objective=rosenbrock_4,
     search_space=ROSENBROCK_4_SEARCH_SPACE,
     minimizers=ROSENBROCK_4_MINIMIZER,
@@ -467,6 +496,7 @@ ACKLEY_5_SEARCH_SPACE = Box([0.0], [1.0]) ** 5
 
 
 Ackley5 = SingleObjectiveTestProblem(
+    name="Ackley 5",
     objective=ackley_5,
     search_space=ACKLEY_5_SEARCH_SPACE,
     minimizers=ACKLEY_5_MINIMIZER,
@@ -530,6 +560,7 @@ HARTMANN_6_SEARCH_SPACE = Box([0.0], [1.0]) ** 6
 
 
 Hartmann6 = SingleObjectiveTestProblem(
+    name="Hartmann 6",
     objective=hartmann_6,
     search_space=HARTMANN_6_SEARCH_SPACE,
     minimizers=HARTMANN_6_MINIMIZER,
@@ -668,6 +699,7 @@ The search space for the 10-dimensional :func:`michalewicz` function.
 
 
 Michalewicz2 = SingleObjectiveTestProblem(
+    name="Michalewicz 2",
     objective=michalewicz_2,
     search_space=MICHALEWICZ_2_SEARCH_SPACE,
     minimizers=MICHALEWICZ_2_MINIMIZER,
@@ -676,6 +708,7 @@ Michalewicz2 = SingleObjectiveTestProblem(
 """Convenience function for the 2-dimensional :func:`michalewicz` function with steepness 10."""
 
 Michalewicz5 = SingleObjectiveTestProblem(
+    name="Michalewicz 5",
     objective=michalewicz_5,
     search_space=MICHALEWICZ_5_SEARCH_SPACE,
     minimizers=MICHALEWICZ_5_MINIMIZER,
@@ -684,6 +717,7 @@ Michalewicz5 = SingleObjectiveTestProblem(
 """Convenience function for the 5-dimensional :func:`michalewicz` function with steepness 10."""
 
 Michalewicz10 = SingleObjectiveTestProblem(
+    name="Michalewicz 10",
     objective=michalewicz_10,
     search_space=MICHALEWICZ_10_SEARCH_SPACE,
     minimizers=MICHALEWICZ_10_MINIMIZER,
@@ -746,6 +780,7 @@ Here, we define it specifically for the 10-dimensional variant.
 """
 
 Trid10 = SingleObjectiveTestProblem(
+    name="Trid 10",
     objective=trid_10,
     search_space=TRID_10_SEARCH_SPACE,
     minimizers=TRID_10_MINIMIZER,
