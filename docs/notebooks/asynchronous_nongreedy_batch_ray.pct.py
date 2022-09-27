@@ -25,7 +25,7 @@ import time
 # Just as in the other [notebook on asynchronous optimization](asynchronous_greedy_multiprocessing.ipynb), we use Branin function with delays.
 
 # %%
-from trieste.objectives import scaled_branin
+from trieste.objectives import ScaledBranin
 
 
 def objective(points, sleep=True):
@@ -36,7 +36,7 @@ def objective(points, sleep=True):
 
     observations = []
     for point in points:
-        observation = scaled_branin(point).numpy()
+        observation = ScaledBranin.objective(point).numpy()
         if sleep:
             # insert some artificial delay that
             # increases linearly with the absolute value of points
@@ -189,7 +189,7 @@ arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
 query_points = dataset.query_points.numpy()
 observations = dataset.observations.numpy()
 _, ax = plot_function_2d(
-    scaled_branin,
+    ScaledBranin.objective,
     search_space.lower,
     search_space.upper,
     grid_density=30,

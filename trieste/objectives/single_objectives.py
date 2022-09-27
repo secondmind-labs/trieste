@@ -116,40 +116,21 @@ _ORIGINAL_BRANIN_MINIMIZERS = tf.constant(
     [[-math.pi, 12.275], [math.pi, 2.275], [9.42478, 2.475]], tf.float64
 )
 
-BRANIN_MINIMIZERS = (_ORIGINAL_BRANIN_MINIMIZERS + [5.0, 0.0]) / 15.0
-"""
-The three global minimizers of the :func:`branin` function over :math:`[0, 1]^2`, with shape [3, 2]
-and dtype float64.
-"""
-
-
-BRANIN_MINIMUM = tf.constant([0.397887], tf.float64)
-""" The global minimum of the :func:`branin` function, with shape [1] and dtype float64. """
-
-
-SCALED_BRANIN_MINIMUM = tf.constant([-1.047393], tf.float64)
-""" The global minimum of the :func:`branin` function, with shape [1] and dtype float64. """
-
-
-BRANIN_SEARCH_SPACE = Box([0.0], [1.0]) ** 2
-""" The search space for the :func:`branin` function. """
-
-
 Branin = SingleObjectiveTestProblem(
     name="Branin",
     objective=branin,
-    search_space=BRANIN_SEARCH_SPACE,
-    minimizers=BRANIN_MINIMIZERS,
-    minimum=BRANIN_MINIMUM,
+    search_space=Box([0.0], [1.0]) ** 2,
+    minimizers=(_ORIGINAL_BRANIN_MINIMIZERS + [5.0, 0.0]) / 15.0,
+    minimum=tf.constant([0.397887], tf.float64),
 )
 """The Branin-Hoo function over :math:`[0, 1]^2`. See :cite:`Picheny2013` for details."""
 
 ScaledBranin = SingleObjectiveTestProblem(
     name="Scaled Branin",
     objective=scaled_branin,
-    search_space=BRANIN_SEARCH_SPACE,
-    minimizers=BRANIN_MINIMIZERS,
-    minimum=SCALED_BRANIN_MINIMUM,
+    search_space=Branin.search_space,
+    minimizers=Branin.minimizers,
+    minimum=tf.constant([0.397887], tf.float64),
 )
 """The Branin-Hoo function, rescaled to have zero mean and unit variance over :math:`[0, 1]^2`. See
 :cite:`Picheny2013` for details."""
@@ -168,27 +149,12 @@ def simple_quadratic(x: TensorType) -> TensorType:
     return -tf.math.reduce_sum(x, axis=-1, keepdims=True) ** 2
 
 
-SIMPLE_QUADRATIC_MINIMIZER = tf.constant([[1.0, 1.0]], tf.float64)
-"""
-The global minimizer of the :func:`simple_quadratic` function over :math:`[0, 1]^2`,
-with shape [1, 2] and dtype float64.
-"""
-
-SIMPLE_QUADRATIC_MINIMUM = tf.constant([-4.0], tf.float64)
-"""
-The global minimum of the :func:`simple_quadratic` function over :math:`[0, 1]^2`, with shape [1]
-and dtype float64.
-"""
-
-SIMPLE_QUADRATIC_SEARCH_SPACE = BRANIN_SEARCH_SPACE
-""" The search space for the :func:`simple_quadratic` function. """
-
 SimpleQuadratic = SingleObjectiveTestProblem(
     name="Simple Quadratic",
     objective=simple_quadratic,
-    search_space=SIMPLE_QUADRATIC_SEARCH_SPACE,
-    minimizers=SIMPLE_QUADRATIC_MINIMIZER,
-    minimum=SIMPLE_QUADRATIC_MINIMUM,
+    search_space=Branin.search_space,
+    minimizers=tf.constant([[1.0, 1.0]], tf.float64),
+    minimum=tf.constant([-4.0], tf.float64),
 )
 """A trivial quadratic function over :math:`[0, 1]^2`. Useful for quick testing."""
 
@@ -206,30 +172,12 @@ def gramacy_lee(x: TensorType) -> TensorType:
     return tf.sin(10 * math.pi * x) / (2 * x) + (x - 1) ** 4
 
 
-GRAMACY_LEE_MINIMIZER = tf.constant([[0.548562]], tf.float64)
-"""
-The global minimizer of the :func:`gramacy_lee` function over :math:`[0.5, 2.5]`, with shape [1, 1]
-and dtype float64.
-"""
-
-
-GRAMACY_LEE_MINIMUM = tf.constant([-0.869011], tf.float64)
-"""
-The global minimum of the :func:`gramacy_lee` function over :math:`[0.5, 2.5]`, with shape [1] and
-dtype float64.
-"""
-
-
-GRAMACY_LEE_SEARCH_SPACE = Box([0.5], [2.5])
-""" The search space for the :func:`gramacy_lee` function. """
-
-
 GramacyLee = SingleObjectiveTestProblem(
     name="Gramacy & Lee",
     objective=gramacy_lee,
-    search_space=GRAMACY_LEE_SEARCH_SPACE,
-    minimizers=GRAMACY_LEE_MINIMIZER,
-    minimum=GRAMACY_LEE_MINIMUM,
+    search_space=Box([0.5], [2.5]),
+    minimizers=tf.constant([[0.548562]], tf.float64),
+    minimum=tf.constant([-0.869011], tf.float64),
 )
 """The Gramacy & Lee function, typically evaluated over :math:`[0.5, 2.5]`. See
 :cite:`gramacy2012cases` for details."""
@@ -256,30 +204,12 @@ def logarithmic_goldstein_price(x: TensorType) -> TensorType:
     return (1 / 2.427) * (tf.math.log((1 + a * b) * (30 + c * d)) - 8.693)
 
 
-LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZER = tf.constant([[0.5, 0.25]], tf.float64)
-"""
-The global minimizer for the :func:`logarithmic_goldstein_price` function, with shape [1, 2] and
-dtype float64.
-"""
-
-
-LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM = tf.constant([-3.12913], tf.float64)
-"""
-The global minimum for the :func:`logarithmic_goldstein_price` function, with shape [1] and dtype
-float64.
-"""
-
-
-LOGARITHMIC_GOLDSTEIN_PRICE_SEARCH_SPACE = Box([0.0], [1.0]) ** 2
-""" The search space for the :func:`logarithmic_goldstein_price` function. """
-
-
 LogarithmicGoldsteinPrice = SingleObjectiveTestProblem(
     name="Logarithmic Goldstein-Price",
     objective=logarithmic_goldstein_price,
-    search_space=LOGARITHMIC_GOLDSTEIN_PRICE_SEARCH_SPACE,
-    minimizers=LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZER,
-    minimum=LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM,
+    search_space=Box([0.0], [1.0]) ** 2,
+    minimizers=tf.constant([[0.5, 0.25]], tf.float64),
+    minimum=tf.constant([-3.12913], tf.float64),
 )
 """A logarithmic form of the Goldstein-Price function, with zero mean and unit variance over
 :math:`[0, 1]^2`. See :cite:`Picheny2013` for details."""
@@ -309,30 +239,12 @@ def hartmann_3(x: TensorType) -> TensorType:
     return -tf.reduce_sum(a * tf.math.exp(inner_sum), -1, keepdims=True)
 
 
-HARTMANN_3_MINIMIZER = tf.constant([[0.114614, 0.555649, 0.852547]], tf.float64)
-"""
-The global minimizer for the :func:`hartmann_3` function, with shape [1, 3] and
-dtype float64.
-"""
-
-
-HARTMANN_3_MINIMUM = tf.constant([-3.86278], tf.float64)
-"""
-The global minimum for the :func:`hartmann_3` function, with shape [1] and dtype
-float64.
-"""
-
-
-HARTMANN_3_SEARCH_SPACE = Box([0.0], [1.0]) ** 3
-""" The search space for the :func:`hartmann_3` function. """
-
-
 Hartmann3 = SingleObjectiveTestProblem(
     name="Hartmann 3",
     objective=hartmann_3,
-    search_space=HARTMANN_3_SEARCH_SPACE,
-    minimizers=HARTMANN_3_MINIMIZER,
-    minimum=HARTMANN_3_MINIMUM,
+    search_space=Box([0.0], [1.0]) ** 3,
+    minimizers=tf.constant([[0.114614, 0.555649, 0.852547]], tf.float64),
+    minimum=tf.constant([-3.86278], tf.float64),
 )
 """The Hartmann 3 test function over :math:`[0, 1]^3`. This function has 3 local
 and one global minima. See https://www.sfu.ca/~ssurjano/hart3.html for details."""
@@ -366,30 +278,12 @@ def shekel_4(x: TensorType) -> TensorType:
     return -tf.reduce_sum(inner_sum ** (-1), -1, keepdims=True)
 
 
-SHEKEL_4_MINIMIZER = tf.constant([[0.4, 0.4, 0.4, 0.4]], tf.float64)
-"""
-The global minimizer for the :func:`shekel_4` function, with shape [1, 4] and
-dtype float64.
-"""
-
-
-SHEKEL_4_MINIMUM = tf.constant([-10.5363], tf.float64)
-"""
-The global minimum for the :func:`shekel_4` function, with shape [1] and dtype
-float64.
-"""
-
-
-SHEKEL_4_SEARCH_SPACE = Box([0.0], [1.0]) ** 4
-""" The search space for the :func:`shekel_4` function. """
-
-
 Shekel4 = SingleObjectiveTestProblem(
     name="Shekel 4",
     objective=shekel_4,
-    search_space=SHEKEL_4_SEARCH_SPACE,
-    minimizers=SHEKEL_4_MINIMIZER,
-    minimum=SHEKEL_4_MINIMUM,
+    search_space=Box([0.0], [1.0]) ** 4,
+    minimizers=tf.constant([[0.4, 0.4, 0.4, 0.4]], tf.float64),
+    minimum=tf.constant([-10.5363], tf.float64),
 )
 """The Shekel test function over :math:`[0, 1]^4`. This function has ten local
 minima and a single global minimum. See https://www.sfu.ca/~ssurjano/shekel.html for details.
@@ -417,30 +311,12 @@ def rosenbrock_4(x: TensorType) -> TensorType:
     return (unscaled_function - 3.827 * 1e5) / (3.755 * 1e5)
 
 
-ROSENBROCK_4_MINIMIZER = tf.constant([[0.4, 0.4, 0.4, 0.4]], tf.float64)
-"""
-The global minimizer for the :func:`rosenbrock_4` function, with shape [1, 4] and
-dtype float64.
-"""
-
-
-ROSENBROCK_4_MINIMUM = tf.constant([-1.01917], tf.float64)
-"""
-The global minimum for the :func:`rosenbrock_4` function, with shape [1] and dtype
-float64.
-"""
-
-
-ROSENBROCK_4_SEARCH_SPACE = Box([0.0], [1.0]) ** 4
-""" The search space for the :func:`rosenbrock_4` function. """
-
-
 Rosenbrock4 = SingleObjectiveTestProblem(
     name="Rosenbrock 4",
     objective=rosenbrock_4,
-    search_space=ROSENBROCK_4_SEARCH_SPACE,
-    minimizers=ROSENBROCK_4_MINIMIZER,
-    minimum=ROSENBROCK_4_MINIMUM,
+    search_space=Box([0.0], [1.0]) ** 4,
+    minimizers=tf.constant([[0.4, 0.4, 0.4, 0.4]], tf.float64),
+    minimum=tf.constant([-1.01917], tf.float64),
 )
 """The Rosenbrock function, rescaled to have zero mean and unit variance over :math:`[0, 1]^4. See
 :cite:`Picheny2013` for details.
@@ -477,30 +353,12 @@ def ackley_5(x: TensorType) -> TensorType:
     return tf.expand_dims(function, -1)
 
 
-ACKLEY_5_MINIMIZER = tf.constant([[0.5, 0.5, 0.5, 0.5, 0.5]], tf.float64)
-"""
-The global minimizer for the :func:`ackley_5` function, with shape [1, 5] and
-dtype float64.
-"""
-
-
-ACKLEY_5_MINIMUM = tf.constant([0.0], tf.float64)
-"""
-The global minimum for the :func:`ackley_5` function, with shape [1] and dtype
-float64.
-"""
-
-
-ACKLEY_5_SEARCH_SPACE = Box([0.0], [1.0]) ** 5
-""" The search space for the :func:`ackley_5` function. """
-
-
 Ackley5 = SingleObjectiveTestProblem(
     name="Ackley 5",
     objective=ackley_5,
-    search_space=ACKLEY_5_SEARCH_SPACE,
-    minimizers=ACKLEY_5_MINIMIZER,
-    minimum=ACKLEY_5_MINIMUM,
+    search_space=Box([0.0], [1.0]) ** 5,
+    minimizers=tf.constant([[0.5, 0.5, 0.5, 0.5, 0.5]], tf.float64),
+    minimum=tf.constant([0.0], tf.float64),
 )
 """The Ackley test function over :math:`[0, 1]^5`. This function has
 many local minima and a global minima. See https://www.sfu.ca/~ssurjano/ackley.html
@@ -539,32 +397,12 @@ def hartmann_6(x: TensorType) -> TensorType:
     return -tf.reduce_sum(a * tf.math.exp(inner_sum), -1, keepdims=True)
 
 
-HARTMANN_6_MINIMIZER = tf.constant(
-    [[0.20169, 0.150011, 0.476874, 0.275332, 0.311652, 0.6573]], tf.float64
-)
-"""
-The global minimizer for the :func:`hartmann_6` function, with shape [1, 6] and
-dtype float64.
-"""
-
-
-HARTMANN_6_MINIMUM = tf.constant([-3.32237], tf.float64)
-"""
-The global minimum for the :func:`hartmann_6` function, with shape [1] and dtype
-float64.
-"""
-
-
-HARTMANN_6_SEARCH_SPACE = Box([0.0], [1.0]) ** 6
-""" The search space for the :func:`hartmann_6` function. """
-
-
 Hartmann6 = SingleObjectiveTestProblem(
     name="Hartmann 6",
     objective=hartmann_6,
-    search_space=HARTMANN_6_SEARCH_SPACE,
-    minimizers=HARTMANN_6_MINIMIZER,
-    minimum=HARTMANN_6_MINIMUM,
+    search_space=Box([0.0], [1.0]) ** 6,
+    minimizers=tf.constant([[0.20169, 0.150011, 0.476874, 0.275332, 0.311652, 0.6573]], tf.float64),
+    minimum=tf.constant([-3.32237], tf.float64),
 )
 """The Hartmann 6 test function over :math:`[0, 1]^6`. This function has
 6 local and one global minima. See https://www.sfu.ca/~ssurjano/hart6.html
@@ -620,110 +458,51 @@ def michalewicz_10(x: TensorType) -> TensorType:
     return michalewicz(x, d=10)
 
 
-MICHALEWICZ_2_MINIMIZER = tf.constant([[2.202906, 1.570796]], tf.float64)
-"""
-The global minimizer of the :func:`michalewicz` function over :math:`[0, \\pi]^2`,
-with shape [1, 2] and dtype float64. Taken from https://arxiv.org/abs/2003.09867
-"""
-
-
-MICHALEWICZ_5_MINIMIZER = tf.constant(
-    [[2.202906, 1.570796, 1.284992, 1.923058, 1.720470]], tf.float64
-)
-"""
-The global minimizer of the :func:`michalewicz` function over :math:`[0, \\pi]^5`,
-with shape [1, 5] and dtype float64. Taken from https://arxiv.org/abs/2003.09867
-"""
-
-
-MICHALEWICZ_10_MINIMIZER = tf.constant(
-    [
-        [
-            2.202906,
-            1.570796,
-            1.284992,
-            1.923058,
-            1.720470,
-            1.570796,
-            1.454414,
-            1.756087,
-            1.655717,
-            1.570796,
-        ]
-    ],
-    tf.float64,
-)
-"""
-The global minimizer of the :func:`michalewicz` function over :math:`[0, \\pi]^10`,
-with shape [1, 10] and dtype float64. Taken from https://arxiv.org/abs/2003.09867
-"""
-
-
-MICHALEWICZ_2_MINIMUM = tf.constant([-1.8013034], tf.float64)
-"""
-The global minimum of the 2-dimensional :func:`michalewicz` function, with shape [1] and dtype
-float64. Taken from https://arxiv.org/abs/2003.09867
-"""
-
-
-MICHALEWICZ_5_MINIMUM = tf.constant([-4.6876582], tf.float64)
-"""
-The global minimum of the 5-dimensional :func:`michalewicz` function, with shape [1] and dtype
-float64. Taken from https://arxiv.org/abs/2003.09867
-"""
-
-
-MICHALEWICZ_10_MINIMUM = tf.constant([-9.6601517], tf.float64)
-"""
-The global minimum of the 10-dimensional :func:`michalewicz` function, with shape [1] and dtype
-float64. Taken from https://arxiv.org/abs/2003.09867
-"""
-
-
-MICHALEWICZ_2_SEARCH_SPACE = Box([0.0], [pi]) ** 2
-"""
-The search space for the 2-dimensional :func:`michalewicz` function.
-"""
-
-
-MICHALEWICZ_5_SEARCH_SPACE = Box([0.0], [pi]) ** 5
-"""
-The search space for the 5-dimensional :func:`michalewicz` function.
-"""
-
-
-MICHALEWICZ_10_SEARCH_SPACE = Box([0.0], [pi]) ** 10
-"""
-The search space for the 10-dimensional :func:`michalewicz` function.
-"""
-
-
 Michalewicz2 = SingleObjectiveTestProblem(
     name="Michalewicz 2",
     objective=michalewicz_2,
-    search_space=MICHALEWICZ_2_SEARCH_SPACE,
-    minimizers=MICHALEWICZ_2_MINIMIZER,
-    minimum=MICHALEWICZ_2_MINIMUM,
+    search_space=Box([0.0], [pi]) ** 2,
+    minimizers=tf.constant([[2.202906, 1.570796]], tf.float64),
+    minimum=tf.constant([-1.8013034], tf.float64),
 )
-"""Convenience function for the 2-dimensional :func:`michalewicz` function with steepness 10."""
+"""Convenience function for the 2-dimensional :func:`michalewicz` function with steepness 10.
+Taken from https://arxiv.org/abs/2003.09867"""
 
 Michalewicz5 = SingleObjectiveTestProblem(
     name="Michalewicz 5",
     objective=michalewicz_5,
-    search_space=MICHALEWICZ_5_SEARCH_SPACE,
-    minimizers=MICHALEWICZ_5_MINIMIZER,
-    minimum=MICHALEWICZ_5_MINIMUM,
+    search_space=Box([0.0], [pi]) ** 5,
+    minimizers=tf.constant([[2.202906, 1.570796, 1.284992, 1.923058, 1.720470]], tf.float64),
+    minimum=tf.constant([-4.6876582], tf.float64),
 )
-"""Convenience function for the 5-dimensional :func:`michalewicz` function with steepness 10."""
+"""Convenience function for the 5-dimensional :func:`michalewicz` function with steepness 10.
+Taken from https://arxiv.org/abs/2003.09867"""
 
 Michalewicz10 = SingleObjectiveTestProblem(
     name="Michalewicz 10",
     objective=michalewicz_10,
-    search_space=MICHALEWICZ_10_SEARCH_SPACE,
-    minimizers=MICHALEWICZ_10_MINIMIZER,
-    minimum=MICHALEWICZ_10_MINIMUM,
+    search_space=Box([0.0], [pi]) ** 10,
+    minimizers=tf.constant(
+        [
+            [
+                2.202906,
+                1.570796,
+                1.284992,
+                1.923058,
+                1.720470,
+                1.570796,
+                1.454414,
+                1.756087,
+                1.655717,
+                1.570796,
+            ]
+        ],
+        tf.float64,
+    ),
+    minimum=tf.constant([-9.6601517], tf.float64),
 )
-"""Convenience function for the 10-dimensional :func:`michalewicz` function with steepness 10."""
+"""Convenience function for the 10-dimensional :func:`michalewicz` function with steepness 10.
+Taken from https://arxiv.org/abs/2003.09867"""
 
 
 def trid(x: TensorType, d: int = 10) -> TensorType:
@@ -757,33 +536,11 @@ def trid_10(x: TensorType) -> TensorType:
     return trid(x, d=10)
 
 
-TRID_10_MINIMIZER = tf.constant([[i * (10 + 1 - i) for i in range(1, 10 + 1)]], tf.float64)
-"""
-The global minimizer of :func:`trid` function is defined as :math:`x_i=i(d+1-i)` for all i=1,...,d.
-Here, we define it specifically for the 10-dimensional variant, with shape [1, 10] and dtype
-float64.
-"""
-
-
-TRID_10_MINIMUM = tf.constant([-10 * (10 + 4) * (10 - 1) / 6], tf.float64)
-"""
-The global minimum of :func:`trid` function is defined as :math:`d(d+4)(d-1)/6` for dimensionality
-`d`. Here, we define it specifically for the 10-dimensional variant, with shape [1] and dtype
-float64.
-"""
-
-
-TRID_10_SEARCH_SPACE = Box([-(10 ** 2)], [10 ** 2]) ** 10
-"""
-The search space for :func:`trid` function is defined over :math:`[-d^2, d^2]` for all i=1,...,d.
-Here, we define it specifically for the 10-dimensional variant.
-"""
-
 Trid10 = SingleObjectiveTestProblem(
     name="Trid 10",
     objective=trid_10,
-    search_space=TRID_10_SEARCH_SPACE,
-    minimizers=TRID_10_MINIMIZER,
-    minimum=TRID_10_MINIMUM,
+    search_space=Box([-(10 ** 2)], [10 ** 2]) ** 10,
+    minimizers=tf.constant([[i * (10 + 1 - i) for i in range(1, 10 + 1)]], tf.float64),
+    minimum=tf.constant([-10 * (10 + 4) * (10 - 1) / 6], tf.float64),
 )
 """The Trid function with dimension 10."""

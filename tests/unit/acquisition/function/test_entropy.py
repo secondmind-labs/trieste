@@ -43,7 +43,7 @@ from trieste.acquisition.sampler import (
     ThompsonSamplerFromTrajectory,
 )
 from trieste.data import Dataset
-from trieste.objectives import branin
+from trieste.objectives import Branin
 from trieste.space import Box
 from trieste.types import TensorType
 
@@ -245,7 +245,7 @@ def test_min_value_entropy_search_chooses_same_as_probability_of_improvement() -
     """
 
     kernel = tfp.math.psd_kernels.MaternFiveHalves()
-    model = GaussianProcess([branin], [kernel])
+    model = GaussianProcess([Branin.objective], [kernel])
 
     x_range = tf.linspace(0.0, 1.0, 11)
     x_range = tf.cast(x_range, dtype=tf.float64)

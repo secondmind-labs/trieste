@@ -37,24 +37,7 @@ from trieste.acquisition.optimizer import (
 )
 from trieste.acquisition.utils import split_acquisition_function_calls
 from trieste.logging import tensorboard_writer
-from trieste.objectives import (
-    ACKLEY_5_MINIMIZER,
-    ACKLEY_5_SEARCH_SPACE,
-    BRANIN_MINIMUM,
-    BRANIN_SEARCH_SPACE,
-    HARTMANN_3_MINIMIZER,
-    HARTMANN_3_SEARCH_SPACE,
-    HARTMANN_6_MINIMIZER,
-    HARTMANN_6_SEARCH_SPACE,
-    SCALED_BRANIN_MINIMUM,
-    SIMPLE_QUADRATIC_MINIMUM,
-    ackley_5,
-    branin,
-    hartmann_3,
-    hartmann_6,
-    scaled_branin,
-    simple_quadratic,
-)
+from trieste.objectives import Ackley5, Branin, Hartmann3, Hartmann6, ScaledBranin, SimpleQuadratic
 from trieste.space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSpace
 from trieste.types import TensorType
 
@@ -155,9 +138,9 @@ def test_discrete_and_random_optimizer_on_quadratic(
 @pytest.mark.parametrize(
     "neg_function, expected_maximizer, search_space",
     [
-        (ackley_5, ACKLEY_5_MINIMIZER, ACKLEY_5_SEARCH_SPACE),
-        (hartmann_3, HARTMANN_3_MINIMIZER, HARTMANN_3_SEARCH_SPACE),
-        (hartmann_6, HARTMANN_6_MINIMIZER, HARTMANN_6_SEARCH_SPACE),
+        (Ackley5.objective, Ackley5.minimizers, Ackley5.search_space),
+        (Hartmann3.objective, Hartmann3.minimizers, Hartmann3.search_space),
+        (Hartmann6.objective, Hartmann6.minimizers, Hartmann6.search_space),
     ],
 )
 def test_random_search_optimizer_on_toy_problems(
@@ -313,14 +296,14 @@ def test_optimize_continuous_when_target_raises_exception() -> None:
         nonlocal num_queries
 
         if num_queries > 1:  # after initial sample return inf
-            return -1 * hartmann_3(tf.squeeze(x, 1)) / 0.0
+            return -1 * Hartmann3.objective(tf.squeeze(x, 1)) / 0.0
 
         num_queries += 1
-        return -1 * hartmann_3(tf.squeeze(x, 1))
+        return -1 * Hartmann3.objective(tf.squeeze(x, 1))
 
     optimizer = generate_continuous_optimizer(optimizer_args={"options": {"maxiter": 10}})
     with pytest.raises(FailedOptimizationError):
-        optimizer(HARTMANN_3_SEARCH_SPACE, _target_fn)
+        optimizer(Hartmann3.search_space, _target_fn)
 
 
 @random_seed
@@ -430,9 +413,9 @@ def test_continuous_optimizer_on_quadratic(
 @pytest.mark.parametrize(
     "neg_function, expected_maximizer, search_space",
     [
-        (ackley_5, ACKLEY_5_MINIMIZER, ACKLEY_5_SEARCH_SPACE),
-        (hartmann_3, HARTMANN_3_MINIMIZER, HARTMANN_3_SEARCH_SPACE),
-        (hartmann_6, HARTMANN_6_MINIMIZER, HARTMANN_6_SEARCH_SPACE),
+        (Ackley5.objective, Ackley5.minimizers, Ackley5.search_space),
+        (Hartmann3.objective, Hartmann3.minimizers, Hartmann3.search_space),
+        (Hartmann6.objective, Hartmann6.minimizers, Hartmann6.search_space),
     ],
 )
 def test_continuous_optimizer_on_toy_problems(
@@ -630,9 +613,9 @@ def test_batchify_vectorized_for_discrete_optimizer_on_vectorized_quadratic() ->
 @pytest.mark.parametrize(
     "neg_function, expected_maximizer, search_space",
     [
-        (ackley_5, ACKLEY_5_MINIMIZER, ACKLEY_5_SEARCH_SPACE),
-        (hartmann_3, HARTMANN_3_MINIMIZER, HARTMANN_3_SEARCH_SPACE),
-        (hartmann_6, HARTMANN_6_MINIMIZER, HARTMANN_6_SEARCH_SPACE),
+        (Ackley5.objective, Ackley5.minimizers, Ackley5.search_space),
+        (Hartmann3.objective, Hartmann3.minimizers, Hartmann3.search_space),
+        (Hartmann6.objective, Hartmann6.minimizers, Hartmann6.search_space),
     ],
 )
 def test_batchify_vectorized_for_continuous_optimizer_on_duplicated_toy_problems(
@@ -655,9 +638,9 @@ def test_batchify_vectorized_for_continuous_optimizer_on_duplicated_toy_problems
 
 @random_seed
 def test_batchify_vectorized_for_continuous_optimizer_on_vectorized_toy_problems() -> None:
-    search_space = BRANIN_SEARCH_SPACE
-    functions = [branin, scaled_branin, simple_quadratic]
-    expected_maximimums = [-BRANIN_MINIMUM, -SCALED_BRANIN_MINIMUM, -SIMPLE_QUADRATIC_MINIMUM]
+    search_space = Branin.search_space
+    functions = [Branin.objective, ScaledBranin.objective, SimpleQuadratic.objective]
+    expected_maximimums = [-Branin.minimum, -ScaledBranin.minimum, -SimpleQuadratic.minimum]
     vectorized_batch_size = 3
 
     def target_function(x: TensorType) -> TensorType:  # [N,V,D] -> [N, V]
