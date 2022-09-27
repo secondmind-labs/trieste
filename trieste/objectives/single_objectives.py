@@ -130,7 +130,7 @@ ScaledBranin = SingleObjectiveTestProblem(
     objective=scaled_branin,
     search_space=Branin.search_space,
     minimizers=Branin.minimizers,
-    minimum=tf.constant([0.397887], tf.float64),
+    minimum=tf.constant([-1.047393], tf.float64),
 )
 """The Branin-Hoo function, rescaled to have zero mean and unit variance over :math:`[0, 1]^2`. See
 :cite:`Picheny2013` for details."""
