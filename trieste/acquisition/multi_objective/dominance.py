@@ -28,6 +28,8 @@ def non_dominated(observations: TensorType) -> tuple[TensorType, TensorType]:
     If there are duplicate point(s) in the non-dominated set, this function will return
     as it is without removing the duplicate.
 
+    Note that reordering the observations by standard score beforehand can speed up the search.
+
     :param observations: set of points with shape [N,D]
     :return: tf.Tensor of the non-dominated set [P,D] and a non-dominated point mask [N],
         P is the number of points in pareto front, the mask specifies whether each data point
