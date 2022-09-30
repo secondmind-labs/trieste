@@ -39,10 +39,9 @@ def non_dominated(observations: TensorType) -> tuple[TensorType, TensorType]:
 
     next_point_index = -1
     while next_point_index + 1 < len(observations):
-        next_point_index += 1 + np.argmax(nondominated_point_mask[next_point_index+1:])
-        nondominated_point_mask &= (
-                np.any(observations < observations[next_point_index], axis=1) |
-                np.all(observations == observations[next_point_index], axis=1)
-        )
+        next_point_index += 1 + np.argmax(nondominated_point_mask[next_point_index + 1 :])
+        nondominated_point_mask &= np.any(
+            observations < observations[next_point_index], axis=1
+        ) | np.all(observations == observations[next_point_index], axis=1)
 
     return observations[nondominated_point_mask], nondominated_point_mask
