@@ -853,7 +853,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     copy=False,
                     ignore_index=True,
                 )
-                observation_plot_df["pareto"] = non_dominated(datasets[tag].observations)[1] == 0
+                observation_plot_df["pareto"] = non_dominated(datasets[tag].observations)[1]
                 observation_plot_df["observation type"] = observation_plot_df.apply(
                     lambda x: x["observations"] + x["pareto"] * " (non-dominated)",
                     axis=1,
