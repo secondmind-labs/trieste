@@ -16,8 +16,10 @@ given a set of data points."""
 from __future__ import annotations
 
 import numpy as np
+import tensorflow as tf
 
 from ...types import TensorType
+from ...utils import to_numpy
 
 
 def non_dominated(observations: TensorType) -> tuple[TensorType, TensorType]:
@@ -28,8 +30,6 @@ def non_dominated(observations: TensorType) -> tuple[TensorType, TensorType]:
     If there are duplicate point(s) in the non-dominated set, this function will return
     as it is without removing the duplicate.
 
-    Note that reordering the observations by standard score beforehand can speed up the search.
-
     :param observations: set of points with shape [N,D]
     :return: tf.Tensor of the non-dominated set [P,D] and a non-dominated point mask [N],
         P is the number of points in pareto front, the mask specifies whether each data point
@@ -37,6 +37,13 @@ def non_dominated(observations: TensorType) -> tuple[TensorType, TensorType]:
     """
     orig_points = observations.shape[0]
     orig_indices = np.arange(orig_points)
+
+    if orig_points > 0:
+        # Reordering the observations beforehand speeds up the search
+        obs_np = to_numpy(observations)
+        idx = np.argsort(((obs_np - obs_np.mean(axis=0)) / (obs_np.std(axis=0) + 1e-7)).sum(axis=1))
+        observations = tf.gather(observations, idx)
+        orig_indices = orig_indices[idx]
 
     next_point_index = 0
     while next_point_index < len(observations):
