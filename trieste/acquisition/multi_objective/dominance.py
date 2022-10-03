@@ -22,7 +22,7 @@ from ...types import TensorType
 
 def non_dominated(observations: TensorType) -> tuple[TensorType, TensorType]:
     """
-    Computes the non-dominated set for a set of data points. Loosely based on:
+    Computes the non-dominated set for a set of data points. Based on:
     https://stackoverflow.com/questions/32791911/fast-calculation-of-pareto-front-in-python
 
     If there are duplicate point(s) in the non-dominated set, this function will return
@@ -35,13 +35,19 @@ def non_dominated(observations: TensorType) -> tuple[TensorType, TensorType]:
         P is the number of points in pareto front, the mask specifies whether each data point
         is non-dominated or not.
     """
-    nondominated_point_mask = np.full(observations.shape[0], True)
+    orig_points = observations.shape[0]
+    orig_indices = np.arange(orig_points)
 
-    next_point_index = -1
-    while next_point_index + 1 < len(observations):
-        next_point_index += 1 + int(np.argmax(nondominated_point_mask[next_point_index + 1 :]))
-        nondominated_point_mask &= np.any(
+    next_point_index = 0
+    while next_point_index < len(observations):
+        nondominated_point_mask = np.any(
             observations < observations[next_point_index], axis=1
         ) | np.all(observations == observations[next_point_index], axis=1)
+        orig_indices = orig_indices[nondominated_point_mask]
+        observations = observations[nondominated_point_mask]
+        next_point_index = np.sum(nondominated_point_mask[:next_point_index]) + 1
 
-    return observations[nondominated_point_mask], nondominated_point_mask
+    nondominated_point_mask = np.full(orig_points, False)
+    nondominated_point_mask[orig_indices] = True
+
+    return observations, nondominated_point_mask
