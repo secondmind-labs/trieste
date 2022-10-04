@@ -23,6 +23,7 @@ import gpflow
 import tensorflow as tf
 from gpflow.utilities import set_trainable
 from gpflux.architectures import Config, build_constant_input_dim_deep_gp
+from trieste.models.gpflux.architectures import build_constant_input_dim_flexible_deep_gp
 from gpflux.layers import GPLayer
 from gpflux.models import DeepGP
 
@@ -37,13 +38,27 @@ def single_layer_dgp_model(x: TensorType) -> DeepGP:
         x = x.numpy()
 
     config = Config(
-        num_inducing=len(x),
+        num_inducing=len(x), 
         inner_layer_qsqrt_factor=1e-5,
         likelihood_noise_variance=1e-2,
         whiten=True,  # whiten = False not supported yet in GPflux for this model
     )
 
     return build_constant_input_dim_deep_gp(X=x, num_layers=1, config=config)
+
+
+def single_layer_flexible_dgp_model(x: TensorType, separate_case: bool, output_dim: int) -> DeepGP:
+    if isinstance(x, tf.Tensor):
+        x = x.numpy()
+
+    config = Config(
+        num_inducing=len(x), 
+        inner_layer_qsqrt_factor=1e-5,
+        likelihood_noise_variance=1e-2,
+        whiten=True,  # whiten = False not supported yet in GPflux for this model
+    )
+
+    return build_constant_input_dim_flexible_deep_gp(X=x, num_layers=1, config=config, separate_case=separate_case, output_dim=output_dim)
 
 
 def two_layer_dgp_model(x: TensorType) -> DeepGP:
@@ -60,6 +75,19 @@ def two_layer_dgp_model(x: TensorType) -> DeepGP:
     return build_constant_input_dim_deep_gp(X=x, num_layers=2, config=config)
 
 
+def two_layer_flexible_dgp_model(x: TensorType, separate_case: bool, output_dim: int) -> DeepGP:
+    if isinstance(x, tf.Tensor):
+        x = x.numpy()
+
+    config = Config(
+        num_inducing=len(x),
+        inner_layer_qsqrt_factor=1e-5,
+        likelihood_noise_variance=1e-2,
+        whiten=True,  # whiten = False not supported yet in GPflux for this model
+    )
+
+    return build_constant_input_dim_flexible_deep_gp(X=x, num_layers=2, config=config,  separate_case=separate_case, output_dim=output_dim)
+
 def simple_two_layer_dgp_model(x: TensorType) -> DeepGP:
     if isinstance(x, tf.Tensor):
         x = x.numpy()
@@ -67,6 +95,36 @@ def simple_two_layer_dgp_model(x: TensorType) -> DeepGP:
     num_data = len(x)
 
     Z = x.copy()
+    kernel_1 = gpflow.kernels.SquaredExponential()
+    inducing_variable_1 = gpflow.inducing_variables.InducingPoints(Z.copy())
+    gp_layer_1 = GPLayer(
+        kernel_1,
+        inducing_variable_1,
+        num_data=num_data,
+        num_latent_gps=x_shape,
+    )
+
+    kernel_2 = gpflow.kernels.SquaredExponential()
+    inducing_variable_2 = gpflow.inducing_variables.InducingPoints(Z.copy())
+    gp_layer_2 = GPLayer(
+        kernel_2,
+        inducing_variable_2,
+        num_data=num_data,
+        num_latent_gps=1,
+        mean_function=gpflow.mean_functions.Zero(),
+    )
+
+    return DeepGP([gp_layer_1, gp_layer_2], gpflow.likelihoods.Gaussian(0.01))
+
+
+def simple_two_layer_flexible_dgp_model(x: TensorType, separate_case: bool, output_dim: int) -> DeepGP:
+    if isinstance(x, tf.Tensor):
+        x = x.numpy()
+    x_shape = x.shape[-1]
+    num_data = len(x)
+
+    Z = x.copy()
+        
     kernel_1 = gpflow.kernels.SquaredExponential()
     inducing_variable_1 = gpflow.inducing_variables.InducingPoints(Z.copy())
     gp_layer_1 = GPLayer(

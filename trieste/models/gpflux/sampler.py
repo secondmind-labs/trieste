@@ -38,16 +38,21 @@ from ..interfaces import (
 )
 from .interface import GPfluxPredictor
 
+"""
 try:
     # temporary support for gpflux 0.2.3
     # code ugliness is due to https://github.com/python/mypy/issues/8823
-    RFF: Any = getattr(gpflux.layers.basis_functions, "RandomFourierFeatures")
+    RFF: Any = getattr(trieste.gpflux.layers.basis_functions, "RandomFourierFeatures")
 except AttributeError:
-    import gpflux.layers.basis_functions.fourier_features  # needed for 0.2.7
+    import trieste.gpflux.layers.basis_functions.fourier_features  # needed for 0.2.7
 
     RFF = getattr(
-        getattr(gpflux.layers.basis_functions, "fourier_features"), "RandomFourierFeaturesCosine"
+        getattr(trieste.gpflux.layers.basis_functions, "fourier_features"), "RandomFourierFeaturesCosine"
     )
+"""
+
+from trieste.gpflux.layers.basis_functions.fourier_features import RandomFourierFeaturesCosine as RFF
+from trieste.gpflux.layers.basis_functions.fourier_features.multioutput import MultiOutputRandomFourierFeaturesCosine as MO_RFF
 
 
 class DeepGaussianProcessReparamSampler(ReparametrizationSampler[GPfluxPredictor]):
@@ -264,7 +269,7 @@ class DeepGaussianProcessDecoupledLayer(ABC):
 
         self._feature_functions = ResampleableDecoupledDeepGaussianProcessFeatureFunctions(
             layer, num_features
-        ) # [N, L+M] if Shared or [N, L + M, P] if Separate
+        ) # [N, L+M] if Shared or [P, N, L + M] if Separate
 
         self._weight_sampler = self._prepare_weight_sampler() # [B, L + M, P]
 
@@ -292,6 +297,12 @@ class DeepGaussianProcessDecoupledLayer(ABC):
             self.resample()
             self._initialized.assign(True)
 
+
+        print('---- this is inside __call__function -------')
+        print('x')
+        print(x)
+
+
         tf.debugging.assert_equal(
             tf.shape(x)[-2],
             self._batch_size.value(),
@@ -302,11 +313,28 @@ class DeepGaussianProcessDecoupledLayer(ABC):
             """,
         )
 
+        print('---x---')
+        print(x)
+
         flat_x, unflatten = flatten_leading_dims(x)
+        print('---flat_x----')
+        print(flat_x)
         flattened_feature_evaluations = self._feature_functions(flat_x)
-        feature_evaluations = unflatten(flattened_feature_evaluations)[
-            ..., None
-        ]  # [N, B, L + M, 1] if Shared or [N, B, L + M, P]
+        print('---flattened_feature_evaluations----')
+        print(flattened_feature_evaluations)
+
+        #TODO -- probably have to re-write unflatten to accomodate for this case as well
+
+        feature_evaluations = []
+
+        for counter in range(2):
+            print('------------counter-------------')
+            print(counter)
+            feature_evaluations.append(unflatten(flattened_feature_evaluations[counter,:,:])[
+                ..., None])  # [N, B, L + M, 1] if Shared or [N, B, L + M, P] if separate #TODO -- check that this is acutally true
+        feature_evaluations = tf.concat(feature_evaluations, axis=-1)
+        print('---feature_evaluations---')
+        print(feature_evaluations)
 
         #TODO -- should probably introduce a tf.debugging.assert_equal just to be sure
         return tf.reduce_sum(
@@ -344,8 +372,7 @@ class DeepGaussianProcessDecoupledLayer(ABC):
             
         elif isinstance(self._layer.inducing_variable, SeparateIndependentInducingVariables):
             #inducing_points = tf.self._layer.inducing_variable.Z  # [P, M, D]
-            inducing_points = tf.stack([ind_var.Z for ind_var in self._layer.inducing_variable_list], axis = 0)  # [P, M, D]
-            
+            inducing_points = tf.stack([ind_var.Z for ind_var in self._layer.inducing_variable.inducing_variable_list], axis = 0)  # [P, M, D]
         else:
             inducing_points = self._layer.inducing_variable.inducing_variable.Z  # [M, D]
             
@@ -383,6 +410,7 @@ class DeepGaussianProcessDecoupledLayer(ABC):
                 ]
             )
 
+        #TODO -- need to add check shapes here
         def weight_sampler(batch_size: int) -> TensorType:
             prior_weights = tf.random.normal([batch_size, self._num_features, P], dtype=tf.float64) #[B, L, P]
 
@@ -392,29 +420,91 @@ class DeepGaussianProcessDecoupledLayer(ABC):
             )  # [B, P, M, 1] 
             u_sample = q_mu + tf.linalg.matrix_transpose(u_noise_sample[..., 0])  # [B, M, P]
 
+            #NOTE -- this checks out
+            print('u_sample')
+            print(u_sample)
+
             if whiten:
                 Luu = tf.linalg.cholesky(Kmm)  # [M, M] if Shared or [P, M, M] if Separate
                 if self.separate_case:
-                    u_sample = tf.linalg.matrix_transpose(tf.matmul(Luu,
+                    u_sample = tf.linalg.matrix_transpose(tf.matmul(Luu, #[P,M,M]
                         tf.expand_dims(tf.linalg.matrix_transpose(u_sample), axis=-1) # [B, P, M, 1]
                     )[..., 0]) # [B, M, P]
                 else:
                     u_sample = tf.matmul(Luu, u_sample) # [B, M, P]
 
-            if self.separate_case:
-                phi_Z = self._feature_functions(inducing_points)[:, : self._num_features] #[P, B, M, L]
+            #NOTE -- this checks out
+            print('u_sample again')
+            print(u_sample)
 
-                weight_space_prior_Z = tf.matmul(phi_Z, #[P, B, M, L]
-                    tf.expand_dims(tf.transpose(prior_weights,[2,0,1]), axis = -1) #[P, B, L, 1]
-                    )[..., 0] #[P, B, M]  
-                weight_space_prior_Z = tf.transpose(weight_space_prior_Z, [1, 2, 0]) # [B, M, P]
+            #TODO -- need to check the shapes of feature_functions
+            if self.separate_case:
+
+                #NOTE -- this is highly innefficient atm; need a smarter choice here
+
+                intermediate_phi_Z = []
+                for counter, ind_var in enumerate(self._layer.inducing_variable.inducing_variable_list):
+                
+                    intermediate_phi_Z.append(self._feature_functions(inducing_points[counter, :, :])[counter, :, :]) # [M, L+M] 
+                
+                intermediate_phi_Z = tf.stack(intermediate_phi_Z, axis = 0) # [P, M, L+M]
+                print('intermediate phi_Z')
+                print(intermediate_phi_Z) 
+                phi_Z = intermediate_phi_Z[:, :, : self._num_features] #[P, M, L]
+
+                print('phi_Z')
+                print(phi_Z)
+                weight_space_prior_Z = tf.matmul(phi_Z, #[P, M, L]
+                    tf.expand_dims(tf.transpose(prior_weights ,[0,2,1]), axis = -1)  #[B, P, L, 1] 
+                    )[..., 0] #[B, P, M]  
+                weight_space_prior_Z = tf.transpose(weight_space_prior_Z, [0, 2, 1]) # [B, M, P]
+                print('weight_space_prior_Z')
+                print(weight_space_prior_Z)
+
+                tf.debugging.assert_shapes(
+                    [
+                        (u_sample, ["B", "M", "P"]),
+                    ]
+                )
+
+
+                tf.debugging.assert_shapes(
+                    [
+                        (phi_Z, ["P", "M", "L"]),
+                    ]
+                )
+
+
+                tf.debugging.assert_shapes(
+                    [
+                        (weight_space_prior_Z, ["B", "M", "P"]),
+                    ]
+                )
 
             else:
                 phi_Z = self._feature_functions(inducing_points)[:, : self._num_features] #[B, M, L]
                 weight_space_prior_Z = tf.matmul(phi_Z, prior_weights)  # [B, M, P]
 
             diff = u_sample - weight_space_prior_Z  # [B, M, P]
-            v = compute_A_inv_b(Kmm, diff)  # [B, M, P]
+
+            print('***** check shapes here ******')
+            print(diff)
+            print(Kmm)
+
+            tf.debugging.assert_shapes(
+                [
+                    (Kmm, ["P", "M", "M"]),
+                    (diff, ["B", "M", "P"]),
+                ]
+            )
+
+            v = tf.transpose(compute_A_inv_b(Kmm, tf.transpose(diff[...,None], [0,2,1,3]))[...,0], [0, 2, 1])  # [B, M, P]
+
+            tf.debugging.assert_shapes(
+                [
+                    (v, ["B", "M", "P"]),
+                ]
+            )
 
             return tf.concat([prior_weights, v], axis=1)  # [B, L + M, P]
 
@@ -439,17 +529,12 @@ class ResampleableDecoupledDeepGaussianProcessFeatureFunctions():
                 f"ResampleableDecoupledDeepGaussianProcessFeatureFunctions currently only work with"
                 f"gpflux.layers.GPLayer layers, received {type(layer)} instead"
             )
-
-        if isinstance(layer.kernel, gpflow.kernels.SharedIndependent):
-            self._kernel = layer.kernel.kernel
-        elif isinstance(layer.kernel, gpflow.kernels.SeparateIndependent):
-            self._kernel = layer.kernel.kernels
-        else:
-            self._kernel = layer.kernel
+        
+        self._kernel = layer.kernel
         self._n_components = n_components
 
         if isinstance(layer.inducing_variable, gpflow.inducing_variables.SharedIndependentInducingVariables):
-            self._inducing_points = layer.inducing_variable.Z # [M, D]
+            self._inducing_points = layer.inducing_variable.inducing_variable.Z # [M, D]
             self._canonical_feature_functions = lambda x: tf.linalg.matrix_transpose(
                 Kuf(layer.inducing_variable, layer.kernel, x)
             ) # [M, N]
@@ -473,31 +558,32 @@ class ResampleableDecoupledDeepGaussianProcessFeatureFunctions():
 
 
         # Build the RFF objects
-        if isinstance(self._kernel, list):
+        if isinstance(self._kernel, gpflow.kernels.MultioutputKernel):
 
-            self._rff: DefaultDict[int, RFF] = defaultdict()
-            for counter, ker in enumerate(self._kernel):
-                self._rff[counter] = RFF(ker, self._n_components, dtype=tf.float64)
-        
+            self._rff = MO_RFF(self._kernel, self._n_components, dtype=tf.float64)
+
         else:
 
             self._rff = RFF(self._kernel, self._n_components, dtype=tf.float64)
 
 
         self.__call__(dummy_X)
+        """
         if isinstance(self._kernel, list):
             for counter, ker in enumerate(self._kernel):
                 
                 self._rff[counter].b: TensorType = tf.Variable(self._rff[counter].b)
                 self._rff[counter].W: TensorType = tf.Variable(self._rff[counter].W)
         else:
-            self._rff.b: TensorType = tf.Variable(self._rff.b)
-            self._rff.W: TensorType = tf.Variable(self._rff.W)
+        """
+        self._rff.b: TensorType = tf.Variable(self._rff.b)
+        self._rff.W: TensorType = tf.Variable(self._rff.W)
 
 
     def resample(self) -> None:
         """
         Resample weights and biases.
+        """
         """
         if isinstance(self._kernel, list):
 
@@ -509,35 +595,45 @@ class ResampleableDecoupledDeepGaussianProcessFeatureFunctions():
                     self._rff[counter].b.assign(self._rff[counter]._bias_init(tf.shape(self._rff[counter].b), dtype=self._rff[counter]._dtype))
                     self._rff[counter].W.assign(self._rff[counter]._weights_init(tf.shape(self._rff[counter].W), dtype=self._rff[counter]._dtype))        
         
-        else:        
-            if not hasattr(self._rff, "_bias_init"):
-                self._rff.b.assign(self._rff._sample_bias(tf.shape(self._rff.b), dtype=self._rff._dtype))
-                self._rff.W.assign(self._rff._sample_weights(tf.shape(self._rff.W), dtype=self._rff._dtype))
-            else:
-                self._rff.b.assign(self._rff._bias_init(tf.shape(self._rff.b), dtype=self._rff._dtype))
-                self._rff.W.assign(self._rff._weights_init(tf.shape(self._rff.W), dtype=self._rff._dtype))
+        else:
+        """        
+        if not hasattr(self._rff, "_bias_init"):
+            self._rff.b.assign(self._rff._sample_bias(tf.shape(self._rff.b), dtype=self._rff._dtype))
+            self._rff.W.assign(self._rff._sample_weights(tf.shape(self._rff.W), dtype=self._rff._dtype))
+        else:
+            self._rff.b.assign(self._rff._bias_init(tf.shape(self._rff.b), dtype=self._rff._dtype))
+            self._rff.W.assign(self._rff._weights_init(tf.shape(self._rff.W), dtype=self._rff._dtype))
 
     def __call__(self, x: TensorType) -> TensorType:  # [N, D] -> [N, L + M]
         """
         Evaluate and combine prior basis functions and canonical basic functions at the input.
         """
 
-        if isinstance(self._kernel, list) and tf.experimental.numpy.ndim(self._inducing_points)==3:
+        if isinstance(self._kernel, gpflow.kernels.MultioutputKernel) and tf.experimental.numpy.ndim(self._inducing_points)==3:
             # Separate Kernel & Inducing Variables case
 
-            fourier_feature_eval = []
-            for ker in self._kernel:
-                _rff = RFF(ker, self._n_components, dtype=tf.float64)
-                fourier_feature_eval.append(_rff.__call__(x))  # [N, L]
+            #fourier_feature_eval = []
+            #for counter, ker in enumerate(self._kernel):
+            #    fourier_feature_eval.append(self._rff[counter].__call__(x))  # [N, L]
 
-            fourier_feature_eval = tf.stack(fourier_feature_eval, axis = 0)  # [P, N, L]
+            #fourier_feature_eval = tf.stack(fourier_feature_eval, axis = 0)  # [P, N, L]
+            fourier_feature_eval = self._rff.__call__(x) #[P, N, L]
             canonical_feature_eval = self._canonical_feature_functions(x)  # [P, N, M]
             
-            return tf.transpose(tf.concat([fourier_feature_eval, canonical_feature_eval], axis=-1), [1, 2, 0])  # [P, N, L + M]
+            print('*****************************************************************')
+            print('----x------')
+            print(x)
+            print('----fourier_feature_eval------')
+            print(fourier_feature_eval)
+            print('----canonical_feature_eval-----')
+            print(canonical_feature_eval)
+            print('*****************************************************************')
+ 
+            return tf.concat([fourier_feature_eval, canonical_feature_eval], axis=-1)  # [P, N, L + M]
         else:
             #Shared Kernel & Inducing Variables case
             
-            fourier_feature_eval = _rff.__call__(x)  # [N, L]
+            fourier_feature_eval = self._rff.__call__(x)  # [N, L]
             canonical_feature_eval = self._canonical_feature_functions(x)  # [N, M]
             
             return tf.concat([fourier_feature_eval, canonical_feature_eval], axis=-1)  # [N, L + M]

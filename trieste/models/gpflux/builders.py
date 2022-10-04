@@ -230,8 +230,13 @@ def build_vanilla_flexible_deep_gp(
 
     model = build_constant_input_dim_flexible_deep_gp(query_points, num_layers, config, True, dim_output)
 
-    #TODO -- this needs to be fixed eventually
-    #model.f_layers[-1].kernel.kernel.variance.assign(empirical_variance)
+    if isinstance(model.f_layers[-1].kernel, gpflow.kernels.SeparateIndependent):
+        for counter,_ in enumerate(model.f_layers[-1].kernel.kernels):
+            model.f_layers[-1].kernel.kernels[counter].variance.assign(empirical_variance)
+    elif isinstance(model.f_layers[-1].kernel, gpflow.kernels.SharedIndependent):        
+        model.f_layers[-1].kernel.kernel.variance.assign(empirical_variance)
+    else:        
+        model.f_layers[-1].kernel.kernel.variance.assign(empirical_variance)
     model.f_layers[-1].mean_function = gpflow.mean_functions.Constant(empirical_mean)
 
     gpflow.set_trainable(model.likelihood_layer.likelihood.variance, trainable_likelihood)

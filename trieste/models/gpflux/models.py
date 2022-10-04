@@ -254,10 +254,15 @@ class DeepGaussianProcess(
                 inputs = layer(inputs)
                 continue
 
+            print('------inducing variable ----')
+            print(layer.inducing_variable)
             if isinstance(layer.inducing_variable, InducingPoints):
                 inducing_variable = layer.inducing_variable
-            else:
+            elif isinstance(layer.inducing_variable, gpflow.inducing_variables.multioutput.inducing_variables.SeparateIndependentInducingVariables):
+                inducing_variable = layer.inducing_variable.inducing_variable_list[0]            
+            elif isinstance(layer.inducing_variable, gpflow.inducing_variables.multioutput.inducing_variables.SharedIndependentInducingVariables):
                 inducing_variable = layer.inducing_variable.inducing_variable
+
 
             if inputs.shape[-1] != inducing_variable.Z.shape[-1]:
                 raise ValueError(

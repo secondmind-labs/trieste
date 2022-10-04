@@ -41,8 +41,8 @@ setup(
     install_requires=[
         "absl-py",
         "dill",
-        "gpflow>=2.5.2",
-        "gpflux>=0.2.3",
+        "gpflow==2.5.2",
+        "gpflux==0.2.7",
         "numpy",
         "tensorflow>=2.4",
         "tensorflow-probability>=0.12",
@@ -52,3 +52,4 @@ setup(
         "plotting": ["seaborn", "plotly"],
     },
 )
+
