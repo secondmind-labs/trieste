@@ -38,7 +38,7 @@ from gpflux.models import DeepGP
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, mk_dataset, quadratic, random_seed
 from tests.util.models.gpflow.models import QuadraticMeanAndRBFKernel
-from tests.util.models.gpflux.models import two_layer_trieste_dgp
+from tests.util.models.gpflux.models import simple_two_layer_dgp_model, two_layer_trieste_dgp
 from trieste.data import Dataset
 from trieste.models.gpflux import DeepGaussianProcess
 from trieste.models.gpflux.sampler import (
@@ -355,8 +355,12 @@ def test_dgp_decoupled_layer_raises_for_invalid_layer() -> None:
     prior = tfp.distributions.MultivariateNormalDiag(prior_means, prior_std)
     lv = gpflux.layers.LatentVariableLayer(prior, encoder)
 
+    x = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
+    model = DeepGaussianProcess(simple_two_layer_dgp_model(x))
+    model.model_gpflux.f_layers[0] = lv
+
     with pytest.raises(ValueError, match="Layers other than .*"):
-        DeepGaussianProcessDecoupledLayer(lv)
+        DeepGaussianProcessDecoupledLayer(model, 0)
 
 
 @pytest.mark.parametrize("num_features", [0, -2])
@@ -376,8 +380,12 @@ def test_dgp_decoupled_layer_raises_for_invalid_number_of_features(num_features:
         num_data=10,
         num_latent_gps=2,
     )
+    x = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
+    model = DeepGaussianProcess(simple_two_layer_dgp_model(x))
+    model.model_gpflux.f_layers[0] = layer
+
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        DeepGaussianProcessDecoupledLayer(layer, num_features)
+        DeepGaussianProcessDecoupledLayer(model, 0, num_features)
 
 
 def test_dgp_decoupled_layer_raises_for_invalid_kernel() -> None:
@@ -396,8 +404,12 @@ def test_dgp_decoupled_layer_raises_for_invalid_kernel() -> None:
         num_latent_gps=2,
     )
 
+    x = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
+    model = DeepGaussianProcess(simple_two_layer_dgp_model(x))
+    model.model_gpflux.f_layers[0] = layer
+
     with pytest.raises(ValueError, match="Multioutput kernels .*"):
-        DeepGaussianProcessDecoupledLayer(layer)
+        DeepGaussianProcessDecoupledLayer(model, 0)
 
 
 def test_dgp_decoupled_layer_returns_trajectory_with_correct_shapes(
@@ -411,7 +423,7 @@ def test_dgp_decoupled_layer_returns_trajectory_with_correct_shapes(
     layer = model.model_gpflux.f_layers[0]
     P = layer.num_latent_gps
 
-    decoupled_layer = DeepGaussianProcessDecoupledLayer(layer)
+    decoupled_layer = DeepGaussianProcessDecoupledLayer(model, 0)
 
     xs = _generate_xs_for_decoupled_trajectory(num_evals, batch_size)
 
@@ -424,9 +436,7 @@ def test_dgp_decoupled_layer_returns_deterministic_trajectory(
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
-    layer = model.model_gpflux.f_layers[0]
-
-    decoupled_layer = DeepGaussianProcessDecoupledLayer(layer)
+    decoupled_layer = DeepGaussianProcessDecoupledLayer(model, 0)
 
     xs = _generate_xs_for_decoupled_trajectory(10, 5)
 
@@ -442,10 +452,8 @@ def test_dgp_decoupled_layer_samples_are_distinct_for_new_instances(
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
-    layer = model.model_gpflux.f_layers[0]
-
-    decoupled_layer_1 = DeepGaussianProcessDecoupledLayer(layer)
-    decoupled_layer_2 = DeepGaussianProcessDecoupledLayer(layer)
+    decoupled_layer_1 = DeepGaussianProcessDecoupledLayer(model, 0)
+    decoupled_layer_2 = DeepGaussianProcessDecoupledLayer(model, 0)
 
     xs = _generate_xs_for_decoupled_trajectory(100, 5)
 
@@ -466,9 +474,7 @@ def test_dgp_decoupled_layer_resample_provides_new_samples(
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
-    layer = model.model_gpflux.f_layers[0]
-
-    decoupled_layer = DeepGaussianProcessDecoupledLayer(layer)
+    decoupled_layer = DeepGaussianProcessDecoupledLayer(model, 0)
 
     xs = _generate_xs_for_decoupled_trajectory(10, 5)
 
@@ -485,9 +491,7 @@ def test_dgp_decoupled_layer_update_updates(
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
-    layer = model.model_gpflux.f_layers[0]
-
-    decoupled_layer = DeepGaussianProcessDecoupledLayer(layer)
+    decoupled_layer = DeepGaussianProcessDecoupledLayer(model, 0)
 
     xs = _generate_xs_for_decoupled_trajectory(10, 5)
 

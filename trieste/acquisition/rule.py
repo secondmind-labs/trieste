@@ -136,6 +136,7 @@ class EfficientGlobalOptimization(
         builder: None = None,
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
+        initial_acquisition_function: Optional[AcquisitionFunction] = None,
     ):
         ...
 
@@ -150,6 +151,7 @@ class EfficientGlobalOptimization(
         ),
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
+        initial_acquisition_function: Optional[AcquisitionFunction] = None,
     ):
         ...
 
@@ -165,6 +167,7 @@ class EfficientGlobalOptimization(
         ] = None,
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
+        initial_acquisition_function: Optional[AcquisitionFunction] = None,
     ):
         """
         :param builder: The acquisition function builder to use. Defaults to
@@ -174,6 +177,9 @@ class EfficientGlobalOptimization(
             with the global search space. Defaults to
             :func:`~trieste.acquisition.optimizer.automatic_optimizer_selector`.
         :param num_query_points: The number of points to acquire.
+        :param initial_acquisition_function: The initial acquisition function to use. Defaults
+            to using the builder to construct one, but passing in a previously constructed
+            function can occasionally be useful (e.g. to preserve random seeds).
         """
 
         if num_query_points <= 0:
@@ -221,7 +227,7 @@ class EfficientGlobalOptimization(
         ] = builder
         self._optimizer = optimizer
         self._num_query_points = num_query_points
-        self._acquisition_function: Optional[AcquisitionFunction] = None
+        self._acquisition_function: Optional[AcquisitionFunction] = initial_acquisition_function
 
     def __repr__(self) -> str:
         """"""
@@ -229,6 +235,11 @@ class EfficientGlobalOptimization(
         {self._builder!r},
         {self._optimizer!r},
         {self._num_query_points!r})"""
+
+    @property
+    def acquisition_function(self) -> Optional[AcquisitionFunction]:
+        """The current acquisition function, updated last time :meth:`acquire` was called."""
+        return self._acquisition_function
 
     def acquire(
         self,
@@ -547,7 +558,7 @@ class AsynchronousOptimization(
         def state_func(
             state: AsynchronousRuleState | None,
         ) -> tuple[AsynchronousRuleState | None, TensorType]:
-            tf.debugging.Assert(self._acquisition_function is not None, [])
+            tf.debugging.Assert(self._acquisition_function is not None, [tf.constant([])])
 
             if state is None:
                 state = AsynchronousRuleState(None)

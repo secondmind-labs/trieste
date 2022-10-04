@@ -21,6 +21,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import Any, Callable, Sequence
 
+import dill
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -109,6 +110,23 @@ class KerasEnsemble:
         state = self.__dict__.copy()
         state["_model"] = self._model.to_json()
         state["_weights"] = self._model.get_weights()
+
+        # Save the history callback (serializing any model)
+        if self._model.history:
+            history_model = self._model.history.model
+            try:
+                if history_model is self._model:
+                    # no need to serialize the main model, just use a special value instead
+                    self._model.history.model = ...
+                elif history_model:
+                    self._model.history.model = (
+                        history_model.to_json(),
+                        history_model.get_weights(),
+                    )
+                state["_history"] = dill.dumps(self._model.history)
+            finally:
+                self._model.history.model = history_model
+
         return state
 
     def __setstate__(self, state: dict[str, Any]) -> None:
@@ -118,6 +136,20 @@ class KerasEnsemble:
             state["_model"], custom_objects={"MultivariateNormalTriL": MultivariateNormalTriL}
         )
         self._model.set_weights(state["_weights"])
+
+        # Restore the history (including any model it contains)
+        if "_history" in state:
+            self._model.history = dill.loads(state["_history"])
+            if self._model.history.model is ...:
+                self._model.history.set_model(self._model)
+            elif self._model.history.model:
+                model_json, weights = self._model.history.model
+                model = tf.keras.models.model_from_json(
+                    model_json,
+                    custom_objects={"MultivariateNormalTriL": MultivariateNormalTriL},
+                )
+                model.set_weights(weights)
+                self._model.history.set_model(model)
 
 
 class KerasEnsembleNetwork:

@@ -127,7 +127,7 @@ class LocalPenalization(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel])
         :return: The (log) expected improvement penalized with respect to the pending points.
         :raise tf.errors.InvalidArgumentError: If the ``dataset`` is empty.
         """
-        tf.debugging.Assert(dataset is not None, [])
+        tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
@@ -156,10 +156,10 @@ class LocalPenalization(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel])
             for the current step. Defaults to ``True``.
         :return: The updated acquisition function.
         """
-        tf.debugging.Assert(dataset is not None, [])
+        tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
-        tf.debugging.Assert(self._base_acquisition_function is not None, [])
+        tf.debugging.Assert(self._base_acquisition_function is not None, [tf.constant([])])
 
         if new_optimization_step:
             self._update_base_acquisition_function(dataset, model)
@@ -190,16 +190,10 @@ class LocalPenalization(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel])
             self._penalization = self._lipschitz_penalizer(
                 model, pending_points, self._lipschitz_constant, self._eta
             )
-
-            @tf.function
-            def penalized_acquisition(x: TensorType) -> TensorType:
-                log_acq = tf.math.log(
-                    cast(AcquisitionFunction, self._base_acquisition_function)(x)
-                ) + tf.math.log(cast(PenalizationFunction, self._penalization)(x))
-                return tf.math.exp(log_acq)
-
-            self._penalized_acquisition = penalized_acquisition
-            return penalized_acquisition
+            self._penalized_acquisition = PenalizedAcquisition(
+                cast(PenalizedAcquisition, self._base_acquisition_function), self._penalization
+            )
+            return self._penalized_acquisition
 
     @tf.function(experimental_relax_shapes=True)
     def _get_lipschitz_estimate(
@@ -243,6 +237,28 @@ class LocalPenalization(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel])
                 dataset=dataset,
             )
         return self._base_acquisition_function
+
+
+class PenalizedAcquisition:
+    """Class representing a penalized acquisition function."""
+
+    # (note that this needs to be defined as a top level class make it pickleable)
+    def __init__(
+        self, base_acquisition_function: AcquisitionFunction, penalization: PenalizationFunction
+    ):
+        """
+        :param base_acquisition_function: Base (unpenalized) acquisition function.
+        :param penalization: Penalization function.
+        """
+        self._base_acquisition_function = base_acquisition_function
+        self._penalization = penalization
+
+    @tf.function
+    def __call__(self, x: TensorType) -> TensorType:
+        log_acq = tf.math.log(self._base_acquisition_function(x)) + tf.math.log(
+            self._penalization(x)
+        )
+        return tf.math.exp(log_acq)
 
 
 class local_penalizer(UpdatablePenalizationFunction):
@@ -421,7 +437,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
             See class docs for more details.
         :raise tf.errors.InvalidArgumentError: If ``fantasize_method`` is not "KB" or "sample".
         """
-        tf.debugging.Assert(fantasize_method in ["KB", "sample"], [])
+        tf.debugging.Assert(fantasize_method in ["KB", "sample"], [tf.constant([])])
 
         if base_acquisition_function_builder is None:
             base_acquisition_function_builder = ExpectedImprovement()
@@ -726,8 +742,8 @@ class _fantasized_model(SupportsPredictJoint, SupportsGetKernel, SupportsGetObse
     def get_kernel(self) -> gpflow.kernels.Kernel:
         return self._model.get_kernel()
 
-    def log(self) -> None:
-        return self._model.log()
+    def log(self, dataset: Optional[Dataset] = None) -> None:
+        return self._model.log(dataset)
 
 
 def _broadcast_predict(

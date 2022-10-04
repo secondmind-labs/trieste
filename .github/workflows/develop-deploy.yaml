@@ -39,13 +39,13 @@ jobs:
         sudo dpkg -i "$TEMP_DEB"
         rm -f "$TEMP_DEB"
     - run: |
-        echo "develop" > VERSION
+        echo "develop" > trieste/VERSION
         (cd docs ; make html ; make html)
         TMP_DIR=$(mktemp -d -p $(pwd))
-        VERSION=$(cat VERSION)
+        VERSION=$(cat trieste/VERSION)
         mv docs/_build/html $TMP_DIR/$VERSION
         cp versions.json $TMP_DIR/
-        git restore VERSION
+        git restore trieste/VERSION
         cd gh-pages-history
         git rm -r --ignore-unmatch docs/$VERSION
         rm -rf docs/$VERSION

@@ -166,13 +166,14 @@ def _test_ask_tell_optimization_finds_minima(
         build_gpr(initial_data, search_space, likelihood_variance=1e-7)
     )
 
-    ask_tell = AskTellOptimizer(search_space, initial_data, model, acquisition_rule_fn())
-
     with tempfile.TemporaryDirectory() as tmpdirname:
         summary_writer = tf.summary.create_file_writer(tmpdirname)
         with tensorboard_writer(summary_writer):
 
-            for i in range(num_steps):
+            set_step_number(0)
+            ask_tell = AskTellOptimizer(search_space, initial_data, model, acquisition_rule_fn())
+
+            for i in range(1, num_steps + 1):
                 # two scenarios are tested here, depending on `reload_state` parameter
                 # in first the same optimizer object is always used
                 # in second new optimizer is created at each step from saved state

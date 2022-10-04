@@ -20,10 +20,9 @@ currently copying/saving models is not supported, so when
 to `False`.
 """
 
-from . import config
 from .architectures import GaussianNetwork, KerasEnsemble, KerasEnsembleNetwork
 from .builders import build_keras_ensemble
 from .interface import DeepEnsembleModel, KerasPredictor
 from .models import DeepEnsemble
-from .sampler import DeepEnsembleTrajectorySampler
+from .sampler import DeepEnsembleTrajectorySampler, deep_ensemble_trajectory
 from .utils import get_tensor_spec_from_data, negative_log_likelihood, sample_with_replacement
