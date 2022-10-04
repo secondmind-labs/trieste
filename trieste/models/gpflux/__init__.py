@@ -17,7 +17,7 @@ This package contains the primary interface for deep Gaussian process models. It
 number of :class:`TrainableProbabilisticModel` wrappers for GPflux-based models.
 """
 
-from .builders import build_vanilla_deep_gp
+from .builders import build_vanilla_deep_gp, build_vanilla_flexible_deep_gp
 from .interface import GPfluxPredictor
 from .models import DeepGaussianProcess
 from .sampler import (
