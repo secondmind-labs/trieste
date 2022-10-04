@@ -135,9 +135,7 @@ class ParallelContinuousThompsonSampling(
         return f"ParallelContinuousThompsonSampling({self._select_output!r})"
 
     def prepare_acquisition_function(
-        self,
-        model: HasTrajectorySampler,
-        dataset: Optional[Dataset] = None,
+        self, model: HasTrajectorySampler, dataset: Optional[Dataset] = None,
     ) -> TrajectoryFunction:
         """
         :param model: The model.

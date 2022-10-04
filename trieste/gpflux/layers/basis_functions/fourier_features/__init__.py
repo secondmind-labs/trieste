@@ -22,7 +22,6 @@ from trieste.gpflux.layers.basis_functions.fourier_features.multioutput.random i
     MultiOutputRandomFourierFeatures,
     MultiOutputRandomFourierFeaturesCosine,
 )
-
 from trieste.gpflux.layers.basis_functions.fourier_features.random import (
     OrthogonalRandomFeatures,
     RandomFourierFeatures,

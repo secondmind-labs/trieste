@@ -26,8 +26,9 @@ import gpflow
 import numpy as np
 import tensorflow as tf
 from gpflux.architectures import Config, build_constant_input_dim_deep_gp
-from trieste.models.gpflux.architectures import build_constant_input_dim_flexible_deep_gp
 from gpflux.models import DeepGP
+
+from trieste.models.gpflux.architectures import build_constant_input_dim_flexible_deep_gp
 
 from ...data import Dataset
 from ...space import Box, SearchSpace
@@ -228,14 +229,16 @@ def build_vanilla_flexible_deep_gp(
         whiten=True,  # whiten = False not supported yet in GPflux for this model
     )
 
-    model = build_constant_input_dim_flexible_deep_gp(query_points, num_layers, config, True, dim_output)
+    model = build_constant_input_dim_flexible_deep_gp(
+        query_points, num_layers, config, True, dim_output
+    )
 
     if isinstance(model.f_layers[-1].kernel, gpflow.kernels.SeparateIndependent):
-        for counter,_ in enumerate(model.f_layers[-1].kernel.kernels):
+        for counter, _ in enumerate(model.f_layers[-1].kernel.kernels):
             model.f_layers[-1].kernel.kernels[counter].variance.assign(empirical_variance)
-    elif isinstance(model.f_layers[-1].kernel, gpflow.kernels.SharedIndependent):        
+    elif isinstance(model.f_layers[-1].kernel, gpflow.kernels.SharedIndependent):
         model.f_layers[-1].kernel.kernel.variance.assign(empirical_variance)
-    else:        
+    else:
         model.f_layers[-1].kernel.kernel.variance.assign(empirical_variance)
     model.f_layers[-1].mean_function = gpflow.mean_functions.Constant(empirical_mean)
 
@@ -248,4 +251,3 @@ def build_vanilla_flexible_deep_gp(
         layer.num_data = num_data_points
 
     return model
-

@@ -15,12 +15,10 @@
 #
 from typing import Mapping, Optional, Tuple, Type
 
+import gpflow
 import numpy as np
 import tensorflow as tf
-
-import gpflow
 from gpflow.base import DType, TensorType
-
 from gpflux.layers.basis_functions.fourier_features.base import FourierFeaturesBase
 from gpflux.layers.basis_functions.fourier_features.utils import (
     _bases_concat,

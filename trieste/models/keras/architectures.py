@@ -38,10 +38,7 @@ class KerasEnsemble:
     which compiles the model.
     """
 
-    def __init__(
-        self,
-        networks: Sequence[KerasEnsembleNetwork],
-    ) -> None:
+    def __init__(self, networks: Sequence[KerasEnsembleNetwork],) -> None:
         """
         :param networks: A list of neural network specifications, one for each member of the
             ensemble. The ensemble will be built using these specifications.
@@ -145,8 +142,7 @@ class KerasEnsemble:
             elif self._model.history.model:
                 model_json, weights = self._model.history.model
                 model = tf.keras.models.model_from_json(
-                    model_json,
-                    custom_objects={"MultivariateNormalTriL": MultivariateNormalTriL},
+                    model_json, custom_objects={"MultivariateNormalTriL": MultivariateNormalTriL},
                 )
                 model.set_weights(weights)
                 self._model.history.set_model(model)

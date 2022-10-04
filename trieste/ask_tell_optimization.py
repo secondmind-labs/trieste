@@ -220,8 +220,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
                         with tf.name_scope(f"{tag}.model"):
                             model.log(datasets[tag])
                     logging.scalar(
-                        "wallclock/model_fitting",
-                        initial_model_fitting_timer.time,
+                        "wallclock/model_fitting", initial_model_fitting_timer.time,
                     )
 
     def __repr__(self) -> str:
@@ -393,8 +392,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
                         "query_points/euclidean_distances", lambda: pdist(query_points)
                     )
                 logging.scalar(
-                    "wallclock/query_point_generation",
-                    query_point_generation_timer.time,
+                    "wallclock/query_point_generation", query_point_generation_timer.time,
                 )
 
         return query_points

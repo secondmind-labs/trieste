@@ -230,8 +230,7 @@ class FeatureDecompositionInducingPointModel(
 
 
 FeatureDecompositionTrajectorySamplerModel = Union[
-    FeatureDecompositionInducingPointModel,
-    FeatureDecompositionInternalDataModel,
+    FeatureDecompositionInducingPointModel, FeatureDecompositionInternalDataModel,
 ]
 
 FeatureDecompositionTrajectorySamplerModelType = TypeVar(
@@ -242,8 +241,7 @@ FeatureDecompositionTrajectorySamplerModelType = TypeVar(
 
 
 class FeatureDecompositionTrajectorySampler(
-    TrajectorySampler[FeatureDecompositionTrajectorySamplerModelType],
-    ABC,
+    TrajectorySampler[FeatureDecompositionTrajectorySamplerModelType], ABC,
 ):
     r"""
 
@@ -385,9 +383,7 @@ class RandomFourierFeatureTrajectorySampler(
     """
 
     def __init__(
-        self,
-        model: FeatureDecompositionInternalDataModel,
-        num_features: int = 1000,
+        self, model: FeatureDecompositionInternalDataModel, num_features: int = 1000,
     ):
         """
         :param model: The model to sample from.
@@ -497,10 +493,7 @@ class RandomFourierFeatureTrajectorySampler(
 
 class DecoupledTrajectorySampler(
     FeatureDecompositionTrajectorySampler[
-        Union[
-            FeatureDecompositionInducingPointModel,
-            FeatureDecompositionInternalDataModel,
-        ]
+        Union[FeatureDecompositionInducingPointModel, FeatureDecompositionInternalDataModel,]
     ]
 ):
     r"""
@@ -536,8 +529,7 @@ class DecoupledTrajectorySampler(
     def __init__(
         self,
         model: Union[
-            FeatureDecompositionInducingPointModel,
-            FeatureDecompositionInternalDataModel,
+            FeatureDecompositionInducingPointModel, FeatureDecompositionInternalDataModel,
         ],
         num_features: int = 1000,
     ):
@@ -655,8 +647,7 @@ class ResampleableRandomFourierFeatureFunctions(RFF):  # type: ignore[misc]
     def __init__(
         self,
         model: Union[
-            FeatureDecompositionInducingPointModel,
-            FeatureDecompositionInternalDataModel,
+            FeatureDecompositionInducingPointModel, FeatureDecompositionInternalDataModel,
         ],
         n_components: int,
     ):
@@ -666,11 +657,7 @@ class ResampleableRandomFourierFeatureFunctions(RFF):  # type: ignore[misc]
         :raise NotImplementedError: If the model is not of valid type.
         """
         if not isinstance(
-            model,
-            (
-                FeatureDecompositionInducingPointModel,
-                FeatureDecompositionInternalDataModel,
-            ),
+            model, (FeatureDecompositionInducingPointModel, FeatureDecompositionInternalDataModel,),
         ):
             raise NotImplementedError(
                 f"ResampleableRandomFourierFeatureFunctions only work with models that either"
@@ -721,8 +708,7 @@ class ResampleableDecoupledFeatureFunctions(ResampleableRandomFourierFeatureFunc
     def __init__(
         self,
         model: Union[
-            FeatureDecompositionInducingPointModel,
-            FeatureDecompositionInternalDataModel,
+            FeatureDecompositionInducingPointModel, FeatureDecompositionInternalDataModel,
         ],
         n_components: int,
     ):

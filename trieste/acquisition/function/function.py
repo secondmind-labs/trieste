@@ -53,9 +53,7 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
         return "ExpectedImprovement()"
 
     def prepare_acquisition_function(
-        self,
-        model: ProbabilisticModel,
-        dataset: Optional[Dataset] = None,
+        self, model: ProbabilisticModel, dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model.
@@ -140,9 +138,7 @@ class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder[SupportsGetObse
         return "AugmentedExpectedImprovement()"
 
     def prepare_acquisition_function(
-        self,
-        model: SupportsGetObservationNoise,
-        dataset: Optional[Dataset] = None,
+        self, model: SupportsGetObservationNoise, dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model.
@@ -252,9 +248,7 @@ class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder[ProbabilisticMo
         return f"NegativeLowerConfidenceBound({self._beta!r})"
 
     def prepare_acquisition_function(
-        self,
-        model: ProbabilisticModel,
-        dataset: Optional[Dataset] = None,
+        self, model: ProbabilisticModel, dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model.
@@ -360,9 +354,7 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel]
         return self._threshold
 
     def prepare_acquisition_function(
-        self,
-        model: ProbabilisticModel,
-        dataset: Optional[Dataset] = None,
+        self, model: ProbabilisticModel, dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model.
@@ -615,9 +607,7 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSamp
         return f"MonteCarloExpectedImprovement({self._sample_size!r}, jitter={self._jitter!r})"
 
     def prepare_acquisition_function(
-        self,
-        model: HasReparamSampler,
-        dataset: Optional[Dataset] = None,
+        self, model: HasReparamSampler, dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model over the specified ``dataset``. Must have output dimension [1].
@@ -757,9 +747,7 @@ class MonteCarloAugmentedExpectedImprovement(
         )
 
     def prepare_acquisition_function(
-        self,
-        model: SupportsReparamSamplerObservationNoise,
-        dataset: Optional[Dataset] = None,
+        self, model: SupportsReparamSamplerObservationNoise, dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model over the specified ``dataset``. Must have output dimension [1].
@@ -904,9 +892,7 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasRepara
         return f"BatchMonteCarloExpectedImprovement({self._sample_size!r}, jitter={self._jitter!r})"
 
     def prepare_acquisition_function(
-        self,
-        model: HasReparamSampler,
-        dataset: Optional[Dataset] = None,
+        self, model: HasReparamSampler, dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model. Must have event shape [1].
@@ -1012,9 +998,7 @@ class MultipleOptimismNegativeLowerConfidenceBound(
         return f"MultipleOptimismNegativeLowerConfidenceBound({self._search_space!r})"
 
     def prepare_acquisition_function(
-        self,
-        model: ProbabilisticModel,
-        dataset: Optional[Dataset] = None,
+        self, model: ProbabilisticModel, dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model.
@@ -1122,9 +1106,7 @@ class MakePositive(SingleModelAcquisitionBuilder[ProbabilisticModelType]):
         return f"MakePositive({self._base_builder})"
 
     def prepare_acquisition_function(
-        self,
-        model: ProbabilisticModelType,
-        dataset: Optional[Dataset] = None,
+        self, model: ProbabilisticModelType, dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model.

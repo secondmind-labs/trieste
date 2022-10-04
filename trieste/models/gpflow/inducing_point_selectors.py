@@ -56,10 +56,7 @@ class InducingPointSelector(ABC, Generic[ProbabilisticModelType]):
         self._initialized = False
 
     def calculate_inducing_points(
-        self,
-        current_inducing_points: TensorType,
-        model: ProbabilisticModelType,
-        dataset: Dataset,
+        self, current_inducing_points: TensorType, model: ProbabilisticModelType, dataset: Dataset,
     ) -> TensorType:
         """
         Calculate the new inducing points given the existing inducing points.

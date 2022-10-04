@@ -30,9 +30,8 @@ for an in-depth overview.
 """
 from typing import Any, Optional, Tuple, Union
 
-import tensorflow as tf
-
 import gpflow
+import tensorflow as tf
 from gpflow.base import TensorType
 from gpflow.kernels import SquaredExponential
 
@@ -51,9 +50,7 @@ class _MultiOutputApproximateKernel(gpflow.kernels.MultioutputKernel):
     """
 
     def __init__(
-        self,
-        feature_functions: tf.keras.layers.Layer,
-        feature_coefficients: TensorType,
+        self, feature_functions: tf.keras.layers.Layer, feature_coefficients: TensorType,
     ):
         r"""
         :param feature_functions: A Keras layer for which the call evaluates the
@@ -77,10 +74,7 @@ class _MultiOutputApproximateKernel(gpflow.kernels.MultioutputKernel):
         return self._feature_functions
 
     def K(
-        self,
-        X: TensorType,
-        X2: Optional[TensorType] = None,
-        full_output_cov: bool = True,
+        self, X: TensorType, X2: Optional[TensorType] = None, full_output_cov: bool = True,
     ) -> tf.Tensor:
         """Approximate the true kernel by an inner product between feature functions."""
         phi = self._feature_functions(X)  # [P, N, L]
@@ -96,9 +90,7 @@ class _MultiOutputApproximateKernel(gpflow.kernels.MultioutputKernel):
             phi2 = self._feature_functions(X2)  # [P, N2, L]
 
         r = tf.linalg.matmul(
-            phi,
-            tf.linalg.matrix_transpose(self._feature_coefficients) * phi2,
-            transpose_b=True,
+            phi, tf.linalg.matrix_transpose(self._feature_coefficients) * phi2, transpose_b=True,
         )  # [P, N, N2]
 
         N1, N2 = tf.shape(phi)[1], tf.shape(phi2)[1]
@@ -110,8 +102,7 @@ class _MultiOutputApproximateKernel(gpflow.kernels.MultioutputKernel):
 
         phi_squared = self._feature_functions(X) ** 2  # [P, N, L]
         r = tf.reduce_sum(
-            phi_squared * tf.linalg.matrix_transpose(self._feature_coefficients),
-            axis=-1,
+            phi_squared * tf.linalg.matrix_transpose(self._feature_coefficients), axis=-1,
         )  # [P,N,]
         N = tf.shape(X)[0]
 
@@ -256,10 +247,7 @@ class SharedMultiOutputKernelWithFeatureDecomposition(
         return self._feature_coefficients
 
     def K(
-        self,
-        X: TensorType,
-        X2: Optional[TensorType] = None,
-        full_output_cov: bool = True,
+        self, X: TensorType, X2: Optional[TensorType] = None, full_output_cov: bool = True,
     ) -> tf.Tensor:
         return self._kernel.K(X, X2, full_output_cov)
 
@@ -401,10 +389,7 @@ class SeparateMultiOutputKernelWithFeatureDecomposition(
         return self._feature_coefficients
 
     def K(
-        self,
-        X: TensorType,
-        X2: Optional[TensorType] = None,
-        full_output_cov: bool = True,
+        self, X: TensorType, X2: Optional[TensorType] = None, full_output_cov: bool = True,
     ) -> tf.Tensor:
         return self._kernel.K(X, X2, full_output_cov)
 

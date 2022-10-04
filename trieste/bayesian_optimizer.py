@@ -800,8 +800,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             with tf.name_scope(f"{tag}.model"):
                 model.log(datasets[tag])
         logging.scalar(
-            "wallclock/model_fitting",
-            model_fitting_timer.time,
+            "wallclock/model_fitting", model_fitting_timer.time,
         )
 
     def _write_summary_step(
@@ -855,8 +854,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                 )
                 observation_plot_df["pareto"] = non_dominated(datasets[tag].observations)[1] == 0
                 observation_plot_df["observation type"] = observation_plot_df.apply(
-                    lambda x: x["observations"] + x["pareto"] * " (non-dominated)",
-                    axis=1,
+                    lambda x: x["observations"] + x["pareto"] * " (non-dominated)", axis=1,
                 )
                 pairplot = sns.pairplot(
                     observation_plot_df,
@@ -927,12 +925,10 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
         logging.scalar("wallclock/step", total_step_wallclock_timer.time)
         logging.scalar(
-            "wallclock/query_point_generation",
-            query_point_generation_timer.time,
+            "wallclock/query_point_generation", query_point_generation_timer.time,
         )
         logging.scalar(
-            "wallclock/model_fitting",
-            model_fitting_timer.time,
+            "wallclock/model_fitting", model_fitting_timer.time,
         )
 
 

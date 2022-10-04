@@ -272,9 +272,7 @@ class DividedAndConquerNonDominated(_BoundIndexPartition):
         total_size = tf.reduce_prod(max_front - min_front)
 
         def while_body(
-            divide_conquer_cells: TensorType,
-            lower_result: TensorType,
-            upper_result: TensorType,
+            divide_conquer_cells: TensorType, lower_result: TensorType, upper_result: TensorType,
         ) -> tuple[TensorType, TensorType, TensorType]:
             divide_conquer_cells_unstacked = tf.unstack(divide_conquer_cells, axis=0)
             cell = divide_conquer_cells_unstacked[-1]
@@ -362,9 +360,7 @@ class DividedAndConquerNonDominated(_BoundIndexPartition):
 
     @staticmethod
     def _divide_body(
-        divide_conquer_cells: TensorType,
-        divide_conquer_cells_dist: TensorType,
-        cell: TensorType,
+        divide_conquer_cells: TensorType, divide_conquer_cells_dist: TensorType, cell: TensorType,
     ) -> TensorType:
         edge_size = tf.reduce_max(divide_conquer_cells_dist)
         idx = tf.argmax(divide_conquer_cells_dist)

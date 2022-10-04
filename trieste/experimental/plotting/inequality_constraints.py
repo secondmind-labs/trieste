@@ -180,8 +180,5 @@ def plot_2obj_cst_query_points(
 
     for sim in [Sim1, Sim2]:
         plot_init_query_points(
-            search_space,
-            cast(Type[Simulation], sim),
-            objective_data,
-            constraint_data,
+            search_space, cast(Type[Simulation], sim), objective_data, constraint_data,
         )

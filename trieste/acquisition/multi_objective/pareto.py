@@ -29,8 +29,7 @@ class Pareto:
     """
 
     def __init__(
-        self,
-        observations: TensorType,
+        self, observations: TensorType,
     ):
         """
         :param observations: The observations for all objectives, with shape [N, D].
@@ -74,9 +73,7 @@ class Pareto:
         return hypervolume_indicator
 
 
-def get_reference_point(
-    observations: TensorType,
-) -> TensorType:
+def get_reference_point(observations: TensorType,) -> TensorType:
     """
     Default reference point calculation method that calculates the reference
     point according to a Pareto front extracted from set of observations.

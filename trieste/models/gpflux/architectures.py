@@ -1,4 +1,3 @@
-
 #
 # Copyright (c) 2021 The GPflux Contributors.
 #
@@ -22,14 +21,11 @@ arbitrary depth where each hidden layer has the same input dimensionality as the
 from dataclasses import dataclass
 from typing import cast
 
+import gpflow
 import numpy as np
 import tensorflow as tf
-from scipy.cluster.vq import kmeans2
-
-import gpflow
 from gpflow.kernels import SquaredExponential
 from gpflow.likelihoods import Gaussian
-
 from gpflux.helpers import (
     construct_basic_inducing_variables,
     construct_basic_kernel,
@@ -38,6 +34,7 @@ from gpflux.helpers import (
 from gpflux.layers.gp_layer import GPLayer
 from gpflux.layers.likelihood_layer import LikelihoodLayer
 from gpflux.models import DeepGP
+from scipy.cluster.vq import kmeans2
 
 
 @dataclass
@@ -90,7 +87,10 @@ def _construct_kernel(input_dim: int, is_last_layer: bool) -> SquaredExponential
     lengthscales = [2.0] * input_dim
     return SquaredExponential(lengthscales=lengthscales, variance=variance)
 
-def build_constant_input_dim_flexible_deep_gp(X: np.ndarray, num_layers: int, config: Config, separate_case: bool, output_dim: bool) -> DeepGP:
+
+def build_constant_input_dim_flexible_deep_gp(
+    X: np.ndarray, num_layers: int, config: Config, separate_case: bool, output_dim: bool
+) -> DeepGP:
     r"""
     Build a Deep GP consisting of ``num_layers`` :class:`GPLayer`\ s.
     All the hidden layers have the same input dimension as the data, that is, ``X.shape[1]``.
@@ -119,7 +119,6 @@ def build_constant_input_dim_flexible_deep_gp(X: np.ndarray, num_layers: int, co
     gp_layers = []
     centroids, _ = kmeans2(X, k=config.num_inducing, minit="points")
 
-
     for i_layer in range(num_layers):
         is_last_layer = i_layer == num_layers - 1
         D_in = input_dim
@@ -130,28 +129,20 @@ def build_constant_input_dim_flexible_deep_gp(X: np.ndarray, num_layers: int, co
         if separate_case:
             _num_inducing = [config.num_inducing for _ in range(D_out)]
         else:
-            _num_inducing = config.num_inducing 
+            _num_inducing = config.num_inducing
 
         _centroids = np.tile(centroids[None, ...], (D_out, 1, 1))
 
         inducing_var = construct_basic_inducing_variables(
-            num_inducing=_num_inducing,
-            input_dim=D_in,
-            share_variables=False,
-            z_init=_centroids,
+            num_inducing=_num_inducing, input_dim=D_in, share_variables=False, z_init=_centroids,
         )
-
 
         if separate_case:
             _kernels = [_construct_kernel(D_in, is_last_layer) for _ in range(input_dim)]
         else:
             _kernels = _construct_kernel(D_in, is_last_layer)
 
-        kernel = construct_basic_kernel(
-            kernels=_kernels,
-            output_dim=D_out,
-            share_hyperparams=True,
-        )
+        kernel = construct_basic_kernel(kernels=_kernels, output_dim=D_out, share_hyperparams=True,)
 
         assert config.whiten is True, "non-whitened case not implemented yet"
 

@@ -71,10 +71,7 @@ def build_keras_ensemble(
 
     networks = [
         GaussianNetwork(
-            input_tensor_spec,
-            output_tensor_spec,
-            hidden_layer_args,
-            independent_normal,
+            input_tensor_spec, output_tensor_spec, hidden_layer_args, independent_normal,
         )
         for _ in range(ensemble_size)
     ]

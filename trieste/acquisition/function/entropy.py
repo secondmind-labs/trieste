@@ -113,9 +113,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder[ProbabilisticModelType
         self._grid_size = grid_size
 
     def prepare_acquisition_function(
-        self,
-        model: ProbabilisticModelType,
-        dataset: Optional[Dataset] = None,
+        self, model: ProbabilisticModelType, dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model.

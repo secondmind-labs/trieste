@@ -367,12 +367,7 @@ class DeepEnsemble(
             fit_args["epochs"] = fit_args["epochs"] + self._absolute_epochs
 
         x, y = self.prepare_dataset(dataset)
-        history = self.model.fit(
-            x=x,
-            y=y,
-            **fit_args,
-            initial_epoch=self._absolute_epochs,
-        )
+        history = self.model.fit(x=x, y=y, **fit_args, initial_epoch=self._absolute_epochs,)
         if self._continuous_optimisation:
             self._absolute_epochs = self._absolute_epochs + len(history.history["loss"])
 
@@ -515,8 +510,7 @@ class DeepEnsemble(
             elif callback.model:
                 model_json, weights = callback.model
                 model = tf.keras.models.model_from_json(
-                    model_json,
-                    custom_objects={"MultivariateNormalTriL": MultivariateNormalTriL},
+                    model_json, custom_objects={"MultivariateNormalTriL": MultivariateNormalTriL},
                 )
                 model.set_weights(weights)
                 callback.set_model(model)

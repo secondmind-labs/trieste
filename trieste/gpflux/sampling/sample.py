@@ -19,14 +19,12 @@ import abc
 from typing import Callable, Optional, Union
 
 import tensorflow as tf
-
 from gpflow.base import TensorType
 from gpflow.conditionals import conditional
 from gpflow.config import default_float, default_jitter
 from gpflow.covariances import Kuf, Kuu
 from gpflow.inducing_variables import InducingVariables
 from gpflow.kernels import Kernel
-
 from gpflux.feature_decomposition_kernels import KernelWithFeatureDecomposition
 from gpflux.math import compute_A_inv_b
 from gpflux.sampling.utils import draw_conditional_sample
@@ -112,13 +110,7 @@ def _efficient_sample_conditional_gaussian(
                 self.X = tf.concat([self.X, X_new], axis=0)
 
             mean, cov = conditional(
-                self.X,
-                inducing_variable,
-                kernel,
-                q_mu,
-                q_sqrt=q_sqrt,
-                white=whiten,
-                full_cov=True,
+                self.X, inducing_variable, kernel, q_mu, q_sqrt=q_sqrt, white=whiten, full_cov=True,
             )  # mean: [N_old+N_new, P], cov: [P, N_old+N_new, N_old+N_new]
             mean = tf.linalg.matrix_transpose(mean)  # [P, N_old+N_new]
             f_old = tf.linalg.matrix_transpose(self.f)  # [P, N_old]
@@ -164,8 +156,7 @@ def _efficient_sample_matheron_rule(
     )  # [L, P]
 
     u_sample_noise = tf.matmul(
-        q_sqrt,
-        tf.random.normal((P, M, 1), dtype=default_float()),  # [P, M, M]  # [P, M, 1]
+        q_sqrt, tf.random.normal((P, M, 1), dtype=default_float()),  # [P, M, M]  # [P, M, 1]
     )  # [P, M, 1]
     Kmm = Kuu(inducing_variable, kernel, jitter=default_jitter())  # [M, M]
 

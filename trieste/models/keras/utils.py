@@ -89,9 +89,7 @@ def sample_with_replacement(dataset: Dataset) -> Dataset:
 
 
 def sample_model_index(
-    size: TensorType,
-    num_samples: TensorType,
-    seed: Optional[int] = None,
+    size: TensorType, num_samples: TensorType, seed: Optional[int] = None,
 ) -> TensorType:
     """
     Returns samples of indices of individual models in the ensemble.
@@ -110,10 +108,7 @@ def sample_model_index(
     shuffle_indices = tf.random.shuffle(tf.range(size), seed=seed)
     if num_samples > size:
         random_indices = tf.random.uniform(
-            shape=(tf.cast(num_samples - size, tf.int32),),
-            maxval=size,
-            dtype=tf.int32,
-            seed=seed,
+            shape=(tf.cast(num_samples - size, tf.int32),), maxval=size, dtype=tf.int32, seed=seed,
         )
         indices = tf.concat([shuffle_indices, random_indices], 0)
     else:

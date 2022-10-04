@@ -223,9 +223,7 @@ class LocalPenalization(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel])
 
         if self._base_acquisition_function is not None:
             self._base_acquisition_function = self._base_builder.update_acquisition_function(
-                self._base_acquisition_function,
-                model,
-                dataset=dataset,
+                self._base_acquisition_function, model, dataset=dataset,
             )
         elif isinstance(self._base_builder, ExpectedImprovement):  # reuse eta estimate
             self._base_acquisition_function = cast(
@@ -233,8 +231,7 @@ class LocalPenalization(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel])
             )
         else:
             self._base_acquisition_function = self._base_builder.prepare_acquisition_function(
-                model,
-                dataset=dataset,
+                model, dataset=dataset,
             )
         return self._base_acquisition_function
 
@@ -283,19 +280,14 @@ class local_penalizer(UpdatablePenalizationFunction):
         mean_pending, variance_pending = model.predict(pending_points)
         self._pending_points = tf.Variable(pending_points, shape=[None, *pending_points.shape[1:]])
         self._radius = tf.Variable(
-            tf.transpose((mean_pending - eta) / lipschitz_constant),
-            shape=[1, None],
+            tf.transpose((mean_pending - eta) / lipschitz_constant), shape=[1, None],
         )
         self._scale = tf.Variable(
-            tf.transpose(tf.sqrt(variance_pending) / lipschitz_constant),
-            shape=[1, None],
+            tf.transpose(tf.sqrt(variance_pending) / lipschitz_constant), shape=[1, None],
         )
 
     def update(
-        self,
-        pending_points: TensorType,
-        lipschitz_constant: TensorType,
-        eta: TensorType,
+        self, pending_points: TensorType, lipschitz_constant: TensorType, eta: TensorType,
     ) -> None:
         """Update the local penalizer with new variable values."""
         mean_pending, variance_pending = self._model.predict(pending_points)
@@ -481,9 +473,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
 
         fantasized_data = {
             tag: _generate_fantasized_data(
-                fantasize_method=self._fantasize_method,
-                model=model,
-                pending_points=pending_points,
+                fantasize_method=self._fantasize_method, model=model, pending_points=pending_points,
             )
             for tag, model in models.items()
         }
@@ -611,10 +601,7 @@ def _generate_fantasized_model(
         fmods = []
         for mod, obs, event_size in zip(model._models, observations, model._event_sizes):
             fmods.append(
-                (
-                    _fantasized_model(mod, Dataset(fantasized_data.query_points, obs)),
-                    event_size,
-                )
+                (_fantasized_model(mod, Dataset(fantasized_data.query_points, obs)), event_size,)
             )
         return PredictJointModelStack(*fmods)
     else:
@@ -767,9 +754,7 @@ def _broadcast_predict(
     mean_signature = tf.TensorSpec(None, query_points.dtype)
     var_signature = tf.TensorSpec(None, query_points.dtype)
     mean, var = tf.map_fn(
-        fn=fun,
-        elems=query_points_flatten,
-        fn_output_signature=(mean_signature, var_signature),
+        fn=fun, elems=query_points_flatten, fn_output_signature=(mean_signature, var_signature),
     )  # [B, ..., L, N], [B, ..., L, N] (predict_f) or [B, ..., L, N, N] (predict_joint)
 
     return _restore_leading_dim(mean, leading_dim), _restore_leading_dim(var, leading_dim)

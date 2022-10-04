@@ -18,7 +18,6 @@
 from typing import Optional, Union
 
 import tensorflow as tf
-
 from gpflow.base import TensorType
 from gpflow.config import default_float, default_jitter
 from gpflow.covariances import Kuf, Kuu
@@ -28,7 +27,6 @@ from gpflow.inducing_variables import (
     SharedIndependentInducingVariables,
 )
 from gpflow.kernels import SeparateIndependent, SharedIndependent
-
 from gpflux.feature_decomposition_kernels import (
     SeparateMultiOutputKernelWithFeatureDecomposition,
     SharedMultiOutputKernelWithFeatureDecomposition,
@@ -82,15 +80,13 @@ def _efficient_multi_output_sample_matheron_rule(
     )  # [L, P]
 
     u_sample_noise = tf.matmul(
-        q_sqrt,
-        tf.random.normal((P, M, 1), dtype=default_float()),  # [P, M, M]  # [P, M, 1]
+        q_sqrt, tf.random.normal((P, M, 1), dtype=default_float()),  # [P, M, M]  # [P, M, 1]
     )  # [P, M, 1]
     tf.debugging.assert_equal(tf.shape(u_sample_noise), [P, M, 1])
 
     if isinstance(kernel, SharedIndependent):
         Kmm = tf.tile(
-            Kuu(inducing_variable, kernel, jitter=default_jitter())[None, ...],
-            [P, 1, 1],
+            Kuu(inducing_variable, kernel, jitter=default_jitter())[None, ...], [P, 1, 1],
         )  # [P,M,M]
         tf.debugging.assert_equal(tf.shape(Kmm), [P, M, M])
     elif isinstance(kernel, SeparateIndependent):

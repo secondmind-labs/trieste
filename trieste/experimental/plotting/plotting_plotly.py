@@ -241,10 +241,7 @@ def plot_function_plotly(
     n_output = F.shape[1]
 
     fig = make_subplots(
-        rows=1,
-        cols=n_output,
-        specs=[[{"type": "surface"}] * n_output],
-        subplot_titles=title,
+        rows=1, cols=n_output, specs=[[{"type": "surface"}] * n_output], subplot_titles=title,
     )
 
     for k in range(n_output):

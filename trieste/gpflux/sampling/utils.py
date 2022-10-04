@@ -17,10 +17,8 @@
 This module contains utilities for sampling from multivariate Gaussian distributions.
 """
 import tensorflow as tf
-
 from gpflow.base import TensorType
 from gpflow.conditionals.util import sample_mvn
-
 from gpflux.math import _cholesky_with_jitter
 
 

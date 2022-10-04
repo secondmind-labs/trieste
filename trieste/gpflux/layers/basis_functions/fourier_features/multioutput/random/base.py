@@ -15,21 +15,20 @@
 #
 from typing import Mapping, Optional, Tuple, Type
 
+import gpflow
 import numpy as np
 import tensorflow as tf
-
-import gpflow
 from gpflow.base import DType, TensorType
-
-from trieste.gpflux.layers.basis_functions.fourier_features.multioutput.base import (
-    MultiOutputFourierFeaturesBase,
-)
 from gpflux.layers.basis_functions.fourier_features.utils import (
     _bases_concat,
     _bases_cosine,
     _matern_number,
 )
 from gpflux.types import ShapeType
+
+from trieste.gpflux.layers.basis_functions.fourier_features.multioutput.base import (
+    MultiOutputFourierFeaturesBase,
+)
 
 """
 Kernels supported by :class:`RandomFourierFeatures`.
@@ -79,10 +78,9 @@ class MultiOutputRandomFourierFeaturesBase(MultiOutputFourierFeaturesBase):
         self, kernel: gpflow.kernels.MultioutputKernel, n_components: int, **kwargs: Mapping
     ):
 
-        print('*****************************************')
+        print("*****************************************")
         print(kernel)
-        print('****************************************')
-
+        print("****************************************")
 
         if isinstance(kernel, gpflow.kernels.SeparateIndependent):
             for ker in kernel.kernels:
@@ -204,10 +202,7 @@ class MultiOutputRandomFourierFeatures(MultiOutputRandomFourierFeaturesBase):
         if hasattr(self.kernel, "kernels"):
             _kernel_variance = tf.stack([ker.variance for ker in self.kernel.kernels], axis=0)
             tf.ensure_shape(
-                _kernel_variance,
-                [
-                    self.kernel.num_latent_gps,
-                ],
+                _kernel_variance, [self.kernel.num_latent_gps, ]
             )
 
         else:
@@ -291,10 +286,7 @@ class MultiOutputRandomFourierFeaturesCosine(MultiOutputRandomFourierFeaturesBas
         if hasattr(self.kernel, "kernels"):
             _kernel_variance = tf.stack([ker.variance for ker in self.kernel.kernels], axis=0)
             tf.ensure_shape(
-                _kernel_variance,
-                [
-                    self.kernel.num_latent_gps,
-                ],
+                _kernel_variance, [self.kernel.num_latent_gps, ]
             )
         else:
             _kernel_variance = self.kernel.kernel.variance

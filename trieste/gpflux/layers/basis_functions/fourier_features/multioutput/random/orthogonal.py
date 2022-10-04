@@ -16,16 +16,15 @@
 
 from typing import Mapping, Optional, Tuple, Type
 
+import gpflow
 import numpy as np
 import tensorflow as tf
-
-import gpflow
 from gpflow.base import DType, TensorType
+from gpflux.types import ShapeType
 
 from trieste.gpflux.layers.basis_functions.fourier_features.multioutput.random.base import (
     MultiOutputRandomFourierFeatures,
 )
-from gpflux.types import ShapeType
 
 """
 Kernels supported by :class:`OrthogonalRandomFeatures`.
