@@ -43,7 +43,7 @@ setup(
         "gpflow==2.5.2",
         "gpflux==0.2.7",
         "numpy",
-        "tensorflow>=2.4",
+        "tensorflow>=2.6.0",
         "tensorflow-probability>=0.12",
         "greenlet>=1.1.0",
     ],
