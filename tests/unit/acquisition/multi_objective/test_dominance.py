@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import numpy as np
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
@@ -112,3 +113,15 @@ def test_dominated_sort(scores: tf.Tensor, pareto_set: tf.Tensor, dominance: tf.
     ret_pareto_set, ret_nondominated = non_dominated(scores)
     npt.assert_allclose(tf.sort(ret_pareto_set, 0), tf.sort(pareto_set, 0))
     npt.assert_array_equal(ret_nondominated, dominance == 0)
+
+
+@pytest.mark.parametrize("num_objectives", [2, 4, 6])
+def test_dominated_sort_scales_ok(num_objectives: int) -> None:
+
+    rng = np.random.RandomState(1234)
+    dataset = rng.rand(10000, num_objectives)
+    front, idx = non_dominated(dataset)
+
+    for f in front:
+        assert np.all(np.any(f <= dataset, axis=1))
+    assert np.all(np.sort(front, axis=0) == np.sort(dataset[idx], axis=0))
