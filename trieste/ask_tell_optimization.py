@@ -23,13 +23,22 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Dict, Generic, Mapping, TypeVar, cast, overload
 
-import numpy as np
-import tensorflow as tf
-from scipy.spatial.distance import pdist
+try:
+    import pandas as pd
+except ModuleNotFoundError:
+    pd = None
 
 from . import logging
 from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
-from .bayesian_optimizer import FrozenRecord, OptimizationResult, Record
+from .bayesian_optimizer import (
+    FrozenRecord,
+    OptimizationResult,
+    Record,
+    observation_plot_init,
+    write_summary_initial_model_fit,
+    write_summary_observations,
+    write_summary_query_points,
+)
 from .data import Dataset
 from .models import TrainableProbabilisticModel
 from .observer import OBJECTIVE
@@ -192,6 +201,13 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         self._datasets = datasets
         self._models = models
 
+        self._query_plot_dfs: dict[int, pd.DataFrame] = {}
+        self._observation_plot_dfs: dict[str, pd.DataFrame] = {}
+
+        summary_writer = logging.get_tensorboard_writer()
+        if summary_writer:
+            observation_plot_init(self._observation_plot_dfs, self._datasets)
+
         if acquisition_rule is None:
             if self._datasets.keys() != {OBJECTIVE}:
                 raise ValueError(
@@ -213,15 +229,10 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
                     model.update(dataset)
                     model.optimize(dataset)
 
-            summary_writer = logging.get_tensorboard_writer()
             if summary_writer:
                 with summary_writer.as_default(step=logging.get_step_number()):
-                    for tag, model in self._models.items():
-                        with tf.name_scope(f"{tag}.model"):
-                            model.log(datasets[tag])
-                    logging.scalar(
-                        "wallclock/model_fitting",
-                        initial_model_fitting_timer.time,
+                    write_summary_initial_model_fit(
+                        self._datasets, self._models, initial_model_fitting_timer
                     )
 
     def __repr__(self) -> str:
@@ -383,18 +394,13 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         summary_writer = logging.get_tensorboard_writer()
         if summary_writer:
             with summary_writer.as_default(step=logging.get_step_number()):
-                if tf.rank(query_points) == 2:
-                    for i in tf.range(tf.shape(query_points)[1]):
-                        if len(query_points) == 1:
-                            logging.scalar(f"query_points/[{i}]", float(query_points[0, i]))
-                        else:
-                            logging.histogram(f"query_points/[{i}]", query_points[:, i])
-                    logging.histogram(
-                        "query_points/euclidean_distances", lambda: pdist(query_points)
-                    )
-                logging.scalar(
-                    "wallclock/query_point_generation",
-                    query_point_generation_timer.time,
+                write_summary_query_points(
+                    self._datasets,
+                    self._models,
+                    self._search_space,
+                    query_points,
+                    query_point_generation_timer,
+                    self._query_plot_dfs,
                 )
 
         return query_points
@@ -426,24 +432,10 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         summary_writer = logging.get_tensorboard_writer()
         if summary_writer:
             with summary_writer.as_default(step=logging.get_step_number()):
-                for tag in self._datasets:
-                    with tf.name_scope(f"{tag}.model"):
-                        self._models[tag].log(self._datasets[tag])
-                    output_dim = tf.shape(new_data[tag].observations)[-1]
-                    for i in tf.range(output_dim):
-                        suffix = f"[{i}]" if output_dim > 1 else ""
-                        if tf.size(new_data[tag].observations) > 0:
-                            logging.histogram(
-                                f"{tag}.observation{suffix}/new_observations",
-                                new_data[tag].observations[..., i],
-                            )
-                            logging.scalar(
-                                f"{tag}.observation{suffix}/best_new_observation",
-                                np.min(new_data[tag].observations[..., i]),
-                            )
-                        if tf.size(self._datasets[tag].observations) > 0:
-                            logging.scalar(
-                                f"{tag}.observation{suffix}/best_overall",
-                                np.min(self._datasets[tag].observations[..., i]),
-                            )
-                    logging.scalar("wallclock/model_fitting", model_fitting_timer.time)
+                write_summary_observations(
+                    self._datasets,
+                    self._models,
+                    new_data,
+                    model_fitting_timer,
+                    self._observation_plot_dfs,
+                )
