@@ -202,11 +202,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         self._models = models
 
         self._query_plot_dfs: dict[int, pd.DataFrame] = {}
-        self._observation_plot_dfs: dict[str, pd.DataFrame] = {}
-
-        summary_writer = logging.get_tensorboard_writer()
-        if summary_writer:
-            observation_plot_init(self._observation_plot_dfs, self._datasets)
+        self._observation_plot_dfs = observation_plot_init(self._datasets)
 
         if acquisition_rule is None:
             if self._datasets.keys() != {OBJECTIVE}:
@@ -229,6 +225,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
                     model.update(dataset)
                     model.optimize(dataset)
 
+            summary_writer = logging.get_tensorboard_writer()
             if summary_writer:
                 with summary_writer.as_default(step=logging.get_step_number()):
                     write_summary_initial_model_fit(

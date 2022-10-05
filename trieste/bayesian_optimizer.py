@@ -613,7 +613,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
         history: list[FrozenRecord[StateType] | Record[StateType]] = []
         query_plot_dfs: dict[int, pd.DataFrame] = {}
-        observation_plot_dfs: dict[str, pd.DataFrame] = {}
+        observation_plot_dfs = observation_plot_init(datasets)
 
         summary_writer = logging.get_tensorboard_writer()
         if summary_writer:
@@ -626,7 +626,6 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     models,
                     num_steps,
                 )
-            observation_plot_init(observation_plot_dfs, datasets)
 
         for step in range(1, num_steps + 1):
             logging.set_step_number(step)
@@ -795,32 +794,35 @@ def write_summary_initial_model_fit(
 
 
 def observation_plot_init(
-    observation_plot_dfs: MutableMapping[str, pd.DataFrame],
     datasets: Mapping[str, Dataset],
-) -> None:
+) -> dict[str, pd.DataFrame]:
     """Initialise query point pairplot dataframes with initial observations."""
-    seaborn_warning = False
-    if logging.include_summary("query_points/_pairplot") and not (pd and sns):
-        seaborn_warning = True
-    for tag in datasets:
-        if logging.include_summary(f"{tag}.observations/_pairplot"):
-            output_dim = tf.shape(datasets[tag].observations)[-1]
-            if output_dim >= 2:
-                if not (pd and sns):
-                    seaborn_warning = True
-                else:
-                    columns = [f"x{i}" for i in range(output_dim)]
-                    observation_plot_dfs[tag] = pd.DataFrame(
-                        datasets[tag].observations, columns=columns
-                    ).applymap(float)
-                    observation_plot_dfs[tag]["observations"] = "initial"
+    observation_plot_dfs: dict[str, pd.DataFrame] = {}
+    if logging.get_tensorboard_writer():
 
-    if seaborn_warning:
-        tf.print(
-            "\nPairplot TensorBoard summaries require seaborn to be installed."
-            "\nOne way to do this is to install 'trieste[plotting]'.",
-            output_stream=absl.logging.INFO,
-        )
+        seaborn_warning = False
+        if logging.include_summary("query_points/_pairplot") and not (pd and sns):
+            seaborn_warning = True
+        for tag in datasets:
+            if logging.include_summary(f"{tag}.observations/_pairplot"):
+                output_dim = tf.shape(datasets[tag].observations)[-1]
+                if output_dim >= 2:
+                    if not (pd and sns):
+                        seaborn_warning = True
+                    else:
+                        columns = [f"x{i}" for i in range(output_dim)]
+                        observation_plot_dfs[tag] = pd.DataFrame(
+                            datasets[tag].observations, columns=columns
+                        ).applymap(float)
+                        observation_plot_dfs[tag]["observations"] = "initial"
+
+        if seaborn_warning:
+            tf.print(
+                "\nPairplot TensorBoard summaries require seaborn to be installed."
+                "\nOne way to do this is to install 'trieste[plotting]'.",
+                output_stream=absl.logging.INFO,
+            )
+    return observation_plot_dfs
 
 
 def write_summary_observations(
