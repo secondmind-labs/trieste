@@ -16,7 +16,7 @@ This module contains local penalization-based acquisition function builders.
 """
 from __future__ import annotations
 
-from typing import Callable, Dict, Mapping, Optional, Union, cast
+from typing import Callable, Dict, Mapping, Optional, Union, cast, overload
 
 import gpflow
 import tensorflow as tf
@@ -37,6 +37,7 @@ from ...types import TensorType
 from ..interface import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
+    AcquisitionFunctionType,
     GreedyAcquisitionFunctionBuilder,
     PenalizationFunction,
     SingleModelAcquisitionBuilder,
@@ -402,7 +403,7 @@ class FantasizerModelStack(PredictJointModelStack, ModelStack[FantasizerModelTyp
 FantasizerModelOrStack = Union[FantasizerModelType, FantasizerModelStack]
 
 
-class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
+class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack, AcquisitionFunctionType]):
     r"""
     Builder of the acquisition function maker for greedily collecting batches.
     Fantasizer allows us to perform batch Bayesian optimization with any
@@ -421,11 +422,30 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
     "sample" uses samples from the model.
     """
 
+    @overload
+    def __init__(
+        self: "Fantasizer[expected_improvement]",
+        base_acquisition_function_builder: None = None,
+        fantasize_method: str = "KB",
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self: "Fantasizer[AcquisitionFunctionType]",
+        base_acquisition_function_builder: AcquisitionFunctionBuilder[
+            SupportsPredictJoint, AcquisitionFunctionType
+        ]
+        | SingleModelAcquisitionBuilder[SupportsPredictJoint, AcquisitionFunctionType],
+        fantasize_method: str = "KB",
+    ):
+        ...
+
     def __init__(
         self,
         base_acquisition_function_builder: Optional[
-            AcquisitionFunctionBuilder[SupportsPredictJoint]
-            | SingleModelAcquisitionBuilder[SupportsPredictJoint]
+            AcquisitionFunctionBuilder[SupportsPredictJoint, AcquisitionFunctionType]
+            | SingleModelAcquisitionBuilder[SupportsPredictJoint, AcquisitionFunctionType]
         ] = None,
         fantasize_method: str = "KB",
     ):
@@ -440,16 +460,21 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
         tf.debugging.Assert(fantasize_method in ["KB", "sample"], [tf.constant([])])
 
         if base_acquisition_function_builder is None:
-            base_acquisition_function_builder = ExpectedImprovement()
+            base_acquisition_function_builder = cast(
+                AcquisitionFunctionBuilder[SupportsPredictJoint, AcquisitionFunctionType],
+                ExpectedImprovement(),
+            )
 
         if isinstance(base_acquisition_function_builder, SingleModelAcquisitionBuilder):
             base_acquisition_function_builder = base_acquisition_function_builder.using(OBJECTIVE)
 
-        self._builder = base_acquisition_function_builder
+        self._builder: AcquisitionFunctionBuilder[
+            SupportsPredictJoint, AcquisitionFunctionType
+        ] = base_acquisition_function_builder
         self._fantasize_method = fantasize_method
 
-        self._base_acquisition_function: Optional[AcquisitionFunction] = None
-        self._fantasized_acquisition: Optional[AcquisitionFunction] = None
+        self._base_acquisition_function: Optional[AcquisitionFunctionType] = None
+        self._fantasized_acquisition: Optional[AcquisitionFunctionType] = None
         self._fantasized_models: Mapping[
             str, _fantasized_model | ModelStack[SupportsPredictJoint]
         ] = {}
@@ -458,7 +483,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
         self,
         models: Mapping[str, FantasizerModelOrStack],
         datasets: Optional[Mapping[str, Dataset]],
-    ) -> AcquisitionFunction:
+    ) -> AcquisitionFunctionType:
 
         if self._base_acquisition_function is not None:
             self._base_acquisition_function = self._builder.update_acquisition_function(
@@ -475,7 +500,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
         models: Mapping[str, FantasizerModelOrStack],
         datasets: Optional[Mapping[str, Dataset]],
         pending_points: TensorType,
-    ) -> AcquisitionFunction:
+    ) -> AcquisitionFunctionType:
 
         tf.debugging.assert_rank(pending_points, 2)
 
@@ -527,7 +552,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
         models: Mapping[str, FantasizerModelOrStack],
         datasets: Optional[Mapping[str, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
-    ) -> AcquisitionFunction:
+    ) -> AcquisitionFunctionType:
         """
 
         :param models: The models over each tag.
@@ -554,12 +579,12 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
 
     def update_acquisition_function(
         self,
-        function: AcquisitionFunction,
+        function: AcquisitionFunctionType,
         models: Mapping[str, FantasizerModelOrStack],
         datasets: Optional[Mapping[str, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
-    ) -> AcquisitionFunction:
+    ) -> AcquisitionFunctionType:
         """
         :param function: The acquisition function to update.
         :param models: The models over each tag.

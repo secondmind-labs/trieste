@@ -20,7 +20,11 @@ import pytest
 import tensorflow as tf
 
 from tests.util.misc import random_seed
-from trieste.acquisition import ExpectedConstrainedImprovement, ProbabilityOfFeasibility
+from trieste.acquisition import (
+    AcquisitionFunction,
+    ExpectedConstrainedImprovement,
+    ProbabilityOfFeasibility,
+)
 from trieste.acquisition.rule import EfficientGlobalOptimization
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
@@ -39,7 +43,9 @@ from trieste.types import TensorType
 )
 def test_optimizer_finds_minima_of_Gardners_Simulation_1(
     num_steps: int,
-    acquisition_function_builder: type[ExpectedConstrainedImprovement[ProbabilisticModel]],
+    acquisition_function_builder: type[
+        ExpectedConstrainedImprovement[ProbabilisticModel, AcquisitionFunction]
+    ],
 ) -> None:
     """
     Test that tests the covergence of constrained BO algorithms on the
@@ -80,7 +86,9 @@ def test_optimizer_finds_minima_of_Gardners_Simulation_1(
 
     pof = ProbabilityOfFeasibility(threshold=0.5)
     acq = acquisition_function_builder(OBJECTIVE, pof.using(CONSTRAINT))
-    rule: EfficientGlobalOptimization[Box, ProbabilisticModel] = EfficientGlobalOptimization(acq)
+    rule: EfficientGlobalOptimization[
+        Box, ProbabilisticModel, AcquisitionFunction
+    ] = EfficientGlobalOptimization(acq)
 
     dataset = (
         BayesianOptimizer(observer, search_space)

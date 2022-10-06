@@ -39,6 +39,7 @@ from trieste.acquisition import (
     MonteCarloExpectedImprovement,
     MultipleOptimismNegativeLowerConfidenceBound,
     ParallelContinuousThompsonSampling,
+    expected_improvement,
 )
 from trieste.acquisition.optimizer import generate_continuous_optimizer
 from trieste.acquisition.rule import (
@@ -239,7 +240,7 @@ def test_bayesian_optimizer_with_vgp_finds_minima_of_scaled_branin() -> None:
     _test_optimizer_finds_minimum(
         VariationalGaussianProcess,
         10,
-        EfficientGlobalOptimization[SearchSpace, VariationalGaussianProcess](
+        EfficientGlobalOptimization[SearchSpace, VariationalGaussianProcess, TrajectoryFunction](
             builder=ParallelContinuousThompsonSampling(), num_query_points=5
         ),
     )
@@ -253,7 +254,7 @@ def test_bayesian_optimizer_with_vgp_finds_minima_of_simple_quadratic(use_natgra
     _test_optimizer_finds_minimum(
         VariationalGaussianProcess,
         None if use_natgrads else 5,
-        EfficientGlobalOptimization[SearchSpace, GPflowPredictor](),
+        EfficientGlobalOptimization[SearchSpace, GPflowPredictor, expected_improvement](),
         model_args={"use_natgrads": use_natgrads},
     )
 
@@ -264,14 +265,14 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_scaled_branin() -> None:
     _test_optimizer_finds_minimum(
         SparseVariational,
         40,
-        EfficientGlobalOptimization[SearchSpace, SparseVariational](),
+        EfficientGlobalOptimization[SearchSpace, SparseVariational, expected_improvement](),
         optimize_branin=True,
         model_args={"optimizer": Optimizer(gpflow.optimizers.Scipy(), compile=True)},
     )
     _test_optimizer_finds_minimum(
         SparseVariational,
         15,
-        EfficientGlobalOptimization[SearchSpace, SparseVariational](
+        EfficientGlobalOptimization[SearchSpace, SparseVariational, TrajectoryFunction](
             builder=ParallelContinuousThompsonSampling(), num_query_points=5
         ),
         optimize_branin=True,
@@ -284,7 +285,7 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_simple_quadratic() -> None
     _test_optimizer_finds_minimum(
         SparseVariational,
         5,
-        EfficientGlobalOptimization[SearchSpace, SparseVariational](),
+        EfficientGlobalOptimization[SearchSpace, SparseVariational, expected_improvement](),
         model_args={"optimizer": Optimizer(gpflow.optimizers.Scipy(), compile=True)},
     )
 
@@ -295,15 +296,17 @@ def test_bayesian_optimizer_with_sgpr_finds_minima_of_scaled_branin() -> None:
     _test_optimizer_finds_minimum(
         SparseGaussianProcessRegression,
         9,
-        EfficientGlobalOptimization[SearchSpace, SparseGaussianProcessRegression](),
+        EfficientGlobalOptimization[
+            SearchSpace, SparseGaussianProcessRegression, expected_improvement
+        ](),
         optimize_branin=True,
     )
     _test_optimizer_finds_minimum(
         SparseGaussianProcessRegression,
         20,
-        EfficientGlobalOptimization[SearchSpace, SparseGaussianProcessRegression](
-            builder=ParallelContinuousThompsonSampling(), num_query_points=5
-        ),
+        EfficientGlobalOptimization[
+            SearchSpace, SparseGaussianProcessRegression, TrajectoryFunction
+        ](builder=ParallelContinuousThompsonSampling(), num_query_points=5),
         optimize_branin=True,
     )
 
@@ -313,7 +316,9 @@ def test_bayesian_optimizer_with_sgpr_finds_minima_of_simple_quadratic() -> None
     _test_optimizer_finds_minimum(
         SparseGaussianProcessRegression,
         5,
-        EfficientGlobalOptimization[SearchSpace, SparseGaussianProcessRegression](),
+        EfficientGlobalOptimization[
+            SearchSpace, SparseGaussianProcessRegression, expected_improvement
+        ](),
     )
 
 
