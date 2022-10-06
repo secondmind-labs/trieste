@@ -63,7 +63,7 @@ from trieste.acquisition.function.function import (
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
-from trieste.objectives import BRANIN_MINIMUM, branin
+from trieste.objectives import Branin
 from trieste.space import Box
 from trieste.types import TensorType
 
@@ -126,7 +126,7 @@ def test_expected_improvement_raises_for_invalid_batch_size(at: TensorType) -> N
 
 
 @random_seed
-@pytest.mark.parametrize("best", [tf.constant([50.0]), BRANIN_MINIMUM, BRANIN_MINIMUM * 1.01])
+@pytest.mark.parametrize("best", [tf.constant([50.0]), Branin.minimum, Branin.minimum * 1.01])
 @pytest.mark.parametrize("test_update", [False, True])
 @pytest.mark.parametrize(
     "variance_scale, num_samples_per_point, rtol, atol",
@@ -153,7 +153,7 @@ def test_expected_improvement(
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
 
     kernel = tfp.math.psd_kernels.MaternFiveHalves(variance_scale, length_scale=0.25)
-    model = GaussianProcess([branin], [kernel])
+    model = GaussianProcess([Branin.objective], [kernel])
 
     mean, variance = model.predict(xs)
     samples = tfp.distributions.Normal(mean, tf.sqrt(variance)).sample(num_samples_per_point)
@@ -292,7 +292,7 @@ def test_mc_expected_improvement_builder_raises_for_model_with_wrong_event_shape
         amplitude=tf.cast(2.3, tf.float64), length_scale=tf.cast(0.5, tf.float64)
     )
     model = GaussianProcessWithSamplers(
-        [lambda x: branin(x), lambda x: quadratic(x)], [matern52, rbf()]
+        [lambda x: Branin.objective(x), lambda x: quadratic(x)], [matern52, rbf()]
     )
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES, match="Expected model with output *."):
         MonteCarloExpectedImprovement(100).prepare_acquisition_function(model, dataset=data)
@@ -364,7 +364,7 @@ def test_mc_expected_improvement_close_to_expected_improvement(
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
 
     kernel = tfp.math.psd_kernels.MaternFiveHalves(variance_scale, length_scale=0.25)
-    model = GaussianProcessWithSamplers([branin], [kernel])
+    model = GaussianProcessWithSamplers([Branin.objective], [kernel])
 
     if test_update:
         builder = MonteCarloExpectedImprovement(num_samples_per_point)
@@ -380,7 +380,7 @@ def test_mc_expected_improvement_close_to_expected_improvement(
         )
     ei_approx = eif(xs[..., None, :])
 
-    best = tf.reduce_min(branin(dataset.query_points))
+    best = tf.reduce_min(Branin.objective(dataset.query_points))
     eif = expected_improvement(model, best)
     ei = eif(xs[..., None, :])  # type: ignore
 
@@ -533,7 +533,7 @@ def test_mc_augmented_expected_improvement_close_to_augmented_expected_improveme
 
     kernel = tfp.math.psd_kernels.MaternFiveHalves(variance_scale, length_scale=0.25)
     model = GaussianProcessWithSamplers(
-        [branin], [kernel], noise_variance=tf.constant(noise_variance, tf.float64)
+        [Branin.objective], [kernel], noise_variance=tf.constant(noise_variance, tf.float64)
     )
 
     if test_update:
@@ -550,7 +550,7 @@ def test_mc_augmented_expected_improvement_close_to_augmented_expected_improveme
         ).prepare_acquisition_function(model, dataset)
     aei_approx = aeif(xs[..., None, :])
 
-    best = tf.reduce_min(branin(dataset.query_points))
+    best = tf.reduce_min(Branin.objective(dataset.query_points))
     aeif = augmented_expected_improvement(model, best)
     aei = aeif(xs[..., None, :])  # type: ignore
 
@@ -897,7 +897,7 @@ def test_batch_monte_carlo_expected_improvement_raises_for_empty_data() -> None:
         amplitude=tf.cast(2.3, tf.float64), length_scale=tf.cast(0.5, tf.float64)
     )
     model = GaussianProcessWithBatchSamplers(
-        [lambda x: branin(x), lambda x: quadratic(x)], [matern52, rbf()]
+        [lambda x: Branin.objective(x), lambda x: quadratic(x)], [matern52, rbf()]
     )
     with pytest.raises(tf.errors.InvalidArgumentError):
         builder.prepare_acquisition_function(model, dataset=data)
@@ -912,7 +912,7 @@ def test_batch_monte_carlo_expected_improvement_raises_for_model_with_wrong_even
         amplitude=tf.cast(2.3, tf.float64), length_scale=tf.cast(0.5, tf.float64)
     )
     model = GaussianProcessWithBatchSamplers(
-        [lambda x: branin(x), lambda x: quadratic(x)], [matern52, rbf()]
+        [lambda x: Branin.objective(x), lambda x: quadratic(x)], [matern52, rbf()]
     )
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         builder.prepare_acquisition_function(model, dataset=data)

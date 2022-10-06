@@ -17,7 +17,7 @@ import pytest
 
 from tests.util.misc import hartmann_6_dataset, random_seed
 from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp
-from trieste.objectives import HARTMANN_6_SEARCH_SPACE
+from trieste.objectives import Hartmann6
 
 
 @pytest.mark.slow
@@ -31,7 +31,7 @@ def test_dgp_model_close_to_actuals(depth: int) -> None:
 
     dgp = build_vanilla_deep_gp(
         example_data,
-        HARTMANN_6_SEARCH_SPACE,
+        Hartmann6.search_space,
         depth,
         num_inducing,
         likelihood_variance=1e-5,

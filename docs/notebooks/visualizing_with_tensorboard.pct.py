@@ -21,7 +21,7 @@ import trieste
 
 search_space = trieste.space.Box([0, 0], [1, 1])
 observer = trieste.objectives.utils.mk_observer(
-    trieste.objectives.scaled_branin
+    trieste.objectives.ScaledBranin.objective
 )
 initial_query_points = search_space.sample_sobol(5)
 initial_data = observer(initial_query_points)
