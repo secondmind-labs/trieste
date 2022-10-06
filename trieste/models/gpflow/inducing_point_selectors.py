@@ -74,7 +74,7 @@ class InducingPointSelector(ABC, Generic[ProbabilisticModelType]):
         :return: The new updated inducing points.
         :raise NotImplementedError: If model has more than one set of inducing variables.
         """
-        tf.debugging.Assert(current_inducing_points is not None, [])
+        tf.debugging.Assert(current_inducing_points is not None, [tf.constant([])])
 
         if isinstance(current_inducing_points, list):
             raise NotImplementedError(
@@ -156,7 +156,7 @@ class RandomSubSampleInducingPointSelector(InducingPointSelector[ProbabilisticMo
         :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
         """
 
-        tf.debugging.Assert(len(dataset.query_points) is not None, [])
+        tf.debugging.Assert(len(dataset.query_points) is not None, [tf.constant([])])
 
         N = tf.shape(dataset.query_points)[0]  # training data size
         shuffled_query_points = tf.random.shuffle(dataset.query_points)  # [N, d]
@@ -193,7 +193,7 @@ class KMeansInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
         :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
         """
 
-        tf.debugging.Assert(dataset is not None, [])
+        tf.debugging.Assert(dataset is not None, [tf.constant([])])
 
         query_points = dataset.query_points  # [N, d]
         N = tf.shape(query_points)[0]

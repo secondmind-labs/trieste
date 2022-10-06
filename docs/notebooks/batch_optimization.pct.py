@@ -22,11 +22,11 @@ tf.random.set_seed(1234)
 # We begin our optimization after collecting five function evaluations from random locations in the search space.
 
 # %%
-from trieste.objectives import scaled_branin, SCALED_BRANIN_MINIMUM
+from trieste.objectives import ScaledBranin
 from trieste.objectives.utils import mk_observer
 from trieste.space import Box
 
-observer = mk_observer(scaled_branin)
+observer = mk_observer(ScaledBranin.objective)
 search_space = Box([0, 0], [1, 1])
 
 num_initial_points = 5
@@ -242,25 +242,25 @@ gibbon_result = bo.optimize(
 from trieste.experimental.plotting import plot_regret
 
 qei_observations = (
-    qei_result.try_get_final_dataset().observations - SCALED_BRANIN_MINIMUM
+    qei_result.try_get_final_dataset().observations - ScaledBranin.minimum
 )
 qei_min_idx = tf.squeeze(tf.argmin(qei_observations, axis=0))
 local_penalization_observations = (
     local_penalization_result.try_get_final_dataset().observations
-    - SCALED_BRANIN_MINIMUM
+    - ScaledBranin.minimum
 )
 local_penalization_min_idx = tf.squeeze(
     tf.argmin(local_penalization_observations, axis=0)
 )
 kriging_believer_observations = (
     kriging_believer_result.try_get_final_dataset().observations
-    - SCALED_BRANIN_MINIMUM
+    - ScaledBranin.minimum
 )
 kriging_believer_min_idx = tf.squeeze(
     tf.argmin(kriging_believer_observations, axis=0)
 )
 gibbon_observations = (
-    gibbon_result.try_get_final_dataset().observations - SCALED_BRANIN_MINIMUM
+    gibbon_result.try_get_final_dataset().observations - ScaledBranin.minimum
 )
 gibbon_min_idx = tf.squeeze(tf.argmin(gibbon_observations, axis=0))
 

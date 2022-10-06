@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import copy
 import operator
+import unittest.mock
 from functools import partial
 from typing import Callable
 
@@ -37,12 +38,13 @@ import pytest
 import tensorflow as tf
 from gpflux.models import DeepGP
 from gpflux.models.deep_gp import sample_dgp
+from tensorflow.python.keras.callbacks import Callback
 
 from tests.util.misc import random_seed
 from tests.util.models.gpflux.models import single_layer_dgp_model
 from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.data import Dataset
-from trieste.models.config import create_model
+from trieste.logging import step_number, tensorboard_writer
 from trieste.models.gpflux import DeepGaussianProcess
 from trieste.models.optimizer import KerasOptimizer
 from trieste.types import TensorType
@@ -296,26 +298,6 @@ def test_deep_gaussian_process_subclass_default_optimizer_is_correct(
     assert model_fit_args == fit_args
 
 
-@pytest.mark.skip
-def test_deepgp_config_builds_and_default_optimizer_is_correct(
-    two_layer_model: Callable[[TensorType], DeepGP]
-) -> None:
-    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
-
-    model_config = {"model": two_layer_model(x)}
-    model = create_model(model_config)
-    fit_args = {
-        "verbose": 0,
-        "epochs": 100,
-        "batch_size": 100,
-    }
-
-    assert isinstance(model, DeepGaussianProcess)
-    assert isinstance(model.optimizer, KerasOptimizer)
-    assert isinstance(model.optimizer.optimizer, tf.optimizers.Optimizer)
-    assert model.optimizer.fit_args == fit_args
-
-
 def test_deepgp_deep_copyable() -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model = DeepGaussianProcess(partial(single_layer_dgp_model, x))
@@ -375,3 +357,130 @@ def test_deepgp_deep_copies_optimizer_state() -> None:
         model.optimizer.optimizer.get_weights(), model_copy.optimizer.optimizer.get_weights()
     )
     assert model_copy.optimizer.fit_args["callbacks"][0].model is model_copy.model_keras
+
+
+@pytest.mark.parametrize(
+    "callbacks",
+    [
+        [
+            tf.keras.callbacks.CSVLogger("csv"),
+            tf.keras.callbacks.EarlyStopping(monitor="loss", patience=100),
+            tf.keras.callbacks.History(),
+            tf.keras.callbacks.LambdaCallback(lambda epoch, lr: lr),
+            tf.keras.callbacks.LearningRateScheduler(lambda epoch, lr: lr),
+            tf.keras.callbacks.ProgbarLogger(),
+            tf.keras.callbacks.ReduceLROnPlateau(),
+            tf.keras.callbacks.RemoteMonitor(),
+            tf.keras.callbacks.TensorBoard(),
+            tf.keras.callbacks.TerminateOnNaN(),
+        ],
+        pytest.param(
+            [
+                tf.keras.callbacks.experimental.BackupAndRestore("backup"),
+                tf.keras.callbacks.BaseLogger(),
+                tf.keras.callbacks.ModelCheckpoint("weights"),
+            ],
+            marks=pytest.mark.skip(reason="callbacks currently causing optimize to fail"),
+        ),
+    ],
+)
+def test_deepgp_deep_copies_different_callback_types(callbacks: list[Callback]) -> None:
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    model = DeepGaussianProcess(partial(single_layer_dgp_model, x))
+    model.optimizer.fit_args["callbacks"] = callbacks
+
+    dataset = Dataset(x, fnc_3x_plus_10(x))
+    model.update(dataset)
+    model.optimize(dataset)
+
+    model_copy = copy.deepcopy(model)
+    assert model.optimizer is not model_copy.optimizer
+    assert tuple(type(callback) for callback in model.optimizer.fit_args["callbacks"]) == tuple(
+        type(callback) for callback in model_copy.optimizer.fit_args["callbacks"]
+    )
+
+
+def test_deepgp_deep_copies_optimization_history() -> None:
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    model = DeepGaussianProcess(partial(single_layer_dgp_model, x))
+    dataset = Dataset(x, fnc_3x_plus_10(x))
+    model.update(dataset)
+    model.optimize(dataset)
+
+    assert model.model_keras.history.history
+    expected_history = model.model_keras.history.history
+
+    model_copy = copy.deepcopy(model)
+    assert model_copy.model_keras.history.history
+    history = model_copy.model_keras.history.history
+
+    assert history.keys() == expected_history.keys()
+    for k, v in expected_history.items():
+        assert history[k] == v
+
+
+@unittest.mock.patch("trieste.logging.tf.summary.histogram")
+@unittest.mock.patch("trieste.logging.tf.summary.scalar")
+@pytest.mark.parametrize("use_dataset", [False, True])
+def test_deepgp_log(
+    mocked_summary_scalar: unittest.mock.MagicMock,
+    mocked_summary_histogram: unittest.mock.MagicMock,
+    use_dataset: bool,
+) -> None:
+    x_observed = np.linspace(0, 100, 100).reshape((-1, 1))
+    y_observed = fnc_2sin_x_over_3(x_observed)
+    dataset = Dataset(x_observed, y_observed)
+
+    model = DeepGaussianProcess(
+        single_layer_dgp_model(x_observed),
+        KerasOptimizer(tf.optimizers.Adam(), {"batch_size": 200, "epochs": 3, "verbose": 0}),
+    )
+    model.optimize(dataset)
+
+    mocked_summary_writer = unittest.mock.MagicMock()
+    with tensorboard_writer(mocked_summary_writer):
+        with step_number(42):
+            if use_dataset:
+                model.log(dataset)
+            else:
+                model.log(None)
+
+    assert len(mocked_summary_writer.method_calls) == 1
+    assert mocked_summary_writer.method_calls[0][0] == "as_default"
+    assert mocked_summary_writer.method_calls[0][-1]["step"] == 42
+
+    loss_names = ["loss/diff", "loss/final", "prior_kl/diff", "prior_kl/final"]
+    metrics_names = ["mse/diff", "mse/final"]
+    accuracy_names = [
+        "accuracy/root_mean_square_error",
+        "accuracy/mean_absolute_error",
+        "accuracy/z_residuals_std",
+    ]
+    variance_stats = [
+        "variance/predict_variance_mean",
+        "variance/empirical",
+        "variance/root_mean_variance_error",
+    ]
+    par_names = ["kernel.variance", "kernel.lengthscales", "likelihood"]
+
+    names_scalars = ["epochs/num_epochs"] + loss_names + metrics_names + par_names
+    num_scalars = len(names_scalars)
+    names_histogram = ["loss/epoch", "mse/epoch", "prior_kl/epoch"]
+    num_histogram = len(names_histogram)
+    if use_dataset:
+        names_scalars = names_scalars + accuracy_names + variance_stats
+        num_scalars = num_scalars + len(accuracy_names) + len(variance_stats)
+        names_histogram = (
+            names_histogram
+            + ["accuracy/absolute_errors", "accuracy/z_residuals"]
+            + ["variance/predict_variance", "variance/variance_error"]
+        )
+        num_histogram += 4
+
+    assert mocked_summary_scalar.call_count == num_scalars
+    for i in range(len(mocked_summary_scalar.call_args_list)):
+        assert any([j in mocked_summary_scalar.call_args_list[i][0][0] for j in names_scalars])
+
+    assert mocked_summary_histogram.call_count == num_histogram
+    for i in range(len(mocked_summary_histogram.call_args_list)):
+        assert any([j in mocked_summary_histogram.call_args_list[i][0][0] for j in names_histogram])

@@ -17,7 +17,7 @@ random.seed(3)
 
 # %%
 import trieste
-from trieste.objectives import branin
+from trieste.objectives import Branin
 
 
 class FaultyBranin:
@@ -34,7 +34,7 @@ class FaultyBranin:
         if self._is_broken:
             raise Exception("Observer is broken")
 
-        return trieste.data.Dataset(x, branin(x))
+        return trieste.data.Dataset(x, Branin.objective(x))
 
 
 observer = FaultyBranin()
@@ -120,7 +120,11 @@ if result.is_ok:
     data = result.unwrap().dataset
     arg_min_idx = tf.squeeze(tf.argmin(data.observations, axis=0))
     _, ax = plot_function_2d(
-        branin, search_space.lower, search_space.upper, 30, contour=True
+        Branin.objective,
+        search_space.lower,
+        search_space.upper,
+        30,
+        contour=True,
     )
     plot_bo_points(data.query_points.numpy(), ax[0, 0], 5, arg_min_idx)
 

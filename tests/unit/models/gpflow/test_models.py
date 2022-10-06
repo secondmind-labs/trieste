@@ -56,7 +56,6 @@ from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.data import Dataset
 from trieste.logging import step_number, tensorboard_writer
 from trieste.models import TrainableProbabilisticModel
-from trieste.models.config import create_model
 from trieste.models.gpflow import (
     GaussianProcessRegression,
     SparseGaussianProcessRegression,
@@ -657,9 +656,9 @@ def test_gaussian_process_regression_trajectory_sampler_has_correct_samples(
     x_predict = tf.constant([[1.0], [2.0], [3.0], [1.5], [2.5], [3.5]], gpflow.default_float())
     x_predict_parallel = tf.expand_dims(x_predict, -2)  # [N, 1, D]
     x_predict_parallel = tf.tile(x_predict_parallel, [1, num_samples, 1])  # [N, B, D]
-    samples = trajectory(x_predict_parallel)  # [N, B]
-    sample_mean = tf.reduce_mean(samples, axis=1, keepdims=True)
-    sample_variance = tf.math.reduce_variance(samples, axis=1, keepdims=True)
+    samples = trajectory(x_predict_parallel)  # [N, B, 1]
+    sample_mean = tf.reduce_mean(samples, axis=1)  # [N, 1]
+    sample_variance = tf.math.reduce_variance(samples, axis=1)  # [N, 1]
 
     true_mean, true_variance = model.predict(x_predict)
 
@@ -670,17 +669,6 @@ def test_gaussian_process_regression_trajectory_sampler_has_correct_samples(
     # test predictions correct at data
     npt.assert_allclose(sample_mean[:3] + 1.0, true_mean[:3] + 1.0, rtol=0.1)
     npt.assert_allclose(sample_variance[:3], true_variance[:3], rtol=0.5)
-
-
-def test_gpr_config_builds_and_default_optimizer_is_correct() -> None:
-    data = mock_data()
-
-    model_config = {"model": gpr_model(*data)}
-    model = create_model(model_config)
-
-    assert isinstance(model, GaussianProcessRegression)
-    assert isinstance(model.optimizer, Optimizer)
-    assert isinstance(model.optimizer.optimizer, gpflow.optimizers.Scipy)
 
 
 def test_gaussian_process_regression_conditional_predict_equations() -> None:
@@ -830,17 +818,6 @@ def test_sparse_gaussian_process_regression_model_attribute() -> None:
     assert model.inducing_point_selector is None
 
 
-def test_sgpr_config_builds_and_default_optimizer_is_correct() -> None:
-    data = mock_data()
-
-    model_config = {"model": sgpr_model(*data)}
-    model = create_model(model_config)
-
-    assert isinstance(model, SparseGaussianProcessRegression)
-    assert isinstance(model.optimizer, Optimizer)
-    assert isinstance(model.optimizer.optimizer, gpflow.optimizers.Scipy)
-
-
 def test_sparse_gaussian_process_regression_correctly_returns_internal_data() -> None:
     data = mock_data()
     model = SparseGaussianProcessRegression(sgpr_model(*data))
@@ -923,9 +900,9 @@ def test_sparse_gaussian_process_regression_trajectory_sampler_has_correct_sampl
     x_predict = tf.constant([[1.0], [2.0], [3.0], [1.5], [2.5], [3.5]], gpflow.default_float())
     x_predict_parallel = tf.expand_dims(x_predict, -2)  # [N, 1, D]
     x_predict_parallel = tf.tile(x_predict_parallel, [1, num_samples, 1])  # [N, B, D]
-    samples = trajectory(x_predict_parallel)  # [N, B]
-    sample_mean = tf.reduce_mean(samples, axis=1, keepdims=True)
-    sample_variance = tf.math.reduce_variance(samples, axis=1, keepdims=True)
+    samples = trajectory(x_predict_parallel)  # [N, B, 1]
+    sample_mean = tf.reduce_mean(samples, axis=1)  # [N, 1]
+    sample_variance = tf.math.reduce_variance(samples, axis=1)  # [N, 1]
 
     true_mean, true_variance = model.predict(x_predict)
 
@@ -1185,9 +1162,9 @@ def test_variational_gaussian_process_trajectory_sampler_has_correct_samples(
     x_predict = tf.constant([[1.0], [2.0], [3.0], [1.5], [2.5], [3.5]], gpflow.default_float())
     x_predict_parallel = tf.expand_dims(x_predict, -2)  # [N, 1, D]
     x_predict_parallel = tf.tile(x_predict_parallel, [1, num_samples, 1])  # [N, B, D]
-    samples = trajectory(x_predict_parallel)  # [N, B]
-    sample_mean = tf.reduce_mean(samples, axis=1, keepdims=True)
-    sample_variance = tf.math.reduce_variance(samples, axis=1, keepdims=True)
+    samples = trajectory(x_predict_parallel)  # [N, B, 1]
+    sample_mean = tf.reduce_mean(samples, axis=1)  # [N, 1]
+    sample_variance = tf.math.reduce_variance(samples, axis=1)  # [N, 1]
 
     true_mean, true_variance = model.predict(x_predict)
 
@@ -1315,22 +1292,6 @@ def test_variational_gaussian_process_default_optimizer_is_correct(use_natgrads:
         vgp_model(x_observed[:10], y_observed[:10]), use_natgrads=use_natgrads
     )
 
-    if use_natgrads:
-        assert isinstance(model.optimizer, BatchOptimizer)
-        assert isinstance(model.optimizer.optimizer, tf.optimizers.Optimizer)
-    else:
-        assert isinstance(model.optimizer, Optimizer)
-        assert isinstance(model.optimizer.optimizer, gpflow.optimizers.Scipy)
-
-
-@pytest.mark.parametrize("use_natgrads", [True, False])
-def test_vgp_config_builds_and_default_optimizer_is_correct(use_natgrads: bool) -> None:
-    data = mock_data()
-
-    model_config = {"model": vgp_model(*data), "model_args": {"use_natgrads": use_natgrads}}
-    model = create_model(model_config)
-
-    assert isinstance(model, VariationalGaussianProcess)
     if use_natgrads:
         assert isinstance(model.optimizer, BatchOptimizer)
         assert isinstance(model.optimizer.optimizer, tf.optimizers.Optimizer)
@@ -1585,9 +1546,9 @@ def test_sparse_variational_trajectory_sampler_has_correct_samples(
     x_predict = tf.constant([[1.0], [2.0], [3.0], [1.5], [2.5], [3.5]], gpflow.default_float())
     x_predict_parallel = tf.expand_dims(x_predict, -2)  # [N, 1, D]
     x_predict_parallel = tf.tile(x_predict_parallel, [1, num_samples, 1])  # [N, B, D]
-    samples = trajectory(x_predict_parallel)  # [N, B]
-    sample_mean = tf.reduce_mean(samples, axis=1, keepdims=True)
-    sample_variance = tf.math.reduce_variance(samples, axis=1, keepdims=True)
+    samples = trajectory(x_predict_parallel)  # [N, B, 1]
+    sample_mean = tf.reduce_mean(samples, axis=1)  # [N, 1]
+    sample_variance = tf.math.reduce_variance(samples, axis=1)  # [N, 1]
 
     true_mean, true_variance = model.predict(x_predict)
 
@@ -1606,17 +1567,6 @@ def test_sparse_variational_default_optimizer_is_correct() -> None:
 
     model = SparseVariational(svgp_model(x_observed, y_observed))
 
-    assert isinstance(model.optimizer, BatchOptimizer)
-    assert isinstance(model.optimizer.optimizer, tf.optimizers.Optimizer)
-
-
-def test_svgp_config_builds_and_default_optimizer_is_correct() -> None:
-    data = mock_data()
-
-    model_config = {"model": svgp_model(*data)}
-    model = create_model(model_config)
-
-    assert isinstance(model, SparseVariational)
     assert isinstance(model.optimizer, BatchOptimizer)
     assert isinstance(model.optimizer.optimizer, tf.optimizers.Optimizer)
 

@@ -125,7 +125,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder[ProbabilisticModelType
             :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
         :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
         """
-        tf.debugging.Assert(dataset is not None, [])
+        tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
@@ -147,10 +147,10 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder[ProbabilisticModelType
         :param model: The model.
         :param dataset: The data from the observer.
         """
-        tf.debugging.Assert(dataset is not None, [])
+        tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
-        tf.debugging.Assert(isinstance(function, min_value_entropy_search), [])
+        tf.debugging.Assert(isinstance(function, min_value_entropy_search), [tf.constant([])])
 
         query_points = self._search_space.sample(num_samples=self._grid_size)
         tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
@@ -335,7 +335,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[GIBBONModelType]):
                 f"covariance_between_points and get_observation_noise; received {model.__repr__()}"
             )
 
-        tf.debugging.Assert(dataset is not None, [])
+        tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
@@ -364,10 +364,10 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[GIBBONModelType]):
             for the current step. Defaults to ``True``.
         :return: The updated acquisition function.
         """
-        tf.debugging.Assert(dataset is not None, [])
+        tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
-        tf.debugging.Assert(self._quality_term is not None, [])
+        tf.debugging.Assert(self._quality_term is not None, [tf.constant([])])
 
         if new_optimization_step:
             self._update_quality_term(dataset, model)
@@ -398,15 +398,10 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[GIBBONModelType]):
             self._diversity_term = gibbon_repulsion_term(
                 model, pending_points, rescaled_repulsion=self._rescaled_repulsion
             )
-
-            @tf.function
-            def gibbon_acquisition(x: TensorType) -> TensorType:
-                return cast(PenalizationFunction, self._diversity_term)(x) + cast(
-                    AcquisitionFunction, self._quality_term
-                )(x)
-
-            self._gibbon_acquisition = gibbon_acquisition
-            return gibbon_acquisition
+            self._gibbon_acquisition = GibbonAcquisition(
+                cast(AcquisitionFunction, self._quality_term), self._diversity_term
+            )
+            return self._gibbon_acquisition
 
     def _update_quality_term(self, dataset: Dataset, model: GIBBONModelType) -> AcquisitionFunction:
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
@@ -423,6 +418,23 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[GIBBONModelType]):
         else:  # otherwise build quality term
             self._quality_term = gibbon_quality_term(model, self._min_value_samples)
         return cast(AcquisitionFunction, self._quality_term)
+
+
+class GibbonAcquisition:
+    """Class representing a GIBBON acquisition function."""
+
+    # (note that this needs to be defined as a top level class make it pickleable)
+    def __init__(self, quality_term: AcquisitionFunction, diversity_term: PenalizationFunction):
+        """
+        :param quality_term: Quality term.
+        :param diversity_term: Diversity term.
+        """
+        self._quality_term = quality_term
+        self._diversity_term = diversity_term
+
+    @tf.function
+    def __call__(self, x: TensorType) -> TensorType:
+        return self._diversity_term(x) + self._quality_term(x)
 
 
 class gibbon_quality_term(AcquisitionFunctionClass):

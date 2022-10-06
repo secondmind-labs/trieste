@@ -315,7 +315,9 @@ class FeatureDecompositionTrajectorySampler(
         :param trajectory: The trajectory function to be resampled.
         :return: The new resampled trajectory function.
         """
-        tf.debugging.Assert(isinstance(trajectory, feature_decomposition_trajectory), [])
+        tf.debugging.Assert(
+            isinstance(trajectory, feature_decomposition_trajectory), [tf.constant([])]
+        )
 
         self._feature_functions.resample()  # resample Fourier feature decomposition
         weight_sampler = self._prepare_weight_sampler()  # recalculate weight distribution
@@ -332,7 +334,9 @@ class FeatureDecompositionTrajectorySampler(
         :param trajectory: The trajectory function to be resampled.
         :return: The new resampled trajectory function.
         """
-        tf.debugging.Assert(isinstance(trajectory, feature_decomposition_trajectory), [])
+        tf.debugging.Assert(
+            isinstance(trajectory, feature_decomposition_trajectory), [tf.constant([])]
+        )
         cast(feature_decomposition_trajectory, trajectory).resample()
         return trajectory  # return trajectory with resampled weights
 
@@ -788,7 +792,7 @@ class feature_decomposition_trajectory(TrajectoryFunctionClass):
         )  # dummy init to be updated before trajectory evaluation
 
     @tf.function
-    def __call__(self, x: TensorType) -> TensorType:  # [N, B, d] -> [N, B]
+    def __call__(self, x: TensorType) -> TensorType:  # [N, B, d] -> [N, B, 1]
         """Call trajectory function."""
 
         if not self._initialized:  # work out desired batch size from input
@@ -809,8 +813,10 @@ class feature_decomposition_trajectory(TrajectoryFunctionClass):
         flat_x, unflatten = flatten_leading_dims(x)  # [N*B, d]
         flattened_feature_evaluations = self._feature_functions(flat_x)  # [N*B, m]
         feature_evaluations = unflatten(flattened_feature_evaluations)  # [N, B, m]
-        mean = tf.squeeze(self._mean_function(x), -1)  # account for the model's mean function
-        return tf.reduce_sum(feature_evaluations * self._weights_sample, -1) + mean  # [N, B]
+        mean = self._mean_function(x)  # account for the model's mean function
+        return (
+            tf.reduce_sum(feature_evaluations * self._weights_sample, -1, keepdims=True) + mean
+        )  # [N, B, 1]
 
     def resample(self) -> None:
         """

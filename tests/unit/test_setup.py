@@ -22,7 +22,7 @@ import pytest
 import yaml
 
 BASE_PATH = Path(__file__).parents[2]
-VERSION = BASE_PATH / "VERSION"
+VERSION = BASE_PATH / "trieste" / "VERSION"
 VERSIONS = BASE_PATH / "versions.json"
 CITATION = BASE_PATH / "CITATION.cff"
 REDIRECT = BASE_PATH / "redirect.html"

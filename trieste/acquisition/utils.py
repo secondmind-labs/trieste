@@ -101,3 +101,17 @@ def split_acquisition_function_calls(
         return optimizer(search_space, (taf, n) if isinstance(f, tuple) else taf)
 
     return split_optimizer
+
+
+def select_nth_output(x: TensorType, output_dim: int = 0) -> TensorType:
+    """
+    A utility function for trajectory sampler-related acquisition functions which selects the `n`th
+    output as the trajectory to be used, with `n` specified by ``output_dim``. Defaults to the first
+    output.
+
+    :param x: Input with shape [..., B, L], where L is the number of outputs of the model.
+    :param output_dim: Dimension of the output to be selected. Defaults to the first output.
+    :return: TensorType with shape [..., B], where the output_dim dimension has been selected to
+        reduce the input.
+    """
+    return x[..., output_dim]
