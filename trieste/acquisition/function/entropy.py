@@ -30,7 +30,6 @@ from ...space import SearchSpace
 from ...types import TensorType
 from ..interface import (
     AcquisitionFunction,
-    AcquisitionFunctionClass,
     PenalizationFunction,
     ProbabilisticModelType,
     SingleModelAcquisitionBuilder,
@@ -160,7 +159,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder[ProbabilisticModelType
         return function
 
 
-class min_value_entropy_search(AcquisitionFunctionClass):
+class min_value_entropy_search(AcquisitionFunction):
     def __init__(self, model: ProbabilisticModel, samples: TensorType):
         r"""
         Return the max-value entropy search acquisition function (adapted from :cite:`wang2017max`),
@@ -437,7 +436,7 @@ class GibbonAcquisition:
         return self._diversity_term(x) + self._quality_term(x)
 
 
-class gibbon_quality_term(AcquisitionFunctionClass):
+class gibbon_quality_term(AcquisitionFunction):
     def __init__(self, model: SupportsCovarianceObservationNoise, samples: TensorType):
         """
         GIBBON's quality term measures the amount of information that each individual

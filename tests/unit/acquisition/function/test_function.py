@@ -87,11 +87,11 @@ def test_expected_improvement_builder_updates_expected_improvement_using_best_fr
     )
     model = QuadraticMeanAndRBFKernel()
     acq_fn = ExpectedImprovement().prepare_acquisition_function(model, dataset=dataset)
-    assert acq_fn.__call__._get_tracing_count() == 0  # type: ignore
+    assert acq_fn.__call__._get_tracing_count() == 0
     xs = tf.linspace([[-10.0]], [[10.0]], 100)
     expected = expected_improvement(model, tf.constant([1.0]))(xs)
     npt.assert_allclose(acq_fn(xs), expected)
-    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
+    assert acq_fn.__call__._get_tracing_count() == 1
 
     new_dataset = Dataset(
         tf.concat([dataset.query_points, tf.constant([[0.0], [1.0], [2.0]])], 0),
@@ -103,7 +103,7 @@ def test_expected_improvement_builder_updates_expected_improvement_using_best_fr
     assert updated_acq_fn == acq_fn
     expected = expected_improvement(model, tf.constant([0.0]))(xs)
     npt.assert_allclose(acq_fn(xs), expected)
-    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
+    assert acq_fn.__call__._get_tracing_count() == 1
 
 
 def test_expected_improvement_builder_raises_for_empty_data() -> None:
@@ -382,7 +382,7 @@ def test_mc_expected_improvement_close_to_expected_improvement(
 
     best = tf.reduce_min(Branin.objective(dataset.query_points))
     eif = expected_improvement(model, best)
-    ei = eif(xs[..., None, :])  # type: ignore
+    ei = eif(xs[..., None, :])
 
     npt.assert_allclose(ei, ei_approx, rtol=rtol, atol=atol)
 
@@ -397,17 +397,17 @@ def test_mc_expected_improvement_updates_without_retracing() -> None:
     xs = tf.random.uniform([5, 1, 2], dtype=tf.float64)
 
     mcei = builder.prepare_acquisition_function(model, dataset=data)
-    assert mcei.__call__._get_tracing_count() == 0  # type: ignore
+    assert mcei.__call__._get_tracing_count() == 0
     npt.assert_allclose(mcei(xs), ei(xs), rtol=0.06)
-    assert mcei.__call__._get_tracing_count() == 1  # type: ignore
+    assert mcei.__call__._get_tracing_count() == 1
 
     data = Dataset(known_query_points, quadratic(known_query_points))
     up_mcei = builder.update_acquisition_function(mcei, model, dataset=data)
     ei = ExpectedImprovement().prepare_acquisition_function(model, dataset=data)
     assert up_mcei == mcei
-    assert mcei.__call__._get_tracing_count() == 1  # type: ignore
+    assert mcei.__call__._get_tracing_count() == 1
     npt.assert_allclose(mcei(xs), ei(xs), rtol=0.06)
-    assert mcei.__call__._get_tracing_count() == 1  # type: ignore
+    assert mcei.__call__._get_tracing_count() == 1
 
 
 @pytest.mark.parametrize("sample_size", [-2, 0])
@@ -552,7 +552,7 @@ def test_mc_augmented_expected_improvement_close_to_augmented_expected_improveme
 
     best = tf.reduce_min(Branin.objective(dataset.query_points))
     aeif = augmented_expected_improvement(model, best)
-    aei = aeif(xs[..., None, :])  # type: ignore
+    aei = aeif(xs[..., None, :])
 
     npt.assert_allclose(aei, aei_approx, rtol=rtol, atol=atol)
 
@@ -568,17 +568,17 @@ def test_mc_augmented_expected_improvement_updates_without_retracing() -> None:
     xs = tf.random.uniform([5, 1, 2], dtype=tf.float64)
 
     mcaei = builder.prepare_acquisition_function(model, dataset=data)
-    assert mcaei.__call__._get_tracing_count() == 0  # type: ignore
+    assert mcaei.__call__._get_tracing_count() == 0
     npt.assert_allclose(mcaei(xs), aei(xs), rtol=0.06)
-    assert mcaei.__call__._get_tracing_count() == 1  # type: ignore
+    assert mcaei.__call__._get_tracing_count() == 1
 
     data = Dataset(known_query_points, quadratic(known_query_points))
     up_mcaei = builder.update_acquisition_function(mcaei, model, dataset=data)
     aei = AugmentedExpectedImprovement().prepare_acquisition_function(model, dataset=data)
     assert up_mcaei == mcaei
-    assert mcaei.__call__._get_tracing_count() == 1  # type: ignore
+    assert mcaei.__call__._get_tracing_count() == 1
     npt.assert_allclose(mcaei(xs), aei(xs), rtol=0.06)
-    assert mcaei.__call__._get_tracing_count() == 1  # type: ignore
+    assert mcaei.__call__._get_tracing_count() == 1
 
 
 def test_negative_lower_confidence_bound_builder_builds_negative_lower_confidence_bound() -> None:
@@ -979,17 +979,17 @@ def test_batch_monte_carlo_expected_improvement_updates_without_retracing() -> N
     xs = tf.random.uniform([3, 5, 1, 2], dtype=tf.float64)
 
     batch_ei = builder.prepare_acquisition_function(model, dataset=data)
-    assert batch_ei.__call__._get_tracing_count() == 0  # type: ignore
+    assert batch_ei.__call__._get_tracing_count() == 0
     npt.assert_allclose(batch_ei(xs), ei(xs), rtol=0.06)
-    assert batch_ei.__call__._get_tracing_count() == 1  # type: ignore
+    assert batch_ei.__call__._get_tracing_count() == 1
 
     data = Dataset(known_query_points, quadratic(known_query_points))
     up_batch_ei = builder.update_acquisition_function(batch_ei, model, dataset=data)
     ei = ExpectedImprovement().update_acquisition_function(ei, model, dataset=data)
     assert up_batch_ei == batch_ei
-    assert batch_ei.__call__._get_tracing_count() == 1  # type: ignore
+    assert batch_ei.__call__._get_tracing_count() == 1
     npt.assert_allclose(batch_ei(xs), ei(xs), rtol=0.06)
-    assert batch_ei.__call__._get_tracing_count() == 1  # type: ignore
+    assert batch_ei.__call__._get_tracing_count() == 1
 
 
 def test_multiple_optimism_builder_builds_negative_lower_confidence_bound() -> None:
@@ -1008,16 +1008,16 @@ def test_multiple_optimism_builder_updates_without_retracing() -> None:
     search_space = Box([0, 0], [1, 1])
     builder = MultipleOptimismNegativeLowerConfidenceBound(search_space)
     acq_fn = builder.prepare_acquisition_function(model)
-    assert acq_fn.__call__._get_tracing_count() == 0  # type: ignore
+    assert acq_fn.__call__._get_tracing_count() == 0
     query_at = tf.reshape(tf.linspace([[-10]], [[10]], 100), [10, 5, 2])
     expected = multiple_optimism_lower_confidence_bound(model, search_space.dimension)(query_at)
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
-    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
+    assert acq_fn.__call__._get_tracing_count() == 1
 
     up_acq_fn = builder.update_acquisition_function(acq_fn, model)
     assert up_acq_fn == acq_fn
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
-    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
+    assert acq_fn.__call__._get_tracing_count() == 1
 
 
 def test_multiple_optimism_builder_raises_when_update_with_wrong_function() -> None:

@@ -30,7 +30,7 @@ from ...models import ProbabilisticModel
 from ...models.interfaces import FastUpdateModel, SupportsPredictJoint
 from ...types import TensorType
 from ...utils import DEFAULTS
-from ..interface import AcquisitionFunction, AcquisitionFunctionClass, SingleModelAcquisitionBuilder
+from ..interface import AcquisitionFunction, SingleModelAcquisitionBuilder
 
 
 class PredictiveVariance(SingleModelAcquisitionBuilder[SupportsPredictJoint]):
@@ -305,7 +305,7 @@ class IntegratedVarianceReduction(SingleModelAcquisitionBuilder[FastUpdateModel]
         return function  # no need to update anything
 
 
-class integrated_variance_reduction(AcquisitionFunctionClass):
+class integrated_variance_reduction(AcquisitionFunction):
     r"""
     The reduction of the (weighted) average of the predicted variance over the integration points
     (a.k.a. Integrated Means Square Error or IMSE criterion).
@@ -465,7 +465,7 @@ class BayesianActiveLearningByDisagreement(SingleModelAcquisitionBuilder[Probabi
         return function  # no need to update anything
 
 
-class bayesian_active_learning_by_disagreement(AcquisitionFunctionClass):
+class bayesian_active_learning_by_disagreement(AcquisitionFunction):
     def __init__(self, model: ProbabilisticModel, jitter: float):
 
         r"""

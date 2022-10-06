@@ -82,7 +82,6 @@ from .function import (
 from .interface import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
-    AcquisitionFunctionClass,
     GreedyAcquisitionFunctionBuilder,
     PenalizationFunction,
     SingleModelAcquisitionBuilder,

@@ -32,7 +32,6 @@ from ...utils import DEFAULTS
 from ..interface import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
-    AcquisitionFunctionClass,
     GreedyAcquisitionFunctionBuilder,
     PenalizationFunction,
     ProbabilisticModelType,
@@ -142,7 +141,7 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder[Probabilistic
         return function
 
 
-class expected_hv_improvement(AcquisitionFunctionClass):
+class expected_hv_improvement(AcquisitionFunction):
     def __init__(self, model: ProbabilisticModel, partition_bounds: tuple[TensorType, TensorType]):
         r"""
         expected Hyper-volume (HV) calculating using Eq. 44 of :cite:`yang2019efficient` paper.

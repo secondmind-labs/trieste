@@ -18,11 +18,7 @@ import pytest
 import tensorflow as tf
 
 from tests.util.misc import random_seed
-from trieste.acquisition import (
-    AcquisitionFunctionClass,
-    BatchMonteCarloExpectedImprovement,
-    LocalPenalization,
-)
+from trieste.acquisition import BatchMonteCarloExpectedImprovement, LocalPenalization
 from trieste.acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.models import TrainableProbabilisticModel
@@ -98,5 +94,5 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
     # They should be retraced once for the optimzier's starting grid and once for L-BFGS.
     if isinstance(acquisition_rule, EfficientGlobalOptimization):
         acquisition_function = acquisition_rule._acquisition_function
-        if isinstance(acquisition_function, AcquisitionFunctionClass):
+        if hasattr(acquisition_function, "__call__"):
             assert acquisition_function.__call__._get_tracing_count() <= 3  # type: ignore

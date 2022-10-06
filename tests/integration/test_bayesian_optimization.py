@@ -28,7 +28,6 @@ from _pytest.mark import ParameterSet
 from tests.util.misc import random_seed
 from trieste.acquisition import (
     GIBBON,
-    AcquisitionFunctionClass,
     AugmentedExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
     Fantasizer,
@@ -634,7 +633,7 @@ def _test_optimizer_finds_minimum(
 
                 # check that acquisition functions defined as classes aren't retraced unnecessarily
                 # they should be retraced for the optimzier's starting grid, L-BFGS, and logging
-                if isinstance(acq_function, (AcquisitionFunctionClass, TrajectoryFunctionClass)):
+                if hasattr(acq_function, "__call__"):
                     assert acq_function.__call__._get_tracing_count() == 3  # type: ignore
 
                 # update trajectory function if necessary, so we can test it
