@@ -383,18 +383,18 @@ def test_integrated_variance_reduction_builder_updates_without_retracing() -> No
 
     builder = IntegratedVarianceReduction(integration_points, threshold)
     acq_fn = builder.prepare_acquisition_function(model)
-    assert acq_fn.__call__._get_tracing_count() == 0  # type: ignore
+    assert acq_fn.__call__._get_tracing_count() == 0
 
     query_at = tf.linspace([[-10]], [[10]], 100)
     expected = integrated_variance_reduction(model, integration_points, threshold)(query_at)
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
-    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
+    assert acq_fn.__call__._get_tracing_count() == 1
 
     up_acq_fn = builder.update_acquisition_function(acq_fn, model)
     assert up_acq_fn == acq_fn
 
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
-    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
+    assert acq_fn.__call__._get_tracing_count() == 1
 
 
 @pytest.mark.parametrize(
@@ -504,16 +504,16 @@ def test_bayesian_active_learning_by_disagreement_builder_updates_without_retrac
     builder = BayesianActiveLearningByDisagreement()
     acq_fn = builder.prepare_acquisition_function(model)
 
-    assert acq_fn.__call__._get_tracing_count() == 0  # type: ignore
+    assert acq_fn.__call__._get_tracing_count() == 0
 
     query_at = tf.linspace([[-10]], [[10]], 100)
     expected = bayesian_active_learning_by_disagreement(model, DEFAULTS.JITTER)(query_at)
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
 
-    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
+    assert acq_fn.__call__._get_tracing_count() == 1
 
     up_acq_fn = builder.update_acquisition_function(acq_fn, model)
     assert up_acq_fn == acq_fn
 
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
-    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
+    assert acq_fn.__call__._get_tracing_count() == 1

@@ -372,13 +372,13 @@ def test_mc_expected_improvement_close_to_expected_improvement(
         init_data = Dataset(
             tf.constant([[0.1, 0.1]], dtype=tf.float64), tf.constant([[100.0]], dtype=tf.float64)
         )
-        eif = builder.prepare_acquisition_function(model, init_data)
-        eif = builder.update_acquisition_function(eif, model, dataset)
+        mceif = builder.prepare_acquisition_function(model, init_data)
+        mceif = builder.update_acquisition_function(mceif, model, dataset)
     else:
-        eif = MonteCarloExpectedImprovement(num_samples_per_point).prepare_acquisition_function(
+        mceif = MonteCarloExpectedImprovement(num_samples_per_point).prepare_acquisition_function(
             model, dataset
         )
-    ei_approx = eif(xs[..., None, :])
+    ei_approx = mceif(xs[..., None, :])
 
     best = tf.reduce_min(Branin.objective(dataset.query_points))
     eif = expected_improvement(model, best)
@@ -541,14 +541,14 @@ def test_mc_augmented_expected_improvement_close_to_augmented_expected_improveme
             tf.constant([[0.1, 0.1]], dtype=tf.float64), tf.constant([[100.0]], dtype=tf.float64)
         )
         builder = MonteCarloAugmentedExpectedImprovement(num_samples_per_point)
-        aeif = builder.prepare_acquisition_function(model, init_data)
+        mcaeif = builder.prepare_acquisition_function(model, init_data)
         model._noise_variance = tf.constant(noise_variance, tf.float64)
-        aeif = builder.update_acquisition_function(aeif, model, dataset)
+        mcaeif = builder.update_acquisition_function(mcaeif, model, dataset)
     else:
-        aeif = MonteCarloAugmentedExpectedImprovement(
+        mcaeif = MonteCarloAugmentedExpectedImprovement(
             num_samples_per_point
         ).prepare_acquisition_function(model, dataset)
-    aei_approx = aeif(xs[..., None, :])
+    aei_approx = mcaeif(xs[..., None, :])
 
     best = tf.reduce_min(Branin.objective(dataset.query_points))
     aeif = augmented_expected_improvement(model, best)
@@ -728,7 +728,7 @@ def test_expected_constrained_improvement_raises_for_invalid_batch_size(at: Tens
 
 
 def test_expected_constrained_improvement_can_reproduce_expected_improvement() -> None:
-    class _Certainty(AcquisitionFunctionBuilder[ProbabilisticModel]):
+    class _Certainty(AcquisitionFunctionBuilder[ProbabilisticModel, AcquisitionFunction]):
         def prepare_acquisition_function(
             self,
             models: Mapping[str, ProbabilisticModel],
@@ -759,7 +759,7 @@ def test_expected_constrained_improvement_can_reproduce_expected_improvement() -
 
 
 def test_expected_constrained_improvement_is_relative_to_feasible_point() -> None:
-    class _Constraint(AcquisitionFunctionBuilder[ProbabilisticModel]):
+    class _Constraint(AcquisitionFunctionBuilder[ProbabilisticModel, AcquisitionFunction]):
         def prepare_acquisition_function(
             self,
             models: Mapping[str, ProbabilisticModel],
@@ -782,7 +782,7 @@ def test_expected_constrained_improvement_is_relative_to_feasible_point() -> Non
 
 
 def test_expected_constrained_improvement_is_less_for_constrained_points() -> None:
-    class _Constraint(AcquisitionFunctionBuilder[ProbabilisticModel]):
+    class _Constraint(AcquisitionFunctionBuilder[ProbabilisticModel, AcquisitionFunction]):
         def prepare_acquisition_function(
             self,
             models: Mapping[str, ProbabilisticModel],
@@ -806,7 +806,7 @@ def test_expected_constrained_improvement_is_less_for_constrained_points() -> No
 
 
 def test_expected_constrained_improvement_raises_for_empty_data() -> None:
-    class _Constraint(AcquisitionFunctionBuilder[ProbabilisticModel]):
+    class _Constraint(AcquisitionFunctionBuilder[ProbabilisticModel, AcquisitionFunction]):
         def prepare_acquisition_function(
             self,
             models: Mapping[str, ProbabilisticModel],
@@ -825,7 +825,7 @@ def test_expected_constrained_improvement_raises_for_empty_data() -> None:
 
 
 def test_expected_constrained_improvement_is_constraint_when_no_feasible_points() -> None:
-    class _Constraint(AcquisitionFunctionBuilder[ProbabilisticModel]):
+    class _Constraint(AcquisitionFunctionBuilder[ProbabilisticModel, AcquisitionFunction]):
         def prepare_acquisition_function(
             self,
             models: Mapping[str, ProbabilisticModel],
@@ -851,10 +851,10 @@ def test_expected_constrained_improvement_is_constraint_when_no_feasible_points(
 
 
 def test_expected_constrained_improvement_min_feasibility_probability_bound_is_inclusive() -> None:
-    def pof(x_: TensorType) -> TensorType:
-        return tfp.bijectors.Sigmoid().forward(tf.squeeze(x_, -2))
+    def pof(x: TensorType) -> TensorType:
+        return tfp.bijectors.Sigmoid().forward(tf.squeeze(x, -2))
 
-    class _Constraint(AcquisitionFunctionBuilder[ProbabilisticModel]):
+    class _Constraint(AcquisitionFunctionBuilder[ProbabilisticModel, AcquisitionFunction]):
         def prepare_acquisition_function(
             self,
             models: Mapping[str, ProbabilisticModel],
@@ -1026,7 +1026,8 @@ def test_multiple_optimism_builder_raises_when_update_with_wrong_function() -> N
     builder = MultipleOptimismNegativeLowerConfidenceBound(search_space)
     builder.prepare_acquisition_function(model)
     with pytest.raises(tf.errors.InvalidArgumentError):
-        builder.update_acquisition_function(lower_confidence_bound(model, 0.1), model)
+        function = lower_confidence_bound(model, 0.1)
+        builder.update_acquisition_function(function, model)  # type: ignore
 
 
 @pytest.mark.parametrize("d", [0, -5])
@@ -1058,7 +1059,7 @@ def test_make_positive(in_place_update: bool) -> None:
         base.update_acquisition_function.side_effect = lambda f, *args: f
     else:
         base.update_acquisition_function.side_effect = lambda *args: lambda x: 3.0
-    builder: MakePositive[ProbabilisticModel] = MakePositive(base)
+    builder: MakePositive[ProbabilisticModel, AcquisitionFunction] = MakePositive(base)
 
     model = QuadraticMeanAndRBFKernel()
     acq_fn = builder.prepare_acquisition_function(model)

@@ -47,7 +47,9 @@ from .entropy import MinValueEntropySearch
 from .function import ExpectedImprovement, MakePositive, expected_improvement
 
 
-class LocalPenalization(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]):
+class LocalPenalization(
+    SingleModelGreedyAcquisitionBuilder[ProbabilisticModel, AcquisitionFunction]
+):
     r"""
     Builder of the acquisition function maker for greedily collecting batches by local
     penalization.  The resulting :const:`AcquisitionFunctionMaker` takes in a set of pending
@@ -79,7 +81,7 @@ class LocalPenalization(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel])
         ] = None,
         base_acquisition_function_builder: ExpectedImprovement
         | MinValueEntropySearch[ProbabilisticModel]
-        | MakePositive[ProbabilisticModel]
+        | MakePositive[ProbabilisticModel, AcquisitionFunction]
         | None = None,
     ):
         """
@@ -101,12 +103,10 @@ class LocalPenalization(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel])
 
         self._lipschitz_penalizer = soft_local_penalizer if penalizer is None else penalizer
 
-        if base_acquisition_function_builder is None:
-            self._base_builder: SingleModelAcquisitionBuilder[
-                ProbabilisticModel
-            ] = ExpectedImprovement()
-        else:
+        if base_acquisition_function_builder is not None:
             self._base_builder = base_acquisition_function_builder
+        else:
+            self._base_builder = ExpectedImprovement()
 
         self._lipschitz_constant = None
         self._eta = None
@@ -223,7 +223,7 @@ class LocalPenalization(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel])
 
         if self._base_acquisition_function is not None:
             self._base_acquisition_function = self._base_builder.update_acquisition_function(
-                self._base_acquisition_function,
+                self._base_acquisition_function,  # type: ignore
                 model,
                 dataset=dataset,
             )
