@@ -25,7 +25,7 @@ from ..types import TensorType
 from .interface import AcquisitionFunction, AcquisitionFunctionBuilder
 
 
-class Reducer(AcquisitionFunctionBuilder[ProbabilisticModel]):
+class Reducer(AcquisitionFunctionBuilder[ProbabilisticModel, AcquisitionFunction]):
     r"""
     A :class:`Reducer` builds an :const:`~trieste.acquisition.AcquisitionFunction` whose output is
     calculated from the outputs of a number of other
@@ -33,7 +33,9 @@ class Reducer(AcquisitionFunctionBuilder[ProbabilisticModel]):
     by the method :meth:`_reduce`.
     """
 
-    def __init__(self, *builders: AcquisitionFunctionBuilder[ProbabilisticModel]):
+    def __init__(
+        self, *builders: AcquisitionFunctionBuilder[ProbabilisticModel, AcquisitionFunction]
+    ):
         r"""
         :param \*builders: Acquisition function builders. At least one must be provided.
         :raise `~tf.errors.InvalidArgumentError`: If no builders are specified.
@@ -67,8 +69,8 @@ class Reducer(AcquisitionFunctionBuilder[ProbabilisticModel]):
             acq.prepare_acquisition_function(models, datasets=datasets) for acq in self.acquisitions
         )
 
-        def evaluate_acquisition_function_fn(at: TensorType) -> TensorType:
-            return self._reduce_acquisition_functions(at, self.functions)
+        def evaluate_acquisition_function_fn(x: TensorType) -> TensorType:
+            return self._reduce_acquisition_functions(x, self.functions)
 
         return evaluate_acquisition_function_fn
 
@@ -88,13 +90,15 @@ class Reducer(AcquisitionFunctionBuilder[ProbabilisticModel]):
             for function, acq in zip(self.functions, self.acquisitions)
         )
 
-        def evaluate_acquisition_function_fn(at: TensorType) -> TensorType:
-            return self._reduce_acquisition_functions(at, self.functions)
+        def evaluate_acquisition_function_fn(x: TensorType) -> TensorType:
+            return self._reduce_acquisition_functions(x, self.functions)
 
         return evaluate_acquisition_function_fn
 
     @property
-    def acquisitions(self) -> Sequence[AcquisitionFunctionBuilder[ProbabilisticModel]]:
+    def acquisitions(
+        self,
+    ) -> Sequence[AcquisitionFunctionBuilder[ProbabilisticModel, AcquisitionFunction]]:
         """The acquisition function builders specified at class initialisation."""
         return self._acquisitions
 
