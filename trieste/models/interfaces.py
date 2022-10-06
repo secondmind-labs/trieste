@@ -21,7 +21,6 @@ import gpflow
 import tensorflow as tf
 from typing_extensions import Protocol, runtime_checkable
 
-from ..acquisition import AcquisitionFunction
 from ..data import Dataset
 from ..types import TensorType
 from ..utils import DEFAULTS
@@ -556,7 +555,7 @@ class ReparametrizationSampler(ABC, Generic[ProbabilisticModelType]):
         self._initialized.assign(False)
 
 
-class TrajectoryFunction(AcquisitionFunction):
+class TrajectoryFunction(ABC):
     """
     Type alias for trajectory functions. These have similar behaviour to an
     :const:`AcquisitionFunction` but have additional sampling properties and support multiple
@@ -570,6 +569,10 @@ class TrajectoryFunction(AcquisitionFunction):
     A key property of these trajectory functions is that the same sample draw is evaluated
     for all queries. This property is known as consistency.
     """
+
+    @abstractmethod
+    def __call__(self, x: TensorType) -> TensorType:
+        """Call trajectory function."""
 
 
 class TrajectorySampler(ABC, Generic[ProbabilisticModelType]):

@@ -32,8 +32,7 @@ from ..models.interfaces import HasReparamSampler, ProbabilisticModelType
 from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace
 from ..types import State, TensorType
-from . import expected_improvement
-from .function import BatchMonteCarloExpectedImprovement, ExpectedImprovement
+from .function import BatchMonteCarloExpectedImprovement, ExpectedImprovement, expected_improvement
 from .function.function import batch_monte_carlo_expected_improvement
 from .interface import (
     AcquisitionFunction,
