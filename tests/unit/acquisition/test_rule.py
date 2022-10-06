@@ -223,7 +223,7 @@ def test_efficient_global_optimization_raises_for_no_batch_fn_with_many_query_po
 
 @pytest.mark.parametrize("optimizer", [_line_search_maximize, None])
 def test_efficient_global_optimization(optimizer: AcquisitionOptimizer[Box]) -> None:
-    class NegQuadratic(SingleModelAcquisitionBuilder[ProbabilisticModel]):
+    class NegQuadratic(SingleModelAcquisitionBuilder[ProbabilisticModel, AcquisitionFunction]):
         def __init__(self) -> None:
             self._updated = False
 
@@ -256,7 +256,7 @@ def test_efficient_global_optimization(optimizer: AcquisitionOptimizer[Box]) -> 
 
 
 def test_efficient_global_optimization_initial_acquisition_function() -> None:
-    class NoisyNegQuadratic(SingleModelAcquisitionBuilder[ProbabilisticModel]):
+    class NoisyNegQuadratic(SingleModelAcquisitionBuilder[ProbabilisticModel, AcquisitionFunction]):
         def prepare_acquisition_function(
             self,
             model: ProbabilisticModel,
@@ -275,14 +275,14 @@ def test_efficient_global_optimization_initial_acquisition_function() -> None:
 
     builder = NoisyNegQuadratic()
     search_space = Box([-10], [10])
-    ego = EfficientGlobalOptimization[Box, ProbabilisticModel](builder)
+    ego = EfficientGlobalOptimization[Box, ProbabilisticModel, AcquisitionFunction](builder)
     data, model = empty_dataset([1], [1]), QuadraticMeanAndRBFKernel(x_shift=1)
     ego.acquire_single(search_space, model, dataset=data)
     assert ego.acquisition_function is not None
 
     # check that we can create a new EGO with the exact same AF state
     acq_func = copy.deepcopy(ego.acquisition_function)
-    ego_copy = EfficientGlobalOptimization[Box, ProbabilisticModel](
+    ego_copy = EfficientGlobalOptimization[Box, ProbabilisticModel, AcquisitionFunction](
         builder, initial_acquisition_function=acq_func
     )
     ego_copy.acquire_single(search_space, model, dataset=data)
@@ -291,7 +291,9 @@ def test_efficient_global_optimization_initial_acquisition_function() -> None:
     npt.assert_allclose(ego.acquisition_function(x), ego_copy.acquisition_function(x))
 
     # check that if we don't do this, the AF state might vary
-    ego_non_copy = EfficientGlobalOptimization[Box, ProbabilisticModel](builder)
+    ego_non_copy = EfficientGlobalOptimization[Box, ProbabilisticModel, AcquisitionFunction](
+        builder
+    )
     ego_non_copy.acquire_single(search_space, model, dataset=data)
     assert ego_non_copy.acquisition_function is not None
     npt.assert_raises(
@@ -302,7 +304,9 @@ def test_efficient_global_optimization_initial_acquisition_function() -> None:
     )
 
 
-class _JointBatchModelMinusMeanMaximumSingleBuilder(AcquisitionFunctionBuilder[ProbabilisticModel]):
+class _JointBatchModelMinusMeanMaximumSingleBuilder(
+    AcquisitionFunctionBuilder[ProbabilisticModel, AcquisitionFunction]
+):
     def prepare_acquisition_function(
         self,
         models: Mapping[str, ProbabilisticModel],
@@ -349,7 +353,7 @@ def test_joint_batch_acquisition_rule_acquire(
 
 
 class _GreedyBatchModelMinusMeanMaximumSingleBuilder(
-    SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]
+    SingleModelGreedyAcquisitionBuilder[ProbabilisticModel, AcquisitionFunction]
 ):
     def __init__(self) -> None:
         self._update_count = 0
@@ -431,7 +435,7 @@ def test_greedy_batch_acquisition_rule_acquire(
 
 
 class _VectorizedBatchModelMinusMeanMaximumSingleBuilder(
-    VectorizedAcquisitionFunctionBuilder[ProbabilisticModel]
+    VectorizedAcquisitionFunctionBuilder[ProbabilisticModel, AcquisitionFunction]
 ):
     def prepare_acquisition_function(
         self,

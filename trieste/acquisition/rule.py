@@ -141,7 +141,7 @@ class EfficientGlobalOptimization(
         builder: None = None,
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
-        initial_acquisition_function: Optional[expected_improvement] = None,
+        initial_acquisition_function: Optional[AcquisitionFunctionType] = None,
     ):
         ...
 
@@ -197,7 +197,10 @@ class EfficientGlobalOptimization(
 
         if builder is None:
             if num_query_points == 1:
-                builder = ExpectedImprovement()
+                builder = cast(
+                    SingleModelAcquisitionBuilder[ProbabilisticModel, AcquisitionFunctionType],
+                    ExpectedImprovement(),
+                )
             else:
                 raise ValueError(
                     """Need to specify a batch acquisition function when number of query points

@@ -58,7 +58,7 @@ from trieste.types import TensorType
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule",
     [
-        (50, EfficientGlobalOptimization[SearchSpace, SupportsPredictJoint](PredictiveVariance())),
+        (50, EfficientGlobalOptimization(PredictiveVariance())),
         (
             70,
             EfficientGlobalOptimization(

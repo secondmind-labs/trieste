@@ -27,12 +27,7 @@ from gpflux.models import DeepGP
 
 from ...types import TensorType
 from ...utils import DEFAULTS, flatten_leading_dims
-from ..interfaces import (
-    ReparametrizationSampler,
-    TrajectoryFunction,
-    TrajectoryFunctionClass,
-    TrajectorySampler,
-)
+from ..interfaces import ReparametrizationSampler, TrajectoryFunction, TrajectorySampler
 from .interface import GPfluxPredictor
 
 try:
@@ -448,7 +443,7 @@ class ResampleableDecoupledDeepGaussianProcessFeatureFunctions(RFF):  # type: ig
         return tf.concat([fourier_feature_eval, canonical_feature_eval], axis=-1)  # [N, L + M]
 
 
-class dgp_feature_decomposition_trajectory(TrajectoryFunctionClass):
+class dgp_feature_decomposition_trajectory(TrajectoryFunction):
     r"""
     An approximate sample from a deep Gaussian process's posterior, where the samples are
     represented as a finite weighted sum of features. This class essentially takes a list of

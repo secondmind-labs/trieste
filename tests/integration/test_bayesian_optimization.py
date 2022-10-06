@@ -59,7 +59,7 @@ from trieste.bayesian_optimizer import (
     stop_at_minimum,
 )
 from trieste.logging import tensorboard_writer
-from trieste.models import TrainableProbabilisticModel, TrajectoryFunctionClass
+from trieste.models import TrainableProbabilisticModel, TrajectoryFunction
 from trieste.models.gpflow import (
     GaussianProcessRegression,
     GPflowPredictor,
@@ -634,10 +634,10 @@ def _test_optimizer_finds_minimum(
                 # check that acquisition functions defined as classes aren't retraced unnecessarily
                 # they should be retraced for the optimzier's starting grid, L-BFGS, and logging
                 if hasattr(acq_function, "__call__"):
-                    assert acq_function.__call__._get_tracing_count() == 3  # type: ignore
+                    assert acq_function.__call__._get_tracing_count() == 3
 
                 # update trajectory function if necessary, so we can test it
-                if isinstance(acq_function, TrajectoryFunctionClass):
+                if isinstance(acq_function, TrajectoryFunction):
                     sampler = (
                         acquisition_rule._builder.single_builder._trajectory_sampler  # type: ignore
                     )

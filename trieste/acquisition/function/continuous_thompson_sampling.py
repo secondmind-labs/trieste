@@ -21,13 +21,15 @@ from typing import Any, Callable, Optional, Type
 import tensorflow as tf
 
 from ...data import Dataset
-from ...models.interfaces import HasTrajectorySampler, TrajectoryFunction, TrajectoryFunctionClass
+from ...models.interfaces import HasTrajectorySampler, TrajectoryFunction
 from ...types import TensorType
 from ..interface import SingleModelGreedyAcquisitionBuilder, SingleModelVectorizedAcquisitionBuilder
 from ..utils import select_nth_output
 
 
-class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTrajectorySampler]):
+class GreedyContinuousThompsonSampling(
+    SingleModelGreedyAcquisitionBuilder[HasTrajectorySampler, TrajectoryFunction]
+):
     r"""
 
     Acquisition function builder for performing greedy continuous Thompson sampling. This builder
@@ -108,7 +110,7 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTr
 
 
 class ParallelContinuousThompsonSampling(
-    SingleModelVectorizedAcquisitionBuilder[HasTrajectorySampler]
+    SingleModelVectorizedAcquisitionBuilder[HasTrajectorySampler, TrajectoryFunction]
 ):
     r"""
     Acquisition function builder for performing parallel continuous Thompson sampling.
@@ -179,7 +181,7 @@ class ParallelContinuousThompsonSampling(
         return self._negated_trajectory
 
 
-class _DummyTrajectoryFunctionClass(TrajectoryFunctionClass):
+class _DummyTrajectoryFunctionClass(TrajectoryFunction):
     # dummy trajectory function class used while pickling NegatedTrajectory
     def __call__(self, x: TensorType) -> TensorType:
         return x
@@ -198,48 +200,34 @@ def negate_trajectory_function(
     We negate the trajectory function object's call method, as it may have e.g. update and resample
     methods, and select the output we wish to use.
     """
-    if isinstance(function, TrajectoryFunctionClass):
 
-        class NegatedTrajectory(function_type or type(function)):  # type: ignore[misc]
-            @tf.function
-            def __call__(self, x: TensorType) -> TensorType:
-                if select_output is not None:
-                    return -1.0 * select_output(super().__call__(x))
-                else:
-                    return -1.0 * super().__call__(x)
-
-            def __reduce__(
-                self,
-            ) -> tuple[
-                Callable[..., TrajectoryFunction],
-                tuple[
-                    TrajectoryFunction,
-                    Optional[Callable[[TensorType], TensorType]],
-                    Optional[Type[TrajectoryFunction]],
-                ],
-                dict[str, Any],
-            ]:
-                # make this pickleable
-                state = (
-                    self.__getstate__() if hasattr(self, "__getstate__") else self.__dict__.copy()
-                )
-                return (
-                    negate_trajectory_function,
-                    (_DummyTrajectoryFunctionClass(), select_output, self.__class__.__base__),
-                    state,
-                )
-
-        function.__class__ = NegatedTrajectory
-
-        return function
-
-    else:
-
+    class NegatedTrajectory(function_type or type(function)):  # type: ignore[misc]
         @tf.function
-        def negated_trajectory(x: TensorType) -> TensorType:
+        def __call__(self, x: TensorType) -> TensorType:
             if select_output is not None:
-                return -1.0 * select_output(function(x))
+                return -1.0 * select_output(super().__call__(x))
             else:
-                return -1.0 * function(x)
+                return -1.0 * super().__call__(x)
 
-        return negated_trajectory
+        def __reduce__(
+            self,
+        ) -> tuple[
+            Callable[..., TrajectoryFunction],
+            tuple[
+                TrajectoryFunction,
+                Optional[Callable[[TensorType], TensorType]],
+                Optional[Type[TrajectoryFunction]],
+            ],
+            dict[str, Any],
+        ]:
+            # make this pickleable
+            state = self.__getstate__() if hasattr(self, "__getstate__") else self.__dict__.copy()
+            return (
+                negate_trajectory_function,
+                (_DummyTrajectoryFunctionClass(), select_output, self.__class__.__base__),
+                state,
+            )
+
+    function.__class__ = NegatedTrajectory
+
+    return function

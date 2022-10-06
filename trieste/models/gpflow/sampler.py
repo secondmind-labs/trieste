@@ -39,7 +39,6 @@ from ..interfaces import (
     SupportsGetObservationNoise,
     SupportsPredictJoint,
     TrajectoryFunction,
-    TrajectoryFunctionClass,
     TrajectorySampler,
 )
 
@@ -751,7 +750,7 @@ class ResampleableDecoupledFeatureFunctions(ResampleableRandomFourierFeatureFunc
         return tf.concat([fourier_feature_eval, cannonical_feature_eval], axis=-1)  # [N, L + M]
 
 
-class feature_decomposition_trajectory(TrajectoryFunctionClass):
+class feature_decomposition_trajectory(TrajectoryFunction):
     r"""
     An approximate sample from a Gaussian processes' posterior samples represented as a
     finite weighted sum of features.

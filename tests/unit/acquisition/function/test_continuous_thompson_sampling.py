@@ -31,7 +31,7 @@ from trieste.acquisition.function.continuous_thompson_sampling import (
 )
 from trieste.acquisition.function.function import lower_confidence_bound
 from trieste.data import Dataset
-from trieste.models import TrajectoryFunction, TrajectoryFunctionClass, TrajectorySampler
+from trieste.models import TrajectoryFunction, TrajectorySampler
 from trieste.models.gpflow import (
     RandomFourierFeatureTrajectorySampler,
     feature_decomposition_trajectory,
@@ -78,9 +78,9 @@ def test_greedy_thompson_sampling_builder_builds_trajectory(dumb_samplers: bool)
     )  # need a gpflow kernel object for random feature decompositions
     builder = GreedyContinuousThompsonSampling()
     acq_fn = builder.prepare_acquisition_function(model)
-    assert isinstance(acq_fn, TrajectoryFunctionClass)
+    assert isinstance(acq_fn, TrajectoryFunction)
     new_acq_fn = builder.update_acquisition_function(acq_fn, model)
-    assert isinstance(new_acq_fn, TrajectoryFunctionClass)
+    assert isinstance(new_acq_fn, TrajectoryFunction)
 
 
 @pytest.mark.parametrize("dumb_samplers", [True, False])
@@ -100,7 +100,8 @@ def test_greedy_thompson_sampling_builder_raises_when_update_with_wrong_function
     builder = GreedyContinuousThompsonSampling()
     builder.prepare_acquisition_function(model)
     with pytest.raises(tf.errors.InvalidArgumentError):
-        builder.update_acquisition_function(lower_confidence_bound(model, 0.1), model)
+        function = lower_confidence_bound(model, 0.1)
+        builder.update_acquisition_function(function, model)  # type: ignore
 
 
 def test_parallel_thompson_sampling_raises_for_model_without_trajectory_sampler() -> None:
@@ -126,10 +127,10 @@ def test_parallel_thompson_sampling_builder_builds_trajectory(dumb_samplers: boo
     )  # need a gpflow kernel object for random feature decompositions
     builder = ParallelContinuousThompsonSampling()
     acq_fn = builder.prepare_acquisition_function(model)
-    assert isinstance(acq_fn, TrajectoryFunctionClass)
+    assert isinstance(acq_fn, TrajectoryFunction)
     assert acq_fn.__class__.__name__ == "NegatedTrajectory"
     new_acq_fn = builder.update_acquisition_function(acq_fn, model)
-    assert isinstance(new_acq_fn, TrajectoryFunctionClass)
+    assert isinstance(new_acq_fn, TrajectoryFunction)
     assert new_acq_fn.__class__.__name__ == "NegatedTrajectory"
 
 
@@ -150,7 +151,8 @@ def test_parallel_thompson_sampling_builder_raises_when_update_with_wrong_functi
     builder = ParallelContinuousThompsonSampling()
     builder.prepare_acquisition_function(model)
     with pytest.raises(ValueError):
-        builder.update_acquisition_function(lower_confidence_bound(model, 0.1), model)
+        function = lower_confidence_bound(model, 0.1)
+        builder.update_acquisition_function(function, model)  # type: ignore
 
 
 def test_parallel_thompson_sampling_raises_for_changing_batch_size() -> None:

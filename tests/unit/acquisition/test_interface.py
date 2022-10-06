@@ -43,7 +43,9 @@ from trieste.types import TensorType
 from trieste.utils import DEFAULTS
 
 
-class _ArbitrarySingleBuilder(SingleModelAcquisitionBuilder[ProbabilisticModel]):
+class _ArbitrarySingleBuilder(
+    SingleModelAcquisitionBuilder[ProbabilisticModel, AcquisitionFunction]
+):
     def prepare_acquisition_function(
         self,
         model: ProbabilisticModel,
@@ -52,7 +54,9 @@ class _ArbitrarySingleBuilder(SingleModelAcquisitionBuilder[ProbabilisticModel])
         return raise_exc
 
 
-class _ArbitraryGreedySingleBuilder(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel]):
+class _ArbitraryGreedySingleBuilder(
+    SingleModelGreedyAcquisitionBuilder[ProbabilisticModel, AcquisitionFunction]
+):
     def prepare_acquisition_function(
         self,
         model: ProbabilisticModel,
@@ -77,7 +81,7 @@ def test_single_model_acquisition_builder_repr_includes_class_name() -> None:
 
 
 def test_single_model_acquisition_builder_using_passes_on_correct_dataset_and_model() -> None:
-    class Builder(SingleModelAcquisitionBuilder[ProbabilisticModel]):
+    class Builder(SingleModelAcquisitionBuilder[ProbabilisticModel, AcquisitionFunction]):
         def prepare_acquisition_function(
             self,
             model: ProbabilisticModel,
@@ -109,7 +113,7 @@ def test_single_model_greedy_acquisition_builder_repr_includes_class_name() -> N
 @pytest.mark.parametrize(
     "function, function_repr",
     cast(
-        List[Tuple[SingleModelAcquisitionBuilder[SupportsPredictJoint]]],
+        List[Tuple[SingleModelAcquisitionBuilder[SupportsPredictJoint, AcquisitionFunction]]],
         [
             (ExpectedImprovement(), "ExpectedImprovement()"),
             (AugmentedExpectedImprovement(), "AugmentedExpectedImprovement()"),
@@ -129,7 +133,8 @@ def test_single_model_greedy_acquisition_builder_repr_includes_class_name() -> N
     ),
 )
 def test_single_model_acquisition_function_builder_reprs(
-    function: SingleModelAcquisitionBuilder[SupportsPredictJoint], function_repr: str
+    function: SingleModelAcquisitionBuilder[SupportsPredictJoint, AcquisitionFunction],
+    function_repr: str,
 ) -> None:
     assert repr(function) == function_repr
     assert repr(function.using("TAG")) == f"{function_repr} using tag 'TAG'"

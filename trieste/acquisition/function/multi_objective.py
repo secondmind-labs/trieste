@@ -563,9 +563,10 @@ class HIPPO(
         """
         self._objective_tag = objective_tag
         if base_acquisition_function_builder is None:
-            self._base_builder: AcquisitionFunctionBuilder[
-                ProbabilisticModelType, AcquisitionFunctionType
-            ] = ExpectedHypervolumeImprovement().using(self._objective_tag)
+            self._base_builder = cast(
+                AcquisitionFunctionBuilder[ProbabilisticModelType, AcquisitionFunctionType],
+                ExpectedHypervolumeImprovement().using(self._objective_tag),
+            )
         else:
             if isinstance(base_acquisition_function_builder, SingleModelAcquisitionBuilder):
                 self._base_builder = base_acquisition_function_builder.using(self._objective_tag)

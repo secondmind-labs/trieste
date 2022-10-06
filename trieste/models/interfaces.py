@@ -21,6 +21,7 @@ import gpflow
 import tensorflow as tf
 from typing_extensions import Protocol, runtime_checkable
 
+from ..acquisition import AcquisitionFunction
 from ..data import Dataset
 from ..types import TensorType
 from ..utils import DEFAULTS
@@ -555,31 +556,20 @@ class ReparametrizationSampler(ABC, Generic[ProbabilisticModelType]):
         self._initialized.assign(False)
 
 
-TrajectoryFunction = Callable[[TensorType], TensorType]
-"""
-Type alias for trajectory functions. These have similar behaviour to an :const:`AcquisitionFunction`
-but have additional sampling properties and support multiple model outputs.
-
-An :const:`TrajectoryFunction` evaluates a batch of `B` samples, each across different sets
-of `N` query points (of dimension `D`) i.e. takes input of shape `[N, B, D]` and returns
-shape `[N, B, L]`, where `L` is the number of outputs of the model. Note that we require the `L`
-dimension to be present, even if there is only one output.
-
-A key property of these trajectory functions is that the same sample draw is evaluated
-for all queries. This property is known as consistency.
-"""
-
-
-class TrajectoryFunctionClass(ABC):
+class TrajectoryFunction(AcquisitionFunction):
     """
-    An :class:`TrajectoryFunctionClass` is a trajectory function represented using a class
-    rather than as a standalone function. Using a class to represent a trajectory function
-    makes it easier to update and resample without having to retrace the function.
-    """
+    Type alias for trajectory functions. These have similar behaviour to an
+    :const:`AcquisitionFunction` but have additional sampling properties and support multiple
+    model outputs.
 
-    @abstractmethod
-    def __call__(self, x: TensorType) -> TensorType:
-        """Call trajectory function."""
+    An :const:`TrajectoryFunction` evaluates a batch of `B` samples, each across different sets
+    of `N` query points (of dimension `D`) i.e. takes input of shape `[N, B, D]` and returns
+    shape `[N, B, L]`, where `L` is the number of outputs of the model. Note that we require the `L`
+    dimension to be present, even if there is only one output.
+
+    A key property of these trajectory functions is that the same sample draw is evaluated
+    for all queries. This property is known as consistency.
+    """
 
 
 class TrajectorySampler(ABC, Generic[ProbabilisticModelType]):

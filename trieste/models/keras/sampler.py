@@ -26,7 +26,7 @@ import tensorflow_probability as tfp
 
 from ...types import TensorType
 from ...utils import flatten_leading_dims
-from ..interfaces import TrajectoryFunction, TrajectoryFunctionClass, TrajectorySampler
+from ..interfaces import TrajectoryFunction, TrajectorySampler
 from .interface import DeepEnsembleModel
 from .utils import sample_model_index
 
@@ -111,7 +111,7 @@ class DeepEnsembleTrajectorySampler(TrajectorySampler[DeepEnsembleModel]):
         return trajectory
 
 
-class deep_ensemble_trajectory(TrajectoryFunctionClass):
+class deep_ensemble_trajectory(TrajectoryFunction):
     """
     Generate an approximate function draw (trajectory) by randomly choosing a batch B of
     networks from the ensemble and using their predicted means as trajectories.
