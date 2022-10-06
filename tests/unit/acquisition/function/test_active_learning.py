@@ -171,18 +171,18 @@ def test_expected_feasibility_builder_updates_without_retracing(delta: int) -> N
     model = QuadraticMeanAndRBFKernel()
     builder = ExpectedFeasibility(threshold, alpha, delta)
     acq_fn = builder.prepare_acquisition_function(model)
-    assert acq_fn._get_tracing_count() == 0  # type: ignore
+    assert acq_fn.__call__._get_tracing_count() == 0
 
     query_at = tf.linspace([[-10]], [[10]], 100)
     expected = bichon_ranjan_criterion(model, threshold, alpha, delta)(query_at)
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
-    assert acq_fn._get_tracing_count() == 1  # type: ignore
+    assert acq_fn.__call__._get_tracing_count() == 1
 
     up_acq_fn = builder.update_acquisition_function(acq_fn, model)
     assert up_acq_fn == acq_fn
 
     npt.assert_array_almost_equal(acq_fn(query_at), expected)
-    assert acq_fn._get_tracing_count() == 1  # type: ignore
+    assert acq_fn.__call__._get_tracing_count() == 1
 
 
 @pytest.mark.parametrize("shape", various_shapes() - {()})
