@@ -279,8 +279,8 @@ def test_fantasize_reduces_predictive_variance(model_type: str, fantasize_method
     builder = Fantasizer(PredictiveVariance(), fantasize_method=fantasize_method)
     acq0 = builder.prepare_acquisition_function(models, data)
     acq1 = builder.update_acquisition_function(acq0, models, data, pending_points[:1])
-    assert acq0._get_tracing_count() == 0  # type: ignore
-    assert acq1._get_tracing_count() == 0  # type: ignore
+    assert acq0.__call__._get_tracing_count() == 0
+    assert acq1.__call__._get_tracing_count() == 0
 
     acq_val0 = acq0(x_test)
     acq_val1 = acq1(x_test)
@@ -290,13 +290,13 @@ def test_fantasize_reduces_predictive_variance(model_type: str, fantasize_method
     acq1_up = builder.update_acquisition_function(acq1, models, data, pending_points)
     assert acq1_up == acq1  # in-place updates
     acq1_up(x_test)
-    assert acq1_up._get_tracing_count() == 1  # type: ignore
+    assert acq1_up.__call__._get_tracing_count() == 1
 
     # ...and the base functions
     acq0_up = builder.update_acquisition_function(acq1, models, data)
     assert acq0_up == acq0  # in-place updates
     acq0_up(x_test)
-    assert acq0_up._get_tracing_count() == 1  # type: ignore
+    assert acq0_up.__call__._get_tracing_count() == 1
 
 
 @pytest.mark.parametrize("model_type", ["gpr", "stack"])
