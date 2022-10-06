@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections.abc import Mapping, Sequence
-from typing import Optional
+from typing import Any, Optional
 
 import tensorflow as tf
 
@@ -33,9 +33,7 @@ class Reducer(AcquisitionFunctionBuilder[ProbabilisticModel, AcquisitionFunction
     by the method :meth:`_reduce`.
     """
 
-    def __init__(
-        self, *builders: AcquisitionFunctionBuilder[ProbabilisticModel, AcquisitionFunction]
-    ):
+    def __init__(self, *builders: AcquisitionFunctionBuilder[ProbabilisticModel, Any]):
         r"""
         :param \*builders: Acquisition function builders. At least one must be provided.
         :raise `~tf.errors.InvalidArgumentError`: If no builders are specified.
