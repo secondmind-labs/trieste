@@ -32,10 +32,13 @@ from ..models.interfaces import HasReparamSampler, ProbabilisticModelType
 from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace
 from ..types import State, TensorType
+from . import expected_improvement
 from .function import BatchMonteCarloExpectedImprovement, ExpectedImprovement
+from .function.function import batch_monte_carlo_expected_improvement
 from .interface import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
+    AcquisitionFunctionType,
     GreedyAcquisitionFunctionBuilder,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
@@ -126,48 +129,53 @@ class AcquisitionRule(ABC, Generic[ResultType, SearchSpaceType, ProbabilisticMod
 
 
 class EfficientGlobalOptimization(
-    AcquisitionRule[TensorType, SearchSpaceType, ProbabilisticModelType]
+    AcquisitionRule[TensorType, SearchSpaceType, ProbabilisticModelType],
+    Generic[SearchSpaceType, ProbabilisticModelType, AcquisitionFunctionType],
 ):
     """Implements the Efficient Global Optimization, or EGO, algorithm."""
 
     @overload
     def __init__(
-        self: "EfficientGlobalOptimization[SearchSpaceType, ProbabilisticModel]",
+        self: "EfficientGlobalOptimization"
+        "[SearchSpaceType, ProbabilisticModel, expected_improvement]",
         builder: None = None,
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
-        initial_acquisition_function: Optional[AcquisitionFunction] = None,
+        initial_acquisition_function: Optional[expected_improvement] = None,
     ):
         ...
 
     @overload
     def __init__(
-        self: "EfficientGlobalOptimization[SearchSpaceType, ProbabilisticModelType]",
+        self: "EfficientGlobalOptimization"
+        "[SearchSpaceType, ProbabilisticModelType, AcquisitionFunctionType]",
         builder: (
-            AcquisitionFunctionBuilder[ProbabilisticModelType]
-            | GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]
-            | SingleModelAcquisitionBuilder[ProbabilisticModelType]
-            | SingleModelGreedyAcquisitionBuilder[ProbabilisticModelType]
+            AcquisitionFunctionBuilder[ProbabilisticModelType, AcquisitionFunctionType]
+            | GreedyAcquisitionFunctionBuilder[ProbabilisticModelType, AcquisitionFunctionType]
+            | SingleModelAcquisitionBuilder[ProbabilisticModelType, AcquisitionFunctionType]
+            | SingleModelGreedyAcquisitionBuilder[ProbabilisticModelType, AcquisitionFunctionType]
         ),
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
-        initial_acquisition_function: Optional[AcquisitionFunction] = None,
+        initial_acquisition_function: Optional[AcquisitionFunctionType] = None,
     ):
         ...
 
     def __init__(
         self,
         builder: Optional[
-            AcquisitionFunctionBuilder[ProbabilisticModelType]
-            | GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]
-            | VectorizedAcquisitionFunctionBuilder[ProbabilisticModelType]
-            | SingleModelAcquisitionBuilder[ProbabilisticModelType]
-            | SingleModelGreedyAcquisitionBuilder[ProbabilisticModelType]
-            | SingleModelVectorizedAcquisitionBuilder[ProbabilisticModelType]
+            AcquisitionFunctionBuilder[ProbabilisticModelType, AcquisitionFunctionType]
+            | GreedyAcquisitionFunctionBuilder[ProbabilisticModelType, AcquisitionFunctionType]
+            | VectorizedAcquisitionFunctionBuilder[ProbabilisticModelType, AcquisitionFunctionType]
+            | SingleModelAcquisitionBuilder[ProbabilisticModelType, AcquisitionFunctionType]
+            | SingleModelGreedyAcquisitionBuilder[ProbabilisticModelType, AcquisitionFunctionType]
+            | SingleModelVectorizedAcquisitionBuilder[
+                ProbabilisticModelType, AcquisitionFunctionType
+            ]
         ] = None,
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
-        initial_acquisition_function: Optional[AcquisitionFunction] = None,
+        initial_acquisition_function: Optional[AcquisitionFunctionType] = None,
     ):
         """
         :param builder: The acquisition function builder to use. Defaults to
@@ -221,13 +229,13 @@ class EfficientGlobalOptimization(
                 pass
 
         self._builder: Union[
-            AcquisitionFunctionBuilder[ProbabilisticModelType],
-            GreedyAcquisitionFunctionBuilder[ProbabilisticModelType],
-            VectorizedAcquisitionFunctionBuilder[ProbabilisticModelType],
+            AcquisitionFunctionBuilder[ProbabilisticModelType, AcquisitionFunctionType],
+            GreedyAcquisitionFunctionBuilder[ProbabilisticModelType, AcquisitionFunctionType],
+            VectorizedAcquisitionFunctionBuilder[ProbabilisticModelType, AcquisitionFunctionType],
         ] = builder
         self._optimizer = optimizer
         self._num_query_points = num_query_points
-        self._acquisition_function: Optional[AcquisitionFunction] = initial_acquisition_function
+        self._acquisition_function: Optional[AcquisitionFunctionType] = initial_acquisition_function
 
     def __repr__(self) -> str:
         """"""
@@ -237,7 +245,7 @@ class EfficientGlobalOptimization(
         {self._num_query_points!r})"""
 
     @property
-    def acquisition_function(self) -> Optional[AcquisitionFunction]:
+    def acquisition_function(self) -> Optional[AcquisitionFunctionType]:
         """The current acquisition function, updated last time :meth:`acquire` was called."""
         return self._acquisition_function
 
@@ -414,7 +422,8 @@ class AsynchronousOptimization(
         State[Optional["AsynchronousRuleState"], TensorType],
         SearchSpaceType,
         ProbabilisticModelType,
-    ]
+    ],
+    Generic[SearchSpaceType, ProbabilisticModelType, AcquisitionFunctionType],
 ):
     """AsynchronousOptimization rule is designed for asynchronous BO scenarios.
     By asynchronous BO we understand a use case when multiple objective function
@@ -440,7 +449,8 @@ class AsynchronousOptimization(
 
     @overload
     def __init__(
-        self: "AsynchronousOptimization[SearchSpaceType, HasReparamSampler]",
+        self: "AsynchronousOptimization"
+        "[SearchSpaceType, HasReparamSampler, batch_monte_carlo_expected_improvement]",
         builder: None = None,
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
@@ -449,10 +459,11 @@ class AsynchronousOptimization(
 
     @overload
     def __init__(
-        self: "AsynchronousOptimization[SearchSpaceType, ProbabilisticModelType]",
+        self: "AsynchronousOptimization"
+        "[SearchSpaceType, ProbabilisticModelType, AcquisitionFunctionType]",
         builder: (
-            AcquisitionFunctionBuilder[ProbabilisticModelType]
-            | SingleModelAcquisitionBuilder[ProbabilisticModelType]
+            AcquisitionFunctionBuilder[ProbabilisticModelType, AcquisitionFunctionType]
+            | SingleModelAcquisitionBuilder[ProbabilisticModelType, AcquisitionFunctionType]
         ),
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
@@ -462,8 +473,8 @@ class AsynchronousOptimization(
     def __init__(
         self,
         builder: Optional[
-            AcquisitionFunctionBuilder[ProbabilisticModelType]
-            | SingleModelAcquisitionBuilder[ProbabilisticModelType]
+            AcquisitionFunctionBuilder[ProbabilisticModelType, AcquisitionFunctionType]
+            | SingleModelAcquisitionBuilder[ProbabilisticModelType, AcquisitionFunctionType]
         ] = None,
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
@@ -484,7 +495,7 @@ class AsynchronousOptimization(
 
         if builder is None:
             builder = cast(
-                SingleModelAcquisitionBuilder[ProbabilisticModelType],
+                SingleModelAcquisitionBuilder[ProbabilisticModelType, AcquisitionFunctionType],
                 BatchMonteCarloExpectedImprovement(10_000),
             )
 
@@ -499,9 +510,11 @@ class AsynchronousOptimization(
         if num_query_points > 1:
             optimizer = batchify_joint(optimizer, num_query_points)
 
-        self._builder: AcquisitionFunctionBuilder[ProbabilisticModelType] = builder
+        self._builder: AcquisitionFunctionBuilder[
+            ProbabilisticModelType, AcquisitionFunctionType
+        ] = builder
         self._optimizer = optimizer
-        self._acquisition_function: Optional[AcquisitionFunction] = None
+        self._acquisition_function: Optional[AcquisitionFunctionType] = None
 
     def __repr__(self) -> str:
         """"""
@@ -604,7 +617,7 @@ class AsynchronousGreedy(
         State[Optional["AsynchronousRuleState"], TensorType],
         SearchSpaceType,
         ProbabilisticModelType,
-    ]
+    ],
 ):
     """AsynchronousGreedy rule, as name suggests,
     is designed for asynchronous BO scenarios. To see what we understand by
@@ -617,8 +630,8 @@ class AsynchronousGreedy(
 
     def __init__(
         self,
-        builder: GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]
-        | SingleModelGreedyAcquisitionBuilder[ProbabilisticModelType],
+        builder: GreedyAcquisitionFunctionBuilder[ProbabilisticModelType, AcquisitionFunctionType]
+        | SingleModelGreedyAcquisitionBuilder[ProbabilisticModelType, AcquisitionFunctionType],
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
     ):
@@ -653,9 +666,11 @@ class AsynchronousGreedy(
         if isinstance(builder, SingleModelGreedyAcquisitionBuilder):
             builder = builder.using(OBJECTIVE)
 
-        self._builder: GreedyAcquisitionFunctionBuilder[ProbabilisticModelType] = builder
+        self._builder: GreedyAcquisitionFunctionBuilder[
+            ProbabilisticModelType, AcquisitionFunctionType
+        ] = builder
         self._optimizer = optimizer
-        self._acquisition_function: Optional[AcquisitionFunction] = None
+        self._acquisition_function: Optional[AcquisitionFunctionType] = None
         self._num_query_points = num_query_points
 
     def __repr__(self) -> str:

@@ -607,9 +607,10 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     f" {OBJECTIVE!r}, got keys {datasets.keys()}"
                 )
 
-            acquisition_rule = EfficientGlobalOptimization[
-                SearchSpaceType, TrainableProbabilisticModelType
-            ]()
+            acquisition_rule = cast(
+                AcquisitionRule[TensorType, SearchSpaceType, TrainableProbabilisticModelType],
+                EfficientGlobalOptimization(),
+            )
 
         history: list[FrozenRecord[StateType] | Record[StateType]] = []
         query_plot_dfs: dict[int, pd.DataFrame] = {}

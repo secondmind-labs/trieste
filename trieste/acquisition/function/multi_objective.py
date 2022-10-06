@@ -45,102 +45,6 @@ from ..multi_objective.pareto import (
 from .function import ExpectedConstrainedImprovement
 
 
-class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
-    """
-    Builder for the expected hypervolume improvement acquisition function.
-    The implementation of the acquisition function largely
-    follows :cite:`yang2019efficient`
-    """
-
-    def __init__(
-        self,
-        reference_point_spec: Sequence[float]
-        | TensorType
-        | Callable[..., TensorType] = get_reference_point,
-    ):
-        """
-        :param reference_point_spec: this method is used to determine how the reference point is
-            calculated. If a Callable function specified, it is expected to take existing
-            posterior mean-based observations (to screen out the observation noise) and return
-            a reference point with shape [D] (D represents number of objectives). If the Pareto
-            front location is known, this arg can be used to specify a fixed reference point
-            in each bo iteration. A dynamic reference point updating strategy is used by
-            default to set a reference point according to the datasets.
-        """
-        if callable(reference_point_spec):
-            self._ref_point_spec: tf.Tensor | Callable[..., TensorType] = reference_point_spec
-        else:
-            self._ref_point_spec = tf.convert_to_tensor(reference_point_spec)
-        self._ref_point = None
-
-    def __repr__(self) -> str:
-        """"""
-        if callable(self._ref_point_spec):
-            return f"ExpectedHypervolumeImprovement(" f"{self._ref_point_spec.__name__})"
-        else:
-            return f"ExpectedHypervolumeImprovement({self._ref_point_spec!r})"
-
-    def prepare_acquisition_function(
-        self,
-        model: ProbabilisticModel,
-        dataset: Optional[Dataset] = None,
-    ) -> AcquisitionFunction:
-        """
-        :param model: The model.
-        :param dataset: The data from the observer. Must be populated.
-        :return: The expected hypervolume improvement acquisition function.
-        """
-        tf.debugging.Assert(dataset is not None, [tf.constant([])])
-        dataset = cast(Dataset, dataset)
-        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
-        mean, _ = model.predict(dataset.query_points)
-
-        if callable(self._ref_point_spec):
-            self._ref_point = tf.cast(self._ref_point_spec(mean), dtype=mean.dtype)
-        else:
-            self._ref_point = tf.cast(self._ref_point_spec, dtype=mean.dtype)
-
-        _pf = Pareto(mean)
-        screened_front = _pf.front[tf.reduce_all(_pf.front <= self._ref_point, -1)]
-        # prepare the partitioned bounds of non-dominated region for calculating of the
-        # hypervolume improvement in this area
-        _partition_bounds = prepare_default_non_dominated_partition_bounds(
-            self._ref_point, screened_front
-        )
-        return expected_hv_improvement(model, _partition_bounds)
-
-    def update_acquisition_function(
-        self,
-        function: AcquisitionFunction,
-        model: ProbabilisticModel,
-        dataset: Optional[Dataset] = None,
-    ) -> AcquisitionFunction:
-        """
-        :param function: The acquisition function to update.
-        :param model: The model.
-        :param dataset: The data from the observer. Must be populated.
-        """
-        tf.debugging.Assert(dataset is not None, [tf.constant([])])
-        dataset = cast(Dataset, dataset)
-        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
-        tf.debugging.Assert(isinstance(function, expected_hv_improvement), [tf.constant([])])
-        mean, _ = model.predict(dataset.query_points)
-
-        if callable(self._ref_point_spec):
-            self._ref_point = self._ref_point_spec(mean)
-        else:
-            assert isinstance(self._ref_point_spec, tf.Tensor)  # specified a fixed ref point
-            self._ref_point = tf.cast(self._ref_point_spec, dtype=mean.dtype)
-
-        _pf = Pareto(mean)
-        screened_front = _pf.front[tf.reduce_all(_pf.front <= self._ref_point, -1)]
-        _partition_bounds = prepare_default_non_dominated_partition_bounds(
-            self._ref_point, screened_front
-        )
-        function.update(_partition_bounds)  # type: ignore
-        return function
-
-
 class expected_hv_improvement(AcquisitionFunction):
     def __init__(self, model: ProbabilisticModel, partition_bounds: tuple[TensorType, TensorType]):
         r"""
@@ -249,8 +153,106 @@ class expected_hv_improvement(AcquisitionFunction):
         )
 
 
+class ExpectedHypervolumeImprovement(
+    SingleModelAcquisitionBuilder[ProbabilisticModel, expected_hv_improvement]
+):
+    """
+    Builder for the expected hypervolume improvement acquisition function.
+    The implementation of the acquisition function largely
+    follows :cite:`yang2019efficient`
+    """
+
+    def __init__(
+        self,
+        reference_point_spec: Sequence[float]
+        | TensorType
+        | Callable[..., TensorType] = get_reference_point,
+    ):
+        """
+        :param reference_point_spec: this method is used to determine how the reference point is
+            calculated. If a Callable function specified, it is expected to take existing
+            posterior mean-based observations (to screen out the observation noise) and return
+            a reference point with shape [D] (D represents number of objectives). If the Pareto
+            front location is known, this arg can be used to specify a fixed reference point
+            in each bo iteration. A dynamic reference point updating strategy is used by
+            default to set a reference point according to the datasets.
+        """
+        if callable(reference_point_spec):
+            self._ref_point_spec: tf.Tensor | Callable[..., TensorType] = reference_point_spec
+        else:
+            self._ref_point_spec = tf.convert_to_tensor(reference_point_spec)
+        self._ref_point = None
+
+    def __repr__(self) -> str:
+        """"""
+        if callable(self._ref_point_spec):
+            return f"ExpectedHypervolumeImprovement(" f"{self._ref_point_spec.__name__})"
+        else:
+            return f"ExpectedHypervolumeImprovement({self._ref_point_spec!r})"
+
+    def prepare_acquisition_function(
+        self,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
+    ) -> expected_hv_improvement:
+        """
+        :param model: The model.
+        :param dataset: The data from the observer. Must be populated.
+        :return: The expected hypervolume improvement acquisition function.
+        """
+        tf.debugging.Assert(dataset is not None, [tf.constant([])])
+        dataset = cast(Dataset, dataset)
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
+        mean, _ = model.predict(dataset.query_points)
+
+        if callable(self._ref_point_spec):
+            self._ref_point = tf.cast(self._ref_point_spec(mean), dtype=mean.dtype)
+        else:
+            self._ref_point = tf.cast(self._ref_point_spec, dtype=mean.dtype)
+
+        _pf = Pareto(mean)
+        screened_front = _pf.front[tf.reduce_all(_pf.front <= self._ref_point, -1)]
+        # prepare the partitioned bounds of non-dominated region for calculating of the
+        # hypervolume improvement in this area
+        _partition_bounds = prepare_default_non_dominated_partition_bounds(
+            self._ref_point, screened_front
+        )
+        return expected_hv_improvement(model, _partition_bounds)
+
+    def update_acquisition_function(
+        self,
+        function: expected_hv_improvement,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
+    ) -> expected_hv_improvement:
+        """
+        :param function: The acquisition function to update.
+        :param model: The model.
+        :param dataset: The data from the observer. Must be populated.
+        """
+        tf.debugging.Assert(dataset is not None, [tf.constant([])])
+        dataset = cast(Dataset, dataset)
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
+        tf.debugging.Assert(isinstance(function, expected_hv_improvement), [tf.constant([])])
+        mean, _ = model.predict(dataset.query_points)
+
+        if callable(self._ref_point_spec):
+            self._ref_point = self._ref_point_spec(mean)
+        else:
+            assert isinstance(self._ref_point_spec, tf.Tensor)  # specified a fixed ref point
+            self._ref_point = tf.cast(self._ref_point_spec, dtype=mean.dtype)
+
+        _pf = Pareto(mean)
+        screened_front = _pf.front[tf.reduce_all(_pf.front <= self._ref_point, -1)]
+        _partition_bounds = prepare_default_non_dominated_partition_bounds(
+            self._ref_point, screened_front
+        )
+        function.update(_partition_bounds)  # type: ignore
+        return function
+
+
 class BatchMonteCarloExpectedHypervolumeImprovement(
-    SingleModelAcquisitionBuilder[HasReparamSampler]
+    SingleModelAcquisitionBuilder[HasReparamSampler, AcquisitionFunction]
 ):
     """
     Builder for the batch expected hypervolume improvement acquisition function.
@@ -363,15 +365,15 @@ def batch_ehvi(
         function for objective minimisation.
     """
 
-    def acquisition(at: TensorType) -> TensorType:
-        _batch_size = at.shape[-2]  # B
+    def acquisition(x: TensorType) -> TensorType:
+        _batch_size = x.shape[-2]  # B
 
         def gen_q_subset_indices(q: int) -> tf.RaggedTensor:
             # generate all subsets of [1, ..., q] as indices
             indices = list(range(q))
             return tf.ragged.constant([list(combinations(indices, i)) for i in range(1, q + 1)])
 
-        samples = sampler.sample(at, jitter=sampler_jitter)  # [..., S, B, num_obj]
+        samples = sampler.sample(x, jitter=sampler_jitter)  # [..., S, B, num_obj]
 
         q_subset_indices = gen_q_subset_indices(_batch_size)
 
@@ -424,7 +426,7 @@ class ExpectedConstrainedHypervolumeImprovement(
     def __init__(
         self,
         objective_tag: str,
-        constraint_builder: AcquisitionFunctionBuilder[ProbabilisticModelType],
+        constraint_builder: AcquisitionFunctionBuilder[ProbabilisticModelType, AcquisitionFunction],
         min_feasibility_probability: float | TensorType = 0.5,
         reference_point_spec: Sequence[float]
         | TensorType
