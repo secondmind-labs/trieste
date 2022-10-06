@@ -556,10 +556,10 @@ class HIPPO(
         """
         Initializes the HIPPO acquisition function builder.
 
-        :param objective_tag: The tag for the objective data and model.
         :param base_acquisition_function_builder: Base acquisition function to be
             penalized. Defaults to Expected Hypervolume Improvement, also supports
             its constrained version.
+        :param objective_tag: The tag for the objective data and model.
         """
         self._objective_tag = objective_tag
         if base_acquisition_function_builder is None:

@@ -16,7 +16,7 @@ This module contains local penalization-based acquisition function builders.
 """
 from __future__ import annotations
 
-from typing import Callable, Dict, Mapping, Optional, Union, cast, overload
+from typing import Callable, Dict, Generic, Mapping, Optional, Union, cast, overload
 
 import gpflow
 import tensorflow as tf
@@ -44,12 +44,13 @@ from ..interface import (
     SingleModelGreedyAcquisitionBuilder,
     UpdatablePenalizationFunction,
 )
-from .entropy import MinValueEntropySearch
+from .entropy import MinValueEntropySearch, min_value_entropy_search
 from .function import ExpectedImprovement, MakePositive, expected_improvement
 
 
 class LocalPenalization(
-    SingleModelGreedyAcquisitionBuilder[ProbabilisticModel, AcquisitionFunction]
+    SingleModelGreedyAcquisitionBuilder[ProbabilisticModel, AcquisitionFunction],
+    Generic[AcquisitionFunctionType],
 ):
     r"""
     Builder of the acquisition function maker for greedily collecting batches by local
@@ -72,6 +73,46 @@ class LocalPenalization(
     are reused for all subsequent function calls.
     """
 
+    @overload
+    def __init__(
+        self: "LocalPenalization[expected_improvement]",
+        search_space: SearchSpace,
+        num_samples: int = 500,
+        penalizer: Callable[
+            [ProbabilisticModel, TensorType, TensorType, TensorType],
+            Union[PenalizationFunction, UpdatablePenalizationFunction],
+        ] = None,
+        base_acquisition_function_builder: ExpectedImprovement | None = None,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self: "LocalPenalization[min_value_entropy_search]",
+        search_space: SearchSpace,
+        num_samples: int = 500,
+        penalizer: Callable[
+            [ProbabilisticModel, TensorType, TensorType, TensorType],
+            Union[PenalizationFunction, UpdatablePenalizationFunction],
+        ] = None,
+        base_acquisition_function_builder: MinValueEntropySearch[ProbabilisticModel] | None = None,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self: "LocalPenalization[AcquisitionFunctionType]",
+        search_space: SearchSpace,
+        num_samples: int = 500,
+        penalizer: Callable[
+            [ProbabilisticModel, TensorType, TensorType, TensorType],
+            Union[PenalizationFunction, UpdatablePenalizationFunction],
+        ] = None,
+        base_acquisition_function_builder: MakePositive[ProbabilisticModel, AcquisitionFunctionType]
+        | None = None,
+    ):
+        ...
+
     def __init__(
         self,
         search_space: SearchSpace,
@@ -82,7 +123,7 @@ class LocalPenalization(
         ] = None,
         base_acquisition_function_builder: ExpectedImprovement
         | MinValueEntropySearch[ProbabilisticModel]
-        | MakePositive[ProbabilisticModel, AcquisitionFunction]
+        | MakePositive[ProbabilisticModel, AcquisitionFunctionType]
         | None = None,
     ):
         """
