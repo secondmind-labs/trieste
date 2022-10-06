@@ -17,7 +17,7 @@ functions --- functions that estimate the utility of evaluating sets of candidat
 """
 from __future__ import annotations
 
-from typing import Mapping, Optional, cast
+from typing import Generic, Mapping, Optional, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -430,7 +430,8 @@ def probability_of_feasibility(
 
 
 class ExpectedConstrainedImprovement(
-    AcquisitionFunctionBuilder[ProbabilisticModelType, AcquisitionFunction]
+    AcquisitionFunctionBuilder[ProbabilisticModelType, AcquisitionFunction],
+    Generic[ProbabilisticModelType, AcquisitionFunctionType],
 ):
     """
     Builder for the *expected constrained improvement* acquisition function defined in
@@ -442,7 +443,9 @@ class ExpectedConstrainedImprovement(
     def __init__(
         self,
         objective_tag: str,
-        constraint_builder: AcquisitionFunctionBuilder[ProbabilisticModelType, AcquisitionFunction],
+        constraint_builder: AcquisitionFunctionBuilder[
+            ProbabilisticModelType, AcquisitionFunctionType
+        ],
         min_feasibility_probability: float | TensorType = 0.5,
     ):
         """
@@ -466,7 +469,7 @@ class ExpectedConstrainedImprovement(
         self._objective_tag = objective_tag
         self._constraint_builder = constraint_builder
         self._min_feasibility_probability = min_feasibility_probability
-        self._constraint_fn: Optional[AcquisitionFunction] = None
+        self._constraint_fn: Optional[AcquisitionFunctionType] = None
         self._expected_improvement_fn: Optional[expected_improvement] = None
         self._constrained_improvement_fn: Optional[AcquisitionFunction] = None
 
@@ -549,7 +552,7 @@ class ExpectedConstrainedImprovement(
         )
         tf.debugging.Assert(self._constraint_fn is not None, [tf.constant([])])
 
-        constraint_fn = cast(AcquisitionFunction, self._constraint_fn)
+        constraint_fn = cast(AcquisitionFunctionType, self._constraint_fn)
         self._constraint_builder.update_acquisition_function(
             constraint_fn, models, datasets=datasets
         )

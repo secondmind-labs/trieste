@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import math
 from itertools import combinations, product
-from typing import Callable, Mapping, Optional, Sequence, cast
+from typing import Callable, Generic, Mapping, Optional, Sequence, cast, overload
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -32,6 +32,7 @@ from ...utils import DEFAULTS
 from ..interface import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
+    AcquisitionFunctionType,
     GreedyAcquisitionFunctionBuilder,
     PenalizationFunction,
     ProbabilisticModelType,
@@ -42,10 +43,10 @@ from ..multi_objective.pareto import (
     get_reference_point,
     prepare_default_non_dominated_partition_bounds,
 )
-from .function import ExpectedConstrainedImprovement
+from .function import ExpectedConstrainedImprovement, expected_improvement
 
 
-class expected_hv_improvement(AcquisitionFunction):
+class expected_hv_improvement(expected_improvement):
     def __init__(self, model: ProbabilisticModel, partition_bounds: tuple[TensorType, TensorType]):
         r"""
         expected Hyper-volume (HV) calculating using Eq. 44 of :cite:`yang2019efficient` paper.
@@ -247,7 +248,7 @@ class ExpectedHypervolumeImprovement(
         _partition_bounds = prepare_default_non_dominated_partition_bounds(
             self._ref_point, screened_front
         )
-        function.update(_partition_bounds)  # type: ignore
+        function.update(_partition_bounds)
         return function
 
 
@@ -415,7 +416,7 @@ def batch_ehvi(
 
 
 class ExpectedConstrainedHypervolumeImprovement(
-    ExpectedConstrainedImprovement[ProbabilisticModelType]
+    ExpectedConstrainedImprovement[ProbabilisticModelType, AcquisitionFunctionType]
 ):
     """
     Builder for the constrained expected hypervolume improvement acquisition function.
@@ -426,7 +427,9 @@ class ExpectedConstrainedHypervolumeImprovement(
     def __init__(
         self,
         objective_tag: str,
-        constraint_builder: AcquisitionFunctionBuilder[ProbabilisticModelType, AcquisitionFunction],
+        constraint_builder: AcquisitionFunctionBuilder[
+            ProbabilisticModelType, AcquisitionFunctionType
+        ],
         min_feasibility_probability: float | TensorType = 0.5,
         reference_point_spec: Sequence[float]
         | TensorType
@@ -493,7 +496,7 @@ class ExpectedConstrainedHypervolumeImprovement(
             screened_front,
         )
 
-        self._expected_improvement_fn: Optional[AcquisitionFunction]
+        self._expected_improvement_fn: Optional[expected_improvement]
         if self._expected_improvement_fn is None:
             self._expected_improvement_fn = expected_hv_improvement(
                 objective_model, _partition_bounds
@@ -502,10 +505,13 @@ class ExpectedConstrainedHypervolumeImprovement(
             tf.debugging.Assert(
                 isinstance(self._expected_improvement_fn, expected_hv_improvement), []
             )
-            self._expected_improvement_fn.update(_partition_bounds)  # type: ignore
+            self._expected_improvement_fn.update(_partition_bounds)
 
 
-class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
+class HIPPO(
+    GreedyAcquisitionFunctionBuilder[ProbabilisticModelType, AcquisitionFunction],
+    Generic[ProbabilisticModelType, AcquisitionFunctionType],
+):
     r"""
     HIPPO: HIghly Parallelizable Pareto Optimization
 
@@ -519,12 +525,33 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
     improve numerical stability, we perform additive penalization in a log space.
     """
 
+    @overload
+    def __init__(
+        self: "HIPPO[ProbabilisticModel, expected_hv_improvement]",
+        base_acquisition_function_builder: None = None,
+        objective_tag: str = OBJECTIVE,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self: "HIPPO[ProbabilisticModelType, AcquisitionFunctionType]",
+        base_acquisition_function_builder: AcquisitionFunctionBuilder[
+            ProbabilisticModelType, AcquisitionFunctionType
+        ]
+        | SingleModelAcquisitionBuilder[ProbabilisticModelType, AcquisitionFunctionType],
+        objective_tag: str = OBJECTIVE,
+    ):
+        ...
+
     def __init__(
         self,
-        objective_tag: str = OBJECTIVE,
-        base_acquisition_function_builder: AcquisitionFunctionBuilder[ProbabilisticModelType]
-        | SingleModelAcquisitionBuilder[ProbabilisticModelType]
+        base_acquisition_function_builder: AcquisitionFunctionBuilder[
+            ProbabilisticModelType, AcquisitionFunctionType
+        ]
+        | SingleModelAcquisitionBuilder[ProbabilisticModelType, AcquisitionFunctionType]
         | None = None,
+        objective_tag: str = OBJECTIVE,
     ):
         """
         Initializes the HIPPO acquisition function builder.
@@ -537,7 +564,7 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
         self._objective_tag = objective_tag
         if base_acquisition_function_builder is None:
             self._base_builder: AcquisitionFunctionBuilder[
-                ProbabilisticModelType
+                ProbabilisticModelType, AcquisitionFunctionType
             ] = ExpectedHypervolumeImprovement().using(self._objective_tag)
         else:
             if isinstance(base_acquisition_function_builder, SingleModelAcquisitionBuilder):
@@ -545,7 +572,7 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
             else:
                 self._base_builder = base_acquisition_function_builder
 
-        self._base_acquisition_function: Optional[AcquisitionFunction] = None
+        self._base_acquisition_function: Optional[AcquisitionFunctionType] = None
         self._penalization: Optional[PenalizationFunction] = None
         self._penalized_acquisition: Optional[AcquisitionFunction] = None
 

@@ -850,7 +850,9 @@ def test_hippo_builder_raises_for_empty_data() -> None:
     num_obj = 3
     dataset = {"": empty_dataset([2], [num_obj])}
     model = {"": QuadraticMeanAndRBFKernel()}
-    hippo = cast(GreedyAcquisitionFunctionBuilder[QuadraticMeanAndRBFKernel], HIPPO(""))
+    hippo = cast(
+        GreedyAcquisitionFunctionBuilder[QuadraticMeanAndRBFKernel], HIPPO(objective_tag="")
+    )
 
     with pytest.raises(tf.errors.InvalidArgumentError):
         hippo.prepare_acquisition_function(model, dataset)
@@ -914,7 +916,7 @@ def test_hippo_penalized_acquisitions_match_base_acquisition(
     model = {"": _mo_test_model(2, *[None] * 2)}
 
     hippo_acq_builder: HIPPO[ProbabilisticModel] = HIPPO(
-        "", base_acquisition_function_builder=base_builder
+        objective_tag="", base_acquisition_function_builder=base_builder
     )
     hippo_acq = hippo_acq_builder.prepare_acquisition_function(model, data, None)
 
@@ -945,7 +947,7 @@ def test_hippo_penalized_acquisitions_combine_base_and_penalization_correctly(
     pending_points = tf.zeros([2, 2], dtype=tf.float64)
 
     hippo_acq_builder: HIPPO[ProbabilisticModel] = HIPPO(
-        "", base_acquisition_function_builder=base_builder
+        objective_tag="", base_acquisition_function_builder=base_builder
     )
     hippo_acq = hippo_acq_builder.prepare_acquisition_function(model, data, pending_points)
     base_acq = base_builder.prepare_acquisition_function(model, data)
