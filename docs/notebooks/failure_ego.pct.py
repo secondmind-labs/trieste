@@ -23,7 +23,7 @@ import trieste
 
 def masked_branin(x):
     mask_nan = np.sqrt((x[:, 0] - 0.5) ** 2 + (x[:, 1] - 0.4) ** 2) < 0.3
-    y = np.array(trieste.objectives.branin(x))
+    y = np.array(trieste.objectives.Branin.objective(x))
     y[mask_nan] = np.nan
     return tf.convert_to_tensor(y.reshape(-1, 1), x.dtype)
 

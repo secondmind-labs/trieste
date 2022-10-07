@@ -39,7 +39,7 @@ from trieste.models.gpflow import (
     feature_decomposition_trajectory,
 )
 from trieste.models.interfaces import ReparametrizationSampler, SupportsPredictJoint
-from trieste.objectives.single_objectives import branin
+from trieste.objectives import Branin
 
 GPFLUX_VERSION = getattr(gpflux, "__version__", "0.2.3")
 
@@ -109,7 +109,7 @@ def _dim_two_gp(mean_shift: tuple[float, float] = (0.0, 0.0)) -> GaussianProcess
         amplitude=tf.cast(2.3, tf.float64), length_scale=tf.cast(0.5, tf.float64)
     )
     return GaussianProcess(
-        [lambda x: mean_shift[0] + branin(x), lambda x: mean_shift[1] + quadratic(x)],
+        [lambda x: mean_shift[0] + Branin.objective(x), lambda x: mean_shift[1] + quadratic(x)],
         [matern52, rbf()],
     )
 

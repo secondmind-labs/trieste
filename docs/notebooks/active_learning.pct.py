@@ -19,13 +19,17 @@ tf.random.set_seed(1793)
 
 
 # %%
-from trieste.objectives import BRANIN_SEARCH_SPACE, scaled_branin
+from trieste.objectives import ScaledBranin
 from trieste.experimental.plotting import plot_function_plotly
 
-search_space = BRANIN_SEARCH_SPACE
+scaled_branin = ScaledBranin.objective
+search_space = ScaledBranin.search_space
 
 fig = plot_function_plotly(
-    scaled_branin, search_space.lower, search_space.upper, grid_density=20
+    scaled_branin,
+    search_space.lower,
+    search_space.upper,
+    grid_density=20,
 )
 fig.update_layout(height=400, width=400)
 fig.show()
