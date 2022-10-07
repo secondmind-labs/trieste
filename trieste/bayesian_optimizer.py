@@ -937,10 +937,17 @@ def write_summary_query_points(
         columns = [f"x{i}" for i in range(tf.shape(query_points)[1])]
         qp_preds = query_points
         for tag in datasets:
+            pred = models[tag].predict(query_points)[0]
             qp_preds = tf.concat(
-                [qp_preds, tf.cast(models[tag].predict(query_points)[0], query_points.dtype)], 1
+                [qp_preds, tf.cast(pred, query_points.dtype)], 1
             )
-            columns.append(f"{tag} predicted")
+            if tf.shape(pred)[-1] == 1:
+                columns.append(f"{tag} predicted")
+            else:
+                for i in range(tf.shape(pred)[-1]):
+                    columns.append(f"{tag}{i} predicted")
+                # columns = [f"x{i}" for i in range(tf.shape(query_points)[1])]
+            # columns.append(f"{tag} predicted")
         query_new_df = pd.DataFrame(qp_preds, columns=columns).applymap(float)
         query_new_df["query points"] = "new"
         query_plot_df = pd.concat(
