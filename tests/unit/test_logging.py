@@ -185,10 +185,10 @@ def test_tensorboard_logging(mocked_summary_scalar: unittest.mock.MagicMock) -> 
     ordered_scalar_names = [
         "A.observation/best_new_observation",
         "A.observation/best_overall",
-        "query_points/[0]",
-        "wallclock/step",
-        "wallclock/query_point_generation",
         "wallclock/model_fitting",
+        "query_points/[0]",
+        "wallclock/query_point_generation",
+        "wallclock/step",
     ]
     for call_arg, scalar_name in zip_longest(
         mocked_summary_scalar.call_args_list,
