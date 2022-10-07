@@ -870,11 +870,19 @@ def write_summary_observations(
                 copy=False,
                 ignore_index=True,
             )
-            observation_plot_df["pareto"] = non_dominated(datasets[tag].observations)[1] == 0
-            observation_plot_df["observation type"] = observation_plot_df.apply(
-                lambda x: x["observations"] + x["pareto"] * " (non-dominated)",
-                axis=1,
-            )
+
+            if tag == OBJECTIVE or len(datasets) == 1:
+                observation_plot_df["pareto"] = non_dominated(datasets[tag].observations)[1] == 0
+                observation_plot_df["observation type"] = observation_plot_df.apply(
+                    lambda x: x["observations"] + x["pareto"] * " (non-dominated)",
+                    axis=1,
+                )
+            else:
+                observation_plot_df["observation type"] = observation_plot_df.apply(
+                    lambda x: x["observations"],
+                    axis=1,
+                )
+
             pairplot = sns.pairplot(
                 observation_plot_df,
                 vars=columns,
@@ -942,7 +950,7 @@ def write_summary_query_points(
             qp_preds = tf.concat([qp_preds, tf.cast(pred, query_points.dtype)], 1)
             output_dim = tf.shape(pred)[-1]
             for i in range(output_dim):
-                columns.append(f"{tag}{str(i) * (output_dim > 1)} predicted")
+                columns.append(f"{tag}{i if (output_dim > 1) else ''} predicted")
         query_new_df = pd.DataFrame(qp_preds, columns=columns).applymap(float)
         query_new_df["query points"] = "new"
         query_plot_df = pd.concat(
