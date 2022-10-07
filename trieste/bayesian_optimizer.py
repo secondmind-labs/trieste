@@ -796,7 +796,8 @@ def write_summary_initial_model_fit(
 def observation_plot_init(
     datasets: Mapping[str, Dataset],
 ) -> dict[str, pd.DataFrame]:
-    """Initialise query point pairplot dataframes with initial observations."""
+    """Initialise query point pairplot dataframes with initial observations.
+    Also logs warnings if pairplot dependencies are not installed."""
     observation_plot_dfs: dict[str, pd.DataFrame] = {}
     if logging.get_tensorboard_writer():
 
@@ -938,16 +939,10 @@ def write_summary_query_points(
         qp_preds = query_points
         for tag in datasets:
             pred = models[tag].predict(query_points)[0]
-            qp_preds = tf.concat(
-                [qp_preds, tf.cast(pred, query_points.dtype)], 1
-            )
-            if tf.shape(pred)[-1] == 1:
-                columns.append(f"{tag} predicted")
-            else:
-                for i in range(tf.shape(pred)[-1]):
-                    columns.append(f"{tag}{i} predicted")
-                # columns = [f"x{i}" for i in range(tf.shape(query_points)[1])]
-            # columns.append(f"{tag} predicted")
+            qp_preds = tf.concat([qp_preds, tf.cast(pred, query_points.dtype)], 1)
+            output_dim = tf.shape(pred)[-1]
+            for i in range(output_dim):
+                columns.append(f"{tag}{str(i) * (output_dim > 1)} predicted")
         query_new_df = pd.DataFrame(qp_preds, columns=columns).applymap(float)
         query_new_df["query points"] = "new"
         query_plot_df = pd.concat(
