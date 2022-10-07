@@ -110,7 +110,7 @@ from trieste.acquisition.multi_objective.dominance import non_dominated
     ],
 )
 def test_dominated_sort(scores: tf.Tensor, pareto_set: tf.Tensor, dominance: tf.Tensor) -> None:
-    ret_pareto_set, ret_nondominated = non_dominated(scores)
+    ret_pareto_set, ret_nondominated = tf.function(non_dominated)(scores)
     npt.assert_allclose(tf.sort(ret_pareto_set, 0), tf.sort(pareto_set, 0))
     npt.assert_array_equal(ret_nondominated, dominance == 0)
 
