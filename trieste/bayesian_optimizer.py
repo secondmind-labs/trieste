@@ -871,46 +871,46 @@ def write_summary_observations(
                 ignore_index=True,
             )
 
-            if tag == OBJECTIVE or len(datasets) == 1:
+            hue_order = ["initial", "old", "new"]
+            palette = {"initial": "tab:green", "old": "tab:green", "new": "tab:orange"}
+            markers = {"initial": "X", "old": "o", "new": "o"}
+
+            # assume that any OBJECTIVE- or single-tagged multi-output dataset => multi-objective
+            # more complex scenarios (e.g. constrained data) need to be plotted by the acq function
+            if len(datasets) > 1 and tag != OBJECTIVE:
+                observation_plot_df["observation type"] = observation_plot_df.apply(
+                    lambda x: x["observations"],
+                    axis=1,
+                )
+            else:
                 observation_plot_df["pareto"] = non_dominated(datasets[tag].observations)[1] == 0
                 observation_plot_df["observation type"] = observation_plot_df.apply(
                     lambda x: x["observations"] + x["pareto"] * " (non-dominated)",
                     axis=1,
                 )
-            else:
-                observation_plot_df["observation type"] = observation_plot_df.apply(
-                    lambda x: x["observations"],
-                    axis=1,
+                hue_order += [hue + " (non-dominated)" for hue in hue_order]
+                palette.update(
+                    {
+                        "initial (non-dominated)": "tab:purple",
+                        "old (non-dominated)": "tab:purple",
+                        "new (non-dominated)": "tab:red",
+                    }
+                )
+                markers.update(
+                    {
+                        "initial (non-dominated)": "X",
+                        "old (non-dominated)": "o",
+                        "new (non-dominated)": "o",
+                    }
                 )
 
             pairplot = sns.pairplot(
                 observation_plot_df,
                 vars=columns,
                 hue="observation type",
-                hue_order=[
-                    "initial",
-                    "old",
-                    "new",
-                    "initial (non-dominated)",
-                    "old (non-dominated)",
-                    "new (non-dominated)",
-                ],
-                palette={
-                    "initial": "tab:green",
-                    "old": "tab:green",
-                    "new": "tab:orange",
-                    "initial (non-dominated)": "tab:purple",
-                    "old (non-dominated)": "tab:purple",
-                    "new (non-dominated)": "tab:red",
-                },
-                markers={
-                    "initial": "X",
-                    "old": "o",
-                    "new": "o",
-                    "initial (non-dominated)": "X",
-                    "old (non-dominated)": "o",
-                    "new (non-dominated)": "o",
-                },
+                hue_order=hue_order,
+                palette=palette,
+                markers=markers,
             )
             logging.pyplot(f"{tag}.observations/_pairplot", pairplot.fig)
             observation_plot_df.loc[
@@ -956,7 +956,9 @@ def write_summary_query_points(
         query_plot_df = pd.concat(
             (query_plot_dfs.get(0), query_new_df), copy=False, ignore_index=True
         )
-        pairplot = sns.pairplot(query_plot_df, hue="query points", height=2.25)
+        pairplot = sns.pairplot(
+            query_plot_df, hue="query points", hue_order=["old", "new"], height=2.25
+        )
         padding = 0.025 * (search_space.upper - search_space.lower)
         upper_limits = search_space.upper + padding
         lower_limits = search_space.lower - padding
