@@ -1373,15 +1373,14 @@ class VariationalGaussianProcess(
 class AR1(TrainableProbabilisticModel):
     def __init__(
         self,
-        lowest_fidelity_signal_model: GaussianProcessRegression,
-        fidelity_residual_models: Sequence[GaussianProcessRegression],
+        fidelity_models: Sequence[GaussianProcessRegression],
     ):
-        self.num_fidelities = len(fidelity_residual_models) + 1
+        self.num_fidelities = len(fidelity_models)
 
-        self.lowest_fidelity_signal_model = lowest_fidelity_signal_model
+        self.lowest_fidelity_signal_model = fidelity_models[0]
         self.fidelity_residual_models: Sequence[Union[Optional[GaussianProcessRegression]]] = [
             None,
-            *fidelity_residual_models,
+            *fidelity_models[1:],
         ]
         # set this as a Parameter so that we can optimize it
         rho = [
@@ -1461,7 +1460,6 @@ class AR1(TrainableProbabilisticModel):
         """
         Update the models on their corresponding data. The data for each model is
         extracted by splitting the observations in ``dataset`` by fidelity level.
-
         :param dataset: The query points and observations for *all* the wrapped models.
         """
         assert_valid_fidelity_query_points(dataset.query_points)
@@ -1479,69 +1477,13 @@ class AR1(TrainableProbabilisticModel):
                     )
                 )
 
-    def optimize_not_quite_working(self, dataset: Dataset) -> None:
-        """
-        Optimize all the models on their corresponding data. The data for each model is
-        extracted by splitting the observations in ``dataset``  by fidelity level.
-
-        Note that we have to code up a custom loss function when optimizing our residual model, so that we
-        can include the correlation parameter as an optimisation variable.
-
-        :param dataset: The query points and observations for *all* the wrapped models.
-        """
-        dataset_per_fidelity = split_dataset_by_fidelity(dataset, self.num_fidelities)
-        for fidelity, dataset_for_fidelity in enumerate(dataset_per_fidelity):
-            if fidelity == 0:
-                self.lowest_fidelity_signal_model.optimize(dataset_for_fidelity)
-            else:
-                fidelity_residual_model = self.fidelity_residual_models[fidelity]
-                query_points_for_fidelity = convert_query_points_for_fidelity(
-                    dataset_for_fidelity.query_points, fidelity
-                )
-
-                def loss():
-                    predicted_mean_for_fidelity, _ = self.predict(query_points_for_fidelity)
-                    residual_for_fidelity = (
-                        dataset_for_fidelity.observations - predicted_mean_for_fidelity
-                    )
-
-                    # log_prob = fidelity_residual_model.model.predict_log_density(
-                    #     data=(dataset_for_fidelity.query_points, residual_for_fidelity),  # full_cov=True
-                    # )  # cholesky errors
-
-                    fidelity_residual_model.update(
-                        Dataset(dataset_for_fidelity.query_points, residual_for_fidelity)
-                    )  # I think the tf.assign means there is no gradient flow, which is unfortunate
-                    log_prob = fidelity_residual_model.model.maximum_log_likelihood_objective()
-
-                    # ((y - f-1) - m) = (y - (f-1 - m))
-                    # So would need to make the mean function of the current gp, use the predict function of
-                    # up to the previous layer
-                    # fidelity_residual_model.model.mean_function = lambda x: self.predict(x, fidelity=fidelity-1) - fidelity_residual_model.model.mean_function(x)
-                    return log_prob
-
-                trainable_variables = (
-                    fidelity_residual_model.model.trainable_variables + self.rho[fidelity].variables
-                )
-                fidelity_residual_model.optimizer.optimizer.minimize(loss, trainable_variables)
-
-                # Is this supposed to be here??
-                new_pred_mean_for_fidelity = self.predict(query_points_for_fidelity)[0]
-                new_residuals_for_fidelity = (
-                    dataset_for_fidelity.observations - new_pred_mean_for_fidelity
-                )
-                fidelity_residual_model.update(
-                    Dataset(dataset_for_fidelity.query_points, new_residuals_for_fidelity)
-                )
 
     def optimize(self, dataset: Dataset) -> None:
         """
         Optimize all the models on their corresponding data. The data for each model is
         extracted by splitting the observations in ``dataset``  by fidelity level.
-
         Note that we have to code up a custom loss function when optimizing our residual model, so that we
         can include the correlation parameter as an optimisation variable.
-
         :param dataset: The query points and observations for *all* the wrapped models.
         """
         assert_valid_fidelity_query_points(dataset.query_points)
@@ -1586,5 +1528,3 @@ class AR1(TrainableProbabilisticModel):
                 self.fidelity_residual_models[fidelity].update(
                     Dataset(fidelity_query_points, residuals)
                 )
-
-                # self.fidelity_residual_models[fidelity].update(Dataset(fidelity_query_points, fidelity_observations - self.rho[fidelity] * predictions_from_low_fidelity))

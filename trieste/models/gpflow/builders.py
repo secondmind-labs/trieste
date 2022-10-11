@@ -28,9 +28,10 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
 
-from ...data import Dataset
+from ...data import Dataset, split_dataset_by_fidelity
 from ...space import Box, SearchSpace
 from ...types import TensorType
+from ..gpflow.models import GaussianProcessRegression
 
 KERNEL_LENGTHSCALE = tf.cast(0.2, dtype=gpflow.default_float())
 """
@@ -423,3 +424,12 @@ def _get_inducing_points(
         inducing_points = search_space.sample(num_inducing_points)
 
     return inducing_points
+
+def build_ar1_models(dataset: Dataset, num_fidelities: int, input_search_space: SearchSpace):
+
+    # Split data into fidelities
+    data = split_dataset_by_fidelity(dataset=dataset, num_fidelities=num_fidelities)
+
+    gprs = [GaussianProcessRegression(build_gpr(data[fidelity], input_search_space,  likelihood_variance = 1e-6, kernel_priors=False)) for fidelity in range(num_fidelities)]
+
+    return gprs
