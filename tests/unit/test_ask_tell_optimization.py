@@ -27,7 +27,7 @@ from trieste.data import Dataset
 from trieste.models.interfaces import ProbabilisticModel, TrainableProbabilisticModel
 from trieste.observer import OBJECTIVE
 from trieste.space import Box
-from trieste.types import State, Tag, TensorType
+from trieste.types import State, TensorType
 
 
 class LinearWithUnitVariance(GaussianProcess, PseudoTrainableProbModel):
@@ -320,8 +320,8 @@ def test_ask_tell_optimizer_uses_specified_acquisition_state(
         def acquire(
             self,
             search_space: Box,
-            models: Mapping[Tag, ProbabilisticModel],
-            datasets: Optional[Mapping[Tag, Dataset]] = None,
+            models: Mapping[str, ProbabilisticModel],
+            datasets: Optional[Mapping[str, Dataset]] = None,
         ) -> State[int | None, TensorType]:
             def go(state: int | None) -> tuple[int | None, TensorType]:
                 self.states_received.append(state)

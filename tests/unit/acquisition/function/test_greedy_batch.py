@@ -46,7 +46,7 @@ from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.space import Box
-from trieste.types import Tag, TensorType
+from trieste.types import TensorType
 
 
 def test_locally_penalized_expected_improvement_builder_raises_for_empty_data() -> None:
@@ -240,7 +240,7 @@ def test_fantasize_with_kriging_believer_does_not_change_negative_predictive_mea
     pending_points = to_default_float(tf.constant([0.51, 0.81])[:, None])
 
     data = {"OBJECTIVE": Dataset(x, y)}
-    models: Mapping[Tag, FantasizerModelOrStack]
+    models: Mapping[str, FantasizerModelOrStack]
     if model_type == "stack":
         models = {
             "OBJECTIVE": FantasizerModelStack((GaussianProcessRegression(gpr_model(x, y)), 1))
@@ -268,7 +268,7 @@ def test_fantasize_reduces_predictive_variance(model_type: str, fantasize_method
     pending_points = to_default_float(tf.constant([0.51, 0.81])[:, None])
 
     data = {"OBJECTIVE": Dataset(x, y)}
-    models: Mapping[Tag, FantasizerModelOrStack]
+    models: Mapping[str, FantasizerModelOrStack]
     if model_type == "stack":
         models = {
             "OBJECTIVE": FantasizerModelStack((GaussianProcessRegression(gpr_model(x, y)), 1))

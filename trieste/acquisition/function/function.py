@@ -30,7 +30,7 @@ from ...models.interfaces import (
     SupportsReparamSamplerObservationNoise,
 )
 from ...space import SearchSpace
-from ...types import Tag, TensorType
+from ...types import TensorType, TagType
 from ...utils import DEFAULTS
 from ..interface import (
     AcquisitionFunction,
@@ -42,7 +42,7 @@ from ..interface import (
 )
 
 
-class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
+class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel, TagType]):
     """
     Builder for the expected improvement function where the "best" value is taken to be the minimum
     of the posterior mean at observed points.
@@ -129,7 +129,7 @@ class expected_improvement(AcquisitionFunctionClass):
         return (self._eta - mean) * normal.cdf(self._eta) + variance * normal.prob(self._eta)
 
 
-class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder[SupportsGetObservationNoise]):
+class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder[SupportsGetObservationNoise, TagType]):
     """
     Builder for the augmented expected improvement function for optimization single-objective
     optimization problems with high levels of observation noise.
@@ -234,7 +234,7 @@ class augmented_expected_improvement(AcquisitionFunctionClass):
         return expected_improvement * augmentation
 
 
-class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder[ProbabilisticModel]):
+class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder[ProbabilisticModel, TagType]):
     """
     Builder for the negative of the lower confidence bound. The lower confidence bound is typically
     minimised, so the negative is suitable for maximisation.
@@ -281,7 +281,7 @@ class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder[ProbabilisticMo
         return function  # no need to update anything
 
 
-class NegativePredictiveMean(NegativeLowerConfidenceBound):
+class NegativePredictiveMean(NegativeLowerConfidenceBound[TagType]):
     """
     Builder for the negative of the predictive mean. The predictive mean is minimised on minimising
     the objective function. The negative predictive mean is therefore maximised.
@@ -327,7 +327,7 @@ def lower_confidence_bound(model: ProbabilisticModel, beta: float) -> Acquisitio
     return acquisition
 
 
-class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel]):
+class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel, TagType]):
     r"""
     Builder for the :func:`probability_of_feasibility` acquisition function, defined in
     :cite:`gardner14` as
@@ -423,7 +423,7 @@ def probability_of_feasibility(
     return acquisition
 
 
-class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticModelType]):
+class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticModelType, TagType]):
     """
     Builder for the *expected constrained improvement* acquisition function defined in
     :cite:`gardner14`. The acquisition function computes the expected improvement from the best
@@ -433,8 +433,8 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
 
     def __init__(
         self,
-        objective_tag: str,
-        constraint_builder: AcquisitionFunctionBuilder[ProbabilisticModelType],
+        objective_tag: TagType,
+        constraint_builder: AcquisitionFunctionBuilder[ProbabilisticModelType, TagType],
         min_feasibility_probability: float | TensorType = 0.5,
     ):
         """
@@ -471,8 +471,8 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
 
     def prepare_acquisition_function(
         self,
-        models: Mapping[Tag, ProbabilisticModelType],
-        datasets: Optional[Mapping[Tag, Dataset]] = None,
+        models: Mapping[TagType, ProbabilisticModelType],
+        datasets: Optional[Mapping[TagType, Dataset]] = None,
     ) -> AcquisitionFunction:
         """
         :param models: The models over each tag.
@@ -484,7 +484,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
         :raise tf.errors.InvalidArgumentError: If the objective data is empty.
         """
         tf.debugging.Assert(datasets is not None, [tf.constant([])])
-        datasets = cast(Mapping[Tag, Dataset], datasets)
+        datasets = cast(Mapping[TagType, Dataset], datasets)
 
         objective_model = models[self._objective_tag]
         objective_dataset = datasets[self._objective_tag]
@@ -520,8 +520,8 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        models: Mapping[Tag, ProbabilisticModelType],
-        datasets: Optional[Mapping[Tag, Dataset]] = None,
+        models: Mapping[TagType, ProbabilisticModelType],
+        datasets: Optional[Mapping[TagType, Dataset]] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
@@ -529,7 +529,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
         :param datasets: The data from the observer.
         """
         tf.debugging.Assert(datasets is not None, [tf.constant([])])
-        datasets = cast(Mapping[Tag, Dataset], datasets)
+        datasets = cast(Mapping[TagType, Dataset], datasets)
 
         objective_model = models[self._objective_tag]
         objective_dataset = datasets[self._objective_tag]
@@ -587,7 +587,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
             self._expected_improvement_fn.update(eta)  # type: ignore
 
 
-class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSampler]):
+class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSampler, TagType]):
     """
     Builder for a Monte Carlo-based expected improvement function for use with a model without
     analytical expected improvement (e.g. a deep GP). The "best" value is taken to be
@@ -725,7 +725,7 @@ class monte_carlo_expected_improvement(AcquisitionFunctionClass):
 
 
 class MonteCarloAugmentedExpectedImprovement(
-    SingleModelAcquisitionBuilder[SupportsReparamSamplerObservationNoise]
+    SingleModelAcquisitionBuilder[SupportsReparamSamplerObservationNoise, TagType]
 ):
     """
     Builder for a Monte Carlo-based augmented expected improvement function for use with a model
@@ -875,7 +875,7 @@ class monte_carlo_augmented_expected_improvement(AcquisitionFunctionClass):
         return augmentation * tf.reduce_mean(improvement, axis=-2)  # [..., 1]
 
 
-class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSampler]):
+class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSampler, TagType]):
     """
     Expected improvement for batches of points (or :math:`q`-EI), approximated using Monte Carlo
     estimation with the reparametrization trick. See :cite:`Ginsbourger2010` for details.
@@ -992,7 +992,7 @@ class batch_monte_carlo_expected_improvement(AcquisitionFunctionClass):
 
 
 class MultipleOptimismNegativeLowerConfidenceBound(
-    SingleModelVectorizedAcquisitionBuilder[ProbabilisticModel]
+    SingleModelVectorizedAcquisitionBuilder[ProbabilisticModel, TagType]
 ):
     """
     A simple parallelization of the lower confidence bound acquisition function that produces
@@ -1098,7 +1098,7 @@ class multiple_optimism_lower_confidence_bound(AcquisitionFunctionClass):
         return -mean + tf.sqrt(variance) * self._betas  # [..., B]
 
 
-class MakePositive(SingleModelAcquisitionBuilder[ProbabilisticModelType]):
+class MakePositive(SingleModelAcquisitionBuilder[ProbabilisticModelType, TagType]):
     r"""
     Converts an acquisition function builder into one that only returns positive values, via
     :math:`x \mapsto \log(1 + \exp(x))`.
@@ -1110,7 +1110,7 @@ class MakePositive(SingleModelAcquisitionBuilder[ProbabilisticModelType]):
 
     def __init__(
         self,
-        base_acquisition_function_builder: SingleModelAcquisitionBuilder[ProbabilisticModelType],
+        base_acquisition_function_builder: SingleModelAcquisitionBuilder[ProbabilisticModelType, TagType],
     ) -> None:
         """
         :param base_acquisition_function_builder: Base acquisition function to be made positive.

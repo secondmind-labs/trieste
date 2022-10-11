@@ -21,11 +21,11 @@ import tensorflow as tf
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
-from ..types import Tag, TensorType
+from ..types import TensorType, TagType
 from .interface import AcquisitionFunction, AcquisitionFunctionBuilder
 
 
-class Reducer(AcquisitionFunctionBuilder[ProbabilisticModel]):
+class Reducer(AcquisitionFunctionBuilder[ProbabilisticModel, TagType]):
     r"""
     A :class:`Reducer` builds an :const:`~trieste.acquisition.AcquisitionFunction` whose output is
     calculated from the outputs of a number of other
@@ -33,7 +33,7 @@ class Reducer(AcquisitionFunctionBuilder[ProbabilisticModel]):
     by the method :meth:`_reduce`.
     """
 
-    def __init__(self, *builders: AcquisitionFunctionBuilder[ProbabilisticModel]):
+    def __init__(self, *builders: AcquisitionFunctionBuilder[ProbabilisticModel, TagType]):
         r"""
         :param \*builders: Acquisition function builders. At least one must be provided.
         :raise `~tf.errors.InvalidArgumentError`: If no builders are specified.
@@ -49,8 +49,8 @@ class Reducer(AcquisitionFunctionBuilder[ProbabilisticModel]):
 
     def prepare_acquisition_function(
         self,
-        models: Mapping[Tag, ProbabilisticModel],
-        datasets: Optional[Mapping[Tag, Dataset]] = None,
+        models: Mapping[TagType, ProbabilisticModel],
+        datasets: Optional[Mapping[TagType, Dataset]] = None,
     ) -> AcquisitionFunction:
         r"""
         Return an acquisition function. This acquisition function is defined by first building
@@ -75,8 +75,8 @@ class Reducer(AcquisitionFunctionBuilder[ProbabilisticModel]):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        models: Mapping[Tag, ProbabilisticModel],
-        datasets: Optional[Mapping[Tag, Dataset]] = None,
+        models: Mapping[TagType, ProbabilisticModel],
+        datasets: Optional[Mapping[TagType, Dataset]] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
@@ -94,7 +94,7 @@ class Reducer(AcquisitionFunctionBuilder[ProbabilisticModel]):
         return evaluate_acquisition_function_fn
 
     @property
-    def acquisitions(self) -> Sequence[AcquisitionFunctionBuilder[ProbabilisticModel]]:
+    def acquisitions(self) -> Sequence[AcquisitionFunctionBuilder[ProbabilisticModel, TagType]]:
         """The acquisition function builders specified at class initialisation."""
         return self._acquisitions
 
@@ -112,7 +112,7 @@ class Reducer(AcquisitionFunctionBuilder[ProbabilisticModel]):
         raise NotImplementedError()
 
 
-class Sum(Reducer):
+class Sum(Reducer[TagType]):
     """
     :class:`Reducer` whose resulting acquisition function returns the element-wise sum of the
     outputs of constituent acquisition functions.
@@ -130,7 +130,7 @@ class Sum(Reducer):
         return tf.add_n(inputs)
 
 
-class Product(Reducer):
+class Product(Reducer[TagType]):
     """
     :class:`Reducer` whose resulting acquisition function returns the element-wise product of the
     outputs of constituent acquisition functions.

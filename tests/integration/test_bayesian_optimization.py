@@ -79,7 +79,7 @@ from trieste.objectives import ScaledBranin, SimpleQuadratic
 from trieste.objectives.utils import mk_observer
 from trieste.observer import OBJECTIVE
 from trieste.space import Box, SearchSpace
-from trieste.types import State, Tag, TensorType
+from trieste.types import State, TensorType
 
 
 # Optimizer parameters for testing GPR against the branin function.
@@ -494,7 +494,7 @@ def _test_optimizer_finds_minimum(
         TrainableProbabilisticModelType,
     ],
     optimize_branin: bool = False,
-    model_args: Optional[Mapping[Tag, Any]] = None,
+    model_args: Optional[Mapping[str, Any]] = None,
     check_regret: bool = False,
 ) -> None:
     model_args = model_args or {}

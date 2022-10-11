@@ -33,7 +33,7 @@ from typing import (
     Optional,
     TypeVar,
     cast,
-    overload,
+    overload, Any,
 )
 
 import absl
@@ -55,9 +55,9 @@ from . import logging
 from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from .data import Dataset
 from .models import TrainableProbabilisticModel
-from .observer import OBJECTIVE, Observer
+from .observer import OBJECTIVE, MultiObserver, SingleObserver
 from .space import SearchSpace
-from .types import State, Tag, TensorType
+from .types import State, TensorType, TagType
 from .utils import Err, Ok, Result, Timer
 
 StateType = TypeVar("StateType")
@@ -72,20 +72,20 @@ TrainableProbabilisticModelType = TypeVar(
 """ Contravariant type variable bound to :class:`TrainableProbabilisticModel`. """
 
 EarlyStopCallback = Callable[
-    [Mapping[Tag, Dataset], Mapping[Tag, TrainableProbabilisticModelType], Optional[StateType]],
+    [Mapping[TagType, Dataset], Mapping[TagType, TrainableProbabilisticModelType], Optional[StateType]],
     bool,
 ]
 """ Early stop callback type, generic in the model and state types. """
 
 
 @dataclass(frozen=True)
-class Record(Generic[StateType]):
+class Record(Generic[StateType, TagType]):
     """Container to record the state of each step of the optimization process."""
 
-    datasets: Mapping[Tag, Dataset]
+    datasets: Mapping[TagType, Dataset]
     """ The known data from the observer. """
 
-    models: Mapping[Tag, TrainableProbabilisticModel]
+    models: Mapping[TagType, TrainableProbabilisticModel]
     """ The models over the :attr:`datasets`. """
 
     acquisition_state: StateType | None
@@ -107,7 +107,7 @@ class Record(Generic[StateType]):
         else:
             raise ValueError(f"Expected a single model, found {len(self.models)}")
 
-    def save(self, path: Path | str) -> FrozenRecord[StateType]:
+    def save(self, path: Path | str) -> FrozenRecord[StateType, TagType]:
         """Save the record to disk. Will overwrite any existing file at the same path."""
         Path(path).parent.mkdir(exist_ok=True, parents=True)
         with open(path, "wb") as f:
@@ -116,7 +116,7 @@ class Record(Generic[StateType]):
 
 
 @dataclass(frozen=True)
-class FrozenRecord(Generic[StateType]):
+class FrozenRecord(Generic[StateType, TagType]):
     """
     A Record container saved on disk.
 
@@ -127,18 +127,18 @@ class FrozenRecord(Generic[StateType]):
     path: Path
     """ The path to the pickled Record. """
 
-    def load(self) -> Record[StateType]:
+    def load(self) -> Record[StateType, TagType]:
         """Load the record into memory."""
         with open(self.path, "rb") as f:
             return dill.load(f)
 
     @property
-    def datasets(self) -> Mapping[Tag, Dataset]:
+    def datasets(self) -> Mapping[TagType, Dataset]:
         """The known data from the observer."""
         return self.load().datasets
 
     @property
-    def models(self) -> Mapping[Tag, TrainableProbabilisticModel]:
+    def models(self) -> Mapping[TagType, TrainableProbabilisticModel]:
         """The models over the :attr:`datasets`."""
         return self.load().models
 
@@ -161,16 +161,16 @@ class FrozenRecord(Generic[StateType]):
 # this should be a generic NamedTuple, but mypy doesn't support them
 #  https://github.com/python/mypy/issues/685
 @dataclass(frozen=True)
-class OptimizationResult(Generic[StateType]):
+class OptimizationResult(Generic[StateType, TagType]):
     """The final result, and the historical data of the optimization process."""
 
-    final_result: Result[Record[StateType]]
+    final_result: Result[Record[StateType, TagType]]
     """
     The final result of the optimization process. This contains either a :class:`Record` or an
     exception.
     """
 
-    history: list[Record[StateType] | FrozenRecord[StateType]]
+    history: list[Record[StateType, TagType] | FrozenRecord[StateType, TagType]]
     r"""
     The history of the :class:`Record`\ s from each step of the optimization process. These
     :class:`Record`\ s are created at the *start* of each loop, and as such will never
@@ -187,7 +187,7 @@ class OptimizationResult(Generic[StateType]):
 
     def astuple(
         self,
-    ) -> tuple[Result[Record[StateType]], list[Record[StateType] | FrozenRecord[StateType]]]:
+    ) -> tuple[Result[Record[StateType, TagType]], list[Record[StateType, TagType] | FrozenRecord[StateType, TagType]]]:
         """
         **Note:** In contrast to the standard library function :func:`dataclasses.astuple`, this
         method does *not* deepcopy instance attributes.
@@ -196,7 +196,7 @@ class OptimizationResult(Generic[StateType]):
         """
         return self.final_result, self.history
 
-    def try_get_final_datasets(self) -> Mapping[Tag, Dataset]:
+    def try_get_final_datasets(self) -> Mapping[TagType, Dataset]:
         """
         Convenience method to attempt to get the final data.
 
@@ -232,7 +232,7 @@ class OptimizationResult(Generic[StateType]):
         arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
         return dataset.query_points[arg_min_idx], dataset.observations[arg_min_idx], arg_min_idx
 
-    def try_get_final_models(self) -> Mapping[Tag, TrainableProbabilisticModel]:
+    def try_get_final_models(self) -> Mapping[TagType, TrainableProbabilisticModel]:
         """
         Convenience method to attempt to get the final models.
 
@@ -256,7 +256,7 @@ class OptimizationResult(Generic[StateType]):
             raise ValueError(f"Expected single model, found {len(models)}")
 
     @property
-    def loaded_history(self) -> list[Record[StateType]]:
+    def loaded_history(self) -> list[Record[StateType, TagType]]:
         """The history of the optimization process loaded into memory."""
         return [record if isinstance(record, Record) else record.load() for record in self.history]
 
@@ -276,7 +276,7 @@ class OptimizationResult(Generic[StateType]):
             record.save(record_path)
 
     @classmethod
-    def from_path(cls, base_path: Path | str) -> OptimizationResult[StateType]:
+    def from_path(cls, base_path: Path | str) -> OptimizationResult[StateType, TagType]:
         """Load a previously saved OptimizationResult."""
         try:
             with open(Path(base_path) / cls.RESULTS_FILENAME, "rb") as f:
@@ -284,20 +284,30 @@ class OptimizationResult(Generic[StateType]):
         except FileNotFoundError as e:
             result = Err(e)
 
-        history: list[Record[StateType] | FrozenRecord[StateType]] = [
+        history: list[Record[StateType, TagType] | FrozenRecord[StateType, TagType]] = [
             FrozenRecord(file) for file in sorted(Path(base_path).glob(cls.STEP_GLOB))
         ]
         return cls(result, history)
 
 
-class BayesianOptimizer(Generic[SearchSpaceType]):
+class BayesianOptimizer(Generic[SearchSpaceType, TagType]):
     """
     This class performs Bayesian optimization, the data-efficient optimization of an expensive
     black-box *objective function* over some *search space*. Since we may not have access to the
     objective function itself, we speak instead of an *observer* that observes it.
     """
 
-    def __init__(self, observer: Observer, search_space: SearchSpaceType):
+    @overload
+    def __init__(self: "BayesianOptimizer[SearchSpaceType, str]",
+                 observer: SingleObserver, search_space: SearchSpaceType):
+        ...
+
+    @overload
+    def __init__(self, observer: MultiObserver[TagType],
+                 search_space: SearchSpaceType):
+        ...
+
+    def __init__(self, observer: MultiObserver[TagType] | SingleObserver, search_space: SearchSpaceType):
         """
         :param observer: The observer of the objective function.
         :param search_space: The space over which to search. Must be a
@@ -314,87 +324,67 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
     def optimize(
         self,
         num_steps: int,
-        datasets: Mapping[Tag, Dataset],
-        models: Mapping[Tag, TrainableProbabilisticModel],
+        datasets: Mapping[TagType, Dataset],
+        models: Mapping[TagType, TrainableProbabilisticModel],
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
         early_stop_callback: Optional[
-            EarlyStopCallback[TrainableProbabilisticModel, object]
+            EarlyStopCallback[TagType, TrainableProbabilisticModel, object]
         ] = None,
-    ) -> OptimizationResult[None]:
+    ) -> OptimizationResult[None, TagType]:
         ...
 
     @overload
     def optimize(
         self,
         num_steps: int,
-        datasets: Mapping[Tag, Dataset],
-        models: Mapping[Tag, TrainableProbabilisticModelType],
+        datasets: Mapping[TagType, Dataset],
+        models: Mapping[TagType, TrainableProbabilisticModelType],
         acquisition_rule: AcquisitionRule[
-            TensorType, SearchSpaceType, TrainableProbabilisticModelType
+            TensorType, SearchSpaceType, TrainableProbabilisticModelType, TagType
         ],
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
         early_stop_callback: Optional[
-            EarlyStopCallback[TrainableProbabilisticModelType, object]
+            EarlyStopCallback[TagType, TrainableProbabilisticModelType, object]
         ] = None,
         # this should really be OptimizationResult[None], but tf.Tensor is untyped so the type
         # checker can't differentiate between TensorType and State[S | None, TensorType], and
         # the return types clash. object is close enough to None that object will do.
-    ) -> OptimizationResult[object]:
+    ) -> OptimizationResult[object, TagType]:
         ...
 
     @overload
     def optimize(
         self,
         num_steps: int,
-        datasets: Mapping[Tag, Dataset],
-        models: Mapping[Tag, TrainableProbabilisticModelType],
+        datasets: Mapping[TagType, Dataset],
+        models: Mapping[TagType, TrainableProbabilisticModelType],
         acquisition_rule: AcquisitionRule[
-            TensorType, SearchSpaceType, TrainableProbabilisticModelType
+            TensorType, SearchSpaceType, TrainableProbabilisticModelType, TagType
         ],
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
         early_stop_callback: Optional[
-            EarlyStopCallback[TrainableProbabilisticModelType, object]
+            EarlyStopCallback[TagType, TrainableProbabilisticModelType, object]
         ] = None,
-    ) -> OptimizationResult[object]:
+    ) -> OptimizationResult[object, TagType]:
         ...
 
     @overload
     def optimize(
         self,
         num_steps: int,
-        datasets: Mapping[Tag, Dataset],
-        models: Mapping[Tag, TrainableProbabilisticModelType],
+        datasets: Mapping[TagType, Dataset],
+        models: Mapping[TagType, TrainableProbabilisticModelType],
         acquisition_rule: AcquisitionRule[
-            State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
-        ],
-        acquisition_state: StateType | None = None,
-        *,
-        track_state: bool = True,
-        track_path: Optional[Path | str] = None,
-        fit_initial_model: bool = True,
-        early_stop_callback: Optional[
-            EarlyStopCallback[TrainableProbabilisticModelType, StateType]
-        ] = None,
-    ) -> OptimizationResult[StateType]:
-        ...
-
-    @overload
-    def optimize(
-        self,
-        num_steps: int,
-        datasets: Mapping[Tag, Dataset],
-        models: Mapping[Tag, TrainableProbabilisticModelType],
-        acquisition_rule: AcquisitionRule[
-            State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
+            State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType, TagType
         ],
         acquisition_state: StateType | None = None,
         *,
@@ -402,14 +392,34 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
         early_stop_callback: Optional[
-            EarlyStopCallback[TrainableProbabilisticModelType, StateType]
+            EarlyStopCallback[TagType, TrainableProbabilisticModelType, StateType]
         ] = None,
-    ) -> OptimizationResult[StateType]:
+    ) -> OptimizationResult[StateType, TagType]:
         ...
 
     @overload
     def optimize(
         self,
+        num_steps: int,
+        datasets: Mapping[TagType, Dataset],
+        models: Mapping[TagType, TrainableProbabilisticModelType],
+        acquisition_rule: AcquisitionRule[
+            State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType, TagType
+        ],
+        acquisition_state: StateType | None = None,
+        *,
+        track_state: bool = True,
+        track_path: Optional[Path | str] = None,
+        fit_initial_model: bool = True,
+        early_stop_callback: Optional[
+            EarlyStopCallback[TagType, TrainableProbabilisticModelType, StateType]
+        ] = None,
+    ) -> OptimizationResult[StateType, TagType]:
+        ...
+
+    @overload
+    def optimize(
+        self: "BayesianOptimizer[SearchSpaceType, str]",
         num_steps: int,
         datasets: Dataset,
         models: TrainableProbabilisticModel,
@@ -418,77 +428,57 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
         early_stop_callback: Optional[
-            EarlyStopCallback[TrainableProbabilisticModel, object]
+            EarlyStopCallback[TagType, TrainableProbabilisticModel, object]
         ] = None,
-    ) -> OptimizationResult[None]:
+    ) -> OptimizationResult[None, TagType]:
         ...
 
     @overload
     def optimize(
-        self,
+        self: "BayesianOptimizer[SearchSpaceType, str]",
         num_steps: int,
         datasets: Dataset,
         models: TrainableProbabilisticModelType,
         acquisition_rule: AcquisitionRule[
-            TensorType, SearchSpaceType, TrainableProbabilisticModelType
+            TensorType, SearchSpaceType, TrainableProbabilisticModelType, TagType
         ],
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
         early_stop_callback: Optional[
-            EarlyStopCallback[TrainableProbabilisticModelType, object]
+            EarlyStopCallback[TagType, TrainableProbabilisticModelType, object]
         ] = None,
-    ) -> OptimizationResult[object]:
+    ) -> OptimizationResult[object, TagType]:
         ...
 
     @overload
     def optimize(
-        self,
+        self: "BayesianOptimizer[SearchSpaceType, str]",
         num_steps: int,
         datasets: Dataset,
         models: TrainableProbabilisticModelType,
         acquisition_rule: AcquisitionRule[
-            TensorType, SearchSpaceType, TrainableProbabilisticModelType
+            TensorType, SearchSpaceType, TrainableProbabilisticModelType, TagType,
         ],
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
         early_stop_callback: Optional[
-            EarlyStopCallback[TrainableProbabilisticModelType, object]
+            EarlyStopCallback[TagType, TrainableProbabilisticModelType, object]
         ] = None,
-    ) -> OptimizationResult[object]:
+    ) -> OptimizationResult[object, TagType]:
         ...
 
     @overload
     def optimize(
-        self,
+        self: "BayesianOptimizer[SearchSpaceType, str]",
         num_steps: int,
         datasets: Dataset,
         models: TrainableProbabilisticModelType,
         acquisition_rule: AcquisitionRule[
-            State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
-        ],
-        acquisition_state: StateType | None = None,
-        *,
-        track_state: bool = True,
-        track_path: Optional[Path | str] = None,
-        fit_initial_model: bool = True,
-        early_stop_callback: Optional[
-            EarlyStopCallback[TrainableProbabilisticModelType, StateType]
-        ] = None,
-    ) -> OptimizationResult[StateType]:
-        ...
-
-    @overload
-    def optimize(
-        self,
-        num_steps: int,
-        datasets: Dataset,
-        models: TrainableProbabilisticModelType,
-        acquisition_rule: AcquisitionRule[
-            State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
+            State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType, TagType,
         ],
         acquisition_state: StateType | None = None,
         *,
@@ -496,20 +486,41 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
         early_stop_callback: Optional[
-            EarlyStopCallback[TrainableProbabilisticModelType, StateType]
+            EarlyStopCallback[TagType, TrainableProbabilisticModelType, StateType]
         ] = None,
-    ) -> OptimizationResult[StateType]:
+    ) -> OptimizationResult[StateType, TagType]:
+        ...
+
+    @overload
+    def optimize(
+        self: "BayesianOptimizer[SearchSpaceType, str]",
+        num_steps: int,
+        datasets: Dataset,
+        models: TrainableProbabilisticModelType,
+        acquisition_rule: AcquisitionRule[
+            State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType, TagType,
+        ],
+        acquisition_state: StateType | None = None,
+        *,
+        track_state: bool = True,
+        track_path: Optional[Path | str] = None,
+        fit_initial_model: bool = True,
+        early_stop_callback: Optional[
+            EarlyStopCallback[TagType, TrainableProbabilisticModelType, StateType]
+        ] = None,
+    ) -> OptimizationResult[StateType, TagType]:
         ...
 
     def optimize(
         self,
         num_steps: int,
-        datasets: Mapping[Tag, Dataset] | Dataset,
-        models: Mapping[Tag, TrainableProbabilisticModelType] | TrainableProbabilisticModelType,
+        datasets: Mapping[TagType, Dataset] | Dataset,
+        models: Mapping[TagType, TrainableProbabilisticModelType] | TrainableProbabilisticModelType,
         acquisition_rule: AcquisitionRule[
             TensorType | State[StateType | None, TensorType],
             SearchSpaceType,
             TrainableProbabilisticModelType,
+            TagType,
         ]
         | None = None,
         acquisition_state: StateType | None = None,
@@ -518,9 +529,9 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
         early_stop_callback: Optional[
-            EarlyStopCallback[TrainableProbabilisticModelType, StateType]
+            EarlyStopCallback[TagType, TrainableProbabilisticModelType, StateType]
         ] = None,
-    ) -> OptimizationResult[StateType] | OptimizationResult[None]:
+    ) -> OptimizationResult[StateType, TagType] | OptimizationResult[None, TagType]:
         """
         Attempt to find the minimizer of the ``observer`` in the ``search_space`` (both specified at
         :meth:`__init__`). This is the central implementation of the Bayesian optimization loop.
@@ -581,12 +592,13 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             - the default `acquisition_rule` is used and the tags are not `OBJECTIVE`.
         """
         if isinstance(datasets, Dataset):
-            datasets = {OBJECTIVE: datasets}
-            models = {OBJECTIVE: models}  # type: ignore[dict-item]
+            tag = cast(TagType, OBJECTIVE)
+            datasets = {tag: datasets}
+            models = {tag: models}  # type: ignore[dict-item]
 
         # reassure the type checker that everything is tagged
-        datasets = cast(Dict[str, Dataset], datasets)
-        models = cast(Dict[str, TrainableProbabilisticModelType], models)
+        datasets = cast(Dict[TagType, Dataset], datasets)
+        models = cast(Dict[TagType, TrainableProbabilisticModelType], models)
 
         if num_steps < 0:
             raise ValueError(f"num_steps must be at least 0, got {num_steps}")
@@ -607,11 +619,12 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     f" {OBJECTIVE!r}, got keys {datasets.keys()}"
                 )
 
-            acquisition_rule = EfficientGlobalOptimization[
-                SearchSpaceType, TrainableProbabilisticModelType
+            acquisition_rule = EfficientGlobalOptimization[ # type: ignore[assignment] # TODO
+                SearchSpaceType, TrainableProbabilisticModelType, TagType
             ]()
+        assert acquisition_rule is not None
 
-        history: list[FrozenRecord[StateType] | Record[StateType]] = []
+        history: list[FrozenRecord[StateType, TagType] | Record[StateType, TagType]] = []
         query_plot_dfs: dict[int, pd.DataFrame] = {}
         observation_plot_dfs = observation_plot_init(datasets)
 
@@ -690,7 +703,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     tagged_output = (
                         observer_output
                         if isinstance(observer_output, Mapping)
-                        else {OBJECTIVE: observer_output}
+                        else {cast(TagType, OBJECTIVE): observer_output}
                     )
 
                     datasets = {tag: datasets[tag] + tagged_output[tag] for tag in tagged_output}
@@ -752,15 +765,16 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
 
 def write_summary_init(
-    observer: Observer,
+    observer: SingleObserver | MultiObserver[Any],
     search_space: SearchSpace,
     acquisition_rule: AcquisitionRule[
         TensorType | State[StateType | None, TensorType],
         SearchSpaceType,
         TrainableProbabilisticModelType,
+        Any,
     ],
-    datasets: Mapping[Tag, Dataset],
-    models: Mapping[Tag, TrainableProbabilisticModel],
+    datasets: Mapping[Any, Dataset],
+    models: Mapping[Any, TrainableProbabilisticModel],
     num_steps: int,
 ) -> None:
     """Write initial BO loop TensorBoard summary."""
@@ -779,8 +793,8 @@ def write_summary_init(
 
 
 def write_summary_initial_model_fit(
-    datasets: Mapping[Tag, Dataset],
-    models: Mapping[Tag, TrainableProbabilisticModel],
+    datasets: Mapping[Any, Dataset],
+    models: Mapping[Any, TrainableProbabilisticModel],
     model_fitting_timer: Timer,
 ) -> None:
     """Write TensorBoard summary for the model fitting to the initial data."""
@@ -794,7 +808,7 @@ def write_summary_initial_model_fit(
 
 
 def observation_plot_init(
-    datasets: Mapping[Tag, Dataset],
+    datasets: Mapping[Any, Dataset],
 ) -> dict[str, pd.DataFrame]:
     """Initialise query point pairplot dataframes with initial observations.
     Also logs warnings if pairplot dependencies are not installed."""
@@ -827,11 +841,11 @@ def observation_plot_init(
 
 
 def write_summary_observations(
-    datasets: Mapping[Tag, Dataset],
-    models: Mapping[Tag, TrainableProbabilisticModel],
-    tagged_output: Mapping[Tag, TensorType],
+    datasets: Mapping[Any, Dataset],
+    models: Mapping[Any, TrainableProbabilisticModel],
+    tagged_output: Mapping[Any, TensorType],
     model_fitting_timer: Timer,
-    observation_plot_dfs: MutableMapping[Tag, pd.DataFrame],
+    observation_plot_dfs: MutableMapping[Any, pd.DataFrame],
 ) -> None:
     """Write TensorBoard summary for the current step observations."""
     for tag in datasets:
@@ -925,8 +939,8 @@ def write_summary_observations(
 
 
 def write_summary_query_points(
-    datasets: Mapping[Tag, Dataset],
-    models: Mapping[Tag, TrainableProbabilisticModel],
+    datasets: Mapping[Any, Dataset],
+    models: Mapping[Any, TrainableProbabilisticModel],
     search_space: SearchSpace,
     query_points: TensorType,
     query_point_generation_timer: Timer,
@@ -976,14 +990,14 @@ def write_summary_query_points(
 
 
 def stop_at_minimum(
+    objective_tag: TagType, # TODO: overload to allow default
     minimum: Optional[tf.Tensor] = None,
     minimizers: Optional[tf.Tensor] = None,
     minimum_atol: float = 0,
     minimum_rtol: float = 0.05,
     minimizers_atol: float = 0,
     minimizers_rtol: float = 0.05,
-    objective_tag: str = OBJECTIVE,
-) -> EarlyStopCallback[TrainableProbabilisticModel, object]:
+) -> EarlyStopCallback[TagType, TrainableProbabilisticModel, object]:
     """
     Generate an early stop function that terminates a BO loop when it gets close enough to the
     given objective minimum and/or minimizer points.
@@ -1000,8 +1014,8 @@ def stop_at_minimum(
     """
 
     def early_stop_callback(
-        datasets: Mapping[Tag, Dataset],
-        _models: Mapping[Tag, TrainableProbabilisticModel],
+        datasets: Mapping[TagType, Dataset],
+        _models: Mapping[TagType, TrainableProbabilisticModel],
         _acquisition_state: object,
     ) -> bool:
         dataset = datasets[objective_tag]

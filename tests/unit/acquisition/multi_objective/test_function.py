@@ -61,7 +61,7 @@ from trieste.acquisition.multi_objective.partition import (
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel, ProbabilisticModelType, ReparametrizationSampler
-from trieste.types import Tag, TensorType
+from trieste.types import TensorType
 from trieste.utils import DEFAULTS
 
 
@@ -79,8 +79,8 @@ def _mo_test_model(
 class _Certainty(AcquisitionFunctionBuilder[ProbabilisticModel]):
     def prepare_acquisition_function(
         self,
-        models: Mapping[Tag, ProbabilisticModel],
-        datasets: Optional[Mapping[Tag, Dataset]] = None,
+        models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
     ) -> AcquisitionFunction:
         return lambda x: tf.ones((tf.shape(x)[0], 1), dtype=tf.float64)
 
@@ -752,8 +752,8 @@ def test_expected_constrained_hypervolume_improvement_based_on_specified_ref_poi
     class _Certainty(AcquisitionFunctionBuilder[ProbabilisticModelType]):
         def prepare_acquisition_function(
             self,
-            models: Mapping[Tag, ProbabilisticModel],
-            datasets: Optional[Mapping[Tag, Dataset]] = None,
+            models: Mapping[str, ProbabilisticModel],
+            datasets: Optional[Mapping[str, Dataset]] = None,
         ) -> AcquisitionFunction:
             return lambda x: tf.ones_like(tf.squeeze(x, -2))
 
@@ -794,8 +794,8 @@ def test_echvi_is_constraint_when_no_feasible_points() -> None:
     class _Constraint(AcquisitionFunctionBuilder[ProbabilisticModel]):
         def prepare_acquisition_function(
             self,
-            models: Mapping[Tag, ProbabilisticModel],
-            datasets: Optional[Mapping[Tag, Dataset]] = None,
+            models: Mapping[str, ProbabilisticModel],
+            datasets: Optional[Mapping[str, Dataset]] = None,
         ) -> AcquisitionFunction:
             def acquisition(x: TensorType) -> TensorType:
                 x_ = tf.squeeze(x, -2)
@@ -831,8 +831,8 @@ def test_echvi_raises_for_empty_data() -> None:
     class _Constraint(AcquisitionFunctionBuilder[ProbabilisticModel]):
         def prepare_acquisition_function(
             self,
-            models: Mapping[Tag, ProbabilisticModel],
-            datasets: Optional[Mapping[Tag, Dataset]] = None,
+            models: Mapping[str, ProbabilisticModel],
+            datasets: Optional[Mapping[str, Dataset]] = None,
         ) -> AcquisitionFunction:
             return raise_exc
 

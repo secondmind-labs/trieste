@@ -14,13 +14,13 @@
 """ Definitions and utilities for observers of objective functions. """
 from __future__ import annotations
 
-from typing import Callable, Mapping, Union
+from typing import Callable, Mapping, Generic
 
 import tensorflow as tf
-from typing_extensions import Final
+from typing_extensions import Final, Protocol
 
 from .data import Dataset
-from .types import Tag, TensorType
+from .types import TensorType, TagType
 
 SingleObserver = Callable[[TensorType], Dataset]
 """
@@ -28,18 +28,17 @@ Type alias for an observer of the objective function (that takes query points an
 unlabelled dataset).
 """
 
-MultiObserver = Callable[[TensorType], Mapping[Tag, Dataset]]
-"""
-Type alias for an observer of the objective function (that takes query points and returns labelled
-datasets).
-"""
+class MultiObserver(Protocol, Generic[TagType]):
+    """
+    Protocol for an observer of the objective function (that takes query points and returns labelled
+    datasets). Generic in the tag type.
+    """
 
-Observer = Union[SingleObserver, MultiObserver]
-"""
-Type alias for an observer, returning either labelled datasets or a single unlabelled dataset.
-"""
+    def __call__(self, x: TensorType) -> Mapping[TagType, Dataset]:
+        ...
 
-OBJECTIVE: Final[Tag] = "OBJECTIVE"
+
+OBJECTIVE: Final[str] = "OBJECTIVE"
 """
 A tag typically used by acquisition rules to denote the data sets and models corresponding to the
 optimization objective.

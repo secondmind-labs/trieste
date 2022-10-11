@@ -28,12 +28,12 @@ import tensorflow_probability as tfp
 from ...data import Dataset
 from ...models import ProbabilisticModel
 from ...models.interfaces import FastUpdateModel, SupportsPredictJoint
-from ...types import TensorType
+from ...types import TensorType, TagType
 from ...utils import DEFAULTS
 from ..interface import AcquisitionFunction, AcquisitionFunctionClass, SingleModelAcquisitionBuilder
 
 
-class PredictiveVariance(SingleModelAcquisitionBuilder[SupportsPredictJoint]):
+class PredictiveVariance(SingleModelAcquisitionBuilder[SupportsPredictJoint, TagType]):
     """
     Builder for the determinant of the predictive covariance matrix over the batch points.
     For a batch of size 1 it is the same as maximizing the predictive variance.
@@ -111,7 +111,7 @@ def predictive_variance(model: SupportsPredictJoint, jitter: float) -> Acquisiti
     return acquisition
 
 
-class ExpectedFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel]):
+class ExpectedFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel, TagType]):
     """
     Builder for the Expected feasibility acquisition function for identifying a failure or
     feasibility region. It implements two related sampling strategies called *bichon* criterion
@@ -250,7 +250,7 @@ def bichon_ranjan_criterion(
     return acquisition
 
 
-class IntegratedVarianceReduction(SingleModelAcquisitionBuilder[FastUpdateModel]):
+class IntegratedVarianceReduction(SingleModelAcquisitionBuilder[FastUpdateModel, TagType]):
     """
     Builder for the reduction of the integral of the predicted variance over the search
     space given a batch of query points.
@@ -420,7 +420,7 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
         return -tf.reduce_mean(variance * self._weights, axis=-2)
 
 
-class BayesianActiveLearningByDisagreement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
+class BayesianActiveLearningByDisagreement(SingleModelAcquisitionBuilder[ProbabilisticModel, TagType]):
     """
     Builder for the *Bayesian Active Learning By Disagreement* acquisition function defined in
     :cite:`houlsby2011bayesian`.

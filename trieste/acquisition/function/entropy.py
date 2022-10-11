@@ -27,7 +27,7 @@ from ...models import ProbabilisticModel
 from ...models.gpflow.interface import SupportsCovarianceBetweenPoints
 from ...models.interfaces import HasTrajectorySampler, SupportsGetObservationNoise
 from ...space import SearchSpace
-from ...types import TensorType
+from ...types import TensorType, TagType
 from ..interface import (
     AcquisitionFunction,
     AcquisitionFunctionClass,
@@ -42,7 +42,7 @@ from ..sampler import ExactThompsonSampler, ThompsonSampler
 CLAMP_LB = 1e-8
 
 
-class MinValueEntropySearch(SingleModelAcquisitionBuilder[ProbabilisticModelType]):
+class MinValueEntropySearch(SingleModelAcquisitionBuilder[ProbabilisticModelType, TagType]):
     r"""
     Builder for the max-value entropy search acquisition function modified for objective
     minimisation. :class:`MinValueEntropySearch` estimates the information in the distribution
@@ -57,7 +57,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder[ProbabilisticModelType
 
     @overload
     def __init__(
-        self: "MinValueEntropySearch[ProbabilisticModel]",
+        self: "MinValueEntropySearch[ProbabilisticModel, TagType]",
         search_space: SearchSpace,
         num_samples: int = 5,
         grid_size: int = 1000,
@@ -67,7 +67,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder[ProbabilisticModelType
 
     @overload
     def __init__(
-        self: "MinValueEntropySearch[ProbabilisticModelType]",
+        self: "MinValueEntropySearch[ProbabilisticModelType, TagType]",
         search_space: SearchSpace,
         num_samples: int = 5,
         grid_size: int = 1000,
@@ -232,7 +232,7 @@ GIBBONModelType = TypeVar(
 """ Type variable bound to :class:`~trieste.models.SupportsCovarianceObservationNoise`. """
 
 
-class GIBBON(SingleModelGreedyAcquisitionBuilder[GIBBONModelType]):
+class GIBBON(SingleModelGreedyAcquisitionBuilder[GIBBONModelType, TagType]):
     r"""
     The General-purpose Information-Based Bayesian Optimisation (GIBBON) acquisition function
     of :cite:`Moss:2021`. :class:`GIBBON` provides a computationally cheap approximation of the
@@ -249,7 +249,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[GIBBONModelType]):
 
     @overload
     def __init__(
-        self: "GIBBON[SupportsCovarianceObservationNoise]",
+        self: "GIBBON[SupportsCovarianceObservationNoise, TagType]",
         search_space: SearchSpace,
         num_samples: int = 5,
         grid_size: int = 1000,
@@ -260,7 +260,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[GIBBONModelType]):
 
     @overload
     def __init__(
-        self: "GIBBON[GIBBONModelType]",
+        self: "GIBBON[GIBBONModelType, TagType]",
         search_space: SearchSpace,
         num_samples: int = 5,
         grid_size: int = 1000,

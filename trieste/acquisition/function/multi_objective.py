@@ -27,7 +27,7 @@ from ...data import Dataset
 from ...models import ProbabilisticModel, ReparametrizationSampler
 from ...models.interfaces import HasReparamSampler
 from ...observer import OBJECTIVE
-from ...types import Tag, TensorType
+from ...types import TensorType, TagType
 from ...utils import DEFAULTS
 from ..interface import (
     AcquisitionFunction,
@@ -46,7 +46,7 @@ from ..multi_objective.pareto import (
 from .function import ExpectedConstrainedImprovement
 
 
-class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
+class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel, TagType]):
     """
     Builder for the expected hypervolume improvement acquisition function.
     The implementation of the acquisition function largely
@@ -251,7 +251,7 @@ class expected_hv_improvement(AcquisitionFunctionClass):
 
 
 class BatchMonteCarloExpectedHypervolumeImprovement(
-    SingleModelAcquisitionBuilder[HasReparamSampler]
+    SingleModelAcquisitionBuilder[HasReparamSampler, TagType]
 ):
     """
     Builder for the batch expected hypervolume improvement acquisition function.
@@ -414,7 +414,7 @@ def batch_ehvi(
 
 
 class ExpectedConstrainedHypervolumeImprovement(
-    ExpectedConstrainedImprovement[ProbabilisticModelType]
+    ExpectedConstrainedImprovement[ProbabilisticModelType, TagType]
 ):
     """
     Builder for the constrained expected hypervolume improvement acquisition function.
@@ -424,8 +424,8 @@ class ExpectedConstrainedHypervolumeImprovement(
 
     def __init__(
         self,
-        objective_tag: str,
-        constraint_builder: AcquisitionFunctionBuilder[ProbabilisticModelType],
+        objective_tag: TagType,
+        constraint_builder: AcquisitionFunctionBuilder[ProbabilisticModelType, TagType],
         min_feasibility_probability: float | TensorType = 0.5,
         reference_point_spec: Sequence[float]
         | TensorType
@@ -504,7 +504,7 @@ class ExpectedConstrainedHypervolumeImprovement(
             self._expected_improvement_fn.update(_partition_bounds)  # type: ignore
 
 
-class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
+class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType, TagType]):
     r"""
     HIPPO: HIghly Parallelizable Pareto Optimization
 
@@ -520,9 +520,9 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
 
     def __init__(
         self,
-        objective_tag: str = OBJECTIVE,
-        base_acquisition_function_builder: AcquisitionFunctionBuilder[ProbabilisticModelType]
-        | SingleModelAcquisitionBuilder[ProbabilisticModelType]
+        objective_tag: TagType,
+        base_acquisition_function_builder: AcquisitionFunctionBuilder[ProbabilisticModelType, TagType]
+        | SingleModelAcquisitionBuilder[ProbabilisticModelType, TagType]
         | None = None,
     ):
         """
@@ -536,8 +536,8 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
         self._objective_tag = objective_tag
         if base_acquisition_function_builder is None:
             self._base_builder: AcquisitionFunctionBuilder[
-                ProbabilisticModelType
-            ] = ExpectedHypervolumeImprovement().using(self._objective_tag)
+                ProbabilisticModelType, TagType
+            ] = ExpectedHypervolumeImprovement[TagType]().using(self._objective_tag)
         else:
             if isinstance(base_acquisition_function_builder, SingleModelAcquisitionBuilder):
                 self._base_builder = base_acquisition_function_builder.using(self._objective_tag)
@@ -550,8 +550,8 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
 
     def prepare_acquisition_function(
         self,
-        models: Mapping[Tag, ProbabilisticModelType],
-        datasets: Optional[Mapping[Tag, Dataset]] = None,
+        models: Mapping[TagType, ProbabilisticModelType],
+        datasets: Optional[Mapping[TagType, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
         """
@@ -564,7 +564,7 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
         :raise tf.errors.InvalidArgumentError: If the ``dataset`` is empty.
         """
         tf.debugging.Assert(datasets is not None, [tf.constant([])])
-        datasets = cast(Mapping[Tag, Dataset], datasets)
+        datasets = cast(Mapping[TagType, Dataset], datasets)
         tf.debugging.Assert(datasets[self._objective_tag] is not None, [tf.constant([])])
         tf.debugging.assert_positive(
             len(datasets[self._objective_tag]),
@@ -580,8 +580,8 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        models: Mapping[Tag, ProbabilisticModelType],
-        datasets: Optional[Mapping[Tag, Dataset]] = None,
+        models: Mapping[TagType, ProbabilisticModelType],
+        datasets: Optional[Mapping[TagType, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
     ) -> AcquisitionFunction:
@@ -599,7 +599,7 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
         :return: The updated acquisition function.
         """
         tf.debugging.Assert(datasets is not None, [tf.constant([])])
-        datasets = cast(Mapping[Tag, Dataset], datasets)
+        datasets = cast(Mapping[TagType, Dataset], datasets)
         tf.debugging.Assert(datasets[self._objective_tag] is not None, [tf.constant([])])
         tf.debugging.assert_positive(
             len(datasets[self._objective_tag]),
@@ -647,8 +647,8 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
 
     def _update_base_acquisition_function(
         self,
-        models: Mapping[Tag, ProbabilisticModelType],
-        datasets: Optional[Mapping[Tag, Dataset]] = None,
+        models: Mapping[TagType, ProbabilisticModelType],
+        datasets: Optional[Mapping[TagType, Dataset]] = None,
     ) -> AcquisitionFunction:
         if self._base_acquisition_function is None:
             self._base_acquisition_function = self._base_builder.prepare_acquisition_function(

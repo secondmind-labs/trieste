@@ -23,7 +23,7 @@ from collections.abc import Callable
 from typing import Optional, overload
 
 from ..data import Dataset
-from ..observer import MultiObserver, Observer, SingleObserver
+from ..observer import MultiObserver, SingleObserver
 from ..types import TensorType
 
 
@@ -33,19 +33,19 @@ def mk_observer(objective: Callable[[TensorType], TensorType]) -> SingleObserver
 
 
 @overload
-def mk_observer(objective: Callable[[TensorType], TensorType], key: str) -> MultiObserver:
+def mk_observer(objective: Callable[[TensorType], TensorType], key: str) -> MultiObserver[str]:
     ...
 
 
 def mk_observer(
     objective: Callable[[TensorType], TensorType], key: Optional[str] = None
-) -> Observer:
+) -> SingleObserver | MultiObserver[str]:
     """
     :param objective: An objective function designed to be used with a single data set and model.
     :param key: An optional key to use to access the data from the observer result.
     :return: An observer returning the data from ``objective``.
     """
     if key is not None:
-        return lambda qp: {key: Dataset(qp, objective(qp))}
+        return (lambda key: (lambda x: {key: Dataset(x, objective(x))}))(key)
     else:
-        return lambda qp: Dataset(qp, objective(qp))
+        return lambda x: Dataset(x, objective(x))
