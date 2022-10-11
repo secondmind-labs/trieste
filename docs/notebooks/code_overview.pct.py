@@ -12,7 +12,7 @@
 # %% [markdown]
 # ### `Observer`
 #
-# The `Observer` type definition represents the black box objective function. Observers are functions that accept query points and return observations. Observations are either a single objective value that we wish to optimize, or a dictionary of mutiple tagged values that must be combined somehow, for example an objective and an inequality constraint. Objective values can be either single or multi-dimensional (see [multi-objective optimization](multi_objective_ehvi.ipynb)).
+# The `Observer` type definition represents the black box objective function. Observers are functions that accept query points and return datasets that contain the observations. Observations are either a single objective value that we wish to optimize, or a dictionary of mutiple tagged values that must be combined somehow, for example an objective and an inequality constraint. Objective values can be either single or multi-dimensional (see [multi-objective optimization](multi_objective_ehvi.ipynb)).
 
 # %% [markdown]
 # ### `Dataset`
@@ -22,11 +22,11 @@
 # %% [markdown]
 # ### `ProbabilisticModel`
 #
-# The `ProbabilisticModel` protocol represents any probabilistic model used to model observations. Like for `Dataset`, observers with multiple observations are modelled by a dictionary o multiple tagged models.
+# The `ProbabilisticModel` protocol represents any probabilistic model used to model observations. Like for `Dataset`, observers with multiple observations are modelled by a dictionary of multiple tagged models.
 #
-# At it simplest, a `ProbabilisticModel` is anything that implements a `predict` and `sample` method. However, many algorithms in Trieste depend on models with additional features, which are represented by the various subclasses of `ProbabilisticModel`. The standard Bayesian optimizer uses `TrainableProbabilisticModel` models, which also implement `update` and `optimize` methods. Specific acuqisition functions may require other features, represented by classes like `SupportsPredictJoint` and `SupportsGetObservationNoise`. Since these are defined as protocols, it is possible to define and depend on the intersections of different model types (e.g. only support models that are both `SupportsPredictJoint` and `SupportsGetObservationNoise`).
+# At it simplest, a `ProbabilisticModel` is anything that implements a `predict` and `sample` method. However, many algorithms in Trieste depend on models with additional features, which are represented by the various subclasses of `ProbabilisticModel`. The standard Bayesian optimizer uses `TrainableProbabilisticModel` models, which also implement an `update` method (to update the model structure when new data is added to the training set) and an `optimize` method (to optimize the model training loss). Specific acuqisition functions may require other features, represented by classes like `SupportsPredictJoint` (ability to predict the joint distribution at several inputs) and `SupportsGetObservationNoise` (ability to predict the observation noise variance). Since these are defined as protocols, it is possible to define and depend on the intersections of different model types (e.g. only support models that are both `SupportsPredictJoint` and `SupportsGetObservationNoise`).
 #
-# Multiple models can also be combined into a single `ModelStack` model that combines their outputs for prediction and sampling. This can be useful when modelling multi-objective observations with independent models. There are also constructors like `TrainableModelStack` and `PredictJointModelStack` that combine specific types of model for use with code that requires that type, delegating the relevant methods where appropriate.
+# Multiple models can also be combined into a single `ModelStack` model that combines their outputs for prediction and sampling. This can be useful when modelling multi-objective observations with independent single-output models. There are also constructors like `TrainableModelStack` and `PredictJointModelStack` that combine specific types of model for use with code that requires that type, delegating the relevant methods where appropriate.
 
 # %% [markdown]
 # ### `SearchSpace`
@@ -42,7 +42,7 @@
 # * **SearchSpaceType**: the type of the search space; any optimizer that the rule uses must support this.
 # * **ProbabilisticModelType**: the type of the models; any acquisition functions or samplers that the rule uses must support this.
 #
-# Exampes of rules include:
+# Examples of rules include:
 #
 # 1. `EfficientGlobalOptimization` (EGO) is the most commonly used rule, and uses acquisition functions and optimizers to select new query points.
 # 1. `AsynchronousOptimization` is similar to EGO but uses acquisition state to keep track of points whose observations are still pending.
@@ -54,7 +54,7 @@
 #
 # The `AcquisitionFunction` type definition represents any acquisition function: that is, a function that maps a set of query points to a single value that describes how useful it would be evaluate all these points together.
 #
-# The `AcquisitionFunctionBuilder` base class, meanwhile, represents something that builds and updates acquisition functions. At the start of the Bayesian optimization, the builder's `prepare_acquisition_function` method is called by the acquisition rule to create an acquisition function from the current observations and probabilistic models. For efficiency, most builders also define an `update_acquisition_function` method for updating the function using the updated observations and models. (The ones that don't instead generate a new acquisition function when necessary.)
+# The `AcquisitionFunctionBuilder` base class, meanwhile, represents something that builds and updates acquisition functions. At the start of the Bayesian optimization, the builder's `prepare_acquisition_function` method is called by the acquisition rule to create an acquisition function from the current observations and probabilistic models. To avoid unnecessary tensorflow compilations, most builders also define an `update_acquisition_function` method for updating the function using the updated observations and models. (The ones that don't instead generate a new acquisition function when necessary.)
 #
 # Acquisition functions that support only one probabilistic model are more easily defined using the `SingleModelAcquisitionBuilder` convenience class.
 #
@@ -63,16 +63,16 @@
 # %% [markdown]
 # ### `AcquisitionOptimizer`
 #
-# The `AcquisitionOptimizer` type definition represents an optimizer function that maximizes an acquisition function over a search space. Trieste provides a `generate_continuous_optimizer` function for generating gradient-based optimizers for continuous spaces and `automatic_optimizer_selector` for quickly selecting an appropriate optimizer.
+# The `AcquisitionOptimizer` type definition represents an optimizer function that maximizes an acquisition function over a search space. Trieste provides a `generate_continuous_optimizer` function for generating gradient-based optimizers for continuous (or hybrid) spaces, an `optimize_discrete` function for optimizing discrete spaces, and `automatic_optimizer_selector` for quickly selecting an appropriate optimizer.
 
 # %% [markdown]
 # ### `BayesianOptimizer` and `AskTellOptimizer`
 #
-# The `BayesianOptimizer` and `AskTellOptimizer` classes are the two Bayesian optimization interfaces provided by Trieste.
+# The `BayesianOptimizer` and `AskTellOptimizer` classes are the two Bayesian optimization interfaces provided by Trieste. Both classes provide [monitoring using TensorBoard](visualizing_with_tensorboard.ipynb).
 #
 # `BayesianOptimizer` exposes an `optimize` method for running a Bayesian optimization loop with given initial datasets and models, and a given number of steps (and an optional early stop callback).
 #
-# `AskTellOptimizer` provides greater control over the loop, by providing separate `ask` and `tell` steps for suggesting query points and updating the models with new observations.
+# `AskTellOptimizer` provides [greater control](ask_tell_optimization.ipynb) over the loop, by providing separate `ask` and `tell` steps for suggesting query points and updating the models with new observations.
 
 # %% [markdown]
 # ## Extending the key types
@@ -131,15 +131,15 @@ multiobserver(tf.constant([[0, 1], [1, 1]], dtype=tf.float64))
 from trieste.models.interfaces import (
     TrainableProbabilisticModel,
     HasReparamSampler,
-    HasTrajectorySampler,
     ReparametrizationSampler,
+    SupportsGetObservationNoise,
 )
 
 
 class GizmoModel(
-    TrainableProbabilisticModel, HasReparamSampler, HasTrajectorySampler
+    TrainableProbabilisticModel, HasReparamSampler, SupportsGetObservationNoise
 ):
-    "A pretend trainable model type with reparametrization and trajectory samplers."
+    "Made-up trainable model type that supports both reparam_sampler and get_observation_noise."
 
     def predict(
         self, query_points: TensorType
@@ -151,11 +151,11 @@ class GizmoModel(
     ) -> ReparametrizationSampler[GizmoModel]:
         ...
 
-    ...
+    ... # sample, update, optimize, get_observation_noise
 
 
 # %% [markdown]
-# If the new model type has an additional feature on which you'd like to depend, e.g. in a new acquisition function, then you can define that feature as a protocol. Marking it runtime_checkable will alow you to check for the feature at runtime too.
+# If the new model type has an additional feature on which you'd like to depend, e.g. in a new acquisition function, then you can define that feature as a protocol. Marking it runtime_checkable will alow you to check for the feature elsewhere in your code too.
 
 # %%
 from trieste.models.interfaces import ProbabilisticModel
@@ -176,10 +176,10 @@ class HasGizmo(ProbabilisticModel, Protocol):
 
 # %%
 @runtime_checkable
-class HasGizmoTrajectoryAndReparamSamplers(
-    HasGizmo, HasReparamSampler, HasTrajectorySampler, Protocol
+class HasGizmoReparamSamplerAndObservationNoise(
+    HasGizmo, HasReparamSampler, SupportsGetObservationNoise, Protocol
 ):
-    """A model that supports both gizmo, reparam_sampler and trajectory_sampler."""
+    """A model that supports both gizmo, reparam_sampler and get_observation_noise."""
 
     pass
 
@@ -187,7 +187,7 @@ class HasGizmoTrajectoryAndReparamSamplers(
 # %% [markdown]
 # ### New acquisition function builders
 #
-# To define a new acquisition function builder, you simply need to define a class with a `prepare_acquisition_function` method that returns an `AcquisitionFunction`. If the acquisition function depends on just one model/dataset (as is often the case) then you can define it as a `SingleModelAcquisitionBuilder`; if it depends on more than one (e.g. both an objective and a constraint) then you must define it as a `ModelAcquisitionBuilder` instead. You can also specify (in brackets) the type of probabilistic models that the acquisition function supports: e.g. a `SingleModelAcquisitionBuilder[HasReparamSampler]` only supports models with a reparatemtrization sampler. This allows the type checker to warn you if you try to use an incompatible model type.
+# To define a new acquisition function builder, you simply need to define a class with a `prepare_acquisition_function` method that returns an `AcquisitionFunction`. If the acquisition function depends on just one model/dataset (as is often the case) then you can define it as a `SingleModelAcquisitionBuilder`; if it depends on more than one (e.g. both an objective and a constraint) then you must define it as a `ModelAcquisitionBuilder` instead. You can also specify (in brackets) the type of probabilistic models that the acquisition function supports: e.g. a `SingleModelAcquisitionBuilder[HasReparamSampler]` only supports models with a reparametrization sampler. This allows the type checker to warn you if you try to use an incompatible model type.
 
 # %%
 from trieste.acquisition import (
