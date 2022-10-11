@@ -31,7 +31,7 @@ from ..models import ProbabilisticModel
 from ..models.interfaces import HasReparamSampler, ProbabilisticModelType
 from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace
-from ..types import State, TensorType
+from ..types import State, Tag, TensorType
 from .function import BatchMonteCarloExpectedImprovement, ExpectedImprovement
 from .interface import (
     AcquisitionFunction,
@@ -79,8 +79,8 @@ class AcquisitionRule(ABC, Generic[ResultType, SearchSpaceType, ProbabilisticMod
     def acquire(
         self,
         search_space: SearchSpaceType,
-        models: Mapping[str, ProbabilisticModelType],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> ResultType:
         """
         Return a value of type `T_co`. Typically this will be a set of query points, either on its
@@ -244,8 +244,8 @@ class EfficientGlobalOptimization(
     def acquire(
         self,
         search_space: SearchSpaceType,
-        models: Mapping[str, ProbabilisticModelType],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> TensorType:
         """
         Return the query point(s) that optimizes the acquisition function produced by ``builder``
@@ -512,8 +512,8 @@ class AsynchronousOptimization(
     def acquire(
         self,
         search_space: SearchSpaceType,
-        models: Mapping[str, ProbabilisticModelType],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> types.State[AsynchronousRuleState | None, TensorType]:
         """
         Constructs a function that, given ``AsynchronousRuleState``,
@@ -668,8 +668,8 @@ class AsynchronousGreedy(
     def acquire(
         self,
         search_space: SearchSpaceType,
-        models: Mapping[str, ProbabilisticModelType],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> types.State[AsynchronousRuleState | None, TensorType]:
         """
         Constructs a function that, given ``AsynchronousRuleState``,
@@ -779,8 +779,8 @@ class RandomSampling(AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel
     def acquire(
         self,
         search_space: SearchSpace,
-        models: Mapping[str, ProbabilisticModel],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModel],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> TensorType:
         """
         Sample ``num_query_points`` (see :meth:`__init__`) points from the
@@ -880,8 +880,8 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
     def acquire(
         self,
         search_space: SearchSpace,
-        models: Mapping[str, ProbabilisticModelType],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> TensorType:
         """
         Sample `num_search_space_samples` (see :meth:`__init__`) points from the
@@ -994,8 +994,8 @@ class TrustRegion(
     def acquire(
         self,
         search_space: Box,
-        models: Mapping[str, ProbabilisticModelType],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> types.State[State | None, TensorType]:
         """
         Construct a local search space from ``search_space`` according the trust region algorithm,

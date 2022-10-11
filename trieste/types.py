@@ -31,3 +31,6 @@ A `State` produces a value of type `T`, given a state of type `S`, and in doing 
 state. If the state is updated, it is not updated in-place. Instead, a new state is created. This
 is a referentially transparent alternative to mutable state.
 """
+
+Tag = str
+"""Type alias for a tag used to label datasets and models."""
