@@ -21,7 +21,7 @@ import tensorflow as tf
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
-from ..types import TensorType, TagType
+from ..types import TagType, TensorType
 from .interface import AcquisitionFunction, AcquisitionFunctionBuilder
 
 

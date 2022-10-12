@@ -30,7 +30,7 @@ from ...models.interfaces import (
     SupportsReparamSamplerObservationNoise,
 )
 from ...space import SearchSpace
-from ...types import TensorType, TagType
+from ...types import TagType, TensorType
 from ...utils import DEFAULTS
 from ..interface import (
     AcquisitionFunction,
@@ -129,7 +129,9 @@ class expected_improvement(AcquisitionFunctionClass):
         return (self._eta - mean) * normal.cdf(self._eta) + variance * normal.prob(self._eta)
 
 
-class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder[SupportsGetObservationNoise, TagType]):
+class AugmentedExpectedImprovement(
+    SingleModelAcquisitionBuilder[SupportsGetObservationNoise, TagType]
+):
     """
     Builder for the augmented expected improvement function for optimization single-objective
     optimization problems with high levels of observation noise.
@@ -1110,7 +1112,9 @@ class MakePositive(SingleModelAcquisitionBuilder[ProbabilisticModelType, TagType
 
     def __init__(
         self,
-        base_acquisition_function_builder: SingleModelAcquisitionBuilder[ProbabilisticModelType, TagType],
+        base_acquisition_function_builder: SingleModelAcquisitionBuilder[
+            ProbabilisticModelType, TagType
+        ],
     ) -> None:
         """
         :param base_acquisition_function_builder: Base acquisition function to be made positive.

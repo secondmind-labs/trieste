@@ -222,7 +222,9 @@ class SingleModelGreedyAcquisitionBuilder(Generic[ProbabilisticModelType, TagTyp
     composite greedy acquisition function) that requires only one model, dataset pair.
     """
 
-    def using(self, tag: TagType) -> GreedyAcquisitionFunctionBuilder[ProbabilisticModelType, TagType]:
+    def using(
+        self, tag: TagType
+    ) -> GreedyAcquisitionFunctionBuilder[ProbabilisticModelType, TagType]:
         """
         :param tag: The tag for the model, dataset pair to use to build this acquisition function.
         :return: An acquisition function builder that selects the model and dataset specified by
@@ -231,7 +233,10 @@ class SingleModelGreedyAcquisitionBuilder(Generic[ProbabilisticModelType, TagTyp
 
         class _Anon(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType, TagType]):
             def __init__(
-                self, single_builder: SingleModelGreedyAcquisitionBuilder[ProbabilisticModelType, TagType]
+                self,
+                single_builder: SingleModelGreedyAcquisitionBuilder[
+                    ProbabilisticModelType, TagType
+                ],
             ):
                 self.single_builder = single_builder
 
@@ -309,7 +314,9 @@ class SingleModelGreedyAcquisitionBuilder(Generic[ProbabilisticModelType, TagTyp
         )
 
 
-class VectorizedAcquisitionFunctionBuilder(AcquisitionFunctionBuilder[ProbabilisticModelType, TagType]):
+class VectorizedAcquisitionFunctionBuilder(
+    AcquisitionFunctionBuilder[ProbabilisticModelType, TagType]
+):
     """
     An :class:`VectorizedAcquisitionFunctionBuilder` builds and updates a vectorized
     acquisition function These differ from normal acquisition functions only by their output shape:
@@ -336,7 +343,9 @@ class SingleModelVectorizedAcquisitionBuilder(
         class _Anon(VectorizedAcquisitionFunctionBuilder[ProbabilisticModelType, TagType]):
             def __init__(
                 self,
-                single_builder: SingleModelVectorizedAcquisitionBuilder[ProbabilisticModelType, TagType],
+                single_builder: SingleModelVectorizedAcquisitionBuilder[
+                    ProbabilisticModelType, TagType
+                ],
             ):
                 self.single_builder = single_builder
 

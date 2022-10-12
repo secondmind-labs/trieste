@@ -43,7 +43,7 @@ from .data import Dataset
 from .models import TrainableProbabilisticModel
 from .observer import OBJECTIVE
 from .space import SearchSpace
-from .types import State, TensorType, TagType
+from .types import State, TagType, TensorType
 from .utils import Ok, Timer
 
 StateType = TypeVar("StateType")
@@ -97,7 +97,10 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType,
         datasets: Mapping[TagType, Dataset],
         models: Mapping[TagType, TrainableProbabilisticModelType],
         acquisition_rule: AcquisitionRule[
-            State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType, TagType
+            State[StateType | None, TensorType],
+            SearchSpaceType,
+            TrainableProbabilisticModelType,
+            TagType,
         ],
         acquisition_state: StateType | None,
         *,
@@ -137,7 +140,10 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType,
         datasets: Dataset,
         models: TrainableProbabilisticModelType,
         acquisition_rule: AcquisitionRule[
-            State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType, TagType
+            State[StateType | None, TensorType],
+            SearchSpaceType,
+            TrainableProbabilisticModelType,
+            TagType,
         ],
         acquisition_state: StateType | None = None,
         *,
@@ -214,7 +220,9 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType,
                 )
 
             self._acquisition_rule = cast(
-                AcquisitionRule[TensorType, SearchSpaceType, TrainableProbabilisticModelType, TagType],
+                AcquisitionRule[
+                    TensorType, SearchSpaceType, TrainableProbabilisticModelType, TagType
+                ],
                 EfficientGlobalOptimization(),
             )
         else:
@@ -277,7 +285,10 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType,
             raise ValueError(f"Expected a single model, found {len(self.models)}")
 
     @model.setter
-    def model(self: "AskTellOptimizer[SearchSpaceType, TrainableProbabilisticModelType, str]", model: TrainableProbabilisticModelType) -> None:
+    def model(
+        self: "AskTellOptimizer[SearchSpaceType, TrainableProbabilisticModelType, str]",
+        model: TrainableProbabilisticModelType,
+    ) -> None:
         """Update the current model, using the OBJECTIVE tag."""
         if len(self.models) != 1:
             raise ValueError(f"Expected a single model, found {len(self.models)}")
@@ -410,7 +421,10 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType,
         ...
 
     @overload
-    def tell(self: "AskTellOptimizer[SearchSpaceType, TrainableProbabilisticModelType, str]", new_data: Dataset) -> None:
+    def tell(
+        self: "AskTellOptimizer[SearchSpaceType, TrainableProbabilisticModelType, str]",
+        new_data: Dataset,
+    ) -> None:
         ...
 
     def tell(self, new_data: Mapping[TagType, Dataset] | Dataset) -> None:

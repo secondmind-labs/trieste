@@ -14,19 +14,20 @@
 """ Definitions and utilities for observers of objective functions. """
 from __future__ import annotations
 
-from typing import Callable, Mapping, Generic
+from typing import Callable, Generic, Mapping
 
 import tensorflow as tf
 from typing_extensions import Final, Protocol
 
 from .data import Dataset
-from .types import TensorType, TagType
+from .types import TagType, TensorType
 
 SingleObserver = Callable[[TensorType], Dataset]
 """
 Type alias for an observer of the objective function (that takes query points and returns an
 unlabelled dataset).
 """
+
 
 class MultiObserver(Protocol, Generic[TagType]):
     """

@@ -26,8 +26,7 @@ import tensorflow_probability as tfp
 from ...data import Dataset
 from ...models import ProbabilisticModel, ReparametrizationSampler
 from ...models.interfaces import HasReparamSampler
-from ...observer import OBJECTIVE
-from ...types import TensorType, TagType
+from ...types import TagType, TensorType
 from ...utils import DEFAULTS
 from ..interface import (
     AcquisitionFunction,
@@ -521,7 +520,9 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType, TagType]):
     def __init__(
         self,
         objective_tag: TagType,
-        base_acquisition_function_builder: AcquisitionFunctionBuilder[ProbabilisticModelType, TagType]
+        base_acquisition_function_builder: AcquisitionFunctionBuilder[
+            ProbabilisticModelType, TagType
+        ]
         | SingleModelAcquisitionBuilder[ProbabilisticModelType, TagType]
         | None = None,
     ):

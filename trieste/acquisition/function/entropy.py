@@ -27,7 +27,7 @@ from ...models import ProbabilisticModel
 from ...models.gpflow.interface import SupportsCovarianceBetweenPoints
 from ...models.interfaces import HasTrajectorySampler, SupportsGetObservationNoise
 from ...space import SearchSpace
-from ...types import TensorType, TagType
+from ...types import TagType, TensorType
 from ..interface import (
     AcquisitionFunction,
     AcquisitionFunctionClass,

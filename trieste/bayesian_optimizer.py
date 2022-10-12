@@ -24,6 +24,7 @@ from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import (
+    Any,
     Callable,
     ClassVar,
     Dict,
@@ -33,7 +34,7 @@ from typing import (
     Optional,
     TypeVar,
     cast,
-    overload, Any,
+    overload,
 )
 
 import absl
@@ -57,7 +58,7 @@ from .data import Dataset
 from .models import TrainableProbabilisticModel
 from .observer import OBJECTIVE, MultiObserver, SingleObserver
 from .space import SearchSpace
-from .types import State, TensorType, TagType
+from .types import State, TagType, TensorType
 from .utils import Err, Ok, Result, Timer
 
 StateType = TypeVar("StateType")
@@ -72,7 +73,11 @@ TrainableProbabilisticModelType = TypeVar(
 """ Contravariant type variable bound to :class:`TrainableProbabilisticModel`. """
 
 EarlyStopCallback = Callable[
-    [Mapping[TagType, Dataset], Mapping[TagType, TrainableProbabilisticModelType], Optional[StateType]],
+    [
+        Mapping[TagType, Dataset],
+        Mapping[TagType, TrainableProbabilisticModelType],
+        Optional[StateType],
+    ],
     bool,
 ]
 """ Early stop callback type, generic in the model and state types. """
@@ -187,7 +192,10 @@ class OptimizationResult(Generic[StateType, TagType]):
 
     def astuple(
         self,
-    ) -> tuple[Result[Record[StateType, TagType]], list[Record[StateType, TagType] | FrozenRecord[StateType, TagType]]]:
+    ) -> tuple[
+        Result[Record[StateType, TagType]],
+        list[Record[StateType, TagType] | FrozenRecord[StateType, TagType]],
+    ]:
         """
         **Note:** In contrast to the standard library function :func:`dataclasses.astuple`, this
         method does *not* deepcopy instance attributes.
@@ -298,16 +306,20 @@ class BayesianOptimizer(Generic[SearchSpaceType, TagType]):
     """
 
     @overload
-    def __init__(self: "BayesianOptimizer[SearchSpaceType, str]",
-                 observer: SingleObserver, search_space: SearchSpaceType):
+    def __init__(
+        self: "BayesianOptimizer[SearchSpaceType, str]",
+        observer: SingleObserver,
+        search_space: SearchSpaceType,
+    ):
         ...
 
     @overload
-    def __init__(self, observer: MultiObserver[TagType],
-                 search_space: SearchSpaceType):
+    def __init__(self, observer: MultiObserver[TagType], search_space: SearchSpaceType):
         ...
 
-    def __init__(self, observer: MultiObserver[TagType] | SingleObserver, search_space: SearchSpaceType):
+    def __init__(
+        self, observer: MultiObserver[TagType] | SingleObserver, search_space: SearchSpaceType
+    ):
         """
         :param observer: The observer of the objective function.
         :param search_space: The space over which to search. Must be a
@@ -384,7 +396,10 @@ class BayesianOptimizer(Generic[SearchSpaceType, TagType]):
         datasets: Mapping[TagType, Dataset],
         models: Mapping[TagType, TrainableProbabilisticModelType],
         acquisition_rule: AcquisitionRule[
-            State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType, TagType
+            State[StateType | None, TensorType],
+            SearchSpaceType,
+            TrainableProbabilisticModelType,
+            TagType,
         ],
         acquisition_state: StateType | None = None,
         *,
@@ -404,7 +419,10 @@ class BayesianOptimizer(Generic[SearchSpaceType, TagType]):
         datasets: Mapping[TagType, Dataset],
         models: Mapping[TagType, TrainableProbabilisticModelType],
         acquisition_rule: AcquisitionRule[
-            State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType, TagType
+            State[StateType | None, TensorType],
+            SearchSpaceType,
+            TrainableProbabilisticModelType,
+            TagType,
         ],
         acquisition_state: StateType | None = None,
         *,
@@ -459,7 +477,10 @@ class BayesianOptimizer(Generic[SearchSpaceType, TagType]):
         datasets: Dataset,
         models: TrainableProbabilisticModelType,
         acquisition_rule: AcquisitionRule[
-            TensorType, SearchSpaceType, TrainableProbabilisticModelType, TagType,
+            TensorType,
+            SearchSpaceType,
+            TrainableProbabilisticModelType,
+            TagType,
         ],
         *,
         track_state: bool = True,
@@ -478,7 +499,10 @@ class BayesianOptimizer(Generic[SearchSpaceType, TagType]):
         datasets: Dataset,
         models: TrainableProbabilisticModelType,
         acquisition_rule: AcquisitionRule[
-            State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType, TagType,
+            State[StateType | None, TensorType],
+            SearchSpaceType,
+            TrainableProbabilisticModelType,
+            TagType,
         ],
         acquisition_state: StateType | None = None,
         *,
@@ -498,7 +522,10 @@ class BayesianOptimizer(Generic[SearchSpaceType, TagType]):
         datasets: Dataset,
         models: TrainableProbabilisticModelType,
         acquisition_rule: AcquisitionRule[
-            State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType, TagType,
+            State[StateType | None, TensorType],
+            SearchSpaceType,
+            TrainableProbabilisticModelType,
+            TagType,
         ],
         acquisition_state: StateType | None = None,
         *,
@@ -619,7 +646,7 @@ class BayesianOptimizer(Generic[SearchSpaceType, TagType]):
                     f" {OBJECTIVE!r}, got keys {datasets.keys()}"
                 )
 
-            acquisition_rule = EfficientGlobalOptimization[ # type: ignore[assignment] # TODO
+            acquisition_rule = EfficientGlobalOptimization[  # type: ignore[assignment] # TODO
                 SearchSpaceType, TrainableProbabilisticModelType, TagType
             ]()
         assert acquisition_rule is not None
@@ -990,7 +1017,7 @@ def write_summary_query_points(
 
 
 def stop_at_minimum(
-    objective_tag: TagType, # TODO: overload to allow default
+    objective_tag: TagType,  # TODO: overload to allow default
     minimum: Optional[tf.Tensor] = None,
     minimizers: Optional[tf.Tensor] = None,
     minimum_atol: float = 0,

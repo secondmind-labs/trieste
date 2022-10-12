@@ -28,7 +28,7 @@ import tensorflow_probability as tfp
 from ...data import Dataset
 from ...models import ProbabilisticModel
 from ...models.interfaces import FastUpdateModel, SupportsPredictJoint
-from ...types import TensorType, TagType
+from ...types import TagType, TensorType
 from ...utils import DEFAULTS
 from ..interface import AcquisitionFunction, AcquisitionFunctionClass, SingleModelAcquisitionBuilder
 
@@ -420,7 +420,9 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
         return -tf.reduce_mean(variance * self._weights, axis=-2)
 
 
-class BayesianActiveLearningByDisagreement(SingleModelAcquisitionBuilder[ProbabilisticModel, TagType]):
+class BayesianActiveLearningByDisagreement(
+    SingleModelAcquisitionBuilder[ProbabilisticModel, TagType]
+):
     """
     Builder for the *Bayesian Active Learning By Disagreement* acquisition function defined in
     :cite:`houlsby2011bayesian`.

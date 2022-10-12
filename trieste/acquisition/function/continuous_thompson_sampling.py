@@ -22,12 +22,14 @@ import tensorflow as tf
 
 from ...data import Dataset
 from ...models.interfaces import HasTrajectorySampler, TrajectoryFunction, TrajectoryFunctionClass
-from ...types import TensorType, TagType
+from ...types import TagType, TensorType
 from ..interface import SingleModelGreedyAcquisitionBuilder, SingleModelVectorizedAcquisitionBuilder
 from ..utils import select_nth_output
 
 
-class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTrajectorySampler, TagType]):
+class GreedyContinuousThompsonSampling(
+    SingleModelGreedyAcquisitionBuilder[HasTrajectorySampler, TagType]
+):
     r"""
 
     Acquisition function builder for performing greedy continuous Thompson sampling. This builder

@@ -463,7 +463,9 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack, TagTyp
             base_acquisition_function_builder = ExpectedImprovement()
 
         if isinstance(base_acquisition_function_builder, SingleModelAcquisitionBuilder):
-            base_acquisition_function_builder = base_acquisition_function_builder.using(cast(TagType, OBJECTIVE))
+            base_acquisition_function_builder = base_acquisition_function_builder.using(
+                cast(TagType, OBJECTIVE)
+            )
 
         self._builder = base_acquisition_function_builder
         self._fantasize_method = fantasize_method

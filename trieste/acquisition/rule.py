@@ -152,6 +152,7 @@ class EfficientGlobalOptimization(
         initial_acquisition_function: Optional[AcquisitionFunction] = None,
     ):
         ...
+
     @overload
     def __init__(
         self: "EfficientGlobalOptimization[SearchSpaceType, ProbabilisticModelType, TagType]",
@@ -424,7 +425,7 @@ class AsynchronousOptimization(
         State[Optional["AsynchronousRuleState"], TensorType],
         SearchSpaceType,
         ProbabilisticModelType,
-        str
+        str,
     ]
 ):
     """AsynchronousOptimization rule is designed for asynchronous BO scenarios.
@@ -615,7 +616,7 @@ class AsynchronousGreedy(
         State[Optional["AsynchronousRuleState"], TensorType],
         SearchSpaceType,
         ProbabilisticModelType,
-        str
+        str,
     ]
 ):
     """AsynchronousGreedy rule, as name suggests,
@@ -808,7 +809,9 @@ class RandomSampling(AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel
         return samples
 
 
-class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, ProbabilisticModelType, str]):
+class DiscreteThompsonSampling(
+    AcquisitionRule[TensorType, SearchSpace, ProbabilisticModelType, str]
+):
     r"""
     Implements Thompson sampling for choosing optimal points.
 
