@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import unittest.mock
 from time import time
-from typing import Any, Optional, cast
+from typing import Optional, cast
 
 import gpflow
 import numpy as np
@@ -458,17 +458,21 @@ def test_gaussian_process_regression_correctly_returns_internal_data() -> None:
     "trieste.models.gpflow.models.GaussianProcessRegression.find_best_model_initialization"
 )
 @pytest.mark.parametrize("prior_for_lengthscale", [True, False])
+@pytest.mark.parametrize("num_kernel_samples", [10, 0])
 def test_gaussian_process_regression_correctly_counts_params_that_can_be_sampled(
-    mocked_model_initializer: Any,
+    mocked_model_initializer: unittest.mock.MagicMock,
     dim: int,
     prior_for_lengthscale: bool,
+    num_kernel_samples: int,
 ) -> None:
     x = tf.constant(np.arange(1, 5 * dim + 1).reshape(-1, dim), dtype=tf.float64)  # shape: [5, d]
     optimizer = Optimizer(
         optimizer=gpflow.optimizers.Scipy(),
         minimize_args={"options": dict(maxiter=10)},
     )
-    model = GaussianProcessRegression(gpr_model(x, fnc_3x_plus_10(x)), optimizer=optimizer)
+    model = GaussianProcessRegression(
+        gpr_model(x, fnc_3x_plus_10(x)), optimizer=optimizer, num_kernel_samples=num_kernel_samples
+    )
     model.model.kernel = gpflow.kernels.RBF(lengthscales=tf.ones([dim], dtype=tf.float64))
     model.model.likelihood.variance.assign(1.0)
     gpflow.set_trainable(model.model.likelihood, True)
@@ -492,9 +496,12 @@ def test_gaussian_process_regression_correctly_counts_params_that_can_be_sampled
     dataset = Dataset(x, tf.cast(fnc_3x_plus_10(x), dtype=tf.float64))
     model.optimize(dataset)
 
-    mocked_model_initializer.assert_called_once()
-    num_samples = mocked_model_initializer.call_args[0][0]
-    npt.assert_array_equal(num_samples, 10 * (dim + 1))
+    if num_kernel_samples == 0:
+        mocked_model_initializer.assert_not_called()
+    else:
+        mocked_model_initializer.assert_called_once()
+        num_samples = mocked_model_initializer.call_args[0][0]
+        npt.assert_array_equal(num_samples, 10 * (dim + 1))
 
 
 def test_gaussian_process_regression_best_initialization_changes_params_with_priors(
