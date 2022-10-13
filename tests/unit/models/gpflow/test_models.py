@@ -501,7 +501,7 @@ def test_gaussian_process_regression_correctly_counts_params_that_can_be_sampled
     else:
         mocked_model_initializer.assert_called_once()
         num_samples = mocked_model_initializer.call_args[0][0]
-        npt.assert_array_equal(num_samples, 10 * (dim + 1))
+        npt.assert_array_equal(num_samples, num_kernel_samples * (dim + 1))
 
 
 def test_gaussian_process_regression_best_initialization_changes_params_with_priors(
