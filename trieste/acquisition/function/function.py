@@ -41,6 +41,9 @@ from ..interface import (
     SingleModelVectorizedAcquisitionBuilder,
 )
 
+from .utils import qEI, make_mvn_cdf
+from .utils import monte_carlo_expected_improvement as mcei_debugging
+
 
 class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     """
@@ -982,6 +985,147 @@ class batch_monte_carlo_expected_improvement(AcquisitionFunctionClass):
         batch_improvement = tf.maximum(self._eta - min_sample_per_batch, 0.0)  # [..., S]
         return tf.reduce_mean(batch_improvement, axis=-1, keepdims=True)  # [..., 1]
 
+    
+
+class BatchExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSampler]):
+    """
+    """
+
+    def __init__(
+            self,
+            sample_size: int,
+            *,
+            batch_size: int,
+            dtype: tf.DType,
+            jitter: float = DEFAULTS.JITTER,
+        ):
+        """
+        """
+        
+        tf.debugging.assert_positive(sample_size)
+        tf.debugging.assert_greater_equal(jitter, 0.0)
+
+        self._sample_size = sample_size
+        self._batch_size = batch_size
+        self._dtype = dtype
+        self._jitter = jitter
+        
+        self._samples = tf.math.sobol_sample(
+            dim=self._batch_size,
+            num_results=self._sample_size,
+            dtype=self._dtype,
+        )
+
+    def __repr__(self) -> str:
+        """
+        """
+        
+        return f"BatchExpectedImprovement({self._sample_size!r}, jitter={self._jitter!r})"
+
+    def prepare_acquisition_function(
+        self,
+        model: HasReparamSampler,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        """
+        
+        tf.debugging.Assert(dataset is not None, [])
+        dataset = cast(Dataset, dataset)
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
+
+        # Get mean and covariance
+        mean, _ = model.predict(dataset.query_points)
+
+        tf.debugging.assert_shapes(
+            [(mean, ["_", 1])],
+            message="Expected model with event shape [1].",
+        )
+
+        eta = tf.reduce_min(mean, axis=0)
+        
+        acquisition_function = batch_expected_improvement(
+            self._samples,
+            model,
+            eta,
+            self._jitter,
+        )
+        
+        return acquisition_function
+
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        model: HasReparamSampler,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        """
+        
+        tf.debugging.Assert(dataset is not None, [])
+        dataset = cast(Dataset, dataset)
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
+        tf.debugging.Assert(isinstance(function, batch_expected_improvement), [])
+        
+        # Get mean and covariance
+        mean, _ = model.predict(dataset.query_points)
+        eta = tf.reduce_min(mean, axis=0)
+        
+        function.update(eta=eta)  # type: ignore
+        
+        return function
+
+
+class batch_expected_improvement(AcquisitionFunctionClass):
+    
+    def __init__(
+            self,
+            samples: TensorType,
+            model: HasReparamSampler,
+            eta: TensorType,
+            jitter: float,
+            mcei: Callable = None,
+        ):
+        """
+        """
+        
+        self._samples = samples
+        self._jitter = jitter
+        self._eta = tf.Variable(eta)
+        self._model = model
+        self._qEI = qEI
+        self._mvn_cdf = None
+        
+
+    def update(self, eta: TensorType) -> None:
+        """Update the acquisition function with a new eta value and reset the reparam sampler."""
+        self._eta.assign(eta)
+
+    @tf.function
+    def __call__(self, x: TensorType) -> TensorType:
+        
+        if self._mvn_cdf is None:
+            self._mvn_cdf = make_mvn_cdf(samples=self._samples)
+        
+        mean, covariance = self._model.predict_joint(x)
+        mean = mean[:, :, 0]
+        covariance = covariance[:, 0, :, :]
+        covariance = covariance + 1e-6 * tf.eye(
+            covariance.shape[-1],
+            dtype=covariance.dtype,
+        )[None, :, :]
+        
+        threshold = tf.tile(self._eta, (mean.shape[0],))
+        
+        qEI = self._qEI(
+            mean=-mean,
+            covariance=covariance,
+            threshold=-threshold,
+            mvn_cdf=self._mvn_cdf,
+        )[:, None]
+        
+        return qEI
+    
 
 class MultipleOptimismNegativeLowerConfidenceBound(
     SingleModelVectorizedAcquisitionBuilder[ProbabilisticModel]

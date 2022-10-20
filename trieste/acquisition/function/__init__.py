@@ -35,6 +35,7 @@ from .entropy import (
 )
 from .function import (
     AugmentedExpectedImprovement,
+    BatchExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
@@ -60,3 +61,5 @@ from .multi_objective import (
     batch_ehvi,
     expected_hv_improvement,
 )
+
+from .utils import qEI
