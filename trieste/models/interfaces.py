@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Callable, Generic, TypeVar
+from typing import Callable, Generic, Optional, TypeVar
 
 import gpflow
 import tensorflow as tf
@@ -90,9 +90,11 @@ class ProbabilisticModel(Protocol):
             f"Model {self!r} does not support predicting observations, just the latent function"
         )
 
-    def log(self) -> None:
+    def log(self, dataset: Optional[Dataset] = None) -> None:
         """
         Log model-specific information at a given optimization step.
+
+        :param dataset: Optional data that can be used to log additional data-based model summaries.
         """
         pass
 
@@ -369,13 +371,15 @@ class ModelStack(ProbabilisticModel, Generic[ProbabilisticModelType]):
         means, vars_ = zip(*[model.predict_y(query_points) for model in self._models])
         return tf.concat(means, axis=-1), tf.concat(vars_, axis=-1)
 
-    def log(self) -> None:
+    def log(self, dataset: Optional[Dataset] = None) -> None:
         """
         Log model-specific information at a given optimization step.
+
+        :param dataset: Optional data that can be used to log additional data-based model summaries.
         """
         for i, model in enumerate(self._models):
             with tf.name_scope(f"{i}"):
-                model.log()
+                model.log(dataset)
 
 
 class TrainableModelStack(ModelStack[TrainableProbabilisticModel], TrainableProbabilisticModel):
@@ -553,12 +557,13 @@ class ReparametrizationSampler(ABC, Generic[ProbabilisticModelType]):
 
 TrajectoryFunction = Callable[[TensorType], TensorType]
 """
-Type alias for trajectory functions. These have essentially the same behavior as an
-:const:`AcquisitionFunction` but have additional sampling properties.
+Type alias for trajectory functions. These have similar behaviour to an :const:`AcquisitionFunction`
+but have additional sampling properties and support multiple model outputs.
 
 An :const:`TrajectoryFunction` evaluates a batch of `B` samples, each across different sets
 of `N` query points (of dimension `D`) i.e. takes input of shape `[N, B, D]` and returns
-shape `[N, B]`.
+shape `[N, B, L]`, where `L` is the number of outputs of the model. Note that we require the `L`
+dimension to be present, even if there is only one output.
 
 A key property of these trajectory functions is that the same sample draw is evaluated
 for all queries. This property is known as consistency.
@@ -603,10 +608,11 @@ class TrajectorySampler(ABC, Generic[ProbabilisticModelType]):
         Sample a batch of `B` trajectories. Note that the batch size `B` is determined
         by the first call of the :const:`TrajectoryFunction`. To change the batch size
         of a :const:`TrajectoryFunction` after initialization, you must
-        recall :meth:`get_trajecotry`.
+        recall :meth:`get_trajectory`.
 
         :return: A trajectory function representing an approximate trajectory
-            from the model, taking an input of shape `[N, B, D]` and returning shape `[N, B]`.
+            from the model, taking an input of shape `[N, B, D]` and returning shape `[N, B, L]`,
+            where `L` is the number of outputs of the model.
         """
         raise NotImplementedError
 

@@ -20,14 +20,8 @@ import trieste
 # https://stackoverflow.com/questions/35911252/disable-tensorflow-debugging-information
 tf.get_logger().setLevel("ERROR")
 
-
-# %% [markdown]
-# Trieste works with `tf.float64` as a default. It is advised to set the Keras backend float to the same value using `tf.keras.backend.set_floatx()`. Otherwise code might crash with a ValueError!
-
-# %%
 np.random.seed(1794)
 tf.random.set_seed(1794)
-tf.keras.backend.set_floatx("float64")
 
 
 # %% [markdown]
@@ -153,17 +147,13 @@ plt.show()
 
 
 # %%
-from trieste.objectives import (
-    michalewicz_2,
-    MICHALEWICZ_2_MINIMUM,
-    MICHALEWICZ_2_SEARCH_SPACE,
-)
+from trieste.objectives import Michalewicz2
 from trieste.experimental.plotting import plot_function_plotly
 
-search_space = MICHALEWICZ_2_SEARCH_SPACE
-function = michalewicz_2
-MINIMUM = MICHALEWICZ_2_MINIMUM
-MINIMIZER = MICHALEWICZ_2_MINIMUM
+search_space = Michalewicz2.search_space
+function = Michalewicz2.objective
+MINIMUM = Michalewicz2.minimum
+MINIMIZER = Michalewicz2.minimum
 
 # we illustrate the 2-dimensional Michalewicz function
 fig = plot_function_plotly(

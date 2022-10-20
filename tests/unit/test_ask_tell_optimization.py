@@ -194,6 +194,64 @@ def test_ask_tell_optimizer_models_property(
     assert ask_tell.model is model
 
 
+def test_ask_tell_optimizer_models_setter(
+    search_space: Box,
+    init_dataset: Dataset,
+    model: TrainableProbabilisticModel,
+    acquisition_rule: AcquisitionRule[TensorType, Box, TrainableProbabilisticModel],
+) -> None:
+    ask_tell = AskTellOptimizer(search_space, init_dataset, model, acquisition_rule)
+    model2 = LinearWithUnitVariance()
+    ask_tell.models = {OBJECTIVE: model2}
+    assert ask_tell.models[OBJECTIVE] is model2 is not model
+
+
+def test_ask_tell_optimizer_models_setter_errors(
+    search_space: Box,
+    init_dataset: Dataset,
+    model: TrainableProbabilisticModel,
+    acquisition_rule: AcquisitionRule[TensorType, Box, TrainableProbabilisticModel],
+) -> None:
+    ask_tell = AskTellOptimizer(search_space, init_dataset, model, acquisition_rule)
+    with pytest.raises(ValueError):
+        ask_tell.models = {}
+    with pytest.raises(ValueError):
+        ask_tell.models = {OBJECTIVE: LinearWithUnitVariance(), "X": LinearWithUnitVariance()}
+    with pytest.raises(ValueError):
+        ask_tell.models = {"CONSTRAINT": LinearWithUnitVariance()}
+
+
+def test_ask_tell_optimizer_model_setter(
+    search_space: Box,
+    init_dataset: Dataset,
+    model: TrainableProbabilisticModel,
+    acquisition_rule: AcquisitionRule[TensorType, Box, TrainableProbabilisticModel],
+) -> None:
+    ask_tell = AskTellOptimizer(search_space, init_dataset, model, acquisition_rule)
+    model2 = LinearWithUnitVariance()
+    ask_tell.model = model2
+    assert ask_tell.models[OBJECTIVE] is model2 is not model
+
+
+def test_ask_tell_optimizer_model_setter_errors(
+    search_space: Box,
+    init_dataset: Dataset,
+    model: TrainableProbabilisticModel,
+    acquisition_rule: AcquisitionRule[TensorType, Box, TrainableProbabilisticModel],
+) -> None:
+    one_model = AskTellOptimizer(search_space, {"X": init_dataset}, {"X": model}, acquisition_rule)
+    with pytest.raises(ValueError):
+        one_model.model = model
+    two_models = AskTellOptimizer(
+        search_space,
+        {OBJECTIVE: init_dataset, "X": init_dataset},
+        {OBJECTIVE: model, "X": model},
+        acquisition_rule,
+    )
+    with pytest.raises(ValueError):
+        two_models.model = model
+
+
 def test_ask_tell_optimizer_trains_model(
     search_space: Box,
     init_dataset: Dataset,

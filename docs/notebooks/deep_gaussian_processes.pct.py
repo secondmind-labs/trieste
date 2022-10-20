@@ -5,13 +5,8 @@
 import numpy as np
 import tensorflow as tf
 
-# %% [markdown]
-# For GPflux models we <strong>must</strong> use `tf.keras.backend.set_floatx()` to set the Keras backend float to the value consistent with GPflow (GPflow defaults to float64). Otherwise the code will crash with a ValueError!
-
-# %%
 np.random.seed(1794)
 tf.random.set_seed(1794)
-tf.keras.backend.set_floatx("float64")
 
 # %% [markdown]
 # ## Describe the problem
@@ -24,21 +19,14 @@ tf.keras.backend.set_floatx("float64")
 
 # %%
 import gpflow
-from trieste.objectives import (
-    michalewicz_2,
-    michalewicz_5,
-    MICHALEWICZ_2_MINIMUM,
-    MICHALEWICZ_5_MINIMUM,
-    MICHALEWICZ_2_SEARCH_SPACE,
-    MICHALEWICZ_5_SEARCH_SPACE,
-)
+from trieste.objectives import Michalewicz2, Michalewicz5
 from trieste.objectives.utils import mk_observer
 from trieste.experimental.plotting import plot_function_plotly
 
-function = michalewicz_2
-F_MINIMIZER = MICHALEWICZ_2_MINIMUM
+function = Michalewicz2.objective
+F_MINIMIZER = Michalewicz2.minimum
 
-search_space = MICHALEWICZ_2_SEARCH_SPACE
+search_space = Michalewicz2.search_space
 
 fig = plot_function_plotly(function, search_space.lower, search_space.upper)
 fig.update_layout(height=800, width=800)
@@ -269,10 +257,10 @@ ax[1].set_xlabel("# evaluations")
 
 # %%
 
-function = michalewicz_5
-F_MINIMIZER = MICHALEWICZ_5_MINIMUM
+function = Michalewicz5.objective
+F_MINIMIZER = Michalewicz5.minimum
 
-search_space = MICHALEWICZ_5_SEARCH_SPACE
+search_space = Michalewicz5.search_space
 
 observer = mk_observer(function)
 

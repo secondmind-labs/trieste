@@ -40,6 +40,7 @@ import absl
 import dill
 import numpy as np
 import tensorflow as tf
+from scipy.spatial.distance import pdist
 
 from .acquisition.multi_objective import non_dominated
 
@@ -53,12 +54,11 @@ except ModuleNotFoundError:
 from . import logging
 from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from .data import Dataset
-from .models import ModelSpec, TrainableProbabilisticModel, create_model
-from .models.config import ModelConfigType
+from .models import TrainableProbabilisticModel
 from .observer import OBJECTIVE, Observer
 from .space import SearchSpace
 from .types import State, TensorType
-from .utils import Err, Ok, Result, Timer, map_values
+from .utils import Err, Ok, Result, Timer
 
 StateType = TypeVar("StateType")
 """ Unbound type variable. """
@@ -315,7 +315,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         self,
         num_steps: int,
         datasets: Mapping[str, Dataset],
-        model_specs: Mapping[str, ModelSpec],
+        models: Mapping[str, TrainableProbabilisticModel],
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
@@ -331,7 +331,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         self,
         num_steps: int,
         datasets: Mapping[str, Dataset],
-        model_specs: Mapping[str, TrainableProbabilisticModelType],
+        models: Mapping[str, TrainableProbabilisticModelType],
         acquisition_rule: AcquisitionRule[
             TensorType, SearchSpaceType, TrainableProbabilisticModelType
         ],
@@ -353,8 +353,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         self,
         num_steps: int,
         datasets: Mapping[str, Dataset],
-        # there's no way to statically check config-based models
-        model_specs: Mapping[str, ModelConfigType],
+        models: Mapping[str, TrainableProbabilisticModelType],
         acquisition_rule: AcquisitionRule[
             TensorType, SearchSpaceType, TrainableProbabilisticModelType
         ],
@@ -373,7 +372,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         self,
         num_steps: int,
         datasets: Mapping[str, Dataset],
-        model_specs: Mapping[str, TrainableProbabilisticModelType],
+        models: Mapping[str, TrainableProbabilisticModelType],
         acquisition_rule: AcquisitionRule[
             State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
         ],
@@ -393,8 +392,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         self,
         num_steps: int,
         datasets: Mapping[str, Dataset],
-        # there's no way to statically check config-based models
-        model_specs: Mapping[str, ModelConfigType],
+        models: Mapping[str, TrainableProbabilisticModelType],
         acquisition_rule: AcquisitionRule[
             State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
         ],
@@ -414,7 +412,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         self,
         num_steps: int,
         datasets: Dataset,
-        model_specs: ModelSpec,
+        models: TrainableProbabilisticModel,
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
@@ -430,7 +428,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         self,
         num_steps: int,
         datasets: Dataset,
-        model_specs: TrainableProbabilisticModelType,
+        models: TrainableProbabilisticModelType,
         acquisition_rule: AcquisitionRule[
             TensorType, SearchSpaceType, TrainableProbabilisticModelType
         ],
@@ -449,7 +447,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         self,
         num_steps: int,
         datasets: Dataset,
-        model_specs: ModelConfigType,
+        models: TrainableProbabilisticModelType,
         acquisition_rule: AcquisitionRule[
             TensorType, SearchSpaceType, TrainableProbabilisticModelType
         ],
@@ -468,7 +466,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         self,
         num_steps: int,
         datasets: Dataset,
-        model_specs: TrainableProbabilisticModelType,
+        models: TrainableProbabilisticModelType,
         acquisition_rule: AcquisitionRule[
             State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
         ],
@@ -488,7 +486,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         self,
         num_steps: int,
         datasets: Dataset,
-        model_specs: ModelConfigType,
+        models: TrainableProbabilisticModelType,
         acquisition_rule: AcquisitionRule[
             State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
         ],
@@ -507,10 +505,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         self,
         num_steps: int,
         datasets: Mapping[str, Dataset] | Dataset,
-        model_specs: Mapping[str, TrainableProbabilisticModelType]
-        | Mapping[str, ModelSpec]
-        | TrainableProbabilisticModelType
-        | ModelConfigType,
+        models: Mapping[str, TrainableProbabilisticModelType] | TrainableProbabilisticModelType,
         acquisition_rule: AcquisitionRule[
             TensorType | State[StateType | None, TensorType],
             SearchSpaceType,
@@ -533,7 +528,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         For each step in ``num_steps``, this method:
             - Finds the next points with which to query the ``observer`` using the
               ``acquisition_rule``'s :meth:`acquire` method, passing it the ``search_space``,
-              ``datasets``, models built from the ``model_specs``, and current acquisition state.
+              ``datasets``, ``models``, and current acquisition state.
             - Queries the ``observer`` *once* at those points.
             - Updates the datasets and models with the data from the ``observer``.
 
@@ -551,7 +546,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
         :param num_steps: The number of optimization steps to run.
         :param datasets: The known observer query points and observations for each tag.
-        :param model_specs: The model to use for each :class:`~trieste.data.Dataset` in
+        :param models: The model to use for each :class:`~trieste.data.Dataset` in
             ``datasets``.
         :param acquisition_rule: The acquisition rule, which defines how to search for a new point
             on each optimization step. Defaults to
@@ -581,29 +576,29 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         :raise ValueError: If any of the following are true:
 
             - ``num_steps`` is negative.
-            - the keys in ``datasets`` and ``model_specs`` do not match
-            - ``datasets`` or ``model_specs`` are empty
+            - the keys in ``datasets`` and ``models`` do not match
+            - ``datasets`` or ``models`` are empty
             - the default `acquisition_rule` is used and the tags are not `OBJECTIVE`.
         """
         if isinstance(datasets, Dataset):
             datasets = {OBJECTIVE: datasets}
-            model_specs = {OBJECTIVE: model_specs}
+            models = {OBJECTIVE: models}  # type: ignore[dict-item]
 
         # reassure the type checker that everything is tagged
         datasets = cast(Dict[str, Dataset], datasets)
-        model_specs = cast(Dict[str, ModelSpec], model_specs)
+        models = cast(Dict[str, TrainableProbabilisticModelType], models)
 
         if num_steps < 0:
             raise ValueError(f"num_steps must be at least 0, got {num_steps}")
 
-        if datasets.keys() != model_specs.keys():
+        if datasets.keys() != models.keys():
             raise ValueError(
-                f"datasets and model_specs should contain the same keys. Got {datasets.keys()} and"
-                f" {model_specs.keys()} respectively."
+                f"datasets and models should contain the same keys. Got {datasets.keys()} and"
+                f" {models.keys()} respectively."
             )
 
         if not datasets:
-            raise ValueError("dicts of datasets and model_specs must be populated.")
+            raise ValueError("dicts of datasets and models must be populated.")
 
         if acquisition_rule is None:
             if datasets.keys() != {OBJECTIVE}:
@@ -616,24 +611,23 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                 SearchSpaceType, TrainableProbabilisticModelType
             ]()
 
-        # note that this cast is justified for explicit models but not for models created
-        # from config, which can't be statically type checked; those will fail at runtime instead
-        models = cast(
-            Dict[str, TrainableProbabilisticModelType], map_values(create_model, model_specs)
-        )
-
         history: list[FrozenRecord[StateType] | Record[StateType]] = []
         query_plot_dfs: dict[int, pd.DataFrame] = {}
-        observation_plot_dfs: dict[str, pd.DataFrame] = {}
+        observation_plot_dfs = observation_plot_init(datasets)
 
         summary_writer = logging.get_tensorboard_writer()
         if summary_writer:
             with summary_writer.as_default(step=0):
-                self._write_summary_init(
-                    acquisition_rule, datasets, models, num_steps, observation_plot_dfs
+                write_summary_init(
+                    self._observer,
+                    self._search_space,
+                    acquisition_rule,
+                    datasets,
+                    models,
+                    num_steps,
                 )
 
-        for step in range(num_steps):
+        for step in range(1, num_steps + 1):
             logging.set_step_number(step)
 
             if early_stop_callback and early_stop_callback(datasets, models, acquisition_state):
@@ -667,14 +661,21 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                             "will be available."
                         ) from e
 
-                with Timer() as total_step_wallclock_timer:
+                if step == 1 and fit_initial_model:
                     with Timer() as initial_model_fitting_timer:
-                        if step == 0 and fit_initial_model:
-                            for tag, model in models.items():
-                                dataset = datasets[tag]
-                                model.update(dataset)
-                                model.optimize(dataset)
+                        for tag, model in models.items():
+                            dataset = datasets[tag]
+                            model.update(dataset)
+                            model.optimize(dataset)
+                    if summary_writer:
+                        logging.set_step_number(0)
+                        with summary_writer.as_default(step=0):
+                            write_summary_initial_model_fit(
+                                datasets, models, initial_model_fitting_timer
+                            )
+                        logging.set_step_number(step)
 
+                with Timer() as total_step_wallclock_timer:
                     with Timer() as query_point_generation_timer:
                         points_or_stateful = acquisition_rule.acquire(
                             self._search_space, models, datasets=datasets
@@ -702,18 +703,22 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
                 if summary_writer:
                     with summary_writer.as_default(step=step):
-                        self._write_summary_step(
+                        write_summary_observations(
                             datasets,
                             models,
-                            query_points,
                             tagged_output,
-                            initial_model_fitting_timer,
                             model_fitting_timer,
-                            query_point_generation_timer,
-                            total_step_wallclock_timer,
                             observation_plot_dfs,
+                        )
+                        write_summary_query_points(
+                            datasets,
+                            models,
+                            self._search_space,
+                            query_points,
+                            query_point_generation_timer,
                             query_plot_dfs,
                         )
+                        logging.scalar("wallclock/step", total_step_wallclock_timer.time)
 
             except Exception as error:  # pylint: disable=broad-except
                 tf.print(
@@ -745,31 +750,56 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             result.save_result(Path(track_path) / OptimizationResult.RESULTS_FILENAME)
         return result
 
-    def _write_summary_init(
-        self,
-        acquisition_rule: AcquisitionRule[
-            TensorType | State[StateType | None, TensorType],
-            SearchSpaceType,
-            TrainableProbabilisticModelType,
-        ],
-        datasets: Mapping[str, Dataset],
-        models: Mapping[str, TrainableProbabilisticModel],
-        num_steps: int,
-        observation_plot_dfs: MutableMapping[str, pd.DataFrame],
-    ) -> None:
-        """Write initial TensorBoard summary (and set up any initial monitoring state)."""
-        devices = tf.config.list_logical_devices()
-        logging.text(
-            "metadata",
-            f"Observer: `{self._observer}`\n\n"
-            f"Number of steps: `{num_steps}`\n\n"
-            f"Number of initial points: "
-            f"`{dict((k, len(v)) for k, v in datasets.items())}`\n\n"
-            f"Search Space: `{self._search_space}`\n\n"
-            f"Acquisition rule:\n\n    {acquisition_rule}\n\n"
-            f"Models:\n\n    {models}\n\n"
-            f"Available devices: `{dict(Counter(d.device_type for d in devices))}`",
-        )
+
+def write_summary_init(
+    observer: Observer,
+    search_space: SearchSpace,
+    acquisition_rule: AcquisitionRule[
+        TensorType | State[StateType | None, TensorType],
+        SearchSpaceType,
+        TrainableProbabilisticModelType,
+    ],
+    datasets: Mapping[str, Dataset],
+    models: Mapping[str, TrainableProbabilisticModel],
+    num_steps: int,
+) -> None:
+    """Write initial BO loop TensorBoard summary."""
+    devices = tf.config.list_logical_devices()
+    logging.text(
+        "metadata",
+        f"Observer: `{observer}`\n\n"
+        f"Number of steps: `{num_steps}`\n\n"
+        f"Number of initial points: "
+        f"`{dict((k, len(v)) for k, v in datasets.items())}`\n\n"
+        f"Search Space: `{search_space}`\n\n"
+        f"Acquisition rule:\n\n    {acquisition_rule}\n\n"
+        f"Models:\n\n    {models}\n\n"
+        f"Available devices: `{dict(Counter(d.device_type for d in devices))}`",
+    )
+
+
+def write_summary_initial_model_fit(
+    datasets: Mapping[str, Dataset],
+    models: Mapping[str, TrainableProbabilisticModel],
+    model_fitting_timer: Timer,
+) -> None:
+    """Write TensorBoard summary for the model fitting to the initial data."""
+    for tag, model in models.items():
+        with tf.name_scope(f"{tag}.model"):
+            model.log(datasets[tag])
+    logging.scalar(
+        "wallclock/model_fitting",
+        model_fitting_timer.time,
+    )
+
+
+def observation_plot_init(
+    datasets: Mapping[str, Dataset],
+) -> dict[str, pd.DataFrame]:
+    """Initialise query point pairplot dataframes with initial observations.
+    Also logs warnings if pairplot dependencies are not installed."""
+    observation_plot_dfs: dict[str, pd.DataFrame] = {}
+    if logging.get_tensorboard_writer():
 
         seaborn_warning = False
         if logging.include_summary("query_points/_pairplot") and not (pd and sns):
@@ -793,131 +823,156 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                 "\nOne way to do this is to install 'trieste[plotting]'.",
                 output_stream=absl.logging.INFO,
             )
+    return observation_plot_dfs
 
-    def _write_summary_step(
-        self,
-        datasets: Mapping[str, Dataset],
-        models: Mapping[str, TrainableProbabilisticModel],
-        query_points: TensorType,
-        tagged_output: Mapping[str, TensorType],
-        initial_model_fitting_timer: Timer,
-        model_fitting_timer: Timer,
-        query_point_generation_timer: Timer,
-        total_step_wallclock_timer: Timer,
-        observation_plot_dfs: MutableMapping[str, pd.DataFrame],
-        query_plot_dfs: MutableMapping[int, pd.DataFrame],
-    ) -> None:
-        """Write TensorBoard summary for the current step."""
-        for tag in datasets:
 
-            with tf.name_scope(f"{tag}.model"):
-                models[tag].log()
+def write_summary_observations(
+    datasets: Mapping[str, Dataset],
+    models: Mapping[str, TrainableProbabilisticModel],
+    tagged_output: Mapping[str, TensorType],
+    model_fitting_timer: Timer,
+    observation_plot_dfs: MutableMapping[str, pd.DataFrame],
+) -> None:
+    """Write TensorBoard summary for the current step observations."""
+    for tag in datasets:
 
-            output_dim = tf.shape(tagged_output[tag].observations)[-1]
-            for i in tf.range(output_dim):
-                suffix = f"[{i}]" if output_dim > 1 else ""
-                if tf.size(tagged_output[tag].observations) > 0:
-                    logging.histogram(
-                        f"{tag}.observation{suffix}/new_observations",
-                        tagged_output[tag].observations[..., i],
-                    )
-                    logging.scalar(
-                        f"{tag}.observation{suffix}/best_new_observation",
-                        np.min(tagged_output[tag].observations[..., i]),
-                    )
-                if tf.size(datasets[tag].observations) > 0:
-                    logging.scalar(
-                        f"{tag}.observation{suffix}/best_overall",
-                        np.min(datasets[tag].observations[..., i]),
-                    )
+        with tf.name_scope(f"{tag}.model"):
+            models[tag].log(datasets[tag])
 
-            if logging.include_summary(f"{tag}.observations/_pairplot") and (
-                pd and sns and output_dim >= 2
-            ):
-                columns = [f"x{i}" for i in range(output_dim)]
-                observation_new_df = pd.DataFrame(
-                    tagged_output[tag].observations, columns=columns
-                ).applymap(float)
-                observation_new_df["observations"] = "new"
-                observation_plot_df = pd.concat(
-                    (observation_plot_dfs.get(tag), observation_new_df),
-                    copy=False,
-                    ignore_index=True,
+        output_dim = tf.shape(tagged_output[tag].observations)[-1]
+        for i in tf.range(output_dim):
+            suffix = f"[{i}]" if output_dim > 1 else ""
+            if tf.size(tagged_output[tag].observations) > 0:
+                logging.histogram(
+                    f"{tag}.observation{suffix}/new_observations",
+                    tagged_output[tag].observations[..., i],
                 )
-                observation_plot_df["pareto"] = non_dominated(datasets[tag].observations)[1] == 0
+                logging.scalar(
+                    f"{tag}.observation{suffix}/best_new_observation",
+                    np.min(tagged_output[tag].observations[..., i]),
+                )
+            if tf.size(datasets[tag].observations) > 0:
+                logging.scalar(
+                    f"{tag}.observation{suffix}/best_overall",
+                    np.min(datasets[tag].observations[..., i]),
+                )
+
+        if logging.include_summary(f"{tag}.observations/_pairplot") and (
+            pd and sns and output_dim >= 2
+        ):
+            columns = [f"x{i}" for i in range(output_dim)]
+            observation_new_df = pd.DataFrame(
+                tagged_output[tag].observations, columns=columns
+            ).applymap(float)
+            observation_new_df["observations"] = "new"
+            observation_plot_df = pd.concat(
+                (observation_plot_dfs.get(tag), observation_new_df),
+                copy=False,
+                ignore_index=True,
+            )
+
+            hue_order = ["initial", "old", "new"]
+            palette = {"initial": "tab:green", "old": "tab:green", "new": "tab:orange"}
+            markers = {"initial": "X", "old": "o", "new": "o"}
+
+            # assume that any OBJECTIVE- or single-tagged multi-output dataset => multi-objective
+            # more complex scenarios (e.g. constrained data) need to be plotted by the acq function
+            if len(datasets) > 1 and tag != OBJECTIVE:
+                observation_plot_df["observation type"] = observation_plot_df.apply(
+                    lambda x: x["observations"],
+                    axis=1,
+                )
+            else:
+                observation_plot_df["pareto"] = non_dominated(datasets[tag].observations)[1]
                 observation_plot_df["observation type"] = observation_plot_df.apply(
                     lambda x: x["observations"] + x["pareto"] * " (non-dominated)",
                     axis=1,
                 )
-                pairplot = sns.pairplot(
-                    observation_plot_df,
-                    vars=columns,
-                    hue="observation type",
-                    hue_order=[
-                        "initial",
-                        "old",
-                        "new",
-                        "initial (non-dominated)",
-                        "old (non-dominated)",
-                        "new (non-dominated)",
-                    ],
-                    palette={
-                        "initial": "tab:green",
-                        "old": "tab:green",
-                        "new": "tab:orange",
+                hue_order += [hue + " (non-dominated)" for hue in hue_order]
+                palette.update(
+                    {
                         "initial (non-dominated)": "tab:purple",
                         "old (non-dominated)": "tab:purple",
                         "new (non-dominated)": "tab:red",
-                    },
-                    markers={
-                        "initial": "X",
-                        "old": "o",
-                        "new": "o",
+                    }
+                )
+                markers.update(
+                    {
                         "initial (non-dominated)": "X",
                         "old (non-dominated)": "o",
                         "new (non-dominated)": "o",
-                    },
+                    }
                 )
-                logging.pyplot(f"{tag}.observations/_pairplot", pairplot.fig)
-                observation_plot_df.loc[
-                    observation_plot_df["observations"] == "new", "observations"
-                ] = "old"
-                observation_plot_dfs[tag] = observation_plot_df
 
-        if tf.rank(query_points) == 2:
-            for i in tf.range(tf.shape(query_points)[1]):
-                if len(query_points) == 1:
-                    logging.scalar(f"query_points/[{i}]", float(query_points[0, i]))
-                else:
-                    logging.histogram(f"query_points/[{i}]", query_points[:, i])
-
-        if pd and sns and logging.include_summary("query_points/_pairplot"):
-            columns = [f"x{i}" for i in range(tf.shape(query_points)[1])]
-            query_new_df = pd.DataFrame(query_points, columns=columns).applymap(float)
-            query_new_df["query points"] = "new"
-            query_plot_df = pd.concat(
-                (query_plot_dfs.get(0), query_new_df), copy=False, ignore_index=True
+            pairplot = sns.pairplot(
+                observation_plot_df,
+                vars=columns,
+                hue="observation type",
+                hue_order=hue_order,
+                palette=palette,
+                markers=markers,
             )
-            pairplot = sns.pairplot(query_plot_df, hue="query points")
-            padding = 0.025 * (self._search_space.upper - self._search_space.lower)
-            upper_limits = self._search_space.upper + padding
-            lower_limits = self._search_space.lower - padding
-            for i in range(self._search_space.dimension):
-                pairplot.axes[0, i].set_xlim((lower_limits[i], upper_limits[i]))
-                pairplot.axes[i, 0].set_ylim((lower_limits[i], upper_limits[i]))
-            logging.pyplot("query_points/_pairplot", pairplot.fig)
-            query_plot_df["query points"] = "old"
-            query_plot_dfs[0] = query_plot_df
+            logging.pyplot(f"{tag}.observations/_pairplot", pairplot.fig)
+            observation_plot_df.loc[
+                observation_plot_df["observations"] == "new", "observations"
+            ] = "old"
+            observation_plot_dfs[tag] = observation_plot_df
 
-        logging.scalar("wallclock/step", total_step_wallclock_timer.time)
-        logging.scalar(
-            "wallclock/query_point_generation",
-            query_point_generation_timer.time,
+    logging.scalar(
+        "wallclock/model_fitting",
+        model_fitting_timer.time,
+    )
+
+
+def write_summary_query_points(
+    datasets: Mapping[str, Dataset],
+    models: Mapping[str, TrainableProbabilisticModel],
+    search_space: SearchSpace,
+    query_points: TensorType,
+    query_point_generation_timer: Timer,
+    query_plot_dfs: MutableMapping[int, pd.DataFrame],
+) -> None:
+    """Write TensorBoard summary for the current step query points."""
+
+    if tf.rank(query_points) == 2:
+        for i in tf.range(tf.shape(query_points)[1]):
+            if len(query_points) == 1:
+                logging.scalar(f"query_points/[{i}]", float(query_points[0, i]))
+            else:
+                logging.histogram(f"query_points/[{i}]", query_points[:, i])
+        logging.histogram("query_points/euclidean_distances", lambda: pdist(query_points))
+
+    if pd and sns and logging.include_summary("query_points/_pairplot"):
+        columns = [f"x{i}" for i in range(tf.shape(query_points)[1])]
+        qp_preds = query_points
+        for tag in datasets:
+            pred = models[tag].predict(query_points)[0]
+            qp_preds = tf.concat([qp_preds, tf.cast(pred, query_points.dtype)], 1)
+            output_dim = tf.shape(pred)[-1]
+            for i in range(output_dim):
+                columns.append(f"{tag}{i if (output_dim > 1) else ''} predicted")
+        query_new_df = pd.DataFrame(qp_preds, columns=columns).applymap(float)
+        query_new_df["query points"] = "new"
+        query_plot_df = pd.concat(
+            (query_plot_dfs.get(0), query_new_df), copy=False, ignore_index=True
         )
-        logging.scalar(
-            "wallclock/model_fitting",
-            model_fitting_timer.time + initial_model_fitting_timer.time,
+        pairplot = sns.pairplot(
+            query_plot_df, hue="query points", hue_order=["old", "new"], height=2.25
         )
+        padding = 0.025 * (search_space.upper - search_space.lower)
+        upper_limits = search_space.upper + padding
+        lower_limits = search_space.lower - padding
+        for i in range(search_space.dimension):
+            pairplot.axes[0, i].set_xlim((lower_limits[i], upper_limits[i]))
+            pairplot.axes[i, 0].set_ylim((lower_limits[i], upper_limits[i]))
+        logging.pyplot("query_points/_pairplot", pairplot.fig)
+        query_plot_df["query points"] = "old"
+        query_plot_dfs[0] = query_plot_df
+
+    logging.scalar(
+        "wallclock/query_point_generation",
+        query_point_generation_timer.time,
+    )
 
 
 def stop_at_minimum(

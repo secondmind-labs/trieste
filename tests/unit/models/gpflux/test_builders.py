@@ -39,7 +39,7 @@ from trieste.models.gpflux.builders import (
 from trieste.space import Box
 
 
-def test_build_vanilla_deep_gp_returns_correct_defaults(keras_float: None) -> None:
+def test_build_vanilla_deep_gp_returns_correct_defaults() -> None:
     search_space = Box([0.0], [1.0]) ** 4
     x = search_space.sample(100)
     data = mk_dataset(x, quadratic(x))
@@ -83,7 +83,6 @@ def test_build_vanilla_deep_gp_returns_correct_model(
     likelihood_variance: float,
     trainable_likelihood: bool,
     inner_layer_sqrt_factor: bool,
-    keras_float: None,
 ) -> None:
     num_data = 10
     x = np.arange(num_data).reshape(-1, 1).astype(np.double)
@@ -127,7 +126,7 @@ def test_build_vanilla_deep_gp_returns_correct_model(
     )
 
 
-def test_build_vanilla_deep_gp_raises_for_incorrect_args(keras_float: None) -> None:
+def test_build_vanilla_deep_gp_raises_for_incorrect_args() -> None:
     x = np.arange(10).reshape(-1, 1).astype(np.double)
     data = mk_dataset(x, quadratic(x))
     search_space = Box([0.0], [10.0])
@@ -147,7 +146,7 @@ def test_build_vanilla_deep_gp_raises_for_incorrect_args(keras_float: None) -> N
 
 @pytest.mark.parametrize("multiplier", [1, 2, 5])
 def test_build_vanilla_deep_gp_gives_correct_num_inducing_points_and_num_data(
-    multiplier: int, keras_float: None
+    multiplier: int,
 ) -> None:
     num_data = 5
     x = np.arange(num_data).reshape(-1, 1).astype(np.double)

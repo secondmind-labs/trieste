@@ -14,13 +14,16 @@
 
 r"""
 This package contains the primary interface for deep Gaussian process models. It also contains a
-number of :class:`TrainableProbabilisticModel` wrappers for GPflux-based models. Note that currently
-copying/saving models is not supported, so in a Bayes Opt loop `track_state` should be set False.
-Note as well that `tf.keras.backend.set_floatx()` should be used to set the desired float type,
-consistent with the GPflow float type being used.
+number of :class:`TrainableProbabilisticModel` wrappers for GPflux-based models.
 """
 
-from . import config
 from .builders import build_vanilla_deep_gp
 from .interface import GPfluxPredictor
 from .models import DeepGaussianProcess
+from .sampler import (
+    DeepGaussianProcessDecoupledLayer,
+    DeepGaussianProcessDecoupledTrajectorySampler,
+    DeepGaussianProcessReparamSampler,
+    ResampleableDecoupledDeepGaussianProcessFeatureFunctions,
+    dgp_feature_decomposition_trajectory,
+)

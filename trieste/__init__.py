@@ -37,3 +37,4 @@ from . import (
     types,
     utils,
 )
+from .version import __version__

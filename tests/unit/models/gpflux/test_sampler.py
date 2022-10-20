@@ -38,7 +38,7 @@ from gpflux.models import DeepGP
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, mk_dataset, quadratic, random_seed
 from tests.util.models.gpflow.models import QuadraticMeanAndRBFKernel
-from tests.util.models.gpflux.models import two_layer_trieste_dgp
+from tests.util.models.gpflux.models import simple_two_layer_dgp_model, two_layer_trieste_dgp
 from trieste.data import Dataset
 from trieste.models.gpflux import DeepGaussianProcess
 from trieste.models.gpflux.sampler import (
@@ -52,9 +52,7 @@ from trieste.types import TensorType
 
 
 @pytest.mark.parametrize("sample_size", [0, -2])
-def test_dgp_reparam_sampler_raises_for_invalid_sample_size(
-    sample_size: int, keras_float: None
-) -> None:
+def test_dgp_reparam_sampler_raises_for_invalid_sample_size(sample_size: int) -> None:
     search_space = Box([0.0], [1.0]) ** 4
     x = search_space.sample(10)
     data = mk_dataset(x, quadratic(x))
@@ -71,10 +69,7 @@ def test_dgp_reparam_sampler_raises_for_invalid_model() -> None:
 
 
 @pytest.mark.parametrize("shape", [[], [1], [2], [2, 3, 4]])
-def test_dgp_reparam_sampler_sample_raises_for_invalid_at_shape(
-    shape: ShapeLike,
-    keras_float: None,
-) -> None:
+def test_dgp_reparam_sampler_sample_raises_for_invalid_at_shape(shape: ShapeLike) -> None:
     search_space = Box([0.0], [1.0])
     x = search_space.sample(10)
     data = mk_dataset(x, quadratic(x))
@@ -108,8 +103,7 @@ def _build_dataset_and_train_deep_gp(
 
 @random_seed
 def test_dgp_reparam_sampler_samples_approximate_expected_distribution(
-    two_layer_model: Callable[[TensorType], DeepGP],
-    keras_float: None,
+    two_layer_model: Callable[[TensorType], DeepGP]
 ) -> None:
     sample_size = 250
     dataset, model = _build_dataset_and_train_deep_gp(two_layer_model)
@@ -141,8 +135,7 @@ def test_dgp_reparam_sampler_samples_approximate_expected_distribution(
 
 @random_seed
 def test_dgp_reparam_sampler_sample_is_continuous(
-    two_layer_model: Callable[[TensorType], DeepGP],
-    keras_float: None,
+    two_layer_model: Callable[[TensorType], DeepGP]
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
@@ -152,8 +145,7 @@ def test_dgp_reparam_sampler_sample_is_continuous(
 
 
 def test_dgp_reparam_sampler_sample_is_repeatable(
-    two_layer_model: Callable[[TensorType], DeepGP],
-    keras_float: None,
+    two_layer_model: Callable[[TensorType], DeepGP]
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
@@ -164,8 +156,7 @@ def test_dgp_reparam_sampler_sample_is_repeatable(
 
 @random_seed
 def test_dgp_reparam_sampler_samples_are_distinct_for_new_instances(
-    two_layer_model: Callable[[TensorType], DeepGP],
-    keras_float: None,
+    two_layer_model: Callable[[TensorType], DeepGP]
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
@@ -178,9 +169,7 @@ def test_dgp_reparam_sampler_samples_are_distinct_for_new_instances(
 
 @pytest.mark.parametrize("num_features", [0, -2])
 def test_dgp_decoupled_trajectory_sampler_raises_for_invalid_number_of_features(
-    num_features: int,
-    two_layer_model: Callable[[TensorType], DeepGP],
-    keras_float: None,
+    num_features: int, two_layer_model: Callable[[TensorType], DeepGP]
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
@@ -188,7 +177,7 @@ def test_dgp_decoupled_trajectory_sampler_raises_for_invalid_number_of_features(
         DeepGaussianProcessDecoupledTrajectorySampler(model, num_features=num_features)
 
 
-def test_dgp_decoupled_trajectory_sampler_raises_for_invalid_model(keras_float: None) -> None:
+def test_dgp_decoupled_trajectory_sampler_raises_for_invalid_model() -> None:
     with pytest.raises(ValueError, match="Model must be .*"):
         DeepGaussianProcessDecoupledTrajectorySampler(
             QuadraticMeanAndRBFKernel(), 10  # type: ignore
@@ -203,9 +192,7 @@ def _generate_xs_for_decoupled_trajectory(num_evals: int, batch_size: int) -> Te
 
 @pytest.mark.parametrize("num_evals", [10, 100])
 def test_dgp_decoupled_trajectory_sampler_returns_trajectory_function_with_correct_shapes(
-    num_evals: int,
-    two_layer_model: Callable[[TensorType], DeepGP],
-    keras_float: None,
+    num_evals: int, two_layer_model: Callable[[TensorType], DeepGP]
 ) -> None:
     batch_size = 5
 
@@ -216,15 +203,14 @@ def test_dgp_decoupled_trajectory_sampler_returns_trajectory_function_with_corre
     trajectory = sampler.get_trajectory()
     xs = _generate_xs_for_decoupled_trajectory(num_evals, batch_size)
 
-    tf.debugging.assert_shapes([(trajectory(xs), [num_evals, batch_size])])
+    tf.debugging.assert_shapes([(trajectory(xs), [num_evals, batch_size, 1])])
 
     assert isinstance(trajectory, dgp_feature_decomposition_trajectory)
 
 
 @random_seed
 def test_dgp_decoupled_trajectory_sampler_returns_deterministic_trajectory(
-    two_layer_model: Callable[[TensorType], DeepGP],
-    keras_float: None,
+    two_layer_model: Callable[[TensorType], DeepGP]
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
@@ -239,8 +225,7 @@ def test_dgp_decoupled_trajectory_sampler_returns_deterministic_trajectory(
 
 @random_seed
 def test_dgp_decoupled_trajectory_sampler_sample_is_continuous(
-    two_layer_model: Callable[[TensorType], DeepGP],
-    keras_float: None,
+    two_layer_model: Callable[[TensorType], DeepGP]
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
@@ -253,8 +238,7 @@ def test_dgp_decoupled_trajectory_sampler_sample_is_continuous(
 
 @random_seed
 def test_dgp_decoupled_trajectory_sampler_samples_approximate_expected_distribution(
-    two_layer_model: Callable[[TensorType], DeepGP],
-    keras_float: None,
+    two_layer_model: Callable[[TensorType], DeepGP]
 ) -> None:
     sample_size = 100
     dataset, model = _build_dataset_and_train_deep_gp(two_layer_model)
@@ -267,10 +251,10 @@ def test_dgp_decoupled_trajectory_sampler_samples_approximate_expected_distribut
 
     samples = trajectory(xs)
 
-    assert samples.shape == [len(dataset.query_points), sample_size]
+    assert samples.shape == [len(dataset.query_points), sample_size, 1]
 
-    sample_mean = tf.reduce_mean(samples, axis=-1, keepdims=True)
-    sample_variance = tf.reduce_mean((samples - sample_mean) ** 2, axis=-1, keepdims=True)
+    sample_mean = tf.reduce_mean(samples, axis=1)
+    sample_variance = tf.math.reduce_variance(samples, axis=1)
 
     num_samples = 50
     means = []
@@ -289,8 +273,7 @@ def test_dgp_decoupled_trajectory_sampler_samples_approximate_expected_distribut
 
 @random_seed
 def test_dgp_decoupled_trajectory_sampler_samples_are_distinct_for_new_instances(
-    two_layer_model: Callable[[TensorType], DeepGP],
-    keras_float: None,
+    two_layer_model: Callable[[TensorType], DeepGP]
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
@@ -314,8 +297,7 @@ def test_dgp_decoupled_trajectory_sampler_samples_are_distinct_for_new_instances
 
 @random_seed
 def test_dgp_decoupled_trajectory_resample_trajectory_provides_new_samples_without_retracing(
-    two_layer_model: Callable[[TensorType], DeepGP],
-    keras_float: None,
+    two_layer_model: Callable[[TensorType], DeepGP]
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
@@ -334,8 +316,7 @@ def test_dgp_decoupled_trajectory_resample_trajectory_provides_new_samples_witho
 
 @random_seed
 def test_dgp_decoupled_trajectory_update_trajectory_updates_and_doesnt_retrace(
-    two_layer_model: Callable[[TensorType], DeepGP],
-    keras_float: None,
+    two_layer_model: Callable[[TensorType], DeepGP]
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
@@ -372,14 +353,16 @@ def test_dgp_decoupled_layer_raises_for_invalid_layer() -> None:
     prior = tfp.distributions.MultivariateNormalDiag(prior_means, prior_std)
     lv = gpflux.layers.LatentVariableLayer(prior, encoder)
 
+    x = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
+    model = DeepGaussianProcess(simple_two_layer_dgp_model(x))
+    model.model_gpflux.f_layers[0] = lv
+
     with pytest.raises(ValueError, match="Layers other than .*"):
-        DeepGaussianProcessDecoupledLayer(lv)
+        DeepGaussianProcessDecoupledLayer(model, 0)
 
 
 @pytest.mark.parametrize("num_features", [0, -2])
-def test_dgp_decoupled_layer_raises_for_invalid_number_of_features(
-    num_features: int,
-) -> None:
+def test_dgp_decoupled_layer_raises_for_invalid_number_of_features(num_features: int) -> None:
     kernel = construct_basic_kernel(
         gpflow.kernels.SquaredExponential(), output_dim=1, share_hyperparams=True
     )
@@ -395,8 +378,12 @@ def test_dgp_decoupled_layer_raises_for_invalid_number_of_features(
         num_data=10,
         num_latent_gps=2,
     )
+    x = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
+    model = DeepGaussianProcess(simple_two_layer_dgp_model(x))
+    model.model_gpflux.f_layers[0] = layer
+
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        DeepGaussianProcessDecoupledLayer(layer, num_features)
+        DeepGaussianProcessDecoupledLayer(model, 0, num_features)
 
 
 def test_dgp_decoupled_layer_raises_for_invalid_kernel() -> None:
@@ -415,13 +402,16 @@ def test_dgp_decoupled_layer_raises_for_invalid_kernel() -> None:
         num_latent_gps=2,
     )
 
+    x = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
+    model = DeepGaussianProcess(simple_two_layer_dgp_model(x))
+    model.model_gpflux.f_layers[0] = layer
+
     with pytest.raises(ValueError, match="Multioutput kernels .*"):
-        DeepGaussianProcessDecoupledLayer(layer)
+        DeepGaussianProcessDecoupledLayer(model, 0)
 
 
 def test_dgp_decoupled_layer_returns_trajectory_with_correct_shapes(
-    two_layer_model: Callable[[TensorType], DeepGP],
-    keras_float: None,
+    two_layer_model: Callable[[TensorType], DeepGP]
 ) -> None:
     num_evals = 20
     batch_size = 5
@@ -431,7 +421,7 @@ def test_dgp_decoupled_layer_returns_trajectory_with_correct_shapes(
     layer = model.model_gpflux.f_layers[0]
     P = layer.num_latent_gps
 
-    decoupled_layer = DeepGaussianProcessDecoupledLayer(layer)
+    decoupled_layer = DeepGaussianProcessDecoupledLayer(model, 0)
 
     xs = _generate_xs_for_decoupled_trajectory(num_evals, batch_size)
 
@@ -440,14 +430,11 @@ def test_dgp_decoupled_layer_returns_trajectory_with_correct_shapes(
 
 @random_seed
 def test_dgp_decoupled_layer_returns_deterministic_trajectory(
-    two_layer_model: Callable[[TensorType], DeepGP],
-    keras_float: None,
+    two_layer_model: Callable[[TensorType], DeepGP]
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
-    layer = model.model_gpflux.f_layers[0]
-
-    decoupled_layer = DeepGaussianProcessDecoupledLayer(layer)
+    decoupled_layer = DeepGaussianProcessDecoupledLayer(model, 0)
 
     xs = _generate_xs_for_decoupled_trajectory(10, 5)
 
@@ -459,15 +446,12 @@ def test_dgp_decoupled_layer_returns_deterministic_trajectory(
 
 @random_seed
 def test_dgp_decoupled_layer_samples_are_distinct_for_new_instances(
-    two_layer_model: Callable[[TensorType], DeepGP],
-    keras_float: None,
+    two_layer_model: Callable[[TensorType], DeepGP]
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
-    layer = model.model_gpflux.f_layers[0]
-
-    decoupled_layer_1 = DeepGaussianProcessDecoupledLayer(layer)
-    decoupled_layer_2 = DeepGaussianProcessDecoupledLayer(layer)
+    decoupled_layer_1 = DeepGaussianProcessDecoupledLayer(model, 0)
+    decoupled_layer_2 = DeepGaussianProcessDecoupledLayer(model, 0)
 
     xs = _generate_xs_for_decoupled_trajectory(100, 5)
 
@@ -484,14 +468,11 @@ def test_dgp_decoupled_layer_samples_are_distinct_for_new_instances(
 
 @random_seed
 def test_dgp_decoupled_layer_resample_provides_new_samples(
-    two_layer_model: Callable[[TensorType], DeepGP],
-    keras_float: None,
+    two_layer_model: Callable[[TensorType], DeepGP]
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
-    layer = model.model_gpflux.f_layers[0]
-
-    decoupled_layer = DeepGaussianProcessDecoupledLayer(layer)
+    decoupled_layer = DeepGaussianProcessDecoupledLayer(model, 0)
 
     xs = _generate_xs_for_decoupled_trajectory(10, 5)
 
@@ -504,14 +485,11 @@ def test_dgp_decoupled_layer_resample_provides_new_samples(
 
 @random_seed
 def test_dgp_decoupled_layer_update_updates(
-    two_layer_model: Callable[[TensorType], DeepGP],
-    keras_float: None,
+    two_layer_model: Callable[[TensorType], DeepGP]
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
-    layer = model.model_gpflux.f_layers[0]
-
-    decoupled_layer = DeepGaussianProcessDecoupledLayer(layer)
+    decoupled_layer = DeepGaussianProcessDecoupledLayer(model, 0)
 
     xs = _generate_xs_for_decoupled_trajectory(10, 5)
 

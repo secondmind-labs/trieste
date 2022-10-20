@@ -1,4 +1,4 @@
-# Copyright 2021 The Trieste Contributors
+# Copyright 2020 The Trieste Contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,17 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Generator
+import re
 
-import pytest
-import tensorflow as tf
+import trieste
 
 
-# Setup and teardown fixture to set keras floatx to float64 before test starts
-# then return it to previous value at test finish
-@pytest.fixture(name="keras_float")
-def _keras_float() -> Generator[None, None, None]:
-    current_float = tf.keras.backend.floatx()
-    tf.keras.backend.set_floatx("float64")
-    yield
-    tf.keras.backend.set_floatx(current_float)
+def test_trieste_version() -> None:
+    assert re.match(r"\d+\.\d+\.\d+", trieste.__version__)

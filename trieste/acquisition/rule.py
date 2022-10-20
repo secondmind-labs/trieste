@@ -21,7 +21,7 @@ import copy
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Generic, Optional, TypeVar, Union, cast, overload
+from typing import Callable, Generic, Optional, TypeVar, Union, cast, overload
 
 import tensorflow as tf
 
@@ -49,6 +49,7 @@ from .optimizer import (
     batchify_vectorize,
 )
 from .sampler import ExactThompsonSampler, ThompsonSampler
+from .utils import select_nth_output
 
 ResultType = TypeVar("ResultType", covariant=True)
 """ Unbound covariant type variable. """
@@ -135,6 +136,7 @@ class EfficientGlobalOptimization(
         builder: None = None,
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
+        initial_acquisition_function: Optional[AcquisitionFunction] = None,
     ):
         ...
 
@@ -149,6 +151,7 @@ class EfficientGlobalOptimization(
         ),
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
+        initial_acquisition_function: Optional[AcquisitionFunction] = None,
     ):
         ...
 
@@ -164,6 +167,7 @@ class EfficientGlobalOptimization(
         ] = None,
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
+        initial_acquisition_function: Optional[AcquisitionFunction] = None,
     ):
         """
         :param builder: The acquisition function builder to use. Defaults to
@@ -173,6 +177,9 @@ class EfficientGlobalOptimization(
             with the global search space. Defaults to
             :func:`~trieste.acquisition.optimizer.automatic_optimizer_selector`.
         :param num_query_points: The number of points to acquire.
+        :param initial_acquisition_function: The initial acquisition function to use. Defaults
+            to using the builder to construct one, but passing in a previously constructed
+            function can occasionally be useful (e.g. to preserve random seeds).
         """
 
         if num_query_points <= 0:
@@ -220,7 +227,7 @@ class EfficientGlobalOptimization(
         ] = builder
         self._optimizer = optimizer
         self._num_query_points = num_query_points
-        self._acquisition_function: Optional[AcquisitionFunction] = None
+        self._acquisition_function: Optional[AcquisitionFunction] = initial_acquisition_function
 
     def __repr__(self) -> str:
         """"""
@@ -228,6 +235,11 @@ class EfficientGlobalOptimization(
         {self._builder!r},
         {self._optimizer!r},
         {self._num_query_points!r})"""
+
+    @property
+    def acquisition_function(self) -> Optional[AcquisitionFunction]:
+        """The current acquisition function, updated last time :meth:`acquire` was called."""
+        return self._acquisition_function
 
     def acquire(
         self,
@@ -267,8 +279,15 @@ class EfficientGlobalOptimization(
         if summary_writer:
             with summary_writer.as_default(step=step_number):
                 batched_points = tf.expand_dims(points, axis=0)
-                value = self._acquisition_function(batched_points)[0][0]
-                logging.scalar("EGO.acquisition_function/maximum_found" + "[0]" * greedy, value)
+                values = self._acquisition_function(batched_points)[0]
+                if len(values) == 1:
+                    logging.scalar(
+                        "EGO.acquisition_function/maximum_found" + "[0]" * greedy, values[0]
+                    )
+                else:  # vectorized acquisition function
+                    logging.histogram(
+                        "EGO.acquisition_function/maximum_found" + "[0]" * greedy, values
+                    )
 
         if isinstance(self._builder, GreedyAcquisitionFunctionBuilder):
             for i in range(
@@ -288,8 +307,15 @@ class EfficientGlobalOptimization(
                 if summary_writer:
                     with summary_writer.as_default(step=step_number):
                         batched_points = tf.expand_dims(chosen_point, axis=0)
-                        value = self._acquisition_function(batched_points)[0][0]
-                        logging.scalar(f"EGO.acquisition_function/maximum_found[{i+1}]", value)
+                        values = self._acquisition_function(batched_points)[0]
+                        if len(values) == 1:
+                            logging.scalar(
+                                f"EGO.acquisition_function/maximum_found[{i + 1}]", values[0]
+                            )
+                        else:  # vectorized acquisition function
+                            logging.histogram(
+                                f"EGO.acquisition_function/maximum_found[{i+1}]", values
+                            )
 
         return points
 
@@ -532,7 +558,7 @@ class AsynchronousOptimization(
         def state_func(
             state: AsynchronousRuleState | None,
         ) -> tuple[AsynchronousRuleState | None, TensorType]:
-            tf.debugging.Assert(self._acquisition_function is not None, [])
+            tf.debugging.Assert(self._acquisition_function is not None, [tf.constant([])])
 
             if state is None:
                 state = AsynchronousRuleState(None)
@@ -790,6 +816,7 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
         num_search_space_samples: int,
         num_query_points: int,
         thompson_sampler: None = None,
+        select_output: Callable[[TensorType], TensorType] = select_nth_output,
     ):
         ...
 
@@ -799,6 +826,7 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
         num_search_space_samples: int,
         num_query_points: int,
         thompson_sampler: Optional[ThompsonSampler[ProbabilisticModelType]] = None,
+        select_output: Callable[[TensorType], TensorType] = select_nth_output,
     ):
         ...
 
@@ -807,11 +835,15 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
         num_search_space_samples: int,
         num_query_points: int,
         thompson_sampler: Optional[ThompsonSampler[ProbabilisticModelType]] = None,
+        select_output: Callable[[TensorType], TensorType] = select_nth_output,
     ):
         """
         :param num_search_space_samples: The number of points at which to sample the posterior.
         :param num_query_points: The number of points to acquire.
-        :thompson_sampler: Sampler to sample maximisers from the underlying model.
+        :param thompson_sampler: Sampler to sample maximisers from the underlying model.
+        :param select_output: A method that returns the desired trajectory from a trajectory
+            sampler with shape [..., B], where B is a batch dimension. Defaults to the
+            :func:~`trieste.acquisition.utils.select_nth_output` function with output dimension 0.
         """
         if not num_search_space_samples > 0:
             raise ValueError(f"Search space must be greater than 0, got {num_search_space_samples}")
@@ -835,13 +867,15 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
         self._thompson_sampler = thompson_sampler
         self._num_search_space_samples = num_search_space_samples
         self._num_query_points = num_query_points
+        self._select_output = select_output
 
     def __repr__(self) -> str:
         """"""
         return f"""DiscreteThompsonSampling(
         {self._num_search_space_samples!r},
         {self._num_query_points!r},
-        {self._thompson_sampler!r})"""
+        {self._thompson_sampler!r},
+        {self._select_output!r})"""
 
     def acquire(
         self,
@@ -873,7 +907,10 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
 
         query_points = search_space.sample(self._num_search_space_samples)
         thompson_samples = self._thompson_sampler.sample(
-            models[OBJECTIVE], self._num_query_points, query_points
+            models[OBJECTIVE],
+            self._num_query_points,
+            query_points,
+            select_output=self._select_output,
         )
 
         return thompson_samples

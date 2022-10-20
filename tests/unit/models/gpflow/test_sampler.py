@@ -39,7 +39,7 @@ from trieste.models.gpflow import (
     feature_decomposition_trajectory,
 )
 from trieste.models.interfaces import ReparametrizationSampler, SupportsPredictJoint
-from trieste.objectives.single_objectives import branin
+from trieste.objectives import Branin
 
 GPFLUX_VERSION = getattr(gpflux, "__version__", "0.2.3")
 
@@ -109,7 +109,7 @@ def _dim_two_gp(mean_shift: tuple[float, float] = (0.0, 0.0)) -> GaussianProcess
         amplitude=tf.cast(2.3, tf.float64), length_scale=tf.cast(0.5, tf.float64)
     )
     return GaussianProcess(
-        [lambda x: mean_shift[0] + branin(x), lambda x: mean_shift[1] + quadratic(x)],
+        [lambda x: mean_shift[0] + Branin.objective(x), lambda x: mean_shift[1] + quadratic(x)],
         [matern52, rbf()],
     )
 
@@ -301,7 +301,7 @@ def test_rff_trajectory_sampler_returns_trajectory_function_with_correct_shapes(
     xs_with_dummy_batch_dim = tf.expand_dims(xs, -2)  # [N, 1, D]
     xs_with_full_batch_dim = tf.tile(xs_with_dummy_batch_dim, [1, batch_size, 1])  # [N, B, D]
 
-    tf.debugging.assert_shapes([(trajectory(xs_with_full_batch_dim), [num_evals, batch_size])])
+    tf.debugging.assert_shapes([(trajectory(xs_with_full_batch_dim), [num_evals, batch_size, 1])])
     tf.debugging.assert_shapes(
         [(trajectory._feature_functions(xs), [num_evals, num_features])]  # type: ignore
     )
@@ -531,7 +531,7 @@ def test_decoupled_trajectory_sampler_returns_trajectory_function_with_correct_s
     xs_with_dummy_batch_dim = tf.expand_dims(xs, -2)  # [N, 1, D]
     xs_with_full_batch_dim = tf.tile(xs_with_dummy_batch_dim, [1, batch_size, 1])  # [N, B, D]
 
-    tf.debugging.assert_shapes([(trajectory(xs_with_full_batch_dim), [num_evals, batch_size])])
+    tf.debugging.assert_shapes([(trajectory(xs_with_full_batch_dim), [num_evals, batch_size, 1])])
     tf.debugging.assert_shapes(
         [(trajectory._feature_functions(xs), [num_evals, num_features + N])]  # type: ignore
     )
@@ -717,8 +717,8 @@ def test_rff_and_decoupled_trajectory_give_similar_results(noise_var: float) -> 
     eval_2 = trajectory_2(xs_predict_with_batching)
 
     npt.assert_allclose(
-        tf.reduce_mean(eval_1, -1), tf.reduce_mean(eval_2, -1), rtol=0.01
+        tf.reduce_mean(eval_1, 1), tf.reduce_mean(eval_2, 1), rtol=0.01
     )  # means across samples should roughly agree for different samplers
     npt.assert_allclose(
-        tf.math.reduce_variance(eval_1, -1), tf.math.reduce_variance(eval_2, -1), rtol=1.0
+        tf.math.reduce_variance(eval_1, 1), tf.math.reduce_variance(eval_2, 1), rtol=1.0
     )  # variance across samples should (very) roughly agree for different samplers

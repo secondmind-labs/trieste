@@ -16,7 +16,7 @@ This module contains acquisition function builders for continuous Thompson sampl
 """
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Callable, Optional, Type
 
 import tensorflow as tf
 
@@ -24,6 +24,7 @@ from ...data import Dataset
 from ...models.interfaces import HasTrajectorySampler, TrajectoryFunction, TrajectoryFunctionClass
 from ...types import TensorType
 from ..interface import SingleModelGreedyAcquisitionBuilder, SingleModelVectorizedAcquisitionBuilder
+from ..utils import select_nth_output
 
 
 class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTrajectorySampler]):
@@ -41,6 +42,18 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTr
     For more details about trajectory-based Thompson sampling see :cite:`hernandez2017parallel` and
     :cite:`wilson2020efficiently`.
     """
+
+    def __init__(self, select_output: Callable[[TensorType], TensorType] = select_nth_output):
+        """
+        :param select_output: A method that returns the desired trajectory from a trajectory
+            sampler with shape [..., B], where B is a batch dimension. Defaults to the
+            :func:~`trieste.acquisition.utils.select_nth_output` function with output dimension 0.
+        """
+        self._select_output = select_output
+
+    def __repr__(self) -> str:
+        """"""
+        return f"GreedyContinuousThompsonSampling({self._select_output!r})"
 
     def prepare_acquisition_function(
         self,
@@ -62,7 +75,7 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTr
 
         self._trajectory_sampler = model.trajectory_sampler()
         function = self._trajectory_sampler.get_trajectory()
-        return negate_trajectory_function(function)
+        return negate_trajectory_function(function, self._select_output)
 
     def update_acquisition_function(
         self,
@@ -89,7 +102,7 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTr
             new_function = self._trajectory_sampler.resample_trajectory(function)
 
         if new_function is not function:
-            function = negate_trajectory_function(new_function)
+            function = negate_trajectory_function(new_function, self._select_output)
 
         return function
 
@@ -109,6 +122,18 @@ class ParallelContinuousThompsonSampling(
     our :const:`split_acquisition_function_calls` wrapper.
     """
 
+    def __init__(self, select_output: Callable[[TensorType], TensorType] = select_nth_output):
+        """
+        :param select_output: A method that returns the desired trajectory from a trajectory
+            sampler with shape [..., B], where B is a batch dimension. Defaults to the
+            :func:~`trieste.acquisition.utils.select_nth_output` function with output dimension 0.
+        """
+        self._select_output = select_output
+
+    def __repr__(self) -> str:
+        """"""
+        return f"ParallelContinuousThompsonSampling({self._select_output!r})"
+
     def prepare_acquisition_function(
         self,
         model: HasTrajectorySampler,
@@ -127,7 +152,7 @@ class ParallelContinuousThompsonSampling(
 
         self._trajectory_sampler = model.trajectory_sampler()
         self._trajectory = self._trajectory_sampler.get_trajectory()
-        self._negated_trajectory = negate_trajectory_function(self._trajectory)
+        self._negated_trajectory = negate_trajectory_function(self._trajectory, self._select_output)
         return self._negated_trajectory
 
     def update_acquisition_function(
@@ -149,25 +174,60 @@ class ParallelContinuousThompsonSampling(
 
         if new_function is not self._trajectory:  # need to negate again if not modified in place
             self._trajectory = new_function
-            self._negated_trajectory = negate_trajectory_function(new_function)
+            self._negated_trajectory = negate_trajectory_function(new_function, self._select_output)
 
         return self._negated_trajectory
 
 
-def negate_trajectory_function(function: TrajectoryFunction) -> TrajectoryFunction:
-    """
-    Return the negative of trajectories so that our acquisition optimizers (which are
-    all maximizers) can be used to extract the minimizers of trajectories.
+class _DummyTrajectoryFunctionClass(TrajectoryFunctionClass):
+    # dummy trajectory function class used while pickling NegatedTrajectory
+    def __call__(self, x: TensorType) -> TensorType:
+        return x
 
-    We negate the trajectory function object's call method but otherwise leave it alone,
-    as it may have e.g. update and resample methods.
+
+def negate_trajectory_function(
+    function: TrajectoryFunction,
+    select_output: Optional[Callable[[TensorType], TensorType]] = None,
+    function_type: Optional[Type[TrajectoryFunction]] = None,
+) -> TrajectoryFunction:
+    """
+    Return the negative of trajectories and select the output to form the acquisition function, so
+    that our acquisition optimizers (which are all maximizers) can be used to extract the minimizers
+    of trajectories.
+
+    We negate the trajectory function object's call method, as it may have e.g. update and resample
+    methods, and select the output we wish to use.
     """
     if isinstance(function, TrajectoryFunctionClass):
 
-        class NegatedTrajectory(type(function)):  # type: ignore[misc]
+        class NegatedTrajectory(function_type or type(function)):  # type: ignore[misc]
             @tf.function
             def __call__(self, x: TensorType) -> TensorType:
-                return -1.0 * super().__call__(x)
+                if select_output is not None:
+                    return -1.0 * select_output(super().__call__(x))
+                else:
+                    return -1.0 * super().__call__(x)
+
+            def __reduce__(
+                self,
+            ) -> tuple[
+                Callable[..., TrajectoryFunction],
+                tuple[
+                    TrajectoryFunction,
+                    Optional[Callable[[TensorType], TensorType]],
+                    Optional[Type[TrajectoryFunction]],
+                ],
+                dict[str, Any],
+            ]:
+                # make this pickleable
+                state = (
+                    self.__getstate__() if hasattr(self, "__getstate__") else self.__dict__.copy()
+                )
+                return (
+                    negate_trajectory_function,
+                    (_DummyTrajectoryFunctionClass(), select_output, self.__class__.__base__),
+                    state,
+                )
 
         function.__class__ = NegatedTrajectory
 
@@ -177,6 +237,9 @@ def negate_trajectory_function(function: TrajectoryFunction) -> TrajectoryFuncti
 
         @tf.function
         def negated_trajectory(x: TensorType) -> TensorType:
-            return -1.0 * function(x)
+            if select_output is not None:
+                return -1.0 * select_output(function(x))
+            else:
+                return -1.0 * function(x)
 
         return negated_trajectory
