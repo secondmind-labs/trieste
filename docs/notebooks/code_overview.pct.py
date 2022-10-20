@@ -91,7 +91,7 @@ from trieste.types import TensorType
 # %% [markdown]
 # ### New observers
 #
-# Defining an observer with a single observation is as simple as defining a function that returns that observation:
+# Defining an observer with a single observation can be as simple as defining a function that returns that observation:
 
 # %%
 from trieste.objectives.utils import mk_observer
@@ -106,7 +106,7 @@ observer = mk_observer(simple_quadratic)
 observer(tf.constant([[0, 1], [1, 1]], dtype=tf.float64))
 
 # %% [markdown]
-# A multi-observation observer can be constructed from multiple functions:
+# A multi-observation observer can similarly be constructed from multiple functions:
 
 # %%
 from trieste.objectives.utils import mk_multi_observer
@@ -121,6 +121,9 @@ multiobserver = mk_multi_observer(
     OBJECTIVE=simple_quadratic, CONSTRAINT=simple_constraint
 )
 multiobserver(tf.constant([[0, 1], [1, 1]], dtype=tf.float64))
+
+# %% [markdown]
+# Note however that observers are not restricted to returning datasets containing precisely the observed query points: if need be, they can also return arbitrary Datasets with missing or additional points and observations.
 
 # %% [markdown]
 # ### New probabilistic model types
