@@ -55,17 +55,122 @@ from trieste.acquisition.function.function import (
     MultipleOptimismNegativeLowerConfidenceBound,
     NegativeLowerConfidenceBound,
     ProbabilityOfFeasibility,
+    ProbabilityOfImprovement,
     augmented_expected_improvement,
     expected_improvement,
     lower_confidence_bound,
     multiple_optimism_lower_confidence_bound,
     probability_of_feasibility,
+    probability_of_improvement,
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.objectives import Branin
 from trieste.space import Box
 from trieste.types import TensorType
+
+
+def test_probability_of_improvement_builder_builds_pi_using_best_from_model() -> None:
+
+    dataset = Dataset(
+        tf.constant([[-2.0], [-1.0], [0.0], [1.0], [2.0]]),
+        tf.constant([[4.1], [0.9], [0.1], [1.1], [3.9]]),
+    )
+    model = QuadraticMeanAndRBFKernel()
+    acq_fn = ProbabilityOfImprovement().prepare_acquisition_function(model, dataset=dataset)
+    xs = tf.linspace([[-10.0]], [[10.0]], 100)
+    expected = probability_of_improvement(model, tf.constant([0.0]))(xs)
+    npt.assert_allclose(acq_fn(xs), expected)
+
+
+def test_probability_of_improvement_builder_updates_pi_using_best_from_model() -> None:
+    dataset = Dataset(
+        tf.constant([[-2.0], [-1.0]]),
+        tf.constant([[4.1], [0.9]]),
+    )
+    model = QuadraticMeanAndRBFKernel()
+    acq_fn = ProbabilityOfImprovement().prepare_acquisition_function(model, dataset=dataset)
+    assert acq_fn.__call__._get_tracing_count() == 0  # type: ignore
+    xs = tf.linspace([[-10.0]], [[10.0]], 100)
+    expected = probability_of_improvement(model, tf.constant([1.0]))(xs)
+    npt.assert_allclose(acq_fn(xs), expected)
+    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
+
+    new_dataset = Dataset(
+        tf.concat([dataset.query_points, tf.constant([[0.0], [1.0], [2.0]])], 0),
+        tf.concat([dataset.observations, tf.constant([[0.1], [1.1], [3.9]])], 0),
+    )
+    updated_acq_fn = ProbabilityOfImprovement().update_acquisition_function(
+        acq_fn, model, dataset=new_dataset
+    )
+    assert updated_acq_fn == acq_fn
+    expected = probability_of_improvement(model, tf.constant([0.0]))(xs)
+    npt.assert_allclose(acq_fn(xs), expected)
+    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
+
+
+def test_probability_of_improvement_builder_raises_for_empty_data() -> None:
+    data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
+
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        ProbabilityOfImprovement().prepare_acquisition_function(
+            QuadraticMeanAndRBFKernel(), dataset=data
+        )
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        ProbabilityOfImprovement().prepare_acquisition_function(QuadraticMeanAndRBFKernel())
+
+
+@pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
+def test_probability_of_improvement_raises_for_invalid_batch_size(at: TensorType) -> None:
+    pi = probability_of_improvement(QuadraticMeanAndRBFKernel(), tf.constant([1.0]))
+
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        pi(at)
+
+
+@random_seed
+@pytest.mark.parametrize("best", [tf.constant([50.0]), Branin.minimum, Branin.minimum * 1.01])
+@pytest.mark.parametrize("test_update", [False, True])
+@pytest.mark.parametrize(
+    "variance_scale, num_samples_per_point, rtol, atol",
+    [
+        (0.1, 1000, 0.01, 1e-9),
+        (1.0, 50_000, 0.01, 1e-3),
+        (10.0, 100_000, 0.01, 1e-2),
+        (100.0, 150_000, 0.01, 1e-1),
+    ],
+)
+def test_probability_of_improvement(
+    variance_scale: float,
+    num_samples_per_point: int,
+    best: tf.Tensor,
+    rtol: float,
+    atol: float,
+    test_update: bool,
+) -> None:
+    variance_scale = tf.constant(variance_scale, tf.float64)
+    best = tf.cast(best, dtype=tf.float64)
+
+    x_range = tf.linspace(0.0, 1.0, 11)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+
+    kernel = tfp.math.psd_kernels.MaternFiveHalves(variance_scale, length_scale=0.25)
+    model = GaussianProcess([Branin.objective], [kernel])
+
+    mean, variance = model.predict(xs)
+    samples = tfp.distributions.Normal(mean, tf.sqrt(variance)).sample(num_samples_per_point)
+    samples_improvement = tf.where(samples < best, 1, 0)
+    pi_approx = tf.reduce_sum(samples_improvement, axis=0) / num_samples_per_point
+
+    if test_update:
+        pif = probability_of_improvement(model, tf.constant([100.0], dtype=tf.float64))
+        pif.update(best)
+    else:
+        pif = probability_of_improvement(model, best)
+    pi = pif(xs[..., None, :])
+
+    npt.assert_allclose(pi, pi_approx, rtol=rtol, atol=atol)
 
 
 def test_expected_improvement_builder_builds_expected_improvement_using_best_from_model() -> None:
