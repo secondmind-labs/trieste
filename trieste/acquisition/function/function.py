@@ -67,8 +67,8 @@ class ProbabilityOfImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         mean, _ = model.predict(dataset.query_points)
-        eta = tf.reduce_min(mean, axis=0)
-        return probability_of_improvement(model, eta)
+        eta = tf.reduce_min(mean, axis=0)[0]
+        return probability_of_feasibility(model, eta)
 
     def update_acquisition_function(
         self,
@@ -85,43 +85,9 @@ class ProbabilityOfImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         mean, _ = model.predict(dataset.query_points)
-        eta = tf.reduce_min(mean, axis=0)
-        function.update(eta)  # type: ignore
+        eta = tf.reduce_min(mean, axis=0)[0]
+        function = probability_of_feasibility(model, eta) # type: ignore
         return function
-
-
-class probability_of_improvement(AcquisitionFunctionClass):
-    def __init__(self, model: ProbabilisticModel, eta: TensorType):
-        r"""Return the Probability of Improvement (PI) acquisition function for
-        single-objective global optimisation. Improvment is with respect ot current
-        "best" observation `eta`, where an improvement moves towards the objective
-        functions minimum and probability is is caculated with respect to the `model`
-        posterior. For model posterior :math:`f`, this is
-        .. math:: x \mapsto \mathbb P \left (f(x) < \eta)\right]
-        :param model: The model of the objective function.
-        :param eta: The "best" observation.
-        :return: The probability of improvement function. This function will raise
-            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
-            greater than one.
-        """
-
-        self._model = model
-        self._eta = tf.Variable(eta)
-
-    def update(self, eta: TensorType) -> None:
-        """Update the acqusition function with a new model and eta value"""
-        self._eta.assign(eta)
-
-    @tf.function
-    def __call__(self, x: TensorType) -> TensorType:
-        tf.debugging.assert_shapes(
-            [(x, [..., 1, None])],
-            message="This acquisition function only supports batch sizes of one.",
-        )
-        mean, variance = self._model.predict(tf.squeeze(x, -2))
-        normal = tfp.distributions.Normal(mean, tf.sqrt(variance))
-        return normal.cdf(self._eta)
-
 
 class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     """
