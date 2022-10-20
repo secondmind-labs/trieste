@@ -56,7 +56,7 @@
 #
 # The `AcquisitionFunctionBuilder` base class, meanwhile, represents something that builds and updates acquisition functions. At the start of the Bayesian optimization, the builder's `prepare_acquisition_function` method is called by the acquisition rule to create an acquisition function from the current observations and probabilistic models. To avoid unnecessary tensorflow compilations, most builders also define an `update_acquisition_function` method for updating the function using the updated observations and models. (The ones that don't instead generate a new acquisition function when necessary.)
 #
-# Acquisition functions that support only one probabilistic model are more easily defined using the `SingleModelAcquisitionBuilder` convenience class.
+# Acquisition functions that support only one probabilistic model are more easily defined using the `SingleModelAcquisitionBuilder` convenience class, which avoids having to deal with dictionaries.
 #
 # Acquisition functions that are suitable for greedily building batches of points can be defined using `GreedyAcquisitionFunctionBuilder` (or `SingleModelGreedyAcquisitionBuilder`) using a `prepare_acquisition_function` method that also accepts the points already chosen to be in the current batch.
 
