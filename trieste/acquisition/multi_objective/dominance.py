@@ -22,23 +22,49 @@ from ...types import TensorType
 
 def non_dominated(observations: TensorType) -> tuple[TensorType, TensorType]:
     """
-    Computes the non-dominated set for a set of data points.
+    Computes the non-dominated set for a set of data points. Based on:
+    https://stackoverflow.com/questions/32791911/fast-calculation-of-pareto-front-in-python
+
     If there are duplicate point(s) in the non-dominated set, this function will return
     as it is without removing the duplicate.
 
     :param observations: set of points with shape [N,D]
-    :return: tf.Tensor of the non-dominated set [P,D] and the degree of dominance [N],
-        P is the number of points in pareto front dominances gives the number of
-        dominating points for each data point
+    :return: tf.Tensor of the non-dominated set [P,D] and a non-dominated point mask [N],
+        P is the number of points in pareto front, the mask specifies whether each data point
+        is non-dominated or not.
     """
-    extended = tf.tile(observations[None], [len(observations), 1, 1])
-    swapped_ext = tf.transpose(extended, [1, 0, 2])
-    dominance = tf.math.count_nonzero(
-        tf.logical_and(
-            tf.reduce_all(extended <= swapped_ext, axis=2),
-            tf.reduce_any(extended < swapped_ext, axis=2),
+    num_points = tf.shape(observations)[0]
+
+    # Reordering the observations beforehand speeds up the search:
+    mean = tf.reduce_mean(observations, axis=0)
+    std = tf.math.reduce_std(observations, axis=0)
+    weights = tf.reduce_sum(((observations - mean) / (std + 1e-7)), axis=1)
+    sorting_indices = tf.argsort(weights)
+
+    def cond(i: tf.Tensor, indices: tf.Tensor) -> tf.Tensor:
+        return i < len(indices)
+
+    def body(i: tf.Tensor, indices: tf.Tensor) -> tuple[tf.Tensor, tf.Tensor]:
+        obs = tf.gather(observations, indices)
+        nondominated = tf.reduce_any(obs < obs[i], axis=1) | tf.reduce_all(obs == obs[i], axis=1)
+        i = tf.reduce_sum(tf.cast(nondominated[:i], tf.int32)) + 1
+        indices = indices[nondominated]
+        return i, indices
+
+    _, indices = tf.while_loop(
+        cond,
+        body,
+        loop_vars=(
+            0,  # i
+            tf.gather(tf.range(num_points), sorting_indices),  # indices
         ),
-        axis=1,
+        shape_invariants=(
+            tf.TensorShape([]),  # i
+            tf.TensorShape([None]),  # indices
+        ),
     )
 
-    return tf.boolean_mask(observations, dominance == 0), dominance
+    nondominated_observations = tf.gather(observations, indices)
+    trues = tf.ones(tf.shape(indices), tf.bool)
+    is_nondominated = tf.scatter_nd(indices[:, None], trues, [num_points])
+    return nondominated_observations, is_nondominated

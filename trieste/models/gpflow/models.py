@@ -102,7 +102,7 @@ class GaussianProcessRegression(
 
         check_optimizer(self.optimizer)
 
-        if num_kernel_samples <= 0:
+        if num_kernel_samples < 0:
             raise ValueError(
                 f"num_kernel_samples must be greater or equal to zero but got {num_kernel_samples}."
             )
@@ -110,7 +110,7 @@ class GaussianProcessRegression(
 
         if num_rff_features <= 0:
             raise ValueError(
-                f"num_rff_features must be greater or equal to zero but got {num_rff_features}."
+                f"num_rff_features must be greater than zero but got {num_rff_features}."
             )
         self._num_rff_features = num_rff_features
         self._use_decoupled_sampler = use_decoupled_sampler
