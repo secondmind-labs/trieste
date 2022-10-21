@@ -6,20 +6,18 @@ import tensorflow_probability as tfp
 tfd = tfp.distributions
 
 
-
-# =============================================================================
-# Vector-dot helper for Multivariate Normal CDF
-# =============================================================================
-
-def vector_dot(a: tf.Tensor, b: tf.Tensor):
-    return tf.reduce_sum(a*b, axis=-1)
-
-
 # =============================================================================
 # Standard univariate normal CDF and inverse CDF for Multivariate Normal CDF
 # =============================================================================
 
 def standard_normal_cdf_and_inverse_cdf(dtype: tf.DType):
+    """Returns two callables *Phi* and *iPhi*, which compute the cumulative
+    density function and inverse cumulative density function of a standard
+    univariate Gaussian.
+    
+    :param dtype: The data type to use, either tf.float32 or tf.float64.
+    :returns Phi, iPhi: Cumulative and inverse cumulative density functions.
+    """
     
     normal = tfp.distributions.Normal(
         loc=tf.zeros(shape=(), dtype=dtype),
@@ -36,6 +34,25 @@ def standard_normal_cdf_and_inverse_cdf(dtype: tf.DType):
 # =============================================================================
 
 def get_update_indices(B: int, S: int, Q: int, q: int):
+    """Returns indices for updating a tensor using tf.tensor_scatter_nd_add,
+    for use within the _mvn_cdf function, for computing the cumulative density
+    function of a multivariate Gaussian. The indices *idx* returned are such
+    that the following operation
+        
+        idx = get_update_indices(B, S, Q, q)
+        tensor = tf.tensor_scatter_nd_add(tensor, idx, update)
+        
+    is equivalent to the numpy operation
+        
+        tensor = tensor[:, :, q] + update
+        
+    where *tensor* is a tensor of shape (B, S, Q).
+    
+    :param B: First dim. of tensor for which the indices are generated.
+    :param S: Second dim. of tensor for which the indices are generated.
+    :param Q: Third dim. of tensor for which the indices are generated.
+    :param q: Index of tensor along fourth dim. to which the update is applied.
+    """
     
     dtype = tf.int32
     
@@ -53,12 +70,25 @@ def get_update_indices(B: int, S: int, Q: int, q: int):
 # =============================================================================
 
 def make_mvn_cdf(samples: tf.Tensor):
+    """Builds the cumulative density function of the multivariate Gaussian 
+    using the Genz approximation detailed in
+    
+        https://www.math.wsu.edu/faculty/genz/papers/mvn.pdf.
+        
+    This is a Monte Carlo approximation which is more accurate than a naive
+    Monte Carlo estimate of the expected improvent. In order to use
+    reparametrised samples, the helper accepts a tensor of samples, and the
+    callable uses these fixed samples whenever it is called.
+    
+    :param samples: Tensor of shape (B, Q), with values between 0 and 1.
+    :returns mvn_cdf: Function computing the MC approximation of the CDF.
+    """
     
     # Unpack sample shape tensor
     S, Q = samples.shape
 
     @tf.function
-    def _mvn_cdf(
+    def mvn_cdf(
             x: tf.Tensor,
             mean: tf.Tensor,
             cov: tf.Tensor,
@@ -129,7 +159,7 @@ def make_mvn_cdf(samples: tf.Tensor):
             idx = get_update_indices(B=B, S=S, Q=Q, q=i)
 
             # Update e tensor
-            e_update = Phi((bi - vector_dot(Ci_, yi)) / Cii)
+            e_update = Phi((bi - tf.reduce_sum(Ci_*yi, axis=-1)) / Cii)
             e = tf.tensor_scatter_nd_add(e, idx, e_update)
 
             # Update f tensor
@@ -138,7 +168,7 @@ def make_mvn_cdf(samples: tf.Tensor):
 
         return tf.reduce_mean(f[:, :, -1], axis=-1)
     
-    return _mvn_cdf
+    return mvn_cdf
 
 
 
@@ -151,14 +181,16 @@ def compute_bm(
         mean: tf.Tensor,
         threshold: tf.Tensor,
     ):
-    """
-    Arguments:
-        mean: tf.Tensor, shape (B, Q)
-        threshold: tf.Tensor, shape (B,)
+    """Helper function for the batch expected improvement, which computes the
+    tensors b and m as detailed in Chevallier and Ginsbourger
+    
+        https://hal.archives-ouvertes.fr/hal-00732512v2/document.
+    
+    :param mean: Tensor of shape (B, Q)
+    :param threshold: Tensor of shape (B,)
         
-    Returns:
-        b: tf.Tensor, shape (B, Q, Q), b[B, K, Q]
-        m: tf.Tensor, shape (B, Q, Q), m[B, K, Q]
+    :returns b: Tensor of shape (B, Q, Q)
+    :returns m: Tensor of shape (B, Q, Q)
     """
         
     # Check shapes of input tensors
@@ -198,6 +230,24 @@ def delta(
         transpose: bool,
         dtype: tf.DType
     ):
+    """Helper function for the compute_Sigma function, which computes a *delta*
+    tensor of shape (B, idx, idx) such that
+    
+        delta[B, i, :] = 1 if i == idx
+        delta[B, i, :] = 0 otherwise.
+        
+    If transpose == True, then the last two dimensions of the tensor are
+    transposed, in which case
+    
+        delta[B, :, i] = 1 if i == idx
+        delta[B, :, i] = 0 otherwise.
+        
+    :param idx: Index for entries equal to 1.
+    :param dim: Dimension of the last and second to last axes.
+    :param B: Leading dimension of tensor.
+    :param transpose: Whether to transpose the last two dimensions or not.
+    :param dtype: The dtype of the tensor, either tf.float32 or tf.float64.
+    """
         
     # Check input parameters
     tf.debugging.assert_non_negative(idx)
@@ -219,6 +269,14 @@ def delta(
 # =============================================================================
 
 def compute_Sigma(covariance: tf.Tensor):
+    """Helper function for the batch expected improvement, which computes the
+    tensor Sigma, as detailed in Chevallier and Ginsbourger
+    
+        https://hal.archives-ouvertes.fr/hal-00732512v2/document.
+    
+    :param covariance: Tensor of shape (B, Q, Q)
+    :returns Sigma: Tensor of shape (B, Q, Q, Q)
+    """
         
     # Check shapes of covariance tensor
     tf.debugging.assert_shapes([(covariance, ("B", "Q", "Q"))])
@@ -264,6 +322,16 @@ def compute_p(
         Sigma_reshaped: tf.Tensor,
         mvn_cdf: Callable,
     ):
+    """Helper function for the batch expected improvement, which computes the
+    tensor p, as detailed in Chevallier and Ginsbourger
+    
+        https://hal.archives-ouvertes.fr/hal-00732512v2/document.
+    
+    :param m_reshaped: Tensor of shape (BQ, Q)
+    :param b_reshaped: Tensor of shape (BQ, Q)
+    :param Sigma_reshaped: Tensor of shape (BQ, Q, Q)
+    :returns p: Tensor of shape (B, Q)
+    """
     
     # Check shapes of covariance tensor
     tf.debugging.assert_shapes(
@@ -314,11 +382,16 @@ def compute_c(
         b_reshaped: tf.Tensor,
         Sigma_reshaped: tf.Tensor,
     ):
-    """
-    Arguments:
-        m_reshaped: tf.Tensor, shape (B*Q, Q)
-        b_reshaped: tf.Tensor, shape (B*Q, Q)
-        Sigma_reshaped: tf.Tensor, shape (B*Q, Q, Q)
+    """Helper function for the batch expected improvement, which computes the
+    tensor c, which is the c^{(i)} tensor detailed in Chevallier and
+    Ginsbourger
+    
+        https://hal.archives-ouvertes.fr/hal-00732512v2/document.
+    
+    :param m_reshaped: Tensor of shape (BQ, Q)
+    :param b_reshaped: Tensor of shape (BQ, Q)
+    :param Sigma_reshaped: Tensor of shape (BQ, Q, Q)
+    :returns c: Tensor of shape (B, Q, Q-1)
     """
     
     # Check shapes of covariance tensor
@@ -356,12 +429,18 @@ def compute_c(
 
 
 # =============================================================================
-# Helper for Sigmai tensor for qEI objective
+# Helper for R tensor for qEI objective
 # =============================================================================
 
-def compute_Sigmai_matrix(Sigma_reshaped: tf.Tensor):
-    """
-    Sigma_reshaped: tf.Tensor, shape (B*Q, Q, Q)
+def compute_R(Sigma_reshaped: tf.Tensor):
+    """Helper function for the batch expected improvement, which computes the
+    tensor R, which is the Sigma^{(i)} tensor detailed in Chevallier an
+    Ginsbourger
+    
+        https://hal.archives-ouvertes.fr/hal-00732512v2/document.
+    
+    :param Sigma_reshaped: Tensor of shape (BQ, Q, Q)
+    :returns R: Tensor of shape (B, Q-1, Q-1)
     """
     
     # Check shapes of covariance tensor
@@ -375,38 +454,38 @@ def compute_Sigmai_matrix(Sigma_reshaped: tf.Tensor):
     Sigma_iv = tf.tile(Sigma_reshaped[:, :, None, :], (1, 1, Q, 1))
     Sigma_ii = tf.linalg.diag_part(Sigma_reshaped)[:, :, None, None]
     
-    Sigmai_whole = Sigma_uv - Sigma_iu * Sigma_iv / Sigma_ii
+    R_whole = Sigma_uv - Sigma_iu * Sigma_iv / Sigma_ii
     
     def create_blocks(q):
         
         block1 = tf.concat(
             [
-                Sigmai_whole[:, q, :q, :q],
-                Sigmai_whole[:, q, q+1:, :q],
+                R_whole[:, q, :q, :q],
+                R_whole[:, q, q+1:, :q],
             ],
             axis=1,
         )
         
         block2 = tf.concat(
             [
-                Sigmai_whole[:, q, :q, q+1:],
-                Sigmai_whole[:, q, q+1:, q+1:],
+                R_whole[:, q, :q, q+1:],
+                R_whole[:, q, q+1:, q+1:],
             ],
             axis=1,
         )
         
-        Sigmai_block = tf.concat([block1, block2], axis=2)
+        R_block = tf.concat([block1, block2], axis=2)
         
-        return Sigmai_block
+        return R_block
     
-    Sigmai = tf.map_fn(
+    R = tf.map_fn(
         create_blocks,
         tf.range(Q),
-        fn_output_signature=Sigmai_whole.dtype,
+        fn_output_signature=R_whole.dtype,
     )
-    Sigmai = tf.transpose(Sigmai, perm=[1, 0, 2, 3])
+    R = tf.transpose(R, perm=[1, 0, 2, 3])
     
-    return Sigmai
+    return R
 
 
 # =============================================================================
@@ -415,44 +494,50 @@ def compute_Sigmai_matrix(Sigma_reshaped: tf.Tensor):
 
 def compute_Phi(
         c: tf.Tensor,
-        Sigmai: tf.Tensor,
+        R: tf.Tensor,
         mvn_cdf: Callable,
     ):
-    """
-    Arguments:
-        c: tf.Tensor, shape (B*Q, Q, Q-1)
-        Sigmai: tf.Tensor, shape (B*Q, Q, Q-1, Q-1)
+    """Helper function for the batch expected improvement, which computes the
+    tensor Phi, which is the tensor of multivariate Gaussian CDFs, in the inner
+    sum of the equation (3) in Chevallier and Ginsbourger
+    
+        https://hal.archives-ouvertes.fr/hal-00732512v2/document.
+    
+    :param c: Tensor of shape (BQ, Q, Q-1).
+    :param R: Tensor of shape (BQ, Q, Q-1, Q-1).
+    :param mvn_cdf: Multivariate Gaussian CDF, made using make_mvn_cdf.
+    :returns Phi: Tensor of multivariate Gaussian CDFs.
     """
     
     # Check shapes of covariance tensor
     tf.debugging.assert_shapes(
         [
             (c, ("BQ", "Q", "Q_")),
-            (Sigmai, ("BQ", "Q", "Q_", "Q_")),
+            (R, ("BQ", "Q", "Q_", "Q_")),
         ]
     )
     
     # Unpack tensor shape and data type
-    BQ, Q, _, Q_ = Sigmai.shape
-    dtype = Sigmai.dtype
+    BQ, Q, _, Q_ = R.shape
+    dtype = R.dtype
     
     if BQ % Q == 0:
         B = BQ // Q
         
     else:
         raise ValueError(
-            f"Expected size of dimension 0 of Sigmai tensor to be "
+            f"Expected size of dimension 0 of R tensor to be "
             f"divisible by size of dimension 1, instead found "
-            f"{Sigmai.shape[0]} and {Sigmai.shape[1]}."
+            f"{R.shape[0]} and {R.shape[1]}."
         )
 
     c_reshaped = tf.reshape(c, (BQ*Q, Q-1))
-    Sigmai_reshaped = tf.reshape(Sigmai, (BQ*Q, Q-1, Q-1))
+    R_reshaped = tf.reshape(R, (BQ*Q, Q-1, Q-1))
     
     # Compute mean, covariance and x for Phi mvn normal cdf
     Phi_cdf_x = c_reshaped  # (B*Q, Q-1)
     Phi_cdf_mean = tf.zeros(shape=(BQ*Q, Q-1), dtype=dtype)  # (B*Q*Q, Q)
-    Phi_cdf_cov = Sigmai_reshaped  # (B*Q*Q, Q-1, Q-1)
+    Phi_cdf_cov = R_reshaped  # (B*Q*Q, Q-1, Q-1)
     
     # Compute multivariate cdfs
     mvn_cdfs = mvn_cdf(
@@ -469,18 +554,22 @@ def compute_Phi(
 # The qEI objective
 # =============================================================================
 
-# @tf.function
 def qEI(
         mean: tf.Tensor,
         covariance: tf.Tensor,
         threshold: tf.Tensor,
         mvn_cdf: Callable,
     ):
-    """
-    Arguments:
-        mean: tf.Tensor, shape (B, Q)
-        covariance: tf.Tensor, shape (B, Q, Q)
-        threshold: tf.Tensor, shape (B,)
+    """Accurate Monte Carlo approximation of the batch expected improvement,
+    using the method of Chevallier and Ginsbourger
+    
+        https://hal.archives-ouvertes.fr/hal-00732512v2/document.
+    
+    :param mean: Tensor of shape (B, Q).
+    :param covariance: Tensor of shape (B, Q, Q).
+    :param threshold: Tensor of shape (B, Q).
+    :param mvn_cdf: Callable computing the multivariate CDF of a Gaussian.
+    :returns qei: Tensor of shape (B,), the expected improvement.
     """
     
     # Check shapes of covariance tensor
@@ -528,14 +617,14 @@ def qEI(
     ) # (B*Q, Q, Q-1)
         
     # Compute Sigma_i
-    Sigmai = compute_Sigmai_matrix(
+    R = compute_R(
         Sigma_reshaped=Sigma_reshaped,
     ) # (B*Q, Q, Q-1, Q-1)
     
     # Compute Q-1 multivariate CDFs
     Phi_mvn_cdfs = compute_Phi(
         c=c,
-        Sigmai=Sigmai,
+        R=R,
         mvn_cdf=mvn_cdf,
     )
         
@@ -560,16 +649,9 @@ def qEI(
     )
     
     # Compute outer sum
-    qEI = tf.reduce_sum(mean_T_term + sum_term, axis=1)
-    mcei = monte_carlo_expected_improvement(
-        mean=mean,
-        covariance=covariance,
-        threshold=threshold,
-    )
+    qei = tf.reduce_sum(mean_T_term + sum_term, axis=1)
     
-    # print(f"{tf.reduce_mean(qEI):.10f} {tf.reduce_mean(mcei):.10f}")
-    
-    return qEI
+    return qei
 
 
 @tf.function
