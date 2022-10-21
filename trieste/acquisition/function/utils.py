@@ -90,9 +90,7 @@ def get_update_indices(B: int, S: int, Q: int, q: int) -> TensorType:
 
 def make_mvn_cdf(samples: tf.Tensor) -> Callable[TensorType]:
     """Builds the cumulative density function of the multivariate Gaussian 
-    using the Genz approximation detailed in
-    
-        https://www.math.wsu.edu/faculty/genz/papers/mvn.pdf.
+    using the Genz approximation detailed in :cite:`genz2016numerical`.
         
     This is a Monte Carlo approximation which is more accurate than a naive
     Monte Carlo estimate of the expected improvent. In order to use

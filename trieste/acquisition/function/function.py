@@ -42,7 +42,6 @@ from ..interface import (
 )
 
 from .utils import make_mvn_cdf
-from .utils import monte_carlo_expected_improvement as mcei_debugging
 
 
 class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
@@ -996,7 +995,12 @@ class batch_monte_carlo_expected_improvement(AcquisitionFunctionClass):
     
 
 class BatchExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSampler]):
-    """
+    """Accurate approximation of the batch expected improvement, using the
+    method of Chvallier and Ginsbourger :cite:`chevalier2013fast`.
+    
+    Internally, this uses a highly accurate approximation of the cumulative
+    density function of the multivariate Gaussian, developed by Alan Genz
+    :cite:`genz2016numerical`.
     """
 
     def __init__(
@@ -1007,7 +1011,12 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSampler])
             dtype: tf.DType,
             jitter: float = DEFAULTS.JITTER,
         ):
-        """
+        """Initialise the BatchExpectedImprovement instance.
+        
+        :param sample_size: int, number of Sobol samples to use.
+        :param batch_size: int, number of points in each batch.
+        :param dtype: tf.DType, data type to perform calculations in.
+        :param jitter: float, amount of jitter for Cholesky factorisations.
         """
         
         tf.debugging.assert_positive(sample_size)
@@ -1025,10 +1034,10 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSampler])
         )
 
     def __repr__(self) -> str:
-        """
-        """
+        """"""
         
-        return f"BatchExpectedImprovement({self._sample_size!r}, jitter={self._jitter!r})"
+        return f"BatchExpectedImprovement({self._sample_size!r}, "
+               f"jitter={self._jitter!r})"
 
     def prepare_acquisition_function(
         self,
@@ -1040,7 +1049,10 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSampler])
         
         tf.debugging.Assert(dataset is not None, [])
         dataset = cast(Dataset, dataset)
-        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
+        tf.debugging.assert_positive(
+            len(dataset),
+            message="Dataset must be populated."
+        )
 
         # Get mean and covariance
         mean, _ = model.predict(dataset.query_points)
@@ -1092,9 +1104,15 @@ class batch_expected_improvement(AcquisitionFunctionClass):
             model: HasReparamSampler,
             eta: TensorType,
             jitter: float,
-            mcei: Callable = None,
         ):
-        """
+        """Initialise the batch_expected_improvement instance.
+        
+        :param samples: Tensor of shape (S, Q), where S is the number of
+        samples and Q is the batch size.
+        :param model: Gaussian process regression model.
+        :param eta: Tensor of shape (,), expected improvement threshold. This 
+        is the best value observed so far durin the BO loop.
+        :param jitter: float, amount of jitter for Cholesky factorisations.
         """
         
         self._samples = samples
@@ -1114,10 +1132,9 @@ class batch_expected_improvement(AcquisitionFunctionClass):
             mean: tf.Tensor,
             threshold: tf.Tensor,
         ) -> TensorType:
-        """Helper function for the batch expected improvement, which computes the
-        tensors b and m as detailed in Chevallier and Ginsbourger
-
-            https://hal.archives-ouvertes.fr/hal-00732512v2/document.
+        """Helper function for the batch expected improvement, which computes
+        the tensors b and m as detailed in Chevallier and Ginsbourger
+        :cite:`chevalier2013fast`.
 
         :param mean: Tensor of shape (B, Q)
         :param threshold: Tensor of shape (B,)
@@ -1159,8 +1176,8 @@ class batch_expected_improvement(AcquisitionFunctionClass):
             transpose: bool,
             dtype: tf.DType
         ) -> TensorType:
-        """Helper function for the compute_Sigma function, which computes a *delta*
-        tensor of shape (B, idx, idx) such that
+        """Helper function for the compute_Sigma function, which computes a
+        *delta* tensor of shape (B, idx, idx) such that
 
             delta[B, i, :] = 1 if i == idx
             delta[B, i, :] = 0 otherwise.
@@ -1196,10 +1213,9 @@ class batch_expected_improvement(AcquisitionFunctionClass):
             self,
             covariance: tf.Tensor,
         ) -> TensorType:
-        """Helper function for the batch expected improvement, which computes the
-        tensor Sigma, as detailed in Chevallier and Ginsbourger
-
-            https://hal.archives-ouvertes.fr/hal-00732512v2/document.
+        """Helper function for the batch expected improvement, which computes
+        the tensor Sigma, as detailed in Chevallier and Ginsbourger
+        :cite:`chevalier2013fast`.
 
         :param covariance: Tensor of shape (B, Q, Q)
         :returns Sigma: Tensor of shape (B, Q, Q, Q)
@@ -1224,7 +1240,10 @@ class batch_expected_improvement(AcquisitionFunctionClass):
             Sigma_qj = covariance[:, q:q+1, :]
             Sigma_qq = covariance[:, q:q+1, q:q+1]
 
-            cov = Sigma_ij * diq * dqj - Sigma_iq * diq - Sigma_qj * dqj + Sigma_qq
+            cov = Sigma_ij * diq * dqj - \
+                  Sigma_iq * diq - \
+                  Sigma_qj * dqj + \
+                  Sigma_qq
 
             return cov
 
@@ -1245,10 +1264,9 @@ class batch_expected_improvement(AcquisitionFunctionClass):
             Sigma_reshaped: tf.Tensor,
             mvn_cdf: Callable,
         ) -> TensorType:
-        """Helper function for the batch expected improvement, which computes the
-        tensor p, as detailed in Chevallier and Ginsbourger
-
-            https://hal.archives-ouvertes.fr/hal-00732512v2/document.
+        """Helper function for the batch expected improvement, which computes
+        the tensor p, as detailed in Chevallier and Ginsbourger
+        :cite:`chevalier2013fast`.
 
         :param m_reshaped: Tensor of shape (BQ, Q)
         :param b_reshaped: Tensor of shape (BQ, Q)
@@ -1301,11 +1319,9 @@ class batch_expected_improvement(AcquisitionFunctionClass):
             b_reshaped: tf.Tensor,
             Sigma_reshaped: tf.Tensor,
         ) -> TensorType:
-        """Helper function for the batch expected improvement, which computes the
-        tensor c, which is the c^{(i)} tensor detailed in Chevallier and
-        Ginsbourger
-
-            https://hal.archives-ouvertes.fr/hal-00732512v2/document.
+        """Helper function for the batch expected improvement, which computes
+        the tensor c, which is the c^{(i)} tensor detailed in Chevallier and
+        Ginsbourger :cite:`chevalier2013fast`.
 
         :param m_reshaped: Tensor of shape (BQ, Q)
         :param b_reshaped: Tensor of shape (BQ, Q)
@@ -1350,11 +1366,9 @@ class batch_expected_improvement(AcquisitionFunctionClass):
             self,
             Sigma_reshaped: tf.Tensor,
         ) -> TensorType:
-        """Helper function for the batch expected improvement, which computes the
-        tensor R, which is the Sigma^{(i)} tensor detailed in Chevallier an
-        Ginsbourger
-
-            https://hal.archives-ouvertes.fr/hal-00732512v2/document.
+        """Helper function for the batch expected improvement, which computes
+        the tensor R, which is the Sigma^{(i)} tensor detailed in Chevallier
+        and Ginsbourger :cite:`chevalier2013fast`.
 
         :param Sigma_reshaped: Tensor of shape (BQ, Q, Q)
         :returns R: Tensor of shape (B, Q-1, Q-1)
@@ -1410,11 +1424,10 @@ class batch_expected_improvement(AcquisitionFunctionClass):
             R: tf.Tensor,
             mvn_cdf: Callable,
         ) -> TensorType:
-        """Helper function for the batch expected improvement, which computes the
-        tensor Phi, which is the tensor of multivariate Gaussian CDFs, in the inner
-        sum of the equation (3) in Chevallier and Ginsbourger
-
-            https://hal.archives-ouvertes.fr/hal-00732512v2/document.
+        """Helper function for the batch expected improvement, which computes
+        the tensor Phi, which is the tensor of multivariate Gaussian CDFs, in
+        the inner sum of the equation (3) in Chevallier and Ginsbourger
+        :cite:`chevalier2013fast`.
 
         :param c: Tensor of shape (BQ, Q, Q-1).
         :param R: Tensor of shape (BQ, Q, Q-1, Q-1).
@@ -1472,10 +1485,9 @@ class batch_expected_improvement(AcquisitionFunctionClass):
             threshold: tf.Tensor,
             mvn_cdf: Callable,
         ) -> TensorType:
-        """Accurate Monte Carlo approximation of the batch expected improvement,
-        using the method of Chevallier and Ginsbourger
-
-            https://hal.archives-ouvertes.fr/hal-00732512v2/document.
+        """Accurate Monte Carlo approximation of the batch expected
+        improvement, using the method of Chevallier and Ginsbourger
+        :cite:`chevalier2013fast`.
 
         :param mean: Tensor of shape (B, Q).
         :param covariance: Tensor of shape (B, Q, Q).
@@ -1567,6 +1579,15 @@ class batch_expected_improvement(AcquisitionFunctionClass):
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:
+        """Computes the accurate approximation of the multi-point expected
+        improvement.
+
+        :param mean: Tensor of shape (B, Q).
+        :param covariance: Tensor of shape (B, Q, Q).
+        :param threshold: Tensor of shape (B, Q).
+        :param mvn_cdf: Callable computing the multivariate CDF of a Gaussian.
+        :returns ei: Tensor of shape (B,), expected improvement.
+        """
         
         if self._mvn_cdf is None:
             self._mvn_cdf = make_mvn_cdf(samples=self._samples)
