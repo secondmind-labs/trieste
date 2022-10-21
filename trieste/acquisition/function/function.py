@@ -45,7 +45,7 @@ from ..interface import (
 class ProbabilityOfImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     """
     Builder for the probability of improvement function, where the "best" value
-     is taken to be the minimum of the posterior mean at observed points.
+    is taken to be the minimum of the posterior mean at observed points.
     """
 
     def __repr__(self) -> str:
@@ -443,14 +443,13 @@ def probability_below_threshold(
     between probability of improvement and probability of feasiblity.
     Probability is is caculated with respect to the `model` posterior.
     For model posterior :math:`f`, this is
-        .. math:: x \mapsto \mathbb P \left (f(x) < \eta)\right]
+    .. math:: x \mapsto \mathbb P \left (f(x) < \eta)\right]
     where :math:`\eta` is the threshold.
-
     :param model: The model of the objective function.
     :param threshold: The (scalar) probability of feasibility threshold.
     :return: The probability of feasibility function. This function will raise
-        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
-        greater than one.
+    :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+    greater than one.
     :raise ValueError or tf.errors.InvalidArgumentError: If ``threshold`` is not a scalar.
     """
     tf.debugging.assert_scalar(threshold)
