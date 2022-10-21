@@ -94,10 +94,14 @@ def make_mvn_cdf(samples: tf.Tensor):
             cov: tf.Tensor,
             jitter: float = 1e-6,
         ):
-        """
-        x: tf.Tensor, shape (B, Q)
-        mean: tf.Tensor, shape (B, Q)
-        cov: tf.Tensor, shape (B, Q, Q)
+        """Callable for the cumulative density function of the multivariate
+        Gaussian using the Genz approximation.
+
+        :param x: Tensor of shape (B, Q), batch of points to evaluate CDF at.
+        :param mean: Tensor of shape (B, Q), batch of means.
+        :param covariance: Tensor of shape (B, Q, Q), batch of covariances.
+        :param jitter: float, jitter to use in the Cholesky factorisation.
+        :returns mvn_cdf: Tensor of shape (B,), CDF values.
         """
         
         # Check shapes of input tensors
@@ -166,7 +170,9 @@ def make_mvn_cdf(samples: tf.Tensor):
             f_update = e[:, :, i] * f[:, :, i-1]
             f = tf.tensor_scatter_nd_add(f, idx, f_update)
 
-        return tf.reduce_mean(f[:, :, -1], axis=-1)
+        mvn_cdf = tf.reduce_mean(f[:, :, -1], axis=-1)
+        
+        return mvn_cdf
     
     return mvn_cdf
 
@@ -208,5 +214,3 @@ def monte_carlo_expected_improvement(
     ei = tf.reduce_mean(ei, axis=0)
     
     return ei
-    
-    
