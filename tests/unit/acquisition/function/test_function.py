@@ -60,7 +60,7 @@ from trieste.acquisition.function.function import (
     expected_improvement,
     lower_confidence_bound,
     multiple_optimism_lower_confidence_bound,
-    probability_of_feasibility
+    probability_below_threshold
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
@@ -78,7 +78,7 @@ def test_probability_of_improvement_builder_builds_pi_using_best_from_model() ->
     model = QuadraticMeanAndRBFKernel()
     acq_fn = ProbabilityOfImprovement().prepare_acquisition_function(model, dataset=dataset)
     xs = tf.linspace([[-10.0]], [[10.0]], 100)
-    expected = probability_of_feasibility(model, tf.constant(0.0))(xs)
+    expected = probability_below_threshold(model, tf.constant(0.0))(xs)
     npt.assert_allclose(acq_fn(xs), expected)
 
 
@@ -91,7 +91,7 @@ def test_probability_of_improvement_builder_updates_pi_using_best_from_model() -
     acq_fn = ProbabilityOfImprovement().prepare_acquisition_function(model, dataset=dataset)
     assert acq_fn._get_tracing_count() == 0  # type: ignore
     xs = tf.linspace([[-10.0]], [[10.0]], 100)
-    expected = probability_of_feasibility(model, tf.constant(1.0))(xs)
+    expected = probability_below_threshold(model, tf.constant(1.0))(xs)
     npt.assert_allclose(acq_fn(xs), expected)
     assert acq_fn._get_tracing_count() == 1  # type: ignore
 
@@ -103,7 +103,7 @@ def test_probability_of_improvement_builder_updates_pi_using_best_from_model() -
         acq_fn, model, dataset=new_dataset
     )
     #assert updated_acq_fn == acq_fn
-    expected = probability_of_feasibility(model, tf.constant(0.0))(xs)
+    expected = probability_below_threshold(model, tf.constant(0.0))(xs)
     npt.assert_allclose(updated_acq_fn(xs), expected)
     assert acq_fn._get_tracing_count() == 1  # type: ignore
 
@@ -121,7 +121,6 @@ def test_probability_of_improvement_builder_raises_for_empty_data() -> None:
 
 @random_seed
 @pytest.mark.parametrize("best", [tf.constant([50.0]), Branin.minimum, Branin.minimum * 1.01])
-@pytest.mark.parametrize("test_update", [False, True])
 @pytest.mark.parametrize(
     "variance_scale, num_samples_per_point, rtol, atol",
     [
@@ -131,13 +130,12 @@ def test_probability_of_improvement_builder_raises_for_empty_data() -> None:
         (100.0, 150_000, 0.01, 1e-1),
     ],
 )
-def test_probability_of_feasibility(
+def test_probability_below_threshold_as_probability_of_improvement(
     variance_scale: float,
     num_samples_per_point: int,
     best: tf.Tensor,
     rtol: float,
-    atol: float,
-    test_update: bool,
+    atol: float
 ) -> None:
     variance_scale = tf.constant(variance_scale, tf.float64)
     best = tf.cast(best, dtype=tf.float64)[0]
@@ -154,11 +152,7 @@ def test_probability_of_feasibility(
     samples_improvement = tf.where(samples < best, 1, 0)
     pi_approx = tf.reduce_sum(samples_improvement, axis=0) / num_samples_per_point
 
-    if test_update:
-        pif = probability_of_feasibility(model, tf.constant(100.0, dtype=tf.float64))
-        pif = probability_of_feasibility(model, best)
-    else:
-        pif = probability_of_feasibility(model, best)
+    pif = probability_below_threshold(model, best)
     pi = pif(xs[..., None, :])
 
     npt.assert_allclose(pi, pi_approx, rtol=rtol, atol=atol)
@@ -733,8 +727,8 @@ def test_lower_confidence_bound(beta: float) -> None:
         (-0.25, tf.constant([[-0.5]]), 0.5 - 0.19146),
     ],
 )
-def test_probability_of_feasibility(threshold: float, at: tf.Tensor, expected: float) -> None:
-    actual = probability_of_feasibility(QuadraticMeanAndRBFKernel(), threshold)(at)
+def test_probability_below_threshold_as_probability_of_feasibility(threshold: float, at: tf.Tensor, expected: float) -> None:
+    actual = probability_below_threshold(QuadraticMeanAndRBFKernel(), threshold)(at)
     npt.assert_allclose(actual, expected, rtol=1e-4)
 
 
@@ -750,22 +744,22 @@ def test_probability_of_feasibility(threshold: float, at: tf.Tensor, expected: f
 def test_probability_of_feasibility_builder_builds_pof(threshold: float, at: tf.Tensor) -> None:
     builder = ProbabilityOfFeasibility(threshold)
     acq = builder.prepare_acquisition_function(QuadraticMeanAndRBFKernel())
-    expected = probability_of_feasibility(QuadraticMeanAndRBFKernel(), threshold)(at)
+    expected = probability_below_threshold(QuadraticMeanAndRBFKernel(), threshold)(at)
 
     npt.assert_allclose(acq(at), expected)
 
 
 @pytest.mark.parametrize("shape", various_shapes() - {()})
-def test_probability_of_feasibility_raises_on_non_scalar_threshold(shape: ShapeLike) -> None:
+def test_probability_below_threshold_raises_on_non_scalar_threshold(shape: ShapeLike) -> None:
     threshold = tf.ones(shape)
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        probability_of_feasibility(QuadraticMeanAndRBFKernel(), threshold)
+        probability_below_threshold(QuadraticMeanAndRBFKernel(), threshold)
 
 
 @pytest.mark.parametrize("shape", [[], [0], [2], [2, 1], [1, 2, 1]])
-def test_probability_of_feasibility_raises_on_invalid_at_shape(shape: ShapeLike) -> None:
+def test_probability_below_threshold_raises_on_invalid_at_shape(shape: ShapeLike) -> None:
     at = tf.ones(shape)
-    pof = probability_of_feasibility(QuadraticMeanAndRBFKernel(), 0.0)
+    pof = probability_below_threshold(QuadraticMeanAndRBFKernel(), 0.0)
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         pof(at)
 
@@ -786,7 +780,7 @@ def test_probability_of_feasibility_builder_updates_without_retracing(
 ) -> None:
     builder = ProbabilityOfFeasibility(threshold)
     model = QuadraticMeanAndRBFKernel()
-    expected = probability_of_feasibility(QuadraticMeanAndRBFKernel(), threshold)(at)
+    expected = probability_below_threshold(QuadraticMeanAndRBFKernel(), threshold)(at)
     acq = builder.prepare_acquisition_function(model)
     assert acq._get_tracing_count() == 0  # type: ignore
     npt.assert_allclose(acq(at), expected)

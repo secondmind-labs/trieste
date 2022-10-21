@@ -68,7 +68,7 @@ class ProbabilityOfImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)[0]
-        return probability_of_feasibility(model, eta)
+        return probability_below_threshold(model, eta)
 
     def update_acquisition_function(
         self,
@@ -86,7 +86,7 @@ class ProbabilityOfImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)[0]
-        function = probability_of_feasibility(model, eta) # type: ignore
+        function = probability_below_threshold(model, eta) # type: ignore
         return function
 
 class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
@@ -376,8 +376,8 @@ def lower_confidence_bound(model: ProbabilisticModel, beta: float) -> Acquisitio
 
 class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     r"""
-    Builder for the :func:`probability_of_feasibility` acquisition function, defined in
-    :cite:`gardner14` as
+    Uses the :func:`probability_below_threshold` function to build a
+    probability of feasiblity acquisition function, defined in :cite:`gardner14` as
 
     .. math::
 
@@ -418,7 +418,7 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel]
             :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
             greater than one.
         """
-        return probability_of_feasibility(model, self.threshold)
+        return probability_below_threshold(model, self.threshold)
 
     def update_acquisition_function(
         self,
@@ -434,19 +434,16 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel]
         return function  # no need to update anything
 
 
-def probability_of_feasibility(
+def probability_below_threshold(
     model: ProbabilisticModel, threshold: float | TensorType
 ) -> AcquisitionFunction:
     r"""
-    The probability of feasibility acquisition function defined in :cite:`gardner14` as
-
-    .. math::
-
-        \int_{-\infty}^{\tau} p(c(\mathbf{x}) | \mathbf{x}, \mathcal{D}) \mathrm{d} c(\mathbf{x})
-        \qquad ,
-
-    where :math:`\tau` is a threshold. Values below the threshold are considered feasible by the
-    constraint function.
+    The probability of being below the threshold. This brings together commonality
+    between probability of improvement and probability of feasiblity.
+    Probability is is caculated with respect to the `model` posterior.
+    For model posterior :math:`f`, this is
+        .. math:: x \mapsto \mathbb P \left (f(x) < \eta)\right]
+    where :math:`\eta` is the threshold.
 
     :param model: The model of the objective function.
     :param threshold: The (scalar) probability of feasibility threshold.
