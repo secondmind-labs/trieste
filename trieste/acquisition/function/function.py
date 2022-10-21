@@ -1104,14 +1104,16 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         self._mvn_cdf = None
         
     def update(self, eta: TensorType) -> None:
-        """Update the acquisition function with a new eta value and reset the reparam sampler."""
+        """Update the acquisition function with a new eta value and reset the
+        reparam sampler.
+        """
         self._eta.assign(eta)
 
     def compute_bm(
             self,
             mean: tf.Tensor,
             threshold: tf.Tensor,
-        ):
+        ) -> TensorType:
         """Helper function for the batch expected improvement, which computes the
         tensors b and m as detailed in Chevallier and Ginsbourger
 
@@ -1156,7 +1158,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
             B: int,
             transpose: bool,
             dtype: tf.DType
-        ):
+        ) -> TensorType:
         """Helper function for the compute_Sigma function, which computes a *delta*
         tensor of shape (B, idx, idx) such that
 
@@ -1193,7 +1195,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
     def compute_Sigma(
             self,
             covariance: tf.Tensor,
-        ):
+        ) -> TensorType:
         """Helper function for the batch expected improvement, which computes the
         tensor Sigma, as detailed in Chevallier and Ginsbourger
 
@@ -1242,7 +1244,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
             b_reshaped: tf.Tensor,
             Sigma_reshaped: tf.Tensor,
             mvn_cdf: Callable,
-        ):
+        ) -> TensorType:
         """Helper function for the batch expected improvement, which computes the
         tensor p, as detailed in Chevallier and Ginsbourger
 
@@ -1298,7 +1300,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
             m_reshaped: tf.Tensor,
             b_reshaped: tf.Tensor,
             Sigma_reshaped: tf.Tensor,
-        ):
+        ) -> TensorType:
         """Helper function for the batch expected improvement, which computes the
         tensor c, which is the c^{(i)} tensor detailed in Chevallier and
         Ginsbourger
@@ -1347,7 +1349,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
     def compute_R(
             self,
             Sigma_reshaped: tf.Tensor,
-        ):
+        ) -> TensorType:
         """Helper function for the batch expected improvement, which computes the
         tensor R, which is the Sigma^{(i)} tensor detailed in Chevallier an
         Ginsbourger
@@ -1407,7 +1409,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
             c: tf.Tensor,
             R: tf.Tensor,
             mvn_cdf: Callable,
-        ):
+        ) -> TensorType:
         """Helper function for the batch expected improvement, which computes the
         tensor Phi, which is the tensor of multivariate Gaussian CDFs, in the inner
         sum of the equation (3) in Chevallier and Ginsbourger
@@ -1432,15 +1434,18 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         BQ, Q, _, Q_ = R.shape
         dtype = R.dtype
 
-        if BQ % Q == 0:
-            B = BQ // Q
+        try:
+            assert BQ % Q == 0
 
-        else:
+        except AssertionError:
             raise ValueError(
                 f"Expected size of dimension 0 of R tensor to be "
                 f"divisible by size of dimension 1, instead found "
                 f"{R.shape[0]} and {R.shape[1]}."
             )
+            
+        # Compute parallelisation dimension from batch size
+        B = BQ // Q
 
         c_reshaped = tf.reshape(c, (BQ*Q, Q-1))
         R_reshaped = tf.reshape(R, (BQ*Q, Q-1, Q-1))
@@ -1466,7 +1471,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
             covariance: tf.Tensor,
             threshold: tf.Tensor,
             mvn_cdf: Callable,
-        ):
+        ) -> TensorType:
         """Accurate Monte Carlo approximation of the batch expected improvement,
         using the method of Chevallier and Ginsbourger
 
