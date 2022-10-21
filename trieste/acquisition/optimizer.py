@@ -487,9 +487,9 @@ def _perform_parallel_continuous_optimization(
         [result.nfev for result in final_vectorized_child_results], dtype=tf_dtype
     )
 
-    print(3*"\n")
-    for i, result in enumerate(vectorized_child_results):
-        print(f"\nResult {i}:\n{result}\n")
+    # print(3*"\n")
+    # for i, result in enumerate(vectorized_child_results):
+    #     print(f"\nResult {i}:\n{result}\n")
 
     successes = tf.reshape(vectorized_successes, [-1, V])  # [num_optimization_runs, V]
     fun_values = tf.reshape(vectorized_fun_values, [-1, V])  # [num_optimization_runs, V]
