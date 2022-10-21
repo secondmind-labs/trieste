@@ -154,7 +154,7 @@ class GizmoModel(
     ) -> ReparametrizationSampler[GizmoModel]:
         ...
 
-    ... # sample, update, optimize, get_observation_noise
+    ...  # sample, update, optimize, get_observation_noise
 
 
 # %% [markdown]
