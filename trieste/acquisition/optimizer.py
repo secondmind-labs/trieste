@@ -487,7 +487,7 @@ def _perform_parallel_continuous_optimization(
     chosen_x = tf.reshape(vectorized_chosen_x, [-1, V, D])  # [num_optimization_runs, V, D]
     nfev = tf.reshape(vectorized_nfev, [-1, V])  # [num_optimization_runs, V]
 
-    return (successes, fun_values, chosen_x, nfev, vectorized_child_results)
+    return (successes, fun_values, chosen_x, nfev)
 
 
 class ScipyLbfgsBGreenlet(gr.greenlet):  # type: ignore[misc]
@@ -594,10 +594,10 @@ def batchify_joint(
         ) -> TensorType:  # [..., 1, B * D] -> [..., 1]
             return af(tf.reshape(x, x.shape[:-2].as_list() + [batch_size, -1]))
 
-        vectorized_points, vectorized_child_results = batch_size_one_optimizer(  # [1, B * D]
+        vectorized_points = batch_size_one_optimizer(  # [1, B * D]
             expanded_search_space, target_func_with_vectorized_inputs
         )
-        return tf.reshape(vectorized_points, [batch_size, -1]), vectorized_child_results  # [B, D]
+        return tf.reshape(vectorized_points, [batch_size, -1])  # [B, D]
 
     return optimizer
 
