@@ -86,8 +86,9 @@ class ProbabilityOfImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)[0]
-        function = probability_below_threshold(model, eta) # type: ignore
+        function = probability_below_threshold(model, eta)
         return function
+
 
 class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     """

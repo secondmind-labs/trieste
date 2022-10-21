@@ -60,7 +60,7 @@ from trieste.acquisition.function.function import (
     expected_improvement,
     lower_confidence_bound,
     multiple_optimism_lower_confidence_bound,
-    probability_below_threshold
+    probability_below_threshold,
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
@@ -102,7 +102,7 @@ def test_probability_of_improvement_builder_updates_pi_using_best_from_model() -
     updated_acq_fn = ProbabilityOfImprovement().update_acquisition_function(
         acq_fn, model, dataset=new_dataset
     )
-    #assert updated_acq_fn == acq_fn
+    # assert updated_acq_fn == acq_fn
     expected = probability_below_threshold(model, tf.constant(0.0))(xs)
     npt.assert_allclose(updated_acq_fn(xs), expected)
     assert acq_fn._get_tracing_count() == 1  # type: ignore
@@ -131,11 +131,7 @@ def test_probability_of_improvement_builder_raises_for_empty_data() -> None:
     ],
 )
 def test_probability_below_threshold_as_probability_of_improvement(
-    variance_scale: float,
-    num_samples_per_point: int,
-    best: tf.Tensor,
-    rtol: float,
-    atol: float
+    variance_scale: float, num_samples_per_point: int, best: tf.Tensor, rtol: float, atol: float
 ) -> None:
     variance_scale = tf.constant(variance_scale, tf.float64)
     best = tf.cast(best, dtype=tf.float64)[0]
@@ -727,7 +723,9 @@ def test_lower_confidence_bound(beta: float) -> None:
         (-0.25, tf.constant([[-0.5]]), 0.5 - 0.19146),
     ],
 )
-def test_probability_below_threshold_as_probability_of_feasibility(threshold: float, at: tf.Tensor, expected: float) -> None:
+def test_probability_below_threshold_as_probability_of_feasibility(
+    threshold: float, at: tf.Tensor, expected: float
+) -> None:
     actual = probability_below_threshold(QuadraticMeanAndRBFKernel(), threshold)(at)
     npt.assert_allclose(actual, expected, rtol=1e-4)
 
