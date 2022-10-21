@@ -41,7 +41,7 @@ from ..interface import (
     SingleModelVectorizedAcquisitionBuilder,
 )
 
-from .utils import qEI, make_mvn_cdf
+from .utils import make_mvn_cdf
 from .utils import monte_carlo_expected_improvement as mcei_debugging
 
 
@@ -1101,7 +1101,6 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         self._jitter = jitter
         self._eta = tf.Variable(eta)
         self._model = model
-        self._qEI = qEI
         self._mvn_cdf = None
         
     def update(self, eta: TensorType) -> None:
@@ -1461,7 +1460,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
 
         return mvn_cdfs
 
-    def qEI(
+    def compute_batch_expected_improvement(
             self,
             mean: tf.Tensor,
             covariance: tf.Tensor,
@@ -1477,7 +1476,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         :param covariance: Tensor of shape (B, Q, Q).
         :param threshold: Tensor of shape (B, Q).
         :param mvn_cdf: Callable computing the multivariate CDF of a Gaussian.
-        :returns qei: Tensor of shape (B,), the expected improvement.
+        :returns ei: Tensor of shape (B,), expected improvement.
         """
 
         # Check shapes of covariance tensor
@@ -1557,9 +1556,9 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         )
 
         # Compute outer sum
-        qei = tf.reduce_sum(mean_T_term + sum_term, axis=1)
+        expected_improvement = tf.reduce_sum(mean_T_term + sum_term, axis=1)
 
-        return qei
+        return expected_improvement
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:
@@ -1577,14 +1576,14 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         
         threshold = tf.tile(self._eta, (mean.shape[0],))
         
-        qEI = self._qEI(
+        ei = self.compute_batch_expected_improvement(
             mean=-mean,
             covariance=covariance,
             threshold=-threshold,
             mvn_cdf=self._mvn_cdf,
         )[:, None]
         
-        return qEI
+        return ei
     
 
 class MultipleOptimismNegativeLowerConfidenceBound(
