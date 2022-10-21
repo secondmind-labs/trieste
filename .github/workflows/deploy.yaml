@@ -41,7 +41,7 @@ jobs:
     - run: |
         (cd docs ; make html ; make html)
         TMP_DIR=$(mktemp -d -p $(pwd))
-        VERSION=$(cat VERSION)
+        VERSION=$(cat trieste/VERSION)
         mv docs/_build/html $TMP_DIR/$VERSION
         sed -e "s/\$VERSION/$VERSION/g" redirect.html > $TMP_DIR/index.html 
         cp versions.json $TMP_DIR/
