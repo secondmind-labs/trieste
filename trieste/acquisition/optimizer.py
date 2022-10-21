@@ -269,7 +269,6 @@ def generate_continuous_optimizer(
             fun_values,
             chosen_x,
             nfev,
-            vectorized_child_results,
         ) = _perform_parallel_continuous_optimization(  # [num_optimization_runs, V]
             target_func,
             space,
@@ -294,7 +293,6 @@ def generate_continuous_optimizer(
                 recovery_fun_values,
                 recovery_chosen_x,
                 recovery_nfev,
-                recovery_vectorized_child_results,
             ) = _perform_parallel_continuous_optimization(
                 target_func, space, tiled_random_points, optimizer_args or {}
             )
@@ -353,7 +351,7 @@ def generate_continuous_optimizer(
             tf.transpose(chosen_x, [1, 0, 2]), best_run_ids, batch_dims=1
         )  # [V, D]
 
-        return chosen_points, vectorized_child_results
+        return chosen_points
 
     return optimize_continuous
 
@@ -421,9 +419,6 @@ def _perform_parallel_continuous_optimization(
         return vectorized_evals
 
     def _objective_value_and_gradient(x: TensorType) -> Tuple[TensorType, TensorType]:
-        
-        obj, grad = tfp.math.value_and_gradient(_objective_value, x)
-        
         return tfp.math.value_and_gradient(_objective_value, x)  # [len(x), 1], [len(x), D]
 
     if isinstance(
@@ -486,10 +481,6 @@ def _perform_parallel_continuous_optimization(
     vectorized_nfev = tf.constant(
         [result.nfev for result in final_vectorized_child_results], dtype=tf_dtype
     )
-
-    # print(3*"\n")
-    # for i, result in enumerate(vectorized_child_results):
-    #     print(f"\nResult {i}:\n{result}\n")
 
     successes = tf.reshape(vectorized_successes, [-1, V])  # [num_optimization_runs, V]
     fun_values = tf.reshape(vectorized_fun_values, [-1, V])  # [num_optimization_runs, V]
