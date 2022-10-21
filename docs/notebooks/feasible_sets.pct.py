@@ -35,10 +35,11 @@ tf.random.set_seed(1793)
 # We illustrate the thresholded Branin function below, you can note that above the threshold of 80 there are no more values observed.
 
 # %%
-from trieste.objectives import branin, BRANIN_SEARCH_SPACE
+from trieste.objectives import Branin
 from trieste.experimental.plotting import plot_function_plotly
 
-search_space = BRANIN_SEARCH_SPACE
+branin = Branin.objective
+search_space = Branin.search_space
 
 # threshold is arbitrary, but has to be within the range of the function
 threshold = 80.0

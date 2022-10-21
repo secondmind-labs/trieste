@@ -49,3 +49,11 @@ def mk_observer(
         return lambda qp: {key: Dataset(qp, objective(qp))}
     else:
         return lambda qp: Dataset(qp, objective(qp))
+
+
+def mk_multi_observer(**kwargs: Callable[[TensorType], TensorType]) -> MultiObserver:
+    """
+    :param kwargs: Observation functions.
+    :return: An multi-observer returning the data from ``kwargs``.
+    """
+    return lambda qp: {key: Dataset(qp, objective(qp)) for key, objective in kwargs.items()}

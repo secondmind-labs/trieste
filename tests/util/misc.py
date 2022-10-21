@@ -27,7 +27,7 @@ from typing_extensions import Final
 from trieste.acquisition.rule import AcquisitionRule
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
-from trieste.objectives import BRANIN_SEARCH_SPACE, HARTMANN_6_SEARCH_SPACE, branin, hartmann_6
+from trieste.objectives import Branin, Hartmann6
 from trieste.objectives.utils import mk_observer
 from trieste.space import SearchSpace
 from trieste.types import TensorType
@@ -239,10 +239,10 @@ def hartmann_6_dataset(num_query_points: int) -> Dataset:
     :param num_query_points: A number of samples from the objective function.
     :return: A dataset.
     """
-    search_space = HARTMANN_6_SEARCH_SPACE
+    search_space = Hartmann6.search_space
     query_points = search_space.sample(num_query_points)
 
-    observer = mk_observer(hartmann_6)
+    observer = mk_observer(Hartmann6.objective)
     data = observer(query_points)
 
     return data
@@ -254,10 +254,10 @@ def branin_dataset(num_query_points: int) -> Dataset:
     :param num_query_points: A number of samples from the objective function.
     :return: A dataset.
     """
-    search_space = BRANIN_SEARCH_SPACE
+    search_space = Branin.search_space
     query_points = search_space.sample(num_query_points)
 
-    observer = mk_observer(branin)
+    observer = mk_observer(Branin.objective)
     data = observer(query_points)
 
     return data
