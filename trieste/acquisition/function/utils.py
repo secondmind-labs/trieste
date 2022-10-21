@@ -1,3 +1,22 @@
+# Copyright 2021 The Trieste Contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""
+This module contains utility functions for acquisition functions. Currently,
+it contains functions for approximating the cumulative density function (CDF)
+of a multivariate Gaussian, and a helper for computing a naive Monte Carlo
+estimate of the batch expected improvement for a Gaussian distribution.
+"""
 from typing import *
 
 import tensorflow as tf
@@ -175,17 +194,30 @@ def make_mvn_cdf(samples: tf.Tensor):
         return mvn_cdf
     
     return mvn_cdf
+    
 
+# =============================================================================
+# Multivariate Normal Expected Improvement using naive Monte Carlo estimation
+# =============================================================================
 
 @tf.function
-def monte_carlo_expected_improvement(
+def gaussian_monte_carlo_expected_improvement(
         mean: tf.Tensor,
         covariance: tf.Tensor,
         threshold: tf.Tensor,
         num_samples: int = int(1e4),
     ):
+    """Computes an approximation of the expected improvement of a
+    multivariate Gaussian, using a naive Monte Carlo estimate.
+
+    :param mean: Tensor of shape (B, Q), batch of means.
+    :param covariance: Tensor of shape (B, Q, Q), batch of covariances.
+    :param threshold: Tensor of shape (B,), best values so far (aka eta).
+    :param num_samples: float, number of Monte Carlo samples to use.
+    :returns mvn_cdf: Tensor of shape (B,), CDF values.
+    """
     
-    # Check shapes of covariance tensor
+    # Check shapes of mean, covariance and threshold tensors
     tf.debugging.assert_shapes(
         [
             (mean, ("B", "Q")),
@@ -194,21 +226,21 @@ def monte_carlo_expected_improvement(
         ]
     )
     
+    # Draw Gaussian samples
     samples = tfd.MultivariateNormalFullCovariance(
         loc=mean,
         covariance_matrix=covariance,
     ).sample(sample_shape=[num_samples])
     
-    # Check shapes of covariance tensor
+    # Check shape of sample tensor against mean tensor
     tf.debugging.assert_shapes(
         [
             (mean, ("B", "Q")),
-            (covariance, ("B", "Q", "Q")),
-            (threshold, ("B",)),
             (samples, (num_samples, "B", "Q")),
         ]
     )
     
+    # Compute expected improvement
     ei = tf.math.maximum(samples - threshold[None, :, None], 0.)
     ei = tf.reduce_max(ei, axis=-1)
     ei = tf.reduce_mean(ei, axis=0)
