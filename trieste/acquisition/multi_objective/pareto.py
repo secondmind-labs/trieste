@@ -92,6 +92,9 @@ class Pareto:
 
         :param sample_size: The number of point to sample from the Pareto front
         :param allow_repeats: Whether the sample may contain repeats
+        :param bounds_delta_scale_factor: The factor by which to grow the distance
+        between extrema when calculating lower and upper bounds
+        :param bounds_min_delta: The minimum value of the distance between extrema 
         """
 
         if cp is None:
