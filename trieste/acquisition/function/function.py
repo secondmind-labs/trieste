@@ -948,7 +948,6 @@ class batch_monte_carlo_expected_improvement(AcquisitionFunctionClass):
         """
         :param sample_size: The number of Monte-Carlo samples.
         :param model: The model of the objective function.
-        :param sampler:  ReparametrizationSampler.
         :param eta: The "best" observation.
         :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
             the covariance matrix.
