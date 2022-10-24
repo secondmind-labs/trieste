@@ -994,7 +994,7 @@ def test_batch_expected_improvement_raises_for_invalid_batch_size(
 @pytest.mark.parametrize("batch_size", [-2])
 @pytest.mark.parametrize("dtype", [tf.float64])
 @pytest.mark.parametrize("jitter", [-1e0])
-def test_batch_monte_carlo_expected_improvement_raises_for_invalid_jitter(
+def test_batch_expected_improvement_raises_for_invalid_jitter(
     sample_size: int,
     batch_size: int,
     dtype: tf.DType,

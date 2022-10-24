@@ -17,7 +17,7 @@ functions --- functions that estimate the utility of evaluating sets of candidat
 """
 from __future__ import annotations
 
-from typing import Mapping, Optional, cast
+from typing import Callable, Mapping, Optional, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -1037,7 +1037,7 @@ class batch_monte_carlo_expected_improvement(AcquisitionFunctionClass):
         return tf.reduce_mean(batch_improvement, axis=-1, keepdims=True)  # [..., 1]
 
 
-class BatchExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSampler]):
+class BatchExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     """Accurate approximation of the batch expected improvement, using the
     method of Chvallier and Ginsbourger :cite:`chevalier2013fast`.
 
@@ -1260,7 +1260,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
 
         Sigma = tf.zeros(shape=(B, Q, Q, Q))
 
-        def compute_single_slice(q):
+        def compute_single_slice(q: int) -> TensorType:
 
             diq = self.delta(q, Q, B, transpose=False, dtype=dtype)
             dqj = self.delta(q, Q, B, transpose=True, dtype=dtype)
@@ -1410,7 +1410,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
 
         R_whole = Sigma_uv - Sigma_iu * Sigma_iv / Sigma_ii
 
-        def create_blocks(q):
+        def create_blocks(q: int) -> TensorType:
 
             block1 = tf.concat(
                 [
@@ -1610,7 +1610,6 @@ class batch_expected_improvement(AcquisitionFunctionClass):
 
         mean, covariance = self._model.predict_joint(x)
 
-        # raise ValueError(f"{x.shape=} {mean.shape=} {covariance.shape=}")
         mean = mean[:, :, 0]
         covariance = covariance[:, 0, :, :]
         covariance = (
