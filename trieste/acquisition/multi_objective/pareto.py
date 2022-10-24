@@ -79,7 +79,13 @@ class Pareto:
         )
         return hypervolume_indicator
 
-    def sample_diverse_subset(self, sample_size: int, allow_repeats: bool = True, bounds_delta_scale_factor: float = 0.2, bounds_min_delta: float = 1e-9) -> tuple[TensorType, TensorType]:
+    def sample_diverse_subset(
+        self,
+        sample_size: int,
+        allow_repeats: bool = True,
+        bounds_delta_scale_factor: float = 0.2,
+        bounds_min_delta: float = 1e-9,
+    ) -> tuple[TensorType, TensorType]:
         """
         Sample a set of diverse points from the Pareto set using
         Hypervolume Sharpe-Ratio Indicator
@@ -96,7 +102,7 @@ class Pareto:
 
         front_size, front_dims = self.front.shape
 
-        if (front_size < sample_size) and allow_repeats == False:
+        if (front_size < sample_size) and allow_repeats is False:
             raise ValueError(
                 f"Tried to sample {sample_size} points from a Pareto"
                 f" set of size {front_size}, please ensure sample size is smaller than"
@@ -208,9 +214,7 @@ class Pareto:
 
         return x_star
 
-    def _calculate_p_matrix(
-        self, lower_bound: TensorType, upper_bound: TensorType
-    ) -> TensorType:
+    def _calculate_p_matrix(self, lower_bound: TensorType, upper_bound: TensorType) -> TensorType:
 
         front_size, front_dims = self.front.shape
 
@@ -239,13 +243,16 @@ class Pareto:
 
         return p
 
-    def _get_bounds(self, delta_scaling_factor: float, min_delta: float) -> tuple[TensorType, TensorType]:
+    def _get_bounds(
+        self, delta_scaling_factor: float, min_delta: float
+    ) -> tuple[TensorType, TensorType]:
 
         front_dims = self.front.shape[1]
 
         # Calculate the deltas to add to the bounds to get the reference point and lower bound
         deltas = [
-            ((float(max(self.front[:, i])) - float(min(self.front[:, i]))) * delta_scaling_factor) + min_delta
+            ((float(max(self.front[:, i])) - float(min(self.front[:, i]))) * delta_scaling_factor)
+            + min_delta
             for i in range(front_dims)
         ]
 
