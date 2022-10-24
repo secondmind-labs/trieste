@@ -47,7 +47,7 @@ from trieste.models.gpflow import (
     VariationalGaussianProcess,
     build_vgp_classifier,
 )
-from trieste.objectives import branin
+from trieste.objectives import Branin
 from trieste.space import Box
 from trieste.types import TensorType
 from trieste.utils import DEFAULTS
@@ -102,7 +102,7 @@ def test_predictive_variance(
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
 
     kernel = tfp.math.psd_kernels.MaternFiveHalves(variance_scale, length_scale=0.25)
-    model = GaussianProcess([branin], [kernel])
+    model = GaussianProcess([Branin.objective], [kernel])
 
     mean, variance = model.predict(xs)
     samples = tfp.distributions.Normal(mean, tf.sqrt(variance)).sample(num_samples_per_point)

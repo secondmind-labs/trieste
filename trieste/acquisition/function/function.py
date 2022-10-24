@@ -65,7 +65,7 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
             greater than one.
         :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
         """
-        tf.debugging.Assert(dataset is not None, [])
+        tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         mean, _ = model.predict(dataset.query_points)
@@ -83,10 +83,10 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
         :param model: The model.
         :param dataset: The data from the observer.  Must be populated.
         """
-        tf.debugging.Assert(dataset is not None, [])
+        tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
-        tf.debugging.Assert(isinstance(function, expected_improvement), [])
+        tf.debugging.Assert(isinstance(function, expected_improvement), [tf.constant([])])
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)
         function.update(eta)  # type: ignore
@@ -157,7 +157,7 @@ class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder[SupportsGetObse
                 f"AugmentedExpectedImprovement only works with models that support "
                 f"get_observation_noise; received {model.__repr__()}"
             )
-        tf.debugging.Assert(dataset is not None, [])
+        tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         mean, _ = model.predict(dataset.query_points)
@@ -175,10 +175,10 @@ class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder[SupportsGetObse
         :param model: The model.
         :param dataset: The data from the observer. Must be populated.
         """
-        tf.debugging.Assert(dataset is not None, [])
+        tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
-        tf.debugging.Assert(isinstance(function, augmented_expected_improvement), [])
+        tf.debugging.Assert(isinstance(function, augmented_expected_improvement), [tf.constant([])])
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)
         function.update(eta)  # type: ignore
@@ -483,7 +483,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
         :raise KeyError: If `objective_tag` is not found in ``datasets`` and ``models``.
         :raise tf.errors.InvalidArgumentError: If the objective data is empty.
         """
-        tf.debugging.Assert(datasets is not None, [])
+        tf.debugging.Assert(datasets is not None, [tf.constant([])])
         datasets = cast(Mapping[str, Dataset], datasets)
 
         objective_model = models[self._objective_tag]
@@ -528,7 +528,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
         :param models: The models for each tag.
         :param datasets: The data from the observer.
         """
-        tf.debugging.Assert(datasets is not None, [])
+        tf.debugging.Assert(datasets is not None, [tf.constant([])])
         datasets = cast(Mapping[str, Dataset], datasets)
 
         objective_model = models[self._objective_tag]
@@ -539,7 +539,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
             message="Expected improvement is defined with respect to existing points in the"
             " objective data, but the objective data is empty.",
         )
-        tf.debugging.Assert(self._constraint_fn is not None, [])
+        tf.debugging.Assert(self._constraint_fn is not None, [tf.constant([])])
 
         constraint_fn = cast(AcquisitionFunction, self._constraint_fn)
         self._constraint_builder.update_acquisition_function(
@@ -581,7 +581,9 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
         if self._expected_improvement_fn is None:
             self._expected_improvement_fn = expected_improvement(objective_model, eta)
         else:
-            tf.debugging.Assert(isinstance(self._expected_improvement_fn, expected_improvement), [])
+            tf.debugging.Assert(
+                isinstance(self._expected_improvement_fn, expected_improvement), [tf.constant([])]
+            )
             self._expected_improvement_fn.update(eta)  # type: ignore
 
 
@@ -632,7 +634,7 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSamp
 
         sampler = model.reparam_sampler(self._sample_size)
 
-        tf.debugging.Assert(dataset is not None, [])
+        tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
@@ -660,10 +662,12 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSamp
         :param model: The model. Must have output dimension [1]. Unused here.
         :param dataset: The data from the observer. Cannot be empty
         """
-        tf.debugging.Assert(dataset is not None, [])
+        tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
-        tf.debugging.Assert(isinstance(function, monte_carlo_expected_improvement), [])
+        tf.debugging.Assert(
+            isinstance(function, monte_carlo_expected_improvement), [tf.constant([])]
+        )
         sampler = function._sampler  # type: ignore
         sampler.reset_sampler()
         samples_at_query_points = sampler.sample(
@@ -774,7 +778,7 @@ class MonteCarloAugmentedExpectedImprovement(
 
         sampler = model.reparam_sampler(self._sample_size)
 
-        tf.debugging.Assert(dataset is not None, [])
+        tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
@@ -802,10 +806,12 @@ class MonteCarloAugmentedExpectedImprovement(
         :param model: The model. Must have output dimension [1]. Unused here
         :param dataset: The data from the observer. Cannot be empty.
         """
-        tf.debugging.Assert(dataset is not None, [])
+        tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
-        tf.debugging.Assert(isinstance(function, monte_carlo_augmented_expected_improvement), [])
+        tf.debugging.Assert(
+            isinstance(function, monte_carlo_augmented_expected_improvement), [tf.constant([])]
+        )
         sampler = function._sampler  # type: ignore
         sampler.reset_sampler()
         samples_at_query_points = sampler.sample(
@@ -909,7 +915,7 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasRepara
         :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, or ``model``
             does not have an event shape of [1].
         """
-        tf.debugging.Assert(dataset is not None, [])
+        tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
@@ -933,10 +939,12 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasRepara
         :param model: The model. Must have event shape [1].
         :param dataset: The data from the observer. Must be populated.
         """
-        tf.debugging.Assert(dataset is not None, [])
+        tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
-        tf.debugging.Assert(isinstance(function, batch_monte_carlo_expected_improvement), [])
+        tf.debugging.Assert(
+            isinstance(function, batch_monte_carlo_expected_improvement), [tf.constant([])]
+        )
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)
         function.update(eta)  # type: ignore
@@ -1025,7 +1033,9 @@ class MultipleOptimismNegativeLowerConfidenceBound(
         :param model: The model.
         :param dataset: Unused.
         """
-        tf.debugging.Assert(isinstance(function, multiple_optimism_lower_confidence_bound), [])
+        tf.debugging.Assert(
+            isinstance(function, multiple_optimism_lower_confidence_bound), [tf.constant([])]
+        )
         return function  # nothing to update
 
 

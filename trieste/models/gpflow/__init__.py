@@ -17,7 +17,7 @@ This package contains the primary interface for Gaussian process models. It also
 number of :class:`TrainableProbabilisticModel` wrappers for GPflow-based models.
 """
 
-from . import config, optimizer
+from . import optimizer
 from .builders import build_gpr, build_sgpr, build_svgp, build_vgp_classifier
 from .inducing_point_selectors import (
     InducingPointSelector,

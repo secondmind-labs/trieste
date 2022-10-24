@@ -19,7 +19,7 @@ of the Trieste's Keras model wrappers.
 
 from __future__ import annotations
 
-from typing import Dict
+from typing import Dict, Optional
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -39,11 +39,14 @@ class DeepEnsembleTrajectorySampler(TrajectorySampler[DeepEnsembleModel]):
     supported for multiple output models.
     """
 
-    def __init__(self, model: DeepEnsembleModel, diversify: bool = False):
+    def __init__(
+        self, model: DeepEnsembleModel, diversify: bool = False, seed: Optional[int] = None
+    ):
         """
         :param model: The ensemble model to sample from.
         :param diversify: Whether to use quantiles from final probabilistic layer as
             trajectories (`False` by default). See class docstring for details.
+        :param seed: Random number seed to use for trajectory sampling.
         :raise NotImplementedError: If we try to use the model that is not instance of
             :class:`DeepEnsembleModel` or a multiple output model together with ``diversify``
             option.
@@ -59,6 +62,7 @@ class DeepEnsembleTrajectorySampler(TrajectorySampler[DeepEnsembleModel]):
 
         self._model = model
         self._diversify = diversify
+        self._seed = seed or int(tf.random.uniform(shape=(), maxval=10000, dtype=tf.int32))
 
         if self._diversify:
             if self._model.num_outputs > 1:
@@ -78,7 +82,7 @@ class DeepEnsembleTrajectorySampler(TrajectorySampler[DeepEnsembleModel]):
         :return: A trajectory function representing an approximate trajectory
             from the model, taking an input of shape `[N, B, D]` and returning shape `[N, B, 1]`.
         """
-        return deep_ensemble_trajectory(self._model, self._diversify)
+        return deep_ensemble_trajectory(self._model, self._diversify, self._seed)
 
     def update_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction:
         """
@@ -90,7 +94,7 @@ class DeepEnsembleTrajectorySampler(TrajectorySampler[DeepEnsembleModel]):
         :param trajectory: The trajectory function to be resampled.
         :return: The new trajectory function updated for a new model
         """
-        tf.debugging.Assert(isinstance(trajectory, deep_ensemble_trajectory), [])
+        tf.debugging.Assert(isinstance(trajectory, deep_ensemble_trajectory), [tf.constant([])])
         trajectory.resample()  # type: ignore
         return trajectory
 
@@ -102,7 +106,7 @@ class DeepEnsembleTrajectorySampler(TrajectorySampler[DeepEnsembleModel]):
         :param trajectory: The trajectory function to be resampled.
         :return: The new resampled trajectory function.
         """
-        tf.debugging.Assert(isinstance(trajectory, deep_ensemble_trajectory), [])
+        tf.debugging.Assert(isinstance(trajectory, deep_ensemble_trajectory), [tf.constant([])])
         trajectory.resample()  # type: ignore
         return trajectory
 
@@ -119,15 +123,17 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
     distributions, multiple outputs are not supported with `diversify` option.
     """
 
-    def __init__(self, model: DeepEnsembleModel, diversify: bool):
+    def __init__(self, model: DeepEnsembleModel, diversify: bool, seed: Optional[int] = None):
         """
         :param model: The model of the objective function.
         :param diversify: Whether to use samples from final probabilistic layer as trajectories
             or mean predictions.
+        :param seed: Optional RNG seed.
         """
         self._model = model
         self._diversify = diversify
         self._ensemble_size = self._model.ensemble_size
+        self._seed = seed
 
         self._initialized = tf.Variable(False, trainable=False)
         self._batch_size = tf.Variable(0, dtype=tf.int32, trainable=False)
@@ -190,6 +196,9 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
         """
         Efficiently resample network indices in-place, without retracing.
         """
+        if self._seed:
+            self._seed += 1  # increment operation seed
+
         if self._diversify:
             self._quantiles.assign(
                 tf.random.uniform(
@@ -197,10 +206,13 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
                     minval=0.000001,
                     maxval=0.999999,
                     dtype=tf.float32,
+                    seed=self._seed,
                 )
             )  # [B]
         else:
-            self._indices.assign(sample_model_index(self._ensemble_size, self._batch_size))  # [B]
+            self._indices.assign(
+                sample_model_index(self._ensemble_size, self._batch_size, seed=self._seed)
+            )  # [B]
 
     def get_state(self) -> Dict[str, TensorType]:
         """

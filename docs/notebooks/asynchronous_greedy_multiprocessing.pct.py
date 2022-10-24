@@ -22,7 +22,7 @@ import timeit
 # %% [markdown]
 # First, let's define a simple objective that will emulate evaluations taking variable time. We will be using a classic Bayesian optimisation benchmark function [Branin](https://www.sfu.ca/~ssurjano/branin.html) with a sleep call inserted in the middle of the calculation to emulate delay. Our sleep delay is a scaled sum of all input values to make sure delays are uneven.
 # %%
-from trieste.objectives import scaled_branin
+from trieste.objectives import ScaledBranin
 
 
 def objective(points, sleep=True):
@@ -33,7 +33,7 @@ def objective(points, sleep=True):
 
     observations = []
     for point in points:
-        observation = scaled_branin(point)
+        observation = ScaledBranin.objective(point)
         if sleep:
             # insert some artificial delay
             # increases linearly with the absolute value of points
@@ -59,7 +59,6 @@ objective(np.array([[0.1, 0.5]]), sleep=False)
 # %%
 from trieste.space import Box
 from trieste.data import Dataset
-from trieste.objectives import SCALED_BRANIN_MINIMUM
 
 search_space = Box([0, 0], [1, 1])
 num_initial_points = 3
@@ -236,7 +235,7 @@ stop = timeit.default_timer()
 # Collect the observations, compute the running time
 async_lp_observations = (
     async_bo.to_result().try_get_final_dataset().observations
-    - SCALED_BRANIN_MINIMUM
+    - ScaledBranin.minimum
 )
 async_lp_time = stop - start
 print(f"Got {len(async_lp_observations)} observations in {async_lp_time:.2f}s")
@@ -317,7 +316,7 @@ stop = timeit.default_timer()
 # Collect the observations, compute the running time
 sync_lp_observations = (
     sync_bo.to_result().try_get_final_dataset().observations
-    - SCALED_BRANIN_MINIMUM
+    - ScaledBranin.minimum
 )
 sync_lp_time = stop - start
 print(f"Got {len(sync_lp_observations)} observations in {sync_lp_time:.2f}s")
