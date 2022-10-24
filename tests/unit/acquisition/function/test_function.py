@@ -880,7 +880,7 @@ def test_expected_constrained_improvement_is_less_for_constrained_points() -> No
             return lambda x: tf.cast(tf.squeeze(x, -2) >= 0, x.dtype)
 
     def two_global_minima(x: tf.Tensor) -> tf.Tensor:
-        return x**4 / 4 - x**2 / 2
+        return x ** 4 / 4 - x ** 2 / 2
 
     initial_query_points = tf.constant([[-2.0], [0.0], [1.2]])
     data = {"foo": Dataset(initial_query_points, two_global_minima(initial_query_points))}
