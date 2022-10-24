@@ -29,6 +29,7 @@ from ...models.interfaces import (
     SupportsGetObservationNoise,
     SupportsReparamSamplerObservationNoise,
 )
+from ...models.gpflow.models import GaussianProcessRegression
 from ...space import SearchSpace
 from ...types import TensorType
 from ...utils import DEFAULTS
@@ -1037,12 +1038,14 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSampler])
     def __repr__(self) -> str:
         """"""
         
-        return f"BatchExpectedImprovement({self._sample_size!r}, "
-               f"jitter={self._jitter!r})"
+        return (
+            f"BatchExpectedImprovement({self._sample_size!r}, "
+            f"jitter={self._jitter!r})"
+        )
 
     def prepare_acquisition_function(
         self,
-        model: HasReparamSampler,
+        model: GaussianProcessRegression,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
@@ -1233,8 +1236,8 @@ class batch_expected_improvement(AcquisitionFunctionClass):
 
         def compute_single_slice(q):
 
-            diq = delta(q, Q, B, transpose=False, dtype=dtype)
-            dqj = delta(q, Q, B, transpose=True, dtype=dtype)
+            diq = self.delta(q, Q, B, transpose=False, dtype=dtype)
+            dqj = self.delta(q, Q, B, transpose=True, dtype=dtype)
 
             Sigma_ij = covariance[:, :, :]
             Sigma_iq = covariance[:, :, q:q+1]
@@ -1511,13 +1514,13 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         B, Q = mean.shape
 
         # Compute b and m tensors
-        b, m = compute_bm(
+        b, m = self.compute_bm(
             mean=mean,
             threshold=threshold,
         ) # (B, Q, Q), (B, Q, Q)
 
         # Compute Sigma
-        Sigma = compute_Sigma(
+        Sigma = self.compute_Sigma(
             covariance=covariance
         ) # (B, Q, Q, Q)
 
@@ -1527,7 +1530,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         Sigma_reshaped = tf.reshape(Sigma, (B*Q, Q, Q))
 
         # Compute p tensor
-        p = compute_p(
+        p = self.compute_p(
             m_reshaped=m_reshaped,
             b_reshaped=b_reshaped,
             Sigma_reshaped=Sigma_reshaped,
@@ -1535,19 +1538,19 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         )
 
         # Compute c
-        c = compute_c(
+        c = self.compute_c(
             m_reshaped=m_reshaped,
             b_reshaped=b_reshaped,
             Sigma_reshaped=Sigma_reshaped,
         ) # (B*Q, Q, Q-1)
 
         # Compute Sigma_i
-        R = compute_R(
+        R = self.compute_R(
             Sigma_reshaped=Sigma_reshaped,
         ) # (B*Q, Q, Q-1, Q-1)
 
         # Compute Q-1 multivariate CDFs
-        Phi_mvn_cdfs = compute_Phi(
+        Phi_mvn_cdfs = self.compute_Phi(
             c=c,
             R=R,
             mvn_cdf=mvn_cdf,
@@ -1583,10 +1586,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         """Computes the accurate approximation of the multi-point expected
         improvement.
 
-        :param mean: Tensor of shape (B, Q).
-        :param covariance: Tensor of shape (B, Q, Q).
-        :param threshold: Tensor of shape (B, Q).
-        :param mvn_cdf: Callable computing the multivariate CDF of a Gaussian.
+        :param x: Tensor of shape ***.
         :returns ei: Tensor of shape (B,), expected improvement.
         """
         
@@ -1594,6 +1594,8 @@ class batch_expected_improvement(AcquisitionFunctionClass):
             self._mvn_cdf = make_mvn_cdf(samples=self._samples)
         
         mean, covariance = self._model.predict_joint(x)
+        
+        # raise ValueError(f"{x.shape=} {mean.shape=} {covariance.shape=}")
         mean = mean[:, :, 0]
         covariance = covariance[:, 0, :, :]
         covariance = covariance + 1e-6 * tf.eye(

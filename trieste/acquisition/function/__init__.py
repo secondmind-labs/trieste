@@ -61,5 +61,4 @@ from .multi_objective import (
     batch_ehvi,
     expected_hv_improvement,
 )
-
-from .utils import qEI
+from .utils import make_mvn_cdf

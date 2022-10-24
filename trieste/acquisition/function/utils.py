@@ -19,7 +19,7 @@ estimate of the batch expected improvement for a Gaussian distribution.
 """
 from typing import Callable
 
-from ...typing import TensorType
+from ...types import TensorType
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -31,7 +31,9 @@ tfd = tfp.distributions
 # Standard univariate normal CDF and inverse CDF for Multivariate Normal CDF
 # =============================================================================
 
-def standard_normal_cdf_and_inverse_cdf(dtype: tf.DType) -> TensorType:
+def standard_normal_cdf_and_inverse_cdf(
+        dtype: tf.DType
+    ) -> tuple[Callable[[TensorType], TensorType]]:
     """Returns two callables *Phi* and *iPhi*, which compute the cumulative
     density function and inverse cumulative density function of a standard
     univariate Gaussian.
@@ -75,8 +77,8 @@ def get_update_indices(B: int, S: int, Q: int, q: int) -> TensorType:
     :param q: Index of tensor along fourth dim. to which the update is applied.
     """
     
-    idxB = tf.tile(tf.range(B, dtype=dtype)[:, None, None], (1, S, 1))
-    idxS = tf.tile(tf.range(S, dtype=dtype)[None, :, None], (B, 1, 1))
+    idxB = tf.tile(tf.range(B, dtype=tf.int32)[:, None, None], (1, S, 1))
+    idxS = tf.tile(tf.range(S, dtype=tf.int32)[None, :, None], (B, 1, 1))
     idxQ = tf.tile(tf.convert_to_tensor(q)[None, None, None], (B, S, 1))
     
     idx = tf.concat([idxB, idxS, idxQ], axis=-1)
@@ -88,7 +90,9 @@ def get_update_indices(B: int, S: int, Q: int, q: int) -> TensorType:
 # Multivariate Normal CDF
 # =============================================================================
 
-def make_mvn_cdf(samples: tf.Tensor) -> Callable[TensorType]:
+def make_mvn_cdf(
+        samples: tf.Tensor
+    ) -> Callable[[TensorType, TensorType, TensorType, float], TensorType]:
     """Builds the cumulative density function of the multivariate Gaussian 
     using the Genz approximation detailed in :cite:`genz2016numerical`.
         
