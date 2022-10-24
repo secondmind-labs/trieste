@@ -35,6 +35,7 @@ def pytest_addoption(parser: Parser) -> None:
         help="whether to run qhsri tests",
     )
 
+
 def pytest_configure(config: Config) -> None:
     config.addinivalue_line("markers", "slow: mark test as slow to run")
     config.addinivalue_line("markers", "qhsri: mark test as requiring qhsri dependencies")

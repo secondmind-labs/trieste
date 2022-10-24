@@ -106,6 +106,7 @@ def test_get_reference_point_extract_based_on_pareto_front(
 ) -> None:
     tf.debugging.assert_equal(get_reference_point(observations), expected)
 
+
 @pytest.mark.qhsri
 def test_pareto_sample_raises_too_large_sample_size() -> None:
     observations = tf.constant([[1.0, -1.0], [-1.0, 1.0]])
