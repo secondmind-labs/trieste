@@ -108,23 +108,23 @@ def test_get_reference_point_extract_based_on_pareto_front(
 
 
 @pytest.mark.qhsri
-def test_pareto_sample_raises_too_large_sample_size() -> None:
+def test_pareto_sample_diverse_subset_raises_too_large_sample_size() -> None:
     observations = tf.constant([[1.0, -1.0], [-1.0, 1.0]])
     pareto_set = Pareto(observations)
     with pytest.raises(ValueError):
-        pareto_set.sample(3)
+        pareto_set.sample_diverse_subset(3)
 
 
 @pytest.mark.qhsri
-def test_pareto_sample_raises_zero_range() -> None:
+def test_pareto_sample_diverse_subset_raises_zero_range() -> None:
     observations = tf.constant([[1.0, 1.0], [1.0, 1.0]])
     pareto_set = Pareto(observations)
     with pytest.raises(ValueError):
-        pareto_set.sample(1)
+        pareto_set.sample_diverse_subset(1)
 
 
 @pytest.mark.qhsri
-def test_pareto_sample_get_bounds() -> None:
+def test_pareto_sample_diverse_subset_get_bounds() -> None:
     observations = tf.constant([[1.0, -1.0], [-1.0, 1.0]])
     pareto_set = Pareto(observations)
     lower_bounds, reference_point = pareto_set._get_bounds()
@@ -135,7 +135,7 @@ def test_pareto_sample_get_bounds() -> None:
 
 
 @pytest.mark.qhsri
-def test_pareto_sample_calculate_p() -> None:
+def test_pareto_sample_diverse_subset_calculate_p() -> None:
     observations = tf.constant([[1.0, -1.0], [-1.0, 1.0]])
     lower_bound = tf.constant([-2.0, -2.0])
     reference_point = tf.constant([2.0, 2.0])
@@ -146,7 +146,7 @@ def test_pareto_sample_calculate_p() -> None:
 
 
 @pytest.mark.qhsri
-def test_pareto_sample_choose_batch_no_repeats() -> None:
+def test_pareto_sample_diverse_subset_choose_batch_no_repeats() -> None:
     observations = tf.constant([[2.0, -2.0], [1.0, -1.0], [0.0, 0.0], [-1.0, 1.0], [-2.0, 2.0]])
     x_star = tf.constant([[0.15], [0.25], [0.2], [0.3], [0.1]])
     pareto_set = Pareto(observations)
@@ -166,7 +166,7 @@ def test_pareto_sample_choose_batch_no_repeats() -> None:
     ),
 )
 @pytest.mark.qhsri
-def test_pareto_sample_choose_batch_with_repeats(
+def test_pareto_sample_diverse_subset_choose_batch_with_repeats(
     x_star: list[list[float]], expected_ids: list[int]
 ) -> None:
     observations = tf.constant([[2.0, -2.0], [1.0, -1.0], [0.0, 0.0], [-1.0, 1.0], [-2.0, 2.0]])

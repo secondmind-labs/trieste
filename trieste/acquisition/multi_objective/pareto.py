@@ -79,7 +79,7 @@ class Pareto:
         )
         return hypervolume_indicator
 
-    def sample(self, sample_size: int, allow_repeats: bool = True) -> tuple[TensorType, TensorType]:
+    def sample_diverse_subset(self, sample_size: int, allow_repeats: bool = True) -> tuple[TensorType, TensorType]:
         """
         Sample a set of diverse points from the Pareto set using
         Hypervolume Sharpe-Ratio Indicator
