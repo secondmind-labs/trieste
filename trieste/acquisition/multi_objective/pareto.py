@@ -79,7 +79,7 @@ class Pareto:
         )
         return hypervolume_indicator
 
-    def sample_diverse_subset(self, sample_size: int, allow_repeats: bool = True) -> tuple[TensorType, TensorType]:
+    def sample_diverse_subset(self, sample_size: int, allow_repeats: bool = True, bounds_delta_scale_factor: float = 0.2, bounds_min_delta: float = 1e-9) -> tuple[TensorType, TensorType]:
         """
         Sample a set of diverse points from the Pareto set using
         Hypervolume Sharpe-Ratio Indicator
@@ -96,16 +96,16 @@ class Pareto:
 
         front_size, front_dims = self.front.shape
 
-        if front_size < sample_size:
+        if (front_size < sample_size) and allow_repeats == False:
             raise ValueError(
                 f"Tried to sample {sample_size} points from a Pareto"
                 f" set of size {front_size}, please ensure sample size is smaller than"
                 " Pareto set size."
             )
 
-        lower_bound, reference_point = self._get_bounds()
+        lower_bound, upper_bound = self._get_bounds(bounds_delta_scale_factor, bounds_min_delta)
 
-        p = self._calculate_p_matrix(lower_bound, reference_point)
+        p = self._calculate_p_matrix(lower_bound, upper_bound)
 
         # Calculate q matrix
         p_diag = np.expand_dims(np.diagonal(p), axis=1)
@@ -209,7 +209,7 @@ class Pareto:
         return x_star
 
     def _calculate_p_matrix(
-        self, lower_bound: TensorType, reference_point: TensorType
+        self, lower_bound: TensorType, upper_bound: TensorType
     ) -> TensorType:
 
         front_size, front_dims = self.front.shape
@@ -219,33 +219,33 @@ class Pareto:
         # Calculate denominator value for p matrix elements
         denominator: float = 1
         for i in range(front_dims):
-            if reference_point[i] - lower_bound[i] == 0:
+            if upper_bound[i] - lower_bound[i] == 0:
                 raise ValueError(
                     "Pareto set has identical upper and lower bounds"
-                    " in a dimension, this means you either have multiples"
-                    " of a single point, or only one point"
+                    " in a dimension, you can avoid this by setting a "
+                    "nonzero value for bounds_min_delta"
                 )
-            denominator *= reference_point[i] - lower_bound[i]
+            denominator *= upper_bound[i] - lower_bound[i]
 
         # Fill entries of p
         for i in range(front_size):
             for j in range(front_size):
                 pij = 1
                 for k in range(front_dims):
-                    pij *= reference_point[k] - max(self.front[i, k], self.front[j, k])
+                    pij *= upper_bound[k] - max(self.front[i, k], self.front[j, k])
                 p[i, j] = pij
 
         p = p / denominator
 
         return p
 
-    def _get_bounds(self) -> tuple[TensorType, TensorType]:
+    def _get_bounds(self, delta_scaling_factor: float, min_delta: float) -> tuple[TensorType, TensorType]:
 
         front_dims = self.front.shape[1]
 
         # Calculate the deltas to add to the bounds to get the reference point and lower bound
         deltas = [
-            (float(max(self.front[:, i])) - float(min(self.front[:, i]))) * 0.2
+            ((float(max(self.front[:, i])) - float(min(self.front[:, i]))) * delta_scaling_factor) + min_delta
             for i in range(front_dims)
         ]
 
@@ -253,9 +253,9 @@ class Pareto:
         lower_bound = [float(min(self.front[:, i])) - deltas[i] for i in range(front_dims)]
 
         # Use deltas and max values to create reference point
-        reference_point = [float(max(self.front[:, i])) + deltas[i] for i in range(front_dims)]
+        upper_bound = [float(max(self.front[:, i])) + deltas[i] for i in range(front_dims)]
 
-        return lower_bound, reference_point
+        return lower_bound, upper_bound
 
 
 def get_reference_point(

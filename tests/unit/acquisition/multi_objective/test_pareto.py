@@ -112,7 +112,7 @@ def test_pareto_sample_diverse_subset_raises_too_large_sample_size() -> None:
     observations = tf.constant([[1.0, -1.0], [-1.0, 1.0]])
     pareto_set = Pareto(observations)
     with pytest.raises(ValueError):
-        pareto_set.sample_diverse_subset(3)
+        pareto_set.sample_diverse_subset(3, allow_repeats=False)
 
 
 @pytest.mark.qhsri
@@ -120,14 +120,14 @@ def test_pareto_sample_diverse_subset_raises_zero_range() -> None:
     observations = tf.constant([[1.0, 1.0], [1.0, 1.0]])
     pareto_set = Pareto(observations)
     with pytest.raises(ValueError):
-        pareto_set.sample_diverse_subset(1)
+        pareto_set.sample_diverse_subset(1, bounds_min_delta=0.0)
 
 
 @pytest.mark.qhsri
 def test_pareto_sample_diverse_subset_get_bounds() -> None:
     observations = tf.constant([[1.0, -1.0], [-1.0, 1.0]])
     pareto_set = Pareto(observations)
-    lower_bounds, reference_point = pareto_set._get_bounds()
+    lower_bounds, reference_point = pareto_set._get_bounds(delta_scaling_factor=0.2, min_delta=1e-9)
     expected_lower_bounds = tf.constant([-1.4, -1.4])
     expected_reference_point = tf.constant([1.4, 1.4])
     npt.assert_allclose(expected_lower_bounds, lower_bounds)
