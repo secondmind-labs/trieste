@@ -28,7 +28,7 @@ debugpy==1.6.3
 decorator==5.1.1
 defusedxml==0.7.1
 Deprecated==1.2.13
-dill==0.3.6
+dill==0.3.4
 distlib==0.3.6
 dm-tree==0.1.7
 ecos==2.0.10
