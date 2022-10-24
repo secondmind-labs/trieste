@@ -1036,33 +1036,32 @@ class batch_monte_carlo_expected_improvement(AcquisitionFunctionClass):
         batch_improvement = tf.maximum(self._eta - min_sample_per_batch, 0.0)  # [..., S]
         return tf.reduce_mean(batch_improvement, axis=-1, keepdims=True)  # [..., 1]
 
-    
 
 class BatchExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSampler]):
     """Accurate approximation of the batch expected improvement, using the
     method of Chvallier and Ginsbourger :cite:`chevalier2013fast`.
-    
+
     Internally, this uses a highly accurate approximation of the cumulative
     density function of the multivariate Gaussian, developed by Alan Genz
     :cite:`genz2016numerical`.
     """
 
     def __init__(
-            self,
-            sample_size: int,
-            *,
-            batch_size: int,
-            dtype: tf.DType,
-            jitter: float = DEFAULTS.JITTER,
-        ):
+        self,
+        sample_size: int,
+        *,
+        batch_size: int,
+        dtype: tf.DType,
+        jitter: float = DEFAULTS.JITTER,
+    ):
         """Initialise the BatchExpectedImprovement instance.
-        
+
         :param sample_size: int, number of Sobol samples to use.
         :param batch_size: int, number of points in each batch.
         :param dtype: tf.DType, data type to perform calculations in.
         :param jitter: float, amount of jitter for Cholesky factorisations.
         """
-        
+
         tf.debugging.assert_positive(sample_size)
         tf.debugging.assert_positive(batch_size)
         tf.debugging.assert_greater_equal(jitter, 0.0)
@@ -1071,7 +1070,7 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSampler])
         self._batch_size = batch_size
         self._dtype = dtype
         self._jitter = jitter
-        
+
         self._samples = tf.math.sobol_sample(
             dim=self._batch_size,
             num_results=self._sample_size,
@@ -1080,26 +1079,19 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSampler])
 
     def __repr__(self) -> str:
         """"""
-        
-        return (
-            f"BatchExpectedImprovement({self._sample_size!r}, "
-            f"jitter={self._jitter!r})"
-        )
+
+        return f"BatchExpectedImprovement({self._sample_size!r}, " f"jitter={self._jitter!r})"
 
     def prepare_acquisition_function(
         self,
         model: GaussianProcessRegression,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
-        """
-        """
-        
+        """ """
+
         tf.debugging.Assert(dataset is not None, [])
         dataset = cast(Dataset, dataset)
-        tf.debugging.assert_positive(
-            len(dataset),
-            message="Dataset must be populated."
-        )
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
         # Get mean and covariance
         mean, _ = model.predict(dataset.query_points)
@@ -1110,14 +1102,14 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSampler])
         )
 
         eta = tf.reduce_min(mean, axis=0)
-        
+
         acquisition_function = batch_expected_improvement(
             self._samples,
             model,
             eta,
             self._jitter,
         )
-        
+
         return acquisition_function
 
     def update_acquisition_function(
@@ -1126,48 +1118,46 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSampler])
         model: HasReparamSampler,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
-        """
-        """
-        
+        """ """
+
         tf.debugging.Assert(dataset is not None, [])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         tf.debugging.Assert(isinstance(function, batch_expected_improvement), [])
-        
+
         # Get mean and covariance
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)
-        
+
         function.update(eta=eta)  # type: ignore
-        
+
         return function
 
 
 class batch_expected_improvement(AcquisitionFunctionClass):
-    
     def __init__(
-            self,
-            samples: TensorType,
-            model: HasReparamSampler,
-            eta: TensorType,
-            jitter: float,
-        ):
+        self,
+        samples: TensorType,
+        model: HasReparamSampler,
+        eta: TensorType,
+        jitter: float,
+    ):
         """Initialise the batch_expected_improvement instance.
-        
+
         :param samples: Tensor of shape (S, Q), where S is the number of
         samples and Q is the batch size.
         :param model: Gaussian process regression model.
-        :param eta: Tensor of shape (,), expected improvement threshold. This 
+        :param eta: Tensor of shape (,), expected improvement threshold. This
         is the best value observed so far durin the BO loop.
         :param jitter: float, amount of jitter for Cholesky factorisations.
         """
-        
+
         self._samples = samples
         self._jitter = jitter
         self._eta = tf.Variable(eta)
         self._model = model
         self._mvn_cdf = None
-        
+
     def update(self, eta: TensorType) -> None:
         """Update the acquisition function with a new eta value and reset the
         reparam sampler.
@@ -1175,10 +1165,10 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         self._eta.assign(eta)
 
     def compute_bm(
-            self,
-            mean: tf.Tensor,
-            threshold: tf.Tensor,
-        ) -> TensorType:
+        self,
+        mean: tf.Tensor,
+        threshold: tf.Tensor,
+    ) -> TensorType:
         """Helper function for the batch expected improvement, which computes
         the tensors b and m as detailed in Chevallier and Ginsbourger
         :cite:`chevalier2013fast`.
@@ -1204,7 +1194,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
 
         # Compute b tensor
         threshold = tf.tile(threshold[:, None], (1, Q))
-        threshold = tf.linalg.diag(threshold) # (B, Q, Q)
+        threshold = tf.linalg.diag(threshold)  # (B, Q, Q)
 
         b = tf.zeros(shape=(B, Q, Q), dtype=dtype)
         b = b - threshold
@@ -1215,14 +1205,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
 
         return b, m
 
-    def delta(
-            self,
-            idx: int,
-            dim: int,
-            B: int,
-            transpose: bool,
-            dtype: tf.DType
-        ) -> TensorType:
+    def delta(self, idx: int, dim: int, B: int, transpose: bool, dtype: tf.DType) -> TensorType:
         """Helper function for the compute_Sigma function, which computes a
         *delta* tensor of shape (B, idx, idx) such that
 
@@ -1249,7 +1232,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
 
         o1 = tf.ones(shape=(B, idx, dim), dtype=dtype)
         z1 = tf.zeros(shape=(B, 1, dim), dtype=dtype)
-        o2 = tf.ones(shape=(B, dim-idx-1, dim), dtype=dtype)
+        o2 = tf.ones(shape=(B, dim - idx - 1, dim), dtype=dtype)
 
         delta = tf.concat([o1, z1, o2], axis=1)
         delta = tf.transpose(delta, perm=[0, 2, 1]) if transpose else delta
@@ -1257,9 +1240,9 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         return delta
 
     def compute_Sigma(
-            self,
-            covariance: tf.Tensor,
-        ) -> TensorType:
+        self,
+        covariance: tf.Tensor,
+    ) -> TensorType:
         """Helper function for the batch expected improvement, which computes
         the tensor Sigma, as detailed in Chevallier and Ginsbourger
         :cite:`chevalier2013fast`.
@@ -1283,14 +1266,11 @@ class batch_expected_improvement(AcquisitionFunctionClass):
             dqj = self.delta(q, Q, B, transpose=True, dtype=dtype)
 
             Sigma_ij = covariance[:, :, :]
-            Sigma_iq = covariance[:, :, q:q+1]
-            Sigma_qj = covariance[:, q:q+1, :]
-            Sigma_qq = covariance[:, q:q+1, q:q+1]
+            Sigma_iq = covariance[:, :, q : q + 1]
+            Sigma_qj = covariance[:, q : q + 1, :]
+            Sigma_qq = covariance[:, q : q + 1, q : q + 1]
 
-            cov = Sigma_ij * diq * dqj - \
-                  Sigma_iq * diq - \
-                  Sigma_qj * dqj + \
-                  Sigma_qq
+            cov = Sigma_ij * diq * dqj - Sigma_iq * diq - Sigma_qj * dqj + Sigma_qq
 
             return cov
 
@@ -1305,12 +1285,12 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         return Sigma
 
     def compute_p(
-            self,
-            m_reshaped: tf.Tensor,
-            b_reshaped: tf.Tensor,
-            Sigma_reshaped: tf.Tensor,
-            mvn_cdf: Callable,
-        ) -> TensorType:
+        self,
+        m_reshaped: tf.Tensor,
+        b_reshaped: tf.Tensor,
+        Sigma_reshaped: tf.Tensor,
+        mvn_cdf: Callable,
+    ) -> TensorType:
         """Helper function for the batch expected improvement, which computes
         the tensor p, as detailed in Chevallier and Ginsbourger
         :cite:`chevalier2013fast`.
@@ -1332,7 +1312,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
 
         # Unpack dtype and mean shape
         dtype = m_reshaped.dtype
-        BQ, Q = m_reshaped.shape # (B*Q, Q)
+        BQ, Q = m_reshaped.shape  # (B*Q, Q)
 
         if BQ % Q == 0:
             B = BQ // Q
@@ -1346,7 +1326,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
 
         # Compute mean, covariance and x for p mvn normal cdf
         p_cdf_mean = tf.zeros(shape=(BQ, Q), dtype=dtype)  # (B*Q, Q)
-        p_cdf_cov = Sigma_reshaped # (B*Q, Q, Q)
+        p_cdf_cov = Sigma_reshaped  # (B*Q, Q, Q)
 
         p_cdf_x = b_reshaped - m_reshaped  # (B*Q, Q)
 
@@ -1361,11 +1341,11 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         return p
 
     def compute_c(
-            self,
-            m_reshaped: tf.Tensor,
-            b_reshaped: tf.Tensor,
-            Sigma_reshaped: tf.Tensor,
-        ) -> TensorType:
+        self,
+        m_reshaped: tf.Tensor,
+        b_reshaped: tf.Tensor,
+        Sigma_reshaped: tf.Tensor,
+    ) -> TensorType:
         """Helper function for the batch expected improvement, which computes
         the tensor c, which is the c^{(i)} tensor detailed in Chevallier and
         Ginsbourger :cite:`chevalier2013fast`.
@@ -1390,19 +1370,15 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         dtype = m_reshaped.dtype
 
         # Compute difference between b and m tensors
-        diff = b_reshaped - m_reshaped # (B*Q, Q)
+        diff = b_reshaped - m_reshaped  # (B*Q, Q)
 
         # Compute c, including the ith entry, which we want to remove
-        cov_ratio = Sigma_reshaped / tf.linalg.diag_part(
-            Sigma_reshaped
-        )[:, :, None] # (B*Q, Q, Q)
-        c = diff[:, None, :] - diff[:, :, None] * cov_ratio # (B*Q, Q, Q)
+        cov_ratio = Sigma_reshaped / tf.linalg.diag_part(Sigma_reshaped)[:, :, None]  # (B*Q, Q, Q)
+        c = diff[:, None, :] - diff[:, :, None] * cov_ratio  # (B*Q, Q, Q)
 
         # Remove the ith entry by masking c with a boolean mask with False across
         # the diagonal and True in the off-diagonal terms
-        mask = tf.math.logical_not(
-            tf.cast(tf.eye(Q, dtype=tf.int32), dtype=tf.bool)
-        )
+        mask = tf.math.logical_not(tf.cast(tf.eye(Q, dtype=tf.int32), dtype=tf.bool))
         mask = tf.tile(mask[None, :, :], (c.shape[0], 1, 1))
 
         c = tf.ragged.boolean_mask(c, mask).to_tensor()
@@ -1410,9 +1386,9 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         return c
 
     def compute_R(
-            self,
-            Sigma_reshaped: tf.Tensor,
-        ) -> TensorType:
+        self,
+        Sigma_reshaped: tf.Tensor,
+    ) -> TensorType:
         """Helper function for the batch expected improvement, which computes
         the tensor R, which is the Sigma^{(i)} tensor detailed in Chevallier
         and Ginsbourger :cite:`chevalier2013fast`.
@@ -1439,15 +1415,15 @@ class batch_expected_improvement(AcquisitionFunctionClass):
             block1 = tf.concat(
                 [
                     R_whole[:, q, :q, :q],
-                    R_whole[:, q, q+1:, :q],
+                    R_whole[:, q, q + 1 :, :q],
                 ],
                 axis=1,
             )
 
             block2 = tf.concat(
                 [
-                    R_whole[:, q, :q, q+1:],
-                    R_whole[:, q, q+1:, q+1:],
+                    R_whole[:, q, :q, q + 1 :],
+                    R_whole[:, q, q + 1 :, q + 1 :],
                 ],
                 axis=1,
             )
@@ -1466,11 +1442,11 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         return R
 
     def compute_Phi(
-            self,
-            c: tf.Tensor,
-            R: tf.Tensor,
-            mvn_cdf: Callable,
-        ) -> TensorType:
+        self,
+        c: tf.Tensor,
+        R: tf.Tensor,
+        mvn_cdf: Callable,
+    ) -> TensorType:
         """Helper function for the batch expected improvement, which computes
         the tensor Phi, which is the tensor of multivariate Gaussian CDFs, in
         the inner sum of the equation (3) in Chevallier and Ginsbourger
@@ -1503,16 +1479,16 @@ class batch_expected_improvement(AcquisitionFunctionClass):
                 f"divisible by size of dimension 1, instead found "
                 f"{R.shape[0]} and {R.shape[1]}."
             )
-            
+
         # Compute parallelisation dimension from batch size
         B = BQ // Q
 
-        c_reshaped = tf.reshape(c, (BQ*Q, Q-1))
-        R_reshaped = tf.reshape(R, (BQ*Q, Q-1, Q-1))
+        c_reshaped = tf.reshape(c, (BQ * Q, Q - 1))
+        R_reshaped = tf.reshape(R, (BQ * Q, Q - 1, Q - 1))
 
         # Compute mean, covariance and x for Phi mvn normal cdf
         Phi_cdf_x = c_reshaped  # (B*Q, Q-1)
-        Phi_cdf_mean = tf.zeros(shape=(BQ*Q, Q-1), dtype=dtype)  # (B*Q*Q, Q)
+        Phi_cdf_mean = tf.zeros(shape=(BQ * Q, Q - 1), dtype=dtype)  # (B*Q*Q, Q)
         Phi_cdf_cov = R_reshaped  # (B*Q*Q, Q-1, Q-1)
 
         # Compute multivariate cdfs
@@ -1526,12 +1502,12 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         return mvn_cdfs
 
     def compute_batch_expected_improvement(
-            self,
-            mean: tf.Tensor,
-            covariance: tf.Tensor,
-            threshold: tf.Tensor,
-            mvn_cdf: Callable,
-        ) -> TensorType:
+        self,
+        mean: tf.Tensor,
+        covariance: tf.Tensor,
+        threshold: tf.Tensor,
+        mvn_cdf: Callable,
+    ) -> TensorType:
         """Accurate Monte Carlo approximation of the batch expected
         improvement, using the method of Chevallier and Ginsbourger
         :cite:`chevalier2013fast`.
@@ -1560,17 +1536,15 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         b, m = self.compute_bm(
             mean=mean,
             threshold=threshold,
-        ) # (B, Q, Q), (B, Q, Q)
+        )  # (B, Q, Q), (B, Q, Q)
 
         # Compute Sigma
-        Sigma = self.compute_Sigma(
-            covariance=covariance
-        ) # (B, Q, Q, Q)
+        Sigma = self.compute_Sigma(covariance=covariance)  # (B, Q, Q, Q)
 
         # Reshape all tensors, for batching
-        b_reshaped = tf.reshape(b, (B*Q, Q))
-        m_reshaped = tf.reshape(m, (B*Q, Q))
-        Sigma_reshaped = tf.reshape(Sigma, (B*Q, Q, Q))
+        b_reshaped = tf.reshape(b, (B * Q, Q))
+        m_reshaped = tf.reshape(m, (B * Q, Q))
+        Sigma_reshaped = tf.reshape(Sigma, (B * Q, Q, Q))
 
         # Compute p tensor
         p = self.compute_p(
@@ -1585,12 +1559,12 @@ class batch_expected_improvement(AcquisitionFunctionClass):
             m_reshaped=m_reshaped,
             b_reshaped=b_reshaped,
             Sigma_reshaped=Sigma_reshaped,
-        ) # (B*Q, Q, Q-1)
+        )  # (B*Q, Q, Q-1)
 
         # Compute Sigma_i
         R = self.compute_R(
             Sigma_reshaped=Sigma_reshaped,
-        ) # (B*Q, Q, Q-1, Q-1)
+        )  # (B*Q, Q, Q-1, Q-1)
 
         # Compute Q-1 multivariate CDFs
         Phi_mvn_cdfs = self.compute_Phi(
@@ -1604,9 +1578,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         normal = tfp.distributions.Normal(loc=m, scale=S_diag**0.5)
         uvn_pdfs = tf.math.exp(normal.log_prob(b))  # (B, Q, Q)
 
-        Sigma_diag = tf.linalg.diag_part(
-            tf.transpose(Sigma, perm=[0, 2, 1, 3])
-        )
+        Sigma_diag = tf.linalg.diag_part(tf.transpose(Sigma, perm=[0, 2, 1, 3]))
         Sigma_diag = tf.transpose(Sigma_diag, perm=[0, 2, 1])
 
         T = tf.tile(threshold[:, None], (1, Q))
@@ -1632,31 +1604,35 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         :param x: Tensor of shape ***.
         :returns ei: Tensor of shape (B,), expected improvement.
         """
-        
+
         if self._mvn_cdf is None:
             self._mvn_cdf = make_mvn_cdf(samples=self._samples)
-        
+
         mean, covariance = self._model.predict_joint(x)
-        
+
         # raise ValueError(f"{x.shape=} {mean.shape=} {covariance.shape=}")
         mean = mean[:, :, 0]
         covariance = covariance[:, 0, :, :]
-        covariance = covariance + 1e-6 * tf.eye(
-            covariance.shape[-1],
-            dtype=covariance.dtype,
-        )[None, :, :]
-        
+        covariance = (
+            covariance
+            + 1e-6
+            * tf.eye(
+                covariance.shape[-1],
+                dtype=covariance.dtype,
+            )[None, :, :]
+        )
+
         threshold = tf.tile(self._eta, (mean.shape[0],))
-        
+
         ei = self.compute_batch_expected_improvement(
             mean=-mean,
             covariance=covariance,
             threshold=-threshold,
             mvn_cdf=self._mvn_cdf,
         )[:, None]
-        
+
         return ei
-    
+
 
 class MultipleOptimismNegativeLowerConfidenceBound(
     SingleModelVectorizedAcquisitionBuilder[ProbabilisticModel]

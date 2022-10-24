@@ -437,7 +437,7 @@ def test_bayesian_active_learning_by_disagreement_is_correct(at: tf.Tensor) -> N
         to_default_float(mean), to_default_float(tf.sqrt(var))
     ).sample(100000)
     MC_term21 = tf.reduce_mean(entropy(normal.cdf(samples)))
-    MC_term22 = tf.reduce_mean(np.exp(-(samples ** 2) / np.pi * np.log(2)))
+    MC_term22 = tf.reduce_mean(np.exp(-(samples**2) / np.pi * np.log(2)))
 
     npt.assert_allclose(actual_term2, MC_term21, rtol=0.05, atol=0.05)
     npt.assert_allclose(actual_term2, MC_term22, rtol=0.05, atol=0.05)

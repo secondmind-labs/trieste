@@ -880,7 +880,7 @@ def test_expected_constrained_improvement_is_less_for_constrained_points() -> No
             return lambda x: tf.cast(tf.squeeze(x, -2) >= 0, x.dtype)
 
     def two_global_minima(x: tf.Tensor) -> tf.Tensor:
-        return x ** 4 / 4 - x ** 2 / 2
+        return x**4 / 4 - x**2 / 2
 
     initial_query_points = tf.constant([[-2.0], [0.0], [1.2]])
     data = {"foo": Dataset(initial_query_points, two_global_minima(initial_query_points))}
@@ -1001,7 +1001,9 @@ def test_batch_monte_carlo_expected_improvement_raises_for_invalid_jitter(
     jitter: float,
 ) -> None:
     with pytest.raises(tf.errors.InvalidArgumentError):
-        BatchExpectedImprovement(sample_size=sample_size, batch_size=batch_size, dtype=dtype, jitter=jitter)
+        BatchExpectedImprovement(
+            sample_size=sample_size, batch_size=batch_size, dtype=dtype, jitter=jitter
+        )
 
 
 @pytest.mark.parametrize("sample_size", [100])
@@ -1079,39 +1081,36 @@ def test_batch_expected_improvement_can_reproduce_mc_excpected_improvement(
     jitter: float,
     mc_sample_size: int,
 ) -> None:
-    
-    known_query_points = tf.random.uniform(
-        [num_data, dimension],
-        dtype=tf.float64
-    )
-    
+
+    known_query_points = tf.random.uniform([num_data, dimension], dtype=tf.float64)
+
     data = Dataset(known_query_points, quadratic(known_query_points))
     model = QuadraticMeanAndRBFKernelWithBatchSamplers(dataset=data)
-    
+
     batch_ei = BatchExpectedImprovement(
         sample_size=sample_size,
         batch_size=batch_size,
         dtype=dtype,
         jitter=jitter,
     )
-    
+
     batch_ei = batch_ei.prepare_acquisition_function(
         model=model,
         dataset=data,
     )
-    
+
     batch_mcei = BatchMonteCarloExpectedImprovement(
         sample_size=mc_sample_size,
         jitter=jitter,
     )
-    
+
     batch_mcei = batch_mcei.prepare_acquisition_function(
         model=model,
         dataset=data,
     )
-    
+
     xs = tf.random.uniform([num_parallel, batch_size, dimension], dtype=tf.float64)
-    
+
     npt.assert_allclose(batch_ei(xs), batch_mcei(xs), rtol=1e-2)
     # and again, since the sampler uses cacheing
     npt.assert_allclose(batch_ei(xs), batch_mcei(xs), rtol=1e-2)
@@ -1136,23 +1135,25 @@ def test_batch_expected_improvement_updates_without_retracing(
     jitter: float,
     mc_sample_size: int,
 ) -> None:
-    
+
     known_query_points = tf.random.uniform([num_data, dimension], dtype=tf.float64)
-    data = Dataset(known_query_points[num_data-2:], quadratic(known_query_points[num_data-2:]))
+    data = Dataset(
+        known_query_points[num_data - 2 :], quadratic(known_query_points[num_data - 2 :])
+    )
     model = QuadraticMeanAndRBFKernelWithBatchSamplers(dataset=data)
-    
+
     batch_ei_builder = BatchExpectedImprovement(
         sample_size=sample_size,
         batch_size=batch_size,
         dtype=dtype,
         jitter=jitter,
     )
-    
+
     batch_mcei_builder = BatchMonteCarloExpectedImprovement(
         sample_size=mc_sample_size,
         jitter=jitter,
     )
-    
+
     xs = tf.random.uniform([num_parallel, batch_size, dimension], dtype=tf.float64)
 
     batch_ei = batch_ei_builder.prepare_acquisition_function(model=model, dataset=data)
