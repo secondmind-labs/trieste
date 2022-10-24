@@ -1020,6 +1020,7 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSampler])
         """
         
         tf.debugging.assert_positive(sample_size)
+        tf.debugging.assert_positive(batch_size)
         tf.debugging.assert_greater_equal(jitter, 0.0)
 
         self._sample_size = sample_size

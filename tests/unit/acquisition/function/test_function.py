@@ -46,6 +46,7 @@ from trieste.acquisition.function.function import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
     AugmentedExpectedImprovement,
+    BatchExpectedImprovement
     BatchMonteCarloExpectedImprovement,
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
@@ -875,6 +876,16 @@ def test_expected_constrained_improvement_min_feasibility_probability_bound_is_i
     ei = ExpectedImprovement().using("foo").prepare_acquisition_function(models_, datasets=data)
     x = tf.constant([[1.5]])
     npt.assert_allclose(eci(x), ei(x) * pof(x))
+
+
+@pytest.mark.parametrize("sample_size", [-2, 0])
+@pytest.mark.parametrize("batch_size", [2, 2])
+def test_batch_expected_improvement_raises_for_invalid_sample_size(
+    sample_size: int,
+    batch_size: int,
+) -> None:
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        BatchExpectedImprovement(sample_size=sample_size, batch_size=batch_size)
 
 
 @pytest.mark.parametrize("sample_size", [-2, 0])

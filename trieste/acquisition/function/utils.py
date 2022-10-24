@@ -192,7 +192,7 @@ def make_mvn_cdf(samples: tf.Tensor) -> Callable[TensorType]:
         return mvn_cdf
     
     return mvn_cdf
-    
+
 
 # =============================================================================
 # Multivariate Normal Expected Improvement using naive Monte Carlo estimation
