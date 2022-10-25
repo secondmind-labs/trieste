@@ -24,12 +24,12 @@ import tensorflow_probability as tfp
 
 from ...data import Dataset
 from ...models import ProbabilisticModel, ReparametrizationSampler
+from ...models.gpflow.models import GaussianProcessRegression
 from ...models.interfaces import (
     HasReparamSampler,
     SupportsGetObservationNoise,
     SupportsReparamSamplerObservationNoise,
 )
-from ...models.gpflow.models import GaussianProcessRegression
 from ...space import SearchSpace
 from ...types import TensorType
 from ...utils import DEFAULTS
@@ -41,7 +41,6 @@ from ..interface import (
     SingleModelAcquisitionBuilder,
     SingleModelVectorizedAcquisitionBuilder,
 )
-
 from .utils import make_mvn_cdf
 
 
@@ -1084,7 +1083,7 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
 
     def prepare_acquisition_function(
         self,
-        model: GaussianProcessRegression,
+        model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """ """
@@ -1289,7 +1288,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         m_reshaped: tf.Tensor,
         b_reshaped: tf.Tensor,
         Sigma_reshaped: tf.Tensor,
-        mvn_cdf: Callable,
+        mvn_cdf: Callable[[TensorType], TensorType],
     ) -> TensorType:
         """Helper function for the batch expected improvement, which computes
         the tensor p, as detailed in Chevallier and Ginsbourger
@@ -1365,9 +1364,8 @@ class batch_expected_improvement(AcquisitionFunctionClass):
             ]
         )
 
-        # Unpack tensor shape and data type
+        # Unpack tensor shape
         BQ, Q = m_reshaped.shape
-        dtype = m_reshaped.dtype
 
         # Compute difference between b and m tensors
         diff = b_reshaped - m_reshaped  # (B*Q, Q)
@@ -1445,7 +1443,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         self,
         c: tf.Tensor,
         R: tf.Tensor,
-        mvn_cdf: Callable,
+        mvn_cdf: Callable[[TensorType], TensorType],
     ) -> TensorType:
         """Helper function for the batch expected improvement, which computes
         the tensor Phi, which is the tensor of multivariate Gaussian CDFs, in
@@ -1506,7 +1504,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         mean: tf.Tensor,
         covariance: tf.Tensor,
         threshold: tf.Tensor,
-        mvn_cdf: Callable,
+        mvn_cdf: Callable[[TensorType], TensorType],
     ) -> TensorType:
         """Accurate Monte Carlo approximation of the batch expected
         improvement, using the method of Chevallier and Ginsbourger
@@ -1528,8 +1526,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
             ]
         )
 
-        # Unpack dtype and mean shape
-        dtype = mean.dtype
+        # Unpack and mean shape
         B, Q = mean.shape
 
         # Compute b and m tensors

@@ -47,8 +47,8 @@ def standard_normal_cdf_and_inverse_cdf(
         loc=tf.zeros(shape=(), dtype=dtype),
         scale=tf.ones(shape=(), dtype=dtype),
     )
-    Phi = lambda x: normal.cdf(x)
-    iPhi = lambda x: normal.quantile(x)
+    Phi: Callable[[TensorType], TensorType] = lambda x: normal.cdf(x)
+    iPhi: Callable[[TensorType], TensorType] = lambda x: normal.quantile(x)
 
     return Phi, iPhi
 
