@@ -1035,33 +1035,6 @@ def test_batch_expected_improvement_raises_for_empty_data(
         builder.prepare_acquisition_function(model)
 
 
-@pytest.mark.parametrize("sample_size", [100])
-@pytest.mark.parametrize("batch_size", [2])
-@pytest.mark.parametrize("dtype", [tf.float64])
-@pytest.mark.parametrize("jitter", [1e-6])
-def test_batch_expected_improvement_raises_for_empty_data(
-    sample_size: int,
-    batch_size: int,
-    dtype: tf.DType,
-    jitter: float,
-) -> None:
-    builder = BatchExpectedImprovement(
-        sample_size=sample_size,
-        batch_size=batch_size,
-        dtype=dtype,
-        jitter=jitter,
-    )
-    data = mk_dataset([(0.0, 0.0)], [(0.0, 0.0)])
-    matern52 = tfp.math.psd_kernels.MaternFiveHalves(
-        amplitude=tf.cast(2.3, tf.float64), length_scale=tf.cast(0.5, tf.float64)
-    )
-    model = GaussianProcessWithBatchSamplers(
-        [lambda x: Branin.objective(x), lambda x: quadratic(x)], [matern52, rbf()]
-    )
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        builder.prepare_acquisition_function(model, dataset=data)
-
-
 @pytest.mark.parametrize("num_data", [5])
 @pytest.mark.parametrize("num_parallel", [3])
 @pytest.mark.parametrize("sample_size", [100])
@@ -1092,9 +1065,7 @@ def test_batch_expected_improvement_can_reproduce_mc_excpected_improvement(
         batch_size=batch_size,
         dtype=dtype,
         jitter=jitter,
-    )
-
-    batch_ei = batch_ei.prepare_acquisition_function(
+    ).prepare_acquisition_function(
         model=model,
         dataset=data,
     )
@@ -1102,9 +1073,7 @@ def test_batch_expected_improvement_can_reproduce_mc_excpected_improvement(
     batch_mcei = BatchMonteCarloExpectedImprovement(
         sample_size=mc_sample_size,
         jitter=jitter,
-    )
-
-    batch_mcei = batch_mcei.prepare_acquisition_function(
+    ).prepare_acquisition_function(
         model=model,
         dataset=data,
     )

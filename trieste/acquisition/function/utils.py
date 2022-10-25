@@ -17,7 +17,7 @@ it contains functions for approximating the cumulative density function (CDF)
 of a multivariate Gaussian, and a helper for computing a naive Monte Carlo
 estimate of the batch expected improvement for a Gaussian distribution.
 """
-from typing import Callable
+from typing import Callable, Tuple
 
 from ...types import TensorType
 
@@ -34,7 +34,7 @@ tfd = tfp.distributions
 
 def standard_normal_cdf_and_inverse_cdf(
     dtype: tf.DType,
-) -> tuple[Callable[[TensorType], TensorType]]:
+) -> Tuple[Callable[[TensorType], TensorType], Callable[[TensorType], TensorType],]:
     """Returns two callables *Phi* and *iPhi*, which compute the cumulative
     density function and inverse cumulative density function of a standard
     univariate Gaussian.
@@ -94,7 +94,7 @@ def get_update_indices(B: int, S: int, Q: int, q: int) -> TensorType:
 
 
 def make_mvn_cdf(
-    samples: tf.Tensor,
+    samples: TensorType,
 ) -> Callable[[TensorType, TensorType, TensorType, float], TensorType]:
     """Builds the cumulative density function of the multivariate Gaussian
     using the Genz approximation detailed in :cite:`genz2016numerical`.
@@ -113,9 +113,9 @@ def make_mvn_cdf(
 
     @tf.function
     def mvn_cdf(
-        x: tf.Tensor,
-        mean: tf.Tensor,
-        cov: tf.Tensor,
+        x: TensorType,
+        mean: TensorType,
+        cov: TensorType,
         jitter: float = 1e-6,
     ) -> TensorType:
         """Callable for the cumulative density function of the multivariate
@@ -206,9 +206,9 @@ def make_mvn_cdf(
 
 @tf.function
 def gaussian_monte_carlo_expected_improvement(
-    mean: tf.Tensor,
-    covariance: tf.Tensor,
-    threshold: tf.Tensor,
+    mean: TensorType,
+    covariance: TensorType,
+    threshold: TensorType,
     num_samples: int = int(1e4),
 ) -> TensorType:
     """Computes an approximation of the expected improvement of a

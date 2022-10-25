@@ -17,7 +17,7 @@ functions --- functions that estimate the utility of evaluating sets of candidat
 """
 from __future__ import annotations
 
-from typing import Callable, Mapping, Optional, cast
+from typing import Union, Callable, Mapping, Optional, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -1114,7 +1114,7 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        model: HasReparamSampler,
+        model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """ """
@@ -1137,7 +1137,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
     def __init__(
         self,
         samples: TensorType,
-        model: HasReparamSampler,
+        model: ProbabilisticModel,
         eta: TensorType,
         jitter: float,
     ):
@@ -1155,7 +1155,6 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         self._jitter = jitter
         self._eta = tf.Variable(eta)
         self._model = model
-        self._mvn_cdf = None
 
     def update(self, eta: TensorType) -> None:
         """Update the acquisition function with a new eta value and reset the
@@ -1288,7 +1287,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         m_reshaped: tf.Tensor,
         b_reshaped: tf.Tensor,
         Sigma_reshaped: tf.Tensor,
-        mvn_cdf: Callable[[TensorType], TensorType],
+        mvn_cdf: Callable[[TensorType, TensorType, TensorType, float], TensorType],
     ) -> TensorType:
         """Helper function for the batch expected improvement, which computes
         the tensor p, as detailed in Chevallier and Ginsbourger
@@ -1329,7 +1328,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
 
         p_cdf_x = b_reshaped - m_reshaped  # (B*Q, Q)
 
-        p = mvn_cdf(
+        p = mvn_cdf(  # type: ignore
             x=p_cdf_x,
             mean=p_cdf_mean,
             cov=p_cdf_cov,
@@ -1443,7 +1442,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         self,
         c: tf.Tensor,
         R: tf.Tensor,
-        mvn_cdf: Callable[[TensorType], TensorType],
+        mvn_cdf: Callable[[TensorType, TensorType, TensorType, float], TensorType],
     ) -> TensorType:
         """Helper function for the batch expected improvement, which computes
         the tensor Phi, which is the tensor of multivariate Gaussian CDFs, in
@@ -1490,7 +1489,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         Phi_cdf_cov = R_reshaped  # (B*Q*Q, Q-1, Q-1)
 
         # Compute multivariate cdfs
-        mvn_cdfs = mvn_cdf(
+        mvn_cdfs = mvn_cdf(  # type: ignore
             x=Phi_cdf_x,
             mean=Phi_cdf_mean,
             cov=Phi_cdf_cov,
@@ -1504,7 +1503,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         mean: tf.Tensor,
         covariance: tf.Tensor,
         threshold: tf.Tensor,
-        mvn_cdf: Callable[[TensorType], TensorType],
+        mvn_cdf: Callable[[TensorType, TensorType, TensorType, float], TensorType],
     ) -> TensorType:
         """Accurate Monte Carlo approximation of the batch expected
         improvement, using the method of Chevallier and Ginsbourger
@@ -1602,10 +1601,10 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         :returns ei: Tensor of shape (B,), expected improvement.
         """
 
-        if self._mvn_cdf is None:
+        if not hasattr(self, "_mvn_cdf"):
             self._mvn_cdf = make_mvn_cdf(samples=self._samples)
 
-        mean, covariance = self._model.predict_joint(x)
+        mean, covariance = self._model.predict_joint(x)  # type: ignore
 
         mean = mean[:, :, 0]
         covariance = covariance[:, 0, :, :]
