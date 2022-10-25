@@ -47,6 +47,7 @@ The following tutorials (or sections thereof) explain how to use and extend spec
 * :ref:`How do I make a custom acquisition function?<notebooks/failure_ego:Create a custom acquisition function>`
 * :doc:`How do I recover a failed optimization loop?<notebooks/recovering_from_errors>`
 * :doc:`How do I track and visualize an optimization loop in realtime using TensorBoard?<notebooks/visualizing_with_tensorboard>`
+* :doc:`What are the key Python types used in Trieste and how can they be extended?<notebooks/code_overview>`
 * :doc:`Does Trieste have interface for external control of the optimization loop, also known as Ask-Tell interface?<notebooks/ask_tell_optimization>`
 * :doc:`How do I perform data transformations required for training the model?<notebooks/data_transformation>`
 * How do I use Trieste in asynchronous objective evaluation mode?
@@ -64,6 +65,8 @@ The following tutorials (or sections thereof) explain how to use and extend spec
    notebooks/asynchronous_greedy_multiprocessing
    notebooks/asynchronous_nongreedy_batch_ray
    notebooks/visualizing_with_tensorboard
+   notebooks/code_overview
+
 
 Run the tutorials interactively
 -------------------------------
