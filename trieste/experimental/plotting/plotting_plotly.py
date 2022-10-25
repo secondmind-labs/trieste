@@ -88,7 +88,7 @@ def add_surface_plotly(
     :return: updated plotly figure
     """
 
-    d = pd.DataFrame(f.reshape([xx.shape[0], yy.shape[1]]), index=xx, columns=yy)
+    d = pd.DataFrame(f.reshape([xx.shape[0], yy.shape[1]]))
 
     fig.add_trace(
         go.Surface(z=d, x=xx, y=yy, showscale=False, opacity=alpha, colorscale="viridis"),
