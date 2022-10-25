@@ -162,6 +162,8 @@ def generate_continuous_optimizer(
     num_initial_samples: int = NUM_SAMPLES_MIN,
     num_optimization_runs: int = 10,
     num_recovery_runs: int = 10,
+    initial_candidates_in = None,
+    initial_points_out = None,
     optimizer_args: Optional[dict[str, Any]] = None,
 ) -> AcquisitionOptimizer[Box | TaggedProductSearchSpace]:
     """
@@ -239,7 +241,10 @@ def generate_continuous_optimizer(
         if V < 0:
             raise ValueError(f"vectorization must be positive, got {V}")
 
-        candidates = space.sample(num_initial_samples)[:, None, :]  # [num_initial_samples, 1, D]
+        if initial_candidates_in is not None:
+            candidates = initial_candidates_in
+        else:
+            candidates = space.sample(num_initial_samples)[:, None, :]  # [num_initial_samples, 1, D]
         tiled_candidates = tf.tile(candidates, [1, V, 1])  # [num_initial_samples, V, D]
 
         target_func_values = target_func(tiled_candidates)  # [num_samples, V]
@@ -263,6 +268,8 @@ def generate_continuous_optimizer(
             tiled_candidates, top_k_indices, batch_dims=1
         )  # [V, num_optimization_runs, D]
         initial_points = tf.transpose(top_k_points, [1, 0, 2])  # [num_optimization_runs,V,D]
+        if initial_points_out is not None:
+            initial_points_out[:] = initial_points
 
         (
             successes,
