@@ -76,7 +76,7 @@ from .function import (
     min_value_entropy_search,
     multiple_optimism_lower_confidence_bound,
     predictive_variance,
-    probability_of_feasibility,
+    probability_below_threshold,
     soft_local_penalizer,
 )
 from .interface import (

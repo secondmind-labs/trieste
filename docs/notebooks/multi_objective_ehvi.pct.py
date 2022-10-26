@@ -42,7 +42,7 @@ tf.random.set_seed(1793)
 
 
 # %%
-vlmop2 = VLMOP2().objective()
+vlmop2 = VLMOP2.objective
 observer = trieste.objectives.utils.mk_observer(vlmop2)
 
 # %%
@@ -180,7 +180,7 @@ plt.show()
 # First we need to calculate the $\text{HV}_{\text{actual}}$ based on the actual Pareto front. For some multi-objective synthetic functions like VLMOP2, the actual Pareto front has a clear definition, thus we could use `gen_pareto_optimal_points` to near uniformly sample on the actual Pareto front. And use these generated Pareto optimal points to (approximately) calculate the hypervolume of the actual Pareto frontier:
 
 # %%
-actual_pf = VLMOP2().gen_pareto_optimal_points(100)  # gen 100 pf points
+actual_pf = VLMOP2.gen_pareto_optimal_points(100)  # gen 100 pf points
 ref_point = get_reference_point(data_observations)
 idea_hv = Pareto(
     tf.cast(actual_pf, dtype=data_observations.dtype)

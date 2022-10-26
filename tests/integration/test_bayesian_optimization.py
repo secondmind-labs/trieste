@@ -75,16 +75,7 @@ from trieste.models.gpflow import (
 from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp
 from trieste.models.keras import DeepEnsemble, build_keras_ensemble
 from trieste.models.optimizer import KerasOptimizer, Optimizer
-from trieste.objectives import (
-    BRANIN_MINIMIZERS,
-    BRANIN_SEARCH_SPACE,
-    SCALED_BRANIN_MINIMUM,
-    SIMPLE_QUADRATIC_MINIMIZER,
-    SIMPLE_QUADRATIC_MINIMUM,
-    SIMPLE_QUADRATIC_SEARCH_SPACE,
-    scaled_branin,
-    simple_quadratic,
-)
+from trieste.objectives import ScaledBranin, SimpleQuadratic
 from trieste.objectives.utils import mk_observer
 from trieste.observer import OBJECTIVE
 from trieste.space import Box, SearchSpace
@@ -116,7 +107,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                 24,
                 EfficientGlobalOptimization(
                     MinValueEntropySearch(
-                        BRANIN_SEARCH_SPACE,
+                        ScaledBranin.search_space,
                         min_value_sampler=ThompsonSamplerFromTrajectory(sample_min_value=True),
                     ).using(OBJECTIVE)
                 ),
@@ -137,7 +128,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                 10,
                 EfficientGlobalOptimization(
                     LocalPenalization(
-                        BRANIN_SEARCH_SPACE,
+                        ScaledBranin.search_space,
                     ).using(OBJECTIVE),
                     num_query_points=3,
                 ),
@@ -147,7 +138,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                 10,
                 AsynchronousGreedy(
                     LocalPenalization(
-                        BRANIN_SEARCH_SPACE,
+                        ScaledBranin.search_space,
                     ).using(OBJECTIVE),
                     num_query_points=3,
                 ),
@@ -157,7 +148,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                 10,
                 EfficientGlobalOptimization(
                     GIBBON(
-                        BRANIN_SEARCH_SPACE,
+                        ScaledBranin.search_space,
                     ).using(OBJECTIVE),
                     num_query_points=2,
                 ),
@@ -167,7 +158,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                 20,
                 EfficientGlobalOptimization(
                     MultipleOptimismNegativeLowerConfidenceBound(
-                        BRANIN_SEARCH_SPACE,
+                        ScaledBranin.search_space,
                     ).using(OBJECTIVE),
                     num_query_points=3,
                 ),
@@ -179,7 +170,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                 TrustRegion(
                     EfficientGlobalOptimization(
                         MinValueEntropySearch(
-                            BRANIN_SEARCH_SPACE,
+                            ScaledBranin.search_space,
                         ).using(OBJECTIVE)
                     )
                 ),
@@ -509,15 +500,15 @@ def _test_optimizer_finds_minimum(
     model_args = model_args or {}
 
     if optimize_branin:
-        search_space = BRANIN_SEARCH_SPACE
-        minimizers = BRANIN_MINIMIZERS
-        minima = SCALED_BRANIN_MINIMUM
+        search_space = ScaledBranin.search_space
+        minimizers = ScaledBranin.minimizers
+        minima = ScaledBranin.minimum
         rtol_level = 0.005
         num_initial_query_points = 5
     else:
-        search_space = SIMPLE_QUADRATIC_SEARCH_SPACE
-        minimizers = SIMPLE_QUADRATIC_MINIMIZER
-        minima = SIMPLE_QUADRATIC_MINIMUM
+        search_space = SimpleQuadratic.search_space
+        minimizers = SimpleQuadratic.minimizers
+        minima = SimpleQuadratic.minimum
         rtol_level = 0.05
         num_initial_query_points = 10
 
@@ -527,7 +518,7 @@ def _test_optimizer_finds_minimum(
         num_initial_query_points = 25
 
     initial_query_points = search_space.sample(num_initial_query_points)
-    observer = mk_observer(scaled_branin if optimize_branin else simple_quadratic)
+    observer = mk_observer(ScaledBranin.objective if optimize_branin else SimpleQuadratic.objective)
     initial_data = observer(initial_query_points)
 
     model: TrainableProbabilisticModel  # (really TPMType, but that's too complicated for mypy)
