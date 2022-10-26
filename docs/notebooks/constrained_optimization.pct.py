@@ -13,19 +13,21 @@ import matplotlib.pyplot as plt
 import trieste
 from trieste.objectives import ScaledBranin
 from trieste.objectives.utils import mk_observer
+from trieste.observer import OBJECTIVE
 from trieste.space import Box
 from trieste.models.gpflow import GaussianProcessRegression, build_gpr
-from trieste.acquisition.function import ExpectedImprovement
+from trieste.acquisition.function import ExpectedImprovement, ExpectedConstrainedImprovement
 from trieste.acquisition.rule import EfficientGlobalOptimization
 from trieste.acquisition.optimizer import generate_continuous_optimizer, NUM_SAMPLES_MIN, NUM_SAMPLES_DIM, NUM_RUNS_DIM
 from trieste.experimental.plotting import plot_function_plotly, plot_function_2d
 from trieste.utils import Timer
-from trieste.acquisition.interface import AcquisitionFunction, SingleModelAcquisitionBuilder
+from trieste.acquisition.interface import AcquisitionFunction, SingleModelAcquisitionBuilder, AcquisitionFunctionBuilder
 from trieste.models import ProbabilisticModel
+from trieste.models.interfaces import ProbabilisticModelType
 from trieste.data import Dataset
 from trieste.types import TensorType
 from scipy.optimize import LinearConstraint
-from typing import Optional, cast
+from typing import Optional, Mapping, cast
 import gpflow
 import textwrap
 import ipywidgets
@@ -124,6 +126,121 @@ plt.contourf(Xi, Xj, C, levels=1, hatches=['/', None], colors=['gray', 'white'],
 #
 # Just like in purely sequential optimization, we fit a surrogate Gaussian process model to the initial data. The GPflow models cannot be used directly in our Bayesian optimization routines, so we build a GPflow's `GPR` model using Trieste's convenient model build function `build_gpr` and pass it to the `GaussianProcessRegression` wrapper. Note that we set the likelihood variance to a small number because we are dealing with a noise-free problem.
 
+# %%
+class SimpleConstraintsFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel]):
+    def __repr__(self) -> str:
+        """"""
+        return "SimpleConstraintsFeasibility()"
+
+    def prepare_acquisition_function(
+        self,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param model: Unused.
+        :param dataset: Unused.
+        :return: The probability of feasibility function. This function will raise
+            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+            greater than one.
+        """
+        return simple_constraints_feasibility()
+
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param model: Unused.
+        :param dataset: Unused.
+        """
+        return function  # no need to update anything
+
+def simple_constraints_feasibility(
+) -> AcquisitionFunction:
+    r"""
+    :return: The probability of feasibility function. This function will raise
+        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+        greater than one.
+    :raise ValueError or tf.errors.InvalidArgumentError: If ``threshold`` is not a scalar.
+    """
+
+    @tf.function
+    def acquisition(x: TensorType) -> TensorType:
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="This acquisition function only supports batch sizes of one.",
+        )
+
+        c = constraints_residual(lin_constraints, tf.squeeze(x, -2))
+        distr = tfp.distributions.Normal(tf.cast(0, x.dtype), tf.cast(0.05, x.dtype))
+        return tf.expand_dims(tf.math.reduce_prod(distr.cdf(c), axis=[0, 1]), axis=-1)
+
+    return acquisition
+
+
+class ExpectedSimpleConstrainedImprovement(ExpectedConstrainedImprovement[ProbabilisticModel]):
+    def __init__(
+        self,
+        objective_tag: str,
+        constraint_builder: AcquisitionFunctionBuilder[ProbabilisticModelType],
+        min_feasibility_probability: float | TensorType = 0.5,
+    ):
+        """
+        :param objective_tag: The tag for the objective data and model.
+        :param constraint_builder: The builder for the constraint function.
+        :param min_feasibility_probability: The minimum probability of feasibility for a
+            "best point" to be considered feasible.
+        :raise ValueError (or tf.errors.InvalidArgumentError): If ``min_feasibility_probability``
+            is not a scalar in the unit interval :math:`[0, 1]`.
+        """
+        super().__init__(objective_tag, constraint_builder, min_feasibility_probability)
+
+    def __repr__(self) -> str:
+        """"""
+        return (
+            f"ExpectedSimpleConstrainedImprovement({self._objective_tag!r}, {self._constraint_builder!r},"
+            f" {self._min_feasibility_probability!r})"
+        )
+
+    def prepare_acquisition_function(
+        self,
+        models: Mapping[str, ProbabilisticModelType],
+        datasets: Optional[Mapping[str, Dataset]] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param models: The models over each tag.
+        :param datasets: The data from the observer.
+        :return: The expected constrained improvement acquisition function. This function will raise
+            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+            greater than one.
+        :raise KeyError: If `objective_tag` is not found in ``datasets`` and ``models``.
+        :raise tf.errors.InvalidArgumentError: If the objective data is empty.
+        """
+        acquistion_function = super().prepare_acquisition_function(models, datasets)
+        #return self._expected_improvement_fn if acquistion_function == self._constrained_improvement_fn else acquistion_function
+        tf.debugging.Assert(self._expected_improvement_fn is not None, [tf.constant([])])
+        return self._expected_improvement_fn
+        
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        models: Mapping[str, ProbabilisticModelType],
+        datasets: Optional[Mapping[str, Dataset]] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param models: The models for each tag.
+        :param datasets: The data from the observer.
+        """
+        acquistion_function = super().update_acquisition_function(function, models, datasets)
+        #return self._expected_improvement_fn if acquistion_function == self._constrained_improvement_fn else acquistion_function
+        tf.debugging.Assert(self._expected_improvement_fn is not None, [tf.constant([])])
+        return self._expected_improvement_fn
+
 
 # %%
 class Run:
@@ -185,29 +302,41 @@ class Run:
                 out += str(r)
             return out
 
-    def __init__(self):
+    def __init__(self, constrained_ei_type=None):
         self.optims = {}
         self.data = {}
         self.results_hist = {}
         self.plot_frames = []
-    
-    def build_fn(self, num_initial_points=5):
+        self.constrained_ei_type = constrained_ei_type
+
+    def build_fn(self, num_initial_points=25):
         initial_query_points = search_space.sample(num_initial_points)
+        # FIXME: always have at least some points in the feasible region, to avoid optimisation for constraints.
+        initial_query_points = tf.concat([initial_query_points, Box([0.5, 0.2], [0.58, 0.28]).sample(2)], axis=0)
+        initial_query_points = tf.concat([initial_query_points, [[0.6, 0.4]]], axis=0)
         self.initial_data = observer(initial_query_points)
         
         gpflow_model = build_gpr(self.initial_data, search_space, likelihood_variance=1e-7)
         self.model = GaussianProcessRegression(gpflow_model)
 
         # Reference EI acquisition function values.
-        ei = ExpectedImprovement()
-        self.ei_acq_function = ei.prepare_acquisition_function(self.model, dataset=self.initial_data)
-        self.EI_F = np.reshape(self.ei_acq_function(np.expand_dims(X, axis=-2)), Xi.shape)
+        if self.constrained_ei_type is not None:
+            feas = SimpleConstraintsFeasibility()
+            self.acq_builder = self.constrained_ei_type(OBJECTIVE, feas.using(OBJECTIVE), min_feasibility_probability=0.5)
+            self.acq_function = self.acq_builder.prepare_acquisition_function({OBJECTIVE: self.model}, datasets={OBJECTIVE: self.initial_data})
+        else:
+            self.acq_builder = ExpectedImprovement()
+            self.acq_function = self.acq_builder.prepare_acquisition_function(self.model, dataset=self.initial_data)
+
+        # Manually create acquisition function so we can build the tensorflow graph upfront, so graph compile time is excluded from measurement.
+        # Also creates reference values.
+        self.acq_f_vals = np.reshape(self.acq_function(tf.expand_dims(X, axis=-2)), Xi.shape)
     
-        global_ind_max = np.unravel_index(np.argmax(self.EI_F), self.EI_F.shape)
-        self.global_f_max = self.EI_F[global_ind_max]
+        global_ind_max = np.unravel_index(np.argmax(self.acq_f_vals), self.acq_f_vals.shape)
+        self.global_f_max = self.acq_f_vals[global_ind_max]
         self.global_x_max = np.array([Xi[global_ind_max], Xj[global_ind_max]])
         
-        f_masked = np.where(C, self.EI_F, np.NINF)
+        f_masked = np.where(C, self.acq_f_vals, np.NINF)
         feas_ind_max = np.unravel_index(np.argmax(f_masked), f_masked.shape)
         self.feas_f_max = f_masked[feas_ind_max]
         self.feas_x_max = np.array([Xi[feas_ind_max], Xj[feas_ind_max]])
@@ -228,7 +357,6 @@ class Run:
                 self.results_hist[name].evaluate(self.global_x_max, self.global_f_max, self.feas_x_max, self.feas_f_max, self.data[name], optim_timer.time)
         
     def _run_optim(self, num_initial_samples, num_optimization_runs, init_candidates, optimizer_args):
-        ei = ExpectedImprovement()
         init_points = np.zeros((num_optimization_runs, 1, len(search_space.lower)))
         opt = generate_continuous_optimizer(
             num_initial_samples=num_initial_samples,
@@ -239,19 +367,14 @@ class Run:
         )
         init_points = init_points.squeeze()
         
-        # Manually create acquisition function so we can build the tensorflow graph upfront, so graph compile time is excluded from measurement.
-        acq_func = ei.prepare_acquisition_function(self.model, dataset=self.initial_data)
-        # Build graph with dummy call.
-        _ = acq_func(tf.expand_dims(self.initial_data.query_points, axis=-2))
-
         acq_rule = EfficientGlobalOptimization(  # type: ignore
-            num_query_points=1, builder=ei, optimizer=opt, initial_acquisition_function=acq_func
+            num_query_points=1, builder=self.acq_builder, optimizer=opt, initial_acquisition_function=self.acq_function
         )
         
         with Timer() as optim_timer:
             points_chosen = acq_rule.acquire_single(search_space, self.model, dataset=self.initial_data).numpy()
         
-        f_val = self.ei_acq_function(np.expand_dims(points_chosen, axis=-2))
+        f_val = self.acq_function(np.expand_dims(points_chosen, axis=-2))
 
         return (points_chosen, f_val, init_points), optim_timer
 
@@ -269,11 +392,14 @@ class Run:
             print(f"{result.label}\t(runs={len(result)}, mean-secs={np.mean(ts):.3f}): constr-sat-%={np.mean(sats)*100:5.1f}, mean-xerr={np.mean(xerrs):.3f}," +
                   f" mean-ferr={np.mean(ferrs):.3f}, mean-cerr={np.mean(cerrs):.3f}")
 
-    def _plot_optim(self, ax, name):
-        points, fs, init_points = self.data[name]
-        fs = np.squeeze(fs, axis=-1)
+    def _plot_optim(self, ax, name=None):
+        if name is not None:
+            points, fs, init_points = self.data[name]
+            fs = np.squeeze(fs, axis=-1)
+        else:
+            points, fs, init_points = None, None, None
 
-        plot_obj = ax.contour(Xi, Xj, self.EI_F, levels=80, zorder=0)
+        plot_obj = ax.contour(Xi, Xj, self.acq_f_vals, levels=80, zorder=0)
         ax.contourf(Xi, Xj, C, levels=1, colors=[(.2, .2, .2, .7), (1, 1, 1, 0)], zorder=1)
         
         if init_points is not None:
@@ -286,22 +412,23 @@ class Run:
                 marker="o",
             )
         
-        ax.scatter(
-            points[:, 0],
-            points[:, 1],
-            color="red",
-            lw=5,
-            label=name,
-            marker="*",
-        )
-        ax.annotate(
-            #[f"{f:.3}" for f in fs], 
-            f"{float(fs):.3}",
-            (points[:, 0], points[:, 1]),
-            textcoords="offset points",
-            xytext=(10,-15),
-            bbox=dict(boxstyle="round", fc="w", alpha=0.7),
-        )
+        if points is not None:
+            ax.scatter(
+                points[:, 0],
+                points[:, 1],
+                color="red",
+                lw=5,
+                label=name,
+                marker="*",
+            )
+            ax.annotate(
+                #[f"{f:.3}" for f in fs], 
+                f"{float(fs):.3}",
+                (points[:, 0], points[:, 1]),
+                textcoords="offset points",
+                xytext=(10,-15),
+                bbox=dict(boxstyle="round", fc="w", alpha=0.7),
+            )
         
         ax.scatter(
             self.global_x_max[0],
@@ -346,6 +473,9 @@ class Run:
         num_per_side = int(np.ceil(num_plots/2))
         fig, ax = plt.subplots(num_per_side, num_per_side, figsize=(7.2*num_per_side, 4.8*num_per_side))
 
+        for _ in range(len(np.shape(ax)), 2):
+            ax = np.expand_dims(ax, axis=-1)
+
         for i, name in enumerate(self.results_hist.keys()):
             self._plot_optim(ax[i//num_per_side, i%num_per_side], name)
 
@@ -362,29 +492,30 @@ class Run:
 
 
 # %%
-run = Run()
-optims = {
-    "L-BFGS-EI":     None,
-    "TrstRegion-EI": dict(method="trust-constr", constraints=lin_constraints),
-    "SLSQP-EI":      dict(method="SLSQP", constraints=constraints_to_dict(lin_constraints)),
-    "COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=constraints_to_dict(lin_constraints+bound_constraints)),
-}
-run.add_optims(optims)
+initial_query_points = search_space.sample(25)
+initial_data = observer(initial_query_points)
 
-# %%
-progress_widget = ipywidgets.FloatProgress(value=0., min=0., max=1.)
-run_status_widget = ipywidgets.Label(align='right')
-hbox_widget = ipywidgets.HBox([progress_widget, ipywidgets.Label("run: "), run_status_widget])
+gpflow_model = build_gpr(initial_data, search_space, likelihood_variance=1e-7)
+model = GaussianProcessRegression(gpflow_model)
 
-def display_status(progress: float, run_status: str = "") -> None:
-    progress_widget.value = progress
-    run_status_widget.value = run_status
+feas = SimpleConstraintsFeasibility()
+eci = ExpectedSimpleConstrainedImprovement(OBJECTIVE, feas.using(OBJECTIVE))
+ei_f = eci.prepare_acquisition_function({OBJECTIVE: model}, datasets={OBJECTIVE: initial_data})
+eci_f = ei_f(tf.expand_dims(X, axis=-2))
 
 
 # %%
-def multi_run(num_models, num_optims):
+def multi_run(run, num_models, num_optims, with_plot=True):
     plt_be = plt.get_backend()
     plt.switch_backend('Agg')
+    
+    progress_widget = ipywidgets.FloatProgress(value=0., min=0., max=1.)
+    run_status_widget = ipywidgets.Label(align='right')
+    hbox_widget = ipywidgets.HBox([progress_widget, ipywidgets.Label("run: "), run_status_widget])
+
+    def display_status(progress: float, run_status: str = "") -> None:
+        progress_widget.value = progress
+        run_status_widget.value = run_status
 
     # display() only exists when run under jupyter notebook/lab.
     try:
@@ -414,7 +545,7 @@ def multi_run(num_models, num_optims):
         for j in range(0, num_optims):
             display_status((i*num_optims+j)/total_runs, f"{i*num_optims+j+1}/{total_runs}")
             run.run_optims(num_initial_samples, num_optimization_runs)
-            if (i*num_optims+j)%plot_period == 0:
+            if with_plot and (i*num_optims+j)%plot_period == 0:
                 run.plot_results()
 
     display_status(1., "done")
@@ -423,19 +554,81 @@ def multi_run(num_models, num_optims):
 
 
 # %%
-multi_run(5, 5)
+# Run a dummy COBYLA optimization. The first tends to fail, for seemingly an internal optimizer issue.
+run_dummy = Run()
+optims = {
+    "COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=constraints_to_dict(lin_constraints+bound_constraints)),
+}
+run_dummy.add_optims(optims)
+multi_run(run_dummy, 1, 1, with_plot=False)
+
+# %% [markdown]
+# ### Unmodified acquisition function
 
 # %%
-run.print_results_summary()
+run_unmod = Run()
+optims = {
+    "L-BFGS-EI":     None,
+    "TrstRegion-EI": dict(method="trust-constr", constraints=lin_constraints),
+    "SLSQP-EI":      dict(method="SLSQP", constraints=constraints_to_dict(lin_constraints)),
+    "COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=constraints_to_dict(lin_constraints+bound_constraints)),
+}
+run_unmod.add_optims(optims)
 
 # %%
-#run.print_results_full()
+multi_run(run_unmod, 5, 5)
 
 # %%
-run.plot_results()
+run_unmod.print_results_summary()
 
 # %%
-run.write_gif()
+#run_unmod.print_results_full()
+
+# %%
+run_unmod.plot_results()
+
+# %%
+run_unmod.write_gif()
+
+# %% [markdown]
+# ### Constrained acquistion function
+
+# %%
+run_constr = Run(constrained_ei_type=ExpectedConstrainedImprovement)
+optims = {
+    "L-BFGS-EI":     None,
+    "TrstRegion-EI": dict(method="trust-constr"),
+    "SLSQP-EI":      dict(method="SLSQP"),
+    "COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=constraints_to_dict(bound_constraints)),
+}
+run_constr.add_optims(optims)
+
+multi_run(run_constr, 5, 5)
+
+# %%
+run_constr.print_results_summary()
+run_constr.plot_results()
+#run_constr.write_gif()
+
+# %% [markdown]
+# ### Simple constrained acquisition function
+
+# %%
+run_simple_constr = Run(constrained_ei_type=ExpectedSimpleConstrainedImprovement)
+optims = {
+    "L-BFGS-EI":     None,
+    "TrstRegion-EI": dict(method="trust-constr"),
+    "SLSQP-EI":      dict(method="SLSQP"),
+    "COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=constraints_to_dict(bound_constraints)),
+}
+run_simple_constr.add_optims(optims)
+
+multi_run(run_simple_constr, 5, 5)
+
+# %%
+run_simple_constr.print_results_summary()
+run_simple_constr.plot_results()
+#run_simple_constr.write_gif()
 
 # %% [markdown]
 # ## Acquisition functions.
