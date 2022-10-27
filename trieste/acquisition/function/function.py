@@ -17,14 +17,13 @@ functions --- functions that estimate the utility of evaluating sets of candidat
 """
 from __future__ import annotations
 
-from typing import Union, Callable, Mapping, Optional, cast
+from typing import Callable, Mapping, Optional, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
 
 from ...data import Dataset
 from ...models import ProbabilisticModel, ReparametrizationSampler
-from ...models.gpflow.models import GaussianProcessRegression
 from ...models.interfaces import (
     HasReparamSampler,
     SupportsGetObservationNoise,
