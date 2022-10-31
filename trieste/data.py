@@ -113,7 +113,7 @@ class Dataset:
 
 
 def assert_valid_fidelity_query_points(query_points: TensorType) -> None:
-    """ Check whether the final column of a tensor is close enough to ints
+    """Check whether the final column of a tensor is close enough to ints
     to be reasonably considered to represent fidelities.
     The final input column of multi-fidelity data should be a reference to
     the fidelity of the query point. We cannot have mixed type tensors, but
@@ -149,7 +149,7 @@ def get_dataset_for_fidelity(dataset: Dataset, fidelity: int) -> Dataset:
     """Get a dataset with only the specified fidelity of data in
     :param dataset: The dataset from which to extract the single fidelity data
     :param fidelity: The fidelity to extract the data for
-    :return: Dataset with a single fidelity and no fidelity column 
+    :return: Dataset with a single fidelity and no fidelity column
     """
     assert_valid_fidelity_query_points(dataset.query_points)
     input_points = dataset.query_points[:, :-1]  # [..., D+1]

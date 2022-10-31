@@ -1371,14 +1371,31 @@ class VariationalGaussianProcess(
 
 
 class AR1(TrainableProbabilisticModel):
+    """
+    A :class:`TrainableProbabilisticModel` implementation of the AR1 model
+    from :cite:`Kennedy2000`. This is a multi-fidelity model that works with an
+    arbitrary number of fidelities. It relies on there being a linear relationship
+    between fidelities, and may not perform well for more complex relationships.
+    Precisely, it models the relationship between sequential fidelities as
+    .. math:: f_{i}(x) = \rho f_{i-1}(x) + \delta(x)
+    where :math:`\rho` is a scalar and :math:`\delta` models the residual between the fidelities.
+    All the base models used in this implementation are :class:`~gpflow.models.GPR` models.
+    Note: Currently only supports single output problems.
+    """
+
     def __init__(
         self,
         fidelity_models: Sequence[GaussianProcessRegression],
     ):
+        """
+        :param fidelity_models: List of
+            :class:`~trieste.models.gpflow.models.GaussianProcessRegression`
+            models, one for each fidelity.
+        """
         self.num_fidelities = len(fidelity_models)
 
         self.lowest_fidelity_signal_model = fidelity_models[0]
-        self.fidelity_residual_models: Sequence[Union[Optional[GaussianProcessRegression]]] = [
+        self.fidelity_residual_models: Sequence[Optional[GaussianProcessRegression]] = [
             None,
             *fidelity_models[1:],
         ]
@@ -1390,6 +1407,13 @@ class AR1(TrainableProbabilisticModel):
         self.rho = [1, *rho]
 
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        """
+        Predict the marginal mean and variance at query_points.
+        :param query_points: Query points with shape [N, D+1], where the
+            final column of the final dimension contains the fidelity of the query point
+        :return: mean: The mean at query_points with shape [N, P],
+                 and var: Th variance at query_points with shape [N, P]
+        """
         assert_valid_fidelity_query_points(query_points)
         query_points_wo_fidelity = query_points[:, :-1]
         query_points_fidelity_col = query_points[:, -1:]
@@ -1417,6 +1441,13 @@ class AR1(TrainableProbabilisticModel):
         return signal_mean, signal_var
 
     def calculate_residual(self, dataset: Dataset, fidelity: int) -> TensorType:
+        """
+        Calculate the true residuals for a set of datapoints at a given fidelity.
+        :param dataset: Dataset of points for which to calculate the residuals.
+            Query points shape is [N, D], observations is [N,P].
+        :param fidelity: The fidelity for which to calculate the residuals
+        :return: The true residuals at given datapoints for given fidelity, shape is [N,1].
+        """
         fidelity_query_points = convert_query_points_for_fidelity(
             dataset.query_points, fidelity - 1
         )
@@ -1426,6 +1457,13 @@ class AR1(TrainableProbabilisticModel):
         return residuals
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
+        """
+        Sample `num_samples` samples from the posterior distribution at `query_points`
+        :param query_points: The query points at which to sample of shape [N, D+1], where the
+            final column of the final dimension contains the fidelity of the query point
+        :param num_samples: The number of samples (S) to generate for each query point.
+        :return: samples from the posterior of shape [S, N, P]
+        """
         assert_valid_fidelity_query_points(query_points)
         query_points_wo_fidelity = query_points[:, :-1]
         query_points_fidelity_col = query_points[:, -1:]
@@ -1434,7 +1472,7 @@ class AR1(TrainableProbabilisticModel):
             query_points_wo_fidelity, num_samples
         )
 
-        for fidelity in range(self.num_fidelities):  # Could just get max from fidelity col
+        for fidelity in range(self.num_fidelities):
             if fidelity > 0:
                 fidelity_residual_sample = self.fidelity_residual_models[fidelity].sample(
                     query_points_wo_fidelity, num_samples
@@ -1452,9 +1490,35 @@ class AR1(TrainableProbabilisticModel):
 
         return signal_sample
 
-    # Don't HAVE to do this, but may be required
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        raise NotImplementedError("not yet coded up functionality for predict_y")
+        """
+        Predict the marginal mean and variance at `query_points` including observation noise
+        :param query_points: Query points with shape [N, D+1], where the
+            final column of the final dimension contains the fidelity of the query point
+        :return: mean: The mean at query_points with shape [N, P],
+                 and var: Th variance at query_points with shape [N, P]
+        """
+
+        f_mean, f_var = self.predict(query_points)
+        query_points_fidelity_col = query_points[:, -1:]
+
+        # Get fidelity 0 observation noise
+        observation_noise = (
+            tf.ones_like(query_points_fidelity_col)
+            * self.lowest_fidelity_signal_model.get_observation_noise()
+        )
+
+        for fidelity in range(1, self.num_fidelities):
+
+            fidelity_observation_noise = (
+                self.rho[fidelity] ** 2
+            ) * observation_noise + self.fidelity_residual_models[fidelity].get_observation_noise()
+
+            mask = query_points_fidelity_col >= fidelity
+
+            observation_noise = tf.where(mask, fidelity_observation_noise, observation_noise)
+
+        return f_mean, f_var + observation_noise
 
     def update(self, dataset: Dataset) -> None:
         """
@@ -1468,8 +1532,8 @@ class AR1(TrainableProbabilisticModel):
             if fidelity == 0:
                 self.lowest_fidelity_signal_model.update(dataset_for_fidelity)
             else:
-                # Make query points but with final column corresponding to fidelity we wish to predict at
-                # dataset_for_fidelity.query_points
+                # Make query points but with final column corresponding to
+                # fidelity we wish to predict at
                 self.fidelity_residual_models[fidelity].update(
                     Dataset(
                         dataset_for_fidelity.query_points,
@@ -1477,13 +1541,12 @@ class AR1(TrainableProbabilisticModel):
                     )
                 )
 
-
     def optimize(self, dataset: Dataset) -> None:
         """
         Optimize all the models on their corresponding data. The data for each model is
         extracted by splitting the observations in ``dataset``  by fidelity level.
-        Note that we have to code up a custom loss function when optimizing our residual model, so that we
-        can include the correlation parameter as an optimisation variable.
+        Note that we have to code up a custom loss function when optimizing our residual
+        model, so that we can include the correlation parameter as an optimisation variable.
         :param dataset: The query points and observations for *all* the wrapped models.
         """
         assert_valid_fidelity_query_points(dataset.query_points)
@@ -1502,12 +1565,8 @@ class AR1(TrainableProbabilisticModel):
                     dataset_for_fidelity.query_points, fidelity - 1
                 )
                 predictions_from_lower_fidelity = self.predict(prev_fidelity_query_points)[0]
-                # residuals = self.calculate_residual(dataset_for_fidelity, fidelity)
 
                 def loss():  # hardcoded log liklihood calculation for the residual model
-                    # Would like to do this, but it is slower as we make predictions through all the fidelities on *each* call
-                    # even though the earlier ones *shouldn't* change during this optimisation routine
-                    # residuals = self.calculate_residual(dataset_for_fidelity, fidelity)
                     residuals = (
                         fidelity_observations - self.rho[fidelity] * predictions_from_lower_fidelity
                     )
@@ -1528,3 +1587,23 @@ class AR1(TrainableProbabilisticModel):
                 self.fidelity_residual_models[fidelity].update(
                     Dataset(fidelity_query_points, residuals)
                 )
+
+    def covariance_with_top_fidelity(self, query_points: TensorType):
+        """
+        Calculate the covariance of `query_points` with the corresponding
+        query point at the top fidelity.
+        :param query_points: The query points to calculate the covariance for, of shape [N, D+1],
+            where the final column of the final dimension contains the fidelity of the query point
+        :return: The covariance with the top fidelity for the `query_points`, of shape [N, P]
+        """
+        fidelities = query_points[..., -1:]  # [..., 1]
+
+        _, f_var = self.predict(query_points)
+
+        for fidelity in range(self.num_fidelities - 1, -1, -1):
+
+            mask = fidelities < fidelity
+
+            f_var = tf.where(mask, f_var, f_var * self.rho[fidelity])
+
+        return f_var

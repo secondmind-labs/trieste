@@ -425,11 +425,12 @@ def _get_inducing_points(
 
     return inducing_points
 
+
 def build_ar1_models(dataset: Dataset, num_fidelities: int, input_search_space: SearchSpace):
     """
     Build the individual GPR models required for constructing an AR1 model
     with `num_fidelities` fidelities.
-    
+
     :param dataset: Dataset of points with which to initialise the individual models
     :param num_fidelities: Number of fidelities desired for the AR1 model
     :param input_search_space: The input search space of the models
