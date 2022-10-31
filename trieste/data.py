@@ -113,16 +113,30 @@ class Dataset:
 
 
 def assert_valid_fidelity_query_points(query_points: TensorType) -> None:
+    """ Check whether the final column of a tensor is close enough to ints
+    to be reasonably considered to represent fidelities.
+    The final input column of multi-fidelity data should be a reference to
+    the fidelity of the query point. We cannot have mixed type tensors, but
+    we can check that thhe final column values are suitably close to integers.
+    :param query_points: Data to check final column of.
+    :raise AssertionError: If any value in the final column is far from an integer
+    """
 
     fidelity_col = query_points[:, -1]
     npt.assert_allclose(
         tf.round(fidelity_col),
         fidelity_col,
-        err_msg="Fidelity column should be float(int), but got a float that was not close to an int",
+        err_msg="Fidelity column should be float(int), but"
+        "got a float that was not close to an int",
     )
 
 
 def split_dataset_by_fidelity(dataset: Dataset, num_fidelities: int) -> Sequence[Dataset]:
+    """Split dataset into individual datasets without fidelity information
+    :param dataset: Dataset for which to split fidelities
+    :param num_fidlities: Number of fidelities in the problem (not just dataset)
+    :return: Ordered list of datasets with lowest fidelity at index 0 and highest at -1
+    """
     assert_valid_fidelity_query_points(dataset.query_points)
     datasets = []
     for fidelity in range(num_fidelities):
@@ -132,6 +146,11 @@ def split_dataset_by_fidelity(dataset: Dataset, num_fidelities: int) -> Sequence
 
 
 def get_dataset_for_fidelity(dataset: Dataset, fidelity: int) -> Dataset:
+    """Get a dataset with only the specified fidelity of data in
+    :param dataset: The dataset from which to extract the single fidelity data
+    :param fidelity: The fidelity to extract the data for
+    :return: Dataset with a single fidelity and no fidelity column 
+    """
     assert_valid_fidelity_query_points(dataset.query_points)
     input_points = dataset.query_points[:, :-1]  # [..., D+1]
     fidelity_col = dataset.query_points[:, -1]  # [...,]
@@ -143,6 +162,11 @@ def get_dataset_for_fidelity(dataset: Dataset, fidelity: int) -> Dataset:
 
 
 def convert_query_points_for_fidelity(query_points: TensorType, fidelity: int) -> TensorType:
+    """Add fidelity column to query_points without fidelity data
+    :param query_points: query points without fidelity to add fidelity column to
+    :param fidelity: fidelity to populate fidelity column with
+    :return: TensorType of query points with fidelity column added
+    """
     if not isinstance(fidelity, int):
         raise TypeError("Fidelity must be an integer")
     fidelity_col = tf.ones((tf.shape(query_points)[0], 1), dtype=query_points.dtype) * fidelity
