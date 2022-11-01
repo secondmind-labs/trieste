@@ -157,6 +157,18 @@ def test_pareto_sample_diverse_subset_choose_batch_no_repeats() -> None:
     npt.assert_array_equal(expected_sample_ids, sample_ids)
 
 
+@pytest.mark.qhsri
+def test_pareto_sample_diverse_subset_choose_batch_no_repeats_return_same_front() -> None:
+    observations = tf.constant([[1.0, -1.0], [0.0, 0.0], [-1.0, 1.0]])
+    x_star = tf.constant([[0.4], [0.35], [0.25]])
+    pareto_set = Pareto(observations)
+    sample, sample_ids = pareto_set._choose_batch_no_repeats(x_star, sample_size=3)
+    expected_sample = pareto_set.front
+    expected_sample_ids = tf.constant([0, 1, 2])
+    npt.assert_array_equal(expected_sample, sample)
+    npt.assert_array_equal(expected_sample_ids, sample_ids)
+
+
 @pytest.mark.parametrize(
     "x_star,expected_ids",
     (

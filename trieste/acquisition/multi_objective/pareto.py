@@ -90,11 +90,13 @@ class Pareto:
         Sample a set of diverse points from the Pareto set using
         Hypervolume Sharpe-Ratio Indicator
 
-        :param sample_size: The number of point to sample from the Pareto front
+        :param sample_size: The number of points to sample from the Pareto front
         :param allow_repeats: Whether the sample may contain repeats
         :param bounds_delta_scale_factor: The factor by which to grow the distance
             between extrema when calculating lower and upper bounds
         :param bounds_min_delta: The minimum value of the distance between extrema
+        :return: sample: Tensor of query points selected in the sample
+                 and sample_ids: Tensor of indices of points selected from the Pareto set
         """
 
         if cp is None:
@@ -102,6 +104,14 @@ class Pareto:
                 "Pareto.sample method requires cvxpy, "
                 "this can be installed via `pip install trieste[qhsri]`"
             )
+
+        if bounds_delta_scale_factor < 0:
+            raise ValueError(
+                "bounds_delta_scale_factor should be non-negative,"
+                f" got {bounds_delta_scale_factor}"
+            )
+        if bounds_delta_scale_factor < 0:
+            raise ValueError("bounds_delta_min should be non-negative," f" got {bounds_min_delta}")
 
         front_size, front_dims = self.front.shape
 
@@ -134,7 +144,7 @@ class Pareto:
     ) -> tuple[TensorType, TensorType]:
 
         # Calculate number of times each point is sampled
-        n_times_sampled = x_star * float(sample_size)
+        n_times_sampled = x_star * sample_size
 
         # Round each number to an int
         n_times_sampled = np.round(n_times_sampled)
