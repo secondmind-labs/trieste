@@ -269,6 +269,7 @@ def generate_continuous_optimizer(
             fun_values,
             chosen_x,
             nfev,
+            final_vectorized_child_results,
         ) = _perform_parallel_continuous_optimization(  # [num_optimization_runs, V]
             target_func,
             space,
@@ -293,6 +294,7 @@ def generate_continuous_optimizer(
                 recovery_fun_values,
                 recovery_chosen_x,
                 recovery_nfev,
+                recovery_final_vectorized_child_results,
             ) = _perform_parallel_continuous_optimization(
                 target_func, space, tiled_random_points, optimizer_args or {}
             )
@@ -351,7 +353,7 @@ def generate_continuous_optimizer(
             tf.transpose(chosen_x, [1, 0, 2]), best_run_ids, batch_dims=1
         )  # [V, D]
 
-        return chosen_points
+        return chosen_points, final_vectorized_child_results
 
     return optimize_continuous
 
@@ -487,7 +489,7 @@ def _perform_parallel_continuous_optimization(
     chosen_x = tf.reshape(vectorized_chosen_x, [-1, V, D])  # [num_optimization_runs, V, D]
     nfev = tf.reshape(vectorized_nfev, [-1, V])  # [num_optimization_runs, V]
 
-    return (successes, fun_values, chosen_x, nfev)
+    return (successes, fun_values, chosen_x, nfev, final_vectorized_child_results)
 
 
 class ScipyLbfgsBGreenlet(gr.greenlet):  # type: ignore[misc]
@@ -594,10 +596,10 @@ def batchify_joint(
         ) -> TensorType:  # [..., 1, B * D] -> [..., 1]
             return af(tf.reshape(x, x.shape[:-2].as_list() + [batch_size, -1]))
 
-        vectorized_points = batch_size_one_optimizer(  # [1, B * D]
+        vectorized_points, final_vectorised_results = batch_size_one_optimizer(  # [1, B * D]
             expanded_search_space, target_func_with_vectorized_inputs
         )
-        return tf.reshape(vectorized_points, [batch_size, -1])  # [B, D]
+        return tf.reshape(vectorized_points, [batch_size, -1]), final_vectorised_results  # [B, D]
 
     return optimizer
 
