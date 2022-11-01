@@ -1,0 +1,148 @@
+# %% [markdown]
+# # Constrained Acquisition Function Optimization with Expected Improvement - Branin function
+
+# %%
+import numpy as np
+import tensorflow as tf
+from trieste.objectives import ScaledBranin
+
+np.random.seed(5678)
+tf.random.set_seed(5678)
+
+# %% [markdown]
+# ## Load common functions and classes
+
+# %%
+# %run constrained_optimization.pct.py
+
+# %% [markdown]
+# ## Describe the problem
+#
+# In this example, we consider the the two-dimensional Branin function.
+
+# %%
+observer = mk_observer(ScaledBranin.objective)
+search_space = Box([0, 0], [1, 1])
+
+# %%
+#lin_constraints = [LinearConstraint(A=np.array([[-1., 1.], [-1., 1.]]), lb=search_space.lower, ub=search_space.upper),
+#                   LinearConstraint(A=np.array([[1., 0.], [0., 1.]]), lb=np.array([0., .375]), ub=np.array([.8, 1.])),
+#                  ]
+lin_constraints = [LinearConstraint(A=np.array([[-1., 1.], [1., 0.], [0., 1.]]), lb=np.array([-.4, .5, .2]), ub=np.array([-.2, .9, .6])),
+                  ]
+bound_constraints = [LinearConstraint(A=np.eye(len(search_space.lower)), lb=search_space.lower, ub=search_space.upper)]
+
+# %%
+fig = plot_function_plotly(
+    ScaledBranin.objective,
+    search_space.lower,
+    search_space.upper,
+    grid_density=20,
+)
+fig.update_layout(height=400, width=400)
+fig.show()
+
+# %%
+_, ax = plot_function_2d(
+    ScaledBranin.objective,
+    search_space.lower,
+    search_space.upper,
+    grid_density=30,
+    contour=True,
+)
+
+#########################################
+[Xi, Xj] = np.meshgrid(np.linspace(search_space.lower[0], search_space.upper[0], 50), np.linspace(search_space.lower[1], search_space.upper[1], 50))
+X = np.vstack((Xi.ravel(), Xj.ravel())).T  # Change our input grid to list of coordinates.
+C = np.reshape(constraints_satisfied(lin_constraints, X).astype(int), Xi.shape)
+
+plt.contourf(Xi, Xj, C, levels=1, hatches=['/', None], colors=['gray', 'white'], alpha=0.8)
+#########################################
+
+# %% [markdown]
+# ## Optimization runs
+#
+# Just like in purely sequential optimization, we fit a surrogate Gaussian process model to the initial data.
+
+# %%
+def initial_query_points():
+    points = search_space.sample(25)
+    # FIXME: always have at least some points in the feasible region, to avoid optimisation for constraints.
+    points = tf.concat([points, Box([0.5, 0.2], [0.58, 0.28]).sample(2)], axis=0)
+    points = tf.concat([points, [[0.6, 0.4]]], axis=0)
+    return points
+
+
+# %%
+# Run a dummy COBYLA optimization. The first tends to fail, for seemingly an internal optimizer issue.
+run_dummy = Run(search_space, observer, lin_constraints)
+optims = {
+    "COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=constraints_to_dict(lin_constraints+bound_constraints, search_space)),
+}
+run_dummy.add_optims(optims)
+multi_run(run_dummy, 1, 1, initial_query_points, with_plot=False)
+
+clear_output()
+
+# %% [markdown]
+# ### Unmodified acquisition function
+
+# %%
+run_unmod = Run(search_space, observer, lin_constraints)
+optims = {
+    "L-BFGS-EI":     None,
+    "TrstRegion-EI": dict(method="trust-constr", constraints=lin_constraints),
+    "SLSQP-EI":      dict(method="SLSQP", constraints=constraints_to_dict(lin_constraints, search_space)),
+    "COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=constraints_to_dict(lin_constraints+bound_constraints, search_space)),
+}
+run_unmod.add_optims(optims)
+
+multi_run(run_unmod, 5, 5, initial_query_points)
+
+# %%
+run_unmod.print_results_summary()
+#run_unmod.print_results_full()
+run_unmod.plot_results()
+run_unmod.write_gif()
+
+# %% [markdown]
+# ### Constrained acquistion function
+
+# %%
+run_constr = Run(search_space, observer, lin_constraints, constrained_ei_type=ExpectedConstrainedImprovement)
+optims = {
+    "L-BFGS-EI":     None,
+}
+run_constr.add_optims(optims)
+
+multi_run(run_constr, 5, 5, initial_query_points, num_initial_samples=20, num_optimization_runs=2)
+
+# %%
+run_constr.print_results_summary()
+run_constr.plot_results()
+#run_constr.write_gif()
+
+# %% [markdown]
+# ### Simple constrained acquisition function
+
+# %%
+run_simple_constr = Run(search_space, observer, lin_constraints, constrained_ei_type=ExpectedSimpleConstrainedImprovement)
+optims = {
+    "L-BFGS-EI":     None,
+    "TrstRegion-EI": dict(method="trust-constr", constraints=lin_constraints),
+    "SLSQP-EI":      dict(method="SLSQP", constraints=constraints_to_dict(lin_constraints, search_space)),
+    "COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=constraints_to_dict(lin_constraints+bound_constraints, search_space)),
+}
+run_simple_constr.add_optims(optims)
+
+multi_run(run_simple_constr, 5, 5, initial_query_points)
+
+# %%
+run_simple_constr.print_results_summary()
+run_simple_constr.plot_results()
+#run_simple_constr.write_gif()
+
+# %% [markdown]
+# ## LICENSE
+#
+# [Apache License 2.0](https://github.com/secondmind-labs/trieste/blob/develop/LICENSE)
