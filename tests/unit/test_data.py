@@ -218,7 +218,7 @@ def test_check_fidelity_query_points(query_points: Dataset, is_valid: bool) -> N
 
 
 def test_multifidelity_split_dataset_by_fidelity() -> None:
-    fidelity_0 = Dataset(tf.constant([[0.456, 0.0]]), tf.constant([[0.2]]))
+    fidelity_0 = Dataset(tf.constant([[0.456, 0.0], [0.789, 0.0]]), tf.constant([[0.2], [0.3]]))
     fidelity_1 = Dataset(tf.constant([[0.123, 1.0]]), tf.constant([[0.1]]))
     fidelity_0_out_truth = Dataset(fidelity_0.query_points[:, :-1], fidelity_0.observations)
     fidelity_1_out_truth = Dataset(fidelity_1.query_points[:, :-1], fidelity_1.observations)
