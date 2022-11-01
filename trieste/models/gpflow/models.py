@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Optional, Tuple, Union, cast, Sequence
+from typing import Optional, Sequence, Tuple, Union, cast
 
 import gpflow
 import tensorflow as tf
@@ -32,9 +32,9 @@ from gpflow.utilities.ops import leading_transpose
 
 from ...data import (
     Dataset,
+    check_and_extract_fidelity_query_points,
     convert_query_points_for_fidelity,
     split_dataset_by_fidelity,
-    assert_valid_fidelity_query_points,
 )
 from ...types import TensorType
 from ...utils import DEFAULTS, jit
@@ -1414,9 +1414,10 @@ class AR1(TrainableProbabilisticModel):
         :return: mean: The mean at query_points with shape [N, P],
                  and var: Th variance at query_points with shape [N, P]
         """
-        assert_valid_fidelity_query_points(query_points)
-        query_points_wo_fidelity = query_points[:, :-1]
-        query_points_fidelity_col = query_points[:, -1:]
+        (
+            query_points_wo_fidelity,
+            query_points_fidelity_col,
+        ) = check_and_extract_fidelity_query_points(query_points)
 
         signal_mean, signal_var = self.lowest_fidelity_signal_model.predict(
             query_points_wo_fidelity
@@ -1464,9 +1465,10 @@ class AR1(TrainableProbabilisticModel):
         :param num_samples: The number of samples (S) to generate for each query point.
         :return: samples from the posterior of shape [S, N, P]
         """
-        assert_valid_fidelity_query_points(query_points)
-        query_points_wo_fidelity = query_points[:, :-1]
-        query_points_fidelity_col = query_points[:, -1:]
+        (
+            query_points_wo_fidelity,
+            query_points_fidelity_col,
+        ) = check_and_extract_fidelity_query_points(query_points)
 
         signal_sample = self.lowest_fidelity_signal_model.sample(
             query_points_wo_fidelity, num_samples
@@ -1526,7 +1528,7 @@ class AR1(TrainableProbabilisticModel):
         extracted by splitting the observations in ``dataset`` by fidelity level.
         :param dataset: The query points and observations for *all* the wrapped models.
         """
-        assert_valid_fidelity_query_points(dataset.query_points)
+        check_and_extract_fidelity_query_points(dataset.query_points)
         dataset_per_fidelity = split_dataset_by_fidelity(dataset, self.num_fidelities)
         for fidelity, dataset_for_fidelity in enumerate(dataset_per_fidelity):
             if fidelity == 0:
@@ -1549,7 +1551,7 @@ class AR1(TrainableProbabilisticModel):
         model, so that we can include the correlation parameter as an optimisation variable.
         :param dataset: The query points and observations for *all* the wrapped models.
         """
-        assert_valid_fidelity_query_points(dataset.query_points)
+        check_and_extract_fidelity_query_points(dataset.query_points)
         dataset_per_fidelity = split_dataset_by_fidelity(dataset, self.num_fidelities)
 
         for fidelity, dataset_for_fidelity in enumerate(dataset_per_fidelity):

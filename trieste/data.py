@@ -18,7 +18,6 @@ from dataclasses import dataclass
 from typing import Sequence
 
 import tensorflow as tf
-import numpy.testing as npt
 
 from trieste.types import TensorType
 
@@ -112,7 +111,7 @@ class Dataset:
         return self.query_points, self.observations
 
 
-def assert_valid_fidelity_query_points(query_points: TensorType) -> None:
+def check_and_extract_fidelity_query_points(query_points: TensorType) -> None:
     """Check whether the final column of a tensor is close enough to ints
     to be reasonably considered to represent fidelities.
     The final input column of multi-fidelity data should be a reference to
@@ -121,13 +120,15 @@ def assert_valid_fidelity_query_points(query_points: TensorType) -> None:
     :param query_points: Data to check final column of.
     :raise AssertionError: If any value in the final column is far from an integer
     """
-
+    input_points = query_points[:, :-1]
     fidelity_col = query_points[:, -1]
     tf.debugging.assert_equal(
         tf.round(fidelity_col),
         fidelity_col,
-        message="Fidelity column should be float(int), but got a float that was not close to an int",
+        message="Fidelity column should be float(int), but got a float that"
+        " was not close to an int",
     )
+    return input_points, fidelity_col
 
 
 def split_dataset_by_fidelity(dataset: Dataset, num_fidelities: int) -> Sequence[Dataset]:
@@ -146,9 +147,10 @@ def get_dataset_for_fidelity(dataset: Dataset, fidelity: int) -> Dataset:
     :param fidelity: The fidelity to extract the data for
     :return: Dataset with a single fidelity and no fidelity column
     """
-    assert_valid_fidelity_query_points(dataset.query_points)
-    input_points = dataset.query_points[:, :-1]  # [..., D+1]
-    fidelity_col = dataset.query_points[:, -1]  # [...,]
+
+    input_points, fidelity_col = check_and_extract_fidelity_query_points(
+        dataset.query_points
+    )  # [..., D], [..., 1]
     mask = fidelity_col == fidelity  # [..., ]
     inds = tf.where(mask)[:, 0]  # [..., ]
     inputs_for_fidelity = tf.gather(input_points, inds, axis=0)  # [..., D]

@@ -15,17 +15,17 @@ from __future__ import annotations
 
 import copy
 
+import numpy.testing as npt
 import pytest
 import tensorflow as tf
-import numpy.testing as npt
 
 from tests.util.misc import ShapeLike, assert_datasets_allclose
 from trieste.data import (
     Dataset,
-    split_dataset_by_fidelity,
-    get_dataset_for_fidelity,
+    check_and_extract_fidelity_query_points,
     convert_query_points_for_fidelity,
-    assert_valid_fidelity_query_points,
+    get_dataset_for_fidelity,
+    split_dataset_by_fidelity,
 )
 from trieste.utils import shapes_equal
 
@@ -209,12 +209,12 @@ def test_dataset_astuple() -> None:
     "query_points,is_valid",
     ((tf.constant([[0.456, 0.0]]), True), (tf.constant([[0.456, 0.001]]), False)),
 )
-def test_assert_valid_multifidelity_dataset(query_points: Dataset, is_valid: bool) -> None:
+def test_check_fidelity_query_points(query_points: Dataset, is_valid: bool) -> None:
     if is_valid:
-        assert_valid_fidelity_query_points(query_points)
+        check_and_extract_fidelity_query_points(query_points)
     else:
         with pytest.raises(tf.errors.InvalidArgumentError):
-            assert_valid_fidelity_query_points(query_points)
+            check_and_extract_fidelity_query_points(query_points)
 
 
 def test_multifidelity_split_dataset_by_fidelity() -> None:
@@ -245,10 +245,3 @@ def test_multifidelity_convert_query_points_for_fidelity() -> None:
         fidelity_removed_query_points, fidelity=0
     )
     npt.assert_allclose(fidelity_zero_out_query_points, fidelity_zero_query_points)
-
-
-def test_multifidelity_convert_query_points_for_bad_fidelity() -> None:
-    fidelity_zero_query_points = tf.constant([[0.0, 0.0], [1.0, 0.0]])
-    fidelity_removed_query_points = fidelity_zero_query_points[:, :-1]
-    with pytest.raises(TypeError):
-        convert_query_points_for_fidelity(fidelity_removed_query_points, fidelity=0.5)
