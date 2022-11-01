@@ -11,11 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import numpy.testing as npt
 import tensorflow as tf
 
-from trieste.objectives.utils import mk_observer
+from trieste.objectives.utils import mk_multi_observer, mk_observer
 
 
 def test_mk_observer() -> None:
@@ -39,3 +38,14 @@ def test_mk_observer_unlabelled() -> None:
 
     npt.assert_array_equal(ys.query_points, x_)
     npt.assert_array_equal(ys.observations, x_ + 1)
+
+
+def test_mk_multi_observer() -> None:
+    x_ = tf.constant([[3.0]])
+    ys = mk_multi_observer(foo=lambda x: x + 1, bar=lambda x: x - 1)(x_)
+
+    assert ys.keys() == {"foo", "bar"}
+    npt.assert_array_equal(ys["foo"].query_points, x_)
+    npt.assert_array_equal(ys["foo"].observations, x_ + 1)
+    npt.assert_array_equal(ys["bar"].query_points, x_)
+    npt.assert_array_equal(ys["bar"].observations, x_ - 1)
