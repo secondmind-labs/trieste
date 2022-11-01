@@ -260,20 +260,14 @@ class Pareto:
         self, delta_scaling_factor: float, min_delta: float
     ) -> tuple[TensorType, TensorType]:
 
-        front_dims = self.front.shape[1]
-
-        # Calculate the deltas to add to the bounds to get the reference point and lower bound
-        deltas = [
-            ((float(max(self.front[:, i])) - float(min(self.front[:, i]))) * delta_scaling_factor)
-            + min_delta
-            for i in range(front_dims)
-        ]
-
-        # Define lower bound and reference point
-        lower_bound = [float(min(self.front[:, i])) - deltas[i] for i in range(front_dims)]
-
-        # Use deltas and max values to create reference point
-        upper_bound = [float(max(self.front[:, i])) + deltas[i] for i in range(front_dims)]
+        # Find min and max for each dimension in the front
+        dim_mins = np.min(self.front, axis=0)
+        dim_maxes = np.max(self.front, axis=0)
+        # Calculate the deltas to add to the min/max to get the upper and lower bounds
+        deltas = ((dim_maxes - dim_mins) * delta_scaling_factor) + min_delta
+        # Calculate the bounds
+        lower_bound = dim_mins - deltas
+        upper_bound = dim_maxes + deltas
 
         return lower_bound, upper_bound
 
