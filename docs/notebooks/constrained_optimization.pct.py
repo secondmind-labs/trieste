@@ -50,7 +50,7 @@ ctol = 1e-7
 def constraints_residual(constraints, x):
     return tf.concat([[tf.linalg.matmul(constraint.A, x, transpose_b=True) - constraint.lb[..., tf.newaxis],
                                 constraint.ub[..., tf.newaxis] - tf.linalg.matmul(constraint.A, x, transpose_b=True)]
-                      for constraint in constraints], axis=0)
+                      for constraint in constraints], axis=1)
 
 def constraints_satisfied(constraints, x):
     #res_lo, res_up = constraints_tr.residual(x.T)
@@ -65,18 +65,16 @@ def constraints_fn(constraints, x):
         x = np.expand_dims(x, axis=0)
     return np.reshape(constraints_residual(constraints, x), (-1, x.shape[0]))
 
-def constraints_jac(constraints, x):
-    if len(x.shape) == 1:
-        x = np.expand_dims(x, axis=0)
-    jac = np.concatenate(np.array([[constraint.A, -constraint.A] for constraint in constraints]))
-    return np.reshape(jac, (-1, x.shape[-1], 1))
+def constraints_jac(constraints, x_dims):
+    jac = np.concatenate([np.concatenate([constraint.A, -constraint.A]) for constraint in constraints])
+    return np.reshape(jac, (-1, x_dims, 1))
 
 def constraints_to_dict(constraints, search_space):
     return [{'type': 'ineq',
              'fun': lambda x, i=i, j=j: constraints_fn([constraints[i]], x)[j].squeeze(),
-             'jac': lambda x, i=i, j=j: constraints_jac([constraints[i]], x)[j].squeeze(),
+             'jac': lambda _, i=i, j=j: constraints_jac([constraints[i]], len(search_space.lower))[j].squeeze(),
             }
-            for i in range(len(constraints)) for j in range(len(search_space.lower) * 2)]
+            for i, c in enumerate(constraints) for j in range(c.lb.size * 2)]
 
 
 # %%
@@ -364,6 +362,7 @@ class Run:
                 data, optim_timer = self._run_optim(num_initial_samples, num_optimization_runs, init_candidates, optim)
             except BaseException as err:
                 print(f"Optimisation for {name} failed: {err=}, {type(err)=}")
+                #raise err
             else:
                 self.data[name] = data
                 if name not in self.results_hist:
