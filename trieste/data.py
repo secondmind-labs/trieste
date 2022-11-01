@@ -123,11 +123,10 @@ def assert_valid_fidelity_query_points(query_points: TensorType) -> None:
     """
 
     fidelity_col = query_points[:, -1]
-    npt.assert_allclose(
+    tf.debugging.assert_equal(
         tf.round(fidelity_col),
         fidelity_col,
-        err_msg="Fidelity column should be float(int), but"
-        "got a float that was not close to an int",
+        message="Fidelity column should be float(int), but got a float that was not close to an int",
     )
 
 
@@ -137,11 +136,7 @@ def split_dataset_by_fidelity(dataset: Dataset, num_fidelities: int) -> Sequence
     :param num_fidlities: Number of fidelities in the problem (not just dataset)
     :return: Ordered list of datasets with lowest fidelity at index 0 and highest at -1
     """
-    assert_valid_fidelity_query_points(dataset.query_points)
-    datasets = []
-    for fidelity in range(num_fidelities):
-        dataset_i = get_dataset_for_fidelity(dataset, fidelity)
-        datasets.append(dataset_i)
+    datasets = [get_dataset_for_fidelity(dataset, fidelity) for fidelity in range(num_fidelities)]
     return datasets
 
 
@@ -167,8 +162,6 @@ def convert_query_points_for_fidelity(query_points: TensorType, fidelity: int) -
     :param fidelity: fidelity to populate fidelity column with
     :return: TensorType of query points with fidelity column added
     """
-    if not isinstance(fidelity, int):
-        raise TypeError("Fidelity must be an integer")
     fidelity_col = tf.ones((tf.shape(query_points)[0], 1), dtype=query_points.dtype) * fidelity
     query_points_for_fidelity = tf.concat([query_points, fidelity_col], axis=-1)
     return query_points_for_fidelity

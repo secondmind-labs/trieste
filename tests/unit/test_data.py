@@ -213,7 +213,7 @@ def test_assert_valid_multifidelity_dataset(query_points: Dataset, is_valid: boo
     if is_valid:
         assert_valid_fidelity_query_points(query_points)
     else:
-        with pytest.raises(AssertionError):
+        with pytest.raises(tf.errors.InvalidArgumentError):
             assert_valid_fidelity_query_points(query_points)
 
 

@@ -1371,7 +1371,7 @@ class VariationalGaussianProcess(
 
 
 class AR1(TrainableProbabilisticModel):
-    """
+    r"""
     A :class:`TrainableProbabilisticModel` implementation of the AR1 model
     from :cite:`Kennedy2000`. This is a multi-fidelity model that works with an
     arbitrary number of fidelities. It relies on there being a linear relationship
@@ -1423,13 +1423,13 @@ class AR1(TrainableProbabilisticModel):
         )
 
         for fidelity in range(self.num_fidelities):
-            if fidelity > 0:
+            if fidelity == 0:
+                fidelity_residual_mean = 0
+                fidelity_residual_var = 0
+            else:
                 fidelity_residual_mean, fidelity_residual_var = self.fidelity_residual_models[
                     fidelity
                 ].predict(query_points_wo_fidelity)
-            else:
-                fidelity_residual_mean = 0
-                fidelity_residual_var = 0
 
             new_fidelity_signal_mean = self.rho[fidelity] * signal_mean + fidelity_residual_mean
             new_fidelity_signal_var = fidelity_residual_var + (self.rho[fidelity] ** 2) * signal_var
@@ -1473,12 +1473,12 @@ class AR1(TrainableProbabilisticModel):
         )
 
         for fidelity in range(self.num_fidelities):
-            if fidelity > 0:
+            if fidelity == 0:
+                fidelity_residual_sample = 0
+            else:
                 fidelity_residual_sample = self.fidelity_residual_models[fidelity].sample(
                     query_points_wo_fidelity, num_samples
                 )
-            else:
-                fidelity_residual_sample = 0
 
             new_fidelity_signal_sample = (
                 self.rho[fidelity] * signal_sample + fidelity_residual_sample
@@ -1553,7 +1553,6 @@ class AR1(TrainableProbabilisticModel):
         dataset_per_fidelity = split_dataset_by_fidelity(dataset, self.num_fidelities)
 
         for fidelity, dataset_for_fidelity in enumerate(dataset_per_fidelity):
-            print(f"Working on fidelity {fidelity}")
             if fidelity == 0:
                 self.lowest_fidelity_signal_model.optimize(dataset_for_fidelity)
             else:

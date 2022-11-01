@@ -21,7 +21,7 @@ universally good solutions.
 from __future__ import annotations
 
 import math
-from typing import Optional
+from typing import Optional, Sequence
 
 import gpflow
 import tensorflow as tf
@@ -426,12 +426,15 @@ def _get_inducing_points(
     return inducing_points
 
 
-def build_ar1_models(dataset: Dataset, num_fidelities: int, input_search_space: SearchSpace):
+def build_ar1_models(
+    dataset: Dataset, num_fidelities: int, input_search_space: SearchSpace
+) -> Sequence[GaussianProcessRegression]:
     """
     Build the individual GPR models required for constructing an AR1 model
     with `num_fidelities` fidelities.
 
-    :param dataset: Dataset of points with which to initialise the individual models
+    :param dataset: Dataset of points with which to initialise the individual models,
+        where the final column of the final dimension of the query points contains the fidelity
     :param num_fidelities: Number of fidelities desired for the AR1 model
     :param input_search_space: The input search space of the models
     :return: List of initialised GPR models
