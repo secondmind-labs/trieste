@@ -19,10 +19,10 @@ estimate of the batch expected improvement for a Gaussian distribution.
 """
 from typing import Callable, Tuple
 
-from ...types import TensorType
-
 import tensorflow as tf
 import tensorflow_probability as tfp
+
+from ...types import TensorType
 
 tfd = tfp.distributions
 
@@ -34,7 +34,7 @@ tfd = tfp.distributions
 
 def standard_normal_cdf_and_inverse_cdf(
     dtype: tf.DType,
-) -> Tuple[Callable[[TensorType], TensorType], Callable[[TensorType], TensorType],]:
+) -> Tuple[Callable[[TensorType], TensorType], Callable[[TensorType], TensorType]]:
     """Returns two callables *Phi* and *iPhi*, which compute the cumulative
     density function and inverse cumulative density function of a standard
     univariate Gaussian.

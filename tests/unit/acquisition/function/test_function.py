@@ -1133,7 +1133,7 @@ def test_batch_expected_improvement_updates_without_retracing(
 
     data = Dataset(known_query_points, quadratic(known_query_points))
     up_batch_ei = batch_ei_builder.update_acquisition_function(batch_ei, model, dataset=data)
-    up_batch_mcei = batch_mcei_builder.update_acquisition_function(batch_mcei, model, dataset=data)
+    batch_mcei = batch_mcei_builder.update_acquisition_function(batch_mcei, model, dataset=data)
     assert up_batch_ei == batch_ei
     assert batch_ei.__call__._get_tracing_count() == 1  # type: ignore
     npt.assert_allclose(batch_ei(xs), batch_mcei(xs), rtol=1e-2)
