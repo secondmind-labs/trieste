@@ -217,8 +217,9 @@ class Run:
                 self.points = np.squeeze(data[0])
                 self.fs = np.squeeze(data[1])
 
+                # Only measure error for feasible solutions.
                 # Allow for feas_f_max to be inaccurate. Optimizer can find a better solution.
-                if self.fs <= self.feas_f_max:
+                if self.sat and self.fs < self.feas_f_max:
                     self.xerr = np.linalg.norm(self.points-self.feas_x_max)
                     self.ferr = np.linalg.norm(self.fs-self.feas_f_max)
                 else:
