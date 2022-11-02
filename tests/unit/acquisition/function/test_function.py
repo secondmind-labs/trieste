@@ -1067,7 +1067,7 @@ def test_batch_expected_improvement_can_reproduce_mc_excpected_improvement(
 
 @pytest.mark.parametrize("num_data", [10])
 @pytest.mark.parametrize("num_parallel", [3])
-@pytest.mark.parametrize("batch_size", [2])
+@pytest.mark.parametrize("batch_size", [5])
 @pytest.mark.parametrize("sample_size", [100])
 @pytest.mark.parametrize("dimension", [2])
 @pytest.mark.parametrize("dtype", [tf.float64])

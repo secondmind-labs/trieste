@@ -1589,7 +1589,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         """Computes the accurate approximation of the multi-point expected
         improvement.
 
-        :param x: Tensor of shape (B, Q).
+        :param x: Tensor of shape (B, Q, D).
         :returns ei: Tensor of shape (B,), expected improvement.
         """
 
@@ -1602,6 +1602,8 @@ class batch_expected_improvement(AcquisitionFunctionClass):
 
         if not hasattr(self, "_mvn_cdf"):     
             self._mvn_cdf = make_mvn_cdf(samples=self._samples)
+        
+        B = x.shape[0]
 
         mean, covariance = self._model.predict_joint(x)  # type: ignore
 
@@ -1613,6 +1615,16 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         )[None, :, :]
 
         threshold = tf.tile(self._eta, (mean.shape[0],))
+
+        # Check shapes of x and sample tensors
+        tf.debugging.assert_shapes(
+            [
+                (x, ("B", "Q", "D")),
+                (mean, ("B", "Q")),
+                (covariance, ("B", "Q", "Q")),
+                (self._samples, ("S", "Q")),
+            ]
+        )
 
         ei = self.compute_batch_expected_improvement(
             mean=-mean,
