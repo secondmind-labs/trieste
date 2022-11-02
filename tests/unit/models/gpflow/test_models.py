@@ -57,11 +57,13 @@ from trieste.data import Dataset
 from trieste.logging import step_number, tensorboard_writer
 from trieste.models import TrainableProbabilisticModel
 from trieste.models.gpflow import (
+    AR1,
     GaussianProcessRegression,
     SparseGaussianProcessRegression,
     SparseVariational,
     VariationalGaussianProcess,
 )
+from trieste.models.gpflow.builders import build_ar1_models
 from trieste.models.gpflow.inducing_point_selectors import (
     InducingPointSelector,
     KMeansInducingPointSelector,
@@ -1626,3 +1628,48 @@ def test_sparse_variational_pairwise_covariance_for_non_whitened(
     actual_covariance = model.covariance_between_points(query_points_1, query_points_2)
 
     np.testing.assert_allclose(expected_covariance, actual_covariance, atol=1e-4)
+
+
+@pytest.fixture
+def ar1_model() -> AR1:
+
+    dataset = Dataset(
+        tf.Variable(
+            [[0.0, 0.0], [1.0, 1.0], [2.0, 2.0], [3.0, 1.0], [4.0, 2.0], [5.0, 0.0]],
+            dtype=tf.float64,
+        ),
+        tf.Variable([[2.0], [4.0], [6.0], [8.0], [10.0], [12.0]], dtype=tf.float64),
+    )
+    search_space = Box([0.0], [10.0])
+    gprs = build_ar1_models(dataset, num_fidelities=3, input_search_space=search_space)
+    return AR1(gprs)
+
+
+def test_ar1_predict_returns_expected_shape(ar1_model: AR1) -> None:
+
+    input_data = tf.Variable([[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]], dtype=tf.float64)
+    pred_mean, pred_var = ar1_model.predict(input_data)
+    assert pred_mean.shape == [3, 1]
+    assert pred_var.shape == [3, 1]
+
+
+def test_ar1_predict_y_returns_expected_shape(ar1_model: AR1) -> None:
+
+    input_data = tf.Variable([[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]], dtype=tf.float64)
+    pred_mean, pred_var = ar1_model.predict_y(input_data)
+    assert pred_mean.shape == [3, 1]
+    assert pred_var.shape == [3, 1]
+
+
+def test_ar1_sample_returns_expected_shape(ar1_model: AR1) -> None:
+
+    input_data = tf.Variable([[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]], dtype=tf.float64)
+    samples = ar1_model.sample(input_data, 13)
+    assert samples.shape == [13, 3, 1]
+
+
+def test_ar1_covariance_with_top_fidelity_returns_expected_shape(ar1_model: AR1) -> None:
+
+    input_data = tf.Variable([[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]], dtype=tf.float64)
+    covs = ar1_model.covariance_with_top_fidelity(input_data)
+    assert covs.shape == [3, 1]

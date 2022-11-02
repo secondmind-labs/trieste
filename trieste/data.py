@@ -120,10 +120,16 @@ def check_and_extract_fidelity_query_points(
     the fidelity of the query point. We cannot have mixed type tensors, but
     we can check that thhe final column values are suitably close to integers.
     :param query_points: Data to check final column of.
+    :raise: ValueError: If there are not enough columns to be multifidelity data
     :raise InvalidArgumentError: If any value in the final column is far from an integer
     :return: input_points: Query points without fidelity column
              and fidelity_col: The fidelities of each of the query points
     """
+    if query_points.shape[1] < 2:
+        raise ValueError(
+            "Query points do not have enough columns to be multifidelity,"
+            f" need at least 2, got {query_points.shape[1]}"
+        )
     input_points = query_points[:, :-1]
     fidelity_col = query_points[:, -1:]
     tf.debugging.assert_equal(
@@ -141,6 +147,8 @@ def split_dataset_by_fidelity(dataset: Dataset, num_fidelities: int) -> Sequence
     :param num_fidlities: Number of fidelities in the problem (not just dataset)
     :return: Ordered list of datasets with lowest fidelity at index 0 and highest at -1
     """
+    if num_fidelities < 1:
+        raise ValueError(f"Data must have 1 or more fidelities, got {num_fidelities}")
     datasets = [get_dataset_for_fidelity(dataset, fidelity) for fidelity in range(num_fidelities)]
     return datasets
 

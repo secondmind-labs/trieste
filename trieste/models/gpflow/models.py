@@ -1442,7 +1442,7 @@ class AR1(TrainableProbabilisticModel):
 
         return signal_mean, signal_var
 
-    def calculate_residual(self, dataset: Dataset, fidelity: int) -> TensorType:
+    def _calculate_residual(self, dataset: Dataset, fidelity: int) -> TensorType:
         """
         Calculate the true residuals for a set of datapoints at a given fidelity.
         :param dataset: Dataset of points for which to calculate the residuals.
@@ -1540,7 +1540,7 @@ class AR1(TrainableProbabilisticModel):
                 self.fidelity_residual_models[fidelity].update(
                     Dataset(
                         dataset_for_fidelity.query_points,
-                        self.calculate_residual(dataset_for_fidelity, fidelity),
+                        self._calculate_residual(dataset_for_fidelity, fidelity),
                     )
                 )
 
@@ -1585,7 +1585,7 @@ class AR1(TrainableProbabilisticModel):
                 self.fidelity_residual_models[fidelity].optimizer.optimizer.minimize(
                     loss, trainable_variables
                 )
-                residuals = self.calculate_residual(dataset_for_fidelity, fidelity)
+                residuals = self._calculate_residual(dataset_for_fidelity, fidelity)
                 self.fidelity_residual_models[fidelity].update(
                     Dataset(fidelity_query_points, residuals)
                 )

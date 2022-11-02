@@ -439,9 +439,21 @@ def build_ar1_models(
     :param input_search_space: The input search space of the models
     :return: List of initialised GPR models
     """
+    if num_fidelities < 2:
+        raise ValueError(
+            "Invalid number of fidelities to build AR1 model for,"
+            f" need at least 2 fidelities, got {num_fidelities}"
+        )
 
     # Split data into fidelities
     data = split_dataset_by_fidelity(dataset=dataset, num_fidelities=num_fidelities)
+
+    for i, fidelity_data in enumerate(data):
+        if len(fidelity_data) < 2:
+            raise ValueError(
+                f"Not enough data to create model for fidelity {i},"
+                f" need at least 2 datapoints, got {len(fidelity_data)}"
+            )
 
     gprs = [
         GaussianProcessRegression(

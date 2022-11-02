@@ -206,15 +206,23 @@ def test_dataset_astuple() -> None:
 
 
 @pytest.mark.parametrize(
-    "query_points,is_valid",
-    ((tf.constant([[0.456, 0.0]]), True), (tf.constant([[0.456, 0.001]]), False)),
+    "query_points,is_valid,problem",
+    (
+        (tf.constant([[0.456, 0.0]]), True, "None"),
+        (tf.constant([[0.456, 0.001]]), False, "bad_fidelity"),
+        (tf.constant([[0.456]]), False, "no_fidelity"),
+    ),
 )
-def test_check_fidelity_query_points(query_points: Dataset, is_valid: bool) -> None:
+def test_check_fidelity_query_points_(query_points: Dataset, is_valid: bool, problem: str) -> None:
     if is_valid:
         check_and_extract_fidelity_query_points(query_points)
     else:
-        with pytest.raises(tf.errors.InvalidArgumentError):
-            check_and_extract_fidelity_query_points(query_points)
+        if problem == "bad_fidelity":
+            with pytest.raises(tf.errors.InvalidArgumentError):
+                check_and_extract_fidelity_query_points(query_points)
+        elif problem == "no_fidelity":
+            with pytest.raises(ValueError):
+                check_and_extract_fidelity_query_points(query_points)
 
 
 def test_multifidelity_split_dataset_by_fidelity() -> None:
@@ -226,6 +234,27 @@ def test_multifidelity_split_dataset_by_fidelity() -> None:
     fidelity_0_out, fidelity_1_out = split_dataset_by_fidelity(data, 2)
     assert_datasets_allclose(fidelity_0_out, fidelity_0_out_truth)
     assert_datasets_allclose(fidelity_1_out, fidelity_1_out_truth)
+
+
+def test_multifidelity_split_dataset_by_fidelity_with_fidelity_gap() -> None:
+    fidelity_0 = Dataset(tf.constant([[0.456, 0.0], [0.789, 0.0]]), tf.constant([[0.2], [0.3]]))
+    fidelity_2 = Dataset(tf.constant([[0.123, 2.0]]), tf.constant([[0.1]]))
+    fidelity_0_out_truth = Dataset(fidelity_0.query_points[:, :-1], fidelity_0.observations)
+    fidelity_2_out_truth = Dataset(fidelity_2.query_points[:, :-1], fidelity_2.observations)
+    data = fidelity_2 + fidelity_0
+    fidelity_0_out, fidelity_1_out, fidelity_2_out = split_dataset_by_fidelity(data, 3)
+    assert tf.equal(tf.size(fidelity_1_out.query_points), 0)
+    assert tf.equal(tf.size(fidelity_1_out.observations), 0)
+    assert_datasets_allclose(fidelity_0_out, fidelity_0_out_truth)
+    assert_datasets_allclose(fidelity_2_out, fidelity_2_out_truth)
+
+
+def test_multifidelity_split_dataset_by_fidelity_raises_for_bad_fidelity() -> None:
+    fidelity_0 = Dataset(tf.constant([[0.456, 0.0], [0.789, 0.0]]), tf.constant([[0.2], [0.3]]))
+    fidelity_1 = Dataset(tf.constant([[0.123, 1.0]]), tf.constant([[0.1]]))
+    data = fidelity_1 + fidelity_0
+    with pytest.raises(ValueError):
+        split_dataset_by_fidelity(data, -1)
 
 
 def test_multifidelity_get_dataset_for_fidelity() -> None:
