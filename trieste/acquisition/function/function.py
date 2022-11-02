@@ -1048,13 +1048,11 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         self,
         sample_size: int,
         *,
-        dtype: tf.DType,
         jitter: float = DEFAULTS.JITTER,
     ):
         """Initialise the BatchExpectedImprovement instance.
 
         :param sample_size: int, number of Sobol samples to use.
-        :param dtype: tf.DType, data type to perform calculations in.
         :param jitter: float, amount of jitter for Cholesky factorisations.
         """
 
@@ -1062,7 +1060,6 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         tf.debugging.assert_greater_equal(jitter, 0.0)
 
         self._sample_size = sample_size
-        self._dtype = dtype
         self._jitter = jitter
 
     def __repr__(self) -> str:
@@ -1096,7 +1093,6 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
             model,
             eta,
             self._jitter,
-            self._dtype,
         )
 
         return acquisition_function
@@ -1130,7 +1126,6 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         model: ProbabilisticModel,
         eta: TensorType,
         jitter: float,
-        dtype: tf.DType,
     ):
         """Initialise the batch_expected_improvement instance.
 
@@ -1139,14 +1134,12 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         :param eta: Tensor of shape (,), expected improvement threshold. This
             is the best value observed so far durin the BO loop.
         :param jitter: float, amount of jitter for Cholesky factorisations.
-        :param dtype: tf.DType, data type to use.
         """
 
         self._sample_size = sample_size
         self._jitter = jitter
         self._eta = tf.Variable(eta)
         self._model = model
-        self._dtype = dtype
 
     def update(self, eta: TensorType) -> None:
         """Update the acquisition function with a new eta value and reset the
@@ -1597,7 +1590,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
             self._samples = tf.math.sobol_sample(
                 dim=x.shape[1],
                 num_results=self._sample_size,
-                dtype=self._dtype,
+                dtype=x._dtype,
             )
 
         if not hasattr(self, "_mvn_cdf"):     
