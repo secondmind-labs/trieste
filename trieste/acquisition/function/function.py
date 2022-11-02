@@ -1143,10 +1143,10 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         """Initialise the batch_expected_improvement instance.
 
         :param samples: Tensor of shape (S, Q), where S is the number of
-        samples and Q is the batch size.
+            samples and Q is the batch size.
         :param model: Gaussian process regression model.
         :param eta: Tensor of shape (,), expected improvement threshold. This
-        is the best value observed so far durin the BO loop.
+            is the best value observed so far durin the BO loop.
         :param jitter: float, amount of jitter for Cholesky factorisations.
         """
 
@@ -1596,7 +1596,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         """Computes the accurate approximation of the multi-point expected
         improvement.
 
-        :param x: Tensor of shape ***.
+        :param x: Tensor of shape (B, Q).
         :returns ei: Tensor of shape (B,), expected improvement.
         """
 
