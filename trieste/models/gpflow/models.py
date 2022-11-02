@@ -1395,16 +1395,17 @@ class AR1(TrainableProbabilisticModel):
         self.num_fidelities = len(fidelity_models)
 
         self.lowest_fidelity_signal_model = fidelity_models[0]
-        self.fidelity_residual_models: Sequence[Optional[GaussianProcessRegression]] = [
-            None,
-            *fidelity_models[1:],
-        ]
+        # Note: The 0th index in the below is not a residual model, and should not be used.
+        self.fidelity_residual_models: Sequence[GaussianProcessRegression] = fidelity_models
         # set this as a Parameter so that we can optimize it
         rho = [
             gpflow.Parameter(1.0, trainable=True, name=f"rho_{i}")
             for i in range(self.num_fidelities - 1)
         ]
-        self.rho = [1, *rho]
+        self.rho: list[gpflow.Parameter] = [
+            gpflow.Parameter(1.0, trainable=False, name="dummy_variable"),
+            *rho,
+        ]
 
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
@@ -1567,7 +1568,7 @@ class AR1(TrainableProbabilisticModel):
                 )
                 predictions_from_lower_fidelity = self.predict(prev_fidelity_query_points)[0]
 
-                def loss():  # hardcoded log liklihood calculation for the residual model
+                def loss() -> TensorType:  # hardcoded log liklihood calculation for residual model
                     residuals = (
                         fidelity_observations - self.rho[fidelity] * predictions_from_lower_fidelity
                     )
@@ -1589,7 +1590,7 @@ class AR1(TrainableProbabilisticModel):
                     Dataset(fidelity_query_points, residuals)
                 )
 
-    def covariance_with_top_fidelity(self, query_points: TensorType):
+    def covariance_with_top_fidelity(self, query_points: TensorType) -> TensorType:
         """
         Calculate the covariance of `query_points` with the corresponding
         query point at the top fidelity.

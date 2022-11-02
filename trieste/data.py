@@ -111,17 +111,21 @@ class Dataset:
         return self.query_points, self.observations
 
 
-def check_and_extract_fidelity_query_points(query_points: TensorType) -> None:
+def check_and_extract_fidelity_query_points(
+    query_points: TensorType,
+) -> tuple[TensorType, TensorType]:
     """Check whether the final column of a tensor is close enough to ints
     to be reasonably considered to represent fidelities.
     The final input column of multi-fidelity data should be a reference to
     the fidelity of the query point. We cannot have mixed type tensors, but
     we can check that thhe final column values are suitably close to integers.
     :param query_points: Data to check final column of.
-    :raise AssertionError: If any value in the final column is far from an integer
+    :raise InvalidArgumentError: If any value in the final column is far from an integer
+    :return: input_points: Query points without fidelity column
+             and fidelity_col: The fidelities of each of the query points
     """
     input_points = query_points[:, :-1]
-    fidelity_col = query_points[:, -1]
+    fidelity_col = query_points[:, -1:]
     tf.debugging.assert_equal(
         tf.round(fidelity_col),
         fidelity_col,
