@@ -967,58 +967,39 @@ def test_expected_constrained_improvement_min_feasibility_probability_bound_is_i
 
 
 @pytest.mark.parametrize("sample_size", [-2, 0])
-@pytest.mark.parametrize("batch_size", [2, 2])
 @pytest.mark.parametrize("dtype", [tf.float64, tf.float64])
 def test_batch_expected_improvement_raises_for_invalid_sample_size(
     sample_size: int,
-    batch_size: int,
     dtype: tf.DType,
 ) -> None:
     with pytest.raises(tf.errors.InvalidArgumentError):
-        BatchExpectedImprovement(sample_size=sample_size, batch_size=batch_size, dtype=dtype)
-
-
-@pytest.mark.parametrize("sample_size", [2, 2])
-@pytest.mark.parametrize("batch_size", [-2, 0])
-@pytest.mark.parametrize("dtype", [tf.float64, tf.float64])
-def test_batch_expected_improvement_raises_for_invalid_batch_size(
-    sample_size: int,
-    batch_size: int,
-    dtype: tf.DType,
-) -> None:
-    with pytest.raises(tf.errors.InvalidArgumentError):
-        BatchExpectedImprovement(sample_size=sample_size, batch_size=batch_size, dtype=dtype)
+        BatchExpectedImprovement(sample_size=sample_size, dtype=dtype)
 
 
 @pytest.mark.parametrize("sample_size", [2])
-@pytest.mark.parametrize("batch_size", [-2])
 @pytest.mark.parametrize("dtype", [tf.float64])
 @pytest.mark.parametrize("jitter", [-1e0])
 def test_batch_expected_improvement_raises_for_invalid_jitter(
     sample_size: int,
-    batch_size: int,
     dtype: tf.DType,
     jitter: float,
 ) -> None:
     with pytest.raises(tf.errors.InvalidArgumentError):
         BatchExpectedImprovement(
-            sample_size=sample_size, batch_size=batch_size, dtype=dtype, jitter=jitter
+            sample_size=sample_size, dtype=dtype, jitter=jitter
         )
 
 
 @pytest.mark.parametrize("sample_size", [100])
-@pytest.mark.parametrize("batch_size", [2])
 @pytest.mark.parametrize("dtype", [tf.float64])
 @pytest.mark.parametrize("jitter", [1e-6])
 def test_batch_expected_improvement_raises_for_empty_data(
     sample_size: int,
-    batch_size: int,
     dtype: tf.DType,
     jitter: float,
 ) -> None:
     builder = BatchExpectedImprovement(
         sample_size=sample_size,
-        batch_size=batch_size,
         dtype=dtype,
         jitter=jitter,
     )
@@ -1037,8 +1018,8 @@ def test_batch_expected_improvement_raises_for_empty_data(
 
 @pytest.mark.parametrize("num_data", [5])
 @pytest.mark.parametrize("num_parallel", [3])
-@pytest.mark.parametrize("sample_size", [100])
 @pytest.mark.parametrize("batch_size", [2])
+@pytest.mark.parametrize("sample_size", [100])
 @pytest.mark.parametrize("dimension", [2])
 @pytest.mark.parametrize("dtype", [tf.float64])
 @pytest.mark.parametrize("jitter", [1e-6])
@@ -1047,8 +1028,8 @@ def test_batch_expected_improvement_raises_for_empty_data(
 def test_batch_expected_improvement_can_reproduce_mc_excpected_improvement(
     num_data: int,
     num_parallel: int,
-    sample_size: int,
     batch_size: int,
+    sample_size: int,
     dimension: int,
     dtype: tf.DType,
     jitter: float,
@@ -1062,7 +1043,6 @@ def test_batch_expected_improvement_can_reproduce_mc_excpected_improvement(
 
     batch_ei = BatchExpectedImprovement(
         sample_size=sample_size,
-        batch_size=batch_size,
         dtype=dtype,
         jitter=jitter,
     ).prepare_acquisition_function(
@@ -1087,8 +1067,8 @@ def test_batch_expected_improvement_can_reproduce_mc_excpected_improvement(
 
 @pytest.mark.parametrize("num_data", [10])
 @pytest.mark.parametrize("num_parallel", [3])
-@pytest.mark.parametrize("sample_size", [100])
 @pytest.mark.parametrize("batch_size", [2])
+@pytest.mark.parametrize("sample_size", [100])
 @pytest.mark.parametrize("dimension", [2])
 @pytest.mark.parametrize("dtype", [tf.float64])
 @pytest.mark.parametrize("jitter", [1e-6])
@@ -1097,8 +1077,8 @@ def test_batch_expected_improvement_can_reproduce_mc_excpected_improvement(
 def test_batch_expected_improvement_updates_without_retracing(
     num_data: int,
     num_parallel: int,
-    sample_size: int,
     batch_size: int,
+    sample_size: int,
     dimension: int,
     dtype: tf.DType,
     jitter: float,
@@ -1113,7 +1093,6 @@ def test_batch_expected_improvement_updates_without_retracing(
 
     batch_ei_builder = BatchExpectedImprovement(
         sample_size=sample_size,
-        batch_size=batch_size,
         dtype=dtype,
         jitter=jitter,
     )

@@ -17,7 +17,7 @@ functions --- functions that estimate the utility of evaluating sets of candidat
 """
 from __future__ import annotations
 
-from typing import Callable, Mapping, Optional, cast
+from typing import Union, Callable, Mapping, Optional, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -1048,32 +1048,22 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         self,
         sample_size: int,
         *,
-        batch_size: int,
         dtype: tf.DType,
         jitter: float = DEFAULTS.JITTER,
     ):
         """Initialise the BatchExpectedImprovement instance.
 
         :param sample_size: int, number of Sobol samples to use.
-        :param batch_size: int, number of points in each batch.
         :param dtype: tf.DType, data type to perform calculations in.
         :param jitter: float, amount of jitter for Cholesky factorisations.
         """
 
         tf.debugging.assert_positive(sample_size)
-        tf.debugging.assert_positive(batch_size)
         tf.debugging.assert_greater_equal(jitter, 0.0)
 
         self._sample_size = sample_size
-        self._batch_size = batch_size
         self._dtype = dtype
         self._jitter = jitter
-
-        self._samples = tf.math.sobol_sample(
-            dim=self._batch_size,
-            num_results=self._sample_size,
-            dtype=self._dtype,
-        )
 
     def __repr__(self) -> str:
         """"""
@@ -1090,10 +1080,10 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         tf.debugging.Assert(dataset is not None, [])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
-
+        
         # Get mean and covariance
         mean, _ = model.predict(dataset.query_points)
-
+                                     
         tf.debugging.assert_shapes(
             [(mean, ["_", 1])],
             message="Expected model with event shape [1].",
@@ -1102,10 +1092,11 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         eta = tf.reduce_min(mean, axis=0)
 
         acquisition_function = batch_expected_improvement(
-            self._samples,
+            self._sample_size,
             model,
             eta,
             self._jitter,
+            self._dtype,
         )
 
         return acquisition_function
@@ -1135,25 +1126,27 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
 class batch_expected_improvement(AcquisitionFunctionClass):
     def __init__(
         self,
-        samples: TensorType,
+        sample_size: int,
         model: ProbabilisticModel,
         eta: TensorType,
         jitter: float,
+        dtype: tf.DType,
     ):
         """Initialise the batch_expected_improvement instance.
 
-        :param samples: Tensor of shape (S, Q), where S is the number of
-            samples and Q is the batch size.
+        :param sample_size: The number of Sobol samples to use.
         :param model: Gaussian process regression model.
         :param eta: Tensor of shape (,), expected improvement threshold. This
             is the best value observed so far durin the BO loop.
         :param jitter: float, amount of jitter for Cholesky factorisations.
+        :param dtype: tf.DType, data type to use.
         """
 
-        self._samples = samples
+        self._sample_size = sample_size
         self._jitter = jitter
         self._eta = tf.Variable(eta)
         self._model = model
+        self._dtype = dtype
 
     def update(self, eta: TensorType) -> None:
         """Update the acquisition function with a new eta value and reset the
@@ -1600,7 +1593,14 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         :returns ei: Tensor of shape (B,), expected improvement.
         """
 
-        if not hasattr(self, "_mvn_cdf"):
+        if not hasattr(self, "_samples"):
+            self._samples = tf.math.sobol_sample(
+                dim=x.shape[1],
+                num_results=self._sample_size,
+                dtype=self._dtype,
+            )
+
+        if not hasattr(self, "_mvn_cdf"):     
             self._mvn_cdf = make_mvn_cdf(samples=self._samples)
 
         mean, covariance = self._model.predict_joint(x)  # type: ignore
