@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Sequence
+from typing import Optional, Sequence
 
 import tensorflow as tf
 
@@ -112,7 +112,7 @@ class Dataset:
 
 
 def check_and_extract_fidelity_query_points(
-    query_points: TensorType,
+    query_points: TensorType, max_fidelity: Optional[int] = None
 ) -> tuple[TensorType, TensorType]:
     """Check whether the final column of a tensor is close enough to ints
     to be reasonably considered to represent fidelities.
@@ -125,6 +125,7 @@ def check_and_extract_fidelity_query_points(
     :return: input_points: Query points without fidelity column
              and fidelity_col: The fidelities of each of the query points
     """
+    # Check we have sufficient columns
     if query_points.shape[1] < 2:
         raise ValueError(
             "Query points do not have enough columns to be multifidelity,"
@@ -132,12 +133,23 @@ def check_and_extract_fidelity_query_points(
         )
     input_points = query_points[:, :-1]
     fidelity_col = query_points[:, -1:]
+    # Check fidelity column values are close to ints
     tf.debugging.assert_equal(
         tf.round(fidelity_col),
         fidelity_col,
         message="Fidelity column should be float(int), but got a float that"
         " was not close to an int",
     )
+    # Check fidelity column values are non-negative
+    if tf.reduce_min(fidelity_col) < 0:
+        raise ValueError("Fidelity must be non-negative")
+    if max_fidelity is not None:
+        max_input_fid = tf.reduce_max(fidelity_col)
+        if max_input_fid > max_fidelity:
+            raise ValueError(
+                f"Model only supports fidelities up to {max_fidelity},"
+                f" but {max_input_fid} was passed"
+            )
     return input_points, fidelity_col
 
 

@@ -1418,7 +1418,9 @@ class AR1(TrainableProbabilisticModel):
         (
             query_points_wo_fidelity,
             query_points_fidelity_col,
-        ) = check_and_extract_fidelity_query_points(query_points)
+        ) = check_and_extract_fidelity_query_points(
+            query_points, max_fidelity=self.num_fidelities - 1
+        )
 
         signal_mean, signal_var = self.lowest_fidelity_signal_model.predict(
             query_points_wo_fidelity
@@ -1469,7 +1471,9 @@ class AR1(TrainableProbabilisticModel):
         (
             query_points_wo_fidelity,
             query_points_fidelity_col,
-        ) = check_and_extract_fidelity_query_points(query_points)
+        ) = check_and_extract_fidelity_query_points(
+            query_points, max_fidelity=self.num_fidelities - 1
+        )
 
         signal_sample = self.lowest_fidelity_signal_model.sample(
             query_points_wo_fidelity, num_samples

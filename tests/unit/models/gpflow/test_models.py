@@ -1673,3 +1673,20 @@ def test_ar1_covariance_with_top_fidelity_returns_expected_shape(ar1_model: AR1)
     input_data = tf.Variable([[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]], dtype=tf.float64)
     covs = ar1_model.covariance_with_top_fidelity(input_data)
     assert covs.shape == [3, 1]
+
+
+@pytest.mark.parametrize(
+    "input_data", (([[0.1, 0.0], [1.1, -1.0], [2.1, 2.0]]), [[0.1, 0.0], [1.1, 3.0], [2.1, 2.0]])
+)
+def test_ar1_raises_bad_fidleity(ar1_model: AR1, input_data: list[list[float]]) -> None:
+
+    input_data = tf.Variable(input_data, dtype=tf.float64)
+
+    with pytest.raises(ValueError):
+        ar1_model.predict(input_data)
+    with pytest.raises(ValueError):
+        ar1_model.predict_y(input_data)
+    with pytest.raises(ValueError):
+        ar1_model.sample(input_data, 13)
+    with pytest.raises(ValueError):
+        ar1_model.covariance_with_top_fidelity(input_data)
