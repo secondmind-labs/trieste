@@ -985,9 +985,7 @@ def test_batch_expected_improvement_raises_for_invalid_jitter(
     jitter: float,
 ) -> None:
     with pytest.raises(tf.errors.InvalidArgumentError):
-        BatchExpectedImprovement(
-            sample_size=sample_size, dtype=dtype, jitter=jitter
-        )
+        BatchExpectedImprovement(sample_size=sample_size, dtype=dtype, jitter=jitter)
 
 
 @pytest.mark.parametrize("sample_size", [100])

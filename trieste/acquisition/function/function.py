@@ -17,7 +17,7 @@ functions --- functions that estimate the utility of evaluating sets of candidat
 """
 from __future__ import annotations
 
-from typing import Union, Callable, Mapping, Optional, cast
+from typing import Callable, Mapping, Optional, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -1077,10 +1077,10 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         tf.debugging.Assert(dataset is not None, [])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
-        
+
         # Get mean and covariance
         mean, _ = model.predict(dataset.query_points)
-                                     
+
         tf.debugging.assert_shapes(
             [(mean, ["_", 1])],
             message="Expected model with event shape [1].",
@@ -1593,10 +1593,8 @@ class batch_expected_improvement(AcquisitionFunctionClass):
                 dtype=x._dtype,
             )
 
-        if not hasattr(self, "_mvn_cdf"):     
+        if not hasattr(self, "_mvn_cdf"):
             self._mvn_cdf = make_mvn_cdf(samples=self._samples)
-        
-        B = x.shape[0]
 
         mean, covariance = self._model.predict_joint(x)  # type: ignore
 
