@@ -1570,7 +1570,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
 
         # Compute univariate pdfs
         S_diag = tf.linalg.diag_part(Sigma)
-        normal = tfp.distributions.Normal(loc=m, scale=S_diag**0.5)
+        normal = tfp.distributions.Normal(loc=m, scale=S_diag ** 0.5)
         uvn_pdfs = tf.math.exp(normal.log_prob(b))  # (B, Q, Q)
 
         Sigma_diag = tf.linalg.diag_part(tf.transpose(Sigma, perm=[0, 2, 1, 3]))
@@ -1607,14 +1607,10 @@ class batch_expected_improvement(AcquisitionFunctionClass):
 
         mean = mean[:, :, 0]
         covariance = covariance[:, 0, :, :]
-        covariance = (
-            covariance
-            + 1e-6
-            * tf.eye(
-                covariance.shape[-1],
-                dtype=covariance.dtype,
-            )[None, :, :]
-        )
+        covariance = covariance + 1e-6 * tf.eye(
+            covariance.shape[-1],
+            dtype=covariance.dtype,
+        )[None, :, :]
 
         threshold = tf.tile(self._eta, (mean.shape[0],))
 
