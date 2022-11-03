@@ -274,7 +274,7 @@ class EfficientGlobalOptimization(
         greedy = isinstance(self._builder, GreedyAcquisitionFunctionBuilder)
 
         with tf.name_scope("EGO.optimizer" + "[0]" * greedy):
-            points, vectorised_results = self._optimizer(search_space, self._acquisition_function)
+            points = self._optimizer(search_space, self._acquisition_function)
 
         if summary_writer:
             with summary_writer.as_default(step=step_number):
@@ -301,7 +301,7 @@ class EfficientGlobalOptimization(
                     new_optimization_step=False,
                 )
                 with tf.name_scope(f"EGO.optimizer[{i+1}]"):
-                    chosen_point, _ = self._optimizer(search_space, self._acquisition_function)
+                    chosen_point = self._optimizer(search_space, self._acquisition_function)
                 points = tf.concat([points, chosen_point], axis=0)
 
                 if summary_writer:
@@ -317,7 +317,7 @@ class EfficientGlobalOptimization(
                                 f"EGO.acquisition_function/maximum_found[{i+1}]", values
                             )
 
-        return points, vectorised_results
+        return points
 
 
 @dataclass(frozen=True)
@@ -794,7 +794,7 @@ class RandomSampling(AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel
         """
         samples = search_space.sample(self._num_query_points)
 
-        return samples, None
+        return samples
 
 
 class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, ProbabilisticModelType]):

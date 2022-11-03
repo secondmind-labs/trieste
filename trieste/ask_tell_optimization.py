@@ -73,7 +73,6 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         models: Mapping[str, TrainableProbabilisticModelType],
         *,
         fit_model: bool = True,
-        optimize_model: bool = True,
     ):
         ...
 
@@ -88,7 +87,6 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         ],
         *,
         fit_model: bool = True,
-        optimize_model: bool = True,
     ):
         ...
 
@@ -104,7 +102,6 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         acquisition_state: StateType | None,
         *,
         fit_model: bool = True,
-        optimize_model: bool = True,
     ):
         ...
 
@@ -116,7 +113,6 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         models: TrainableProbabilisticModelType,
         *,
         fit_model: bool = True,
-        optimize_model: bool = True,
     ):
         ...
 
@@ -131,7 +127,6 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         ],
         *,
         fit_model: bool = True,
-        optimize_model: bool = True,
     ):
         ...
 
@@ -147,7 +142,6 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         acquisition_state: StateType | None = None,
         *,
         fit_model: bool = True,
-        optimize_model: bool = True,
     ):
         ...
 
@@ -165,7 +159,6 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         acquisition_state: StateType | None = None,
         *,
         fit_model: bool = True,
-        optimize_model: bool = True,
     ):
         """
         :param search_space: The space over which to search for the next query point.
@@ -230,9 +223,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
                 for tag, model in self._models.items():
                     dataset = datasets[tag]
                     model.update(dataset)
-
-                    if optimize_model:
-                        model.optimize(dataset)
+                    model.optimize(dataset)
 
             summary_writer = logging.get_tensorboard_writer()
             if summary_writer:
@@ -418,7 +409,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
 
         return query_points, vectorised_results
 
-    def tell(self, new_data: Mapping[str, Dataset] | Dataset, optimize_model: bool) -> None:
+    def tell(self, new_data: Mapping[str, Dataset] | Dataset) -> None:
         """Updates optimizer state with new data.
 
         :param new_data: New observed data.
@@ -440,9 +431,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
             for tag, model in self._models.items():
                 dataset = self._datasets[tag]
                 model.update(dataset)
-
-                if optimize_model:
-                    model.optimize(dataset)
+                model.optimize(dataset)
 
         summary_writer = logging.get_tensorboard_writer()
         if summary_writer:
