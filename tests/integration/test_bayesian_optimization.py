@@ -30,6 +30,7 @@ from trieste.acquisition import (
     GIBBON,
     AcquisitionFunctionClass,
     AugmentedExpectedImprovement,
+    BatchExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
     Fantasizer,
     GreedyAcquisitionFunctionBuilder,
@@ -112,6 +113,14 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                     ).using(OBJECTIVE)
                 ),
                 id="MinValueEntropySearch",
+            ),
+            pytest.param(
+                12,
+                EfficientGlobalOptimization(
+                    BatchExpectedImprovement(sample_size=100).using(OBJECTIVE),
+                    num_query_points=3,
+                ),
+                id="BatchExpectedImprovement",
             ),
             pytest.param(
                 12,

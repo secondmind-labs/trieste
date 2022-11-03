@@ -109,8 +109,9 @@ class MultivariateNormalCDF:
         reparametrised samples, the helper accepts a tensor of samples, and the
         callable uses these fixed samples whenever it is called.
 
-        :param samples: Tensor of shape (B, Q), with values between 0 and 1.
-        :returns mvn_cdf: Function computing the MC approximation of the CDF.
+        :param samples_size: int, number of samples to use.
+        :param dim: int, dimension of the multivariate Gaussian.
+        :param dtype: tf.DType, data type to use for calculations.
         """
         
         self.S = sample_size
@@ -124,7 +125,7 @@ class MultivariateNormalCDF:
             cov: TensorType,
             jitter: float = 1e-6,
         ) -> TensorType:
-        """Callable for the cumulative density function of the multivariate
+        """Computes the cumulative density function of the multivariate
         Gaussian using the Genz approximation.
 
         :param x: Tensor of shape (B, Q), batch of points to evaluate CDF at.
