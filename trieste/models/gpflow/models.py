@@ -1410,6 +1410,7 @@ class AR1(TrainableProbabilisticModel):
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
         Predict the marginal mean and variance at query_points.
+
         :param query_points: Query points with shape [N, D+1], where the
             final column of the final dimension contains the fidelity of the query point
         :return: mean: The mean at query_points with shape [N, P],
@@ -1447,6 +1448,7 @@ class AR1(TrainableProbabilisticModel):
     def _calculate_residual(self, dataset: Dataset, fidelity: int) -> TensorType:
         """
         Calculate the true residuals for a set of datapoints at a given fidelity.
+
         :param dataset: Dataset of points for which to calculate the residuals.
             Query points shape is [N, D], observations is [N,P].
         :param fidelity: The fidelity for which to calculate the residuals
@@ -1463,6 +1465,7 @@ class AR1(TrainableProbabilisticModel):
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         """
         Sample `num_samples` samples from the posterior distribution at `query_points`
+
         :param query_points: The query points at which to sample of shape [N, D+1], where the
             final column of the final dimension contains the fidelity of the query point
         :param num_samples: The number of samples (S) to generate for each query point.
@@ -1500,6 +1503,7 @@ class AR1(TrainableProbabilisticModel):
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
         Predict the marginal mean and variance at `query_points` including observation noise
+
         :param query_points: Query points with shape [N, D+1], where the
             final column of the final dimension contains the fidelity of the query point
         :return: mean: The mean at query_points with shape [N, P],
@@ -1531,6 +1535,7 @@ class AR1(TrainableProbabilisticModel):
         """
         Update the models on their corresponding data. The data for each model is
         extracted by splitting the observations in ``dataset`` by fidelity level.
+
         :param dataset: The query points and observations for *all* the wrapped models.
         """
         check_and_extract_fidelity_query_points(
@@ -1556,6 +1561,7 @@ class AR1(TrainableProbabilisticModel):
         extracted by splitting the observations in ``dataset``  by fidelity level.
         Note that we have to code up a custom loss function when optimizing our residual
         model, so that we can include the correlation parameter as an optimisation variable.
+
         :param dataset: The query points and observations for *all* the wrapped models.
         """
         check_and_extract_fidelity_query_points(
@@ -1602,6 +1608,7 @@ class AR1(TrainableProbabilisticModel):
         """
         Calculate the covariance of `query_points` with the corresponding
         query point at the top fidelity.
+
         :param query_points: The query points to calculate the covariance for, of shape [N, D+1],
             where the final column of the final dimension contains the fidelity of the query point
         :return: The covariance with the top fidelity for the `query_points`, of shape [N, P]

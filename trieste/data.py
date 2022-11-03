@@ -116,14 +116,16 @@ def check_and_extract_fidelity_query_points(
 ) -> tuple[TensorType, TensorType]:
     """Check whether the final column of a tensor is close enough to ints
     to be reasonably considered to represent fidelities.
+
     The final input column of multi-fidelity data should be a reference to
     the fidelity of the query point. We cannot have mixed type tensors, but
     we can check that thhe final column values are suitably close to integers.
+
     :param query_points: Data to check final column of.
     :raise: ValueError: If there are not enough columns to be multifidelity data
     :raise InvalidArgumentError: If any value in the final column is far from an integer
-    :return: input_points: Query points without fidelity column
-        and fidelity_col: The fidelities of each of the query points
+    :return: Query points without fidelity column
+        and the fidelities of each of the query points
     """
     # Check we have sufficient columns
     if query_points.shape[1] < 2:
@@ -155,6 +157,7 @@ def check_and_extract_fidelity_query_points(
 
 def split_dataset_by_fidelity(dataset: Dataset, num_fidelities: int) -> Sequence[Dataset]:
     """Split dataset into individual datasets without fidelity information
+
     :param dataset: Dataset for which to split fidelities
     :param num_fidlities: Number of fidelities in the problem (not just dataset)
     :return: Ordered list of datasets with lowest fidelity at index 0 and highest at -1
@@ -167,6 +170,7 @@ def split_dataset_by_fidelity(dataset: Dataset, num_fidelities: int) -> Sequence
 
 def get_dataset_for_fidelity(dataset: Dataset, fidelity: int) -> Dataset:
     """Get a dataset with only the specified fidelity of data in
+
     :param dataset: The dataset from which to extract the single fidelity data
     :param fidelity: The fidelity to extract the data for
     :return: Dataset with a single fidelity and no fidelity column
@@ -184,6 +188,7 @@ def get_dataset_for_fidelity(dataset: Dataset, fidelity: int) -> Dataset:
 
 def convert_query_points_for_fidelity(query_points: TensorType, fidelity: int) -> TensorType:
     """Add fidelity column to query_points without fidelity data
+
     :param query_points: query points without fidelity to add fidelity column to
     :param fidelity: fidelity to populate fidelity column with
     :return: TensorType of query points with fidelity column added
