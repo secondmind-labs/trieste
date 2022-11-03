@@ -1140,7 +1140,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         self._jitter = jitter
         self._eta = tf.Variable(eta)
         self._model = model
-        
+
         self._mvn_cdf_1: Optional[MultivariateNormalCDF] = None
         self._mvn_cdf_2: Optional[MultivariateNormalCDF] = None
 
