@@ -67,7 +67,12 @@ def randomize_hyperparameters(object: gpflow.Module) -> None:
             )
             param.assign(sample)
         elif param.prior is not None:
-            param.assign(param.prior.sample())
+            # handle constant priors for multi-dimensional parameters
+            if param.prior.batch_shape == param.prior.event_shape == [] and tf.rank(param) == 1:
+                sample = param.prior.sample(tf.shape(param))
+            else:
+                sample = param.prior.sample()
+            param.assign(sample)
 
 
 def squeeze_hyperparameters(
