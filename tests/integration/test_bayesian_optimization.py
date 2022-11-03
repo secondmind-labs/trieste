@@ -90,30 +90,30 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
     return (
         "num_steps, acquisition_rule",
         [
-            # pytest.param(20, EfficientGlobalOptimization(), id="EfficientGlobalOptimization"),
-            # pytest.param(
-            #     30,
-            #     EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE)),
-            #     id="AugmentedExpectedImprovement",
-            # ),
-            # pytest.param(
-            #     20,
-            #     EfficientGlobalOptimization(
-            #         MonteCarloExpectedImprovement(int(1e3)).using(OBJECTIVE),
-            #         generate_continuous_optimizer(100),
-            #     ),
-            #     id="MonteCarloExpectedImprovement",
-            # ),
-            # pytest.param(
-            #     24,
-            #     EfficientGlobalOptimization(
-            #         MinValueEntropySearch(
-            #             ScaledBranin.search_space,
-            #             min_value_sampler=ThompsonSamplerFromTrajectory(sample_min_value=True),
-            #         ).using(OBJECTIVE)
-            #     ),
-            #     id="MinValueEntropySearch",
-            # ),
+            pytest.param(20, EfficientGlobalOptimization(), id="EfficientGlobalOptimization"),
+            pytest.param(
+                30,
+                EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE)),
+                id="AugmentedExpectedImprovement",
+            ),
+            pytest.param(
+                20,
+                EfficientGlobalOptimization(
+                    MonteCarloExpectedImprovement(int(1e3)).using(OBJECTIVE),
+                    generate_continuous_optimizer(100),
+                ),
+                id="MonteCarloExpectedImprovement",
+            ),
+            pytest.param(
+                24,
+                EfficientGlobalOptimization(
+                    MinValueEntropySearch(
+                        ScaledBranin.search_space,
+                        min_value_sampler=ThompsonSamplerFromTrajectory(sample_min_value=True),
+                    ).using(OBJECTIVE)
+                ),
+                id="MinValueEntropySearch",
+            ),
             pytest.param(
                 12,
                 EfficientGlobalOptimization(
@@ -122,94 +122,94 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                 ),
                 id="BatchExpectedImprovement",
             ),
-            # pytest.param(
-            #     12,
-            #     EfficientGlobalOptimization(
-            #         BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
-            #         num_query_points=3,
-            #     ),
-            #     id="BatchMonteCarloExpectedImprovement",
-            # ),
-            # pytest.param(
-            #     12, AsynchronousOptimization(num_query_points=3), id="AsynchronousOptimization"
-            # ),
-            # pytest.param(
-            #     10,
-            #     EfficientGlobalOptimization(
-            #         LocalPenalization(
-            #             ScaledBranin.search_space,
-            #         ).using(OBJECTIVE),
-            #         num_query_points=3,
-            #     ),
-            #     id="LocalPenalization",
-            # ),
-            # pytest.param(
-            #     10,
-            #     AsynchronousGreedy(
-            #         LocalPenalization(
-            #             ScaledBranin.search_space,
-            #         ).using(OBJECTIVE),
-            #         num_query_points=3,
-            #     ),
-            #     id="LocalPenalization/AsynchronousGreedy",
-            # ),
-            # pytest.param(
-            #     10,
-            #     EfficientGlobalOptimization(
-            #         GIBBON(
-            #             ScaledBranin.search_space,
-            #         ).using(OBJECTIVE),
-            #         num_query_points=2,
-            #     ),
-            #     id="GIBBON",
-            # ),
-            # pytest.param(
-            #     20,
-            #     EfficientGlobalOptimization(
-            #         MultipleOptimismNegativeLowerConfidenceBound(
-            #             ScaledBranin.search_space,
-            #         ).using(OBJECTIVE),
-            #         num_query_points=3,
-            #     ),
-            #     id="MultipleOptimismNegativeLowerConfidenceBound",
-            # ),
-            # pytest.param(15, TrustRegion(), id="TrustRegion"),
-            # pytest.param(
-            #     15,
-            #     TrustRegion(
-            #         EfficientGlobalOptimization(
-            #             MinValueEntropySearch(
-            #                 ScaledBranin.search_space,
-            #             ).using(OBJECTIVE)
-            #         )
-            #     ),
-            #     id="TrustRegion/MinValueEntropySearch",
-            # ),
-            # pytest.param(15, DiscreteThompsonSampling(500, 5), id="DiscreteThompsonSampling"),
-            # pytest.param(
-            #     15,
-            #     EfficientGlobalOptimization(
-            #         Fantasizer(),
-            #         num_query_points=3,
-            #     ),
-            #     id="Fantasizer",
-            # ),
-            # pytest.param(
-            #     10,
-            #     EfficientGlobalOptimization(
-            #         GreedyContinuousThompsonSampling(),
-            #         num_query_points=5,
-            #     ),
-            #     id="GreedyContinuousThompsonSampling",
-            # ),
-            # pytest.param(
-            #     10,
-            #     EfficientGlobalOptimization(
-            #         ParallelContinuousThompsonSampling(),
-            #         num_query_points=5,
-            #     ),
-            #     id="ParallelContinuousThompsonSampling",
-            # ),
+            pytest.param(
+                12,
+                EfficientGlobalOptimization(
+                    BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
+                    num_query_points=3,
+                ),
+                id="BatchMonteCarloExpectedImprovement",
+            ),
+            pytest.param(
+                12, AsynchronousOptimization(num_query_points=3), id="AsynchronousOptimization"
+            ),
+            pytest.param(
+                10,
+                EfficientGlobalOptimization(
+                    LocalPenalization(
+                        ScaledBranin.search_space,
+                    ).using(OBJECTIVE),
+                    num_query_points=3,
+                ),
+                id="LocalPenalization",
+            ),
+            pytest.param(
+                10,
+                AsynchronousGreedy(
+                    LocalPenalization(
+                        ScaledBranin.search_space,
+                    ).using(OBJECTIVE),
+                    num_query_points=3,
+                ),
+                id="LocalPenalization/AsynchronousGreedy",
+            ),
+            pytest.param(
+                10,
+                EfficientGlobalOptimization(
+                    GIBBON(
+                        ScaledBranin.search_space,
+                    ).using(OBJECTIVE),
+                    num_query_points=2,
+                ),
+                id="GIBBON",
+            ),
+            pytest.param(
+                20,
+                EfficientGlobalOptimization(
+                    MultipleOptimismNegativeLowerConfidenceBound(
+                        ScaledBranin.search_space,
+                    ).using(OBJECTIVE),
+                    num_query_points=3,
+                ),
+                id="MultipleOptimismNegativeLowerConfidenceBound",
+            ),
+            pytest.param(15, TrustRegion(), id="TrustRegion"),
+            pytest.param(
+                15,
+                TrustRegion(
+                    EfficientGlobalOptimization(
+                        MinValueEntropySearch(
+                            ScaledBranin.search_space,
+                        ).using(OBJECTIVE)
+                    )
+                ),
+                id="TrustRegion/MinValueEntropySearch",
+            ),
+            pytest.param(15, DiscreteThompsonSampling(500, 5), id="DiscreteThompsonSampling"),
+            pytest.param(
+                15,
+                EfficientGlobalOptimization(
+                    Fantasizer(),
+                    num_query_points=3,
+                ),
+                id="Fantasizer",
+            ),
+            pytest.param(
+                10,
+                EfficientGlobalOptimization(
+                    GreedyContinuousThompsonSampling(),
+                    num_query_points=5,
+                ),
+                id="GreedyContinuousThompsonSampling",
+            ),
+            pytest.param(
+                10,
+                EfficientGlobalOptimization(
+                    ParallelContinuousThompsonSampling(),
+                    num_query_points=5,
+                ),
+                id="ParallelContinuousThompsonSampling",
+            ),
         ],
     )
 
@@ -243,254 +243,254 @@ def test_bayesian_optimizer_with_gpr_finds_minima_of_simple_quadratic(
     _test_optimizer_finds_minimum(GaussianProcessRegression, min(num_steps, 6), acquisition_rule)
 
 
-# @random_seed
-# @pytest.mark.slow
-# def test_bayesian_optimizer_with_vgp_finds_minima_of_scaled_branin() -> None:
-#     _test_optimizer_finds_minimum(
-#         VariationalGaussianProcess,
-#         10,
-#         EfficientGlobalOptimization[SearchSpace, VariationalGaussianProcess](
-#             builder=ParallelContinuousThompsonSampling(), num_query_points=5
-#         ),
-#     )
+@random_seed
+@pytest.mark.slow
+def test_bayesian_optimizer_with_vgp_finds_minima_of_scaled_branin() -> None:
+    _test_optimizer_finds_minimum(
+        VariationalGaussianProcess,
+        10,
+        EfficientGlobalOptimization[SearchSpace, VariationalGaussianProcess](
+            builder=ParallelContinuousThompsonSampling(), num_query_points=5
+        ),
+    )
 
 
-# @random_seed
-# @pytest.mark.parametrize("use_natgrads", [False, True])
-# def test_bayesian_optimizer_with_vgp_finds_minima_of_simple_quadratic(use_natgrads: bool) -> None:
-#     # regression test for [#406]; use natgrads doesn't work well as a model for the objective
-#     # so don't bother checking the results, just that it doesn't crash
-#     _test_optimizer_finds_minimum(
-#         VariationalGaussianProcess,
-#         None if use_natgrads else 5,
-#         EfficientGlobalOptimization[SearchSpace, GPflowPredictor](),
-#         model_args={"use_natgrads": use_natgrads},
-#     )
+@random_seed
+@pytest.mark.parametrize("use_natgrads", [False, True])
+def test_bayesian_optimizer_with_vgp_finds_minima_of_simple_quadratic(use_natgrads: bool) -> None:
+    # regression test for [#406]; use natgrads doesn't work well as a model for the objective
+    # so don't bother checking the results, just that it doesn't crash
+    _test_optimizer_finds_minimum(
+        VariationalGaussianProcess,
+        None if use_natgrads else 5,
+        EfficientGlobalOptimization[SearchSpace, GPflowPredictor](),
+        model_args={"use_natgrads": use_natgrads},
+    )
 
 
-# @random_seed
-# @pytest.mark.slow
-# def test_bayesian_optimizer_with_svgp_finds_minima_of_scaled_branin() -> None:
-#     _test_optimizer_finds_minimum(
-#         SparseVariational,
-#         40,
-#         EfficientGlobalOptimization[SearchSpace, SparseVariational](),
-#         optimize_branin=True,
-#         model_args={"optimizer": Optimizer(gpflow.optimizers.Scipy(), compile=True)},
-#     )
-#     _test_optimizer_finds_minimum(
-#         SparseVariational,
-#         15,
-#         EfficientGlobalOptimization[SearchSpace, SparseVariational](
-#             builder=ParallelContinuousThompsonSampling(), num_query_points=5
-#         ),
-#         optimize_branin=True,
-#         model_args={"optimizer": Optimizer(gpflow.optimizers.Scipy(), compile=True)},
-#     )
+@random_seed
+@pytest.mark.slow
+def test_bayesian_optimizer_with_svgp_finds_minima_of_scaled_branin() -> None:
+    _test_optimizer_finds_minimum(
+        SparseVariational,
+        40,
+        EfficientGlobalOptimization[SearchSpace, SparseVariational](),
+        optimize_branin=True,
+        model_args={"optimizer": Optimizer(gpflow.optimizers.Scipy(), compile=True)},
+    )
+    _test_optimizer_finds_minimum(
+        SparseVariational,
+        15,
+        EfficientGlobalOptimization[SearchSpace, SparseVariational](
+            builder=ParallelContinuousThompsonSampling(), num_query_points=5
+        ),
+        optimize_branin=True,
+        model_args={"optimizer": Optimizer(gpflow.optimizers.Scipy(), compile=True)},
+    )
 
 
-# @random_seed
-# def test_bayesian_optimizer_with_svgp_finds_minima_of_simple_quadratic() -> None:
-#     _test_optimizer_finds_minimum(
-#         SparseVariational,
-#         5,
-#         EfficientGlobalOptimization[SearchSpace, SparseVariational](),
-#         model_args={"optimizer": Optimizer(gpflow.optimizers.Scipy(), compile=True)},
-#     )
+@random_seed
+def test_bayesian_optimizer_with_svgp_finds_minima_of_simple_quadratic() -> None:
+    _test_optimizer_finds_minimum(
+        SparseVariational,
+        5,
+        EfficientGlobalOptimization[SearchSpace, SparseVariational](),
+        model_args={"optimizer": Optimizer(gpflow.optimizers.Scipy(), compile=True)},
+    )
 
 
-# @random_seed
-# @pytest.mark.slow
-# def test_bayesian_optimizer_with_sgpr_finds_minima_of_scaled_branin() -> None:
-#     _test_optimizer_finds_minimum(
-#         SparseGaussianProcessRegression,
-#         9,
-#         EfficientGlobalOptimization[SearchSpace, SparseGaussianProcessRegression](),
-#         optimize_branin=True,
-#     )
-#     _test_optimizer_finds_minimum(
-#         SparseGaussianProcessRegression,
-#         20,
-#         EfficientGlobalOptimization[SearchSpace, SparseGaussianProcessRegression](
-#             builder=ParallelContinuousThompsonSampling(), num_query_points=5
-#         ),
-#         optimize_branin=True,
-#     )
+@random_seed
+@pytest.mark.slow
+def test_bayesian_optimizer_with_sgpr_finds_minima_of_scaled_branin() -> None:
+    _test_optimizer_finds_minimum(
+        SparseGaussianProcessRegression,
+        9,
+        EfficientGlobalOptimization[SearchSpace, SparseGaussianProcessRegression](),
+        optimize_branin=True,
+    )
+    _test_optimizer_finds_minimum(
+        SparseGaussianProcessRegression,
+        20,
+        EfficientGlobalOptimization[SearchSpace, SparseGaussianProcessRegression](
+            builder=ParallelContinuousThompsonSampling(), num_query_points=5
+        ),
+        optimize_branin=True,
+    )
 
 
-# @random_seed
-# def test_bayesian_optimizer_with_sgpr_finds_minima_of_simple_quadratic() -> None:
-#     _test_optimizer_finds_minimum(
-#         SparseGaussianProcessRegression,
-#         5,
-#         EfficientGlobalOptimization[SearchSpace, SparseGaussianProcessRegression](),
-#     )
+@random_seed
+def test_bayesian_optimizer_with_sgpr_finds_minima_of_simple_quadratic() -> None:
+    _test_optimizer_finds_minimum(
+        SparseGaussianProcessRegression,
+        5,
+        EfficientGlobalOptimization[SearchSpace, SparseGaussianProcessRegression](),
+    )
 
 
-# @random_seed
-# @pytest.mark.slow
-# @pytest.mark.parametrize(
-#     "num_steps, acquisition_rule",
-#     [
-#         pytest.param(25, DiscreteThompsonSampling(1000, 8), id="DiscreteThompsonSampling"),
-#         pytest.param(
-#             25,
-#             EfficientGlobalOptimization(
-#                 ParallelContinuousThompsonSampling(),
-#                 num_query_points=3,
-#             ),
-#             id="ParallelContinuousThompsonSampling",
-#         ),
-#         pytest.param(
-#             12,
-#             EfficientGlobalOptimization(
-#                 GreedyContinuousThompsonSampling(),
-#                 num_query_points=4,
-#             ),
-#             id="GreedyContinuousThompsonSampling",
-#             marks=pytest.mark.skip(reason="too fragile"),
-#         ),
-#     ],
-# )
-# def test_bayesian_optimizer_with_dgp_finds_minima_of_scaled_branin(
-#     num_steps: int,
-#     acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepGaussianProcess],
-# ) -> None:
-#     _test_optimizer_finds_minimum(
-#         DeepGaussianProcess, num_steps, acquisition_rule, optimize_branin=True
-#     )
+@random_seed
+@pytest.mark.slow
+@pytest.mark.parametrize(
+    "num_steps, acquisition_rule",
+    [
+        pytest.param(25, DiscreteThompsonSampling(1000, 8), id="DiscreteThompsonSampling"),
+        pytest.param(
+            25,
+            EfficientGlobalOptimization(
+                ParallelContinuousThompsonSampling(),
+                num_query_points=3,
+            ),
+            id="ParallelContinuousThompsonSampling",
+        ),
+        pytest.param(
+            12,
+            EfficientGlobalOptimization(
+                GreedyContinuousThompsonSampling(),
+                num_query_points=4,
+            ),
+            id="GreedyContinuousThompsonSampling",
+            marks=pytest.mark.skip(reason="too fragile"),
+        ),
+    ],
+)
+def test_bayesian_optimizer_with_dgp_finds_minima_of_scaled_branin(
+    num_steps: int,
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepGaussianProcess],
+) -> None:
+    _test_optimizer_finds_minimum(
+        DeepGaussianProcess, num_steps, acquisition_rule, optimize_branin=True
+    )
 
 
-# @random_seed
-# @pytest.mark.parametrize(
-#     "num_steps, acquisition_rule",
-#     [
-#         pytest.param(5, DiscreteThompsonSampling(1000, 1), id="DiscreteThompsonSampling"),
-#         pytest.param(
-#             5,
-#             EfficientGlobalOptimization(
-#                 MonteCarloExpectedImprovement(int(1e2)), generate_continuous_optimizer(100)
-#             ),
-#             id="MonteCarloExpectedImprovement",
-#         ),
-#         pytest.param(
-#             5,
-#             EfficientGlobalOptimization(
-#                 MonteCarloAugmentedExpectedImprovement(int(1e2)), generate_continuous_optimizer(100)
-#             ),
-#             id="MonteCarloAugmentedExpectedImprovement",
-#         ),
-#         pytest.param(
-#             2,
-#             EfficientGlobalOptimization(
-#                 ParallelContinuousThompsonSampling(),
-#                 num_query_points=5,
-#             ),
-#             id="ParallelContinuousThompsonSampling",
-#         ),
-#         pytest.param(
-#             2,
-#             EfficientGlobalOptimization(
-#                 GreedyContinuousThompsonSampling(),
-#                 num_query_points=5,
-#             ),
-#             id="GreedyContinuousThompsonSampling",
-#         ),
-#     ],
-# )
-# def test_bayesian_optimizer_with_dgp_finds_minima_of_simple_quadratic(
-#     num_steps: int,
-#     acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepGaussianProcess],
-# ) -> None:
-#     _test_optimizer_finds_minimum(DeepGaussianProcess, num_steps, acquisition_rule)
+@random_seed
+@pytest.mark.parametrize(
+    "num_steps, acquisition_rule",
+    [
+        pytest.param(5, DiscreteThompsonSampling(1000, 1), id="DiscreteThompsonSampling"),
+        pytest.param(
+            5,
+            EfficientGlobalOptimization(
+                MonteCarloExpectedImprovement(int(1e2)), generate_continuous_optimizer(100)
+            ),
+            id="MonteCarloExpectedImprovement",
+        ),
+        pytest.param(
+            5,
+            EfficientGlobalOptimization(
+                MonteCarloAugmentedExpectedImprovement(int(1e2)), generate_continuous_optimizer(100)
+            ),
+            id="MonteCarloAugmentedExpectedImprovement",
+        ),
+        pytest.param(
+            2,
+            EfficientGlobalOptimization(
+                ParallelContinuousThompsonSampling(),
+                num_query_points=5,
+            ),
+            id="ParallelContinuousThompsonSampling",
+        ),
+        pytest.param(
+            2,
+            EfficientGlobalOptimization(
+                GreedyContinuousThompsonSampling(),
+                num_query_points=5,
+            ),
+            id="GreedyContinuousThompsonSampling",
+        ),
+    ],
+)
+def test_bayesian_optimizer_with_dgp_finds_minima_of_simple_quadratic(
+    num_steps: int,
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepGaussianProcess],
+) -> None:
+    _test_optimizer_finds_minimum(DeepGaussianProcess, num_steps, acquisition_rule)
 
 
-# @random_seed
-# @pytest.mark.slow
-# @pytest.mark.parametrize(
-#     "num_steps, acquisition_rule",
-#     [
-#         pytest.param(
-#             60,
-#             EfficientGlobalOptimization(),
-#             id="EfficientGlobalOptimization",
-#             marks=pytest.mark.skip(reason="too fragile"),
-#         ),
-#         pytest.param(
-#             30,
-#             EfficientGlobalOptimization(
-#                 ParallelContinuousThompsonSampling(),
-#                 num_query_points=4,
-#             ),
-#             id="ParallelContinuousThompsonSampling",
-#         ),
-#     ],
-# )
-# def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_scaled_branin(
-#     num_steps: int,
-#     acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepEnsemble],
-# ) -> None:
-#     _test_optimizer_finds_minimum(
-#         DeepEnsemble,
-#         num_steps,
-#         acquisition_rule,
-#         optimize_branin=True,
-#         model_args={"bootstrap": True, "diversify": False},
-#     )
+@random_seed
+@pytest.mark.slow
+@pytest.mark.parametrize(
+    "num_steps, acquisition_rule",
+    [
+        pytest.param(
+            60,
+            EfficientGlobalOptimization(),
+            id="EfficientGlobalOptimization",
+            marks=pytest.mark.skip(reason="too fragile"),
+        ),
+        pytest.param(
+            30,
+            EfficientGlobalOptimization(
+                ParallelContinuousThompsonSampling(),
+                num_query_points=4,
+            ),
+            id="ParallelContinuousThompsonSampling",
+        ),
+    ],
+)
+def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_scaled_branin(
+    num_steps: int,
+    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepEnsemble],
+) -> None:
+    _test_optimizer_finds_minimum(
+        DeepEnsemble,
+        num_steps,
+        acquisition_rule,
+        optimize_branin=True,
+        model_args={"bootstrap": True, "diversify": False},
+    )
 
 
-# @random_seed
-# @pytest.mark.parametrize(
-#     "num_steps, acquisition_rule",
-#     [
-#         pytest.param(5, EfficientGlobalOptimization(), id="EfficientGlobalOptimization"),
-#         pytest.param(10, DiscreteThompsonSampling(1000, 1), id="DiscreteThompsonSampling"),
-#         pytest.param(
-#             5,
-#             DiscreteThompsonSampling(1000, 1, thompson_sampler=ThompsonSamplerFromTrajectory()),
-#             id="DiscreteThompsonSampling/ThompsonSamplerFromTrajectory",
-#         ),
-#     ],
-# )
-# def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_simple_quadratic(
-#     num_steps: int, acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepEnsemble]
-# ) -> None:
-#     _test_optimizer_finds_minimum(
-#         DeepEnsemble,
-#         num_steps,
-#         acquisition_rule,
-#     )
+@random_seed
+@pytest.mark.parametrize(
+    "num_steps, acquisition_rule",
+    [
+        pytest.param(5, EfficientGlobalOptimization(), id="EfficientGlobalOptimization"),
+        pytest.param(10, DiscreteThompsonSampling(1000, 1), id="DiscreteThompsonSampling"),
+        pytest.param(
+            5,
+            DiscreteThompsonSampling(1000, 1, thompson_sampler=ThompsonSamplerFromTrajectory()),
+            id="DiscreteThompsonSampling/ThompsonSamplerFromTrajectory",
+        ),
+    ],
+)
+def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_simple_quadratic(
+    num_steps: int, acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepEnsemble]
+) -> None:
+    _test_optimizer_finds_minimum(
+        DeepEnsemble,
+        num_steps,
+        acquisition_rule,
+    )
 
 
-# @random_seed
-# @pytest.mark.parametrize(
-#     "num_steps, acquisition_rule",
-#     [
-#         pytest.param(
-#             5,
-#             EfficientGlobalOptimization(
-#                 ParallelContinuousThompsonSampling(),
-#                 num_query_points=3,
-#             ),
-#             id="ParallelContinuousThompsonSampling",
-#         ),
-#     ],
-# )
-# def test_bayesian_optimizer_with_PCTS_and_deep_ensemble_finds_minima_of_simple_quadratic(
-#     num_steps: int, acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepEnsemble]
-# ) -> None:
-#     _test_optimizer_finds_minimum(
-#         DeepEnsemble,
-#         num_steps,
-#         acquisition_rule,
-#         model_args={"diversify": False},
-#     )
-#     _test_optimizer_finds_minimum(
-#         DeepEnsemble,
-#         num_steps,
-#         acquisition_rule,
-#         model_args={"diversify": True},
-#     )
+@random_seed
+@pytest.mark.parametrize(
+    "num_steps, acquisition_rule",
+    [
+        pytest.param(
+            5,
+            EfficientGlobalOptimization(
+                ParallelContinuousThompsonSampling(),
+                num_query_points=3,
+            ),
+            id="ParallelContinuousThompsonSampling",
+        ),
+    ],
+)
+def test_bayesian_optimizer_with_PCTS_and_deep_ensemble_finds_minima_of_simple_quadratic(
+    num_steps: int, acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepEnsemble]
+) -> None:
+    _test_optimizer_finds_minimum(
+        DeepEnsemble,
+        num_steps,
+        acquisition_rule,
+        model_args={"diversify": False},
+    )
+    _test_optimizer_finds_minimum(
+        DeepEnsemble,
+        num_steps,
+        acquisition_rule,
+        model_args={"diversify": True},
+    )
 
 
 def _test_optimizer_finds_minimum(
