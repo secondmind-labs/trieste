@@ -4,6 +4,9 @@ sys.path.append("./scripts")
 
 import argparse
 
+import os
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+
 import tensorflow as tf
 import gpflow
 import numpy as np
@@ -240,14 +243,14 @@ def main():
 
     parser.add_argument(
         "--gtol",
-        type=float,
-        default=1e-6,
+        type=int,
+        default=-6,
     )
 
     parser.add_argument(
         "--ftol",
-        type=float,
-        default=1e-10,
+        type=int,
+        default=-10,
     )
 
     parser.add_argument(
@@ -277,7 +280,7 @@ def main():
     # Parse arguments and print argument summary
     args = parser.parse_args()
     summary = arg_summary(args)
-    print(summary)
+    # print(summary)
 
     assert not (args.objective in gp_objectives and args.objective_dimension == -1)
     
@@ -344,7 +347,7 @@ def main():
             tf.convert_to_tensor(1e-4, dtype=dtype),
         )
         
-    print_summary(model.model)
+    # print_summary(model.model)
 
     # Create acquisition rule
     if args.acquisition == "random":
@@ -382,8 +385,8 @@ def main():
         optimizer_args = {
             "options":
                 {
-                    "gtol" : args.gtol,
-                    "ftol" : args.ftol,
+                    "gtol" : 10**args.gtol,
+                    "ftol" : 10**args.ftol,
                     "maxiter" : args.maxiter,
                     "maxfun" : args.maxfun,
                 }
@@ -436,7 +439,7 @@ def main():
         query_batch, optimisation_results = optimizer.ask()
         dt = time() - start
         
-        print_summary(model.model)
+        # print_summary(model.model)
         
         query_values = observer(query_batch)
         optimizer.tell(

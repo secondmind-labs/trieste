@@ -105,7 +105,11 @@ def set_up_logging(args, summary):
         params,
     )
 
+    if os.path.exists(path):
+        shutil.rmtree(path)
+
     os.makedirs(path, exist_ok=True)
+    
     with open(f"{path}/arguments.txt", "w") as file:
         file.write(summary)
         file.close()
@@ -118,6 +122,9 @@ def set_up_logging(args, summary):
 
     if os.path.exists(f"{path}/figs"):
         shutil.rmtree(f"{path}/figs")
+
+    if os.path.exists(f"{path}/time.txt"):
+        os.remove(f"{path}/time.txt")
         
     os.makedirs(f"{path}/figs", exist_ok=True)
 
@@ -135,7 +142,6 @@ def plot_2D_results(optimizer, path, filename):
     data = optimizer.model.get_internal_data()
     
     x_data = tf.convert_to_tensor(data.query_points)
-    # y_data = tf.convert_to_tensor(data.observations)
     num_plots_per_side = int(len(opt_results)**0.5)+1
     
     k = 0
