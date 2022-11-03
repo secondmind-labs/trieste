@@ -79,7 +79,7 @@ def test_randomize_hyperparameters_randomizes_kernel_parameters_with_priors(
     npt.assert_allclose(1.0, kernel.variance)
     npt.assert_array_equal(dim, kernel.lengthscales.shape)
     npt.assert_raises(AssertionError, npt.assert_allclose, [0.2] * dim, kernel.lengthscales)
-    assert np.count_nonzero(kernel.lengthscales == kernel.lengthscales[0]) == 1
+    assert len(np.unique(kernel.lengthscales)) == dim
 
 
 @random_seed
@@ -97,7 +97,7 @@ def test_randomize_hyperparameters_randomizes_kernel_parameters_with_const_prior
     npt.assert_allclose(1.0, kernel.variance)
     npt.assert_array_equal(dim, kernel.lengthscales.shape)
     npt.assert_raises(AssertionError, npt.assert_allclose, [0.2] * dim, kernel.lengthscales)
-    assert np.count_nonzero(kernel.lengthscales == kernel.lengthscales[0]) == 1
+    assert len(np.unique(kernel.lengthscales)) == dim
 
 
 @random_seed
