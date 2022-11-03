@@ -13,78 +13,75 @@
 # limitations under the License.
 from __future__ import annotations
 
-import pytest
-
-from trieste.types import TensorType
-from trieste.acquisition.function.utils import make_mvn_cdf
-
 import numpy.testing as npt
-
+import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
+
+from trieste.acquisition.function.utils import make_mvn_cdf
+from trieste.types import TensorType
 
 tfd = tfp.distributions
 
 
-@pytest.mark.parametrize("num_sobol",  [200])
+@pytest.mark.parametrize("num_sobol", [200])
 @pytest.mark.parametrize("batch_size", [1, 2, 4])
 def test_make_mvn_cdf_raises_exception_for_incorrect_dimension(
-        num_sobol: int,
-        batch_size: int,
-    ) -> None:
-    
+    num_sobol: int,
+    batch_size: int,
+) -> None:
+
     # Set data type and jitter
     dtype = tf.float64
 
     # Set up dummy sample tensor
     samples = tf.random.uniform((batch_size, 0), dtype=dtype)
-    
+
     with pytest.raises(tf.errors.InvalidArgumentError):
         make_mvn_cdf(samples=samples)
-        
-        
-@pytest.mark.parametrize("num_sobol",  [200])
+
+
+@pytest.mark.parametrize("num_sobol", [200])
 @pytest.mark.parametrize("dim", [2, 3, 5])
 def test_make_mvn_cdf_raises_exception_for_incorrect_dimension(
-        num_sobol: int,
-        dim: int,
-    ) -> None:
-    
+    num_sobol: int,
+    dim: int,
+) -> None:
+
     # Set data type and jitter
     dtype = tf.float64
 
     # Set up dummy sample tensor
     samples = tf.random.uniform((0, dim), dtype=dtype)
-    
+
     with pytest.raises(tf.errors.InvalidArgumentError):
         make_mvn_cdf(samples=samples)
 
 
-@pytest.mark.parametrize("num_sobol",  [200])
+@pytest.mark.parametrize("num_sobol", [200])
 @pytest.mark.parametrize("dim", [2, 3, 5])
 @pytest.mark.parametrize("batch_size", [1, 2, 4])
 def test_make_genz_cdf_matches_naive_monte_carlo_on_random_tasks(
-        num_sobol: int,
-        dim: int,
-        batch_size: int,
-    ) -> None:
-    
+    num_sobol: int,
+    dim: int,
+    batch_size: int,
+) -> None:
     def mc_mvn_cdf(
-            x: TensorType,
-            mean: TensorType,
-            cov: TensorType,
-            num_samples: int = int(1e6),
-        ):
-        
+        x: TensorType,
+        mean: TensorType,
+        cov: TensorType,
+        num_samples: int = int(1e6),
+    ):
+
         # Define multivariate normal
         normal = tfd.MultivariateNormalTriL(
             loc=mean,
             scale_tril=tf.linalg.cholesky(cov),
         )
-        
+
         # Draw samples
         samples = normal.sample(sample_shape=[num_samples])
-        
+
         # Check shapes of input tensors
         tf.debugging.assert_shapes(
             [
@@ -94,37 +91,36 @@ def test_make_genz_cdf_matches_naive_monte_carlo_on_random_tasks(
                 (samples, ("S", "B", "Q")),
             ]
         )
-        
+
         # Compute Monte Carlo estimate
         indicator = tf.reduce_all(tf.math.less(samples, x[None, ...]), axis=-1)
         mc_mvn_cdf = tf.reduce_mean(tf.cast(indicator, tf.float64), axis=0)
-        
+
         return mc_mvn_cdf
-        
+
     # Seed sampling for reproducible testing
     tf.random.set_seed(0)
-    
+
     # Set data type and jitter
     dtype = tf.float64
     jitter = 1e-6
-    
+
     # Draw x randomly
     x = tf.random.normal((batch_size, dim), dtype=dtype) / dim ** 0.5
-    
+
     # Draw mean randomly
     mean = tf.random.normal((batch_size, dim), dtype=dtype) / dim ** 0.5
-    
+
     # Draw covariance randomly
     cov = tf.random.normal((batch_size, dim, dim), dtype=dtype) / dim ** 0.5
     cov = tf.matmul(cov, cov, transpose_a=True) + jitter * tf.eye(dim, dtype=dtype)[None, :, :]
-    
+
     # Set up Sobol samples to use in the Genz approximator
     samples = tf.math.sobol_sample(dim=dim, num_results=num_sobol, dtype=dtype)
-    
+
     # Set up Genz approximation and direct Monte Carlo estimate
     genz_cdf = make_mvn_cdf(samples=samples)(x=x, mean=mean, cov=cov)
     mc_cdf = mc_mvn_cdf(x=x, mean=mean, cov=cov)
-    
+
     # Check that the Genz and direct Monte Carlo estimates agree
     tf.debugging.assert_near(mc_cdf, genz_cdf, rtol=5e-1)
-    

@@ -94,13 +94,12 @@ def get_update_indices(B: int, S: int, Q: int, q: int) -> TensorType:
 
 
 class MultivariateNormalCDF:
-
     def __init__(
-            self,
-            sample_size: int,
-            dim: int,
-            dtype: tf.DType,
-        ) -> Callable[[TensorType, TensorType, TensorType, float], TensorType]:
+        self,
+        sample_size: int,
+        dim: int,
+        dtype: tf.DType,
+    ) -> Callable[[TensorType, TensorType, TensorType, float], TensorType]:
         """Builds the cumulative density function of the multivariate Gaussian
         using the Genz approximation detailed in :cite:`genz2016numerical`.
 
@@ -113,18 +112,18 @@ class MultivariateNormalCDF:
         :param dim: int, dimension of the multivariate Gaussian.
         :param dtype: tf.DType, data type to use for calculations.
         """
-        
+
         self.S = sample_size
         self.Q = dim
         self.dtype = dtype
 
     def __call__(
-            self,
-            x: TensorType,
-            mean: TensorType,
-            cov: TensorType,
-            jitter: float = 1e-6,
-        ) -> TensorType:
+        self,
+        x: TensorType,
+        mean: TensorType,
+        cov: TensorType,
+        jitter: float = 1e-6,
+    ) -> TensorType:
         """Computes the cumulative density function of the multivariate
         Gaussian using the Genz approximation.
 
@@ -134,7 +133,7 @@ class MultivariateNormalCDF:
         :param jitter: float, jitter to use in the Cholesky factorisation.
         :returns mvn_cdf: Tensor of shape (B,), CDF values.
         """
-        
+
         # Unpack batch size
         B = x.shape[0]
 
