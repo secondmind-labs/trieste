@@ -1048,15 +1048,13 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         self,
         sample_size: int,
         *,
-<<<<<<< HEAD
         dtype: tf.DType,
-=======
->>>>>>> 44b37231d58312b93bb45896e528c3d931ad1220
         jitter: float = DEFAULTS.JITTER,
     ):
         """Initialise the BatchExpectedImprovement instance.
 
         :param sample_size: int, number of Sobol samples to use.
+        :param dtype: tf.DType, data type to use for calculations.
         :param jitter: float, amount of jitter for Cholesky factorisations.
         """
 
@@ -1064,10 +1062,7 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         tf.debugging.assert_greater_equal(jitter, 0.0)
 
         self._sample_size = sample_size
-<<<<<<< HEAD
         self._dtype = dtype
-=======
->>>>>>> 44b37231d58312b93bb45896e528c3d931ad1220
         self._jitter = jitter
 
     def __repr__(self) -> str:
@@ -1137,11 +1132,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
     ):
         """Initialise the batch_expected_improvement instance.
 
-<<<<<<< HEAD
         :param sample_size: int, number of samples to use.
-=======
-        :param sample_size: The number of Sobol samples to use.
->>>>>>> 44b37231d58312b93bb45896e528c3d931ad1220
         :param model: Gaussian process regression model.
         :param eta: Tensor of shape (,), expected improvement threshold. This
             is the best value observed so far durin the BO loop.
@@ -1560,7 +1551,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         R = self.compute_R(
             Sigma_reshaped=Sigma_reshaped,
         )  # (B*Q, Q, Q-1, Q-1)
-        
+
         # Compute Q-1 multivariate CDFs
         Phi_mvn_cdfs = self.compute_Phi(
             c=c,
@@ -1600,31 +1591,19 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         :returns ei: Tensor of shape (B,), expected improvement.
         """
 
-<<<<<<< HEAD
         if not hasattr(self, "_mvn_cdf_1"):
             self._mvn_cdf_1 = MultivariateNormalCDF(
                 sample_size=self._sample_size,
                 dim=x.shape[1],
                 dtype=x.dtype,
             )
-            
+
         if not hasattr(self, "_mvn_cdf_2"):
             self._mvn_cdf_2 = MultivariateNormalCDF(
                 sample_size=self._sample_size,
-                dim=x.shape[1]-1,
+                dim=x.shape[1] - 1,
                 dtype=x.dtype,
             )
-=======
-        if not hasattr(self, "_samples"):
-            self._samples = tf.math.sobol_sample(
-                dim=x.shape[1],
-                num_results=self._sample_size,
-                dtype=x._dtype,
-            )
-
-        if not hasattr(self, "_mvn_cdf"):
-            self._mvn_cdf = make_mvn_cdf(samples=self._samples)
->>>>>>> 44b37231d58312b93bb45896e528c3d931ad1220
 
         mean, covariance = self._model.predict_joint(x)  # type: ignore
 

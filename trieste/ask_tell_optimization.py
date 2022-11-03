@@ -230,7 +230,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
                 for tag, model in self._models.items():
                     dataset = datasets[tag]
                     model.update(dataset)
-                    
+
                     if optimize_model:
                         model.optimize(dataset)
 
@@ -388,23 +388,22 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         # so code below is needed to cater for both cases
 
         with Timer() as query_point_generation_timer:
-            
+
             results = self._acquisition_rule.acquire(
                 self._search_space, self._models, datasets=self._datasets
             )
-            
+
             try:
                 points_or_stateful, vectorised_results = results
-            
+
             except ValueError:
                 points_or_stateful, vectorised_results = results, None
-                
 
         if callable(points_or_stateful):
             self._acquisition_state, query_points = points_or_stateful(self._acquisition_state)
         else:
             query_points = points_or_stateful
-            
+
         summary_writer = logging.get_tensorboard_writer()
         if summary_writer:
             with summary_writer.as_default(step=logging.get_step_number()):
@@ -441,7 +440,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
             for tag, model in self._models.items():
                 dataset = self._datasets[tag]
                 model.update(dataset)
-                
+
                 if optimize_model:
                     model.optimize(dataset)
 
