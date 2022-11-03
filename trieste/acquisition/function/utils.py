@@ -110,8 +110,15 @@ def make_mvn_cdf(
 
     # Unpack sample shape tensor
     S, Q = samples.shape
-
-    @tf.function
+    
+    # Check that MVN CDF samples are in a valid range
+    tf.debugging.assert_less_equal(tf.zeros_like(samples), samples)
+    tf.debugging.assert_less_equal(samples, tf.ones_like(samples))
+    
+    # Check both number of samples and batch size are greater than zero
+    tf.debugging.assert_greater(S, 0)
+    tf.debugging.assert_greater(Q, 0)
+    
     def mvn_cdf(
         x: TensorType,
         mean: TensorType,
