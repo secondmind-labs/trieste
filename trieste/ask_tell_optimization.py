@@ -379,16 +379,9 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         # so code below is needed to cater for both cases
 
         with Timer() as query_point_generation_timer:
-
-            results = self._acquisition_rule.acquire(
+            points_or_stateful = self._acquisition_rule.acquire(
                 self._search_space, self._models, datasets=self._datasets
             )
-
-            try:
-                points_or_stateful, vectorised_results = results
-
-            except ValueError:
-                points_or_stateful, vectorised_results = results, None
 
         if callable(points_or_stateful):
             self._acquisition_state, query_points = points_or_stateful(self._acquisition_state)
@@ -407,7 +400,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
                     self._query_plot_dfs,
                 )
 
-        return query_points, vectorised_results
+        return query_points
 
     def tell(self, new_data: Mapping[str, Dataset] | Dataset) -> None:
         """Updates optimizer state with new data.
