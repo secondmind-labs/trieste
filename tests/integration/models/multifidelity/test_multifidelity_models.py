@@ -59,8 +59,6 @@ def test_ar1_results_close() -> None:
 
     model = AR1(gprs)
 
-    print(initial_data.observations.shape)
-
     model.update(initial_data)
     model.optimize(initial_data)
 

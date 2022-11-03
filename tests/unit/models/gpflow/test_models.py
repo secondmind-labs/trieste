@@ -53,7 +53,7 @@ from tests.util.models.gpflow.models import (
     vgp_model,
 )
 from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
-from trieste.data import Dataset
+from trieste.data import Dataset, convert_query_points_for_fidelity
 from trieste.logging import step_number, tensorboard_writer
 from trieste.models import TrainableProbabilisticModel
 from trieste.models.gpflow import (
@@ -1631,7 +1631,7 @@ def test_sparse_variational_pairwise_covariance_for_non_whitened(
 
 
 @pytest.fixture
-def ar1_model() -> AR1:
+def ar1_dataset() -> Dataset:
 
     dataset = Dataset(
         tf.Variable(
@@ -1640,8 +1640,14 @@ def ar1_model() -> AR1:
         ),
         tf.Variable([[2.0], [4.0], [6.0], [8.0], [10.0], [12.0]], dtype=tf.float64),
     )
+    return dataset
+
+
+@pytest.fixture
+def ar1_model(ar1_dataset) -> AR1:
+
     search_space = Box([0.0], [10.0])
-    gprs = build_ar1_models(dataset, num_fidelities=3, input_search_space=search_space)
+    gprs = build_ar1_models(ar1_dataset, num_fidelities=3, input_search_space=search_space)
     return AR1(gprs)
 
 
@@ -1690,3 +1696,113 @@ def test_ar1_raises_bad_fidleity(ar1_model: AR1, input_data: list[list[float]]) 
         ar1_model.sample(input_data, 13)
     with pytest.raises(ValueError):
         ar1_model.covariance_with_top_fidelity(input_data)
+
+
+def test_ar1_update_increases_internal_data_count(ar1_dataset: Dataset, ar1_model: AR1) -> None:
+
+    initial_fid_0_data_length = tf.shape(
+        ar1_model.lowest_fidelity_signal_model.get_internal_data().query_points
+    )[0]
+    initial_fid_1_data_length = tf.shape(
+        ar1_model.fidelity_residual_models[1].get_internal_data().query_points
+    )[0]
+    initial_fid_2_data_length = tf.shape(
+        ar1_model.fidelity_residual_models[2].get_internal_data().query_points
+    )[0]
+
+    new_data = Dataset(
+        tf.Variable([[0.2, 0.0], [0.3, 0.0], [0.5, 1.0]], dtype=tf.float64),
+        tf.Variable([[1.0], [2.0], [3.0]], dtype=tf.float64),
+    )
+
+    ar1_model.update(ar1_dataset + new_data)
+
+    assert (
+        tf.shape(ar1_model.lowest_fidelity_signal_model.get_internal_data().query_points)[0]
+        == initial_fid_0_data_length + 2
+    )
+    assert (
+        tf.shape(ar1_model.fidelity_residual_models[1].get_internal_data().query_points)[0]
+        == initial_fid_1_data_length + 1
+    )
+    assert (
+        tf.shape(ar1_model.fidelity_residual_models[2].get_internal_data().query_points)[0]
+        == initial_fid_2_data_length
+    )
+
+
+@pytest.mark.parametrize(
+    "new_data,problem",
+    (
+        ([[0.0, 8.0]], "too_high_fid"),
+        ([[0.0, -1.0]], "negative_fid"),
+        ([[0.0, 1.3]], "non_int_fid"),
+    ),
+)
+def test_ar1_update_raises_for_bad_new_data(
+    new_data: list[list[float]], problem: str, ar1_dataset: Dataset, ar1_model: AR1
+) -> None:
+
+    new_data = Dataset(
+        tf.Variable(new_data, dtype=tf.float64), tf.Variable([[0.1]], dtype=tf.float64)
+    )
+    if problem == "non_int_fid":
+        with pytest.raises(tf.errors.InvalidArgumentError):
+            ar1_model.update(ar1_dataset + new_data)
+    else:
+        with pytest.raises(ValueError):
+            ar1_model.update(ar1_dataset + new_data)
+
+
+def test_ar1_optimize_reduces_losses() -> None:
+
+    xs_low = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
+    xs_high = tf.Variable(np.linspace(0, 10, 10), dtype=tf.float64)[:, None]
+    lf_obs = tf.sin(xs_low) + tf.random.normal(xs_low.shape, mean=0, stddev=1e-1, dtype=tf.float64)
+    hf_obs = 2 * tf.sin(xs_high) + tf.random.normal(
+        xs_high.shape, mean=0, stddev=1e-1, dtype=tf.float64
+    )
+
+    lf_query_points = convert_query_points_for_fidelity(xs_low, 0)
+    hf_query_points = convert_query_points_for_fidelity(xs_high, 1)
+
+    lf_dataset = Dataset(lf_query_points, lf_obs)
+    hf_dataset = Dataset(hf_query_points, hf_obs)
+
+    dataset = lf_dataset + hf_dataset
+
+    search_space = Box([0.0], [10.0])
+
+    model = AR1(build_ar1_models(dataset, num_fidelities=2, input_search_space=search_space))
+
+    starting_f0_model_loss = model.lowest_fidelity_signal_model.model.training_loss()
+    starting_f1_model_loss = model.fidelity_residual_models[1].model.training_loss()
+
+    model.update(dataset)
+    model.optimize(dataset)
+
+    assert model.lowest_fidelity_signal_model.model.training_loss() < starting_f0_model_loss
+    assert model.fidelity_residual_models[1].model.training_loss() < starting_f1_model_loss
+
+
+@pytest.mark.parametrize(
+    "new_data,problem",
+    (
+        ([[0.0, 8.0]], "too_high_fid"),
+        ([[0.0, -1.0]], "negative_fid"),
+        ([[0.0, 1.3]], "non_int_fid"),
+    ),
+)
+def test_ar1_optimize_raises_for_bad_new_data(
+    new_data: list[list[float]], problem: str, ar1_dataset: Dataset, ar1_model: AR1
+) -> None:
+
+    new_data = Dataset(
+        tf.Variable(new_data, dtype=tf.float64), tf.Variable([[0.1]], dtype=tf.float64)
+    )
+    if problem == "non_int_fid":
+        with pytest.raises(tf.errors.InvalidArgumentError):
+            ar1_model.optimize(ar1_dataset + new_data)
+    else:
+        with pytest.raises(ValueError):
+            ar1_model.optimize(ar1_dataset + new_data)

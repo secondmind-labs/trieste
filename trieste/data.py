@@ -123,7 +123,7 @@ def check_and_extract_fidelity_query_points(
     :raise: ValueError: If there are not enough columns to be multifidelity data
     :raise InvalidArgumentError: If any value in the final column is far from an integer
     :return: input_points: Query points without fidelity column
-             and fidelity_col: The fidelities of each of the query points
+        and fidelity_col: The fidelities of each of the query points
     """
     # Check we have sufficient columns
     if query_points.shape[1] < 2:

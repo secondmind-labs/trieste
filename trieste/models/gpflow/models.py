@@ -1533,7 +1533,9 @@ class AR1(TrainableProbabilisticModel):
         extracted by splitting the observations in ``dataset`` by fidelity level.
         :param dataset: The query points and observations for *all* the wrapped models.
         """
-        check_and_extract_fidelity_query_points(dataset.query_points)
+        check_and_extract_fidelity_query_points(
+            dataset.query_points, max_fidelity=self.num_fidelities - 1
+        )
         dataset_per_fidelity = split_dataset_by_fidelity(dataset, self.num_fidelities)
         for fidelity, dataset_for_fidelity in enumerate(dataset_per_fidelity):
             if fidelity == 0:
@@ -1556,7 +1558,9 @@ class AR1(TrainableProbabilisticModel):
         model, so that we can include the correlation parameter as an optimisation variable.
         :param dataset: The query points and observations for *all* the wrapped models.
         """
-        check_and_extract_fidelity_query_points(dataset.query_points)
+        check_and_extract_fidelity_query_points(
+            dataset.query_points, max_fidelity=self.num_fidelities - 1
+        )
         dataset_per_fidelity = split_dataset_by_fidelity(dataset, self.num_fidelities)
 
         for fidelity, dataset_for_fidelity in enumerate(dataset_per_fidelity):
