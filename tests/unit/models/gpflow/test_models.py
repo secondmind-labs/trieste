@@ -1644,7 +1644,7 @@ def ar1_dataset() -> Dataset:
 
 
 @pytest.fixture
-def ar1_model(ar1_dataset) -> AR1:
+def ar1_model(ar1_dataset: Dataset) -> AR1:
 
     search_space = Box([0.0], [10.0])
     gprs = build_ar1_models(ar1_dataset, num_fidelities=3, input_search_space=search_space)
@@ -1743,15 +1743,15 @@ def test_ar1_update_raises_for_bad_new_data(
     new_data: list[list[float]], problem: str, ar1_dataset: Dataset, ar1_model: AR1
 ) -> None:
 
-    new_data = Dataset(
+    new_dataset = Dataset(
         tf.Variable(new_data, dtype=tf.float64), tf.Variable([[0.1]], dtype=tf.float64)
     )
     if problem == "non_int_fid":
         with pytest.raises(tf.errors.InvalidArgumentError):
-            ar1_model.update(ar1_dataset + new_data)
+            ar1_model.update(ar1_dataset + new_dataset)
     else:
         with pytest.raises(ValueError):
-            ar1_model.update(ar1_dataset + new_data)
+            ar1_model.update(ar1_dataset + new_dataset)
 
 
 def test_ar1_optimize_reduces_losses() -> None:
@@ -1797,12 +1797,12 @@ def test_ar1_optimize_raises_for_bad_new_data(
     new_data: list[list[float]], problem: str, ar1_dataset: Dataset, ar1_model: AR1
 ) -> None:
 
-    new_data = Dataset(
+    new_dataset = Dataset(
         tf.Variable(new_data, dtype=tf.float64), tf.Variable([[0.1]], dtype=tf.float64)
     )
     if problem == "non_int_fid":
         with pytest.raises(tf.errors.InvalidArgumentError):
-            ar1_model.optimize(ar1_dataset + new_data)
+            ar1_model.optimize(ar1_dataset + new_dataset)
     else:
         with pytest.raises(ValueError):
-            ar1_model.optimize(ar1_dataset + new_data)
+            ar1_model.optimize(ar1_dataset + new_dataset)
