@@ -2,7 +2,7 @@
 # # Constrained Acquisition Function Optimization with Expected Improvement
 
 # %% [markdown]
-# Sometimes it is practically convenient to query several points at a time. This notebook demonstrates four ways to perfom batch Bayesian optimization with Trieste.
+# ## Imports and setup
 
 # %%
 import numpy as np
@@ -25,13 +25,14 @@ from trieste.models import ProbabilisticModel
 from trieste.models.interfaces import ProbabilisticModelType
 from trieste.data import Dataset
 from trieste.types import TensorType
-from scipy.optimize import LinearConstraint
-from typing import Optional, Mapping, cast
+from scipy.optimize import LinearConstraint, NonlinearConstraint
+from typing import Optional, Mapping, Tuple, cast
 import gpflow
 import textwrap
 import ipywidgets
 from IPython. display import clear_output
 import imageio
+from functools import lru_cache
 
 np.random.seed(5678)
 tf.random.set_seed(5678)
@@ -48,33 +49,114 @@ ctol = 1e-7
 #                                    for constraint in constraints]))
 #
 def constraints_residual(constraints, x):
-    return tf.concat([[tf.linalg.matmul(constraint.A, x, transpose_b=True) - constraint.lb[..., tf.newaxis],
-                                constraint.ub[..., tf.newaxis] - tf.linalg.matmul(constraint.A, x, transpose_b=True)]
-                      for constraint in constraints], axis=1)
+    c = None
+
+    non_c = [[constraint.fun(x) - tf.expand_dims(constraint.lb, axis=-1),
+              tf.expand_dims(constraint.ub, axis=-1) - constraint.fun(x)]
+             for constraint in constraints if isinstance(constraint, NonlinearConstraint)]
+    if len(non_c):
+        c = tf.concat(non_c, axis=1)
+
+    if len(x.shape) == 1:
+        x = tf.expand_dims(x, axis=0)
+
+    lin_c = [[tf.linalg.matmul(constraint.A, x, transpose_b=True) - tf.expand_dims(constraint.lb, axis=-1),
+              tf.expand_dims(constraint.ub, axis=-1) - tf.linalg.matmul(constraint.A, x, transpose_b=True)]
+             for constraint in constraints if isinstance(constraint, LinearConstraint)]
+    if len(lin_c):
+        lin_c = tf.concat(lin_c, axis=1)
+        if c is not None:
+            c = tf.concat([c, lin_c], axis=0)
+        else:
+            c = lin_c
+
+    return tf.reshape(c, (-1, c.shape[-1]))
 
 def constraints_satisfied(constraints, x):
     #res_lo, res_up = constraints_tr.residual(x.T)
     #return np.logical_and(np.all(res_lo >= 0., aixs=0), np.all(res_up >= 0., aixs=0))
     #rl, ru = constraints_residual(x)
     #return np.logical_and(np.all(rl >= 0., axis=0), np.all(ru >= 0., axis=0))
-    return np.all(np.all(constraints_residual(constraints, x) >= -ctol, axis=0), axis=0)
+    #return np.all(np.all(constraints_residual(constraints, x) >= -ctol, axis=0), axis=0)
+    return np.all(constraints_residual(constraints, x) >= -ctol, axis=0)
 
-def constraints_fn(constraints, x):
-    #print('x:', x.shape)
-    if len(x.shape) == 1:
-        x = np.expand_dims(x, axis=0)
-    return np.reshape(constraints_residual(constraints, x), (-1, x.shape[0]))
+#def constraints_fn(constraints, x):
+#    #print('x:', x.shape)
+#    #if len(x.shape) == 1:
+#    #    x = np.expand_dims(x, axis=0)
+#    vals = constraints_residual(constraints, x)
+#    return np.reshape(vals, (-1, vals.shape[-1]))
 
-def constraints_jac(constraints, x_dims):
-    jac = np.concatenate([np.concatenate([constraint.A, -constraint.A]) for constraint in constraints])
-    return np.reshape(jac, (-1, x_dims, 1))
+def constraints_jac(constraint, x):
+    if isinstance(constraint, LinearConstraint):
+        jac = tf.concat([constraint.A, -constraint.A], axis=0)
+        jac = tf.reshape(jac, (-1, x.shape[-1], 1))
+    elif isinstance(constraint, NonlinearConstraint):
+        #tf.debugging.assert_shapes(
+        #    [(x, ["D",])],
+        #    message=f"""a single input point is expected (1D tensor), instead received tensor of shape {tf.shape(x)}""",
+        #)
+
+        #x = tf.transpose(x)
+        jac = tf.transpose(constraint.jac(x))
+        jac = tf.concat([jac, -jac], axis=0)
+        shape = x.shape[::-1]
+        if len(shape) == 1:
+            shape += (1,)
+        jac = tf.reshape(jac, (-1, *shape))
+
+    return jac
 
 def constraints_to_dict(constraints, search_space):
     return [{'type': 'ineq',
-             'fun': lambda x, i=i, j=j: constraints_fn([constraints[i]], x)[j].squeeze(),
-             'jac': lambda _, i=i, j=j: constraints_jac([constraints[i]], len(search_space.lower))[j].squeeze(),
+             'fun': lambda x, i=i, j=j: tf.squeeze(constraints_residual([constraints[i]], x)[j], axis=-1),
+             'jac': lambda x, i=i, j=j: tf.squeeze(constraints_jac(constraints[i], x)[j], axis=-1),
             }
             for i, c in enumerate(constraints) for j in range(c.lb.size * 2)]
+
+#@lru_cache
+#def constraint_value_and_gradient_cached(constraint_value, x_dtype, *args) -> Tuple[TensorType, TensorType]:
+#    x = tf.convert_to_tensor(args, dtype=x_dtype)
+#    #print("2:", x)
+#    return tfp.math.value_and_gradient(constraint_value, x)  # [len(x), 1], [len(x), D]
+#
+#def constraint_value_and_gradient(constraint_value, x: TensorType) -> Tuple[TensorType, TensorType]:
+#    #tf.debugging.assert_shapes(
+#    #    [(x, ["D",])],
+#    #    message=f"""a single input point is expected (1D tensor), instead received tensor of shape {tf.shape(x)}""",
+#    #)
+#
+#    #print("1:", x)
+#    if len(x.shape) > 1:
+#        vals = []
+#        grads = []
+#        for xi in tf.unstack(x, axis=-1):
+#            val, grad = constraint_value_and_gradient_cached(constraint_value, x.dtype, *np.array(xi).tolist())
+#            vals.append(val)
+#            grads.append(grad)
+#        return tf.transpose(tf.concat(vals, axis=0)), tf.transpose(tf.concat(grads, axis=0))
+#    else:
+#        return constraint_value_and_gradient_cached(constraint_value, x.dtype, *np.array(x).tolist())
+
+def constraint_value_and_gradient(constraint_value, x: TensorType) -> Tuple[TensorType, TensorType]:
+    val, grad = tfp.math.value_and_gradient(constraint_value, x)  # [len(x), 1], [len(x), D]
+    return tf.cast(val, dtype=x.dtype), tf.cast(grad, dtype=x.dtype)
+
+def process_nonlinear_constraint(constraint, search_space):
+    m = np.atleast_1d(constraint.fun(np.zeros((search_space.dimension)))).size  # Number of constraint outputs.
+
+    def val_fun(x, fun=constraint.fun):
+        return constraint_value_and_gradient(fun, x)[0]
+    def jac_fun(x, fun=constraint.fun):
+        return constraint_value_and_gradient(fun, x)[1]
+
+    constraint.jac = jac_fun
+    constraint.fun = val_fun
+    #constraint.jac = lambda x, fun=constraint.fun: constraint_value_and_gradient(fun, x)[1]
+    #constraint.fun = lambda x, fun=constraint.fun: constraint_value_and_gradient(fun, x)[0]
+    constraint.lb = np.broadcast_to(constraint.lb, (m,))
+    constraint.ub = np.broadcast_to(constraint.ub, (m,))
+    return constraint
 
 
 # %%
@@ -132,7 +214,7 @@ def simple_constraints_feasibility(
 
         c = constraints_residual(constraints, tf.squeeze(x, -2))
         distr = tfp.distributions.Normal(tf.cast(0, x.dtype), tf.cast(1e-3, x.dtype))
-        return tf.expand_dims(tf.math.reduce_prod(distr.cdf(c), axis=[0, 1]), axis=-1)
+        return tf.expand_dims(tf.math.reduce_prod(distr.cdf(c), axis=0), axis=-1)
 
     return acquisition
 
@@ -198,7 +280,7 @@ class ExpectedSimpleConstrainedImprovement(ExpectedConstrainedImprovement[Probab
 
 
 # %% [markdown]
-# ## Run
+# ## Run class
 
 # %%
 class Run:
@@ -483,14 +565,15 @@ class Run:
 
     def plot_results(self):
         num_plots = len(self.results_hist)
-        num_per_side = int(np.ceil(num_plots/2))
-        fig, ax = plt.subplots(num_per_side, num_per_side, figsize=(7.2*num_per_side, 4.8*num_per_side))
+        num_cols = int(np.ceil(np.sqrt(num_plots)))
+        num_rows = int(np.ceil(num_plots/num_cols))
+        fig, ax = plt.subplots(num_rows, num_cols, figsize=(7.2*num_cols, 4.8*num_rows))
 
         for _ in range(len(np.shape(ax)), 2):
-            ax = np.expand_dims(ax, axis=-1)
+            ax = np.expand_dims(ax, axis=0)
 
         for i, name in enumerate(self.results_hist.keys()):
-            self._plot_optim(ax[i//num_per_side, i%num_per_side], name)
+            self._plot_optim(ax[i//num_cols, i%num_cols], name)
 
         fig.tight_layout(pad=0.8)
         plt.savefig('figure.png')
@@ -503,6 +586,9 @@ class Run:
     def write_gif(self):
         imageio.mimsave('figures.gif', self.plot_frames, format='GIF', fps=.20)
 
+
+# %% [markdown]
+# ## Run loop
 
 # %%
 def multi_run(run, num_models, num_optims, initial_query_points, num_initial_samples=2, num_optimization_runs=2, with_plot=True):
