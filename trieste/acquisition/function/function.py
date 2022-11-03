@@ -1619,7 +1619,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
                 (x, ("B", "Q", "D")),
                 (mean, ("B", "Q")),
                 (covariance, ("B", "Q", "Q")),
-                (threshold, ("B",))
+                (threshold, ("B",)),
             ]
         )
 
