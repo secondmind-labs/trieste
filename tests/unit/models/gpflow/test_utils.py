@@ -78,6 +78,19 @@ def test_randomize_hyperparameters_randomizes_kernel_parameters_with_priors(dim:
 
 
 @random_seed
+def test_randomize_hyperparameters_randomizes_kernel_parameters_with_const_priors(dim: int) -> None:
+    kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2] * dim)
+    kernel.lengthscales.prior = tfp.distributions.LogNormal(
+        loc=tf.math.log(0.2), scale=1.0  # constant loc should be applied to every dimension
+    )
+    randomize_hyperparameters(kernel)
+
+    npt.assert_allclose(1.0, kernel.variance)
+    npt.assert_array_equal(dim, kernel.lengthscales.shape)
+    npt.assert_raises(AssertionError, npt.assert_allclose, [0.2] * dim, kernel.lengthscales)
+
+
+@random_seed
 def test_randomize_hyperparameters_randomizes_constrained_kernel_parameters(dim: int) -> None:
     kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2] * dim)
     upper = tf.cast([10.0] * dim, dtype=tf.float64)

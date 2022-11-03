@@ -67,7 +67,12 @@ def randomize_hyperparameters(object: gpflow.Module) -> None:
             )
             param.assign(sample)
         elif param.prior is not None:
-            param.assign(param.prior.sample())
+            sample = param.prior.sample()
+            # handle the case where the parameter is per-dimension but the
+            # prior wrongly assumes that it is isotropic
+            if tf.rank(sample) == 0 and tf.rank(param) == 1:
+                sample = tf.fill(tf.shape(param), sample)
+            param.assign(sample)
 
 
 def squeeze_hyperparameters(
