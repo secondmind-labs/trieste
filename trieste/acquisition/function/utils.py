@@ -112,6 +112,8 @@ class MultivariateNormalCDF:
         :param dim: int, dimension of the multivariate Gaussian.
         :param dtype: tf.DType, data type to use for calculations.
         """
+        tf.debugging.assert_positive(sample_size)
+        tf.debugging.assert_positive(dim)
 
         self.S = sample_size
         self.Q = dim
@@ -136,6 +138,7 @@ class MultivariateNormalCDF:
 
         # Unpack batch size
         B = x.shape[0]
+        tf.debugging.assert_positive(B)
 
         # Check shapes of input tensors
         tf.debugging.assert_shapes(

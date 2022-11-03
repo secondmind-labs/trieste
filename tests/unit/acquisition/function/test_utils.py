@@ -17,30 +17,41 @@ import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from trieste.acquisition.function.utils import MutivariateNormalCDF
+from trieste.acquisition.function.utils import MultivariateNormalCDF
 from trieste.types import TensorType
 
 tfd = tfp.distributions
 
 
-@pytest.mark.parametrize("num_sobol", [200])
-@pytest.mark.parametrize("batch_size", [1, 2, 4])
-def test_make_mvn_cdf_raises_exception_for_incorrect_dimension(
+@pytest.mark.parametrize("num_sobol", [-10, -1, 0])
+@pytest.mark.parametrize("dim", [2, 3, 5])
+def test_make_mvn_cdf_raises_exception_for_incorrect_sample_size(
     num_sobol: int,
-    batch_size: int,
+    dim: int,
 ) -> None:
 
     # Set data type and jitter
     dtype = tf.float64
 
-    # Set up dummy sample tensor
-    samples = tf.random.uniform((batch_size, 0), dtype=dtype)
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        MultivariateNormalCDF(sample_size=num_sobol, dim=dim, dtype=dtype)
+
+
+@pytest.mark.parametrize("num_sobol", [1, 10, 100])
+@pytest.mark.parametrize("dim", [-10, -1, 0])
+def test_make_mvn_cdf_raises_exception_for_incorrect_dimension(
+    num_sobol: int,
+    dim: int,
+) -> None:
+
+    # Set data type and jitter
+    dtype = tf.float64
 
     with pytest.raises(tf.errors.InvalidArgumentError):
-        MutivariateNormalCDF(samples=samples, dim=dim, dtype=dtype)
+        MultivariateNormalCDF(sample_size=num_sobol, dim=dim, dtype=dtype)
 
 
-@pytest.mark.parametrize("num_sobol", [200])
+@pytest.mark.parametrize("num_sobol", [1, 10, 100])
 @pytest.mark.parametrize("dim", [2, 3, 5])
 def test_make_mvn_cdf_raises_exception_for_incorrect_batch_size(
     num_sobol: int,
@@ -49,12 +60,20 @@ def test_make_mvn_cdf_raises_exception_for_incorrect_batch_size(
 
     # Set data type and jitter
     dtype = tf.float64
+    batch_size = 0
 
-    # Set up dummy sample tensor
-    samples = tf.random.uniform((0, dim), dtype=dtype)
+    # Draw x randomly
+    x = tf.random.normal((batch_size, dim), dtype=dtype)
+
+    # Draw mean randomly
+    mean = tf.random.normal((batch_size, dim), dtype=dtype)
+
+    # Draw covariance randomly
+    cov = tf.random.normal((batch_size, dim, dim), dtype=dtype)
+    cov = tf.matmul(cov, cov, transpose_a=True)
 
     with pytest.raises(tf.errors.InvalidArgumentError):
-        MutivariateNormalCDF(samples=samples, dim=dim, dtype=dtype)
+        MultivariateNormalCDF(sample_size=num_sobol, dim=dim, dtype=dtype)(x=x, mean=mean, cov=cov)
 
 
 @pytest.mark.parametrize("num_sobol", [200])
@@ -114,11 +133,10 @@ def test_make_genz_cdf_matches_naive_monte_carlo_on_random_tasks(
     cov = tf.random.normal((batch_size, dim, dim), dtype=dtype) / dim ** 0.5
     cov = tf.matmul(cov, cov, transpose_a=True) + jitter * tf.eye(dim, dtype=dtype)[None, :, :]
 
-    # Set up Sobol samples to use in the Genz approximator
-    samples = tf.math.sobol_sample(dim=dim, num_results=num_sobol, dtype=dtype)
-
     # Set up Genz approximation and direct Monte Carlo estimate
-    genz_cdf = make_mvn_cdf(samples=samples)(x=x, mean=mean, cov=cov)
+    genz_cdf = MultivariateNormalCDF(sample_size=num_sobol, dim=dim, dtype=dtype)(
+        x=x, mean=mean, cov=cov
+    )
     mc_cdf = mc_mvn_cdf(x=x, mean=mean, cov=cov)
 
     # Check that the Genz and direct Monte Carlo estimates agree
