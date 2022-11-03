@@ -1140,6 +1140,9 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         self._jitter = jitter
         self._eta = tf.Variable(eta)
         self._model = model
+        
+        self._mvn_cdf_1: Optional[MultivariateNormalCDF] = None
+        self._mvn_cdf_2: Optional[MultivariateNormalCDF] = None
 
     def update(self, eta: TensorType) -> None:
         """Update the acquisition function with a new eta value and reset the
@@ -1588,14 +1591,14 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         :returns ei: Tensor of shape (B,), expected improvement.
         """
 
-        if not hasattr(self, "_mvn_cdf_1"):
+        if self._mvn_cdf_1 is None:
             self._mvn_cdf_1 = MultivariateNormalCDF(
                 sample_size=self._sample_size,
                 dim=x.shape[1],
                 dtype=x.dtype,
             )
 
-        if not hasattr(self, "_mvn_cdf_2"):
+        if self._mvn_cdf_2 is None:
             self._mvn_cdf_2 = MultivariateNormalCDF(
                 sample_size=self._sample_size,
                 dim=x.shape[1] - 1,
