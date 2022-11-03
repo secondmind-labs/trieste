@@ -61,4 +61,4 @@ from .multi_objective import (
     batch_ehvi,
     expected_hv_improvement,
 )
-from .utils import make_mvn_cdf
+from .utils import MultivariateNormalCDF

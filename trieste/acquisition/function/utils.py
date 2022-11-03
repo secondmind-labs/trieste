@@ -93,31 +93,37 @@ def get_update_indices(B: int, S: int, Q: int, q: int) -> TensorType:
 # =============================================================================
 
 
-def make_mvn_cdf(
-    samples: TensorType,
-) -> Callable[[TensorType, TensorType, TensorType, float], TensorType]:
-    """Builds the cumulative density function of the multivariate Gaussian
-    using the Genz approximation detailed in :cite:`genz2016numerical`.
+class MultivariateNormalCDF:
 
-    This is a Monte Carlo approximation which is more accurate than a naive
-    Monte Carlo estimate of the expected improvent. In order to use
-    reparametrised samples, the helper accepts a tensor of samples, and the
-    callable uses these fixed samples whenever it is called.
+    def __init__(
+            self,
+            sample_size: int,
+            dim: int,
+            dtype: tf.DType,
+        ) -> Callable[[TensorType, TensorType, TensorType, float], TensorType]:
+        """Builds the cumulative density function of the multivariate Gaussian
+        using the Genz approximation detailed in :cite:`genz2016numerical`.
 
-    :param samples: Tensor of shape (B, Q), with values between 0 and 1.
-    :returns mvn_cdf: Function computing the MC approximation of the CDF.
-    """
+        This is a Monte Carlo approximation which is more accurate than a naive
+        Monte Carlo estimate of the expected improvent. In order to use
+        reparametrised samples, the helper accepts a tensor of samples, and the
+        callable uses these fixed samples whenever it is called.
 
-    # Unpack sample shape tensor
-    S, Q = samples.shape
+        :param samples: Tensor of shape (B, Q), with values between 0 and 1.
+        :returns mvn_cdf: Function computing the MC approximation of the CDF.
+        """
+        
+        self.S = sample_size
+        self.Q = dim
+        self.dtype = dtype
 
-    @tf.function
-    def mvn_cdf(
-        x: TensorType,
-        mean: TensorType,
-        cov: TensorType,
-        jitter: float = 1e-6,
-    ) -> TensorType:
+    def __call__(
+            self,
+            x: TensorType,
+            mean: TensorType,
+            cov: TensorType,
+            jitter: float = 1e-6,
+        ) -> TensorType:
         """Callable for the cumulative density function of the multivariate
         Gaussian using the Genz approximation.
 
@@ -127,49 +133,55 @@ def make_mvn_cdf(
         :param jitter: float, jitter to use in the Cholesky factorisation.
         :returns mvn_cdf: Tensor of shape (B,), CDF values.
         """
+        
+        # Unpack batch size
+        B = x.shape[0]
 
         # Check shapes of input tensors
         tf.debugging.assert_shapes(
             [
-                (x, ("B", "Q")),
-                (mean, ("B", "Q")),
-                (cov, ("B", "Q", "Q")),
+                (x, (B, self.Q)),
+                (mean, (B, self.Q)),
+                (cov, (B, self.Q, self.Q)),
             ]
         )
 
         # Identify data type to use for all calculations
         dtype = mean.dtype
-        B, Q = mean.shape
 
         # Compute Cholesky factors
-        jitter = jitter * tf.eye(Q, dtype=dtype)[None, :, :]
+        jitter = jitter * tf.eye(self.Q, dtype=dtype)[None, :, :]
         C = tf.linalg.cholesky(cov + jitter)  # (B, Q, Q)
 
         # Rename samples and limits for brevity
-        w = samples  # (S, Q)
+        w = tf.math.sobol_sample(
+            dim=self.Q,
+            num_results=self.S,
+            dtype=self.dtype,
+        )  # (S, Q)
         b = x - mean  # (B, Q)
 
         # Initialise transformation variables
-        e = tf.zeros(shape=(B, S, Q), dtype=dtype)
-        f = tf.zeros(shape=(B, S, Q), dtype=dtype)
-        y = tf.zeros(shape=(B, S, Q), dtype=dtype)
+        e = tf.zeros(shape=(B, self.S, self.Q), dtype=dtype)
+        f = tf.zeros(shape=(B, self.S, self.Q), dtype=dtype)
+        y = tf.zeros(shape=(B, self.S, self.Q), dtype=dtype)
 
         # Initialise standard normal for computing CDFs
         Phi, iPhi = standard_normal_cdf_and_inverse_cdf(dtype=dtype)
 
         # Get update indices for convenience later
-        idx = get_update_indices(B=B, S=S, Q=Q, q=0)
+        idx = get_update_indices(B=B, S=self.S, Q=self.Q, q=0)
 
         # Slice out common tensors
         b0 = b[:, None, 0]
         C0 = C[:, None, 0, 0] + 1e-12
 
         # Compute transformation variables at the first step
-        e_update = tf.tile(Phi(b0 / C0), (1, S))  # (B, S)
+        e_update = tf.tile(Phi(b0 / C0), (1, self.S))  # (B, S)
         e = tf.tensor_scatter_nd_add(e, idx, e_update)
         f = tf.tensor_scatter_nd_add(f, idx, e_update)
 
-        for i in tf.range(1, Q):
+        for i in tf.range(1, self.Q):
 
             # Update y tensor
             y_update = iPhi(1e-6 + (1 - 2e-6) * w[None, :, i - 1] * e[:, :, i - 1])
@@ -182,7 +194,7 @@ def make_mvn_cdf(
             yi = y[:, :, :i]
 
             # Compute indices to update d, e and f tensors
-            idx = get_update_indices(B=B, S=S, Q=Q, q=i)
+            idx = get_update_indices(B=B, S=self.S, Q=self.Q, q=i)
 
             # Update e tensor
             e_update = Phi((bi - tf.reduce_sum(Ci_ * yi, axis=-1)) / Cii)
@@ -195,58 +207,3 @@ def make_mvn_cdf(
         mvn_cdf = tf.reduce_mean(f[:, :, -1], axis=-1)
 
         return mvn_cdf
-
-    return mvn_cdf
-
-
-# =============================================================================
-# Multivariate Normal Expected Improvement using naive Monte Carlo estimation
-# =============================================================================
-
-
-@tf.function
-def gaussian_monte_carlo_expected_improvement(
-    mean: TensorType,
-    covariance: TensorType,
-    threshold: TensorType,
-    num_samples: int = int(1e4),
-) -> TensorType:
-    """Computes an approximation of the expected improvement of a
-    multivariate Gaussian, using a naive Monte Carlo estimate.
-
-    :param mean: Tensor of shape (B, Q), batch of means.
-    :param covariance: Tensor of shape (B, Q, Q), batch of covariances.
-    :param threshold: Tensor of shape (B,), best values so far (aka eta).
-    :param num_samples: float, number of Monte Carlo samples to use.
-    :returns mvn_cdf: Tensor of shape (B,), CDF values.
-    """
-
-    # Check shapes of mean, covariance and threshold tensors
-    tf.debugging.assert_shapes(
-        [
-            (mean, ("B", "Q")),
-            (covariance, ("B", "Q", "Q")),
-            (threshold, ("B",)),
-        ]
-    )
-
-    # Draw Gaussian samples
-    samples = tfd.MultivariateNormalFullCovariance(
-        loc=mean,
-        covariance_matrix=covariance,
-    ).sample(sample_shape=[num_samples])
-
-    # Check shape of sample tensor against mean tensor
-    tf.debugging.assert_shapes(
-        [
-            (mean, ("B", "Q")),
-            (samples, (num_samples, "B", "Q")),
-        ]
-    )
-
-    # Compute expected improvement
-    ei = tf.math.maximum(samples - threshold[None, :, None], 0.0)
-    ei = tf.reduce_max(ei, axis=-1)
-    ei = tf.reduce_mean(ei, axis=0)
-
-    return ei

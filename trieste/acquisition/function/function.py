@@ -40,7 +40,7 @@ from ..interface import (
     SingleModelAcquisitionBuilder,
     SingleModelVectorizedAcquisitionBuilder,
 )
-from .utils import make_mvn_cdf
+from .utils import MultivariateNormalCDF
 
 
 class ProbabilityOfImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
@@ -1048,7 +1048,6 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         self,
         sample_size: int,
         *,
-        batch_size: int,
         dtype: tf.DType,
         jitter: float = DEFAULTS.JITTER,
     ):
@@ -1061,19 +1060,11 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         """
 
         tf.debugging.assert_positive(sample_size)
-        tf.debugging.assert_positive(batch_size)
         tf.debugging.assert_greater_equal(jitter, 0.0)
 
         self._sample_size = sample_size
-        self._batch_size = batch_size
         self._dtype = dtype
         self._jitter = jitter
-
-        self._samples = tf.math.sobol_sample(
-            dim=self._batch_size,
-            num_results=self._sample_size,
-            dtype=self._dtype,
-        )
 
     def __repr__(self) -> str:
         """"""
@@ -1102,7 +1093,7 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         eta = tf.reduce_min(mean, axis=0)
 
         acquisition_function = batch_expected_improvement(
-            self._samples,
+            self._sample_size,
             model,
             eta,
             self._jitter,
@@ -1135,22 +1126,21 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
 class batch_expected_improvement(AcquisitionFunctionClass):
     def __init__(
         self,
-        samples: TensorType,
+        sample_size: int,
         model: ProbabilisticModel,
         eta: TensorType,
         jitter: float,
     ):
         """Initialise the batch_expected_improvement instance.
 
-        :param samples: Tensor of shape (S, Q), where S is the number of
-            samples and Q is the batch size.
+        :param sample_size: int, number of samples to use.
         :param model: Gaussian process regression model.
         :param eta: Tensor of shape (,), expected improvement threshold. This
             is the best value observed so far durin the BO loop.
         :param jitter: float, amount of jitter for Cholesky factorisations.
         """
 
-        self._samples = samples
+        self._sample_size = sample_size
         self._jitter = jitter
         self._eta = tf.Variable(eta)
         self._model = model
@@ -1450,7 +1440,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
 
         :param c: Tensor of shape (BQ, Q, Q-1).
         :param R: Tensor of shape (BQ, Q, Q-1, Q-1).
-        :param mvn_cdf: Multivariate Gaussian CDF, made using make_mvn_cdf.
+        :param mvn_cdf: Multivariate Gaussian CDF, made using MultivariateNormalCDF.
         :returns Phi: Tensor of multivariate Gaussian CDFs.
         """
 
@@ -1502,7 +1492,8 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         mean: tf.Tensor,
         covariance: tf.Tensor,
         threshold: tf.Tensor,
-        mvn_cdf: Callable[[TensorType, TensorType, TensorType, float], TensorType],
+        mvn_cdf_1: Callable[[TensorType, TensorType, TensorType, float], TensorType],
+        mvn_cdf_2: Callable[[TensorType, TensorType, TensorType, float], TensorType],
     ) -> TensorType:
         """Accurate Monte Carlo approximation of the batch expected
         improvement, using the method of Chevallier and Ginsbourger
@@ -1511,7 +1502,8 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         :param mean: Tensor of shape (B, Q).
         :param covariance: Tensor of shape (B, Q, Q).
         :param threshold: Tensor of shape (B, Q).
-        :param mvn_cdf: Callable computing the multivariate CDF of a Gaussian.
+        :param mvn_cdf_1: Callable computing the multivariate CDF of a Q-dimensional Gaussian.
+        :param mvn_cdf_2: Callable computing the multivariate CDF of a (Q-1)-dimensional Gaussian.
         :returns ei: Tensor of shape (B,), expected improvement.
         """
 
@@ -1546,7 +1538,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
             m_reshaped=m_reshaped,
             b_reshaped=b_reshaped,
             Sigma_reshaped=Sigma_reshaped,
-            mvn_cdf=mvn_cdf,
+            mvn_cdf=mvn_cdf_1,
         )
 
         # Compute c
@@ -1560,12 +1552,12 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         R = self.compute_R(
             Sigma_reshaped=Sigma_reshaped,
         )  # (B*Q, Q, Q-1, Q-1)
-
+        
         # Compute Q-1 multivariate CDFs
         Phi_mvn_cdfs = self.compute_Phi(
             c=c,
             R=R,
-            mvn_cdf=mvn_cdf,
+            mvn_cdf=mvn_cdf_2,
         )
 
         # Compute univariate pdfs
@@ -1600,8 +1592,19 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         :returns ei: Tensor of shape (B,), expected improvement.
         """
 
-        if not hasattr(self, "_mvn_cdf"):
-            self._mvn_cdf = make_mvn_cdf(samples=self._samples)
+        if not hasattr(self, "_mvn_cdf_1"):
+            self._mvn_cdf_1 = MultivariateNormalCDF(
+                sample_size=self._sample_size,
+                dim=x.shape[1],
+                dtype=x.dtype,
+            )
+            
+        if not hasattr(self, "_mvn_cdf_2"):
+            self._mvn_cdf_2 = MultivariateNormalCDF(
+                sample_size=self._sample_size,
+                dim=x.shape[1]-1,
+                dtype=x.dtype,
+            )
 
         mean, covariance = self._model.predict_joint(x)  # type: ignore
 
@@ -1618,7 +1621,8 @@ class batch_expected_improvement(AcquisitionFunctionClass):
             mean=-mean,
             covariance=covariance,
             threshold=-threshold,
-            mvn_cdf=self._mvn_cdf,
+            mvn_cdf_1=self._mvn_cdf_1,
+            mvn_cdf_2=self._mvn_cdf_2,
         )[:, None]
 
         return ei

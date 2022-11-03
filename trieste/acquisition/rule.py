@@ -792,8 +792,8 @@ class RandomSampling(AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel
         :return: The ``num_query_points`` points to query.
         """
         samples = search_space.sample(self._num_query_points)
-
-        return samples
+        
+        return samples, None
 
 
 class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, ProbabilisticModelType]):
