@@ -13,12 +13,11 @@
 # limitations under the License.
 from __future__ import annotations
 
-import numpy.testing as npt
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from trieste.acquisition.function.utils import make_mvn_cdf
+from trieste.acquisition.function.utils import MutivariateNormalCDF
 from trieste.types import TensorType
 
 tfd = tfp.distributions
@@ -38,12 +37,12 @@ def test_make_mvn_cdf_raises_exception_for_incorrect_dimension(
     samples = tf.random.uniform((batch_size, 0), dtype=dtype)
 
     with pytest.raises(tf.errors.InvalidArgumentError):
-        make_mvn_cdf(samples=samples)
+        MutivariateNormalCDF(samples=samples, dim=dim, dtype=dtype)
 
 
 @pytest.mark.parametrize("num_sobol", [200])
 @pytest.mark.parametrize("dim", [2, 3, 5])
-def test_make_mvn_cdf_raises_exception_for_incorrect_dimension(
+def test_make_mvn_cdf_raises_exception_for_incorrect_batch_size(
     num_sobol: int,
     dim: int,
 ) -> None:
@@ -55,7 +54,7 @@ def test_make_mvn_cdf_raises_exception_for_incorrect_dimension(
     samples = tf.random.uniform((0, dim), dtype=dtype)
 
     with pytest.raises(tf.errors.InvalidArgumentError):
-        make_mvn_cdf(samples=samples)
+        MutivariateNormalCDF(samples=samples, dim=dim, dtype=dtype)
 
 
 @pytest.mark.parametrize("num_sobol", [200])
@@ -71,7 +70,7 @@ def test_make_genz_cdf_matches_naive_monte_carlo_on_random_tasks(
         mean: TensorType,
         cov: TensorType,
         num_samples: int = int(1e6),
-    ):
+    ) -> TensorType:
 
         # Define multivariate normal
         normal = tfd.MultivariateNormalTriL(

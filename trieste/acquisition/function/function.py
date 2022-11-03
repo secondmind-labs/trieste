@@ -1048,13 +1048,11 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         self,
         sample_size: int,
         *,
-        dtype: tf.DType,
         jitter: float = DEFAULTS.JITTER,
     ):
         """Initialise the BatchExpectedImprovement instance.
 
         :param sample_size: int, number of Sobol samples to use.
-        :param dtype: tf.DType, data type to use for calculations.
         :param jitter: float, amount of jitter for Cholesky factorisations.
         """
 
@@ -1062,7 +1060,6 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         tf.debugging.assert_greater_equal(jitter, 0.0)
 
         self._sample_size = sample_size
-        self._dtype = dtype
         self._jitter = jitter
 
     def __repr__(self) -> str:
@@ -1616,13 +1613,13 @@ class batch_expected_improvement(AcquisitionFunctionClass):
 
         threshold = tf.tile(self._eta, (mean.shape[0],))
 
-        # Check shapes of x and sample tensors
+        # Check shapes of x, mean, covariance and threshold tensors
         tf.debugging.assert_shapes(
             [
                 (x, ("B", "Q", "D")),
                 (mean, ("B", "Q")),
                 (covariance, ("B", "Q", "Q")),
-                (self._samples, ("S", "Q")),
+                (threshold, ("B",))
             ]
         )
 

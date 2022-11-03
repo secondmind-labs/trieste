@@ -99,7 +99,7 @@ class MultivariateNormalCDF:
         sample_size: int,
         dim: int,
         dtype: tf.DType,
-    ) -> Callable[[TensorType, TensorType, TensorType, float], TensorType]:
+    ) -> None:
         """Builds the cumulative density function of the multivariate Gaussian
         using the Genz approximation detailed in :cite:`genz2016numerical`.
 
