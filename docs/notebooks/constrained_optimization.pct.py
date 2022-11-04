@@ -43,55 +43,41 @@ tf.random.set_seed(5678)
 # %%
 ctol = 1e-7
 
-#def constraints_residual(constraints, x):
-#    #print('x:', x.shape)
-#    return np.concatenate(np.array([[constraint.A@x.T - constraint.lb[..., np.newaxis], constraint.ub[..., np.newaxis] - constraint.A@x.T]
-#                                    for constraint in constraints]))
-#
+def constraint_residual(constraint, index=slice(None)):
+    def linear_cons_residual(x):
+        if len(x.shape) == 1:
+            x = tf.expand_dims(x, axis=0)
+        residuals = [tf.linalg.matmul(constraint.A, x, transpose_b=True) - tf.expand_dims(constraint.lb, axis=-1),
+                     tf.expand_dims(constraint.ub, axis=-1) - tf.linalg.matmul(constraint.A, x, transpose_b=True)]
+        residuals = tf.concat(residuals, axis=0)
+        return residuals[index]
+
+    def nonlinear_cons_residual(x):
+        residuals = [constraint.fun(x) - tf.expand_dims(constraint.lb, axis=-1),
+                     tf.expand_dims(constraint.ub, axis=-1) - constraint.fun(x)]
+        residuals = tf.concat(residuals, axis=0)
+        return residuals[index]
+
+    if isinstance(constraint, LinearConstraint):
+        return linear_cons_residual
+    elif isinstance(constraint, NonlinearConstraint):
+        return nonlinear_cons_residual
+
 def constraints_residual(constraints, x):
-    c = None
-
-    non_c = [[constraint.fun(x) - tf.expand_dims(constraint.lb, axis=-1),
-              tf.expand_dims(constraint.ub, axis=-1) - constraint.fun(x)]
-             for constraint in constraints if isinstance(constraint, NonlinearConstraint)]
-    if len(non_c):
-        c = tf.concat(non_c, axis=1)
-
-    if len(x.shape) == 1:
-        x = tf.expand_dims(x, axis=0)
-
-    lin_c = [[tf.linalg.matmul(constraint.A, x, transpose_b=True) - tf.expand_dims(constraint.lb, axis=-1),
-              tf.expand_dims(constraint.ub, axis=-1) - tf.linalg.matmul(constraint.A, x, transpose_b=True)]
-             for constraint in constraints if isinstance(constraint, LinearConstraint)]
-    if len(lin_c):
-        lin_c = tf.concat(lin_c, axis=1)
-        if c is not None:
-            c = tf.concat([c, lin_c], axis=0)
-        else:
-            c = lin_c
-
-    return tf.reshape(c, (-1, c.shape[-1]))
+    residuals = [constraint_residual(constraint)(x) for constraint in constraints]
+    residuals = tf.concat(residuals, axis=0)
+    return residuals
 
 def constraints_satisfied(constraints, x):
-    #res_lo, res_up = constraints_tr.residual(x.T)
-    #return np.logical_and(np.all(res_lo >= 0., aixs=0), np.all(res_up >= 0., aixs=0))
-    #rl, ru = constraints_residual(x)
-    #return np.logical_and(np.all(rl >= 0., axis=0), np.all(ru >= 0., axis=0))
-    #return np.all(np.all(constraints_residual(constraints, x) >= -ctol, axis=0), axis=0)
     return np.all(constraints_residual(constraints, x) >= -ctol, axis=0)
 
-#def constraints_fn(constraints, x):
-#    #print('x:', x.shape)
-#    #if len(x.shape) == 1:
-#    #    x = np.expand_dims(x, axis=0)
-#    vals = constraints_residual(constraints, x)
-#    return np.reshape(vals, (-1, vals.shape[-1]))
-
-def constraints_jac(constraint, x):
-    if isinstance(constraint, LinearConstraint):
+def constraint_jac(constraint, index=slice(None)):
+    def linear_cons_jac(x):
         jac = tf.concat([constraint.A, -constraint.A], axis=0)
         jac = tf.reshape(jac, (-1, x.shape[-1], 1))
-    elif isinstance(constraint, NonlinearConstraint):
+        return jac[index]
+
+    def nonlinear_cons_jac(x):
         #tf.debugging.assert_shapes(
         #    [(x, ["D",])],
         #    message=f"""a single input point is expected (1D tensor), instead received tensor of shape {tf.shape(x)}""",
@@ -104,56 +90,47 @@ def constraints_jac(constraint, x):
         if len(shape) == 1:
             shape += (1,)
         jac = tf.reshape(jac, (-1, *shape))
+        return jac[index]
 
-    return jac
+    if isinstance(constraint, LinearConstraint):
+        return linear_cons_jac
+    elif isinstance(constraint, NonlinearConstraint):
+        return nonlinear_cons_jac
 
 def constraints_to_dict(constraints, search_space):
     return [{'type': 'ineq',
-             'fun': lambda x, i=i, j=j: tf.squeeze(constraints_residual([constraints[i]], x)[j], axis=-1),
-             'jac': lambda x, i=i, j=j: tf.squeeze(constraints_jac(constraints[i], x)[j], axis=-1),
+             'fun': lambda x, fun=constraint_residual(constraints[i], j): tf.squeeze(fun(x), axis=-1),
+             'jac': lambda x, fun=constraint_jac(constraints[i], j): tf.squeeze(fun(x), axis=-1),
             }
             for i, c in enumerate(constraints) for j in range(c.lb.size * 2)]
-
-#@lru_cache
-#def constraint_value_and_gradient_cached(constraint_value, x_dtype, *args) -> Tuple[TensorType, TensorType]:
-#    x = tf.convert_to_tensor(args, dtype=x_dtype)
-#    #print("2:", x)
-#    return tfp.math.value_and_gradient(constraint_value, x)  # [len(x), 1], [len(x), D]
-#
-#def constraint_value_and_gradient(constraint_value, x: TensorType) -> Tuple[TensorType, TensorType]:
-#    #tf.debugging.assert_shapes(
-#    #    [(x, ["D",])],
-#    #    message=f"""a single input point is expected (1D tensor), instead received tensor of shape {tf.shape(x)}""",
-#    #)
-#
-#    #print("1:", x)
-#    if len(x.shape) > 1:
-#        vals = []
-#        grads = []
-#        for xi in tf.unstack(x, axis=-1):
-#            val, grad = constraint_value_and_gradient_cached(constraint_value, x.dtype, *np.array(xi).tolist())
-#            vals.append(val)
-#            grads.append(grad)
-#        return tf.transpose(tf.concat(vals, axis=0)), tf.transpose(tf.concat(grads, axis=0))
-#    else:
-#        return constraint_value_and_gradient_cached(constraint_value, x.dtype, *np.array(x).tolist())
-
-def constraint_value_and_gradient(constraint_value, x: TensorType) -> Tuple[TensorType, TensorType]:
-    val, grad = tfp.math.value_and_gradient(constraint_value, x)  # [len(x), 1], [len(x), D]
-    return tf.cast(val, dtype=x.dtype), tf.cast(grad, dtype=x.dtype)
 
 def process_nonlinear_constraint(constraint, search_space):
     m = np.atleast_1d(constraint.fun(np.zeros((search_space.dimension)))).size  # Number of constraint outputs.
 
-    def val_fun(x, fun=constraint.fun):
-        return constraint_value_and_gradient(fun, x)[0]
-    def jac_fun(x, fun=constraint.fun):
-        return constraint_value_and_gradient(fun, x)[1]
+    def constraint_value_and_gradient(x: TensorType, fun=constraint.fun) -> Tuple[TensorType, TensorType]:
+        val, grad = tfp.math.value_and_gradient(fun, x)
+        return tf.cast(val, dtype=x.dtype), tf.cast(grad, dtype=x.dtype)
+
+    cache_x = []
+    cache_f = []
+    cache_grad = []
+
+    def val_fun(x):
+        nonlocal cache_x, cache_f, cache_grad
+        if not np.array_equal(x, cache_x):
+            cache_f, cache_grad = constraint_value_and_gradient(x)
+            cache_x = x
+        return cache_f
+
+    def jac_fun(x):
+        nonlocal cache_x, cache_f, cache_grad
+        if not np.array_equal(x, cache_x):
+            cache_f, cache_grad = constraint_value_and_gradient(x)
+            cache_x = x
+        return cache_grad
 
     constraint.jac = jac_fun
     constraint.fun = val_fun
-    #constraint.jac = lambda x, fun=constraint.fun: constraint_value_and_gradient(fun, x)[1]
-    #constraint.fun = lambda x, fun=constraint.fun: constraint_value_and_gradient(fun, x)[0]
     constraint.lb = np.broadcast_to(constraint.lb, (m,))
     constraint.ub = np.broadcast_to(constraint.ub, (m,))
     return constraint
