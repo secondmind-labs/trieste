@@ -152,7 +152,7 @@ class GaussianProcessRegression(
 
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         f_mean, f_var = self.predict(query_points)
-        return self.model.likelihood.predict_mean_and_var(f_mean, f_var)
+        return self.model.likelihood.predict_mean_and_var(query_points, f_mean, f_var)
 
     def update(self, dataset: Dataset) -> None:
         self._ensure_variable_model_data()
@@ -509,7 +509,7 @@ class GaussianProcessRegression(
                  and predictive variance at query_points, with shape [..., M, L]
         """
         f_mean, f_var = self.conditional_predict_f(query_points, additional_data)
-        return self.model.likelihood.predict_mean_and_var(f_mean, f_var)
+        return self.model.likelihood.predict_mean_and_var(query_points, f_mean, f_var)
 
 
 class SparseGaussianProcessRegression(
@@ -602,7 +602,7 @@ class SparseGaussianProcessRegression(
 
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         f_mean, f_var = self.predict(query_points)
-        return self.model.likelihood.predict_mean_and_var(f_mean, f_var)
+        return self.model.likelihood.predict_mean_and_var(query_points, f_mean, f_var)
 
     def _ensure_variable_model_data(self) -> None:
         # GPflow stores the data in Tensors. However, since we want to be able to update the data
@@ -924,7 +924,7 @@ class SparseVariational(
 
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         f_mean, f_var = self.predict(query_points)
-        return self.model.likelihood.predict_mean_and_var(f_mean, f_var)
+        return self.model.likelihood.predict_mean_and_var(query_points, f_mean, f_var)
 
     def update(self, dataset: Dataset) -> None:
         self._ensure_variable_model_data()
@@ -1242,7 +1242,7 @@ class VariationalGaussianProcess(
 
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         f_mean, f_var = self.predict(query_points)
-        return self.model.likelihood.predict_mean_and_var(f_mean, f_var)
+        return self.model.likelihood.predict_mean_and_var(query_points, f_mean, f_var)
 
     def update(self, dataset: Dataset, *, jitter: float = DEFAULTS.JITTER) -> None:
         """
