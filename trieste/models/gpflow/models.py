@@ -33,7 +33,7 @@ from gpflow.utilities.ops import leading_transpose
 from ...data import (
     Dataset,
     check_and_extract_fidelity_query_points,
-    convert_query_points_for_fidelity,
+    add_fidelity_column,
     split_dataset_by_fidelity,
 )
 from ...types import TensorType
@@ -1454,9 +1454,7 @@ class AR1(TrainableProbabilisticModel):
         :param fidelity: The fidelity for which to calculate the residuals
         :return: The true residuals at given datapoints for given fidelity, shape is [N,1].
         """
-        fidelity_query_points = convert_query_points_for_fidelity(
-            dataset.query_points, fidelity - 1
-        )
+        fidelity_query_points = add_fidelity_column(dataset.query_points, fidelity - 1)
         residuals = (
             dataset.observations - self.rho[fidelity] * self.predict(fidelity_query_points)[0]
         )
@@ -1577,7 +1575,7 @@ class AR1(TrainableProbabilisticModel):
 
                 fidelity_observations = dataset_for_fidelity.observations
                 fidelity_query_points = dataset_for_fidelity.query_points
-                prev_fidelity_query_points = convert_query_points_for_fidelity(
+                prev_fidelity_query_points = add_fidelity_column(
                     dataset_for_fidelity.query_points, fidelity - 1
                 )
                 predictions_from_lower_fidelity = self.predict(prev_fidelity_query_points)[0]

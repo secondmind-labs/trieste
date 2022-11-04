@@ -5,7 +5,7 @@ import tensorflow as tf
 import trieste
 from trieste.data import (
     check_and_extract_fidelity_query_points,
-    convert_query_points_for_fidelity,
+    add_fidelity_column,
     split_dataset_by_fidelity,
 )
 from trieste.models.gpflow import GaussianProcessRegression
@@ -63,7 +63,7 @@ def test_ar1_results_close() -> None:
     model.optimize(initial_data)
 
     test_xs = tf.linspace(0, 1, 11)[:, None]
-    test_xs_w_fid = convert_query_points_for_fidelity(test_xs, fidelity=3)
+    test_xs_w_fid = add_fidelity_column(test_xs, fidelity=3)
 
     predictions = model.predict(test_xs_w_fid)[0]
     gt_obs = observer(test_xs_w_fid).observations

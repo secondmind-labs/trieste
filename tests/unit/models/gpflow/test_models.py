@@ -53,7 +53,7 @@ from tests.util.models.gpflow.models import (
     vgp_model,
 )
 from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
-from trieste.data import Dataset, convert_query_points_for_fidelity
+from trieste.data import Dataset, add_fidelity_column
 from trieste.logging import step_number, tensorboard_writer
 from trieste.models import TrainableProbabilisticModel
 from trieste.models.gpflow import (
@@ -1763,8 +1763,8 @@ def test_ar1_optimize_reduces_losses() -> None:
         xs_high.shape, mean=0, stddev=1e-1, dtype=tf.float64
     )
 
-    lf_query_points = convert_query_points_for_fidelity(xs_low, 0)
-    hf_query_points = convert_query_points_for_fidelity(xs_high, 1)
+    lf_query_points = add_fidelity_column(xs_low, 0)
+    hf_query_points = add_fidelity_column(xs_high, 1)
 
     lf_dataset = Dataset(lf_query_points, lf_obs)
     hf_dataset = Dataset(hf_query_points, hf_obs)

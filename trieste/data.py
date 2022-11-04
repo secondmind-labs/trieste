@@ -186,7 +186,7 @@ def get_dataset_for_fidelity(dataset: Dataset, fidelity: int) -> Dataset:
     return Dataset(query_points=inputs_for_fidelity, observations=observations_for_fidelity)
 
 
-def convert_query_points_for_fidelity(query_points: TensorType, fidelity: int) -> TensorType:
+def add_fidelity_column(query_points: TensorType, fidelity: int) -> TensorType:
     """Add fidelity column to query_points without fidelity data
 
     :param query_points: query points without fidelity to add fidelity column to
