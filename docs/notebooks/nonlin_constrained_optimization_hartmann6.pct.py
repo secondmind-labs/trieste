@@ -57,15 +57,15 @@ num_optimization_runs = NUM_RUNS_DIM * tf.shape(search_space.lower)[-1]
 print(f'Approx feasible region: {np.count_nonzero(constraints_satisfied(nonlinear_constraints, initial_query_points(100000))) * 100/100000}%')
 
 # %%
-# Run a dummy COBYLA optimization. The first tends to fail, for seemingly an internal optimizer issue.
-run_dummy = Run(search_space, observer, nonlinear_constraints)
-optims = {
-    "COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=constraints_to_dict(nonlinear_constraints+bound_constraints, search_space)),
-}
-run_dummy.add_optims(optims)
-multi_run(run_dummy, 1, 1, initial_query_points, num_initial_samples=num_initial_samples, num_optimization_runs=num_optimization_runs, with_plot=False)
-
-clear_output()
+## Run a dummy COBYLA optimization. The first tends to fail, for seemingly an internal optimizer issue.
+#run_dummy = Run(search_space, observer, nonlinear_constraints)
+#optims = {
+#    "COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=constraints_to_dict(nonlinear_constraints+bound_constraints, search_space)),
+#}
+#run_dummy.add_optims(optims)
+#multi_run(run_dummy, 1, 1, initial_query_points, num_initial_samples=num_initial_samples, num_optimization_runs=num_optimization_runs, with_plot=False)
+#
+#clear_output()
 
 # %% [markdown]
 # ### Unmodified acquisition function
@@ -76,7 +76,7 @@ optims = {
     "L-BFGS-EI":     None,
     "TrstRegion-EI": dict(method="trust-constr", constraints=nonlinear_constraints),
     "SLSQP-EI":      dict(method="SLSQP", constraints=constraints_to_dict(nonlinear_constraints, search_space)),
-    "COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=constraints_to_dict(nonlinear_constraints+bound_constraints, search_space)),
+    #"COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=constraints_to_dict(nonlinear_constraints+bound_constraints, search_space)),
 }
 run_unmod.add_optims(optims)
 
@@ -110,7 +110,7 @@ optims = {
     "L-BFGS-EI":     None,
     "TrstRegion-EI": dict(method="trust-constr", constraints=nonlinear_constraints),
     "SLSQP-EI":      dict(method="SLSQP", constraints=constraints_to_dict(nonlinear_constraints, search_space)),
-    "COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=constraints_to_dict(nonlinear_constraints+bound_constraints, search_space)),
+    #"COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=constraints_to_dict(nonlinear_constraints+bound_constraints, search_space)),
 }
 run_simple_constr.add_optims(optims)
 
