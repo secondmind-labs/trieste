@@ -664,5 +664,5 @@ def _test_optimizer_finds_minimum(
                 )
                 random_batch = tf.expand_dims(search_space.sample(batch_size), 0)
                 npt.assert_allclose(
-                    acq_function(random_batch), acq_function_copy(random_batch), rtol=2e-7
+                    acq_function(random_batch), acq_function_copy(random_batch), rtol=5e-7
                 )
