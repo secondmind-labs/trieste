@@ -22,8 +22,8 @@ import tensorflow as tf
 from tests.util.misc import ShapeLike, assert_datasets_allclose
 from trieste.data import (
     Dataset,
-    check_and_extract_fidelity_query_points,
     add_fidelity_column,
+    check_and_extract_fidelity_query_points,
     get_dataset_for_fidelity,
     split_dataset_by_fidelity,
 )

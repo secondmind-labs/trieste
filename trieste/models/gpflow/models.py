@@ -32,8 +32,8 @@ from gpflow.utilities.ops import leading_transpose
 
 from ...data import (
     Dataset,
-    check_and_extract_fidelity_query_points,
     add_fidelity_column,
+    check_and_extract_fidelity_query_points,
     split_dataset_by_fidelity,
 )
 from ...types import TensorType

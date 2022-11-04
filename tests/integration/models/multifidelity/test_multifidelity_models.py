@@ -4,8 +4,8 @@ import tensorflow as tf
 
 import trieste
 from trieste.data import (
-    check_and_extract_fidelity_query_points,
     add_fidelity_column,
+    check_and_extract_fidelity_query_points,
     split_dataset_by_fidelity,
 )
 from trieste.models.gpflow import GaussianProcessRegression
