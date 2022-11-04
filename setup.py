@@ -40,7 +40,7 @@ setup(
     install_requires=[
         "absl-py",
         "dill",
-        "gpflow>=2.5.2",
+        "gpflow>=2.6.3",
         "gpflux>=0.2.3",
         "numpy",
         "tensorflow>=2.4",
