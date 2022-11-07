@@ -1007,22 +1007,18 @@ def test_batch_expected_improvement_raises_for_empty_data(
         builder.prepare_acquisition_function(model)
 
 
-@pytest.mark.parametrize("num_data", [5])
-@pytest.mark.parametrize("num_parallel", [3])
-@pytest.mark.parametrize("batch_size", [2])
-@pytest.mark.parametrize("sample_size", [100])
-@pytest.mark.parametrize("dimension", [2])
-@pytest.mark.parametrize("jitter", [1e-6])
-@pytest.mark.parametrize("mc_sample_size", [int(1e5)])
+@pytest.mark.parametrize("num_data", [4, 8, 16])
+@pytest.mark.parametrize("batch_size", [2, 3, 5])
+@pytest.mark.parametrize("dimension", [2, 4, 6])
 @random_seed
 def test_batch_expected_improvement_can_reproduce_mc_excpected_improvement(
     num_data: int,
-    num_parallel: int,
     batch_size: int,
-    sample_size: int,
     dimension: int,
-    jitter: float,
-    mc_sample_size: int,
+    jitter: float = 1e-6,
+    sample_size: int = 200,
+    mc_sample_size: int = 100000,
+    num_parallel: int = 3,
 ) -> None:
 
     known_query_points = tf.random.uniform([num_data, dimension], dtype=tf.float64)
@@ -1048,9 +1044,9 @@ def test_batch_expected_improvement_can_reproduce_mc_excpected_improvement(
 
     xs = tf.random.uniform([num_parallel, batch_size, dimension], dtype=tf.float64)
 
-    npt.assert_allclose(batch_ei(xs), batch_mcei(xs), rtol=1e-2)
+    npt.assert_allclose(batch_mcei(xs), batch_ei(xs), rtol=1e-1)
     # and again, since the sampler uses cacheing
-    npt.assert_allclose(batch_ei(xs), batch_mcei(xs), rtol=1e-2)
+    npt.assert_allclose(batch_mcei(xs), batch_ei(xs), rtol=1e-1)
 
 
 @pytest.mark.parametrize("num_data", [10])

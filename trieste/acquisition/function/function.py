@@ -1150,13 +1150,13 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         """
         self._eta.assign(eta)
 
-    def compute_bm(
+    def _compute_bm(
         self,
         mean: tf.Tensor,
         threshold: tf.Tensor,
     ) -> TensorType:
         """Helper function for the batch expected improvement, which computes
-        the tensors b and m as detailed in Chevallier and Ginsbourger
+        the tensors b and m as detailed in Chevalier and Ginsbourger
         :cite:`chevalier2013fast`.
 
         :param mean: Tensor of shape (B, Q)
@@ -1191,8 +1191,8 @@ class batch_expected_improvement(AcquisitionFunctionClass):
 
         return b, m
 
-    def delta(self, idx: int, dim: int, B: int, transpose: bool, dtype: tf.DType) -> TensorType:
-        """Helper function for the compute_Sigma function, which computes a
+    def _delta(self, idx: int, dim: int, B: int, transpose: bool, dtype: tf.DType) -> TensorType:
+        """Helper function for the _compute_Sigma function, which computes a
         *delta* tensor of shape (B, idx, idx) such that
 
             delta[B, i, :] = 1 if i == idx
@@ -1225,12 +1225,12 @@ class batch_expected_improvement(AcquisitionFunctionClass):
 
         return delta
 
-    def compute_Sigma(
+    def _compute_Sigma(
         self,
         covariance: tf.Tensor,
     ) -> TensorType:
         """Helper function for the batch expected improvement, which computes
-        the tensor Sigma, as detailed in Chevallier and Ginsbourger
+        the tensor Sigma, as detailed in Chevalier and Ginsbourger
         :cite:`chevalier2013fast`.
 
         :param covariance: Tensor of shape (B, Q, Q)
@@ -1248,8 +1248,8 @@ class batch_expected_improvement(AcquisitionFunctionClass):
 
         def compute_single_slice(q: int) -> TensorType:
 
-            diq = self.delta(q, Q, B, transpose=False, dtype=dtype)
-            dqj = self.delta(q, Q, B, transpose=True, dtype=dtype)
+            diq = self._delta(q, Q, B, transpose=False, dtype=dtype)
+            dqj = self._delta(q, Q, B, transpose=True, dtype=dtype)
 
             Sigma_ij = covariance[:, :, :]
             Sigma_iq = covariance[:, :, q : q + 1]
@@ -1270,7 +1270,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
 
         return Sigma
 
-    def compute_p(
+    def _compute_p(
         self,
         m_reshaped: tf.Tensor,
         b_reshaped: tf.Tensor,
@@ -1278,7 +1278,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         mvn_cdf: Callable[[TensorType, TensorType, TensorType, float], TensorType],
     ) -> TensorType:
         """Helper function for the batch expected improvement, which computes
-        the tensor p, as detailed in Chevallier and Ginsbourger
+        the tensor p, as detailed in Chevalier and Ginsbourger
         :cite:`chevalier2013fast`.
 
         :param m_reshaped: Tensor of shape (BQ, Q)
@@ -1326,14 +1326,14 @@ class batch_expected_improvement(AcquisitionFunctionClass):
 
         return p
 
-    def compute_c(
+    def _compute_c(
         self,
         m_reshaped: tf.Tensor,
         b_reshaped: tf.Tensor,
         Sigma_reshaped: tf.Tensor,
     ) -> TensorType:
         """Helper function for the batch expected improvement, which computes
-        the tensor c, which is the c^{(i)} tensor detailed in Chevallier and
+        the tensor c, which is the c^{(i)} tensor detailed in Chevalier and
         Ginsbourger :cite:`chevalier2013fast`.
 
         :param m_reshaped: Tensor of shape (BQ, Q)
@@ -1370,12 +1370,12 @@ class batch_expected_improvement(AcquisitionFunctionClass):
 
         return c
 
-    def compute_R(
+    def _compute_R(
         self,
         Sigma_reshaped: tf.Tensor,
     ) -> TensorType:
         """Helper function for the batch expected improvement, which computes
-        the tensor R, which is the Sigma^{(i)} tensor detailed in Chevallier
+        the tensor R, which is the Sigma^{(i)} tensor detailed in Chevalier
         and Ginsbourger :cite:`chevalier2013fast`.
 
         :param Sigma_reshaped: Tensor of shape (BQ, Q, Q)
@@ -1426,7 +1426,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
 
         return R
 
-    def compute_Phi(
+    def _compute_Phi(
         self,
         c: tf.Tensor,
         R: tf.Tensor,
@@ -1434,7 +1434,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
     ) -> TensorType:
         """Helper function for the batch expected improvement, which computes
         the tensor Phi, which is the tensor of multivariate Gaussian CDFs, in
-        the inner sum of the equation (3) in Chevallier and Ginsbourger
+        the inner sum of the equation (3) in Chevalier and Ginsbourger
         :cite:`chevalier2013fast`.
 
         :param c: Tensor of shape (BQ, Q, Q-1).
@@ -1486,7 +1486,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
 
         return mvn_cdfs
 
-    def compute_batch_expected_improvement(
+    def _compute_batch_expected_improvement(
         self,
         mean: tf.Tensor,
         covariance: tf.Tensor,
@@ -1495,7 +1495,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         mvn_cdf_2: Callable[[TensorType, TensorType, TensorType, float], TensorType],
     ) -> TensorType:
         """Accurate Monte Carlo approximation of the batch expected
-        improvement, using the method of Chevallier and Ginsbourger
+        improvement, using the method of Chevalier and Ginsbourger
         :cite:`chevalier2013fast`.
 
         :param mean: Tensor of shape (B, Q).
@@ -1519,13 +1519,13 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         B, Q = mean.shape
 
         # Compute b and m tensors
-        b, m = self.compute_bm(
+        b, m = self._compute_bm(
             mean=mean,
             threshold=threshold,
         )  # (B, Q, Q), (B, Q, Q)
 
         # Compute Sigma
-        Sigma = self.compute_Sigma(covariance=covariance)  # (B, Q, Q, Q)
+        Sigma = self._compute_Sigma(covariance=covariance)  # (B, Q, Q, Q)
 
         # Reshape all tensors, for batching
         b_reshaped = tf.reshape(b, (B * Q, Q))
@@ -1533,7 +1533,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         Sigma_reshaped = tf.reshape(Sigma, (B * Q, Q, Q))
 
         # Compute p tensor
-        p = self.compute_p(
+        p = self._compute_p(
             m_reshaped=m_reshaped,
             b_reshaped=b_reshaped,
             Sigma_reshaped=Sigma_reshaped,
@@ -1541,19 +1541,19 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         )
 
         # Compute c
-        c = self.compute_c(
+        c = self._compute_c(
             m_reshaped=m_reshaped,
             b_reshaped=b_reshaped,
             Sigma_reshaped=Sigma_reshaped,
         )  # (B*Q, Q, Q-1)
 
         # Compute Sigma_i
-        R = self.compute_R(
+        R = self._compute_R(
             Sigma_reshaped=Sigma_reshaped,
         )  # (B*Q, Q, Q-1, Q-1)
 
         # Compute Q-1 multivariate CDFs
-        Phi_mvn_cdfs = self.compute_Phi(
+        Phi_mvn_cdfs = self._compute_Phi(
             c=c,
             R=R,
             mvn_cdf=mvn_cdf_2,
@@ -1626,7 +1626,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
             ]
         )
 
-        ei = self.compute_batch_expected_improvement(
+        ei = self._compute_batch_expected_improvement(
             mean=-mean,
             covariance=covariance,
             threshold=-threshold,

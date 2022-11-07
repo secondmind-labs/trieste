@@ -51,33 +51,25 @@ def test_make_mvn_cdf_raises_exception_for_incorrect_dimension(
         MultivariateNormalCDF(sample_size=num_sobol, dim=dim, dtype=dtype)
 
 
-@pytest.mark.parametrize("num_sobol", [1, 10, 100])
-@pytest.mark.parametrize("dim", [2, 3, 5])
 def test_make_mvn_cdf_raises_exception_for_incorrect_batch_size(
-    num_sobol: int,
-    dim: int,
+    num_sobol: int = 100,
+    dim: int = 5,
 ) -> None:
 
     # Set data type and jitter
     dtype = tf.float64
-    batch_size = 0
 
-    # Draw x randomly
-    x = tf.random.normal((batch_size, dim), dtype=dtype)
-
-    # Draw mean randomly
-    mean = tf.random.normal((batch_size, dim), dtype=dtype)
-
-    # Draw covariance randomly
-    cov = tf.random.normal((batch_size, dim, dim), dtype=dtype)
-    cov = tf.matmul(cov, cov, transpose_a=True)
+    # Set x, mean and covariance
+    x = tf.zeros((0, dim), dtype=dtype)
+    mean = tf.zeros((0, dim), dtype=dtype)
+    cov = tf.eye(dim, dtype=dtype)[None, :, :][:0, :, :]
 
     with pytest.raises(tf.errors.InvalidArgumentError):
         MultivariateNormalCDF(sample_size=num_sobol, dim=dim, dtype=dtype)(x=x, mean=mean, cov=cov)
 
 
 @pytest.mark.parametrize("num_sobol", [200])
-@pytest.mark.parametrize("dim", [2, 3, 5])
+@pytest.mark.parametrize("dim", [1, 2, 3, 5])
 @pytest.mark.parametrize("batch_size", [1, 2, 4])
 def test_make_genz_cdf_matches_naive_monte_carlo_on_random_tasks(
     num_sobol: int,
@@ -88,7 +80,7 @@ def test_make_genz_cdf_matches_naive_monte_carlo_on_random_tasks(
         x: TensorType,
         mean: TensorType,
         cov: TensorType,
-        num_samples: int = int(1e6),
+        num_samples: int = int(1e8),
     ) -> TensorType:
 
         # Define multivariate normal
@@ -140,4 +132,4 @@ def test_make_genz_cdf_matches_naive_monte_carlo_on_random_tasks(
     mc_cdf = mc_mvn_cdf(x=x, mean=mean, cov=cov)
 
     # Check that the Genz and direct Monte Carlo estimates agree
-    tf.debugging.assert_near(mc_cdf, genz_cdf, rtol=5e-1)
+    tf.debugging.assert_near(mc_cdf, genz_cdf, rtol=3e-1)

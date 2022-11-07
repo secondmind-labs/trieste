@@ -28,67 +28,6 @@ tfd = tfp.distributions
 
 
 # =============================================================================
-# Standard univariate normal CDF and inverse CDF for Multivariate Normal CDF
-# =============================================================================
-
-
-def standard_normal_cdf_and_inverse_cdf(
-    dtype: tf.DType,
-) -> Tuple[Callable[[TensorType], TensorType], Callable[[TensorType], TensorType]]:
-    """Returns two callables *Phi* and *iPhi*, which compute the cumulative
-    density function and inverse cumulative density function of a standard
-    univariate Gaussian.
-
-    :param dtype: The data type to use, either tf.float32 or tf.float64.
-    :returns Phi, iPhi: Cumulative and inverse cumulative density functions.
-    """
-
-    normal = tfp.distributions.Normal(
-        loc=tf.zeros(shape=(), dtype=dtype),
-        scale=tf.ones(shape=(), dtype=dtype),
-    )
-    Phi: Callable[[TensorType], TensorType] = lambda x: normal.cdf(x)
-    iPhi: Callable[[TensorType], TensorType] = lambda x: normal.quantile(x)
-
-    return Phi, iPhi
-
-
-# =============================================================================
-# Update index helper for Multivariate Normal CDF
-# =============================================================================
-
-
-def get_update_indices(B: int, S: int, Q: int, q: int) -> TensorType:
-    """Returns indices for updating a tensor using tf.tensor_scatter_nd_add,
-    for use within the _mvn_cdf function, for computing the cumulative density
-    function of a multivariate Gaussian. The indices *idx* returned are such
-    that the following operation
-
-        idx = get_update_indices(B, S, Q, q)
-        tensor = tf.tensor_scatter_nd_add(tensor, idx, update)
-
-    is equivalent to the numpy operation
-
-        tensor = tensor[:, :, q] + update
-
-    where *tensor* is a tensor of shape (B, S, Q).
-
-    :param B: First dim. of tensor for which the indices are generated.
-    :param S: Second dim. of tensor for which the indices are generated.
-    :param Q: Third dim. of tensor for which the indices are generated.
-    :param q: Index of tensor along fourth dim. to which the update is applied.
-    """
-
-    idxB = tf.tile(tf.range(B, dtype=tf.int32)[:, None, None], (1, S, 1))
-    idxS = tf.tile(tf.range(S, dtype=tf.int32)[None, :, None], (B, 1, 1))
-    idxQ = tf.tile(tf.convert_to_tensor(q)[None, None, None], (B, S, 1))
-
-    idx = tf.concat([idxB, idxS, idxQ], axis=-1)
-
-    return idx
-
-
-# =============================================================================
 # Multivariate Normal CDF
 # =============================================================================
 
@@ -118,6 +57,56 @@ class MultivariateNormalCDF:
         self.S = sample_size
         self.Q = dim
         self.dtype = dtype
+
+    def standard_normal_cdf_and_inverse_cdf(
+        self,
+        dtype: tf.DType,
+    ) -> Tuple[Callable[[TensorType], TensorType], Callable[[TensorType], TensorType]]:
+        """Returns two callables *Phi* and *iPhi*, which compute the cumulative
+        density function and inverse cumulative density function of a standard
+        univariate Gaussian.
+
+        :param dtype: The data type to use, either tf.float32 or tf.float64.
+        :returns Phi, iPhi: Cumulative and inverse cumulative density functions.
+        """
+
+        normal = tfp.distributions.Normal(
+            loc=tf.zeros(shape=(), dtype=dtype),
+            scale=tf.ones(shape=(), dtype=dtype),
+        )
+        Phi: Callable[[TensorType], TensorType] = lambda x: normal.cdf(x)
+        iPhi: Callable[[TensorType], TensorType] = lambda x: normal.quantile(x)
+
+        return Phi, iPhi
+
+    def get_update_indices(self, B: int, S: int, Q: int, q: int) -> TensorType:
+        """Returns indices for updating a tensor using tf.tensor_scatter_nd_add,
+        for use within the _mvn_cdf function, for computing the cumulative density
+        function of a multivariate Gaussian. The indices *idx* returned are such
+        that the following operation
+
+            idx = get_update_indices(B, S, Q, q)
+            tensor = tf.tensor_scatter_nd_add(tensor, idx, update)
+
+        is equivalent to the numpy operation
+
+            tensor = tensor[:, :, q] + update
+
+        where *tensor* is a tensor of shape (B, S, Q).
+
+        :param B: First dim. of tensor for which the indices are generated.
+        :param S: Second dim. of tensor for which the indices are generated.
+        :param Q: Third dim. of tensor for which the indices are generated.
+        :param q: Index of tensor along fourth dim. to which the update is applied.
+        """
+
+        idxB = tf.tile(tf.range(B, dtype=tf.int32)[:, None, None], (1, S, 1))
+        idxS = tf.tile(tf.range(S, dtype=tf.int32)[None, :, None], (B, 1, 1))
+        idxQ = tf.tile(tf.convert_to_tensor(q)[None, None, None], (B, S, 1))
+
+        idx = tf.concat([idxB, idxS, idxQ], axis=-1)
+
+        return idx
 
     def __call__(
         self,
@@ -170,10 +159,10 @@ class MultivariateNormalCDF:
         y = tf.zeros(shape=(B, self.S, self.Q), dtype=dtype)
 
         # Initialise standard normal for computing CDFs
-        Phi, iPhi = standard_normal_cdf_and_inverse_cdf(dtype=dtype)
+        Phi, iPhi = self.standard_normal_cdf_and_inverse_cdf(dtype=dtype)
 
         # Get update indices for convenience later
-        idx = get_update_indices(B=B, S=self.S, Q=self.Q, q=0)
+        idx = self.get_update_indices(B=B, S=self.S, Q=self.Q, q=0)
 
         # Slice out common tensors
         b0 = b[:, None, 0]
@@ -197,7 +186,7 @@ class MultivariateNormalCDF:
             yi = y[:, :, :i]
 
             # Compute indices to update d, e and f tensors
-            idx = get_update_indices(B=B, S=self.S, Q=self.Q, q=i)
+            idx = self.get_update_indices(B=B, S=self.S, Q=self.Q, q=i)
 
             # Update e tensor
             e_update = Phi((bi - tf.reduce_sum(Ci_ * yi, axis=-1)) / Cii)
