@@ -32,7 +32,6 @@ import textwrap
 import ipywidgets
 from IPython. display import clear_output
 import imageio
-from functools import lru_cache
 
 np.random.seed(5678)
 tf.random.set_seed(5678)
@@ -285,6 +284,7 @@ class Run:
 
                 self.cerr = np.linalg.norm(self.res_fail)
                 self.time = time
+                self.nfev = data[3]
     
             def __str__(self):
                 precision = 3
@@ -297,6 +297,7 @@ class Run:
                     out += "\n\tf\t\t\t:" + np.array2string(self.feas_f_max)
                     out += "\nOptimization"
                     out += "\n\ttime\t\t\t:" + f"{self.time:.3f}s"
+                    out += "\n\tnfev\t\t\t:" + f"{self.nfev}"
                     out += "\n\tx\t\t\t:" + np.array2string(self.points, precision=precision)
                     out += "\n\tf\t\t\t:" + np.array2string(self.fs, precision=precision)
                     out += "\n\txerr\t\t\t:" + np.array2string(self.xerr, precision=precision)
@@ -430,11 +431,13 @@ class Run:
         
     def _run_optim(self, num_initial_samples, num_optimization_runs, init_candidates, optimizer_args):
         init_points = np.zeros((num_optimization_runs, 1, len(self.search_space.lower)))
+        total_nfev = np.array(0)
         opt = generate_continuous_optimizer(
             num_initial_samples=num_initial_samples,
             num_optimization_runs=num_optimization_runs,
             initial_candidates_in=init_candidates,
             initial_points_out=init_points,
+            total_nfev_out=total_nfev,
             optimizer_args=optimizer_args,
         )
         init_points = init_points.squeeze()
@@ -448,7 +451,7 @@ class Run:
         
         f_val = self.acq_function(tf.expand_dims(points_chosen, axis=-2))
 
-        return (points_chosen, f_val, init_points), optim_timer
+        return (points_chosen, f_val, init_points, total_nfev), optim_timer
 
     def print_results_full(self):
         for result in self.results_hist.values():
@@ -461,12 +464,13 @@ class Run:
             ferrs = np.array([r.ferr for r in result.results])
             cerrs = np.array([r.cerr for r in result.results])
             ts    = np.array([r.time for r in result.results])
-            print(f"{result.label}\t(runs={len(result)}, mean-secs={np.mean(ts):.3f}): constr-sat-%={np.mean(sats)*100:5.1f}, mean-xerr={np.mean(xerrs):.3f}," +
+            nfevs = np.array([r.nfev for r in result.results])
+            print(f"{result.label}\t(runs={len(result)}, mean-secs={np.mean(ts):.3f}, mean-nfev={np.mean(nfevs):5.1f}): constr-sat-%={np.mean(sats)*100:5.1f}, mean-xerr={np.mean(xerrs):.3f}," +
                   f" mean-ferr={np.mean(ferrs):.3f}, mean-cerr={np.mean(cerrs):.3f}")
 
     def _plot_optim(self, ax, name=None):
         if name is not None:
-            points, fs, init_points = self.data[name]
+            points, fs, init_points, _ = self.data[name]
             fs = np.squeeze(fs, axis=-1)
         else:
             points, fs, init_points = None, None, None

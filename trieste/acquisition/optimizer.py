@@ -164,6 +164,7 @@ def generate_continuous_optimizer(
     num_recovery_runs: int = 10,
     initial_candidates_in = None,
     initial_points_out = None,
+    total_nfev_out = None,
     optimizer_args: Optional[dict[str, Any]] = None,
 ) -> AcquisitionOptimizer[Box | TaggedProductSearchSpace]:
     """
@@ -287,6 +288,9 @@ def generate_continuous_optimizer(
             tf.reduce_any(successes, axis=0)
         )  # Check that at least one optimization was successful for each function
         total_nfev = tf.reduce_max(nfev)  # acquisition function is evaluated in parallel
+
+        if total_nfev_out is not None:
+            total_nfev_out.itemset(total_nfev)
 
         recovery_run = False
         if (
