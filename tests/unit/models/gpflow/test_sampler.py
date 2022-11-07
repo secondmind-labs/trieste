@@ -287,7 +287,7 @@ def test_rff_trajectory_sampler_returns_trajectory_function_with_correct_shapes(
         noise_variance=tf.constant(1.0, dtype=tf.float64), dataset=dataset
     )
     model.kernel = gpflow.kernels.RBF(
-        tf.random.uniform([1])
+        tf.random.uniform([])
     )  # need a gpflow kernel object for random feature decompositions
     sampler = RandomFourierFeatureTrajectorySampler(model, num_features=num_features)
 
