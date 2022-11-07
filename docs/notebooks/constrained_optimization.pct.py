@@ -137,13 +137,13 @@ def process_nonlinear_constraint(constraint, search_space):
 
 
 # %%
-class SimpleConstraintsFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel]):
+class FastConstraintsFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     def __init__(self, constraints):
         self._constraints = constraints
 
     def __repr__(self) -> str:
         """"""
-        return "SimpleConstraintsFeasibility()"
+        return "FastConstraintsFeasibility()"
 
     def prepare_acquisition_function(
         self,
@@ -196,7 +196,7 @@ def simple_constraints_feasibility(
     return acquisition
 
 
-class ExpectedSimpleConstrainedImprovement(ExpectedConstrainedImprovement[ProbabilisticModel]):
+class ExpectedFastConstrainedImprovement(ExpectedConstrainedImprovement[ProbabilisticModel]):
     def __init__(
         self,
         objective_tag: str,
@@ -216,7 +216,7 @@ class ExpectedSimpleConstrainedImprovement(ExpectedConstrainedImprovement[Probab
     def __repr__(self) -> str:
         """"""
         return (
-            f"ExpectedSimpleConstrainedImprovement({self._objective_tag!r}, {self._constraint_builder!r},"
+            f"ExpectedFastConstrainedImprovement({self._objective_tag!r}, {self._constraint_builder!r},"
             f" {self._min_feasibility_probability!r})"
         )
 
@@ -353,7 +353,7 @@ class Run:
 
     def get_acq_fun(self):
         if self.constrained_ei_type is not None:
-            feas = SimpleConstraintsFeasibility(self.constraints)
+            feas = FastConstraintsFeasibility(self.constraints)
             default_builder_kwargs = dict(min_feasibility_probability=0.5)
             acq_builder = self.constrained_ei_type(OBJECTIVE, feas.using(OBJECTIVE), **dict(default_builder_kwargs, **dict(self.builder_kwargs or {})))
             acq_function = acq_builder.prepare_acquisition_function({OBJECTIVE: self.model}, datasets={OBJECTIVE: self.initial_data})

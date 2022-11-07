@@ -1,3 +1,19 @@
+# ---
+# jupyter:
+#   jupytext:
+#     cell_metadata_filter: -all
+#     custom_cell_magics: kql
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.11.2
+#   kernelspec:
+#     display_name: 'Python 3.10.6 (''.venv'': venv)'
+#     language: python
+#     name: python3
+# ---
+
 # %% [markdown]
 # # Constrained Acquisition Function Optimization with Expected Improvement - Hartmann 6
 
@@ -60,7 +76,7 @@ print(f'Approx feasible region: {np.count_nonzero(constraints_satisfied(nonlinea
 ## Run a dummy COBYLA optimization. The first tends to fail, for seemingly an internal optimizer issue.
 #run_dummy = Run(search_space, observer, nonlinear_constraints)
 #optims = {
-#    "COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=constraints_to_dict(nonlinear_constraints+bound_constraints, search_space)),
+#    "COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=nonlinear_constraints+bound_constraints),
 #}
 #run_dummy.add_optims(optims)
 #multi_run(run_dummy, 1, 1, initial_query_points, num_initial_samples=num_initial_samples, num_optimization_runs=num_optimization_runs, with_plot=False)
@@ -75,8 +91,8 @@ run_unmod = Run(search_space, observer, nonlinear_constraints)
 optims = {
     "L-BFGS-EI":     None,
     "TrstRegion-EI": dict(method="trust-constr", constraints=nonlinear_constraints),
-    "SLSQP-EI":      dict(method="SLSQP", constraints=constraints_to_dict(nonlinear_constraints, search_space)),
-    #"COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=constraints_to_dict(nonlinear_constraints+bound_constraints, search_space)),
+    "SLSQP-EI":      dict(method="SLSQP", constraints=nonlinear_constraints),
+    #"COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=nonlinear_constraints+bound_constraints),
 }
 run_unmod.add_optims(optims)
 
@@ -87,7 +103,7 @@ run_unmod.print_results_summary()
 run_unmod.print_results_full()
 
 # %% [markdown]
-# ### Constrained acquistion function
+# ### Constrained acquistion function (penalty method)
 
 # %%
 run_constr = Run(search_space, observer, nonlinear_constraints, constrained_ei_type=ExpectedConstrainedImprovement, builder_kwargs=dict(min_feasibility_probability=0.5))
@@ -102,15 +118,15 @@ multi_run(run_constr, 5, 5, initial_query_points, num_initial_samples=num_initia
 run_constr.print_results_summary()
 
 # %% [markdown]
-# ### Simple constrained acquisition function
+# ### Fast constrained acquisition function
 
 # %%
-run_simple_constr = Run(search_space, observer, nonlinear_constraints, constrained_ei_type=ExpectedSimpleConstrainedImprovement, builder_kwargs=dict(min_feasibility_probability=0.5))
+run_simple_constr = Run(search_space, observer, nonlinear_constraints, constrained_ei_type=ExpectedFastConstrainedImprovement, builder_kwargs=dict(min_feasibility_probability=0.5))
 optims = {
     "L-BFGS-EI":     None,
     "TrstRegion-EI": dict(method="trust-constr", constraints=nonlinear_constraints),
-    "SLSQP-EI":      dict(method="SLSQP", constraints=constraints_to_dict(nonlinear_constraints, search_space)),
-    #"COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=constraints_to_dict(nonlinear_constraints+bound_constraints, search_space)),
+    "SLSQP-EI":      dict(method="SLSQP", constraints=nonlinear_constraints),
+    #"COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=nonlinear_constraints+bound_constraints),
 }
 run_simple_constr.add_optims(optims)
 
@@ -118,17 +134,6 @@ multi_run(run_simple_constr, 5, 5, initial_query_points, num_initial_samples=num
 
 # %%
 run_simple_constr.print_results_summary()
-
-# %%
-run_dummy = Run(search_space, observer, nonlinear_constraints, constrained_ei_type=ExpectedSimpleConstrainedImprovement, builder_kwargs=dict(min_feasibility_probability=0.5))
-optims = {
-    "SLSQP-EI":      dict(method="SLSQP", constraints=dict(type='ineq', fun=lambda x: -nlc_func(x))),
-}
-run_dummy.add_optims(optims)
-
-multi_run(run_dummy, 2, 2, initial_query_points, num_initial_samples=num_initial_samples, num_optimization_runs=num_optimization_runs, with_plot=False)
-
-run_dummy.print_results_summary()
 
 # %% [markdown]
 # ## LICENSE

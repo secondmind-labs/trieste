@@ -75,7 +75,7 @@ def initial_query_points():
 # Run a dummy COBYLA optimization. The first tends to fail, for seemingly an internal optimizer issue.
 run_dummy = Run(search_space, observer, lin_constraints)
 optims = {
-    "COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=constraints_to_dict(lin_constraints+bound_constraints, search_space)),
+    "COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=lin_constraints+bound_constraints),
 }
 run_dummy.add_optims(optims)
 multi_run(run_dummy, 1, 1, initial_query_points, with_plot=False)
@@ -90,8 +90,8 @@ run_unmod = Run(search_space, observer, lin_constraints)
 optims = {
     "L-BFGS-EI":     None,
     "TrstRegion-EI": dict(method="trust-constr", constraints=lin_constraints),
-    "SLSQP-EI":      dict(method="SLSQP", constraints=constraints_to_dict(lin_constraints, search_space)),
-    "COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=constraints_to_dict(lin_constraints+bound_constraints, search_space)),
+    "SLSQP-EI":      dict(method="SLSQP", constraints=lin_constraints),
+    "COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=lin_constraints+bound_constraints),
 }
 run_unmod.add_optims(optims)
 
@@ -104,7 +104,7 @@ run_unmod.plot_results()
 run_unmod.write_gif()
 
 # %% [markdown]
-# ### Constrained acquistion function
+# ### Constrained acquistion function (penalty method)
 
 # %%
 run_constr = Run(search_space, observer, lin_constraints, constrained_ei_type=ExpectedConstrainedImprovement)
@@ -121,15 +121,15 @@ run_constr.plot_results()
 #run_constr.write_gif()
 
 # %% [markdown]
-# ### Simple constrained acquisition function
+# ### Fast constrained acquisition function
 
 # %%
-run_simple_constr = Run(search_space, observer, lin_constraints, constrained_ei_type=ExpectedSimpleConstrainedImprovement)
+run_simple_constr = Run(search_space, observer, lin_constraints, constrained_ei_type=ExpectedFastConstrainedImprovement)
 optims = {
     "L-BFGS-EI":     None,
     "TrstRegion-EI": dict(method="trust-constr", constraints=lin_constraints),
-    "SLSQP-EI":      dict(method="SLSQP", constraints=constraints_to_dict(lin_constraints, search_space)),
-    "COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=constraints_to_dict(lin_constraints+bound_constraints, search_space)),
+    "SLSQP-EI":      dict(method="SLSQP", constraints=lin_constraints),
+    "COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=lin_constraints+bound_constraints),
 }
 run_simple_constr.add_optims(optims)
 
