@@ -1377,7 +1377,9 @@ class AR1(TrainableProbabilisticModel):
     arbitrary number of fidelities. It relies on there being a linear relationship
     between fidelities, and may not perform well for more complex relationships.
     Precisely, it models the relationship between sequential fidelities as
+
     .. math:: f_{i}(x) = \rho f_{i-1}(x) + \delta(x)
+
     where :math:`\rho` is a scalar and :math:`\delta` models the residual between the fidelities.
     All the base models used in this implementation are :class:`~gpflow.models.GPR` models.
     Note: Currently only supports single output problems.
@@ -1446,11 +1448,18 @@ class AR1(TrainableProbabilisticModel):
         return signal_mean, signal_var
 
     def _calculate_residual(self, dataset: Dataset, fidelity: int) -> TensorType:
-        """
+        r"""
         Calculate the true residuals for a set of datapoints at a given fidelity.
 
-        :param dataset: Dataset of points for which to calculate the residuals.
-            Query points shape is [N, D], observations is [N,P].
+        Dataset should be made up of points that you have observations for at fidelity `fidelity`.
+        The residuals calculated here are the difference between the data and the prediction at the
+        lower fidelity multiplied by the rho value at this fidelity. This produces the training
+        data for the residual models.
+
+        .. math:: r_{i} = y - \rho_{i} * f_{i-1}(x)
+
+        :param dataset: Dataset of points for which to calculate the residuals. Must have observations
+            at fidelity `fidelity`. Query points shape is [N, D], observations is [N,P].
         :param fidelity: The fidelity for which to calculate the residuals
         :return: The true residuals at given datapoints for given fidelity, shape is [N,1].
         """
