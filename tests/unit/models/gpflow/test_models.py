@@ -1806,3 +1806,77 @@ def test_ar1_optimize_raises_for_bad_new_data(
     else:
         with pytest.raises(ValueError):
             ar1_model.optimize(ar1_dataset + new_dataset)
+
+
+def test_ar1_sample_aligns_with_predict() -> None:
+
+    xs_low = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
+    xs_high = tf.Variable(np.linspace(0, 10, 10), dtype=tf.float64)[:, None]
+    lf_obs = tf.sin(xs_low) + tf.random.normal(xs_low.shape, mean=0, stddev=1e-1, dtype=tf.float64)
+    hf_obs = 2 * tf.sin(xs_high) + tf.random.normal(
+        xs_high.shape, mean=0, stddev=1e-1, dtype=tf.float64
+    )
+
+    lf_query_points = add_fidelity_column(xs_low, 0)
+    hf_query_points = add_fidelity_column(xs_high, 1)
+
+    lf_dataset = Dataset(lf_query_points, lf_obs)
+    hf_dataset = Dataset(hf_query_points, hf_obs)
+
+    dataset = lf_dataset + hf_dataset
+
+    search_space = Box([0.0], [10.0])
+
+    model = AR1(build_ar1_models(dataset, num_fidelities=2, input_search_space=search_space))
+
+    test_locations = tf.Variable(np.linspace(0, 10, 32), dtype=tf.float64)[:, None]
+    lf_test_locations = add_fidelity_column(test_locations, 0)
+    hf_test_locations = add_fidelity_column(test_locations, 1)
+
+    lf_true_means, lf_true_vars = model.predict(lf_test_locations)
+    hf_true_means, hf_true_vars = model.predict(hf_test_locations)
+
+    lf_samples = model.sample(lf_test_locations, 100000)
+    lf_sample_means = tf.reduce_mean(lf_samples, axis=0)
+    lf_sample_vars = tf.math.reduce_variance(lf_samples, axis=0)
+
+    npt.assert_allclose(lf_true_means, lf_sample_means, rtol=1e-3)
+    npt.assert_allclose(lf_true_vars, lf_sample_vars, rtol=1e-3)
+
+    hf_samples = model.sample(hf_test_locations, 100000)
+    hf_sample_means = tf.reduce_mean(hf_samples, axis=0)
+    hf_sample_vars = tf.math.reduce_variance(hf_samples, axis=0)
+    npt.assert_allclose(hf_true_means, hf_sample_means, rtol=1e-2)
+    npt.assert_allclose(hf_true_vars, hf_sample_vars, rtol=1e-2)
+
+
+def test_ar1_samples_are_varied() -> None:
+
+    xs_low = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
+    xs_high = tf.Variable(np.linspace(0, 10, 10), dtype=tf.float64)[:, None]
+    lf_obs = tf.sin(xs_low) + tf.random.normal(xs_low.shape, mean=0, stddev=1e-1, dtype=tf.float64)
+    hf_obs = 2 * tf.sin(xs_high) + tf.random.normal(
+        xs_high.shape, mean=0, stddev=1e-1, dtype=tf.float64
+    )
+
+    lf_query_points = add_fidelity_column(xs_low, 0)
+    hf_query_points = add_fidelity_column(xs_high, 1)
+
+    lf_dataset = Dataset(lf_query_points, lf_obs)
+    hf_dataset = Dataset(hf_query_points, hf_obs)
+
+    dataset = lf_dataset + hf_dataset
+
+    search_space = Box([0.0], [10.0])
+
+    model = AR1(build_ar1_models(dataset, num_fidelities=2, input_search_space=search_space))
+
+    test_locations = tf.Variable([[5.1]], dtype=tf.float64)
+    lf_test_locations = add_fidelity_column(test_locations, 0)
+    hf_test_locations = add_fidelity_column(test_locations, 1)
+
+    lf_samples = model.sample(lf_test_locations, 2)
+    assert lf_samples[0] != lf_samples[1]
+
+    hf_samples = model.sample(hf_test_locations, 2)
+    assert hf_samples[0] != hf_samples[1]
