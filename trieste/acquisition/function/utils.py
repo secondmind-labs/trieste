@@ -38,6 +38,7 @@ class MultivariateNormalCDF:
         sample_size: int,
         dim: int,
         dtype: tf.DType,
+        num_sobol_skip: int = 0,
     ) -> None:
         """Builds the cumulative density function of the multivariate Gaussian
         using the Genz approximation detailed in :cite:`genz2016numerical`.
@@ -50,15 +51,18 @@ class MultivariateNormalCDF:
         :param samples_size: int, number of samples to use.
         :param dim: int, dimension of the multivariate Gaussian.
         :param dtype: tf.DType, data type to use for calculations.
+        :param num_sobol_skip: int, number of sobol samples to skip.
         """
         tf.debugging.assert_positive(sample_size)
         tf.debugging.assert_positive(dim)
 
-        self.S = sample_size
-        self.Q = dim
-        self.dtype = dtype
+        self._S = sample_size
+        self._Q = dim
+        self._dtype = dtype
+        
+        self._num_sobol_skip = num_sobol_skip
 
-    def standard_normal_cdf_and_inverse_cdf(
+    def _standard_normal_cdf_and_inverse_cdf(
         self,
         dtype: tf.DType,
     ) -> Tuple[Callable[[TensorType], TensorType], Callable[[TensorType], TensorType]]:
@@ -79,7 +83,7 @@ class MultivariateNormalCDF:
 
         return Phi, iPhi
 
-    def get_update_indices(self, B: int, S: int, Q: int, q: int) -> TensorType:
+    def _get_update_indices(self, B: int, S: int, Q: int, q: int) -> TensorType:
         """Returns indices for updating a tensor using tf.tensor_scatter_nd_add,
         for use within the _mvn_cdf function, for computing the cumulative density
         function of a multivariate Gaussian. The indices *idx* returned are such
@@ -132,9 +136,9 @@ class MultivariateNormalCDF:
         # Check shapes of input tensors
         tf.debugging.assert_shapes(
             [
-                (x, (B, self.Q)),
-                (mean, (B, self.Q)),
-                (cov, (B, self.Q, self.Q)),
+                (x, (B, self._Q)),
+                (mean, (B, self._Q)),
+                (cov, (B, self._Q, self._Q)),
             ]
         )
 
@@ -142,38 +146,39 @@ class MultivariateNormalCDF:
         dtype = mean.dtype
 
         # Compute Cholesky factors
-        jitter = jitter * tf.eye(self.Q, dtype=dtype)[None, :, :]
+        jitter = jitter * tf.eye(self._Q, dtype=dtype)[None, :, :]
         C = tf.linalg.cholesky(cov + jitter)  # (B, Q, Q)
 
         # Rename samples and limits for brevity
         w = tf.math.sobol_sample(
-            dim=self.Q,
-            num_results=self.S,
-            dtype=self.dtype,
+            dim=self._Q,
+            num_results=self._S,
+            dtype=self._dtype,
+            skip=self._num_sobol_skip,
         )  # (S, Q)
         b = x - mean  # (B, Q)
 
         # Initialise transformation variables
-        e = tf.zeros(shape=(B, self.S, self.Q), dtype=dtype)
-        f = tf.zeros(shape=(B, self.S, self.Q), dtype=dtype)
-        y = tf.zeros(shape=(B, self.S, self.Q), dtype=dtype)
+        e = tf.zeros(shape=(B, self._S, self._Q), dtype=dtype)
+        f = tf.zeros(shape=(B, self._S, self._Q), dtype=dtype)
+        y = tf.zeros(shape=(B, self._S, self._Q), dtype=dtype)
 
         # Initialise standard normal for computing CDFs
-        Phi, iPhi = self.standard_normal_cdf_and_inverse_cdf(dtype=dtype)
+        Phi, iPhi = self._standard_normal_cdf_and_inverse_cdf(dtype=dtype)
 
         # Get update indices for convenience later
-        idx = self.get_update_indices(B=B, S=self.S, Q=self.Q, q=0)
+        idx = self._get_update_indices(B=B, S=self._S, Q=self._Q, q=0)
 
         # Slice out common tensors
         b0 = b[:, None, 0]
         C0 = C[:, None, 0, 0] + 1e-12
 
         # Compute transformation variables at the first step
-        e_update = tf.tile(Phi(b0 / C0), (1, self.S))  # (B, S)
+        e_update = tf.tile(Phi(b0 / C0), (1, self._S))  # (B, S)
         e = tf.tensor_scatter_nd_add(e, idx, e_update)
         f = tf.tensor_scatter_nd_add(f, idx, e_update)
 
-        for i in tf.range(1, self.Q):
+        for i in tf.range(1, self._Q):
 
             # Update y tensor
             y_update = iPhi(1e-6 + (1 - 2e-6) * w[None, :, i - 1] * e[:, :, i - 1])
@@ -186,7 +191,7 @@ class MultivariateNormalCDF:
             yi = y[:, :, :i]
 
             # Compute indices to update d, e and f tensors
-            idx = self.get_update_indices(B=B, S=self.S, Q=self.Q, q=i)
+            idx = self._get_update_indices(B=B, S=self._S, Q=self._Q, q=i)
 
             # Update e tensor
             e_update = Phi((bi - tf.reduce_sum(Ci_ * yi, axis=-1)) / Cii)

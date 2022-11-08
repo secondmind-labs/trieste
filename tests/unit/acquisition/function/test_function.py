@@ -1008,17 +1008,54 @@ def test_batch_expected_improvement_raises_for_empty_data(
 
 
 @pytest.mark.parametrize("num_data", [4, 8, 16])
-@pytest.mark.parametrize("batch_size", [2, 3, 5])
-@pytest.mark.parametrize("dimension", [2, 4, 6])
+@pytest.mark.parametrize("batch_size", [2, 3, 4])
+@pytest.mark.parametrize("dimension", [2, 4, 8])
 @random_seed
-def test_batch_expected_improvement_can_reproduce_mc_excpected_improvement(
+def test_batch_expected_improvement_can_reproduce_mc_excpected_improvement_handcrafted_problem(
     num_data: int,
     batch_size: int,
     dimension: int,
     jitter: float = 1e-6,
     sample_size: int = 200,
     mc_sample_size: int = 100000,
-    num_parallel: int = 3,
+) -> None:
+    
+    xs = tf.random.uniform([num_data, dimension], dtype=tf.float64)
+    
+    data = Dataset(xs, quadratic(xs))
+    model = QuadraticMeanAndRBFKernelWithBatchSamplers(dataset=data)
+    mean, cov = model.predict_joint(xs)
+    
+    mvn = tfp.distributions.MultivariateNormalFullCovariance(tf.linalg.matrix_transpose(mean), cov)
+    mvn_samples = mvn.sample(10000)
+    # min_predictive_mean_at_known_points = 
+    
+#     # fmt: off
+#     expected = tf.reduce_mean(tf.reduce_max(tf.maximum(
+#         min_predictive_mean_at_known_points - mvn_samples, 0.0
+#     ), axis=-1), axis=0)
+#     # fmt: on
+
+#     builder = BatchMonteCarloExpectedImprovement(10_000)
+#     acq = builder.prepare_acquisition_function(
+#         model, dataset=mk_dataset([[0.3], [0.5]], [[0.09], [0.25]])
+#     )
+
+#     npt.assert_allclose(acq(xs), expected, rtol=0.05)
+
+
+@pytest.mark.parametrize("num_data", [4, 8, 16])
+@pytest.mark.parametrize("batch_size", [2, 3])
+@pytest.mark.parametrize("dimension", [2, 4, 6])
+@random_seed
+def test_batch_expected_improvement_can_reproduce_mc_excpected_improvement_random_problems(
+    num_data: int,
+    batch_size: int,
+    dimension: int,
+    jitter: float = 1e-6,
+    sample_size: int = 200,
+    mc_sample_size: int = 100000,
+    num_parallel: int = 4,
 ) -> None:
 
     known_query_points = tf.random.uniform([num_data, dimension], dtype=tf.float64)
@@ -1044,9 +1081,9 @@ def test_batch_expected_improvement_can_reproduce_mc_excpected_improvement(
 
     xs = tf.random.uniform([num_parallel, batch_size, dimension], dtype=tf.float64)
 
-    npt.assert_allclose(batch_mcei(xs), batch_ei(xs), rtol=1e-1)
+    npt.assert_allclose(batch_mcei(xs), batch_ei(xs), rtol=2e-2)
     # and again, since the sampler uses cacheing
-    npt.assert_allclose(batch_mcei(xs), batch_ei(xs), rtol=1e-1)
+    npt.assert_allclose(batch_mcei(xs), batch_ei(xs), rtol=2e-2)
 
 
 @pytest.mark.parametrize("num_data", [10])
