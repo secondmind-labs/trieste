@@ -1416,31 +1416,52 @@ class AR1(TrainableProbabilisticModel):
         :param query_points: Query points with shape [N, D+1], where the
             final column of the final dimension contains the fidelity of the query point
         :return: mean: The mean at query_points with shape [N, P],
-                 and var: Th variance at query_points with shape [N, P]
+                 and var: The variance at query_points with shape [N, P]
         """
         (
-            query_points_wo_fidelity,
-            query_points_fidelity_col,
+            query_points_wo_fidelity,  # [..., N, D]
+            query_points_fidelity_col,  # [..., N, 1]
         ) = check_and_extract_fidelity_query_points(
             query_points, max_fidelity=self.num_fidelities - 1
         )
 
         signal_mean, signal_var = self.lowest_fidelity_signal_model.predict(
             query_points_wo_fidelity
-        )
+        )  # [..., N, P], [..., N, P]
 
         for fidelity in range(self.num_fidelities):
             if fidelity == 0:
                 fidelity_residual_mean = 0
                 fidelity_residual_var = 0
             else:
-                fidelity_residual_mean, fidelity_residual_var = self.fidelity_residual_models[
-                    fidelity
-                ].predict(query_points_wo_fidelity)
+                # Find indices of query points that need predicting for
+                mask = query_points_fidelity_col >= fidelity  # [..., N, 1]
+                fidelity_indices = tf.where(mask[..., 0])  # [..., N, 1]
 
+                # Gather necessary query points and  predict
+                fidelity_filtered_query_points = tf.gather(
+                    query_points_wo_fidelity, fidelity_indices
+                )[
+                    ..., 0
+                ]  # [..., F <= N, 1]
+                (
+                    filtered_fidelity_residual_mean,
+                    filtered_fidelity_residual_var,
+                ) = self.fidelity_residual_models[fidelity].predict(fidelity_filtered_query_points)
+
+                # Scatter predictions back into correct location
+                fidelity_residual_mean = tf.tensor_scatter_nd_update(
+                    signal_mean, fidelity_indices, filtered_fidelity_residual_mean
+                )
+                fidelity_residual_var = tf.tensor_scatter_nd_update(
+                    signal_var, fidelity_indices, filtered_fidelity_residual_var
+                )
+
+            # Calculate mean and var for all columns (will be incorrect for qps with fid < fidelity)
             new_fidelity_signal_mean = self.rho[fidelity] * signal_mean + fidelity_residual_mean
             new_fidelity_signal_var = fidelity_residual_var + (self.rho[fidelity] ** 2) * signal_var
 
+            # Mask out incorrect values and update mean and var for correct ones
             mask = query_points_fidelity_col >= fidelity
             signal_mean = tf.where(mask, new_fidelity_signal_mean, signal_mean)
             signal_var = tf.where(mask, new_fidelity_signal_var, signal_var)
@@ -1458,8 +1479,8 @@ class AR1(TrainableProbabilisticModel):
 
         .. math:: r_{i} = y - \rho_{i} * f_{i-1}(x)
 
-        :param dataset: Dataset of points for which to calculate the residuals. Must have observations
-            at fidelity `fidelity`. Query points shape is [N, D], observations is [N,P].
+        :param dataset: Dataset of points for which to calculate the residuals. Must have
+         observations at fidelity `fidelity`. Query points shape is [N, D], observations is [N,P].
         :param fidelity: The fidelity for which to calculate the residuals
         :return: The true residuals at given datapoints for given fidelity, shape is [N,1].
         """
@@ -1487,15 +1508,36 @@ class AR1(TrainableProbabilisticModel):
 
         signal_sample = self.lowest_fidelity_signal_model.sample(
             query_points_wo_fidelity, num_samples
-        )
+        )  # [S, N, 1]
 
         for fidelity in range(self.num_fidelities):
             if fidelity == 0:
                 fidelity_residual_sample = 0
             else:
-                fidelity_residual_sample = self.fidelity_residual_models[fidelity].sample(
-                    query_points_wo_fidelity, num_samples
+                mask = query_points_fidelity_col >= fidelity
+                fidelity_indices = tf.where(mask[..., 0])  # [..., N, 1]
+
+                # Gather necessary query points and get sample
+                fidelity_filtered_query_points = tf.gather(
+                    query_points_wo_fidelity, fidelity_indices
+                )[
+                    ..., 0
+                ]  # [..., F <= N, 1]
+                fidelity_filtered_samples = self.fidelity_residual_models[fidelity].sample(
+                    fidelity_filtered_query_points, num_samples
+                )  # S, ..., F <= N, 1]
+                # Have to switch sample dimension and batch dimension for scatter_nd_update
+                # Calculate permutation from [S, ..., N, 1] to [N, ..., S, 1]
+                perm = list(tf.range(len(signal_sample.shape)))
+                perm[0] = perm[-2]
+                perm[-2] = 0
+                signal_sample_t = tf.transpose(signal_sample, perm=perm)
+                fidelity_filtered_samples_t = tf.transpose(fidelity_filtered_samples, perm=perm)
+                fidelity_residual_sample_t = tf.tensor_scatter_nd_update(
+                    signal_sample_t, fidelity_indices, fidelity_filtered_samples_t
                 )
+                # Revert permutation
+                fidelity_residual_sample = tf.transpose(fidelity_residual_sample_t, perm=perm)
 
             new_fidelity_signal_sample = (
                 self.rho[fidelity] * signal_sample + fidelity_residual_sample
