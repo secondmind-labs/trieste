@@ -128,13 +128,13 @@ def check_and_extract_fidelity_query_points(
         and the fidelities of each of the query points
     """
     # Check we have sufficient columns
-    if query_points.shape[1] < 2:
+    if query_points.shape[-1] < 2:
         raise ValueError(
             "Query points do not have enough columns to be multifidelity,"
             f" need at least 2, got {query_points.shape[1]}"
         )
-    input_points = query_points[:, :-1]
-    fidelity_col = query_points[:, -1:]
+    input_points = query_points[..., :-1]
+    fidelity_col = query_points[..., -1:]
     # Check fidelity column values are close to ints
     tf.debugging.assert_equal(
         tf.round(fidelity_col),
@@ -180,7 +180,7 @@ def get_dataset_for_fidelity(dataset: Dataset, fidelity: int) -> Dataset:
         dataset.query_points
     )  # [..., D], [..., 1]
     mask = fidelity_col == fidelity  # [..., ]
-    inds = tf.where(mask)[:, 0]  # [..., ]
+    inds = tf.where(mask)[..., 0]  # [..., ]
     inputs_for_fidelity = tf.gather(input_points, inds, axis=0)  # [..., D]
     observations_for_fidelity = tf.gather(dataset.observations, inds, axis=0)  # [..., 1]
     return Dataset(query_points=inputs_for_fidelity, observations=observations_for_fidelity)
@@ -193,6 +193,6 @@ def add_fidelity_column(query_points: TensorType, fidelity: int) -> TensorType:
     :param fidelity: fidelity to populate fidelity column with
     :return: TensorType of query points with fidelity column added
     """
-    fidelity_col = tf.ones((tf.shape(query_points)[0], 1), dtype=query_points.dtype) * fidelity
+    fidelity_col = tf.ones((tf.shape(query_points)[-2], 1), dtype=query_points.dtype) * fidelity
     query_points_for_fidelity = tf.concat([query_points, fidelity_col], axis=-1)
     return query_points_for_fidelity

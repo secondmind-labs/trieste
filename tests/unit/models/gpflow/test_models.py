@@ -1651,12 +1651,22 @@ def ar1_model(ar1_dataset: Dataset) -> AR1:
     return AR1(gprs)
 
 
-def test_ar1_predict_returns_expected_shape(ar1_model: AR1) -> None:
+@pytest.mark.parametrize(
+    "input_data,output_shape",
+    (
+        ([[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]], [3, 1]),
+        ([[[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]]] * 5, [5, 3, 1]),
+        ([[[[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]]] * 5] * 7, [7, 5, 3, 1]),
+    ),
+)
+def test_ar1_predict_returns_expected_shape(input_data, output_shape, ar1_model: AR1) -> None:
 
-    input_data = tf.Variable([[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]], dtype=tf.float64)
-    pred_mean, pred_var = ar1_model.predict(input_data)
-    assert pred_mean.shape == [3, 1]
-    assert pred_var.shape == [3, 1]
+    print(np.array(input_data).shape)
+    query_points = tf.Variable(input_data, dtype=tf.float64)
+    pred_mean, pred_var = ar1_model.predict(query_points)
+    print(output_shape)
+    assert pred_mean.shape == output_shape
+    assert pred_var.shape == output_shape
 
 
 def test_ar1_predict_y_returns_expected_shape(ar1_model: AR1) -> None:

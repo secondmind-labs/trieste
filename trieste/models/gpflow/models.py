@@ -1424,10 +1424,16 @@ class AR1(TrainableProbabilisticModel):
         ) = check_and_extract_fidelity_query_points(
             query_points, max_fidelity=self.num_fidelities - 1
         )
+        print(
+            "check&extract output shapes",
+            query_points_wo_fidelity.shape,
+            query_points_fidelity_col.shape,
+        )
 
         signal_mean, signal_var = self.lowest_fidelity_signal_model.predict(
             query_points_wo_fidelity
         )  # [..., N, P], [..., N, P]
+        print("lowest_pred", signal_mean.shape, signal_var.shape)
 
         for fidelity in range(self.num_fidelities):
             if fidelity == 0:
@@ -1436,18 +1442,22 @@ class AR1(TrainableProbabilisticModel):
             else:
                 # Find indices of query points that need predicting for
                 mask = query_points_fidelity_col >= fidelity  # [..., N, 1]
-                fidelity_indices = tf.where(mask[..., 0])  # [..., N, 1]
-
+                print("mask", mask.shape)
+                fidelity_indices = tf.where(mask)[..., :-1]
+                print("fidelity_indices", fidelity_indices.shape)
                 # Gather necessary query points and  predict
-                fidelity_filtered_query_points = tf.gather(
+                fidelity_filtered_query_points = tf.gather_nd(
                     query_points_wo_fidelity, fidelity_indices
                 )[
                     ..., 0
                 ]  # [..., F <= N, 1]
+                print("Gathered", fidelity_filtered_query_points.shape)
                 (
                     filtered_fidelity_residual_mean,
                     filtered_fidelity_residual_var,
-                ) = self.fidelity_residual_models[fidelity].predict(fidelity_filtered_query_points)
+                ) = self.fidelity_residual_models[fidelity].predict(
+                    fidelity_filtered_query_points[..., None]
+                )
 
                 # Scatter predictions back into correct location
                 fidelity_residual_mean = tf.tensor_scatter_nd_update(
