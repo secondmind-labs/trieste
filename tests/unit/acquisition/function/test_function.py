@@ -1007,9 +1007,9 @@ def test_batch_expected_improvement_raises_for_empty_data(
         builder.prepare_acquisition_function(model)
 
 
-@pytest.mark.parametrize("num_data", [4, 8, 16])
-@pytest.mark.parametrize("batch_size", [2, 3, 4])
-@pytest.mark.parametrize("dimension", [2, 4, 8])
+@pytest.mark.parametrize("num_data", [4, 8])
+@pytest.mark.parametrize("batch_size", [2, 3])
+@pytest.mark.parametrize("dimension", [2, 4])
 @random_seed
 def test_batch_expected_improvement_can_reproduce_mc_excpected_improvement_handcrafted_problem(
     num_data: int,
@@ -1019,29 +1019,33 @@ def test_batch_expected_improvement_can_reproduce_mc_excpected_improvement_handc
     sample_size: int = 200,
     mc_sample_size: int = 100000,
 ) -> None:
-    
+
     xs = tf.random.uniform([num_data, dimension], dtype=tf.float64)
-    
+
     data = Dataset(xs, quadratic(xs))
     model = QuadraticMeanAndRBFKernelWithBatchSamplers(dataset=data)
     mean, cov = model.predict_joint(xs)
-    
+
     mvn = tfp.distributions.MultivariateNormalFullCovariance(tf.linalg.matrix_transpose(mean), cov)
     mvn_samples = mvn.sample(10000)
-    # min_predictive_mean_at_known_points = 
-    
-#     # fmt: off
-#     expected = tf.reduce_mean(tf.reduce_max(tf.maximum(
-#         min_predictive_mean_at_known_points - mvn_samples, 0.0
-#     ), axis=-1), axis=0)
-#     # fmt: on
 
-#     builder = BatchMonteCarloExpectedImprovement(10_000)
-#     acq = builder.prepare_acquisition_function(
-#         model, dataset=mk_dataset([[0.3], [0.5]], [[0.09], [0.25]])
-#     )
+    dummy_inputs = [dimension * [0.1]]
+    dummy_outputs = [dimension * [0.1 ** 2.0]]
 
-#     npt.assert_allclose(acq(xs), expected, rtol=0.05)
+    min_predictive_mean_at_known_points = dimension * 0.1 ** 2.0
+
+    # fmt: off
+    expected = tf.reduce_mean(tf.reduce_max(tf.maximum(
+        min_predictive_mean_at_known_points - mvn_samples, 0.0
+    ), axis=-1), axis=0)
+    # fmt: on
+
+    builder = BatchMonteCarloExpectedImprovement(10_000)
+    acq = builder.prepare_acquisition_function(
+        model, dataset=mk_dataset(dummy_inputs, dummy_outputs)
+    )
+
+    npt.assert_allclose(acq(xs), expected, rtol=0.05)
 
 
 @pytest.mark.parametrize("num_data", [4, 8, 16])
@@ -1092,7 +1096,7 @@ def test_batch_expected_improvement_can_reproduce_mc_excpected_improvement_rando
 @pytest.mark.parametrize("sample_size", [100])
 @pytest.mark.parametrize("dimension", [2])
 @pytest.mark.parametrize("jitter", [1e-6])
-@pytest.mark.parametrize("mc_sample_size", [int(1e5)])
+@pytest.mark.parametrize("mc_sample_size", [int(4e5)])
 @random_seed
 def test_batch_expected_improvement_updates_without_retracing(
     num_data: int,
@@ -1125,7 +1129,7 @@ def test_batch_expected_improvement_updates_without_retracing(
     batch_ei = batch_ei_builder.prepare_acquisition_function(model=model, dataset=data)
     batch_mcei = batch_mcei_builder.prepare_acquisition_function(model=model, dataset=data)
     assert batch_ei.__call__._get_tracing_count() == 0  # type: ignore
-    npt.assert_allclose(batch_ei(xs), batch_mcei(xs), rtol=1e-2)
+    npt.assert_allclose(batch_mcei(xs), batch_ei(xs), rtol=2e-2)
     assert batch_ei.__call__._get_tracing_count() == 1  # type: ignore
 
     data = Dataset(known_query_points, quadratic(known_query_points))
@@ -1133,7 +1137,7 @@ def test_batch_expected_improvement_updates_without_retracing(
     batch_mcei = batch_mcei_builder.update_acquisition_function(batch_mcei, model, dataset=data)
     assert up_batch_ei == batch_ei
     assert batch_ei.__call__._get_tracing_count() == 1  # type: ignore
-    npt.assert_allclose(batch_ei(xs), batch_mcei(xs), rtol=1e-2)
+    npt.assert_allclose(batch_mcei(xs), batch_ei(xs), rtol=2e-2)
     assert batch_ei.__call__._get_tracing_count() == 1  # type: ignore
 
 

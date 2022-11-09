@@ -59,7 +59,7 @@ class MultivariateNormalCDF:
         self._S = sample_size
         self._Q = dim
         self._dtype = dtype
-        
+
         self._num_sobol_skip = num_sobol_skip
 
     def _standard_normal_cdf_and_inverse_cdf(

@@ -1144,14 +1144,14 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         self._mvn_cdf_1: Optional[MultivariateNormalCDF] = None
         self._mvn_cdf_2: Optional[MultivariateNormalCDF] = None
 
-        self._num_sobol_skip = int(tf.math.floor(10**9 * tf.random.uniform((), dtype=tf.float32)))
+        self._num_sobol_skip = int(tf.math.floor(10 ** 9 * tf.random.uniform((), dtype=tf.float32)))
 
     def update(self, eta: TensorType) -> None:
         """Update the acquisition function with a new eta value and reset the
         reparam sampler.
         """
         self._eta.assign(eta)
-        self._num_sobol_skip = int(tf.math.floor(10**9 * tf.random.uniform((), dtype=tf.float32)))
+        self._num_sobol_skip = int(tf.math.floor(10 ** 9 * tf.random.uniform((), dtype=tf.float32)))
 
     def _compute_bm(
         self,
