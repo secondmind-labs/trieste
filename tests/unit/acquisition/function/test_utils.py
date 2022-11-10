@@ -132,4 +132,4 @@ def test_make_genz_cdf_matches_naive_monte_carlo_on_random_tasks(
     mc_cdf = mc_mvn_cdf(x=x, mean=mean, cov=cov)
 
     # Check that the Genz and direct Monte Carlo estimates agree
-    tf.debugging.assert_near(mc_cdf, genz_cdf, rtol=4e-1)
+    tf.debugging.assert_near(mc_cdf, genz_cdf, rtol=3e-1)
