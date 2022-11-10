@@ -97,6 +97,4 @@ def test_ar1_gets_expected_rhos() -> None:
     expected_rho = [1.0] + [(fidelity + 1) / fidelity for fidelity in range(1, n_fidelities)]
     rhos = [float(rho.numpy()) for rho in model.rho]
 
-    print(expected_rho, rhos)
-
     npt.assert_allclose(np.array(expected_rho), np.array(rhos), rtol=0.30)

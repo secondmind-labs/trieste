@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import unittest.mock
 from time import time
-from typing import Optional, cast
+from typing import Optional, Union, cast
 
 import gpflow
 import numpy as np
@@ -1630,12 +1630,18 @@ def test_sparse_variational_pairwise_covariance_for_non_whitened(
     np.testing.assert_allclose(expected_covariance, actual_covariance, atol=1e-4)
 
 
-@pytest.fixture
-def ar1_dataset() -> Dataset:
+def ar1_nd_dataset(n_dims: int = 1) -> Dataset:
 
     dataset = Dataset(
         tf.Variable(
-            [[0.0, 0.0], [1.0, 1.0], [2.0, 2.0], [3.0, 1.0], [4.0, 2.0], [5.0, 0.0]],
+            [
+                [0.0] * n_dims + [0.0],
+                [1.0] * n_dims + [1.0],
+                [2.0] * n_dims + [2.0],
+                [3.0] * n_dims + [1.0],
+                [4.0] * n_dims + [2.0],
+                [5.0] * n_dims + [0.0],
+            ],
             dtype=tf.float64,
         ),
         tf.Variable([[2.0], [4.0], [6.0], [8.0], [10.0], [12.0]], dtype=tf.float64),
@@ -1643,11 +1649,12 @@ def ar1_dataset() -> Dataset:
     return dataset
 
 
-@pytest.fixture
-def ar1_model(ar1_dataset: Dataset) -> AR1:
+def ar1_model(n_dims: int = 1) -> AR1:
 
     search_space = Box([0.0], [10.0])
-    gprs = build_ar1_models(ar1_dataset, num_fidelities=3, input_search_space=search_space)
+    gprs = build_ar1_models(
+        ar1_nd_dataset(n_dims=n_dims), num_fidelities=3, input_search_space=search_space
+    )
     return AR1(gprs)
 
 
@@ -1655,69 +1662,77 @@ def ar1_model(ar1_dataset: Dataset) -> AR1:
     "input_data,output_shape",
     (
         ([[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]], [3, 1]),
+        ([[0.1, 0.0, 0.0], [1.1, 1.0, 1.0], [2.1, 2.0, 2.0]], [3, 1]),
+        ([[0.1, 0.0, 0.0, 0.0], [1.1, 1.0, 1.0, 1.0], [2.1, 2.0, 2.0, 2.0]], [3, 1]),
         ([[[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]]] * 5, [5, 3, 1]),
         ([[[[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]]] * 5] * 7, [7, 5, 3, 1]),
     ),
 )
-def test_ar1_predict_returns_expected_shape(input_data, output_shape, ar1_model: AR1) -> None:
+def test_ar1_predict_returns_expected_shape(
+    input_data: list[list[Union[float, list[float]]]], output_shape: list[int]
+) -> None:
 
-    print(np.array(input_data).shape)
     query_points = tf.Variable(input_data, dtype=tf.float64)
-    pred_mean, pred_var = ar1_model.predict(query_points)
-    print(output_shape)
+    D = query_points.shape[-1] - 1
+    model = ar1_model(D)
+    pred_mean, pred_var = model.predict(query_points)
     assert pred_mean.shape == output_shape
     assert pred_var.shape == output_shape
 
 
-def test_ar1_predict_y_returns_expected_shape(ar1_model: AR1) -> None:
+def test_ar1_predict_y_returns_expected_shape() -> None:
 
+    model = ar1_model(n_dims=1)
     input_data = tf.Variable([[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]], dtype=tf.float64)
-    pred_mean, pred_var = ar1_model.predict_y(input_data)
+    pred_mean, pred_var = model.predict_y(input_data)
     assert pred_mean.shape == [3, 1]
     assert pred_var.shape == [3, 1]
 
 
-def test_ar1_sample_returns_expected_shape(ar1_model: AR1) -> None:
+def test_ar1_sample_returns_expected_shape() -> None:
 
+    model = ar1_model(n_dims=1)
     input_data = tf.Variable([[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]], dtype=tf.float64)
-    samples = ar1_model.sample(input_data, 13)
+    samples = model.sample(input_data, 13)
     assert samples.shape == [13, 3, 1]
 
 
-def test_ar1_covariance_with_top_fidelity_returns_expected_shape(ar1_model: AR1) -> None:
+def test_ar1_covariance_with_top_fidelity_returns_expected_shape() -> None:
 
+    model = ar1_model(n_dims=1)
     input_data = tf.Variable([[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]], dtype=tf.float64)
-    covs = ar1_model.covariance_with_top_fidelity(input_data)
+    covs = model.covariance_with_top_fidelity(input_data)
     assert covs.shape == [3, 1]
 
 
 @pytest.mark.parametrize(
     "input_data", (([[0.1, 0.0], [1.1, -1.0], [2.1, 2.0]]), [[0.1, 0.0], [1.1, 3.0], [2.1, 2.0]])
 )
-def test_ar1_raises_bad_fidleity(ar1_model: AR1, input_data: list[list[float]]) -> None:
+def test_ar1_raises_bad_fidleity(input_data: list[list[float]]) -> None:
 
     input_data = tf.Variable(input_data, dtype=tf.float64)
-
+    model = ar1_model(n_dims=1)
     with pytest.raises(ValueError):
-        ar1_model.predict(input_data)
+        model.predict(input_data)
     with pytest.raises(ValueError):
-        ar1_model.predict_y(input_data)
+        model.predict_y(input_data)
     with pytest.raises(ValueError):
-        ar1_model.sample(input_data, 13)
+        model.sample(input_data, 13)
     with pytest.raises(ValueError):
-        ar1_model.covariance_with_top_fidelity(input_data)
+        model.covariance_with_top_fidelity(input_data)
 
 
-def test_ar1_update_increases_internal_data_count(ar1_dataset: Dataset, ar1_model: AR1) -> None:
+def test_ar1_update_increases_internal_data_count() -> None:
 
+    model = ar1_model(n_dims=1)
     initial_fid_0_data_length = tf.shape(
-        ar1_model.lowest_fidelity_signal_model.get_internal_data().query_points
+        model.lowest_fidelity_signal_model.get_internal_data().query_points
     )[0]
     initial_fid_1_data_length = tf.shape(
-        ar1_model.fidelity_residual_models[1].get_internal_data().query_points
+        model.fidelity_residual_models[1].get_internal_data().query_points
     )[0]
     initial_fid_2_data_length = tf.shape(
-        ar1_model.fidelity_residual_models[2].get_internal_data().query_points
+        model.fidelity_residual_models[2].get_internal_data().query_points
     )[0]
 
     new_data = Dataset(
@@ -1725,18 +1740,18 @@ def test_ar1_update_increases_internal_data_count(ar1_dataset: Dataset, ar1_mode
         tf.Variable([[1.0], [2.0], [3.0]], dtype=tf.float64),
     )
 
-    ar1_model.update(ar1_dataset + new_data)
+    model.update(ar1_nd_dataset(n_dims=1) + new_data)
 
     assert (
-        tf.shape(ar1_model.lowest_fidelity_signal_model.get_internal_data().query_points)[0]
+        tf.shape(model.lowest_fidelity_signal_model.get_internal_data().query_points)[0]
         == initial_fid_0_data_length + 2
     )
     assert (
-        tf.shape(ar1_model.fidelity_residual_models[1].get_internal_data().query_points)[0]
+        tf.shape(model.fidelity_residual_models[1].get_internal_data().query_points)[0]
         == initial_fid_1_data_length + 1
     )
     assert (
-        tf.shape(ar1_model.fidelity_residual_models[2].get_internal_data().query_points)[0]
+        tf.shape(model.fidelity_residual_models[2].get_internal_data().query_points)[0]
         == initial_fid_2_data_length
     )
 
@@ -1749,19 +1764,19 @@ def test_ar1_update_increases_internal_data_count(ar1_dataset: Dataset, ar1_mode
         ([[0.0, 1.3]], "non_int_fid"),
     ),
 )
-def test_ar1_update_raises_for_bad_new_data(
-    new_data: list[list[float]], problem: str, ar1_dataset: Dataset, ar1_model: AR1
-) -> None:
+def test_ar1_update_raises_for_bad_new_data(new_data: list[list[float]], problem: str) -> None:
 
     new_dataset = Dataset(
         tf.Variable(new_data, dtype=tf.float64), tf.Variable([[0.1]], dtype=tf.float64)
     )
+    model = ar1_model()
+    dataset = ar1_nd_dataset()
     if problem == "non_int_fid":
         with pytest.raises(tf.errors.InvalidArgumentError):
-            ar1_model.update(ar1_dataset + new_dataset)
+            model.update(dataset + new_dataset)
     else:
         with pytest.raises(ValueError):
-            ar1_model.update(ar1_dataset + new_dataset)
+            model.update(dataset + new_dataset)
 
 
 def test_ar1_optimize_reduces_losses() -> None:
@@ -1803,19 +1818,19 @@ def test_ar1_optimize_reduces_losses() -> None:
         ([[0.0, 1.3]], "non_int_fid"),
     ),
 )
-def test_ar1_optimize_raises_for_bad_new_data(
-    new_data: list[list[float]], problem: str, ar1_dataset: Dataset, ar1_model: AR1
-) -> None:
+def test_ar1_optimize_raises_for_bad_new_data(new_data: list[list[float]], problem: str) -> None:
 
     new_dataset = Dataset(
         tf.Variable(new_data, dtype=tf.float64), tf.Variable([[0.1]], dtype=tf.float64)
     )
+    model = ar1_model()
+    dataset = ar1_nd_dataset()
     if problem == "non_int_fid":
         with pytest.raises(tf.errors.InvalidArgumentError):
-            ar1_model.optimize(ar1_dataset + new_dataset)
+            model.optimize(dataset + new_dataset)
     else:
         with pytest.raises(ValueError):
-            ar1_model.optimize(ar1_dataset + new_dataset)
+            model.optimize(dataset + new_dataset)
 
 
 def test_ar1_sample_aligns_with_predict() -> None:
@@ -1850,14 +1865,14 @@ def test_ar1_sample_aligns_with_predict() -> None:
     lf_sample_means = tf.reduce_mean(lf_samples, axis=0)
     lf_sample_vars = tf.math.reduce_variance(lf_samples, axis=0)
 
-    npt.assert_allclose(lf_true_means, lf_sample_means, rtol=1e-3)
-    npt.assert_allclose(lf_true_vars, lf_sample_vars, rtol=1e-3)
+    npt.assert_allclose(lf_true_means, lf_sample_means, rtol=1e-1)
+    npt.assert_allclose(lf_true_vars, lf_sample_vars, rtol=1e-1)
 
     hf_samples = model.sample(hf_test_locations, 100000)
     hf_sample_means = tf.reduce_mean(hf_samples, axis=0)
     hf_sample_vars = tf.math.reduce_variance(hf_samples, axis=0)
-    npt.assert_allclose(hf_true_means, hf_sample_means, rtol=1e-2)
-    npt.assert_allclose(hf_true_vars, hf_sample_vars, rtol=1e-2)
+    npt.assert_allclose(hf_true_means, hf_sample_means, rtol=1e-1)
+    npt.assert_allclose(hf_true_vars, hf_sample_vars, rtol=1e-1)
 
 
 def test_ar1_samples_are_varied() -> None:
