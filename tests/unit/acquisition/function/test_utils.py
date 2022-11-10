@@ -70,7 +70,7 @@ def test_make_mvn_cdf_raises_exception_for_incorrect_batch_size(
 
 @pytest.mark.parametrize("num_sobol", [200])
 @pytest.mark.parametrize("dim", [1, 2, 3, 5])
-@pytest.mark.parametrize("batch_size", [1, 2, 4])
+@pytest.mark.parametrize("batch_size", [1, 2, 3])
 def test_make_genz_cdf_matches_naive_monte_carlo_on_random_tasks(
     num_sobol: int,
     dim: int,
@@ -80,7 +80,7 @@ def test_make_genz_cdf_matches_naive_monte_carlo_on_random_tasks(
         x: TensorType,
         mean: TensorType,
         cov: TensorType,
-        num_samples: int = int(1e7),
+        num_samples: int = int(1e6),
     ) -> TensorType:
 
         # Define multivariate normal
