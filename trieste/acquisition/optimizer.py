@@ -158,6 +158,47 @@ def optimize_discrete(
     return _get_max_discrete_points(points, target_func)
 
 
+class ScipyLbfgsBGreenlet(gr.greenlet):  # type: ignore[misc]
+    """
+    Worker greenlet that runs a single Scipy L-BFGS-B. Each greenlet performs all the L-BFGS-B
+    update steps required for an individual optimization. However, the evaluation
+    of our acquisition function (and its gradients) is delegated back to the main Tensorflow
+    process (the parent greenlet) where evaluations can be made efficiently in parallel.
+    """
+
+    def run(
+        self,
+        start: "np.ndarray[Any, Any]",
+        bounds: spo.Bounds,
+        optimizer_args: Optional[dict[str, Any]] = None,
+    ) -> spo.OptimizeResult:
+        cache_x = start + 1  # Any value different from `start`.
+        cache_y: Optional["np.ndarray[Any, Any]"] = None
+        cache_dy_dx: Optional["np.ndarray[Any, Any]"] = None
+
+        def value_and_gradient(
+            x: "np.ndarray[Any, Any]",
+        ) -> Tuple["np.ndarray[Any, Any]", "np.ndarray[Any, Any]"]:
+            # Collect function evaluations from parent greenlet
+            nonlocal cache_x
+            nonlocal cache_y
+            nonlocal cache_dy_dx
+
+            if not (cache_x == x).all():
+                cache_x[:] = x  # Copy the value of `x`. DO NOT copy the reference.
+                # Send `x` to parent greenlet, which will evaluate all `x`s in a batch.
+                cache_y, cache_dy_dx = self.parent.switch(cache_x)
+
+            return cast("np.ndarray[Any, Any]", cache_y), cast("np.ndarray[Any, Any]", cache_dy_dx)
+
+        default_optimizer_args = dict(jac=lambda x: value_and_gradient(x)[1], method="l-bfgs-b", bounds=bounds)
+        return spo.minimize(
+            lambda x: value_and_gradient(x)[0],
+            start,
+            **dict(default_optimizer_args, **dict(optimizer_args or {})),
+        )
+
+
 def generate_continuous_optimizer(
     num_initial_samples: int = NUM_SAMPLES_MIN,
     num_optimization_runs: int = 10,
@@ -166,6 +207,7 @@ def generate_continuous_optimizer(
     initial_points_out = None,
     total_nfev_out = None,
     optimizer_args: Optional[dict[str, Any]] = None,
+    greenlet_type: gr.greenlet = ScipyLbfgsBGreenlet,
 ) -> AcquisitionOptimizer[Box | TaggedProductSearchSpace]:
     """
     Generate a gradient-based optimizer for :class:'Box' and :class:'TaggedProductSearchSpace'
@@ -282,6 +324,7 @@ def generate_continuous_optimizer(
             space,
             initial_points,
             optimizer_args or {},
+            greenlet_type,
         )
 
         successful_optimization = tf.reduce_all(
@@ -305,7 +348,7 @@ def generate_continuous_optimizer(
                 recovery_chosen_x,
                 recovery_nfev,
             ) = _perform_parallel_continuous_optimization(
-                target_func, space, tiled_random_points, optimizer_args or {}
+                target_func, space, tiled_random_points, optimizer_args or {}, greenlet_type
             )
 
             successes = tf.concat(
@@ -372,6 +415,7 @@ def _perform_parallel_continuous_optimization(
     space: SearchSpace,
     starting_points: TensorType,
     optimizer_args: dict[str, Any],
+    greenlet_type: gr.greenlet = ScipyLbfgsBGreenlet,
 ) -> Tuple[TensorType, TensorType, TensorType, TensorType]:
     """
     A function to perform parallel optimization of our acquisition functions
@@ -450,7 +494,7 @@ def _perform_parallel_continuous_optimization(
     )
 
     # Set up child greenlets
-    child_greenlets = [ScipyLbfgsBGreenlet() for _ in range(num_optimization_runs)]
+    child_greenlets = [greenlet_type() for _ in range(num_optimization_runs)]
     vectorized_child_results: List[Union[spo.OptimizeResult, "np.ndarray[Any, Any]"]] = [
         gr.switch(vectorized_starting_points[i].numpy(), bounds[i], optimizer_args)
         for i, gr in enumerate(child_greenlets)
@@ -499,47 +543,6 @@ def _perform_parallel_continuous_optimization(
     nfev = tf.reshape(vectorized_nfev, [-1, V])  # [num_optimization_runs, V]
 
     return (successes, fun_values, chosen_x, nfev)
-
-
-class ScipyLbfgsBGreenlet(gr.greenlet):  # type: ignore[misc]
-    """
-    Worker greenlet that runs a single Scipy L-BFGS-B. Each greenlet performs all the L-BFGS-B
-    update steps required for an individual optimization. However, the evaluation
-    of our acquisition function (and its gradients) is delegated back to the main Tensorflow
-    process (the parent greenlet) where evaluations can be made efficiently in parallel.
-    """
-
-    def run(
-        self,
-        start: "np.ndarray[Any, Any]",
-        bounds: spo.Bounds,
-        optimizer_args: Optional[dict[str, Any]] = None,
-    ) -> spo.OptimizeResult:
-        cache_x = start + 1  # Any value different from `start`.
-        cache_y: Optional["np.ndarray[Any, Any]"] = None
-        cache_dy_dx: Optional["np.ndarray[Any, Any]"] = None
-
-        def value_and_gradient(
-            x: "np.ndarray[Any, Any]",
-        ) -> Tuple["np.ndarray[Any, Any]", "np.ndarray[Any, Any]"]:
-            # Collect function evaluations from parent greenlet
-            nonlocal cache_x
-            nonlocal cache_y
-            nonlocal cache_dy_dx
-
-            if not (cache_x == x).all():
-                cache_x[:] = x  # Copy the value of `x`. DO NOT copy the reference.
-                # Send `x` to parent greenlet, which will evaluate all `x`s in a batch.
-                cache_y, cache_dy_dx = self.parent.switch(cache_x)
-
-            return cast("np.ndarray[Any, Any]", cache_y), cast("np.ndarray[Any, Any]", cache_dy_dx)
-
-        default_optimizer_args = dict(jac=lambda x: value_and_gradient(x)[1], method="l-bfgs-b", bounds=bounds)
-        return spo.minimize(
-            lambda x: value_and_gradient(x)[0],
-            start,
-            **dict(default_optimizer_args, **dict(optimizer_args or {})),
-        )
 
 
 def get_bounds_of_box_relaxation_around_point(

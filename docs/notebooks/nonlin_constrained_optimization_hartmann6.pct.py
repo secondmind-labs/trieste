@@ -9,7 +9,7 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.11.2
 #   kernelspec:
-#     display_name: 'Python 3.10.6 (''.venv'': venv)'
+#     display_name: Python 3.10.6 (conda)
 #     language: python
 #     name: python3
 # ---
@@ -93,10 +93,13 @@ optims = {
     "TrstRegion-EI": dict(method="trust-constr", constraints=nonlinear_constraints),
     "SLSQP-EI":      dict(method="SLSQP", constraints=nonlinear_constraints),
     #"COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=nonlinear_constraints+bound_constraints),
+    "pyopt-SLSQP":   dict(method="pyopt-slsqp", constraints=nonlinear_constraints),
+    "pyopt-IPOPT":   dict(method="pyopt-ipopt", constraints=nonlinear_constraints, max_iter=1000),
+    "pyopt-ALPSO":   dict(method="pyopt-alpso", constraints=nonlinear_constraints),
 }
 run_unmod.add_optims(optims)
 
-multi_run(run_unmod, 5, 5, initial_query_points, num_initial_samples=num_initial_samples, num_optimization_runs=num_optimization_runs, with_plot=False)
+#multi_run(run_unmod, 5, 5, initial_query_points, num_initial_samples=num_initial_samples, num_optimization_runs=num_optimization_runs, with_plot=False)
 
 # %%
 run_unmod.print_results_summary()
@@ -127,6 +130,9 @@ optims = {
     "TrstRegion-EI": dict(method="trust-constr", constraints=nonlinear_constraints),
     "SLSQP-EI":      dict(method="SLSQP", constraints=nonlinear_constraints),
     #"COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=nonlinear_constraints+bound_constraints),
+    "pyopt-SLSQP":   dict(method="pyopt-slsqp", constraints=nonlinear_constraints),
+    "pyopt-IPOPT":   dict(method="pyopt-ipopt", constraints=nonlinear_constraints, max_iter=1000),
+    "pyopt-ALPSO":   dict(method="pyopt-alpso", constraints=nonlinear_constraints),
 }
 run_simple_constr.add_optims(optims)
 

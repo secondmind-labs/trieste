@@ -5,6 +5,8 @@
 # ## Imports and setup
 
 # %%
+from __future__ import annotations
+
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -17,7 +19,7 @@ from trieste.space import Box
 from trieste.models.gpflow import GaussianProcessRegression, build_gpr
 from trieste.acquisition.function import ExpectedImprovement, ExpectedConstrainedImprovement
 from trieste.acquisition.rule import EfficientGlobalOptimization
-from trieste.acquisition.optimizer import generate_continuous_optimizer, NUM_SAMPLES_MIN, NUM_SAMPLES_DIM, NUM_RUNS_DIM
+from trieste.acquisition.optimizer import generate_continuous_optimizer, NUM_SAMPLES_MIN, NUM_SAMPLES_DIM, NUM_RUNS_DIM, ScipyLbfgsBGreenlet
 from trieste.experimental.plotting import plot_function_plotly, plot_function_2d
 from trieste.utils import Timer
 from trieste.acquisition.interface import AcquisitionFunction, SingleModelAcquisitionBuilder, AcquisitionFunctionBuilder
@@ -26,12 +28,15 @@ from trieste.models.interfaces import ProbabilisticModelType
 from trieste.data import Dataset
 from trieste.types import TensorType
 from scipy.optimize import LinearConstraint, NonlinearConstraint
-from typing import Optional, Mapping, Tuple, cast
+import scipy.optimize as spo
+from pyoptsparse import OPT, Optimization
+from typing import Optional, Mapping, Tuple, Any, cast
 import gpflow
 import textwrap
 import ipywidgets
 from IPython. display import clear_output
 import imageio
+import greenlet as gr
 
 np.random.seed(5678)
 tf.random.set_seed(5678)
@@ -255,6 +260,111 @@ class ExpectedFastConstrainedImprovement(ExpectedConstrainedImprovement[Probabil
         return self._expected_improvement_fn
 
 
+# %%
+class PyOptSparseGreenlet(gr.greenlet):  # type: ignore[misc]
+    """
+    Worker greenlet that runs a single pyOptSparse optimizer. Each greenlet performs all the optimizer
+    update steps required for an individual optimization. However, the evaluation
+    of our acquisition function (and its gradients) is delegated back to the main Tensorflow
+    process (the parent greenlet) where evaluations can be made efficiently in parallel.
+    """
+
+    def run(
+        self,
+        start: "np.ndarray[Any, Any]",
+        bounds: spo.Bounds,
+        optimizer_args: Optional[dict[str, Any]] = None,
+    ) -> spo.OptimizeResult:
+        cache_x = start + 1  # Any value different from `start`.
+        cache_y: Optional["np.ndarray[Any, Any]"] = None
+        cache_dy_dx: Optional["np.ndarray[Any, Any]"] = None
+
+        def value_and_gradient(
+            x: "np.ndarray[Any, Any]",
+        ) -> Tuple["np.ndarray[Any, Any]", "np.ndarray[Any, Any]"]:
+            # Collect function evaluations from parent greenlet
+            nonlocal cache_x
+            nonlocal cache_y
+            nonlocal cache_dy_dx
+
+            if not np.array_equal(cache_x, x):
+                cache_x = np.copy(x)  # Copy the value of `x`. DO NOT copy the reference.
+                # Send `x` to parent greenlet, which will evaluate all `x`s in a batch.
+                cache_y, cache_dy_dx = self.parent.switch(cache_x)
+
+            return cast("np.ndarray[Any, Any]", cache_y), cast("np.ndarray[Any, Any]", cache_dy_dx)
+
+        def objfunc(xdict):
+            x = tf.convert_to_tensor(xdict["xvars"][np.newaxis, :])
+            funcs = {}
+            funcs["obj"] = value_and_gradient(x)[0]
+
+            constraints = optimizer_args["constraints"]
+            # FIXME: this is not used.
+            #convals = {f"con_l{i}": tf.linalg.matmul(con.A, x, transpose_b=True)
+            #           for i, con in enumerate(constraints) if isinstance(con, LinearConstraint)}
+            #funcs.update(convals)
+            convals = {f"con_nl{i}": con.fun(x) for i, con in enumerate(constraints) if isinstance(con, NonlinearConstraint)}
+            funcs.update(convals)
+
+            fail = False
+
+            return funcs, fail
+
+        def derivs(xdict, funcs):
+            x = tf.convert_to_tensor(xdict["xvars"][np.newaxis, :])
+
+            df = value_and_gradient(x)[1]
+
+            constraints = optimizer_args["constraints"]
+            jac = {"obj": {"xvars": df}}
+            # FIXME: this is not used.
+            #jac_cons = {f"con_l{i}": {"xvars": con.A} for i, con in enumerate(constraints) if isinstance(con, LinearConstraint)}
+            #jac.update(jac_cons)
+            jac_cons = {f"con_nl{i}": {"xvars": con.jac(x)} for i, con in enumerate(constraints) if isinstance(con, NonlinearConstraint)}
+            jac.update(jac_cons)
+
+            fail = False
+
+            return jac, fail
+
+        problem = Optimization("Trieste", objfunc)
+
+        problem.addVarGroup("xvars", start.shape[-1], "c", lower=bounds.lb, upper=bounds.ub, value=start)
+
+        constraints = optimizer_args["constraints"]
+        for i, con in enumerate(constraints):
+            if isinstance(con, LinearConstraint):
+                problem.addConGroup(f"con_l{i}", con.lb.size, lower=con.lb, upper=con.ub, linear=True,
+                                    wrt=["xvars"], jac={"xvars": con.A})
+            else:
+                problem.addConGroup(f"con_nl{i}", con.lb.size, lower=con.lb, upper=con.ub, linear=False)
+
+        problem.addObj("obj")
+
+        #opt = OPT("slsqp")
+        opt = OPT(optimizer_args["method"], options={k: v for k, v in optimizer_args.items() if k not in ["method", "constraints"]})
+        if optimizer_args["method"].lower() == "slsqp":
+            opt.setOption("IPRINT", -1)
+        elif optimizer_args["method"].lower() == "ipopt":
+            opt.setOption("print_level", 0)
+            opt.setOption("file_print_level", 0)
+            opt.setOption("output_file", "")
+        elif optimizer_args["method"].lower() == "alpso":
+            opt.setOption("fileout", 0)
+        elif optimizer_args["method"].lower() == "nsga2":
+            opt.setOption("PrintOut", 0)
+        #opt.setOption("derivative_test", "first-order")
+        #opt.setOption("derivative_test_first_index", -2)
+        #opt.setOption("derivative_test_print_all", "yes")
+        sol = opt(problem, sens=derivs, sensMode="pgc")
+        #print(vars(sol))
+        #print(sol)
+
+        success = (sol.optInform["value"] == 0) if "value" in sol.optInform else True  # optInform is not filled in for some of the optimizers. Assume success in this case.
+        return spo.OptimizeResult(fun=sol.fStar, nfev=sol.userObjCalls, x=sol.xStar["xvars"], success=success)
+
+
 # %% [markdown]
 # ## Run class
 
@@ -430,8 +540,16 @@ class Run:
                 self.results_hist[name].evaluate(self.constraints, self.global_x_max, self.global_f_max, self.feas_x_max, self.feas_f_max, self.data[name], optim_timer.time)
         
     def _run_optim(self, num_initial_samples, num_optimization_runs, init_candidates, optimizer_args):
+        if optimizer_args is not None:
+            optimizer_args = optimizer_args.copy()
+            greenlet_type = PyOptSparseGreenlet if "pyopt-" in optimizer_args["method"].lower() else ScipyLbfgsBGreenlet
+            optimizer_args["method"] = optimizer_args["method"].lower().replace("pyopt-", "")
+        else:
+            greenlet_type = ScipyLbfgsBGreenlet
+
         init_points = np.zeros((num_optimization_runs, 1, len(self.search_space.lower)))
         total_nfev = np.array(0)
+
         opt = generate_continuous_optimizer(
             num_initial_samples=num_initial_samples,
             num_optimization_runs=num_optimization_runs,
@@ -439,6 +557,7 @@ class Run:
             initial_points_out=init_points,
             total_nfev_out=total_nfev,
             optimizer_args=optimizer_args,
+            greenlet_type=greenlet_type,
         )
         init_points = init_points.squeeze()
 
@@ -546,8 +665,8 @@ class Run:
 
     def plot_results(self):
         num_plots = len(self.results_hist)
-        num_cols = int(np.ceil(np.sqrt(num_plots)))
-        num_rows = int(np.ceil(num_plots/num_cols))
+        num_rows = int(np.ceil(np.sqrt(num_plots)))
+        num_cols = int(np.ceil(num_plots/num_rows))
         fig, ax = plt.subplots(num_rows, num_cols, figsize=(7.2*num_cols, 4.8*num_rows))
 
         for _ in range(len(np.shape(ax)), 2):

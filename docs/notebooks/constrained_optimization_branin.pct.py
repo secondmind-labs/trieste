@@ -1,3 +1,19 @@
+# ---
+# jupyter:
+#   jupytext:
+#     cell_metadata_filter: -all
+#     custom_cell_magics: kql
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.11.2
+#   kernelspec:
+#     display_name: Python 3.10.6 (conda)
+#     language: python
+#     name: python3
+# ---
+
 # %% [markdown]
 # # Constrained Acquisition Function Optimization with Expected Improvement - Branin function
 
@@ -92,6 +108,9 @@ optims = {
     "TrstRegion-EI": dict(method="trust-constr", constraints=lin_constraints),
     "SLSQP-EI":      dict(method="SLSQP", constraints=lin_constraints),
     "COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=lin_constraints+bound_constraints),
+    "pyopt-SLSQP":   dict(method="pyopt-slsqp", constraints=lin_constraints),
+    "pyopt-IPOPT":   dict(method="pyopt-ipopt", constraints=lin_constraints),
+    "pyopt-ALPSO":   dict(method="pyopt-alpso", constraints=lin_constraints),
 }
 run_unmod.add_optims(optims)
 
@@ -130,6 +149,9 @@ optims = {
     "TrstRegion-EI": dict(method="trust-constr", constraints=lin_constraints),
     "SLSQP-EI":      dict(method="SLSQP", constraints=lin_constraints),
     "COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=lin_constraints+bound_constraints),
+    "pyopt-SLSQP":   dict(method="pyopt-slsqp", constraints=lin_constraints),
+    "pyopt-IPOPT":   dict(method="pyopt-ipopt", constraints=lin_constraints),
+    "pyopt-ALPSO":   dict(method="pyopt-alpso", constraints=lin_constraints),
 }
 run_simple_constr.add_optims(optims)
 

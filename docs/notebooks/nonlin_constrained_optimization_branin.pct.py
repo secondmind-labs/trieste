@@ -9,7 +9,7 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.11.2
 #   kernelspec:
-#     display_name: 'Python 3.10.6 (''.venv'': venv)'
+#     display_name: Python 3.10.6 (conda)
 #     language: python
 #     name: python3
 # ---
@@ -132,22 +132,25 @@ clear_output()
 # ### Unmodified acquisition function
 
 # %%
-run_unmod = Run(search_space, observer, nonlinear_constraints)
-optims = {
-    "L-BFGS-EI":     None,
-    "TrstRegion-EI": dict(method="trust-constr", constraints=nonlinear_constraints),
-    "SLSQP-EI":      dict(method="SLSQP", constraints=nonlinear_constraints),
-    "COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=nonlinear_constraints+bound_constraints),
-}
-run_unmod.add_optims(optims)
-
-multi_run(run_unmod, 5, 5, initial_query_points)
+#run_unmod = Run(search_space, observer, nonlinear_constraints)
+#optims = {
+#    "L-BFGS-EI":     None,
+#    "TrstRegion-EI": dict(method="trust-constr", constraints=nonlinear_constraints),
+#    "SLSQP-EI":      dict(method="SLSQP", constraints=nonlinear_constraints),
+#    "COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=nonlinear_constraints+bound_constraints),
+#    "pyopt-SLSQP":   dict(method="pyopt-slsqp", constraints=nonlinear_constraints),
+#    "pyopt-IPOPT":   dict(method="pyopt-ipopt", constraints=nonlinear_constraints, max_iter=1000),
+#    "pyopt-ALPSO":   dict(method="pyopt-alpso", constraints=nonlinear_constraints),
+#}
+#run_unmod.add_optims(optims)
+#
+#multi_run(run_unmod, 5, 5, initial_query_points)
 
 # %%
-run_unmod.print_results_summary()
-#run_unmod.print_results_full()
-run_unmod.plot_results()
-#run_unmod.write_gif()
+#run_unmod.print_results_summary()
+##run_unmod.print_results_full()
+#run_unmod.plot_results()
+##run_unmod.write_gif()
 
 # %% [markdown]
 # ### Constrained acquistion function (penalty method)
@@ -172,10 +175,13 @@ run_constr.plot_results()
 # %%
 run_simple_constr = Run(search_space, observer, nonlinear_constraints, constrained_ei_type=ExpectedFastConstrainedImprovement)
 optims = {
-    "L-BFGS-EI":     None,
+    #"L-BFGS-EI":     None,
     "TrstRegion-EI": dict(method="trust-constr", constraints=nonlinear_constraints),
     "SLSQP-EI":      dict(method="SLSQP", constraints=nonlinear_constraints),
     "COBYLA-EI":     dict(method="COBYLA", jac=None, bounds=None, constraints=nonlinear_constraints+bound_constraints),
+    "pyopt-SLSQP":   dict(method="pyopt-slsqp", constraints=nonlinear_constraints),
+    "pyopt-IPOPT":   dict(method="pyopt-ipopt", constraints=nonlinear_constraints, max_iter=1000),
+    "pyopt-ALPSO":   dict(method="pyopt-alpso", constraints=nonlinear_constraints),
 }
 run_simple_constr.add_optims(optims)
 
