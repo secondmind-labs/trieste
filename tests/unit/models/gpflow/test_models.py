@@ -1680,13 +1680,26 @@ def test_ar1_predict_returns_expected_shape(
     assert pred_var.shape == output_shape
 
 
-def test_ar1_predict_y_returns_expected_shape() -> None:
+@pytest.mark.parametrize(
+    "input_data,output_shape",
+    (
+        ([[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]], [3, 1]),
+        ([[0.1, 0.0, 0.0], [1.1, 1.0, 1.0], [2.1, 2.0, 2.0]], [3, 1]),
+        ([[0.1, 0.0, 0.0, 0.0], [1.1, 1.0, 1.0, 1.0], [2.1, 2.0, 2.0, 2.0]], [3, 1]),
+        ([[[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]]] * 5, [5, 3, 1]),
+        ([[[[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]]] * 5] * 7, [7, 5, 3, 1]),
+    ),
+)
+def test_ar1_predict_y_returns_expected_shape(
+    input_data: list[list[Union[float, list[float]]]], output_shape: list[int]
+) -> None:
 
-    model = ar1_model(n_dims=1)
-    input_data = tf.Variable([[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]], dtype=tf.float64)
-    pred_mean, pred_var = model.predict_y(input_data)
-    assert pred_mean.shape == [3, 1]
-    assert pred_var.shape == [3, 1]
+    query_points = tf.Variable(input_data, dtype=tf.float64)
+    D = query_points.shape[-1] - 1
+    model = ar1_model(D)
+    pred_mean, pred_var = model.predict_y(query_points)
+    assert pred_mean.shape == output_shape
+    assert pred_var.shape == output_shape
 
 
 @pytest.mark.parametrize(

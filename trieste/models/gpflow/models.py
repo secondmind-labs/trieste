@@ -1591,18 +1591,20 @@ class AR1(TrainableProbabilisticModel):
 
         mean, var = self.predict(query_points)  # [..., N, P], [..., ]
 
+        # Unfinished
+
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
         Predict the marginal mean and variance at `query_points` including observation noise
 
-        :param query_points: Query points with shape [N, D+1], where the
+        :param query_points: Query points with shape [..., N, D+1], where the
             final column of the final dimension contains the fidelity of the query point
         :return: mean: The mean at query_points with shape [N, P],
                  and var: Th variance at query_points with shape [N, P]
         """
 
         f_mean, f_var = self.predict(query_points)
-        query_points_fidelity_col = query_points[:, -1:]
+        query_points_fidelity_col = query_points[..., -1:]
 
         # Get fidelity 0 observation noise
         observation_noise = (
