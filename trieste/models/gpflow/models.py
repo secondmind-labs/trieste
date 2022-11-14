@@ -1370,9 +1370,9 @@ class VariationalGaussianProcess(
         )
 
 
-class AR1(TrainableProbabilisticModel):
+class MultifidelityAutoregressive(TrainableProbabilisticModel):
     r"""
-    A :class:`TrainableProbabilisticModel` implementation of the AR1 model
+    A :class:`TrainableProbabilisticModel` implementation of the model
     from :cite:`Kennedy2000`. This is a multi-fidelity model that works with an
     arbitrary number of fidelities. It relies on there being a linear relationship
     between fidelities, and may not perform well for more complex relationships.
@@ -1392,7 +1392,9 @@ class AR1(TrainableProbabilisticModel):
         """
         :param fidelity_models: List of
             :class:`~trieste.models.gpflow.models.GaussianProcessRegression`
-            models, one for each fidelity.
+            models, one for each fidelity. The model at index 0 will be used as the signal model
+            for the lowest fidelity and models at higher indices will be used as the residual
+            model for each higher fidelity.
         """
         self.num_fidelities = len(fidelity_models)
 
@@ -1553,7 +1555,8 @@ class AR1(TrainableProbabilisticModel):
                 print(mask.shape)  # [..., N, 1]
                 fidelity_indices = tf.where(mask)[
                     ..., :-1
-                ]  # Strip the last value of the indices, as we want slices in D # [F, A = len(...) + 1]
+                ]  # Strip the last value of the indices, as we want slices in D
+                # [F, A = len(...) + 1]
                 print("fidelity_indices", fidelity_indices.shape)
                 # Gather necessary query points and get sample
                 fidelity_filtered_query_points = tf.gather_nd(
@@ -1587,11 +1590,11 @@ class AR1(TrainableProbabilisticModel):
 
         return signal_sample
 
-    def sample_from_predict(self, query_points: TensorType, num_samples: int) -> TensorType:
+    # def sample_from_predict(self, query_points: TensorType, num_samples: int) -> TensorType:
 
-        mean, var = self.predict(query_points)  # [..., N, P], [..., ]
+    #     mean, var = self.predict(query_points)  # [..., N, P], [..., ]
 
-        # Unfinished
+    #     # Unfinished
 
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """

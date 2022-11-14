@@ -426,7 +426,7 @@ def _get_inducing_points(
     return inducing_points
 
 
-def build_ar1_models(
+def build_multifidelity_autoregressive_models(
     dataset: Dataset,
     num_fidelities: int,
     input_search_space: SearchSpace,
@@ -435,18 +435,18 @@ def build_ar1_models(
     trainable_likelihood: bool = False,
 ) -> Sequence[GaussianProcessRegression]:
     """
-    Build the individual GPR models required for constructing an AR1 model
+    Build the individual GPR models required for constructing an MultifidelityAutoregressive model
     with `num_fidelities` fidelities.
 
     :param dataset: Dataset of points with which to initialise the individual models,
         where the final column of the final dimension of the query points contains the fidelity
-    :param num_fidelities: Number of fidelities desired for the AR1 model
+    :param num_fidelities: Number of fidelities desired for the MultifidelityAutoregressive model
     :param input_search_space: The input search space of the models
     :return: List of initialised GPR models
     """
     if num_fidelities < 2:
         raise ValueError(
-            "Invalid number of fidelities to build AR1 model for,"
+            "Invalid number of fidelities to build MultifidelityAutoregressive model for,"
             f" need at least 2 fidelities, got {num_fidelities}"
         )
 

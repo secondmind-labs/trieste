@@ -9,8 +9,8 @@ from trieste.data import (
     split_dataset_by_fidelity,
 )
 from trieste.models.gpflow import GaussianProcessRegression
-from trieste.models.gpflow.builders import build_ar1_models, build_gpr
-from trieste.models.gpflow.models import AR1
+from trieste.models.gpflow.builders import build_gpr, build_multifidelity_autoregressive_models
+from trieste.models.gpflow.models import MultifidelityAutoregressive
 from trieste.objectives.utils import mk_observer
 from trieste.types import TensorType
 
@@ -28,7 +28,7 @@ def noisy_linear_multifidelity(x: TensorType) -> TensorType:
     return f
 
 
-def test_ar1_results_close() -> None:
+def test_multifidelity_autoregressive_results_close() -> None:
 
     input_dim = 1
     lb = np.zeros(input_dim)
@@ -57,7 +57,7 @@ def test_ar1_results_close() -> None:
         for fidelity in range(n_fidelities)
     ]
 
-    model = AR1(gprs)
+    model = MultifidelityAutoregressive(gprs)
 
     model.update(initial_data)
     model.optimize(initial_data)
@@ -71,7 +71,7 @@ def test_ar1_results_close() -> None:
     npt.assert_allclose(predictions, gt_obs, rtol=0.20)
 
 
-def test_ar1_gets_expected_rhos() -> None:
+def test_multifidelity_autoregressive_gets_expected_rhos() -> None:
 
     input_dim = 1
     lb = np.zeros(input_dim)
@@ -89,7 +89,9 @@ def test_ar1_gets_expected_rhos() -> None:
     observer = mk_observer(noisy_linear_multifidelity)
     initial_data = observer(initial_sample)
 
-    model = AR1(build_ar1_models(initial_data, n_fidelities, input_search_space))
+    model = MultifidelityAutoregressive(
+        build_multifidelity_autoregressive_models(initial_data, n_fidelities, input_search_space)
+    )
 
     model.update(initial_data)
     model.optimize(initial_data)

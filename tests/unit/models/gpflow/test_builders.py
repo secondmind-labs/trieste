@@ -39,8 +39,8 @@ from trieste.models.gpflow.builders import (
     NUM_INDUCING_POINTS_PER_DIM,
     SIGNAL_NOISE_RATIO_LIKELIHOOD,
     _get_data_stats,
-    build_ar1_models,
     build_gpr,
+    build_multifidelity_autoregressive_models,
     build_sgpr,
     build_svgp,
     build_vgp_classifier,
@@ -315,7 +315,7 @@ def test_builder_returns_correct_lengthscales_for_unequal_discrete_bounds(
     npt.assert_allclose(model.kernel.lengthscales, expected_lengthscales, rtol=1e-6)
 
 
-def test_build_ar1_models_builds_correct_n_gprs() -> None:
+def test_build_multifidelity_autoregressive_models_builds_correct_n_gprs() -> None:
 
     dataset = Dataset(
         tf.Variable(
@@ -326,14 +326,14 @@ def test_build_ar1_models_builds_correct_n_gprs() -> None:
     )
     search_space = Box([0.0], [10.0])
 
-    gprs = build_ar1_models(dataset, 3, search_space)
+    gprs = build_multifidelity_autoregressive_models(dataset, 3, search_space)
 
     assert len(gprs) == 3
     for gpr in gprs:
         assert isinstance(gpr, GaussianProcessRegression)
 
 
-def test_build_ar1_models_raises_for_bad_fidelity() -> None:
+def test_build_multifidelity_autoregressive_models_raises_for_bad_fidelity() -> None:
 
     dataset = Dataset(
         tf.Variable(
@@ -344,7 +344,7 @@ def test_build_ar1_models_raises_for_bad_fidelity() -> None:
     )
     search_space = Box([0.0], [10.0])
     with pytest.raises(ValueError):
-        build_ar1_models(dataset, -1, search_space)
+        build_multifidelity_autoregressive_models(dataset, -1, search_space)
 
 
 @pytest.mark.parametrize(
@@ -364,7 +364,7 @@ def test_build_ar1_models_raises_for_bad_fidelity() -> None:
         ),
     ),
 )
-def test_build_ar1_models_raises_not_enough_datapoints(
+def test_build_multifidelity_autoregressive_models_raises_not_enough_datapoints(
     query_points: TensorType, observations: TensorType
 ) -> None:
 
@@ -378,10 +378,10 @@ def test_build_ar1_models_raises_not_enough_datapoints(
     search_space = Box([0.0], [10.0])
 
     with pytest.raises(ValueError):
-        build_ar1_models(dataset, 3, search_space)
+        build_multifidelity_autoregressive_models(dataset, 3, search_space)
 
 
-def test_build_ar1_models_raises_not_multifidelity_data() -> None:
+def test_build_multifidelity_autoregressive_models_raises_not_multifidelity_data() -> None:
 
     dataset = Dataset(
         tf.Variable(
@@ -393,7 +393,7 @@ def test_build_ar1_models_raises_not_multifidelity_data() -> None:
     search_space = Box([0.0], [10.0])
 
     with pytest.raises(ValueError):
-        build_ar1_models(dataset, 3, search_space)
+        build_multifidelity_autoregressive_models(dataset, 3, search_space)
 
 
 def _check_likelihood(

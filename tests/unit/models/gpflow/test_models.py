@@ -57,13 +57,13 @@ from trieste.data import Dataset, add_fidelity_column
 from trieste.logging import step_number, tensorboard_writer
 from trieste.models import TrainableProbabilisticModel
 from trieste.models.gpflow import (
-    AR1,
     GaussianProcessRegression,
+    MultifidelityAutoregressive,
     SparseGaussianProcessRegression,
     SparseVariational,
     VariationalGaussianProcess,
 )
-from trieste.models.gpflow.builders import build_ar1_models
+from trieste.models.gpflow.builders import build_multifidelity_autoregressive_models
 from trieste.models.gpflow.inducing_point_selectors import (
     InducingPointSelector,
     KMeansInducingPointSelector,
@@ -1630,7 +1630,7 @@ def test_sparse_variational_pairwise_covariance_for_non_whitened(
     np.testing.assert_allclose(expected_covariance, actual_covariance, atol=1e-4)
 
 
-def ar1_nd_dataset(n_dims: int = 1) -> Dataset:
+def multifidelity_autoregressive_nd_dataset(n_dims: int = 1) -> Dataset:
 
     dataset = Dataset(
         tf.Variable(
@@ -1649,13 +1649,15 @@ def ar1_nd_dataset(n_dims: int = 1) -> Dataset:
     return dataset
 
 
-def ar1_model(n_dims: int = 1) -> AR1:
+def multifidelity_autoregressive_model(n_dims: int = 1) -> MultifidelityAutoregressive:
 
     search_space = Box([0.0], [10.0])
-    gprs = build_ar1_models(
-        ar1_nd_dataset(n_dims=n_dims), num_fidelities=3, input_search_space=search_space
+    gprs = build_multifidelity_autoregressive_models(
+        multifidelity_autoregressive_nd_dataset(n_dims=n_dims),
+        num_fidelities=3,
+        input_search_space=search_space,
     )
-    return AR1(gprs)
+    return MultifidelityAutoregressive(gprs)
 
 
 @pytest.mark.parametrize(
@@ -1668,13 +1670,13 @@ def ar1_model(n_dims: int = 1) -> AR1:
         ([[[[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]]] * 5] * 7, [7, 5, 3, 1]),
     ),
 )
-def test_ar1_predict_returns_expected_shape(
+def test_multifidelity_autoregressive_predict_returns_expected_shape(
     input_data: list[list[Union[float, list[float]]]], output_shape: list[int]
 ) -> None:
 
     query_points = tf.Variable(input_data, dtype=tf.float64)
     D = query_points.shape[-1] - 1
-    model = ar1_model(D)
+    model = multifidelity_autoregressive_model(D)
     pred_mean, pred_var = model.predict(query_points)
     assert pred_mean.shape == output_shape
     assert pred_var.shape == output_shape
@@ -1690,13 +1692,13 @@ def test_ar1_predict_returns_expected_shape(
         ([[[[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]]] * 5] * 7, [7, 5, 3, 1]),
     ),
 )
-def test_ar1_predict_y_returns_expected_shape(
+def test_multifidelity_autoregressive_predict_y_returns_expected_shape(
     input_data: list[list[Union[float, list[float]]]], output_shape: list[int]
 ) -> None:
 
     query_points = tf.Variable(input_data, dtype=tf.float64)
     D = query_points.shape[-1] - 1
-    model = ar1_model(D)
+    model = multifidelity_autoregressive_model(D)
     pred_mean, pred_var = model.predict_y(query_points)
     assert pred_mean.shape == output_shape
     assert pred_var.shape == output_shape
@@ -1712,18 +1714,20 @@ def test_ar1_predict_y_returns_expected_shape(
         ([[[[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]]] * 5] * 7, [7, 5, 3, 1]),
     ),
 )
-def test_ar1_sample_returns_expected_shape(input_data, output_shape) -> None:
+def test_multifidelity_autoregressive_sample_returns_expected_shape(
+    input_data: list[list[Union[float, list[float]]]], output_shape: list[int]
+) -> None:
 
     query_points = tf.Variable(input_data, dtype=tf.float64)
     D = query_points.shape[-1] - 1
-    model = ar1_model(D)
+    model = multifidelity_autoregressive_model(D)
     samples = model.sample(query_points, 13)
     assert samples.shape == output_shape[:-2] + [13] + output_shape[-2:]
 
 
-def test_ar1_covariance_with_top_fidelity_returns_expected_shape() -> None:
+def test_multifidelity_autoregressive_covariance_with_top_fidelity_returns_expected_shape() -> None:
 
-    model = ar1_model(n_dims=1)
+    model = multifidelity_autoregressive_model(n_dims=1)
     input_data = tf.Variable([[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]], dtype=tf.float64)
     covs = model.covariance_with_top_fidelity(input_data)
     assert covs.shape == [3, 1]
@@ -1732,10 +1736,10 @@ def test_ar1_covariance_with_top_fidelity_returns_expected_shape() -> None:
 @pytest.mark.parametrize(
     "input_data", (([[0.1, 0.0], [1.1, -1.0], [2.1, 2.0]]), [[0.1, 0.0], [1.1, 3.0], [2.1, 2.0]])
 )
-def test_ar1_raises_bad_fidleity(input_data: list[list[float]]) -> None:
+def test_multifidelity_autoregressive_raises_bad_fidleity(input_data: list[list[float]]) -> None:
 
     input_data = tf.Variable(input_data, dtype=tf.float64)
-    model = ar1_model(n_dims=1)
+    model = multifidelity_autoregressive_model(n_dims=1)
     with pytest.raises(ValueError):
         model.predict(input_data)
     with pytest.raises(ValueError):
@@ -1746,9 +1750,9 @@ def test_ar1_raises_bad_fidleity(input_data: list[list[float]]) -> None:
         model.covariance_with_top_fidelity(input_data)
 
 
-def test_ar1_update_increases_internal_data_count() -> None:
+def test_multifidelity_autoregressive_update_increases_internal_data_count() -> None:
 
-    model = ar1_model(n_dims=1)
+    model = multifidelity_autoregressive_model(n_dims=1)
     initial_fid_0_data_length = tf.shape(
         model.lowest_fidelity_signal_model.get_internal_data().query_points
     )[0]
@@ -1764,7 +1768,7 @@ def test_ar1_update_increases_internal_data_count() -> None:
         tf.Variable([[1.0], [2.0], [3.0]], dtype=tf.float64),
     )
 
-    model.update(ar1_nd_dataset(n_dims=1) + new_data)
+    model.update(multifidelity_autoregressive_nd_dataset(n_dims=1) + new_data)
 
     assert (
         tf.shape(model.lowest_fidelity_signal_model.get_internal_data().query_points)[0]
@@ -1788,13 +1792,15 @@ def test_ar1_update_increases_internal_data_count() -> None:
         ([[0.0, 1.3]], "non_int_fid"),
     ),
 )
-def test_ar1_update_raises_for_bad_new_data(new_data: list[list[float]], problem: str) -> None:
+def test_multifidelity_autoregressive_update_raises_for_bad_new_data(
+    new_data: list[list[float]], problem: str
+) -> None:
 
     new_dataset = Dataset(
         tf.Variable(new_data, dtype=tf.float64), tf.Variable([[0.1]], dtype=tf.float64)
     )
-    model = ar1_model()
-    dataset = ar1_nd_dataset()
+    model = multifidelity_autoregressive_model()
+    dataset = multifidelity_autoregressive_nd_dataset()
     if problem == "non_int_fid":
         with pytest.raises(tf.errors.InvalidArgumentError):
             model.update(dataset + new_dataset)
@@ -1803,7 +1809,7 @@ def test_ar1_update_raises_for_bad_new_data(new_data: list[list[float]], problem
             model.update(dataset + new_dataset)
 
 
-def test_ar1_optimize_reduces_losses() -> None:
+def test_multifidelity_autoregressive_optimize_reduces_losses() -> None:
 
     xs_low = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
     xs_high = tf.Variable(np.linspace(0, 10, 10), dtype=tf.float64)[:, None]
@@ -1822,7 +1828,11 @@ def test_ar1_optimize_reduces_losses() -> None:
 
     search_space = Box([0.0], [10.0])
 
-    model = AR1(build_ar1_models(dataset, num_fidelities=2, input_search_space=search_space))
+    model = MultifidelityAutoregressive(
+        build_multifidelity_autoregressive_models(
+            dataset, num_fidelities=2, input_search_space=search_space
+        )
+    )
 
     starting_f0_model_loss = model.lowest_fidelity_signal_model.model.training_loss()
     starting_f1_model_loss = model.fidelity_residual_models[1].model.training_loss()
@@ -1842,13 +1852,15 @@ def test_ar1_optimize_reduces_losses() -> None:
         ([[0.0, 1.3]], "non_int_fid"),
     ),
 )
-def test_ar1_optimize_raises_for_bad_new_data(new_data: list[list[float]], problem: str) -> None:
+def test_multifidelity_autoregressive_optimize_raises_for_bad_new_data(
+    new_data: list[list[float]], problem: str
+) -> None:
 
     new_dataset = Dataset(
         tf.Variable(new_data, dtype=tf.float64), tf.Variable([[0.1]], dtype=tf.float64)
     )
-    model = ar1_model()
-    dataset = ar1_nd_dataset()
+    model = multifidelity_autoregressive_model()
+    dataset = multifidelity_autoregressive_nd_dataset()
     if problem == "non_int_fid":
         with pytest.raises(tf.errors.InvalidArgumentError):
             model.optimize(dataset + new_dataset)
@@ -1857,7 +1869,7 @@ def test_ar1_optimize_raises_for_bad_new_data(new_data: list[list[float]], probl
             model.optimize(dataset + new_dataset)
 
 
-def test_ar1_sample_aligns_with_predict() -> None:
+def test_multifidelity_autoregressive_sample_aligns_with_predict() -> None:
 
     xs_low = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
     xs_high = tf.Variable(np.linspace(0, 10, 10), dtype=tf.float64)[:, None]
@@ -1876,7 +1888,11 @@ def test_ar1_sample_aligns_with_predict() -> None:
 
     search_space = Box([0.0], [10.0])
 
-    model = AR1(build_ar1_models(dataset, num_fidelities=2, input_search_space=search_space))
+    model = MultifidelityAutoregressive(
+        build_multifidelity_autoregressive_models(
+            dataset, num_fidelities=2, input_search_space=search_space
+        )
+    )
 
     model.lowest_fidelity_signal_model.model.likelihood.variance.assign(1.1e-6)
     gpflow.set_trainable(model.lowest_fidelity_signal_model.model.likelihood, False)
@@ -1889,24 +1905,13 @@ def test_ar1_sample_aligns_with_predict() -> None:
     hf_test_locations = add_fidelity_column(test_locations, 1)
 
     lf_true_means, lf_true_vars = model.predict(lf_test_locations)
-    lf_direct_true_means, lf_direct_true_vars = model.lowest_fidelity_signal_model.model.predict_f(
-        test_locations
-    )
+
     hf_true_means, hf_true_vars = model.predict(hf_test_locations)
 
-    lf_direct_samples = model.lowest_fidelity_signal_model.model.predict_f_samples(
-        test_locations, 100000
-    )
-    lf_direct_sample_means = tf.reduce_mean(lf_direct_samples, axis=0)
-    lf_direct_sample_vars = tf.math.reduce_variance(lf_direct_samples, axis=0)
     lf_samples = model.sample(lf_test_locations, 100000)
     lf_sample_means = tf.reduce_mean(lf_samples, axis=0)
     lf_sample_vars = tf.math.reduce_variance(lf_samples, axis=0)
 
-    # npt.assert_allclose(lf_direct_true_means, lf_direct_sample_means, atol=1e-4)
-    # npt.assert_allclose(lf_direct_true_vars, lf_direct_sample_vars, atol=1e-4)
-    # npt.assert_allclose(lf_true_means, lf_direct_sample_means, atol=1e-3)
-    # npt.assert_allclose(lf_true_vars, lf_direct_sample_vars, atol=1e-3)
     npt.assert_allclose(lf_true_means, lf_sample_means, atol=1e-2)
     npt.assert_allclose(lf_true_vars, lf_sample_vars, atol=1e-2)
 
@@ -1917,7 +1922,7 @@ def test_ar1_sample_aligns_with_predict() -> None:
     npt.assert_allclose(hf_true_vars, hf_sample_vars, atol=1e-2)
 
 
-def test_ar1_samples_are_varied() -> None:
+def test_multifidelity_autoregressive_samples_are_varied() -> None:
 
     xs_low = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
     xs_high = tf.Variable(np.linspace(0, 10, 10), dtype=tf.float64)[:, None]
@@ -1936,7 +1941,11 @@ def test_ar1_samples_are_varied() -> None:
 
     search_space = Box([0.0], [10.0])
 
-    model = AR1(build_ar1_models(dataset, num_fidelities=2, input_search_space=search_space))
+    model = MultifidelityAutoregressive(
+        build_multifidelity_autoregressive_models(
+            dataset, num_fidelities=2, input_search_space=search_space
+        )
+    )
 
     test_locations = tf.Variable([[5.1]], dtype=tf.float64)
     lf_test_locations = add_fidelity_column(test_locations, 0)
