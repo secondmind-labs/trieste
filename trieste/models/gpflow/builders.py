@@ -427,7 +427,12 @@ def _get_inducing_points(
 
 
 def build_ar1_models(
-    dataset: Dataset, num_fidelities: int, input_search_space: SearchSpace
+    dataset: Dataset,
+    num_fidelities: int,
+    input_search_space: SearchSpace,
+    likelihood_variance: float = 1e-6,
+    kernel_priors: bool = False,
+    trainable_likelihood: bool = False,
 ) -> Sequence[GaussianProcessRegression]:
     """
     Build the individual GPR models required for constructing an AR1 model
@@ -458,7 +463,11 @@ def build_ar1_models(
     gprs = [
         GaussianProcessRegression(
             build_gpr(
-                data[fidelity], input_search_space, likelihood_variance=1e-6, kernel_priors=False
+                data[fidelity],
+                input_search_space,
+                likelihood_variance=likelihood_variance,
+                kernel_priors=kernel_priors,
+                trainable_likelihood=trainable_likelihood,
             )
         )
         for fidelity in range(num_fidelities)

@@ -1689,12 +1689,23 @@ def test_ar1_predict_y_returns_expected_shape() -> None:
     assert pred_var.shape == [3, 1]
 
 
-def test_ar1_sample_returns_expected_shape() -> None:
+@pytest.mark.parametrize(
+    "input_data,output_shape",
+    (
+        ([[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]], [3, 1]),
+        ([[0.1, 0.0, 0.0], [1.1, 1.0, 1.0], [2.1, 2.0, 2.0]], [3, 1]),
+        ([[0.1, 0.0, 0.0, 0.0], [1.1, 1.0, 1.0, 1.0], [2.1, 2.0, 2.0, 2.0]], [3, 1]),
+        ([[[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]]] * 5, [5, 3, 1]),
+        ([[[[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]]] * 5] * 7, [7, 5, 3, 1]),
+    ),
+)
+def test_ar1_sample_returns_expected_shape(input_data, output_shape) -> None:
 
-    model = ar1_model(n_dims=1)
-    input_data = tf.Variable([[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]], dtype=tf.float64)
-    samples = model.sample(input_data, 13)
-    assert samples.shape == [13, 3, 1]
+    query_points = tf.Variable(input_data, dtype=tf.float64)
+    D = query_points.shape[-1] - 1
+    model = ar1_model(D)
+    samples = model.sample(query_points, 13)
+    assert samples.shape == output_shape[:-2] + [13] + output_shape[-2:]
 
 
 def test_ar1_covariance_with_top_fidelity_returns_expected_shape() -> None:
@@ -1854,25 +1865,43 @@ def test_ar1_sample_aligns_with_predict() -> None:
 
     model = AR1(build_ar1_models(dataset, num_fidelities=2, input_search_space=search_space))
 
+    model.lowest_fidelity_signal_model.model.likelihood.variance.assign(1.1e-6)
+    gpflow.set_trainable(model.lowest_fidelity_signal_model.model.likelihood, False)
+
+    model.update(dataset)
+    model.optimize(dataset)
+
     test_locations = tf.Variable(np.linspace(0, 10, 32), dtype=tf.float64)[:, None]
     lf_test_locations = add_fidelity_column(test_locations, 0)
     hf_test_locations = add_fidelity_column(test_locations, 1)
 
     lf_true_means, lf_true_vars = model.predict(lf_test_locations)
+    lf_direct_true_means, lf_direct_true_vars = model.lowest_fidelity_signal_model.model.predict_f(
+        test_locations
+    )
     hf_true_means, hf_true_vars = model.predict(hf_test_locations)
 
+    lf_direct_samples = model.lowest_fidelity_signal_model.model.predict_f_samples(
+        test_locations, 100000
+    )
+    lf_direct_sample_means = tf.reduce_mean(lf_direct_samples, axis=0)
+    lf_direct_sample_vars = tf.math.reduce_variance(lf_direct_samples, axis=0)
     lf_samples = model.sample(lf_test_locations, 100000)
     lf_sample_means = tf.reduce_mean(lf_samples, axis=0)
     lf_sample_vars = tf.math.reduce_variance(lf_samples, axis=0)
 
-    npt.assert_allclose(lf_true_means, lf_sample_means, rtol=1e-1)
-    npt.assert_allclose(lf_true_vars, lf_sample_vars, rtol=1e-1)
+    # npt.assert_allclose(lf_direct_true_means, lf_direct_sample_means, atol=1e-4)
+    # npt.assert_allclose(lf_direct_true_vars, lf_direct_sample_vars, atol=1e-4)
+    # npt.assert_allclose(lf_true_means, lf_direct_sample_means, atol=1e-3)
+    # npt.assert_allclose(lf_true_vars, lf_direct_sample_vars, atol=1e-3)
+    npt.assert_allclose(lf_true_means, lf_sample_means, atol=1e-2)
+    npt.assert_allclose(lf_true_vars, lf_sample_vars, atol=1e-2)
 
     hf_samples = model.sample(hf_test_locations, 100000)
     hf_sample_means = tf.reduce_mean(hf_samples, axis=0)
     hf_sample_vars = tf.math.reduce_variance(hf_samples, axis=0)
-    npt.assert_allclose(hf_true_means, hf_sample_means, rtol=1e-1)
-    npt.assert_allclose(hf_true_vars, hf_sample_vars, rtol=1e-1)
+    npt.assert_allclose(hf_true_means, hf_sample_means, atol=1e-2)
+    npt.assert_allclose(hf_true_vars, hf_sample_vars, atol=1e-2)
 
 
 def test_ar1_samples_are_varied() -> None:
