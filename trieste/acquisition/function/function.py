@@ -17,7 +17,8 @@ functions --- functions that estimate the utility of evaluating sets of candidat
 """
 from __future__ import annotations
 
-from typing import Mapping, Optional, cast
+from functools import partial
+from typing import Mapping, Optional, cast, Type
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -36,6 +37,7 @@ from ..interface import (
     AcquisitionFunction,
     ProbabilisticModelType,
     SingleModelAcquisitionFunction,
+    TensorFunction,
 )
 
 
@@ -87,9 +89,15 @@ class ProbabilityOfImprovement(SingleModelAcquisitionFunction[ProbabilisticModel
 
 
 class ExpectedImprovement(SingleModelAcquisitionFunction[ProbabilisticModel]):
-    """
-    The expected improvement function where the "best" value is taken to be the minimum
-    of the posterior mean at observed points.
+    r"""
+    Return the Expected Improvement (EI) acquisition function for single-objective global
+    optimization. Improvement is with respect to the current "best" observation ``eta``, where
+    an improvement moves towards the objective function's minimum and the expectation is
+    calculated with respect to the ``model`` posterior. For model posterior :math:`f`, this is
+
+    .. math:: x \mapsto \mathbb E \left[ \max (\eta - f(x), 0) \right]
+
+    This function was introduced by Mockus et al, 1975. See :cite:`Jones:1998` for details.
     """
 
     def __init__(
@@ -138,202 +146,239 @@ class ExpectedImprovement(SingleModelAcquisitionFunction[ProbabilisticModel]):
         return (self._eta - mean) * normal.cdf(self._eta) + variance * normal.prob(self._eta)
 
 
-# class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder[SupportsGetObservationNoise]):
-#     """
-#     Builder for the augmented expected improvement function for optimization single-objective
-#     optimization problems with high levels of observation noise.
-#     """
-#
-#     def __repr__(self) -> str:
-#         """"""
-#         return "AugmentedExpectedImprovement()"
-#
-#     def prepare_acquisition_function(
-#         self,
-#         model: SupportsGetObservationNoise,
-#         dataset: Optional[Dataset] = None,
-#     ) -> AcquisitionFunction:
-#         """
-#         :param model: The model.
-#         :param dataset: The data from the observer. Must be populated.
-#         :return: The expected improvement function. This function will raise
-#             :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
-#             greater than one.
-#         :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
-#         """
-#         if not isinstance(model, SupportsGetObservationNoise):
-#             raise NotImplementedError(
-#                 f"AugmentedExpectedImprovement only works with models that support "
-#                 f"get_observation_noise; received {model.__repr__()}"
-#             )
-#         tf.debugging.Assert(dataset is not None, [tf.constant([])])
-#         dataset = cast(Dataset, dataset)
-#         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
-#         mean, _ = model.predict(dataset.query_points)
-#         eta = tf.reduce_min(mean, axis=0)
-#         return augmented_expected_improvement(model, eta)
-#
-#     def update_acquisition_function(
-#         self,
-#         function: AcquisitionFunction,
-#         model: SupportsGetObservationNoise,
-#         dataset: Optional[Dataset] = None,
-#     ) -> AcquisitionFunction:
-#         """
-#         :param function: The acquisition function to update.
-#         :param model: The model.
-#         :param dataset: The data from the observer. Must be populated.
-#         """
-#         tf.debugging.Assert(dataset is not None, [tf.constant([])])
-#         dataset = cast(Dataset, dataset)
-#         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
-#         tf.debugging.Assert(isinstance(function, augmented_expected_improvement), [tf.constant([])])
-#         mean, _ = model.predict(dataset.query_points)
-#         eta = tf.reduce_min(mean, axis=0)
-#         function.update(eta)  # type: ignore
-#         return function
-#
-#
-# class augmented_expected_improvement(AcquisitionFunctionClass):
-#     def __init__(self, model: SupportsGetObservationNoise, eta: TensorType):
-#         r"""
-#         Return the Augmented Expected Improvement (AEI) acquisition function for single-objective
-#         global optimization under homoscedastic observation noise.
-#         Improvement is with respect to the current "best" observation ``eta``, where an
-#         improvement moves towards the objective function's minimum and the expectation is calculated
-#         with respect to the ``model`` posterior. In contrast to standard EI, AEI has an additional
-#         multiplicative factor that penalizes evaluations made in areas of the space with very small
-#         posterior predictive variance. Thus, when applying standard EI to noisy optimisation
-#         problems, AEI avoids getting trapped and repeatedly querying the same point.
-#         For model posterior :math:`f`, this is
-#         .. math:: x \mapsto EI(x) * \left(1 - frac{\tau^2}{\sqrt{s^2(x)+\tau^2}}\right),
-#         where :math:`s^2(x)` is the predictive variance and :math:`\tau` is observation noise.
-#         This function was introduced by Huang et al, 2006. See :cite:`Huang:2006` for details.
-#
-#         :param model: The model of the objective function.
-#         :param eta: The "best" observation.
-#         :return: The expected improvement function. This function will raise
-#             :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
-#             greater than one or a model without homoscedastic observation noise.
-#         """
-#         self._model = model
-#         self._eta = tf.Variable(eta)
-#         self._noise_variance = tf.Variable(model.get_observation_noise())
-#
-#     def update(self, eta: TensorType) -> None:
-#         """Update the acquisition function with a new eta value and noise variance."""
-#         self._eta.assign(eta)
-#         self._noise_variance.assign(self._model.get_observation_noise())
-#
-#     @tf.function
-#     def __call__(self, x: TensorType) -> TensorType:
-#         tf.debugging.assert_shapes(
-#             [(x, [..., 1, None])],
-#             message="This acquisition function only supports batch sizes of one.",
-#         )
-#         mean, variance = self._model.predict(tf.squeeze(x, -2))
-#         normal = tfp.distributions.Normal(mean, tf.sqrt(variance))
-#         expected_improvement = (self._eta - mean) * normal.cdf(self._eta) + variance * normal.prob(
-#             self._eta
-#         )
-#
-#         augmentation = 1 - (tf.math.sqrt(self._noise_variance)) / (
-#             tf.math.sqrt(self._noise_variance + variance)
-#         )
-#         return expected_improvement * augmentation
-#
-#
-# class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder[ProbabilisticModel]):
-#     """
-#     Builder for the negative of the lower confidence bound. The lower confidence bound is typically
-#     minimised, so the negative is suitable for maximisation.
-#     """
-#
-#     def __init__(self, beta: float = 1.96):
-#         """
-#         :param beta: Weighting given to the variance contribution to the lower confidence bound.
-#             Must not be negative.
-#         """
-#         self._beta = beta
-#
-#     def __repr__(self) -> str:
-#         """"""
-#         return f"NegativeLowerConfidenceBound({self._beta!r})"
-#
-#     def prepare_acquisition_function(
-#         self,
-#         model: ProbabilisticModel,
-#         dataset: Optional[Dataset] = None,
-#     ) -> AcquisitionFunction:
-#         """
-#         :param model: The model.
-#         :param dataset: Unused.
-#         :return: The negative lower confidence bound function. This function will raise
-#             :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
-#             greater than one.
-#         :raise ValueError: If ``beta`` is negative.
-#         """
-#         lcb = lower_confidence_bound(model, self._beta)
-#         return tf.function(lambda at: -lcb(at))
-#
-#     def update_acquisition_function(
-#         self,
-#         function: AcquisitionFunction,
-#         model: ProbabilisticModel,
-#         dataset: Optional[Dataset] = None,
-#     ) -> AcquisitionFunction:
-#         """
-#         :param function: The acquisition function to update.
-#         :param model: The model.
-#         :param dataset: Unused.
-#         """
-#         return function  # no need to update anything
-#
-#
-# class NegativePredictiveMean(NegativeLowerConfidenceBound):
-#     """
-#     Builder for the negative of the predictive mean. The predictive mean is minimised on minimising
-#     the objective function. The negative predictive mean is therefore maximised.
-#     """
-#
-#     def __init__(self) -> None:
-#         super().__init__(beta=0.0)
-#
-#     def __repr__(self) -> str:
-#         """"""
-#         return "NegativePredictiveMean()"
-#
-#
-# def lower_confidence_bound(model: ProbabilisticModel, beta: float) -> AcquisitionFunction:
-#     r"""
-#     The lower confidence bound (LCB) acquisition function for single-objective global optimization.
-#
-#     .. math:: x^* \mapsto \mathbb{E} [f(x^*)|x, y] - \beta \sqrt{ \mathrm{Var}[f(x^*)|x, y] }
-#
-#     See :cite:`Srinivas:2010` for details.
-#
-#     :param model: The model of the objective function.
-#     :param beta: The weight to give to the standard deviation contribution of the LCB. Must not be
-#         negative.
-#     :return: The lower confidence bound function. This function will raise
-#         :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
-#         greater than one.
-#     :raise tf.errors.InvalidArgumentError: If ``beta`` is negative.
-#     """
-#     tf.debugging.assert_non_negative(
-#         beta, message="Standard deviation scaling parameter beta must not be negative"
-#     )
-#
-#     @tf.function
-#     def acquisition(x: TensorType) -> TensorType:
-#         tf.debugging.assert_shapes(
-#             [(x, [..., 1, None])],
-#             message="This acquisition function only supports batch sizes of one.",
-#         )
-#         mean, variance = model.predict(tf.squeeze(x, -2))
-#         return mean - beta * tf.sqrt(variance)
-#
-#     return acquisition
+class AugmentedExpectedImprovement(SingleModelAcquisitionFunction[SupportsGetObservationNoise]):
+    r"""
+    Return the Augmented Expected Improvement (AEI) acquisition function for single-objective
+    global optimization under homoscedastic observation noise.
+    Improvement is with respect to the current "best" observation ``eta``, where an
+    improvement moves towards the objective function's minimum and the expectation is calculated
+    with respect to the ``model`` posterior. In contrast to standard EI, AEI has an additional
+    multiplicative factor that penalizes evaluations made in areas of the space with very small
+    posterior predictive variance. Thus, when applying standard EI to noisy optimisation
+    problems, AEI avoids getting trapped and repeatedly querying the same point.
+    For model posterior :math:`f`, this is
+    .. math:: x \mapsto EI(x) * \left(1 - frac{\tau^2}{\sqrt{s^2(x)+\tau^2}}\right),
+    where :math:`s^2(x)` is the predictive variance and :math:`\tau` is observation noise.
+    This function was introduced by Huang et al, 2006. See :cite:`Huang:2006` for details.
+    """
+
+    def __init__(
+        self,
+        model: SupportsGetObservationNoise,
+        dataset: Optional[Dataset] = None,
+    ) -> None:
+        """
+        :param model: The model.
+        :param dataset: The data from the observer. Must be populated.
+        :return: The expected improvement function. This function will raise
+            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+            greater than one.
+        :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
+        """
+        if not isinstance(model, SupportsGetObservationNoise):
+            raise NotImplementedError(
+                f"AugmentedExpectedImprovement only works with models that support "
+                f"get_observation_noise; received {model.__repr__()}"
+            )
+        tf.debugging.Assert(dataset is not None, [tf.constant([])])
+        dataset = cast(Dataset, dataset)
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
+        mean, _ = model.predict(dataset.query_points)
+        eta = tf.reduce_min(mean, axis=0)
+        self._model = model
+        self._eta = tf.Variable(eta)
+        self._noise_variance = tf.Variable(model.get_observation_noise())
+
+    def update(
+        self,
+        model: SupportsGetObservationNoise,
+        dataset: Optional[Dataset] = None,
+    ) -> SingleModelAcquisitionFunction[SupportsGetObservationNoise]:
+        """
+        :param model: The model.
+        :param dataset: The data from the observer. Must be populated.
+        """
+        tf.debugging.Assert(dataset is not None, [tf.constant([])])
+        dataset = cast(Dataset, dataset)
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
+        mean, _ = model.predict(dataset.query_points)
+        eta = tf.reduce_min(mean, axis=0)
+        self._eta.update(eta)
+        self._noise_variance.assign(self._model.get_observation_noise())
+        return self
+
+    @tf.function
+    def __call__(self, x: TensorType) -> TensorType:
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="This acquisition function only supports batch sizes of one.",
+        )
+        mean, variance = self._model.predict(tf.squeeze(x, -2))
+        normal = tfp.distributions.Normal(mean, tf.sqrt(variance))
+        expected_improvement = (self._eta - mean) * normal.cdf(self._eta) + variance * normal.prob(
+            self._eta
+        )
+
+        augmentation = 1 - (tf.math.sqrt(self._noise_variance)) / (
+            tf.math.sqrt(self._noise_variance + variance)
+        )
+        return expected_improvement * augmentation
+
+
+def NegativeLowerConfidenceBound(
+    beta: float = 1.96,
+) -> Type[SingleModelAcquisitionFunction[ProbabilisticModel]]:
+    """
+    Builder for the negative of the lower confidence bound. The lower confidence bound is typically
+    minimised, so the negative is suitable for maximisation.
+    """
+
+    class _NegativeLowerConfidenceBound(SingleModelAcquisitionFunction[ProbabilisticModel]):
+        def __init__(
+            self,
+            model: ProbabilisticModel,
+            dataset: Optional[Dataset] = None,
+        ) -> None:
+            """
+            :param model: The model.
+            :param dataset: Unused.
+            :raise ValueError: If ``beta`` is negative.
+            """
+            self.beta = beta
+            self.lcb = lower_confidence_bound(model, beta)
+
+        def __repr__(self) -> str:
+            """"""
+            return f"NegativeLowerConfidenceBound({self.beta!r})"
+
+        def update_acquisition_function(
+            self,
+            model: ProbabilisticModel,
+            dataset: Optional[Dataset] = None,
+        ) -> SingleModelAcquisitionFunction[ProbabilisticModel]:
+            """
+            :param model: The model.
+            :param dataset: Unused.
+            """
+            return self  # no need to update anything
+
+        @tf.function
+        def __call__(self, x: TensorType) -> TensorType:
+            return -self.lcb(x)
+
+    return _NegativeLowerConfidenceBound
+
+
+NegativePredictiveMean = NegativeLowerConfidenceBound(beta=0.0)
+"""
+The negative of the predictive mean. The predictive mean is minimised on minimising
+the objective function. The negative predictive mean is therefore maximised.
+"""
+
+# EfficientGlobalOptimization(NegativeLowerConfidenceBound(beta=2.0))
+# EfficientGlobalOptimization(NegativePredictiveMean)
+
+
+class NegativeLowerConfidenceBound(SingleModelAcquisitionFunction[ProbabilisticModel]):
+    """
+    Builder for the negative of the lower confidence bound. The lower confidence bound is typically
+    minimised, so the negative is suitable for maximisation.
+    """
+
+    def __init__(
+        self,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
+        *,
+        beta: float = 1.96,
+    ) -> None:
+        """
+        :param model: The model.
+        :param dataset: Unused.
+        :raise ValueError: If ``beta`` is negative.
+        """
+        self.beta = beta
+        self.lcb = lower_confidence_bound(model, beta)
+
+    def __repr__(self) -> str:
+        """"""
+        return f"NegativeLowerConfidenceBound({self.beta!r})"
+
+    def update_acquisition_function(
+        self,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
+    ) -> SingleModelAcquisitionFunction[ProbabilisticModel]:
+        """
+        :param model: The model.
+        :param dataset: Unused.
+        """
+        return self  # no need to update anything
+
+    @tf.function
+    def __call__(self, x: TensorType) -> TensorType:
+        return -self.lcb(x)
+
+
+class NegativePredictiveMean(NegativeLowerConfidenceBound):
+    """
+    The negative of the predictive mean. The predictive mean is minimised on minimising
+    the objective function. The negative predictive mean is therefore maximised.
+    """
+
+    def __init__(
+        self,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
+    ) -> None:
+        """
+        :param model: The model.
+        :param dataset: Unused.
+        :raise ValueError: If ``beta`` is negative.
+        """
+        super().__init__(model, dataset, beta=0.0)
+
+    def __repr__(self) -> str:
+        """"""
+        return f"NegativePredictiveMean()"
+
+
+# EfficientGlobalOptimization(partial(NegativeLowerConfidenceBound, beta=2.0))
+# EfficientGlobalOptimization(NegativePredictiveMean)
+
+
+def lower_confidence_bound(model: ProbabilisticModel, beta: float) -> TensorFunction:
+    r"""
+    The lower confidence bound (LCB) acquisition function for single-objective global optimization.
+
+    .. math:: x^* \mapsto \mathbb{E} [f(x^*)|x, y] - \beta \sqrt{ \mathrm{Var}[f(x^*)|x, y] }
+
+    See :cite:`Srinivas:2010` for details.
+
+    :param model: The model of the objective function.
+    :param beta: The weight to give to the standard deviation contribution of the LCB. Must not be
+        negative.
+    :return: The lower confidence bound function. This function will raise
+        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+        greater than one.
+    :raise tf.errors.InvalidArgumentError: If ``beta`` is negative.
+    """
+    tf.debugging.assert_non_negative(
+        beta, message="Standard deviation scaling parameter beta must not be negative"
+    )
+
+    @tf.function
+    def acquisition(x: TensorType) -> TensorType:
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="This acquisition function only supports batch sizes of one.",
+        )
+        mean, variance = model.predict(tf.squeeze(x, -2))
+        return mean - beta * tf.sqrt(variance)
+
+    return acquisition
+
+
 #
 #
 # class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel]):
