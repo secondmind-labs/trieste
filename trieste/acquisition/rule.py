@@ -21,18 +21,33 @@ import copy
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Callable, Generic, Optional, TypeVar, Union, cast, overload
+from typing import Any, Callable, Generic, Optional, TypeVar, Union, cast, overload
+
+import numpy as np
+
+try:
+    import pymoo
+    from pymoo.algorithms.moo.nsga2 import NSGA2
+    from pymoo.core.problem import Problem as PymooProblem
+    from pymoo.optimize import minimize
+except ImportError:
+    pymoo = None
+    PymooProblem = object
 
 import tensorflow as tf
 
 from .. import logging, types
 from ..data import Dataset
 from ..models import ProbabilisticModel
-from ..models.interfaces import HasReparamSampler, ProbabilisticModelType
+from ..models.interfaces import HasReparamSampler, ModelStack, ProbabilisticModelType
 from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace
 from ..types import State, TensorType
-from .function import BatchMonteCarloExpectedImprovement, ExpectedImprovement
+from .function import (
+    BatchMonteCarloExpectedImprovement,
+    ExpectedImprovement,
+    ProbabilityOfImprovement,
+)
 from .interface import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
@@ -42,6 +57,7 @@ from .interface import (
     SingleModelVectorizedAcquisitionBuilder,
     VectorizedAcquisitionFunctionBuilder,
 )
+from .multi_objective import Pareto
 from .optimizer import (
     AcquisitionOptimizer,
     automatic_optimizer_selector,
@@ -1080,3 +1096,187 @@ class TrustRegion(
             return state_, points
 
         return state_func
+
+
+class BatchHypervolumeSharpeRatioIndicator(
+    AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel]
+):
+    """Implements the Batch Hypervolume Sharpe-ratio indicator acquisition
+    rule, designed for large batches, introduced by Binois et al, 2021.
+    See :cite:`binois2021portfolio` for details.
+    """
+
+    def __init__(
+        self,
+        batch_size: int = 5,
+        ga_population_size: int = 500,
+        ga_n_generations: int = 200,
+        filter_threshold: float = 0.1,
+        noisy_observations: bool = True,
+    ):
+        """
+        :param batch_size: The number of points in a batch. Defaults to 5.
+        :param ga_population_size: The population size used in the genetic algorithm
+             that finds points on the Pareto front. Defaults to 500.
+        :param ga_n_generations: The number of genenrations to run in the genetic
+             algorithm. Defaults to 200.
+        :param filter_threshold: The probability of improvement below which to exlude
+             points from the Sharpe ratio optimisation. Defaults to 0.1.
+        :param noisy_observations: Whether the observations have noise. Defaults to True.
+        """
+        if not batch_size > 0:
+            raise ValueError(f"Batch size must be greater than 0, got {batch_size}")
+        if not ga_population_size >= batch_size:
+            raise ValueError(
+                "Population size must be greater or equal to batch size, got "
+                f"batch size as {batch_size} and population size as {ga_population_size}"
+            )
+        if not ga_n_generations > 0:
+            raise ValueError(f"Number of generation must be greater than 0, got {ga_n_generations}")
+        if not 0.0 <= filter_threshold < 1.0:
+            raise ValueError(f"Filter threshold must be in range [0.0,1.0), got {filter_threshold}")
+        if pymoo is None:
+            raise ImportError(
+                "BatchHypervolumeSharpeRatioIndicator requires pymoo, "
+                "which can be installed via `pip install trieste[qhsri]`"
+            )
+        builder = ProbabilityOfImprovement().using(OBJECTIVE)
+
+        self._builder: AcquisitionFunctionBuilder[ProbabilisticModel] = builder
+        self._batch_size: int = batch_size
+        self._population_size: int = ga_population_size
+        self._n_generations: int = ga_n_generations
+        self._filter_threshold: float = filter_threshold
+        self._noisy_observations: bool = noisy_observations
+        self._acquisition_function: Optional[AcquisitionFunction] = None
+
+    def __repr__(self) -> str:
+        """"""
+        return f"""BatchHypervolumeSharpeRatioIndicator(
+        batch_size={self._batch_size}, ga_population_size={self._population_size},
+        ga_n_generations={self._n_generations}, filter_threshold={self._filter_threshold}
+        )
+        """
+
+    def _find_non_dominated_points(
+        self, model: ProbabilisticModel, search_space: SearchSpaceType
+    ) -> tuple[TensorType, TensorType]:
+        """Uses NSGA-II to find high-quality non-dominated points"""
+
+        problem = _MeanStdTradeoff(model, search_space)
+        algorithm = NSGA2(pop_size=self._population_size)
+        res = minimize(problem, algorithm, ("n_gen", self._n_generations), seed=1, verbose=False)
+
+        return res.X, res.F
+
+    def _filter_points(
+        self, nd_points: TensorType, nd_mean_std: TensorType
+    ) -> tuple[TensorType, TensorType]:
+
+        if self._acquisition_function is None:
+            raise ValueError("Acquisition function has not been defined yet")
+
+        probs_of_improvement = np.array(
+            self._acquisition_function(np.expand_dims(nd_points, axis=-2))
+        )
+
+        above_threshold = probs_of_improvement > self._filter_threshold
+
+        if np.sum(above_threshold) >= self._batch_size and nd_mean_std.shape[1] == 2:
+            # There are enough points above the threshold to get a batch
+            out_points, out_mean_std = (
+                nd_points[above_threshold.squeeze(), :],
+                nd_mean_std[above_threshold.squeeze(), :],
+            )
+        else:
+            # We don't filter
+            out_points, out_mean_std = nd_points, nd_mean_std
+
+        return out_points, out_mean_std
+
+    def acquire(
+        self,
+        search_space: SearchSpace,
+        models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
+    ) -> TensorType:
+        """Acquire a batch of points to observe based on the batch hypervolume
+        Sharpe ratio indicator method.
+        This method uses NSGA-II to create a Pareto set of the mean and standard
+        deviation of the posterior of the probabilistic model, and then selects
+        points to observe based on maximising the Sharpe ratio.
+        :param search_space: The local acquisition search space for *this step*.
+        :param models: The model for each tag.
+        :param datasets: The known observer query points and observations.
+        :return: The batch of points to query.
+        """
+        if models.keys() != {OBJECTIVE}:
+            raise ValueError(
+                f"dict of models must contain the single key {OBJECTIVE}, got keys {models.keys()}"
+            )
+
+        if datasets is None or datasets.keys() != {OBJECTIVE}:
+            raise ValueError(
+                f"""datasets must be provided and contain the single key {OBJECTIVE}"""
+            )
+
+        if self._acquisition_function is None:
+            self._acquisition_function = self._builder.prepare_acquisition_function(
+                models, datasets=datasets
+            )
+        else:
+            self._acquisition_function = self._builder.update_acquisition_function(
+                self._acquisition_function,
+                models,
+                datasets=datasets,
+            )
+
+        # Find non-dominated points
+        nd_points, nd_mean_std = self._find_non_dominated_points(models[OBJECTIVE], search_space)
+
+        # Filter out points below a threshold probability of improvement
+        filtered_points, filtered_mean_std = self._filter_points(nd_points, nd_mean_std)
+
+        # Set up a Pareto set of the filtered points
+        pareto_set = Pareto(filtered_mean_std, already_non_dominated=True)
+
+        # Sample points from set using qHSRI
+        _, batch_ids = pareto_set.sample_diverse_subset(
+            self._batch_size, allow_repeats=self._noisy_observations
+        )
+
+        batch = filtered_points[batch_ids]
+
+        return batch
+
+
+class _MeanStdTradeoff(PymooProblem):  # type: ignore[misc]
+    """Inner class that formulates the mean/std optimisation problem as a
+    pymoo problem"""
+
+    def __init__(self, probabilistic_model: ProbabilisticModel, search_space: SearchSpaceType):
+        """
+        :param probabilistic_model: The probabilistic model to find optimal mean/stds from
+        :param search_space: The search space for the optimisation
+        """
+        # If we have a stack of models we have mean and std for each
+        if isinstance(probabilistic_model, ModelStack):
+            n_obj = 2 * len(probabilistic_model._models)
+        else:
+            n_obj = 2
+        super().__init__(
+            n_var=int(search_space.dimension),
+            n_obj=n_obj,
+            n_constr=0,
+            xl=np.array(search_space.lower),
+            xu=np.array(search_space.upper),
+        )
+        self.probabilistic_model = probabilistic_model
+
+    def _evaluate(
+        self, x: TensorType, out: dict[str, TensorType], *args: Any, **kwargs: Any
+    ) -> None:
+        mean, var = self.probabilistic_model.predict(x)
+        # Flip sign on std so that minimising is increasing std
+        std = -1 * np.sqrt(np.array(var))
+        out["F"] = np.concatenate([np.array(mean), std], axis=1)

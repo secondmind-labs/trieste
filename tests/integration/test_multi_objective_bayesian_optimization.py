@@ -27,6 +27,7 @@ from trieste.acquisition.optimizer import generate_continuous_optimizer
 from trieste.acquisition.rule import (
     AcquisitionRule,
     AsynchronousOptimization,
+    BatchHypervolumeSharpeRatioIndicator,
     EfficientGlobalOptimization,
 )
 from trieste.bayesian_optimizer import BayesianOptimizer
@@ -43,6 +44,11 @@ from trieste.objectives.utils import mk_observer
 from trieste.observer import OBJECTIVE
 from trieste.space import Box
 from trieste.types import TensorType
+
+try:
+    import pymoo
+except ImportError:
+    pymoo = None
 
 
 @random_seed
@@ -117,6 +123,13 @@ from trieste.types import TensorType
             ),
             -3.2095,
             id="BatchMonteCarloExpectedHypervolumeImprovement/4",
+        ),
+        pytest.param(
+            20,
+            BatchHypervolumeSharpeRatioIndicator() if pymoo else None,
+            -3.2095,
+            id="BatchHypervolumeSharpeRatioIndicator",
+            marks=pytest.mark.qhsri,
         ),
     ],
 )

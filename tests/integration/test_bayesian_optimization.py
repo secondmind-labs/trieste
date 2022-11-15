@@ -48,6 +48,7 @@ from trieste.acquisition.rule import (
     AsynchronousGreedy,
     AsynchronousOptimization,
     AsynchronousRuleState,
+    BatchHypervolumeSharpeRatioIndicator,
     DiscreteThompsonSampling,
     EfficientGlobalOptimization,
     TrustRegion,
@@ -81,6 +82,11 @@ from trieste.objectives.utils import mk_observer
 from trieste.observer import OBJECTIVE
 from trieste.space import Box, SearchSpace
 from trieste.types import State, TensorType
+
+try:
+    import pymoo
+except ImportError:
+    pymoo = None
 
 
 # Optimizer parameters for testing GPR against the branin function.
@@ -209,6 +215,12 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                     num_query_points=5,
                 ),
                 id="ParallelContinuousThompsonSampling",
+            ),
+            pytest.param(
+                15,
+                BatchHypervolumeSharpeRatioIndicator() if pymoo else None,
+                id="BatchHypevolumeSharpeRatioIndicator",
+                marks=pytest.mark.qhsri,
             ),
         ],
     )
