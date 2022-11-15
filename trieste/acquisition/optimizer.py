@@ -14,7 +14,7 @@
 
 r"""
 This module contains functionality for optimizing
-:data:`~trieste.acquisition.AcquisitionFunction`\ s over :class:`~trieste.space.SearchSpace`\ s.
+:data:`~trieste.acquisition.TensorFunction`\ s over :class:`~trieste.space.SearchSpace`\ s.
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ import tensorflow_probability as tfp
 from .. import logging
 from ..space import Box, DiscreteSearchSpace, SearchSpace, SearchSpaceType, TaggedProductSearchSpace
 from ..types import TensorType
-from .interface import AcquisitionFunction
+from .interface import TensorFunction
 
 NUM_SAMPLES_MIN: int = 5000
 """
@@ -60,7 +60,7 @@ class FailedOptimizationError(Exception):
 
 
 AcquisitionOptimizer = Callable[
-    [SearchSpaceType, Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]]], TensorType
+    [SearchSpaceType, Union[TensorFunction, Tuple[TensorFunction, int]]], TensorType
 ]
 """
 Type alias for a function that returns the single point that maximizes an acquisition function over
@@ -77,7 +77,7 @@ vectorization V then the :const:`AcquisitionOptimizer` return shape should be [V
 
 
 def automatic_optimizer_selector(
-    space: SearchSpace, target_func: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]]
+    space: SearchSpace, target_func: Union[TensorFunction, Tuple[TensorFunction, int]]
 ) -> TensorType:
     """
     A wrapper around our :const:`AcquisitionOptimizer`s. This class performs
@@ -110,7 +110,7 @@ def automatic_optimizer_selector(
 
 
 def _get_max_discrete_points(
-    points: TensorType, target_func: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]]
+    points: TensorType, target_func: Union[TensorFunction, Tuple[TensorFunction, int]]
 ) -> TensorType:
     # check if we need a vectorized optimizer
     if isinstance(target_func, tuple):
@@ -140,7 +140,7 @@ def _get_max_discrete_points(
 
 def optimize_discrete(
     space: DiscreteSearchSpace,
-    target_func: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]],
+    target_func: Union[TensorFunction, Tuple[TensorFunction, int]],
 ) -> TensorType:
     """
     An :const:`AcquisitionOptimizer` for :class:'DiscreteSearchSpace' spaces.
@@ -210,7 +210,7 @@ def generate_continuous_optimizer(
 
     def optimize_continuous(
         space: Box | TaggedProductSearchSpace,
-        target_func: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]],
+        target_func: Union[TensorFunction, Tuple[TensorFunction, int]],
     ) -> TensorType:
         """
         A gradient-based :const:`AcquisitionOptimizer` for :class:'Box'
@@ -333,7 +333,7 @@ def generate_continuous_optimizer(
                         f"optimization runs, requiring recovery runs",
                     )
 
-                _target_func: AcquisitionFunction = target_func  # make mypy happy
+                _target_func: TensorFunction = target_func  # make mypy happy
 
                 def improvements() -> tf.Tensor:
                     best_initial_values = tf.math.reduce_max(_target_func(initial_points), axis=0)
@@ -357,7 +357,7 @@ def generate_continuous_optimizer(
 
 
 def _perform_parallel_continuous_optimization(
-    target_func: AcquisitionFunction,
+    target_func: TensorFunction,
     space: SearchSpace,
     starting_points: TensorType,
     optimizer_args: dict[str, Any],
@@ -579,7 +579,7 @@ def batchify_joint(
 
     def optimizer(
         search_space: SearchSpaceType,
-        f: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]],
+        f: Union[TensorFunction, Tuple[TensorFunction, int]],
     ) -> TensorType:
         expanded_search_space = search_space ** batch_size  # points have shape [B * D]
 
@@ -587,7 +587,7 @@ def batchify_joint(
             raise ValueError(
                 "batchify_joint cannot be applied to a vectorized acquisition function"
             )
-        af: AcquisitionFunction = f  # type checking can get confused by closure of f
+        af: TensorFunction = f  # type checking can get confused by closure of f
 
         def target_func_with_vectorized_inputs(
             x: TensorType,
@@ -611,7 +611,7 @@ def batchify_vectorize(
     :const:`AcquisitionOptimizer` to allow it to optimize batch acquisition functions.
 
     Unlike :func:`batchify_joint`, :func:`batchify_vectorize` is suitable
-    for a :class:`AcquisitionFunction` whose individual batch element can be
+    for a :class:`TensorFunction` whose individual batch element can be
     optimized independently (i.e. they can be vectorized).
 
     :param batch_size_one_optimizer: An optimizer that returns only batch size one, i.e. produces a
@@ -624,7 +624,7 @@ def batchify_vectorize(
 
     def optimizer(
         search_space: SearchSpaceType,
-        f: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]],
+        f: Union[TensorFunction, Tuple[TensorFunction, int]],
     ) -> TensorType:
         if isinstance(f, tuple):
             raise ValueError(
@@ -654,7 +654,7 @@ def generate_random_search_optimizer(
 
     def optimize_random(
         space: SearchSpace,
-        target_func: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]],
+        target_func: Union[TensorFunction, Tuple[TensorFunction, int]],
     ) -> TensorType:
         """
         A random search :const:`AcquisitionOptimizer` defined for

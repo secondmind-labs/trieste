@@ -44,23 +44,17 @@ from tests.util.models.gpflow.models import (
 )
 from trieste.acquisition.function.function import (
     AcquisitionFunction,
-    AcquisitionFunctionBuilder,
-    AugmentedExpectedImprovement,
-    BatchMonteCarloExpectedImprovement,
-    ExpectedConstrainedImprovement,
+    # AugmentedExpectedImprovement,
+    # BatchMonteCarloExpectedImprovement,
+    # ExpectedConstrainedImprovement,
     ExpectedImprovement,
-    MakePositive,
-    MonteCarloAugmentedExpectedImprovement,
-    MonteCarloExpectedImprovement,
-    MultipleOptimismNegativeLowerConfidenceBound,
-    NegativeLowerConfidenceBound,
-    ProbabilityOfFeasibility,
+    # MakePositive,
+    # MonteCarloAugmentedExpectedImprovement,
+    # MonteCarloExpectedImprovement,
+    # MultipleOptimismNegativeLowerConfidenceBound,
+    # NegativeLowerConfidenceBound,
+    # ProbabilityOfFeasibility,
     ProbabilityOfImprovement,
-    augmented_expected_improvement,
-    expected_improvement,
-    lower_confidence_bound,
-    multiple_optimism_lower_confidence_bound,
-    probability_below_threshold,
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
@@ -76,9 +70,11 @@ def test_probability_of_improvement_builder_builds_pi_using_best_from_model() ->
         tf.constant([[4.1], [0.9], [0.1], [1.1], [3.9]]),
     )
     model = QuadraticMeanAndRBFKernel()
-    acq_fn = ProbabilityOfImprovement().prepare_acquisition_function(model, dataset=dataset)
+    acq_fn = ProbabilityOfImprovement(model, dataset=dataset)
     xs = tf.linspace([[-10.0]], [[10.0]], 100)
-    expected = probability_below_threshold(model, tf.constant(0.0))(xs)
+    expected = ProbabilityOfImprovement(model, Dataset(tf.constant([[0.0]]), tf.constant([[0.1]])))(
+        xs
+    )
     npt.assert_allclose(acq_fn(xs), expected)
 
 

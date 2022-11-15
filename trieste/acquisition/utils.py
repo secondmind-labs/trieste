@@ -18,16 +18,16 @@ import tensorflow as tf
 
 from ..space import SearchSpaceType
 from ..types import TensorType
-from .interface import AcquisitionFunction
+from .interface import AcquisitionFunction, TensorFunction
 from .optimizer import AcquisitionOptimizer
 
 
 def split_acquisition_function(
-    fn: AcquisitionFunction,
+    fn: TensorFunction,
     split_size: int,
-) -> AcquisitionFunction:
+) -> TensorFunction:
     """
-    A wrapper around an :const:`AcquisitionFunction` to split its input into batches.
+    A wrapper around an :const:`TensorFunction` to split its input into batches.
     Splits `x` into batches along the first dimension, calls `fn` on each batch, and then stitches
     the results back together, so that it looks like `fn` was called with all of `x` in one batch.
     :param fn: Acquisition function to split.
@@ -93,7 +93,7 @@ def split_acquisition_function_calls(
 
     def split_optimizer(
         search_space: SearchSpaceType,
-        f: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]],
+        f: Union[TensorFunction, Tuple[TensorFunction, int]],
     ) -> TensorType:
 
         af, n = f if isinstance(f, tuple) else (f, 1)
