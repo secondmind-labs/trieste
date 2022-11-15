@@ -1072,7 +1072,13 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
-        """ """
+        """
+        :param model: The model. Must have event shape [1].
+        :param dataset: The data from the observer. Must be populated.
+        :return: The batch *expected improvement* acquisition function.
+        :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, or ``model``
+            does not have an event shape of [1].
+        """
 
         tf.debugging.Assert(dataset is not None, [])
         dataset = cast(Dataset, dataset)
@@ -1103,7 +1109,11 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
-        """ """
+        """
+        :param function: The acquisition function to update.
+        :param model: The model. Must have event shape [1].
+        :param dataset: The data from the observer. Must be populated.
+        """
 
         tf.debugging.Assert(dataset is not None, [])
         dataset = cast(Dataset, dataset)

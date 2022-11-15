@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-This module contains utility functions for acquisition functions. Currently,
-it contains functions for approximating the cumulative density function (CDF)
-of a multivariate Gaussian, and a helper for computing a naive Monte Carlo
-estimate of the batch expected improvement for a Gaussian distribution.
+This module contains utility functions for acquisition functions.
 """
 from typing import Callable, Tuple
 
