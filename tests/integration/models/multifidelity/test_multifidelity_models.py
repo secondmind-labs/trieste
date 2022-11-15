@@ -1,9 +1,11 @@
+import gpflow
 import numpy as np
 import numpy.testing as npt
 import tensorflow as tf
 
 import trieste
 from trieste.data import (
+    Dataset,
     add_fidelity_column,
     check_and_extract_fidelity_query_points,
     split_dataset_by_fidelity,
@@ -13,6 +15,7 @@ from trieste.models.gpflow.builders import build_gpr, build_multifidelity_autore
 from trieste.models.gpflow.models import MultifidelityAutoregressive
 from trieste.objectives.utils import mk_observer
 from trieste.types import TensorType
+from trieste.space import Box
 
 
 def noisy_linear_multifidelity(x: TensorType) -> TensorType:
@@ -100,3 +103,165 @@ def test_multifidelity_autoregressive_gets_expected_rhos() -> None:
     rhos = [float(rho.numpy()) for rho in model.rho]
 
     npt.assert_allclose(np.array(expected_rho), np.array(rhos), rtol=0.30)
+
+
+def test_multifidelity_autoregressive_predict_low_fidelity_are_consistent() -> None:
+
+    xs_low = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
+    xs_high = tf.Variable(np.linspace(0, 10, 10), dtype=tf.float64)[:, None]
+    lf_obs = tf.sin(xs_low) + tf.random.normal(xs_low.shape, mean=0, stddev=1e-1, dtype=tf.float64)
+    hf_obs = 2 * tf.sin(xs_high) + tf.random.normal(
+        xs_high.shape, mean=0, stddev=1e-1, dtype=tf.float64
+    )
+
+    lf_query_points = add_fidelity_column(xs_low, 0)
+    hf_query_points = add_fidelity_column(xs_high, 1)
+
+    lf_dataset = Dataset(lf_query_points, lf_obs)
+    hf_dataset = Dataset(hf_query_points, hf_obs)
+
+    dataset = lf_dataset + hf_dataset
+
+    search_space = Box([0.0], [10.0])
+
+    model = MultifidelityAutoregressive(
+        build_multifidelity_autoregressive_models(
+            dataset, num_fidelities=2, input_search_space=search_space
+        )
+    )
+
+    model.update(dataset)
+    model.optimize(dataset)
+
+    test_locations = tf.Variable(np.linspace(0, 10, 32), dtype=tf.float64)[:, None]
+    lf_test_locations = add_fidelity_column(test_locations, 0)
+
+    lf_prediction = model.predict(lf_test_locations)
+    lf_prediction_direct = model.lowest_fidelity_signal_model.predict(test_locations)
+
+    npt.assert_array_equal(lf_prediction, lf_prediction_direct)
+
+
+def test_multifidelity_autoregressive_predict_hf_is_consistent_when_rho_zero() -> None:
+
+    xs_low = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
+    xs_high = tf.Variable(np.linspace(0, 10, 10), dtype=tf.float64)[:, None]
+    lf_obs = tf.sin(xs_low) + tf.random.normal(xs_low.shape, mean=0, stddev=1e-1, dtype=tf.float64)
+    hf_obs = 2 * tf.sin(xs_high) + tf.random.normal(
+        xs_high.shape, mean=0, stddev=1e-1, dtype=tf.float64
+    )
+
+    lf_query_points = add_fidelity_column(xs_low, 0)
+    hf_query_points = add_fidelity_column(xs_high, 1)
+
+    lf_dataset = Dataset(lf_query_points, lf_obs)
+    hf_dataset = Dataset(hf_query_points, hf_obs)
+
+    dataset = lf_dataset + hf_dataset
+
+    search_space = Box([0.0], [10.0])
+
+    model = MultifidelityAutoregressive(
+        build_multifidelity_autoregressive_models(
+            dataset, num_fidelities=2, input_search_space=search_space
+        )
+    )
+
+    model.update(dataset)
+    model.optimize(dataset)
+
+    model.rho[1] = 0.0
+
+    test_locations = tf.Variable(np.linspace(0, 10, 32), dtype=tf.float64)[:, None]
+    hf_test_locations = add_fidelity_column(test_locations, 1)
+
+    hf_prediction = model.predict(hf_test_locations)
+    hf_prediction_direct = model.fidelity_residual_models[1].predict(test_locations)
+
+    npt.assert_array_equal(hf_prediction, hf_prediction_direct)
+
+
+def test_multifidelity_autoregressive_predict_hf_is_consistent_when_lf_is_flat() -> None:
+
+    xs_low = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
+    xs_high = tf.Variable(np.linspace(0, 10, 10), dtype=tf.float64)[:, None]
+    lf_obs = tf.sin(xs_low) + tf.random.normal(xs_low.shape, mean=0, stddev=1e-1, dtype=tf.float64)
+    hf_obs = 2 * tf.sin(xs_high) + tf.random.normal(
+        xs_high.shape, mean=0, stddev=1e-1, dtype=tf.float64
+    )
+
+    lf_query_points = add_fidelity_column(xs_low, 0)
+    hf_query_points = add_fidelity_column(xs_high, 1)
+
+    lf_dataset = Dataset(lf_query_points, lf_obs)
+    hf_dataset = Dataset(hf_query_points, hf_obs)
+
+    dataset = lf_dataset + hf_dataset
+
+    search_space = Box([0.0], [10.0])
+
+    model = MultifidelityAutoregressive(
+        build_multifidelity_autoregressive_models(
+            dataset, num_fidelities=2, input_search_space=search_space
+        )
+    )
+
+    model.update(dataset)
+    model.optimize(dataset)
+
+    kernel = gpflow.kernels.Matern52(variance=1e-18, lengthscales=[0.2, 0.2])
+    gpr = gpflow.models.GPR(dataset.astuple(), kernel, noise_variance=1e-5)
+
+    model.lowest_fidelity_signal_model = GaussianProcessRegression(gpr)
+
+    test_locations = tf.Variable(np.linspace(0, 10, 32), dtype=tf.float64)[:, None]
+    hf_test_locations = add_fidelity_column(test_locations, 1)
+
+    hf_prediction, _ = model.predict(hf_test_locations)
+    hf_prediction_direct, _ = model.fidelity_residual_models[1].predict(test_locations)
+
+    npt.assert_allclose(hf_prediction, hf_prediction_direct)
+
+
+def test_multifidelity_autoregressive_predict_hf_is_consistent_when_hf_residual_is_flat() -> None:
+
+    xs_low = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
+    xs_high = tf.Variable(np.linspace(0, 10, 10), dtype=tf.float64)[:, None]
+    lf_obs = tf.sin(xs_low) + tf.random.normal(xs_low.shape, mean=0, stddev=1e-1, dtype=tf.float64)
+    hf_obs = 2 * tf.sin(xs_high) + tf.random.normal(
+        xs_high.shape, mean=0, stddev=1e-1, dtype=tf.float64
+    )
+
+    lf_query_points = add_fidelity_column(xs_low, 0)
+    hf_query_points = add_fidelity_column(xs_high, 1)
+
+    lf_dataset = Dataset(lf_query_points, lf_obs)
+    hf_dataset = Dataset(hf_query_points, hf_obs)
+
+    dataset = lf_dataset + hf_dataset
+
+    search_space = Box([0.0], [10.0])
+
+    model = MultifidelityAutoregressive(
+        build_multifidelity_autoregressive_models(
+            dataset, num_fidelities=2, input_search_space=search_space
+        )
+    )
+
+    model.update(dataset)
+    model.optimize(dataset)
+
+    kernel = gpflow.kernels.Matern52(variance=1e-18, lengthscales=[0.2, 0.2])
+    gpr = gpflow.models.GPR(dataset.astuple(), kernel, noise_variance=1e-5)
+
+    model.fidelity_residual_models[1] = GaussianProcessRegression(gpr)
+
+    test_locations = tf.Variable(np.linspace(0, 10, 32), dtype=tf.float64)[:, None]
+    hf_test_locations = add_fidelity_column(test_locations, 1)
+
+    hf_prediction, _ = model.predict(hf_test_locations)
+    hf_prediction_direct = (
+        model.rho[1] * model.lowest_fidelity_signal_model.predict(test_locations)[0]
+    )
+
+    npt.assert_allclose(hf_prediction, hf_prediction_direct)
