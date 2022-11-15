@@ -1381,7 +1381,7 @@ class MultifidelityAutoregressive(TrainableProbabilisticModel):
     .. math:: f_{i}(x) = \rho f_{i-1}(x) + \delta(x)
 
     where :math:`\rho` is a scalar and :math:`\delta` models the residual between the fidelities.
-    All the base models used in this implementation are :class:`~gpflow.models.GPR` models.
+    The only base models supported in this implementation are :class:`~gpflow.models.GPR` models.
     Note: Currently only supports single output problems.
     """
 
@@ -1702,8 +1702,8 @@ class MultifidelityAutoregressive(TrainableProbabilisticModel):
 
     def covariance_with_top_fidelity(self, query_points: TensorType) -> TensorType:
         """
-        Calculate the covariance of `query_points` with the corresponding
-        query point at the top fidelity.
+        Calculate the covariance of the output at `query_point` and a given fidelity with the
+        highest fidelity output at the same `query_point`.
 
         :param query_points: The query points to calculate the covariance for, of shape [N, D+1],
             where the final column of the final dimension contains the fidelity of the query point
