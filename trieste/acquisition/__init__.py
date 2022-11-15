@@ -40,6 +40,7 @@ from .function import (
     GIBBON,
     HIPPO,
     AugmentedExpectedImprovement,
+    BatchExpectedImprovement,
     BatchMonteCarloExpectedHypervolumeImprovement,
     BatchMonteCarloExpectedImprovement,
     BayesianActiveLearningByDisagreement,
