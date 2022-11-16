@@ -12,20 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-This module contains utility functions for acquisition functions. Currently,
-it contains functions for approximating the cumulative density function (CDF)
-of a multivariate Gaussian, and a helper for computing a naive Monte Carlo
-estimate of the batch expected improvement for a Gaussian distribution.
+This module contains utility functions for acquisition functions.
 """
 from typing import Callable, Tuple
 
 import tensorflow as tf
-import tensorflow_probability as tfp
+from tensorflow_probability import distributions as tfd
 
 from ...types import TensorType
-
-tfd = tfp.distributions
-
 
 # =============================================================================
 # Multivariate Normal CDF
@@ -74,7 +68,7 @@ class MultivariateNormalCDF:
         :returns Phi, iPhi: Cumulative and inverse cumulative density functions.
         """
 
-        normal = tfp.distributions.Normal(
+        normal = tfd.Normal(
             loc=tf.zeros(shape=(), dtype=dtype),
             scale=tf.ones(shape=(), dtype=dtype),
         )
