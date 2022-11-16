@@ -17,11 +17,9 @@ This module contains utility functions for acquisition functions.
 from typing import Callable, Tuple
 
 import tensorflow as tf
-import tensorflow_probability as tfp
+from tensorflow_probability import distributions as tfd
 
 from ...types import TensorType
-
-tfd = tfp.distributions
 
 
 # =============================================================================
@@ -71,7 +69,7 @@ class MultivariateNormalCDF:
         :returns Phi, iPhi: Cumulative and inverse cumulative density functions.
         """
 
-        normal = tfp.distributions.Normal(
+        normal = tfd.Normal(
             loc=tf.zeros(shape=(), dtype=dtype),
             scale=tf.ones(shape=(), dtype=dtype),
         )

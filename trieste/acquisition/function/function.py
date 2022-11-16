@@ -1079,7 +1079,6 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, or ``model``
             does not have an event shape of [1].
         """
-
         tf.debugging.Assert(dataset is not None, [])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
@@ -1114,7 +1113,6 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         :param model: The model. Must have event shape [1].
         :param dataset: The data from the observer. Must be populated.
         """
-
         tf.debugging.Assert(dataset is not None, [])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
