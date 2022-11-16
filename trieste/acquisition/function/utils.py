@@ -21,7 +21,6 @@ from tensorflow_probability import distributions as tfd
 
 from ...types import TensorType
 
-
 # =============================================================================
 # Multivariate Normal CDF
 # =============================================================================
