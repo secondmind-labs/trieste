@@ -109,7 +109,7 @@ def test_multifidelity_autoregressive_predict_low_fidelity_are_consistent() -> N
 
     xs_low = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
     xs_high = tf.Variable(np.linspace(0, 10, 10), dtype=tf.float64)[:, None]
-    lf_obs = tf.sin(xs_low) + tf.random.normal(xs_low.shape, mean=0, stddev=1e-1, dtype=tf.float64)
+    lf_obs = tf.sin(xs_low)
     hf_obs = 2 * tf.sin(xs_high) + tf.random.normal(
         xs_high.shape, mean=0, stddev=1e-1, dtype=tf.float64
     )
@@ -133,20 +133,31 @@ def test_multifidelity_autoregressive_predict_low_fidelity_are_consistent() -> N
     model.update(dataset)
     model.optimize(dataset)
 
-    test_locations = tf.Variable(np.linspace(0, 10, 32), dtype=tf.float64)[:, None]
-    lf_test_locations = add_fidelity_column(test_locations, 0)
+    # Add some high fidelity points to check that predict on different fids works
+    test_locations_30 = tf.Variable(np.linspace(0, 10, 30), dtype=tf.float64)[:, None]
+    lf_test_locations = add_fidelity_column(test_locations_30, 0)
+    test_locations_32 = tf.Variable(np.linspace(0, 10, 32), dtype=tf.float64)[:, None]
+    hf_test_locations = add_fidelity_column(test_locations_32, 1)
 
-    lf_prediction = model.predict(lf_test_locations)
-    lf_prediction_direct = model.lowest_fidelity_signal_model.predict(test_locations)
+    concat_test_locations = tf.concat([lf_test_locations, hf_test_locations], axis=0)
 
-    npt.assert_array_equal(lf_prediction, lf_prediction_direct)
+    concat_prediction_mean, concat_prediction_var = model.predict(concat_test_locations)
+    lf_prediction_mean, lf_prediction_var = concat_prediction_mean[:30], concat_prediction_var[:30]
+
+    (
+        lf_prediction_direct_mean,
+        lf_prediction_direct_var,
+    ) = model.lowest_fidelity_signal_model.predict(test_locations_30)
+
+    npt.assert_array_equal(lf_prediction_mean, lf_prediction_direct_mean)  # , rtol=1e-7)
+    npt.assert_array_equal(lf_prediction_var, lf_prediction_direct_var)  # , rtol=1e-7)
 
 
 def test_multifidelity_autoregressive_predict_hf_is_consistent_when_rho_zero() -> None:
 
     xs_low = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
     xs_high = tf.Variable(np.linspace(0, 10, 10), dtype=tf.float64)[:, None]
-    lf_obs = tf.sin(xs_low) + tf.random.normal(xs_low.shape, mean=0, stddev=1e-1, dtype=tf.float64)
+    lf_obs = tf.sin(xs_low)
     hf_obs = 2 * tf.sin(xs_high) + tf.random.normal(
         xs_high.shape, mean=0, stddev=1e-1, dtype=tf.float64
     )
@@ -185,7 +196,7 @@ def test_multifidelity_autoregressive_predict_hf_is_consistent_when_lf_is_flat()
 
     xs_low = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
     xs_high = tf.Variable(np.linspace(0, 10, 10), dtype=tf.float64)[:, None]
-    lf_obs = tf.sin(xs_low) + tf.random.normal(xs_low.shape, mean=0, stddev=1e-1, dtype=tf.float64)
+    lf_obs = tf.sin(xs_low)
     hf_obs = 2 * tf.sin(xs_high) + tf.random.normal(
         xs_high.shape, mean=0, stddev=1e-1, dtype=tf.float64
     )
@@ -214,11 +225,17 @@ def test_multifidelity_autoregressive_predict_hf_is_consistent_when_lf_is_flat()
 
     model.lowest_fidelity_signal_model = GaussianProcessRegression(gpr)
 
-    test_locations = tf.Variable(np.linspace(0, 10, 32), dtype=tf.float64)[:, None]
-    hf_test_locations = add_fidelity_column(test_locations, 1)
+    # Add some low fidelity points to check that predict on different fids works
+    test_locations_30 = tf.Variable(np.linspace(0, 10, 30), dtype=tf.float64)[:, None]
+    lf_test_locations = add_fidelity_column(test_locations_30, 0)
+    test_locations_32 = tf.Variable(np.linspace(0, 10, 32), dtype=tf.float64)[:, None]
+    hf_test_locations = add_fidelity_column(test_locations_32, 1)
 
-    hf_prediction, _ = model.predict(hf_test_locations)
-    hf_prediction_direct, _ = model.fidelity_residual_models[1].predict(test_locations)
+    concatenated_test_locations = tf.concat([lf_test_locations, hf_test_locations], axis=0)
+
+    concat_prediction, _ = model.predict(concatenated_test_locations)
+    hf_prediction = concat_prediction[30:]
+    hf_prediction_direct, _ = model.fidelity_residual_models[1].predict(test_locations_32)
 
     npt.assert_allclose(hf_prediction, hf_prediction_direct)
 
@@ -227,7 +244,7 @@ def test_multifidelity_autoregressive_predict_hf_is_consistent_when_hf_residual_
 
     xs_low = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
     xs_high = tf.Variable(np.linspace(0, 10, 10), dtype=tf.float64)[:, None]
-    lf_obs = tf.sin(xs_low) + tf.random.normal(xs_low.shape, mean=0, stddev=1e-1, dtype=tf.float64)
+    lf_obs = tf.sin(xs_low)
     hf_obs = 2 * tf.sin(xs_high) + tf.random.normal(
         xs_high.shape, mean=0, stddev=1e-1, dtype=tf.float64
     )

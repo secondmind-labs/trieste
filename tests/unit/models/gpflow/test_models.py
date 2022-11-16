@@ -1873,7 +1873,7 @@ def test_multifidelity_autoregressive_sample_aligns_with_predict() -> None:
 
     xs_low = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
     xs_high = tf.Variable(np.linspace(0, 10, 10), dtype=tf.float64)[:, None]
-    lf_obs = tf.sin(xs_low) + tf.random.normal(xs_low.shape, mean=0, stddev=1e-1, dtype=tf.float64)
+    lf_obs = tf.sin(xs_low)
     hf_obs = 2 * tf.sin(xs_high) + tf.random.normal(
         xs_high.shape, mean=0, stddev=1e-1, dtype=tf.float64
     )
@@ -1912,21 +1912,21 @@ def test_multifidelity_autoregressive_sample_aligns_with_predict() -> None:
     lf_sample_means = tf.reduce_mean(lf_samples, axis=0)
     lf_sample_vars = tf.math.reduce_variance(lf_samples, axis=0)
 
-    npt.assert_allclose(lf_true_means, lf_sample_means, atol=1e-2)
-    npt.assert_allclose(lf_true_vars, lf_sample_vars, atol=1e-2)
+    npt.assert_allclose(lf_true_means, lf_sample_means, atol=1e-3, rtol=1e-3)
+    npt.assert_allclose(lf_true_vars, lf_sample_vars, atol=1e-3, rtol=1e-3)
 
     hf_samples = model.sample(hf_test_locations, 100000)
     hf_sample_means = tf.reduce_mean(hf_samples, axis=0)
     hf_sample_vars = tf.math.reduce_variance(hf_samples, axis=0)
-    npt.assert_allclose(hf_true_means, hf_sample_means, atol=1e-2)
-    npt.assert_allclose(hf_true_vars, hf_sample_vars, atol=1e-2)
+    npt.assert_allclose(hf_true_means, hf_sample_means, atol=1e-3, rtol=1e-3)
+    npt.assert_allclose(hf_true_vars, hf_sample_vars, atol=1e-3, rtol=1e-3)
 
 
 def test_multifidelity_autoregressive_samples_are_varied() -> None:
 
     xs_low = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
     xs_high = tf.Variable(np.linspace(0, 10, 10), dtype=tf.float64)[:, None]
-    lf_obs = tf.sin(xs_low) + tf.random.normal(xs_low.shape, mean=0, stddev=1e-1, dtype=tf.float64)
+    lf_obs = tf.sin(xs_low)
     hf_obs = 2 * tf.sin(xs_high) + tf.random.normal(
         xs_high.shape, mean=0, stddev=1e-1, dtype=tf.float64
     )
