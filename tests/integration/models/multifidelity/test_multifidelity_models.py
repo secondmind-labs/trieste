@@ -136,6 +136,49 @@ def test_multifidelity_autoregressive_predict_low_fidelity_are_consistent() -> N
     # Add some high fidelity points to check that predict on different fids works
     test_locations_30 = tf.Variable(np.linspace(0, 10, 30), dtype=tf.float64)[:, None]
     lf_test_locations = add_fidelity_column(test_locations_30, 0)
+
+    lf_prediction_mean, lf_prediction_var = model.predict(lf_test_locations)
+
+    (
+        lf_prediction_direct_mean,
+        lf_prediction_direct_var,
+    ) = model.lowest_fidelity_signal_model.predict(test_locations_30)
+
+    npt.assert_array_equal(lf_prediction_mean, lf_prediction_direct_mean)  # , rtol=1e-7)
+    npt.assert_array_equal(lf_prediction_var, lf_prediction_direct_var)  # , rtol=1e-7)
+
+
+def test_multifidelity_autoregressive_predict_low_fidelity_are_consistent_with_multiple_fidelities() -> None:
+
+    xs_low = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
+    xs_high = tf.Variable(np.linspace(0, 10, 10), dtype=tf.float64)[:, None]
+    lf_obs = tf.sin(xs_low)
+    hf_obs = 2 * tf.sin(xs_high) + tf.random.normal(
+        xs_high.shape, mean=0, stddev=1e-1, dtype=tf.float64
+    )
+
+    lf_query_points = add_fidelity_column(xs_low, 0)
+    hf_query_points = add_fidelity_column(xs_high, 1)
+
+    lf_dataset = Dataset(lf_query_points, lf_obs)
+    hf_dataset = Dataset(hf_query_points, hf_obs)
+
+    dataset = lf_dataset + hf_dataset
+
+    search_space = Box([0.0], [10.0])
+
+    model = MultifidelityAutoregressive(
+        build_multifidelity_autoregressive_models(
+            dataset, num_fidelities=2, input_search_space=search_space
+        )
+    )
+
+    model.update(dataset)
+    model.optimize(dataset)
+
+    # Add some high fidelity points to check that predict on different fids works
+    test_locations_30 = tf.Variable(np.linspace(0, 10, 30), dtype=tf.float64)[:, None]
+    lf_test_locations = add_fidelity_column(test_locations_30, 0)
     test_locations_32 = tf.Variable(np.linspace(0, 10, 32), dtype=tf.float64)[:, None]
     hf_test_locations = add_fidelity_column(test_locations_32, 1)
 
