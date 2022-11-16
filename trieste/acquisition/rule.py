@@ -379,7 +379,8 @@ class AsynchronousRuleState:
 
         tf.debugging.assert_shapes(
             [(self.pending_points, [None, "D"]), (points_to_remove, [None, "D"])],
-            message=f"""Point to remove shall be 1xD where D is the last dimension of pending points.
+            message=f"""Point to remove shall be 1xD where D is
+                        the last dimension of pending points.
                         Got {tf.shape(self.pending_points)} for pending points
                         and {tf.shape(points_to_remove)} for other points.""",
         )
@@ -558,7 +559,7 @@ class AsynchronousOptimization(
         def state_func(
             state: AsynchronousRuleState | None,
         ) -> tuple[AsynchronousRuleState | None, TensorType]:
-            tf.debugging.Assert(self._acquisition_function is not None, [])
+            tf.debugging.Assert(self._acquisition_function is not None, [tf.constant([])])
 
             if state is None:
                 state = AsynchronousRuleState(None)

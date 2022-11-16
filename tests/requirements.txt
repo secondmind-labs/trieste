@@ -15,6 +15,7 @@
 packaging
 pytest
 PyYAML
+importlib-metadata<5.0
 
 # pin to version of TF used in prod
 gpflux == 0.2.3

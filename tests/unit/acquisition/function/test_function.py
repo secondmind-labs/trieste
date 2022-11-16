@@ -46,6 +46,7 @@ from trieste.acquisition.function.function import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
     AugmentedExpectedImprovement,
+    BatchExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
@@ -55,17 +56,103 @@ from trieste.acquisition.function.function import (
     MultipleOptimismNegativeLowerConfidenceBound,
     NegativeLowerConfidenceBound,
     ProbabilityOfFeasibility,
+    ProbabilityOfImprovement,
     augmented_expected_improvement,
     expected_improvement,
     lower_confidence_bound,
     multiple_optimism_lower_confidence_bound,
-    probability_of_feasibility,
+    probability_below_threshold,
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
-from trieste.objectives import BRANIN_MINIMUM, branin
+from trieste.objectives import Branin
 from trieste.space import Box
 from trieste.types import TensorType
+
+
+def test_probability_of_improvement_builder_builds_pi_using_best_from_model() -> None:
+
+    dataset = Dataset(
+        tf.constant([[-2.0], [-1.0], [0.0], [1.0], [2.0]]),
+        tf.constant([[4.1], [0.9], [0.1], [1.1], [3.9]]),
+    )
+    model = QuadraticMeanAndRBFKernel()
+    acq_fn = ProbabilityOfImprovement().prepare_acquisition_function(model, dataset=dataset)
+    xs = tf.linspace([[-10.0]], [[10.0]], 100)
+    expected = probability_below_threshold(model, tf.constant(0.0))(xs)
+    npt.assert_allclose(acq_fn(xs), expected)
+
+
+def test_probability_of_improvement_builder_updates_pi_using_best_from_model() -> None:
+    dataset = Dataset(
+        tf.constant([[-2.0], [-1.0]]),
+        tf.constant([[4.1], [0.9]]),
+    )
+    model = QuadraticMeanAndRBFKernel()
+    acq_fn = ProbabilityOfImprovement().prepare_acquisition_function(model, dataset=dataset)
+    assert acq_fn._get_tracing_count() == 0  # type: ignore
+    xs = tf.linspace([[-10.0]], [[10.0]], 100)
+    expected = probability_below_threshold(model, tf.constant(1.0))(xs)
+    npt.assert_allclose(acq_fn(xs), expected)
+    assert acq_fn._get_tracing_count() == 1  # type: ignore
+
+    new_dataset = Dataset(
+        tf.concat([dataset.query_points, tf.constant([[0.0], [1.0], [2.0]])], 0),
+        tf.concat([dataset.observations, tf.constant([[0.1], [1.1], [3.9]])], 0),
+    )
+    updated_acq_fn = ProbabilityOfImprovement().update_acquisition_function(
+        acq_fn, model, dataset=new_dataset
+    )
+    # assert updated_acq_fn == acq_fn
+    expected = probability_below_threshold(model, tf.constant(0.0))(xs)
+    npt.assert_allclose(updated_acq_fn(xs), expected)
+    assert acq_fn._get_tracing_count() == 1  # type: ignore
+
+
+def test_probability_of_improvement_builder_raises_for_empty_data() -> None:
+    data = Dataset(tf.zeros([0, 1]), tf.ones([0, 1]))
+
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        ProbabilityOfImprovement().prepare_acquisition_function(
+            QuadraticMeanAndRBFKernel(), dataset=data
+        )
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        ProbabilityOfImprovement().prepare_acquisition_function(QuadraticMeanAndRBFKernel())
+
+
+@random_seed
+@pytest.mark.parametrize("best", [tf.constant([50.0]), Branin.minimum, Branin.minimum * 1.01])
+@pytest.mark.parametrize(
+    "variance_scale, num_samples_per_point, rtol, atol",
+    [
+        (0.1, 1000, 0.01, 1e-9),
+        (1.0, 50_000, 0.01, 1e-3),
+        (10.0, 100_000, 0.01, 1e-2),
+        (100.0, 150_000, 0.01, 1e-1),
+    ],
+)
+def test_probability_below_threshold_as_probability_of_improvement(
+    variance_scale: float, num_samples_per_point: int, best: tf.Tensor, rtol: float, atol: float
+) -> None:
+    variance_scale = tf.constant(variance_scale, tf.float64)
+    best = tf.cast(best, dtype=tf.float64)[0]
+
+    x_range = tf.linspace(0.0, 1.0, 11)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+
+    kernel = tfp.math.psd_kernels.MaternFiveHalves(variance_scale, length_scale=0.25)
+    model = GaussianProcess([Branin.objective], [kernel])
+
+    mean, variance = model.predict(xs)
+    samples = tfp.distributions.Normal(mean, tf.sqrt(variance)).sample(num_samples_per_point)
+    samples_improvement = tf.where(samples < best, 1, 0)
+    pi_approx = tf.reduce_sum(samples_improvement, axis=0) / num_samples_per_point
+
+    pif = probability_below_threshold(model, best)
+    pi = pif(xs[..., None, :])
+
+    npt.assert_allclose(pi, pi_approx, rtol=rtol, atol=atol)
 
 
 def test_expected_improvement_builder_builds_expected_improvement_using_best_from_model() -> None:
@@ -126,7 +213,7 @@ def test_expected_improvement_raises_for_invalid_batch_size(at: TensorType) -> N
 
 
 @random_seed
-@pytest.mark.parametrize("best", [tf.constant([50.0]), BRANIN_MINIMUM, BRANIN_MINIMUM * 1.01])
+@pytest.mark.parametrize("best", [tf.constant([50.0]), Branin.minimum, Branin.minimum * 1.01])
 @pytest.mark.parametrize("test_update", [False, True])
 @pytest.mark.parametrize(
     "variance_scale, num_samples_per_point, rtol, atol",
@@ -153,7 +240,7 @@ def test_expected_improvement(
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
 
     kernel = tfp.math.psd_kernels.MaternFiveHalves(variance_scale, length_scale=0.25)
-    model = GaussianProcess([branin], [kernel])
+    model = GaussianProcess([Branin.objective], [kernel])
 
     mean, variance = model.predict(xs)
     samples = tfp.distributions.Normal(mean, tf.sqrt(variance)).sample(num_samples_per_point)
@@ -292,7 +379,7 @@ def test_mc_expected_improvement_builder_raises_for_model_with_wrong_event_shape
         amplitude=tf.cast(2.3, tf.float64), length_scale=tf.cast(0.5, tf.float64)
     )
     model = GaussianProcessWithSamplers(
-        [lambda x: branin(x), lambda x: quadratic(x)], [matern52, rbf()]
+        [lambda x: Branin.objective(x), lambda x: quadratic(x)], [matern52, rbf()]
     )
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES, match="Expected model with output *."):
         MonteCarloExpectedImprovement(100).prepare_acquisition_function(model, dataset=data)
@@ -364,7 +451,7 @@ def test_mc_expected_improvement_close_to_expected_improvement(
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
 
     kernel = tfp.math.psd_kernels.MaternFiveHalves(variance_scale, length_scale=0.25)
-    model = GaussianProcessWithSamplers([branin], [kernel])
+    model = GaussianProcessWithSamplers([Branin.objective], [kernel])
 
     if test_update:
         builder = MonteCarloExpectedImprovement(num_samples_per_point)
@@ -380,7 +467,7 @@ def test_mc_expected_improvement_close_to_expected_improvement(
         )
     ei_approx = eif(xs[..., None, :])
 
-    best = tf.reduce_min(branin(dataset.query_points))
+    best = tf.reduce_min(Branin.objective(dataset.query_points))
     eif = expected_improvement(model, best)
     ei = eif(xs[..., None, :])  # type: ignore
 
@@ -533,7 +620,7 @@ def test_mc_augmented_expected_improvement_close_to_augmented_expected_improveme
 
     kernel = tfp.math.psd_kernels.MaternFiveHalves(variance_scale, length_scale=0.25)
     model = GaussianProcessWithSamplers(
-        [branin], [kernel], noise_variance=tf.constant(noise_variance, tf.float64)
+        [Branin.objective], [kernel], noise_variance=tf.constant(noise_variance, tf.float64)
     )
 
     if test_update:
@@ -550,7 +637,7 @@ def test_mc_augmented_expected_improvement_close_to_augmented_expected_improveme
         ).prepare_acquisition_function(model, dataset)
     aei_approx = aeif(xs[..., None, :])
 
-    best = tf.reduce_min(branin(dataset.query_points))
+    best = tf.reduce_min(Branin.objective(dataset.query_points))
     aeif = augmented_expected_improvement(model, best)
     aei = aeif(xs[..., None, :])  # type: ignore
 
@@ -637,8 +724,10 @@ def test_lower_confidence_bound(beta: float) -> None:
         (-0.25, tf.constant([[-0.5]]), 0.5 - 0.19146),
     ],
 )
-def test_probability_of_feasibility(threshold: float, at: tf.Tensor, expected: float) -> None:
-    actual = probability_of_feasibility(QuadraticMeanAndRBFKernel(), threshold)(at)
+def test_probability_below_threshold_as_probability_of_feasibility(
+    threshold: float, at: tf.Tensor, expected: float
+) -> None:
+    actual = probability_below_threshold(QuadraticMeanAndRBFKernel(), threshold)(at)
     npt.assert_allclose(actual, expected, rtol=1e-4)
 
 
@@ -654,22 +743,22 @@ def test_probability_of_feasibility(threshold: float, at: tf.Tensor, expected: f
 def test_probability_of_feasibility_builder_builds_pof(threshold: float, at: tf.Tensor) -> None:
     builder = ProbabilityOfFeasibility(threshold)
     acq = builder.prepare_acquisition_function(QuadraticMeanAndRBFKernel())
-    expected = probability_of_feasibility(QuadraticMeanAndRBFKernel(), threshold)(at)
+    expected = probability_below_threshold(QuadraticMeanAndRBFKernel(), threshold)(at)
 
     npt.assert_allclose(acq(at), expected)
 
 
 @pytest.mark.parametrize("shape", various_shapes() - {()})
-def test_probability_of_feasibility_raises_on_non_scalar_threshold(shape: ShapeLike) -> None:
+def test_probability_below_threshold_raises_on_non_scalar_threshold(shape: ShapeLike) -> None:
     threshold = tf.ones(shape)
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        probability_of_feasibility(QuadraticMeanAndRBFKernel(), threshold)
+        probability_below_threshold(QuadraticMeanAndRBFKernel(), threshold)
 
 
 @pytest.mark.parametrize("shape", [[], [0], [2], [2, 1], [1, 2, 1]])
-def test_probability_of_feasibility_raises_on_invalid_at_shape(shape: ShapeLike) -> None:
+def test_probability_below_threshold_raises_on_invalid_at_shape(shape: ShapeLike) -> None:
     at = tf.ones(shape)
-    pof = probability_of_feasibility(QuadraticMeanAndRBFKernel(), 0.0)
+    pof = probability_below_threshold(QuadraticMeanAndRBFKernel(), 0.0)
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         pof(at)
 
@@ -690,7 +779,7 @@ def test_probability_of_feasibility_builder_updates_without_retracing(
 ) -> None:
     builder = ProbabilityOfFeasibility(threshold)
     model = QuadraticMeanAndRBFKernel()
-    expected = probability_of_feasibility(QuadraticMeanAndRBFKernel(), threshold)(at)
+    expected = probability_below_threshold(QuadraticMeanAndRBFKernel(), threshold)(at)
     acq = builder.prepare_acquisition_function(model)
     assert acq._get_tracing_count() == 0  # type: ignore
     npt.assert_allclose(acq(at), expected)
@@ -878,6 +967,181 @@ def test_expected_constrained_improvement_min_feasibility_probability_bound_is_i
 
 
 @pytest.mark.parametrize("sample_size", [-2, 0])
+def test_batch_expected_improvement_raises_for_invalid_sample_size(
+    sample_size: int,
+) -> None:
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        BatchExpectedImprovement(sample_size=sample_size)
+
+
+@pytest.mark.parametrize("sample_size", [2])
+@pytest.mark.parametrize("jitter", [-1e0])
+def test_batch_expected_improvement_raises_for_invalid_jitter(
+    sample_size: int,
+    jitter: float,
+) -> None:
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        BatchExpectedImprovement(sample_size=sample_size, jitter=jitter)
+
+
+@pytest.mark.parametrize("sample_size", [100])
+@pytest.mark.parametrize("jitter", [1e-6])
+def test_batch_expected_improvement_raises_for_empty_data(
+    sample_size: int,
+    jitter: float,
+) -> None:
+    builder = BatchExpectedImprovement(
+        sample_size=sample_size,
+        jitter=jitter,
+    )
+    data = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
+    matern52 = tfp.math.psd_kernels.MaternFiveHalves(
+        amplitude=tf.cast(2.3, tf.float64), length_scale=tf.cast(0.5, tf.float64)
+    )
+    model = GaussianProcessWithBatchSamplers(
+        [lambda x: Branin.objective(x), lambda x: quadratic(x)], [matern52, rbf()]
+    )
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        builder.prepare_acquisition_function(model, dataset=data)
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        builder.prepare_acquisition_function(model)
+
+
+@pytest.mark.parametrize("num_data", [4, 8])
+@pytest.mark.parametrize("batch_size", [2, 3])
+@pytest.mark.parametrize("dimension", [2, 4])
+@random_seed
+def test_batch_expected_improvement_can_reproduce_mc_excpected_improvement_handcrafted_problem(
+    num_data: int,
+    batch_size: int,
+    dimension: int,
+    jitter: float = 1e-6,
+    sample_size: int = 200,
+    mc_sample_size: int = 100000,
+) -> None:
+
+    xs = tf.random.uniform([num_data, dimension], dtype=tf.float64)
+
+    data = Dataset(xs, quadratic(xs))
+    model = QuadraticMeanAndRBFKernelWithBatchSamplers(dataset=data)
+    mean, cov = model.predict_joint(xs)
+
+    mvn = tfp.distributions.MultivariateNormalFullCovariance(tf.linalg.matrix_transpose(mean), cov)
+    mvn_samples = mvn.sample(10000)
+
+    dummy_inputs = [dimension * [0.1]]
+    dummy_outputs = [dimension * [0.1 ** 2.0]]
+
+    min_predictive_mean_at_known_points = dimension * 0.1 ** 2.0
+
+    # fmt: off
+    expected = tf.reduce_mean(tf.reduce_max(tf.maximum(
+        min_predictive_mean_at_known_points - mvn_samples, 0.0
+    ), axis=-1), axis=0)
+    # fmt: on
+
+    builder = BatchMonteCarloExpectedImprovement(10_000)
+    acq = builder.prepare_acquisition_function(
+        model, dataset=mk_dataset(dummy_inputs, dummy_outputs)
+    )
+
+    npt.assert_allclose(acq(xs), expected, rtol=0.05)
+
+
+@pytest.mark.parametrize("num_data", [4, 8, 16])
+@pytest.mark.parametrize("batch_size", [2, 3])
+@pytest.mark.parametrize("dimension", [2, 4, 6])
+@random_seed
+def test_batch_expected_improvement_can_reproduce_mc_excpected_improvement_random_problems(
+    num_data: int,
+    batch_size: int,
+    dimension: int,
+    jitter: float = 1e-6,
+    sample_size: int = 200,
+    mc_sample_size: int = 100000,
+    num_parallel: int = 4,
+) -> None:
+
+    known_query_points = tf.random.uniform([num_data, dimension], dtype=tf.float64)
+
+    data = Dataset(known_query_points, quadratic(known_query_points))
+    model = QuadraticMeanAndRBFKernelWithBatchSamplers(dataset=data)
+
+    batch_ei = BatchExpectedImprovement(
+        sample_size=sample_size,
+        jitter=jitter,
+    ).prepare_acquisition_function(
+        model=model,
+        dataset=data,
+    )
+
+    batch_mcei = BatchMonteCarloExpectedImprovement(
+        sample_size=mc_sample_size,
+        jitter=jitter,
+    ).prepare_acquisition_function(
+        model=model,
+        dataset=data,
+    )
+
+    xs = tf.random.uniform([num_parallel, batch_size, dimension], dtype=tf.float64)
+
+    npt.assert_allclose(batch_mcei(xs), batch_ei(xs), rtol=2e-2)
+    # and again, since the sampler uses cacheing
+    npt.assert_allclose(batch_mcei(xs), batch_ei(xs), rtol=2e-2)
+
+
+@pytest.mark.parametrize("num_data", [10])
+@pytest.mark.parametrize("num_parallel", [3])
+@pytest.mark.parametrize("batch_size", [5])
+@pytest.mark.parametrize("sample_size", [100])
+@pytest.mark.parametrize("dimension", [2])
+@pytest.mark.parametrize("jitter", [1e-6])
+@pytest.mark.parametrize("mc_sample_size", [int(4e5)])
+@random_seed
+def test_batch_expected_improvement_updates_without_retracing(
+    num_data: int,
+    num_parallel: int,
+    batch_size: int,
+    sample_size: int,
+    dimension: int,
+    jitter: float,
+    mc_sample_size: int,
+) -> None:
+
+    known_query_points = tf.random.uniform([num_data, dimension], dtype=tf.float64)
+    data = Dataset(
+        known_query_points[num_data - 2 :], quadratic(known_query_points[num_data - 2 :])
+    )
+    model = QuadraticMeanAndRBFKernelWithBatchSamplers(dataset=data)
+
+    batch_ei_builder = BatchExpectedImprovement(
+        sample_size=sample_size,
+        jitter=jitter,
+    )
+
+    batch_mcei_builder = BatchMonteCarloExpectedImprovement(
+        sample_size=mc_sample_size,
+        jitter=jitter,
+    )
+
+    xs = tf.random.uniform([num_parallel, batch_size, dimension], dtype=tf.float64)
+
+    batch_ei = batch_ei_builder.prepare_acquisition_function(model=model, dataset=data)
+    batch_mcei = batch_mcei_builder.prepare_acquisition_function(model=model, dataset=data)
+    assert batch_ei.__call__._get_tracing_count() == 0  # type: ignore
+    npt.assert_allclose(batch_mcei(xs), batch_ei(xs), rtol=2e-2)
+    assert batch_ei.__call__._get_tracing_count() == 1  # type: ignore
+
+    data = Dataset(known_query_points, quadratic(known_query_points))
+    up_batch_ei = batch_ei_builder.update_acquisition_function(batch_ei, model, dataset=data)
+    batch_mcei = batch_mcei_builder.update_acquisition_function(batch_mcei, model, dataset=data)
+    assert up_batch_ei == batch_ei
+    assert batch_ei.__call__._get_tracing_count() == 1  # type: ignore
+    npt.assert_allclose(batch_mcei(xs), batch_ei(xs), rtol=2e-2)
+    assert batch_ei.__call__._get_tracing_count() == 1  # type: ignore
+
+
+@pytest.mark.parametrize("sample_size", [-2, 0])
 def test_batch_monte_carlo_expected_improvement_raises_for_invalid_sample_size(
     sample_size: int,
 ) -> None:
@@ -897,7 +1161,7 @@ def test_batch_monte_carlo_expected_improvement_raises_for_empty_data() -> None:
         amplitude=tf.cast(2.3, tf.float64), length_scale=tf.cast(0.5, tf.float64)
     )
     model = GaussianProcessWithBatchSamplers(
-        [lambda x: branin(x), lambda x: quadratic(x)], [matern52, rbf()]
+        [lambda x: Branin.objective(x), lambda x: quadratic(x)], [matern52, rbf()]
     )
     with pytest.raises(tf.errors.InvalidArgumentError):
         builder.prepare_acquisition_function(model, dataset=data)
@@ -912,7 +1176,7 @@ def test_batch_monte_carlo_expected_improvement_raises_for_model_with_wrong_even
         amplitude=tf.cast(2.3, tf.float64), length_scale=tf.cast(0.5, tf.float64)
     )
     model = GaussianProcessWithBatchSamplers(
-        [lambda x: branin(x), lambda x: quadratic(x)], [matern52, rbf()]
+        [lambda x: Branin.objective(x), lambda x: quadratic(x)], [matern52, rbf()]
     )
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         builder.prepare_acquisition_function(model, dataset=data)

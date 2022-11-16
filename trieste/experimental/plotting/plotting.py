@@ -352,9 +352,7 @@ def plot_mobo_points_in_obj_space(
     )
 
     _, dom = non_dominated(obs_values)
-    idx_pareto = (
-        np.where(dom == 0) if mask_fail is None else np.where(np.logical_and(dom == 0, ~mask_fail))
-    )
+    idx_pareto = np.where(dom) if mask_fail is None else np.where(np.logical_and(dom, ~mask_fail))
 
     pts = obs_values.numpy() if tf.is_tensor(obs_values) else obs_values
     num_pts = pts.shape[0]
