@@ -177,7 +177,7 @@ def test_multifidelity_autoregressive_predict_low_fidelity_are_consistent_with_m
     model.optimize(dataset)
 
     # Add some high fidelity points to check that predict on different fids works
-    test_locations_30 = tf.Variable(np.linspace(0, 10, 30), dtype=tf.float64)[:, None]
+    test_locations_30 = tf.Variable(np.linspace(0, 10, 60), dtype=tf.float64)[:, None]
     lf_test_locations = add_fidelity_column(test_locations_30, 0)
     test_locations_32 = tf.Variable(np.linspace(0, 10, 32), dtype=tf.float64)[:, None]
     hf_test_locations = add_fidelity_column(test_locations_32, 1)
@@ -185,7 +185,10 @@ def test_multifidelity_autoregressive_predict_low_fidelity_are_consistent_with_m
     concat_test_locations = tf.concat([lf_test_locations, hf_test_locations], axis=0)
 
     concat_prediction_mean, concat_prediction_var = model.predict(concat_test_locations)
-    lf_prediction_mean, lf_prediction_var = concat_prediction_mean[:30], concat_prediction_var[:30]
+    lf_prediction_mean, lf_prediction_var = (
+        concat_prediction_mean[:60],
+        concat_prediction_var[:60],
+    )
 
     (
         lf_prediction_direct_mean,

@@ -1431,30 +1431,27 @@ class MultifidelityAutoregressive(TrainableProbabilisticModel):
             query_points_wo_fidelity
         )  # [..., N, P], [..., N, P]
 
-        for fidelity in range(self.num_fidelities):
-            if fidelity == 0:
-                fidelity_residual_mean = 0
-                fidelity_residual_var = 0
-            else:
-                # Find indices of query points that need predicting for
-                mask = query_points_fidelity_col >= fidelity  # [..., N, 1]
-                fidelity_indices = tf.where(mask)[..., :-1]
-                # Gather necessary query points and  predict
-                fidelity_filtered_query_points = tf.gather_nd(
-                    query_points_wo_fidelity, fidelity_indices
-                )
-                (
-                    filtered_fidelity_residual_mean,
-                    filtered_fidelity_residual_var,
-                ) = self.fidelity_residual_models[fidelity].predict(fidelity_filtered_query_points)
+        for fidelity in range(1, int(tf.reduce_max(query_points_fidelity_col)) + 1):
 
-                # Scatter predictions back into correct location
-                fidelity_residual_mean = tf.tensor_scatter_nd_update(
-                    signal_mean, fidelity_indices, filtered_fidelity_residual_mean
-                )
-                fidelity_residual_var = tf.tensor_scatter_nd_update(
-                    signal_var, fidelity_indices, filtered_fidelity_residual_var
-                )
+            # Find indices of query points that need predicting for
+            mask = query_points_fidelity_col >= fidelity  # [..., N, 1]
+            fidelity_indices = tf.where(mask)[..., :-1]
+            # Gather necessary query points and  predict
+            fidelity_filtered_query_points = tf.gather_nd(
+                query_points_wo_fidelity, fidelity_indices
+            )
+            (
+                filtered_fidelity_residual_mean,
+                filtered_fidelity_residual_var,
+            ) = self.fidelity_residual_models[fidelity].predict(fidelity_filtered_query_points)
+
+            # Scatter predictions back into correct location
+            fidelity_residual_mean = tf.tensor_scatter_nd_update(
+                signal_mean, fidelity_indices, filtered_fidelity_residual_mean
+            )
+            fidelity_residual_var = tf.tensor_scatter_nd_update(
+                signal_var, fidelity_indices, filtered_fidelity_residual_var
+            )
 
             # Calculate mean and var for all columns (will be incorrect for qps with fid < fidelity)
             new_fidelity_signal_mean = self.rho[fidelity] * signal_mean + fidelity_residual_mean
@@ -1508,7 +1505,7 @@ class MultifidelityAutoregressive(TrainableProbabilisticModel):
             query_points_wo_fidelity, num_samples
         )  # [S, N, P]
 
-        for fidelity in range(1, self.num_fidelities):
+        for fidelity in range(1, int(tf.reduce_max(query_points_fidelity_col)) + 1):
 
             fidelity_residual_sample = self.fidelity_residual_models[fidelity].sample(
                 query_points_wo_fidelity, num_samples
@@ -1524,77 +1521,6 @@ class MultifidelityAutoregressive(TrainableProbabilisticModel):
             signal_sample = tf.where(mask, new_fidelity_signal_sample, signal_sample)
 
         return signal_sample
-
-    def sample_broken(self, query_points: TensorType, num_samples: int) -> TensorType:
-        """
-        Sample `num_samples` samples from the posterior distribution at `query_points`
-
-        :param query_points: The query points at which to sample of shape [N, D+1], where the
-            final column of the final dimension contains the fidelity of the query point
-        :param num_samples: The number of samples (S) to generate for each query point.
-        :return: samples from the posterior of shape [S, N, P]
-        """
-        (
-            query_points_wo_fidelity,
-            query_points_fidelity_col,
-        ) = check_and_extract_fidelity_query_points(
-            query_points, max_fidelity=self.num_fidelities - 1
-        )
-        print("qp_wo_fid,fid", query_points_wo_fidelity.shape, query_points_fidelity_col.shape)
-        signal_sample = self.lowest_fidelity_signal_model.sample(
-            query_points_wo_fidelity, num_samples
-        )  # [..., S, N, 1]
-
-        print("signal_sample", signal_sample.shape)
-
-        for fidelity in range(self.num_fidelities):
-            if fidelity == 0:
-                fidelity_residual_sample = 0
-            else:
-                mask = query_points_fidelity_col >= fidelity
-                print(mask.shape)  # [..., N, 1]
-                fidelity_indices = tf.where(mask)[
-                    ..., :-1
-                ]  # Strip the last value of the indices, as we want slices in D
-                # [F, A = len(...) + 1]
-                print("fidelity_indices", fidelity_indices.shape)
-                # Gather necessary query points and get sample
-                fidelity_filtered_query_points = tf.gather_nd(
-                    query_points_wo_fidelity, fidelity_indices
-                )  # [..., F <= N, A]
-                print("fidelity_filtered_qp", fidelity_filtered_query_points.shape)
-                fidelity_filtered_samples = self.fidelity_residual_models[fidelity].sample(
-                    fidelity_filtered_query_points, num_samples
-                )  # [S, F, A]
-                # Have to switch sample dimension and batch dimension for scatter_nd_update
-                print("fidelity_filtered_samples", fidelity_filtered_samples.shape)
-                print(signal_sample.shape, fidelity_indices.shape, fidelity_filtered_samples.shape)
-                fidelity_filtered_samples = tf.transpose(fidelity_filtered_samples, perm=[1, 0, 2])
-                signal_sample = tf.transpose(signal_sample, perm=[1, 0, 2, 3])
-                print(signal_sample.shape, fidelity_indices.shape, fidelity_filtered_samples.shape)
-
-                fidelity_residual_sample = tf.tensor_scatter_nd_update(
-                    signal_sample, fidelity_indices, fidelity_filtered_samples
-                )
-
-            new_fidelity_signal_sample = (
-                self.rho[fidelity] * signal_sample + fidelity_residual_sample
-            )
-
-            mask = query_points_fidelity_col >= fidelity  # [..., N, 1]
-            # Repeat mask for each sample
-            mask_repeated = tf.repeat(mask[..., None, :, :], num_samples, axis=-3)  # [..., S, N, 1]
-            signal_sample = tf.where(
-                mask_repeated, new_fidelity_signal_sample, signal_sample
-            )  # [..., S, N, 1]
-
-        return signal_sample
-
-    # def sample_from_predict(self, query_points: TensorType, num_samples: int) -> TensorType:
-
-    #     mean, var = self.predict(query_points)  # [..., N, P], [..., ]
-
-    #     # Unfinished
 
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
