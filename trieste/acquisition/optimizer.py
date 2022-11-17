@@ -439,7 +439,7 @@ def _perform_parallel_continuous_optimization(
     )
 
     # Set up child greenlets
-    child_greenlets = [ScipyLbfgsBGreenlet() for _ in range(num_optimization_runs)]
+    child_greenlets = [ScipyOptimizerGreenlet() for _ in range(num_optimization_runs)]
     vectorized_child_results: List[Union[spo.OptimizeResult, "np.ndarray[Any, Any]"]] = [
         gr.switch(vectorized_starting_points[i].numpy(), bounds[i], optimizer_args)
         for i, gr in enumerate(child_greenlets)
@@ -490,10 +490,10 @@ def _perform_parallel_continuous_optimization(
     return (successes, fun_values, chosen_x, nfev)
 
 
-class ScipyLbfgsBGreenlet(gr.greenlet):  # type: ignore[misc]
+class ScipyOptimizerGreenlet(gr.greenlet):  # type: ignore[misc]
     """
-    Worker greenlet that runs a single Scipy L-BFGS-B. Each greenlet performs all the L-BFGS-B
-    update steps required for an individual optimization. However, the evaluation
+    Worker greenlet that runs a single Scipy L-BFGS-B (by default). Each greenlet performs all the
+    optimizer update steps required for an individual optimization. However, the evaluation
     of our acquisition function (and its gradients) is delegated back to the main Tensorflow
     process (the parent greenlet) where evaluations can be made efficiently in parallel.
     """
@@ -523,13 +523,13 @@ class ScipyLbfgsBGreenlet(gr.greenlet):  # type: ignore[misc]
 
             return cast("np.ndarray[Any, Any]", cache_y), cast("np.ndarray[Any, Any]", cache_dy_dx)
 
+        default_optimizer_args = dict(method="l-bfgs-b")
         return spo.minimize(
             lambda x: value_and_gradient(x)[0],
             start,
             jac=lambda x: value_and_gradient(x)[1],
-            method="l-bfgs-b",
             bounds=bounds,
-            **(optimizer_args or {}),
+            **dict(default_optimizer_args, **(optimizer_args or {})),
         )
 
 
