@@ -14,8 +14,8 @@ from trieste.models.gpflow import GaussianProcessRegression
 from trieste.models.gpflow.builders import build_gpr, build_multifidelity_autoregressive_models
 from trieste.models.gpflow.models import MultifidelityAutoregressive
 from trieste.objectives.utils import mk_observer
-from trieste.types import TensorType
 from trieste.space import Box
+from trieste.types import TensorType
 
 
 def noisy_linear_multifidelity(x: TensorType) -> TensorType:

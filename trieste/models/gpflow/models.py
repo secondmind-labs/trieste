@@ -1489,6 +1489,7 @@ class MultifidelityAutoregressive(TrainableProbabilisticModel):
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         """
         Sample `num_samples` samples from the posterior distribution at `query_points`
+
         :param query_points: The query points at which to sample of shape [N, D+1], where the
             final column of the final dimension contains the fidelity of the query point
         :param num_samples: The number of samples (S) to generate for each query point.
