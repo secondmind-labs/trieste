@@ -1108,14 +1108,14 @@ class BatchHypervolumeSharpeRatioIndicator(
 
     def __init__(
         self,
-        batch_size: int = 5,
+        num_query_points: int = 1,
         ga_population_size: int = 500,
         ga_n_generations: int = 200,
         filter_threshold: float = 0.1,
         noisy_observations: bool = True,
     ):
         """
-        :param batch_size: The number of points in a batch. Defaults to 5.
+        :param num_query_points: The number of points in a batch. Defaults to 5.
         :param ga_population_size: The population size used in the genetic algorithm
              that finds points on the Pareto front. Defaults to 500.
         :param ga_n_generations: The number of genenrations to run in the genetic
@@ -1124,12 +1124,12 @@ class BatchHypervolumeSharpeRatioIndicator(
              points from the Sharpe ratio optimisation. Defaults to 0.1.
         :param noisy_observations: Whether the observations have noise. Defaults to True.
         """
-        if not batch_size > 0:
-            raise ValueError(f"Batch size must be greater than 0, got {batch_size}")
-        if not ga_population_size >= batch_size:
+        if not num_query_points > 0:
+            raise ValueError(f"Num query points must be greater than 0, got {num_query_points}")
+        if not ga_population_size >= num_query_points:
             raise ValueError(
-                "Population size must be greater or equal to batch size, got "
-                f"batch size as {batch_size} and population size as {ga_population_size}"
+                "Population size must be greater or equal to num query points size, got num"
+                f" query points as {num_query_points} and population size as {ga_population_size}"
             )
         if not ga_n_generations > 0:
             raise ValueError(f"Number of generation must be greater than 0, got {ga_n_generations}")
@@ -1143,7 +1143,7 @@ class BatchHypervolumeSharpeRatioIndicator(
         builder = ProbabilityOfImprovement().using(OBJECTIVE)
 
         self._builder: AcquisitionFunctionBuilder[ProbabilisticModel] = builder
-        self._batch_size: int = batch_size
+        self._num_query_points: int = num_query_points
         self._population_size: int = ga_population_size
         self._n_generations: int = ga_n_generations
         self._filter_threshold: float = filter_threshold
@@ -1153,8 +1153,9 @@ class BatchHypervolumeSharpeRatioIndicator(
     def __repr__(self) -> str:
         """"""
         return f"""BatchHypervolumeSharpeRatioIndicator(
-        batch_size={self._batch_size}, ga_population_size={self._population_size},
-        ga_n_generations={self._n_generations}, filter_threshold={self._filter_threshold}
+        num_query_points={self._num_query_points}, ga_population_size={self._population_size},
+        ga_n_generations={self._n_generations}, filter_threshold={self._filter_threshold},
+        noisy_observations={self._noisy_observations}
         )
         """
 
@@ -1182,7 +1183,7 @@ class BatchHypervolumeSharpeRatioIndicator(
 
         above_threshold = probs_of_improvement > self._filter_threshold
 
-        if np.sum(above_threshold) >= self._batch_size and nd_mean_std.shape[1] == 2:
+        if np.sum(above_threshold) >= self._num_query_points and nd_mean_std.shape[1] == 2:
             # There are enough points above the threshold to get a batch
             out_points, out_mean_std = (
                 nd_points[above_threshold.squeeze(), :],
@@ -1242,7 +1243,7 @@ class BatchHypervolumeSharpeRatioIndicator(
 
         # Sample points from set using qHSRI
         _, batch_ids = pareto_set.sample_diverse_subset(
-            self._batch_size, allow_repeats=self._noisy_observations
+            self._num_query_points, allow_repeats=self._noisy_observations
         )
 
         batch = filtered_points[batch_ids]

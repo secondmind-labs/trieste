@@ -125,8 +125,8 @@ except ImportError:
             id="BatchMonteCarloExpectedHypervolumeImprovement/4",
         ),
         pytest.param(
-            25,
-            BatchHypervolumeSharpeRatioIndicator() if pymoo else None,
+            15,
+            BatchHypervolumeSharpeRatioIndicator(num_query_points=20) if pymoo else None,
             -3.2095,
             id="BatchHypervolumeSharpeRatioIndicator",
             marks=pytest.mark.qhsri,
