@@ -36,6 +36,7 @@ The following tutorials explore various optimization problems using Trieste.
    notebooks/feasible_sets
    notebooks/openai_gym_lunar_lander
    notebooks/scalable_thompson_sampling_using_sparse_gaussian_processes
+   notebooks/qhsri-tutorial
 
 Frequently asked questions
 --------------------------
