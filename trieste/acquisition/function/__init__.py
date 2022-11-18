@@ -46,6 +46,7 @@ from .function import (
     NegativeLowerConfidenceBound,
     NegativePredictiveMean,
     ProbabilityOfFeasibility,
+    ProbabilityOfImprovement,
     augmented_expected_improvement,
     batch_expected_improvement,
     expected_improvement,
