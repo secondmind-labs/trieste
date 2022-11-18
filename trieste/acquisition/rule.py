@@ -1206,6 +1206,7 @@ class BatchHypervolumeSharpeRatioIndicator(
         This method uses NSGA-II to create a Pareto set of the mean and standard
         deviation of the posterior of the probabilistic model, and then selects
         points to observe based on maximising the Sharpe ratio.
+
         :param search_space: The local acquisition search space for *this step*.
         :param models: The model for each tag.
         :param datasets: The known observer query points and observations.
