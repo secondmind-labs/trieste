@@ -41,10 +41,10 @@ setup(
         "absl-py",
         "dill!=0.3.6",
         "gpflow>=2.6.3",
-        "gpflux>=0.2.3",
+        "gpflux>=0.3.1",
         "numpy",
-        "tensorflow>=2.4",
-        "tensorflow-probability>=0.12",
+        "tensorflow>=2.5",
+        "tensorflow-probability>=0.13",
         "greenlet>=1.1.0",
     ],
     extras_require={
