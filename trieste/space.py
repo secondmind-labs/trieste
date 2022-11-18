@@ -17,8 +17,10 @@ from __future__ import annotations
 import operator
 from abc import ABC, abstractmethod
 from functools import reduce
-from typing import Optional, Sequence, TypeVar, overload
+from typing import Any, Callable, Optional, Sequence, Tuple, TypeVar, overload
 
+import numpy as np
+import scipy.optimize as spo
 import tensorflow as tf
 import tensorflow_probability as tfp
 
@@ -30,6 +32,164 @@ SearchSpaceType = TypeVar("SearchSpaceType", bound="SearchSpace")
 
 DEFAULT_DTYPE: tf.DType = tf.float64
 """ Default dtype to use when none is provided. """
+
+
+class NonlinearConstraint(spo.NonlinearConstraint):  # type: ignore[misc]
+    """
+    A wrapper class for nonlinear constraints on variables. The constraints expression is of the
+    form::
+
+        lb <= fun(x) <= ub
+
+    :param fun: The function defining the nonlinear constraints; with input shape [..., D] and
+        output shape [..., M], where M is the number of constraints.
+    :param lb: The lower bound of the constraint. Should be a scalar or of shape [M].
+    :param ub: The upper bound of the constraint. Should be a scalar or of shape [M].
+    :param keep_feasible: Keep the constraints feasible throughout optimization iterations if this
+        is `True`.
+    """
+
+    def __init__(
+        self,
+        fun: Callable[[TensorType], TensorType],
+        lb: Sequence[float] | TensorType,
+        ub: Sequence[float] | TensorType,
+        keep_feasible: bool = False,
+    ):
+
+        # Implement caching to avoid calling the constraint function multiple times to get value
+        # and gradient.
+        def _constraint_value_and_gradient(x: TensorType) -> Tuple[TensorType, TensorType]:
+            val, grad = tfp.math.value_and_gradient(fun, x)
+            return tf.cast(val, dtype=x.dtype), tf.cast(grad, dtype=x.dtype)
+
+        cache_x: Optional["np.ndarray[Any, Any]"] = None
+        cache_f: Optional["np.ndarray[Any, Any]"] = None
+        cache_df_dx: Optional["np.ndarray[Any, Any]"] = None
+
+        def val_fun(x: TensorType) -> TensorType:
+            nonlocal cache_x, cache_f, cache_df_dx
+            if not np.array_equal(x, cache_x):
+                cache_f, cache_df_dx = _constraint_value_and_gradient(x)
+                cache_x = x
+            return cache_f
+
+        def jac_fun(x: TensorType) -> TensorType:
+            nonlocal cache_x, cache_f, cache_df_dx
+            if not np.array_equal(x, cache_x):
+                cache_f, cache_df_dx = _constraint_value_and_gradient(x)
+                cache_x = x
+            return cache_df_dx
+
+        self._orig_fun = fun  # Used for constraints equality check.
+        super().__init__(val_fun, lb, ub, jac=jac_fun, keep_feasible=keep_feasible)
+
+    def residual(self, points: TensorType) -> TensorType:
+        """
+        Calculate the residuals between the constraint function and its lower/upper limits.
+
+        For example:
+
+        >>> points = tf.constant([[-1.0, 0.4], [-1.0, 0.6], [0.0, 0.4]], dtype=DEFAULT_DTYPE)
+        >>> nlc = NonlinearConstraint(lambda x: x[..., 0] - tf.math.sin(x[..., 1]), -1.4, 1.9)
+        >>> nlc.residual(points)
+        <tf.Tensor: shape=(3, 2), dtype=float64, numpy=
+        array([[ 0.01058163,  3.28941832],
+               [-0.1646425 ,  3.46464245],
+               [ 1.01058163,  2.28941832]])>
+
+
+        :param points: The points to calculate the residuals for, with shape [..., D].
+        :return: A tensor containing the lower and upper residual values with shape [..., M*2].
+        """
+        non_d_axes = tf.ones_like(tf.shape(points))[:-1]
+        lb = tf.cast(tf.reshape(self.lb, (*non_d_axes, -1)), dtype=points.dtype)
+        ub = tf.cast(tf.reshape(self.ub, (*non_d_axes, -1)), dtype=points.dtype)
+        fval = self.fun(points)
+        fval = tf.reshape(fval, (*points.shape[:-1], -1))  # Atleast 2D.
+        fval = tf.cast(fval, dtype=points.dtype)
+        values = [fval - lb, ub - fval]
+        values = tf.concat(values, axis=-1)
+        return values
+
+    def __eq__(self, other: object) -> bool:
+        """
+        :param other: A constraint.
+        :return: Whether the constraint is identical to this one.
+        """
+        if not isinstance(other, NonlinearConstraint):
+            return False
+        return bool(
+            tf.reduce_all(self._orig_fun == other._orig_fun)
+            and tf.reduce_all(self.lb == other.lb)
+            and tf.reduce_all(self.ub == other.ub)
+            and tf.reduce_all(self.keep_feasible == other.keep_feasible)
+        )
+
+
+class LinearConstraint(spo.LinearConstraint):  # type: ignore[misc]
+    """
+    A wrapper class for linear constraints on variables. The constraints expression is of the form::
+
+        lb <= A @ x <= ub
+
+    :param A: The matrix defining the linear constraints with shape [M, D], where M is the
+        number of constraints.
+    :param lb: The lower bound of the constraint. Should be a scalar or of shape [M].
+    :param ub: The upper bound of the constraint. Should be a scalar or of shape [M].
+    :param keep_feasible: Keep the constraints feasible throughout optimization iterations if this
+        is `True`.
+    """
+
+    def __init__(
+        self,
+        A: TensorType,
+        lb: Sequence[float] | TensorType,
+        ub: Sequence[float] | TensorType,
+        keep_feasible: bool = False,
+    ):
+        super().__init__(A, lb, ub, keep_feasible=keep_feasible)
+
+    def residual(self, points: TensorType) -> TensorType:
+        """
+        Calculate the residuals between the constraint function and its lower/upper limits.
+
+        >>> points = tf.constant([[-1.0, 0.4], [-1.0, 0.6], [0.0, 0.4]], dtype=DEFAULT_DTYPE)
+        >>> lc = LinearConstraint(A=np.array([[-1.0, 1.0], [1.0, 0.0]]),
+        ...                       lb=np.array([-0.4, 0.5]), ub=np.array([-0.2, 0.9]))
+        >>> lc.residual(points)
+        <tf.Tensor: shape=(3, 4), dtype=float64, numpy=
+        array([[ 1.8, -1.5, -1.6,  1.9],
+               [ 2. , -1.5, -1.8,  1.9],
+               [ 0.8, -0.5, -0.6,  0.9]])>
+
+
+        :param points: The points to calculate the residuals for, with shape [..., D].
+        :return: A tensor containing the lower and upper residual values with shape [..., M*2].
+        """
+        non_d_axes = tf.ones_like(tf.shape(points))[:-1]
+        lb = tf.cast(tf.reshape(self.lb, (*non_d_axes, -1)), dtype=points.dtype)
+        ub = tf.cast(tf.reshape(self.ub, (*non_d_axes, -1)), dtype=points.dtype)
+        A = tf.cast(self.A, dtype=points.dtype)
+        fval = tf.linalg.matmul(points, A, transpose_b=True)
+        fval = tf.reshape(fval, (*points.shape[:-1], -1))  # Atleast 2D.
+        values = [fval - lb, ub - fval]
+        values = tf.concat(values, axis=-1)
+        return values
+
+    def __eq__(self, other: object) -> bool:
+        """
+        :param other: A constraint.
+        :return: Whether the constraint is identical to this one.
+        """
+        if not isinstance(other, LinearConstraint):
+            return False
+        return bool(
+            tf.reduce_all(self.A == other.A)
+            and tf.reduce_all(self.lb == other.lb)
+            and tf.reduce_all(self.ub == other.ub)
+            and tf.reduce_all(self.keep_feasible == other.keep_feasible)
+        )
 
 
 class SearchSpace(ABC):
@@ -94,7 +254,8 @@ class SearchSpace(ABC):
             If both spaces are of the same type then this calls the :meth:`product` method.
             Otherwise, it generates a :class:`TaggedProductSearchSpace`.
         """
-        if isinstance(other, type(self)):
+        # If the search space has any constraints, always return a tagged product search space.
+        if not self.has_constraints and not other.has_constraints and isinstance(other, type(self)):
             return self.product(other)
         return TaggedProductSearchSpace((self, other))
 
@@ -117,7 +278,12 @@ class SearchSpace(ABC):
         :param num_samples: The number of points in the :class:`DiscreteSearchSpace`.
         :return: A discrete search space consisting of ``num_samples`` points sampled uniformly from
             this search space.
+        :raise NotImplementedError: If this :class:`SearchSpace` has constraints.
         """
+        if self.has_constraints:  # Constraints are not supported.
+            raise NotImplementedError(
+                "Discretization is currently not supported in the presence of constraints."
+            )
         return DiscreteSearchSpace(points=self.sample(num_samples))
 
     @abstractmethod
@@ -126,6 +292,24 @@ class SearchSpace(ABC):
         :param other: A search space.
         :return: Whether the search space is identical to this one.
         """
+
+    def is_feasible(self, points: TensorType) -> TensorType:
+        """
+        Checks if points satisfy the explicit constraints of this :class:`SearchSpace`.
+        Note membership of the search space is not checked.
+
+        :param points: The points to check constraints feasibility for, with shape [..., D].
+        :return: A tensor of booleans. Returns `True` for each point if it is feasible in this
+            search space, else `False`.
+        """
+        # By default assume everything is feasible; can be overridden by a subclass.
+        return True
+
+    @property
+    def has_constraints(self) -> bool:
+        """Returns `True` if this search space has any explicit constraints specified."""
+        # By default assume there are no constraints; can be overridden by a subclass.
+        return False
 
 
 class DiscreteSearchSpace(SearchSpace):
@@ -246,17 +430,31 @@ class Box(SearchSpace):
     """
 
     @overload
-    def __init__(self, lower: Sequence[float], upper: Sequence[float]):
+    def __init__(
+        self,
+        lower: Sequence[float],
+        upper: Sequence[float],
+        constraints: Optional[Sequence[LinearConstraint | NonlinearConstraint]] = None,
+        ctol: float = 1e-7,
+    ):
         ...
 
     @overload
-    def __init__(self, lower: TensorType, upper: TensorType):
+    def __init__(
+        self,
+        lower: TensorType,
+        upper: TensorType,
+        constraints: Optional[Sequence[LinearConstraint | NonlinearConstraint]] = None,
+        ctol: float = 1e-7,
+    ):
         ...
 
     def __init__(
         self,
         lower: Sequence[float] | TensorType,
         upper: Sequence[float] | TensorType,
+        constraints: Optional[Sequence[LinearConstraint | NonlinearConstraint]] = None,
+        ctol: float = 1e-7,
     ):
         r"""
         If ``lower`` and ``upper`` are `Sequence`\ s of floats (such as lists or tuples),
@@ -266,6 +464,8 @@ class Box(SearchSpace):
             and if a tensor, must have float type.
         :param upper: The upper (inclusive) bounds of the box. Must have shape [D] for positive D,
             and if a tensor, must have float type.
+        :param constraints: Sequence of explicit input constraints for this search space.
+        :param ctol: Tolerance to use to check constraints satisfaction.
         :raise ValueError (or tf.errors.InvalidArgumentError): If any of the following are true:
 
             - ``lower`` and ``upper`` have invalid shapes.
@@ -290,9 +490,15 @@ class Box(SearchSpace):
 
         self._dimension = tf.shape(self._upper)[-1]
 
+        if constraints is None:
+            self._constraints: Sequence[LinearConstraint | NonlinearConstraint] = []
+        else:
+            self._constraints = constraints
+        self._ctol = ctol
+
     def __repr__(self) -> str:
         """"""
-        return f"Box({self._lower!r}, {self._upper!r})"
+        return f"Box({self._lower!r}, {self._upper!r}, {self._constraints!r})"
 
     @property
     def lower(self) -> tf.Tensor:
@@ -308,6 +514,11 @@ class Box(SearchSpace):
     def dimension(self) -> TensorType:
         """The number of inputs in this search space."""
         return self._dimension
+
+    @property
+    def constraints(self) -> Sequence[LinearConstraint | NonlinearConstraint]:
+        """The sequence of explicit constraints specified in this search space."""
+        return self._constraints
 
     def __contains__(self, value: TensorType) -> bool | TensorType:
         """
@@ -429,11 +640,41 @@ class Box(SearchSpace):
         if not isinstance(other, Box):
             return NotImplemented
         return bool(
-            tf.reduce_all(self.lower == other.lower) and tf.reduce_all(self.upper == other.upper)
+            tf.reduce_all(self.lower == other.lower)
+            and tf.reduce_all(self.upper == other.upper)
+            and self._constraints == other._constraints
         )
 
     def __deepcopy__(self, memo: dict[int, object]) -> Box:
         return self
+
+    def constraints_residuals(self, points: TensorType) -> TensorType:
+        """
+        Return residuals for all the constraints in this :class:`SearchSpace`.
+
+        :param points: The points to get the residuals for, with shape [..., D].
+        :return: A tensor of all the residuals with shape [..., C], where C is the total number of
+            constraints.
+        """
+        residuals = [constraint.residual(points) for constraint in self._constraints]
+        residuals = tf.concat(residuals, axis=-1)
+        return residuals
+
+    def is_feasible(self, points: TensorType) -> TensorType:
+        """
+        Checks if points satisfy the explicit constraints of this :class:`SearchSpace`.
+        Note membership of the search space is not checked.
+
+        :param points: The points to check constraints feasibility for, with shape [..., D].
+        :return: A tensor of booleans. Returns `True` for each point if it is feasible in this
+            search space, else `False`.
+        """
+        return tf.math.reduce_all(self.constraints_residuals(points) >= -self._ctol, axis=-1)
+
+    @property
+    def has_constraints(self) -> bool:
+        """Returns `True` if this search space has any explicit constraints specified."""
+        return len(self._constraints) > 0
 
 
 class TaggedProductSearchSpace(SearchSpace):

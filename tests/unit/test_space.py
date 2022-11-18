@@ -27,7 +27,14 @@ import tensorflow as tf
 from typing_extensions import Final
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, various_shapes
-from trieste.space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSpace
+from trieste.space import (
+    Box,
+    DiscreteSearchSpace,
+    LinearConstraint,
+    NonlinearConstraint,
+    SearchSpace,
+    TaggedProductSearchSpace,
+)
 from trieste.types import TensorType
 
 
@@ -899,6 +906,14 @@ def test_product_space_handles_empty_spaces() -> None:
     npt.assert_array_equal(tag_C.subspace_tags, ["AA", "BB"])
 
 
+def _nlc_func(x: TensorType) -> TensorType:
+    c0 = x[..., 0] - tf.sin(x[..., 1])
+    c1 = x[..., 0] - tf.cos(x[..., 1])
+    c0 = tf.expand_dims(c0, axis=-1)
+    c1 = tf.expand_dims(c1, axis=-1)
+    return tf.concat([c0, c1], axis=-1)
+
+
 @pytest.mark.parametrize(
     "a, b, equal",
     [
@@ -940,9 +955,95 @@ def test_product_space_handles_empty_spaces() -> None:
             TaggedProductSearchSpace([Box([1], [2]), Box([-1], [1])], tags=["B", "A"]),
             False,
         ),
+        (
+            Box(
+                [-1],
+                [2],
+                [
+                    NonlinearConstraint(_nlc_func, -1., .0),
+                    LinearConstraint(A=tf.eye(2), lb=tf.zeros((2)), ub=tf.ones((2))),
+                ],
+            ),
+            Box(
+                [-1],
+                [2],
+                [
+                    NonlinearConstraint(_nlc_func, -1., .0),
+                    LinearConstraint(A=tf.eye(2), lb=tf.zeros((2)), ub=tf.ones((2))),
+                ],
+            ),
+            True,
+        ),
+        (
+            Box(
+                [-1],
+                [2],
+                [
+                    NonlinearConstraint(_nlc_func, -1., .0),
+                    LinearConstraint(A=tf.eye(2), lb=tf.zeros((2)), ub=tf.ones((2))),
+                ],
+            ),
+            Box(
+                [-1],
+                [2],
+                [
+                    NonlinearConstraint(_nlc_func, -1., .1),
+                    LinearConstraint(A=tf.eye(2), lb=tf.zeros((2)), ub=tf.ones((2))),
+                ],
+            ),
+            False,
+        ),
     ],
 )
 def test___eq___search_spaces(a: SearchSpace, b: SearchSpace, equal: bool) -> None:
     assert (a == b) is equal
     assert (a != b) is (not equal)
     assert (a == a) and (b == b)
+
+
+@pytest.mark.parametrize(
+    "constraints, points",
+    [
+        (
+            [
+                LinearConstraint(A=tf.constant([[-1., 1.], [1., 0.], [0., 1.]]),
+                                 lb=tf.constant([-.4, .15, .2]), ub=tf.constant([.6, .9, .9])),
+                NonlinearConstraint(_nlc_func, tf.constant([-1., -.8]), tf.constant([.0, .0])),
+                LinearConstraint(A=tf.eye(2), lb=tf.zeros((2)), ub=tf.ones((2))),
+            ],
+            tf.constant([[0.820, 0.057],
+                         [0.3, 0.4],
+                         [0.582, 0.447],
+                         [0.15, 0.75]]),
+        ),
+    ],
+)
+def test_box_constraints_residuals_and_feasibility(
+    constraints: Sequence[LinearConstraint | NonlinearConstraint], points: tf.Tensor
+) -> None:
+    space = Box(tf.constant([0., 0.]), tf.constant([1., 1.]), constraints)
+    got = space.constraints_residuals(points)
+    expected = tf.constant([
+        [-0.363    ,  0.66999996, -0.143     ,  1.363     ,  0.07999998,
+         0.843     ,  1.7630308 ,  0.62162405, -0.7630308 ,  0.17837596,
+         0.82      ,  0.057     ,  0.18      ,  0.943],
+        [0.5       ,  0.15      ,  0.2       ,  0.5       ,  0.59999996,
+         0.49999997,  0.9105817 ,  0.17893904,  0.08941832,  0.62106097,
+         0.3       ,  0.4       ,  0.7       ,  0.6],
+        [0.265     ,  0.432     ,  0.247     ,  0.735     ,  0.31799996,
+         0.45299998,  1.1497378 ,  0.4802521 , -0.14973778,  0.31974792,
+         0.582     ,  0.447     ,  0.41799998,  0.553],
+        [1.        ,  0.        ,  0.55      ,  0.        ,  0.75      ,
+         0.14999998,  0.46836126,  0.21831113,  0.53163874,  0.5816889 ,
+         0.15      ,  0.75      ,  0.85      ,  0.25]
+    ])
+
+    npt.assert_array_equal(expected, got)
+    npt.assert_array_equal(tf.constant([False, True, False, True]), space.is_feasible(points))
+
+
+def test_discrete_search_space_raises_if_has_constraints() -> None:
+    space = Box(tf.zeros((2)), tf.ones((2)),
+                [LinearConstraint(A=tf.eye(2), lb=tf.zeros((2)), ub=tf.ones((2)))])
+    with pytest.raises(NotImplementedError):
+        _ = space.discretize(2)
