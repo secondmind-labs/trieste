@@ -41,8 +41,6 @@ from trieste.models.gpflow import (
 from trieste.models.interfaces import ReparametrizationSampler, SupportsPredictJoint
 from trieste.objectives import Branin
 
-GPFLUX_VERSION = getattr(gpflux, "__version__", "0.2.3")
-
 REPARAMETRIZATION_SAMPLERS: List[Type[ReparametrizationSampler[SupportsPredictJoint]]] = [
     BatchReparametrizationSampler,
     IndependentReparametrizationSampler,
