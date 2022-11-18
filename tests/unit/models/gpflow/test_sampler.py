@@ -17,7 +17,6 @@ import math
 from typing import List, Type
 
 import gpflow
-import gpflux
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
