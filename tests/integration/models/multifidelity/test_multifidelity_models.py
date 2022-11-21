@@ -336,18 +336,18 @@ def test_multifidelity_autoregressive_sample_lf_are_consistent_with_multiple_fid
         [concat_test_locations[None, ...], second_batch_test_locations[None, ...]], axis=0
     )
 
-    concat_samples = model.sample(concat_multibatch_test_locations, 1_000_000)
+    concat_samples = model.sample(concat_multibatch_test_locations, 100_000)
     lf_samples = concat_samples[0, :, :31]
 
-    lf_samples_direct = model.lowest_fidelity_signal_model.sample(test_locations_31, 1_000_000)
+    lf_samples_direct = model.lowest_fidelity_signal_model.sample(test_locations_31, 100_000)
 
     lf_samples_mean = tf.reduce_mean(lf_samples, axis=0)
     lf_samples_var = tf.math.reduce_variance(lf_samples, axis=0)
     lf_samples_direct_mean = tf.reduce_mean(lf_samples_direct, axis=0)
     lf_samples_direct_var = tf.math.reduce_variance(lf_samples_direct, axis=0)
 
-    npt.assert_allclose(lf_samples_mean, lf_samples_direct_mean, atol=1e-5)
-    npt.assert_allclose(lf_samples_var, lf_samples_direct_var, atol=1e-5)
+    npt.assert_allclose(lf_samples_mean, lf_samples_direct_mean, atol=1e-4)
+    npt.assert_allclose(lf_samples_var, lf_samples_direct_var, atol=1e-4)
 
 
 def test_multifidelity_autoregressive_sample_hf_is_consistent_when_rho_zero() -> None:
@@ -382,16 +382,16 @@ def test_multifidelity_autoregressive_sample_hf_is_consistent_when_rho_zero() ->
     test_locations = tf.Variable(np.linspace(0, 10, 32), dtype=tf.float64)[:, None]
     hf_test_locations = add_fidelity_column(test_locations, 1)
 
-    hf_samples = model.sample(hf_test_locations, 1_000_000)
-    hf_samples_direct = model.fidelity_residual_models[1].sample(test_locations, 1_000_000)
+    hf_samples = model.sample(hf_test_locations, 100_000)
+    hf_samples_direct = model.fidelity_residual_models[1].sample(test_locations, 100_000)
 
     hf_samples_mean = tf.reduce_mean(hf_samples, axis=0)
     hf_samples_var = tf.math.reduce_variance(hf_samples, axis=0)
     hf_samples_direct_mean = tf.reduce_mean(hf_samples_direct, axis=0)
     hf_samples_direct_var = tf.math.reduce_variance(hf_samples_direct, axis=0)
 
-    npt.assert_allclose(hf_samples_mean, hf_samples_direct_mean, atol=1e-3)
-    npt.assert_allclose(hf_samples_var, hf_samples_direct_var, atol=1e-3)
+    npt.assert_allclose(hf_samples_mean, hf_samples_direct_mean, atol=1e-2)
+    npt.assert_allclose(hf_samples_var, hf_samples_direct_var, atol=1e-2)
 
 
 def test_multifidelity_autoregressive_sample_hf_is_consistent_when_lf_is_flat() -> None:
@@ -438,17 +438,17 @@ def test_multifidelity_autoregressive_sample_hf_is_consistent_when_lf_is_flat() 
 
     concatenated_test_locations = tf.concat([lf_test_locations, hf_test_locations], axis=0)
 
-    concat_samples = model.sample(concatenated_test_locations, 1_000_000)
+    concat_samples = model.sample(concatenated_test_locations, 100_000)
     hf_samples = concat_samples[:, 30:]
-    hf_samples_direct = model.fidelity_residual_models[1].sample(test_locations_32, 1_000_000)
+    hf_samples_direct = model.fidelity_residual_models[1].sample(test_locations_32, 100_000)
 
     hf_samples_mean = tf.reduce_mean(hf_samples, axis=0)
     hf_samples_var = tf.math.reduce_variance(hf_samples, axis=0)
     hf_samples_direct_mean = tf.reduce_mean(hf_samples_direct, axis=0)
     hf_samples_direct_var = tf.math.reduce_variance(hf_samples_direct, axis=0)
 
-    npt.assert_allclose(hf_samples_mean, hf_samples_direct_mean, atol=1e-3)
-    npt.assert_allclose(hf_samples_var, hf_samples_direct_var, atol=1e-3)
+    npt.assert_allclose(hf_samples_mean, hf_samples_direct_mean, atol=1e-2)
+    npt.assert_allclose(hf_samples_var, hf_samples_direct_var, atol=1e-2)
 
 
 def test_multifidelity_autoregressive_sample_hf_is_consistent_when_hf_residual_is_flat() -> None:
@@ -490,9 +490,9 @@ def test_multifidelity_autoregressive_sample_hf_is_consistent_when_hf_residual_i
     test_locations = tf.Variable(np.linspace(0, 10, 32), dtype=tf.float64)[:, None]
     hf_test_locations = add_fidelity_column(test_locations, 1)
 
-    hf_samples = model.sample(hf_test_locations, 1_000_000)
+    hf_samples = model.sample(hf_test_locations, 100_000)
     hf_samples_direct = model.rho[1] * model.lowest_fidelity_signal_model.sample(
-        test_locations, 1_000_000
+        test_locations, 100_000
     )
 
     hf_samples_mean = tf.reduce_mean(hf_samples, axis=0)
