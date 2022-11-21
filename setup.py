@@ -49,6 +49,6 @@ setup(
     ],
     extras_require={
         "plotting": ["seaborn", "plotly"],
-        "qhsri": ["cvxpy"],
+        "qhsri": ["pymoo", "cvxpy"],
     },
 )
