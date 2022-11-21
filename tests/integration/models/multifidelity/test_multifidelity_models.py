@@ -500,5 +500,5 @@ def test_multifidelity_autoregressive_sample_hf_is_consistent_when_hf_residual_i
     hf_samples_direct_mean = tf.reduce_mean(hf_samples_direct, axis=0)
     hf_samples_direct_var = tf.math.reduce_variance(hf_samples_direct, axis=0)
 
-    npt.assert_allclose(hf_samples_mean, hf_samples_direct_mean, atol=1e-3)
-    npt.assert_allclose(hf_samples_var, hf_samples_direct_var, atol=1e-3)
+    npt.assert_allclose(hf_samples_mean, hf_samples_direct_mean, atol=1e-4)
+    npt.assert_allclose(hf_samples_var, hf_samples_direct_var, atol=1e-4)
