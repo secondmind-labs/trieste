@@ -131,7 +131,6 @@ def test_multifidelity_autoregressive_predict_lf_are_consistent_with_multiple_fi
     )
 
     model.update(dataset)
-    model.optimize(dataset)
 
     # Add some high fidelity points to check that predict on different fids works
     test_locations_30 = tf.Variable(np.linspace(0, 10, 60), dtype=tf.float64)[:, None]
@@ -187,7 +186,6 @@ def test_multifidelity_autoregressive_predict_hf_is_consistent_when_rho_zero() -
     )
 
     model.update(dataset)
-    model.optimize(dataset)
 
     model.rho[1] = 0.0  # type: ignore
 
@@ -226,10 +224,13 @@ def test_multifidelity_autoregressive_predict_hf_is_consistent_when_lf_is_flat()
     )
 
     model.update(dataset)
-    model.optimize(dataset)
 
-    kernel = gpflow.kernels.Matern52(variance=1e-18, lengthscales=[0.2, 0.2])
-    gpr = gpflow.models.GPR(dataset.astuple(), kernel, noise_variance=1e-5)
+    flat_dataset_qps = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
+    flat_dataset_obs = tf.zeros_like(flat_dataset_qps)
+    flat_dataset = Dataset(flat_dataset_qps, flat_dataset_obs)
+
+    kernel = gpflow.kernels.Matern52()
+    gpr = gpflow.models.GPR(flat_dataset.astuple(), kernel, noise_variance=1e-5)
 
     model.lowest_fidelity_signal_model = GaussianProcessRegression(gpr)
 
@@ -274,10 +275,13 @@ def test_multifidelity_autoregressive_predict_hf_is_consistent_when_hf_residual_
     )
 
     model.update(dataset)
-    model.optimize(dataset)
 
-    kernel = gpflow.kernels.Matern52(variance=1e-18, lengthscales=[0.2, 0.2])
-    gpr = gpflow.models.GPR(dataset.astuple(), kernel, noise_variance=1e-5)
+    flat_dataset_qps = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
+    flat_dataset_obs = tf.zeros_like(flat_dataset_qps)
+    flat_dataset = Dataset(flat_dataset_qps, flat_dataset_obs)
+
+    kernel = gpflow.kernels.Matern52()
+    gpr = gpflow.models.GPR(flat_dataset.astuple(), kernel, noise_variance=1e-5)
 
     model.fidelity_residual_models[1] = GaussianProcessRegression(gpr)  # type: ignore
 
@@ -318,7 +322,6 @@ def test_multifidelity_autoregressive_sample_lf_are_consistent_with_multiple_fid
     )
 
     model.update(dataset)
-    model.optimize(dataset)
 
     # Add some high fidelity points to check that predict on different fids works
     test_locations_31 = tf.Variable(np.linspace(0, 10, 31), dtype=tf.float64)[:, None]
@@ -373,7 +376,6 @@ def test_multifidelity_autoregressive_sample_hf_is_consistent_when_rho_zero() ->
     )
 
     model.update(dataset)
-    model.optimize(dataset)
 
     model.rho[1] = 0.0  # type: ignore
 
@@ -418,10 +420,13 @@ def test_multifidelity_autoregressive_sample_hf_is_consistent_when_lf_is_flat() 
     )
 
     model.update(dataset)
-    model.optimize(dataset)
 
-    kernel = gpflow.kernels.Matern52(variance=1e-18, lengthscales=[0.2, 0.2])
-    gpr = gpflow.models.GPR(dataset.astuple(), kernel, noise_variance=1e-5)
+    flat_dataset_qps = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
+    flat_dataset_obs = tf.zeros_like(flat_dataset_qps)
+    flat_dataset = Dataset(flat_dataset_qps, flat_dataset_obs)
+
+    kernel = gpflow.kernels.Matern52()
+    gpr = gpflow.models.GPR(flat_dataset.astuple(), kernel, noise_variance=1e-5)
 
     model.lowest_fidelity_signal_model = GaussianProcessRegression(gpr)
 
@@ -472,10 +477,13 @@ def test_multifidelity_autoregressive_sample_hf_is_consistent_when_hf_residual_i
     )
 
     model.update(dataset)
-    model.optimize(dataset)
 
-    kernel = gpflow.kernels.Matern52(variance=1e-18, lengthscales=[0.2, 0.2])
-    gpr = gpflow.models.GPR(dataset.astuple(), kernel, noise_variance=1e-5)
+    flat_dataset_qps = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
+    flat_dataset_obs = tf.zeros_like(flat_dataset_qps)
+    flat_dataset = Dataset(flat_dataset_qps, flat_dataset_obs)
+
+    kernel = gpflow.kernels.Matern52()
+    gpr = gpflow.models.GPR(flat_dataset.astuple(), kernel, noise_variance=1e-5)
 
     model.fidelity_residual_models[1] = GaussianProcessRegression(gpr)  # type: ignore
 
@@ -492,5 +500,5 @@ def test_multifidelity_autoregressive_sample_hf_is_consistent_when_hf_residual_i
     hf_samples_direct_mean = tf.reduce_mean(hf_samples_direct, axis=0)
     hf_samples_direct_var = tf.math.reduce_variance(hf_samples_direct, axis=0)
 
-    npt.assert_allclose(hf_samples_mean, hf_samples_direct_mean, atol=1e-5, rtol=1e-3)
-    npt.assert_allclose(hf_samples_var, hf_samples_direct_var, atol=1e-5, rtol=1e-3)
+    npt.assert_allclose(hf_samples_mean, hf_samples_direct_mean, atol=1e-3)
+    npt.assert_allclose(hf_samples_var, hf_samples_direct_var, atol=1e-3)
