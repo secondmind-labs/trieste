@@ -138,13 +138,18 @@ def test_multifidelity_autoregressive_predict_lf_are_consistent_with_multiple_fi
     lf_test_locations = add_fidelity_column(test_locations_30, 0)
     test_locations_32 = tf.Variable(np.linspace(0, 10, 32), dtype=tf.float64)[:, None]
     hf_test_locations = add_fidelity_column(test_locations_32, 1)
+    second_batch = tf.Variable(np.linspace(0.5, 10.5, 92), dtype=tf.float64)[:, None]
+    second_batch_test_locations = add_fidelity_column(second_batch, 1)
 
     concat_test_locations = tf.concat([lf_test_locations, hf_test_locations], axis=0)
+    concat_multibatch_test_locations = tf.concat(
+        [concat_test_locations[None, ...], second_batch_test_locations[None, ...]], axis=0
+    )
 
-    concat_prediction_mean, concat_prediction_var = model.predict(concat_test_locations)
+    prediction_mean, prediction_var = model.predict(concat_multibatch_test_locations)
     lf_prediction_mean, lf_prediction_var = (
-        concat_prediction_mean[:60],
-        concat_prediction_var[:60],
+        prediction_mean[0, :60],
+        prediction_var[0, :60],
     )
 
     (
@@ -320,11 +325,16 @@ def test_multifidelity_autoregressive_sample_lf_are_consistent_with_multiple_fid
     lf_test_locations = add_fidelity_column(test_locations_31, 0)
     test_locations_32 = tf.Variable(np.linspace(0, 10, 32), dtype=tf.float64)[:, None]
     hf_test_locations = add_fidelity_column(test_locations_32, 1)
+    second_batch = tf.Variable(np.linspace(0.5, 10.5, 63), dtype=tf.float64)[:, None]
+    second_batch_test_locations = add_fidelity_column(second_batch, 1)
 
     concat_test_locations = tf.concat([lf_test_locations, hf_test_locations], axis=0)
+    concat_multibatch_test_locations = tf.concat(
+        [concat_test_locations[None, ...], second_batch_test_locations[None, ...]], axis=0
+    )
 
-    concat_samples = model.sample(concat_test_locations, 1_000_000)
-    lf_samples = concat_samples[:, :31]
+    concat_samples = model.sample(concat_multibatch_test_locations, 1_000_000)
+    lf_samples = concat_samples[0, :, :31]
 
     lf_samples_direct = model.lowest_fidelity_signal_model.sample(test_locations_31, 1_000_000)
 
