@@ -35,6 +35,7 @@ from .entropy import (
 )
 from .function import (
     AugmentedExpectedImprovement,
+    BatchExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
@@ -45,7 +46,9 @@ from .function import (
     NegativeLowerConfidenceBound,
     NegativePredictiveMean,
     ProbabilityOfFeasibility,
+    ProbabilityOfImprovement,
     augmented_expected_improvement,
+    batch_expected_improvement,
     expected_improvement,
     lower_confidence_bound,
     multiple_optimism_lower_confidence_bound,
@@ -60,3 +63,4 @@ from .multi_objective import (
     batch_ehvi,
     expected_hv_improvement,
 )
+from .utils import MultivariateNormalCDF
