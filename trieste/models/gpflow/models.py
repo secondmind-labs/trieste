@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Optional, Tuple, Union, cast
+from typing import Optional, Sequence, Tuple, Union, cast
 
 import gpflow
 import tensorflow as tf
@@ -24,12 +24,18 @@ from gpflow.inducing_variables import (
     SeparateIndependentInducingVariables,
     SharedIndependentInducingVariables,
 )
+from gpflow.logdensities import multivariate_normal
 from gpflow.models import GPR, SGPR, SVGP, VGP
 from gpflow.models.vgp import update_vgp_data
 from gpflow.utilities import is_variable, multiple_assign, read_values
 from gpflow.utilities.ops import leading_transpose
 
-from ...data import Dataset
+from ...data import (
+    Dataset,
+    add_fidelity_column,
+    check_and_extract_fidelity_query_points,
+    split_dataset_by_fidelity,
+)
 from ...types import TensorType
 from ...utils import DEFAULTS, jit
 from ..interfaces import (
@@ -1362,3 +1368,282 @@ class VariationalGaussianProcess(
             query_points_2=query_points_2,
             whiten=whiten,
         )
+
+
+class MultifidelityAutoregressive(TrainableProbabilisticModel):
+    r"""
+    A :class:`TrainableProbabilisticModel` implementation of the model
+    from :cite:`Kennedy2000`. This is a multi-fidelity model that works with an
+    arbitrary number of fidelities. It relies on there being a linear relationship
+    between fidelities, and may not perform well for more complex relationships.
+    Precisely, it models the relationship between sequential fidelities as
+
+    .. math:: f_{i}(x) = \rho f_{i-1}(x) + \delta(x)
+
+    where :math:`\rho` is a scalar and :math:`\delta` models the residual between the fidelities.
+    The only base models supported in this implementation are :class:`~gpflow.models.GPR` models.
+    Note: Currently only supports single output problems.
+    """
+
+    def __init__(
+        self,
+        fidelity_models: Sequence[GaussianProcessRegression],
+    ):
+        """
+        :param fidelity_models: List of
+            :class:`~trieste.models.gpflow.models.GaussianProcessRegression`
+            models, one for each fidelity. The model at index 0 will be used as the signal model
+            for the lowest fidelity and models at higher indices will be used as the residual
+            model for each higher fidelity.
+        """
+        self.num_fidelities = len(fidelity_models)
+
+        self.lowest_fidelity_signal_model = fidelity_models[0]
+        # Note: The 0th index in the below is not a residual model, and should not be used.
+        self.fidelity_residual_models: Sequence[GaussianProcessRegression] = fidelity_models
+        # set this as a Parameter so that we can optimize it
+        rho = [
+            gpflow.Parameter(1.0, trainable=True, name=f"rho_{i}")
+            for i in range(self.num_fidelities - 1)
+        ]
+        self.rho: list[gpflow.Parameter] = [
+            gpflow.Parameter(1.0, trainable=False, name="dummy_variable"),
+            *rho,
+        ]
+
+    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        """
+        Predict the marginal mean and variance at query_points.
+
+        :param query_points: Query points with shape [N, D+1], where the
+            final column of the final dimension contains the fidelity of the query point
+        :return: mean: The mean at query_points with shape [N, P],
+                 and var: The variance at query_points with shape [N, P]
+        """
+        (
+            query_points_wo_fidelity,  # [..., N, D]
+            query_points_fidelity_col,  # [..., N, 1]
+        ) = check_and_extract_fidelity_query_points(
+            query_points, max_fidelity=self.num_fidelities - 1
+        )
+
+        signal_mean, signal_var = self.lowest_fidelity_signal_model.predict(
+            query_points_wo_fidelity
+        )  # [..., N, P], [..., N, P]
+
+        for fidelity in range(1, int(tf.reduce_max(query_points_fidelity_col)) + 1):
+
+            # Find indices of query points that need predicting for
+            mask = query_points_fidelity_col >= fidelity  # [..., N, 1]
+            fidelity_indices = tf.where(mask)[..., :-1]
+            # Gather necessary query points and  predict
+            fidelity_filtered_query_points = tf.gather_nd(
+                query_points_wo_fidelity, fidelity_indices
+            )
+            (
+                filtered_fidelity_residual_mean,
+                filtered_fidelity_residual_var,
+            ) = self.fidelity_residual_models[fidelity].predict(fidelity_filtered_query_points)
+
+            # Scatter predictions back into correct location
+            fidelity_residual_mean = tf.tensor_scatter_nd_update(
+                signal_mean, fidelity_indices, filtered_fidelity_residual_mean
+            )
+            fidelity_residual_var = tf.tensor_scatter_nd_update(
+                signal_var, fidelity_indices, filtered_fidelity_residual_var
+            )
+
+            # Calculate mean and var for all columns (will be incorrect for qps with fid < fidelity)
+            new_fidelity_signal_mean = self.rho[fidelity] * signal_mean + fidelity_residual_mean
+            new_fidelity_signal_var = fidelity_residual_var + (self.rho[fidelity] ** 2) * signal_var
+
+            # Mask out incorrect values and update mean and var for correct ones
+            mask = query_points_fidelity_col >= fidelity
+            signal_mean = tf.where(mask, new_fidelity_signal_mean, signal_mean)
+            signal_var = tf.where(mask, new_fidelity_signal_var, signal_var)
+
+        return signal_mean, signal_var
+
+    def _calculate_residual(self, dataset: Dataset, fidelity: int) -> TensorType:
+        r"""
+        Calculate the true residuals for a set of datapoints at a given fidelity.
+
+        Dataset should be made up of points that you have observations for at fidelity `fidelity`.
+        The residuals calculated here are the difference between the data and the prediction at the
+        lower fidelity multiplied by the rho value at this fidelity. This produces the training
+        data for the residual models.
+
+        .. math:: r_{i} = y - \rho_{i} * f_{i-1}(x)
+
+        :param dataset: Dataset of points for which to calculate the residuals. Must have
+         observations at fidelity `fidelity`. Query points shape is [N, D], observations is [N,P].
+        :param fidelity: The fidelity for which to calculate the residuals
+        :return: The true residuals at given datapoints for given fidelity, shape is [N,1].
+        """
+        fidelity_query_points = add_fidelity_column(dataset.query_points, fidelity - 1)
+        residuals = (
+            dataset.observations - self.rho[fidelity] * self.predict(fidelity_query_points)[0]
+        )
+        return residuals
+
+    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
+        """
+        Sample `num_samples` samples from the posterior distribution at `query_points`
+
+        :param query_points: The query points at which to sample of shape [N, D+1], where the
+            final column of the final dimension contains the fidelity of the query point
+        :param num_samples: The number of samples (S) to generate for each query point.
+        :return: samples from the posterior of shape [..., S, N, P]
+        """
+        (
+            query_points_wo_fidelity,
+            query_points_fidelity_col,
+        ) = check_and_extract_fidelity_query_points(
+            query_points, max_fidelity=self.num_fidelities - 1
+        )
+
+        signal_sample = self.lowest_fidelity_signal_model.sample(
+            query_points_wo_fidelity, num_samples
+        )  # [S, N, P]
+
+        for fidelity in range(1, int(tf.reduce_max(query_points_fidelity_col)) + 1):
+
+            fidelity_residual_sample = self.fidelity_residual_models[fidelity].sample(
+                query_points_wo_fidelity, num_samples
+            )
+
+            new_fidelity_signal_sample = (
+                self.rho[fidelity] * signal_sample + fidelity_residual_sample
+            )  # [S, N, P]
+
+            mask = query_points_fidelity_col >= fidelity  # [N, P]
+            mask = tf.repeat(mask[..., None, :, :], num_samples, axis=-3)
+
+            signal_sample = tf.where(mask, new_fidelity_signal_sample, signal_sample)
+
+        return signal_sample
+
+    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        """
+        Predict the marginal mean and variance at `query_points` including observation noise
+
+        :param query_points: Query points with shape [..., N, D+1], where the
+            final column of the final dimension contains the fidelity of the query point
+        :return: mean: The mean at query_points with shape [N, P],
+                 and var: Th variance at query_points with shape [N, P]
+        """
+
+        f_mean, f_var = self.predict(query_points)
+        query_points_fidelity_col = query_points[..., -1:]
+
+        # Get fidelity 0 observation noise
+        observation_noise = (
+            tf.ones_like(query_points_fidelity_col)
+            * self.lowest_fidelity_signal_model.get_observation_noise()
+        )
+
+        for fidelity in range(1, self.num_fidelities):
+
+            fidelity_observation_noise = (
+                self.rho[fidelity] ** 2
+            ) * observation_noise + self.fidelity_residual_models[fidelity].get_observation_noise()
+
+            mask = query_points_fidelity_col >= fidelity
+
+            observation_noise = tf.where(mask, fidelity_observation_noise, observation_noise)
+
+        return f_mean, f_var + observation_noise
+
+    def update(self, dataset: Dataset) -> None:
+        """
+        Update the models on their corresponding data. The data for each model is
+        extracted by splitting the observations in ``dataset`` by fidelity level.
+
+        :param dataset: The query points and observations for *all* the wrapped models.
+        """
+        check_and_extract_fidelity_query_points(
+            dataset.query_points, max_fidelity=self.num_fidelities - 1
+        )
+        dataset_per_fidelity = split_dataset_by_fidelity(dataset, self.num_fidelities)
+        for fidelity, dataset_for_fidelity in enumerate(dataset_per_fidelity):
+            if fidelity == 0:
+                self.lowest_fidelity_signal_model.update(dataset_for_fidelity)
+            else:
+                # Make query points but with final column corresponding to
+                # fidelity we wish to predict at
+                self.fidelity_residual_models[fidelity].update(
+                    Dataset(
+                        dataset_for_fidelity.query_points,
+                        self._calculate_residual(dataset_for_fidelity, fidelity),
+                    )
+                )
+
+    def optimize(self, dataset: Dataset) -> None:
+        """
+        Optimize all the models on their corresponding data. The data for each model is
+        extracted by splitting the observations in ``dataset``  by fidelity level.
+        Note that we have to code up a custom loss function when optimizing our residual
+        model, so that we can include the correlation parameter as an optimisation variable.
+
+        :param dataset: The query points and observations for *all* the wrapped models.
+        """
+        check_and_extract_fidelity_query_points(
+            dataset.query_points, max_fidelity=self.num_fidelities - 1
+        )
+        dataset_per_fidelity = split_dataset_by_fidelity(dataset, self.num_fidelities)
+
+        for fidelity, dataset_for_fidelity in enumerate(dataset_per_fidelity):
+            if fidelity == 0:
+                self.lowest_fidelity_signal_model.optimize(dataset_for_fidelity)
+            else:
+                gpf_residual_model = self.fidelity_residual_models[fidelity].model
+
+                fidelity_observations = dataset_for_fidelity.observations
+                fidelity_query_points = dataset_for_fidelity.query_points
+                prev_fidelity_query_points = add_fidelity_column(
+                    dataset_for_fidelity.query_points, fidelity - 1
+                )
+                predictions_from_lower_fidelity = self.predict(prev_fidelity_query_points)[0]
+
+                def loss() -> TensorType:  # hardcoded log liklihood calculation for residual model
+                    residuals = (
+                        fidelity_observations - self.rho[fidelity] * predictions_from_lower_fidelity
+                    )
+                    K = gpf_residual_model.kernel(fidelity_query_points)
+                    ks = gpf_residual_model._add_noise_cov(K)
+                    L = tf.linalg.cholesky(ks)
+                    m = gpf_residual_model.mean_function(fidelity_query_points)
+                    log_prob = multivariate_normal(residuals, m, L)
+                    return -1.0 * tf.reduce_sum(log_prob)
+
+                trainable_variables = (
+                    gpf_residual_model.trainable_variables + self.rho[fidelity].variables
+                )
+                self.fidelity_residual_models[fidelity].optimizer.optimizer.minimize(
+                    loss, trainable_variables
+                )
+                residuals = self._calculate_residual(dataset_for_fidelity, fidelity)
+                self.fidelity_residual_models[fidelity].update(
+                    Dataset(fidelity_query_points, residuals)
+                )
+
+    def covariance_with_top_fidelity(self, query_points: TensorType) -> TensorType:
+        """
+        Calculate the covariance of the output at `query_point` and a given fidelity with the
+        highest fidelity output at the same `query_point`.
+
+        :param query_points: The query points to calculate the covariance for, of shape [N, D+1],
+            where the final column of the final dimension contains the fidelity of the query point
+        :return: The covariance with the top fidelity for the `query_points`, of shape [N, P]
+        """
+        fidelities = query_points[..., -1:]  # [..., 1]
+
+        _, f_var = self.predict(query_points)
+
+        for fidelity in range(self.num_fidelities - 1, -1, -1):
+
+            mask = fidelities < fidelity
+
+            f_var = tf.where(mask, f_var, f_var * self.rho[fidelity])
+
+        return f_var
