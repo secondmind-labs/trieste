@@ -17,7 +17,7 @@ from __future__ import annotations
 import operator
 from abc import ABC, abstractmethod
 from functools import reduce
-from typing import Any, Callable, Optional, Sequence, Tuple, TypeVar, overload
+from typing import Callable, Optional, Sequence, Tuple, TypeVar, overload
 
 import numpy as np
 import scipy.optimize as spo
