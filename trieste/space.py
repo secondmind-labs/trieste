@@ -34,6 +34,10 @@ DEFAULT_DTYPE: tf.DType = tf.float64
 """ Default dtype to use when none is provided. """
 
 
+class SampleTimeoutError(Exception):
+    """Raised when sampling from a search space has timed out."""
+
+
 class NonlinearConstraint(spo.NonlinearConstraint):  # type: ignore[misc]
     """
     A wrapper class for nonlinear constraints on variables. The constraints expression is of the
@@ -605,6 +609,146 @@ class Box(SearchSpace):
         return (self._upper - self._lower) * tf.math.sobol_sample(
             dim=dim, num_results=num_samples, dtype=self._lower.dtype, skip=skip
         ) + self._lower
+
+    def _sample_feasible_loop(
+        self,
+        num_samples: int,
+        sampler: Callable[[], TensorType],
+        max_tries: int = 100,
+    ) -> TensorType:
+        # Rejection sampling using provided callable. Try ``max_tries`` number of times to find
+        # ``num_samples`` feasible points.
+        xs = []
+        count = 0
+        tries = 0
+        while count < num_samples and tries < max_tries:
+            tries += 1
+            xi = sampler()
+            mask = self.is_feasible(xi)
+            xo = tf.boolean_mask(xi, mask)
+            xs.append(xo)
+            count += xo.shape[0]
+
+        if count < num_samples:
+            raise SampleTimeoutError(
+                f"""Failed to sample {num_samples} feasible point(s), even after {tries} attempts.
+                    Sampled only {count} feasible point(s)."""
+            )
+
+        xs = tf.concat(xs, axis=0)[:num_samples]
+        return xs
+
+    def sample_feasible(
+        self, num_samples: int, seed: Optional[int] = None, max_tries: int = 100
+    ) -> TensorType:
+        """
+        Sample feasible points randomly from the space.
+
+        :param num_samples: The number of feasible points to sample from this search space.
+        :param seed: Random seed for reproducibility.
+        :param max_tries: Maximum attempts to sample the requested number of points.
+        :return: ``num_samples`` i.i.d. random points, sampled uniformly,
+            from this search space with shape '[num_samples, D]' , where D is the search space
+            dimension.
+        :raise SampleTimeoutError: If ``max_tries`` are exhausted before ``num_samples`` are
+            sampled.
+        """
+        # Without constraints use the normal sample method directly.
+        if not self.has_constraints:
+            return self.sample(num_samples, seed)
+
+        tf.debugging.assert_non_negative(num_samples)
+        if num_samples == 0:
+            return tf.constant([])
+        if seed is not None:  # ensure reproducibility
+            tf.random.set_seed(seed)
+        dim = tf.shape(self._lower)[-1]
+
+        def _sampler() -> TensorType:
+            return tf.random.uniform(
+                (num_samples, dim),
+                minval=self._lower,
+                maxval=self._upper,
+                dtype=self._lower.dtype,
+                seed=seed,
+            )
+
+        return self._sample_feasible_loop(num_samples, _sampler, max_tries)
+
+    def sample_halton_feasible(
+        self, num_samples: int, seed: Optional[int] = None, max_tries: int = 100
+    ) -> TensorType:
+        """
+        Sample feasible points from the space using a Halton sequence. The resulting samples are
+        guaranteed to be diverse and are reproducible by using the same choice of ``seed``.
+
+        :param num_samples: The number of feasible points to sample from this search space.
+        :param seed: Random seed for the halton sequence
+        :param max_tries: Maximum attempts to sample the requested number of points.
+        :return: ``num_samples`` of points, using halton sequence with shape '[num_samples, D]' ,
+            where D is the search space dimension.
+        :raise SampleTimeoutError: If ``max_tries`` are exhausted before ``num_samples`` are
+            sampled.
+        """
+        # Without constraints use the normal sample method directly.
+        if not self.has_constraints:
+            return self.sample_halton(num_samples, seed)
+
+        tf.debugging.assert_non_negative(num_samples)
+        if num_samples == 0:
+            return tf.constant([])
+        dim = tf.shape(self._lower)[-1]
+        start = 0
+
+        def _sampler() -> TensorType:
+            nonlocal start
+            sequence_indices = tf.range(start=start, limit=start + num_samples, dtype=tf.int32)
+            if seed is not None:  # ensure reproducibility and samples from the same sequence
+                tf.random.set_seed(seed)
+            samples = (self._upper - self._lower) * tfp.mcmc.sample_halton_sequence(
+                dim=dim, sequence_indices=sequence_indices, dtype=self._lower.dtype, seed=seed
+            ) + self._lower
+            start += num_samples
+            return samples
+
+        return self._sample_feasible_loop(num_samples, _sampler, max_tries)
+
+    def sample_sobol_feasible(
+        self, num_samples: int, skip: Optional[int] = None, max_tries: int = 100
+    ) -> TensorType:
+        """
+        Sample a diverse set of feasible points from the space using a Sobol sequence.
+        If ``skip`` is specified, then the resulting samples are reproducible.
+
+        :param num_samples: The number of feasible points to sample from this search space.
+        :param skip: The number of initial points of the Sobol sequence to skip
+        :param max_tries: Maximum attempts to sample the requested number of points.
+        :return: ``num_samples`` of points, using sobol sequence with shape '[num_samples, D]' ,
+            where D is the search space dimension.
+        :raise SampleTimeoutError: If ``max_tries`` are exhausted before ``num_samples`` are
+            sampled.
+        """
+        # Without constraints use the normal sample method directly.
+        if not self.has_constraints:
+            return self.sample_sobol(num_samples, skip)
+
+        tf.debugging.assert_non_negative(num_samples)
+        if num_samples == 0:
+            return tf.constant([])
+        if skip is None:  # generate random skip
+            skip = tf.random.uniform([1], maxval=2 ** 16, dtype=tf.int32)[0]
+        _skip: TensorType = skip  # To keep mypy happy.
+        dim = tf.shape(self._lower)[-1]
+
+        def _sampler() -> TensorType:
+            nonlocal _skip
+            samples = (self._upper - self._lower) * tf.math.sobol_sample(
+                dim=dim, num_results=num_samples, dtype=self._lower.dtype, skip=_skip
+            ) + self._lower
+            _skip += num_samples
+            return samples
+
+        return self._sample_feasible_loop(num_samples, _sampler, max_tries)
 
     def product(self, other: Box) -> Box:
         r"""

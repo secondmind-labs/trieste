@@ -397,91 +397,167 @@ def _assert_correct_number_of_unique_constrained_samples(
     assert len(unique_samples) == len(samples)
 
 
-@pytest.mark.parametrize("num_samples", [0, 1, 10])
-def test_box_sampling_returns_correct_shape(num_samples: int) -> None:
-    box = Box(tf.zeros((3,)), tf.ones((3,)))
-    samples = box.sample(num_samples)
+def _box_sampling_constraints() -> Sequence[LinearConstraint]:
+    return [LinearConstraint(A=tf.eye(3), lb=tf.zeros((3)) + 0.3, ub=tf.ones((3)) - 0.3)]
+
+
+@pytest.mark.parametrize(
+    "num_samples, constraints",
+    ((n, c) for c in [None, _box_sampling_constraints()] for n in [0, 1, 10]),
+)
+def test_box_sampling_returns_correct_shape(
+    num_samples: int, constraints: Sequence[LinearConstraint],
+) -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)), constraints)
+    samples = box.sample_feasible(num_samples)
     _assert_correct_number_of_unique_constrained_samples(num_samples, box, samples)
 
 
-@pytest.mark.parametrize("num_samples", [0, 1, 10])
-def test_box_sobol_sampling_returns_correct_shape(num_samples: int) -> None:
-    box = Box(tf.zeros((3,)), tf.ones((3,)))
-    sobol_samples = box.sample_sobol(num_samples)
+@pytest.mark.parametrize(
+    "num_samples, constraints",
+    ((n, c) for c in [None, _box_sampling_constraints()] for n in [0, 1, 10]),
+)
+def test_box_sobol_sampling_returns_correct_shape(
+    num_samples: int, constraints: Sequence[LinearConstraint],
+) -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)), constraints)
+    sobol_samples = box.sample_sobol_feasible(num_samples)
     _assert_correct_number_of_unique_constrained_samples(num_samples, box, sobol_samples)
 
 
-@pytest.mark.parametrize("num_samples", [0, 1, 10])
-def test_box_halton_sampling_returns_correct_shape(num_samples: int) -> None:
-    box = Box(tf.zeros((3,)), tf.ones((3,)))
-    halton_samples = box.sample_halton(num_samples)
+@pytest.mark.parametrize(
+    "num_samples, constraints",
+    ((n, c) for c in [None, _box_sampling_constraints()] for n in [0, 1, 10]),
+)
+def test_box_halton_sampling_returns_correct_shape(
+    num_samples: int, constraints: Sequence[LinearConstraint],
+) -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)), constraints)
+    halton_samples = box.sample_halton_feasible(num_samples)
     _assert_correct_number_of_unique_constrained_samples(num_samples, box, halton_samples)
 
 
-@pytest.mark.parametrize("num_samples", [-1, -10])
-def test_box_sampling_raises_for_invalid_sample_size(num_samples: int) -> None:
+@pytest.mark.parametrize(
+    "num_samples, constraints",
+    ((n, c) for c in [None, _box_sampling_constraints()] for n in [-1, -10]),
+)
+def test_box_sampling_raises_for_invalid_sample_size(
+    num_samples: int, constraints: Sequence[LinearConstraint],
+) -> None:
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        box = Box(tf.zeros((3,)), tf.ones((3,)))
-        box.sample(num_samples)
+        box = Box(tf.zeros((3,)), tf.ones((3,)), constraints)
+        box.sample_feasible(num_samples)
 
 
-@pytest.mark.parametrize("num_samples", [-1, -10])
-def test_box_sobol_sampling_raises_for_invalid_sample_size(num_samples: int) -> None:
+@pytest.mark.parametrize(
+    "num_samples, constraints",
+    ((n, c) for c in [None, _box_sampling_constraints()] for n in [-1, -10]),
+)
+def test_box_sobol_sampling_raises_for_invalid_sample_size(
+    num_samples: int, constraints: Sequence[LinearConstraint],
+) -> None:
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        box = Box(tf.zeros((3,)), tf.ones((3,)))
-        box.sample_sobol(num_samples)
+        box = Box(tf.zeros((3,)), tf.ones((3,)), constraints)
+        box.sample_sobol_feasible(num_samples)
 
 
-@pytest.mark.parametrize("num_samples", [-1, -10])
-def test_box_halton_sampling_raises_for_invalid_sample_size(num_samples: int) -> None:
+@pytest.mark.parametrize(
+    "num_samples, constraints",
+    ((n, c) for c in [None, _box_sampling_constraints()] for n in [-1, -10]),
+)
+def test_box_halton_sampling_raises_for_invalid_sample_size(
+    num_samples: int, constraints: Sequence[LinearConstraint],
+) -> None:
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        box = Box(tf.zeros((3,)), tf.ones((3,)))
-        box.sample_halton(num_samples)
+        box = Box(tf.zeros((3,)), tf.ones((3,)), constraints)
+        box.sample_halton_feasible(num_samples)
 
 
-@pytest.mark.parametrize("seed", [1, 42, 123])
-def test_box_sampling_returns_same_points_for_same_seed(seed: int) -> None:
-    box = Box(tf.zeros((3,)), tf.ones((3,)))
-    random_samples_1 = box.sample(num_samples=100, seed=seed)
-    random_samples_2 = box.sample(num_samples=100, seed=seed)
+@pytest.mark.parametrize(
+    "seed, constraints",
+    ((s, c) for c in [None, _box_sampling_constraints()] for s in [1, 42, 123]),
+)
+def test_box_sampling_returns_same_points_for_same_seed(
+    seed: int, constraints: Sequence[LinearConstraint],
+) -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)), constraints)
+    random_samples_1 = box.sample_feasible(num_samples=100, seed=seed)
+    random_samples_2 = box.sample_feasible(num_samples=100, seed=seed)
     npt.assert_allclose(random_samples_1, random_samples_2)
 
 
-@pytest.mark.parametrize("skip", [1, 10, 100])
-def test_box_sobol_sampling_returns_same_points_for_same_skip(skip: int) -> None:
-    box = Box(tf.zeros((3,)), tf.ones((3,)))
-    sobol_samples_1 = box.sample_sobol(num_samples=100, skip=skip)
-    sobol_samples_2 = box.sample_sobol(num_samples=100, skip=skip)
+@pytest.mark.parametrize(
+    "skip, constraints",
+    ((s, c) for c in [None, _box_sampling_constraints()] for s in [1, 10, 100]),
+)
+def test_box_sobol_sampling_returns_same_points_for_same_skip(
+    skip: int, constraints: Sequence[LinearConstraint],
+) -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)), constraints)
+    sobol_samples_1 = box.sample_sobol_feasible(num_samples=100, skip=skip)
+    sobol_samples_2 = box.sample_sobol_feasible(num_samples=100, skip=skip)
     npt.assert_allclose(sobol_samples_1, sobol_samples_2)
 
 
-@pytest.mark.parametrize("seed", [1, 42, 123])
-def test_box_halton_sampling_returns_same_points_for_same_seed(seed: int) -> None:
-    box = Box(tf.zeros((3,)), tf.ones((3,)))
-    halton_samples_1 = box.sample_halton(num_samples=100, seed=seed)
-    halton_samples_2 = box.sample_halton(num_samples=100, seed=seed)
+@pytest.mark.parametrize(
+    "seed, constraints",
+    ((s, c) for c in [None, _box_sampling_constraints()] for s in [1, 42, 123]),
+)
+def test_box_halton_sampling_returns_same_points_for_same_seed(
+    seed: int, constraints: Sequence[LinearConstraint],
+) -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)), constraints)
+    halton_samples_1 = box.sample_halton_feasible(num_samples=100, seed=seed)
+    halton_samples_2 = box.sample_halton_feasible(num_samples=100, seed=seed)
     npt.assert_allclose(halton_samples_1, halton_samples_2)
 
 
-def test_box_sampling_returns_different_points_for_different_call() -> None:
-    box = Box(tf.zeros((3,)), tf.ones((3,)))
-    random_samples_1 = box.sample(num_samples=100)
-    random_samples_2 = box.sample(num_samples=100)
+@pytest.mark.parametrize("constraints", [None, _box_sampling_constraints()])
+def test_box_sampling_returns_different_points_for_different_call(
+    constraints: Sequence[LinearConstraint],
+) -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)), constraints)
+    random_samples_1 = box.sample_feasible(num_samples=100)
+    random_samples_2 = box.sample_feasible(num_samples=100)
     npt.assert_raises(AssertionError, npt.assert_allclose, random_samples_1, random_samples_2)
 
 
-def test_box_sobol_sampling_returns_different_points_for_different_call() -> None:
-    box = Box(tf.zeros((3,)), tf.ones((3,)))
-    sobol_samples_1 = box.sample_sobol(num_samples=100)
-    sobol_samples_2 = box.sample_sobol(num_samples=100)
+@pytest.mark.parametrize("constraints", [None, _box_sampling_constraints()])
+def test_box_sobol_sampling_returns_different_points_for_different_call(
+    constraints: Sequence[LinearConstraint],
+) -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)), constraints)
+    sobol_samples_1 = box.sample_sobol_feasible(num_samples=100)
+    sobol_samples_2 = box.sample_sobol_feasible(num_samples=100)
     npt.assert_raises(AssertionError, npt.assert_allclose, sobol_samples_1, sobol_samples_2)
 
 
-def test_box_halton_sampling_returns_different_points_for_different_call() -> None:
-    box = Box(tf.zeros((3,)), tf.ones((3,)))
-    halton_samples_1 = box.sample_halton(num_samples=100)
-    halton_samples_2 = box.sample_halton(num_samples=100)
+@pytest.mark.parametrize("constraints", [None, _box_sampling_constraints()])
+def test_box_halton_sampling_returns_different_points_for_different_call(
+    constraints: Sequence[LinearConstraint],
+) -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)), constraints)
+    halton_samples_1 = box.sample_halton_feasible(num_samples=100)
+    halton_samples_2 = box.sample_halton_feasible(num_samples=100)
     npt.assert_raises(AssertionError, npt.assert_allclose, halton_samples_1, halton_samples_2)
+
+
+def test_box_sampling_with_constraints_returns_feasible_points() -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)), _box_sampling_constraints())
+    samples = box.sample_feasible(num_samples=100)
+    assert all(box.is_feasible(samples))
+
+
+def test_box_sobol_sampling_with_constraints_returns_feasible_points() -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)), _box_sampling_constraints())
+    samples = box.sample_sobol_feasible(num_samples=100)
+    assert all(box.is_feasible(samples))
+
+
+def test_box_halton_sampling_with_constraints_returns_feasible_points() -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)), _box_sampling_constraints())
+    samples = box.sample_halton_feasible(num_samples=100)
+    assert all(box.is_feasible(samples))
 
 
 @pytest.mark.parametrize("num_samples", [0, 1, 10])
