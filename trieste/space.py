@@ -67,9 +67,9 @@ class NonlinearConstraint(spo.NonlinearConstraint):  # type: ignore[misc]
             val, grad = tfp.math.value_and_gradient(fun, x)
             return tf.cast(val, dtype=x.dtype), tf.cast(grad, dtype=x.dtype)
 
-        cache_x: Optional["np.ndarray[Any, Any]"] = None
-        cache_f: Optional["np.ndarray[Any, Any]"] = None
-        cache_df_dx: Optional["np.ndarray[Any, Any]"] = None
+        cache_x: TensorType = tf.constant([])
+        cache_f: TensorType = tf.constant([])
+        cache_df_dx: TensorType = tf.constant([])
 
         def val_fun(x: TensorType) -> TensorType:
             nonlocal cache_x, cache_f, cache_df_dx
