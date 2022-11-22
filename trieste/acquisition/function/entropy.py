@@ -15,6 +15,7 @@
 This module contains entropy-based acquisition function builders.
 """
 from __future__ import annotations
+import math
 
 from typing import Optional, TypeVar, cast, overload
 
@@ -25,7 +26,11 @@ from typing_extensions import Protocol, runtime_checkable
 from ...data import Dataset
 from ...models import ProbabilisticModel
 from ...models.gpflow.interface import SupportsCovarianceBetweenPoints
-from ...models.interfaces import HasTrajectorySampler, SupportsGetObservationNoise
+from ...models.interfaces import (
+    HasTrajectorySampler,
+    SupportsGetObservationNoise,
+    SupportsCovarianceWithTopFidelity,
+)
 from ...space import SearchSpace
 from ...types import TensorType
 from ..interface import (
@@ -617,3 +622,147 @@ class gibbon_repulsion_term(UpdatablePenalizationFunction):
             repulsion_weight = 1.0
 
         return repulsion_weight * repulsion
+
+
+class MUMBO(MinValueEntropySearch):
+    def __repr__(self) -> str:
+        return "MUMBO()"
+
+    def prepare_acquisition_function(
+        self,
+        model: SupportsCovarianceWithTopFidelity,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param model: The multifidelity model.
+        :param dataset: The data from the observer.
+        :return: The max-value entropy search acquisition function modified for objective
+            minimisation. This function will raise :exc:`ValueError` or
+            :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
+        :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
+        """
+        tf.debugging.Assert(dataset is not None, [])
+        dataset = cast(Dataset, dataset)
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
+        min_value_samples = self.get_min_value_samples_on_top_fidelity(model, dataset)
+        return mumbo(model, min_value_samples)
+
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        model: ProbabilisticModelType,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param model: The model.
+        :param dataset: The data from the observer.
+        """
+        tf.debugging.Assert(dataset is not None, [])
+        dataset = cast(Dataset, dataset)
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
+        min_value_samples = self.get_min_value_samples_on_top_fidelity(model, dataset)
+        function.update(min_value_samples)  # type: ignore
+        return function
+
+    def get_min_value_samples_on_top_fidelity(
+        self, model: ProbabilisticModelType, dataset: Dataset
+    ):
+        """
+        :param model: The model.
+        :param dataset: The data from the observer.
+        """
+        query_points = self._search_space.sample(num_samples=self._grid_size)
+        tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
+        query_points = tf.concat([dataset.query_points, query_points], 0)
+        query_points_on_top_fidelity = tf.concat(
+            [query_points[:, :-1], tf.ones_like(query_points[:, -1:])], -1
+        )
+        return self._min_value_sampler.sample(
+            model, self._num_samples, query_points_on_top_fidelity
+        )
+
+
+class mumbo(min_value_entropy_search):
+    # @tf.function
+    def __call__(self, x: TensorType) -> TensorType:
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="This acquisition function only supports batch sizes of one.",
+        )
+
+        x_on_top_fidelity = tf.concat(
+            [tf.squeeze(x, -2)[:, :-1], tf.ones_like(tf.squeeze(x, -2)[:, -1:])], -1
+        )
+        fmean, fvar = self._model.predict(x_on_top_fidelity)
+        fsd = tf.math.sqrt(fvar)
+        ymean, yvar = self._model.predict_y(tf.squeeze(x, -2))
+        cov = self._model.covariance_with_top_fidelity(tf.squeeze(x, -2))
+        correlations = cov / tf.math.sqrt(fvar * yvar)
+        correlations = tf.clip_by_value(correlations, -1.0, 1.0)
+
+        # Calculate moments of extended skew Gaussian distributions (ESG)
+        # These will be used to define reasonable ranges for the numerical
+        # intergration of the ESG's differential entropy.
+        gamma = (tf.squeeze(self._samples) - fmean) / fsd
+        normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
+        log_minus_cdf = normal.log_cdf(-gamma)
+        ratio = tf.math.exp(normal.log_prob(gamma) - log_minus_cdf)
+        ESGmean = correlations * ratio
+        ESGvar = 1 + correlations * ESGmean * (gamma - ratio)
+        ESGvar = tf.math.maximum(ESGvar, 0)  # Clip  to improve numerical stability
+
+        # get upper limits for numerical integration
+        # we need this range to contain almost all of the ESG's probability density
+        # we found +-5 standard deviations provides a tight enough approximation
+        upper_limit = ESGmean + 5 * tf.math.sqrt(ESGvar)
+        lower_limit = ESGmean - 5 * tf.math.sqrt(ESGvar)
+
+        # perform numerical integrations
+        z = tf.linspace(lower_limit, upper_limit, num=1000)  # build discretisation
+        minus_correlations = tf.math.sqrt(
+            1 - correlations ** 2
+        )  # calculate ESG density at these points
+        minus_correlations = tf.math.maximum(
+            minus_correlations, 1e-10
+        )  # clip below for numerical stability
+
+        density = tf.math.exp(
+            normal.log_prob(z)
+            - log_minus_cdf
+            + normal.log_cdf(-(gamma - correlations * z) / minus_correlations)
+        )
+        # calculate point-wise entropy function contributions (carefuly where density is 0)
+        entropy_function = -density * tf.where(density != 0, tf.math.log(density), 0.0)
+        approximate_entropy = tfp.math.trapz(
+            entropy_function, z, axis=0
+        )  # perform integration over ranges
+
+        approximate_entropy = tf.reduce_mean(
+            approximate_entropy, axis=-1
+        )  # build monte-carlo estimate over the gumbel samples
+        f_acqu_x = (
+            tf.cast(0.5 * tf.math.log(2.0 * math.pi * math.e), tf.float64) - approximate_entropy
+        )
+        return f_acqu_x[:, None]
+
+
+class CostWeighting(SingleModelAcquisitionBuilder):
+    def __init__(self, low_fidelity_cost, high_fidelity_cost):
+        self._low_fidelity_cost = low_fidelity_cost
+        self._high_fidelity_cost = high_fidelity_cost
+
+    def prepare_acquisition_function(self, model, dataset=None):
+        def acquisition(x):
+            tf.debugging.assert_shapes(
+                [(x, [..., 1, None])],
+                message="This acquisition function only supports batch sizes of one.",
+            )
+            fidelities = x[..., -1:]  # [..., 1]
+            costs = tf.where(fidelities == 0.0, self._low_fidelity_cost, self._high_fidelity_cost)
+            return tf.cast(1.0 / costs, x.dtype)[:, 0, :]
+
+        return acquisition
+
+    def update_acquisition_function(self, function, model, dataset=None):
+        return function
