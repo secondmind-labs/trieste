@@ -116,6 +116,12 @@ class NonlinearConstraint(spo.NonlinearConstraint):  # type: ignore[misc]
         values = tf.concat(values, axis=-1)
         return values
 
+    def __repr__(self) -> str:
+        """"""
+        return f"""
+            NonlinearConstraint({self.fun!r}, {self.lb!r}, {self.ub!r}, {self.keep_feasible!r})"
+        """
+
     def __eq__(self, other: object) -> bool:
         """
         :param other: A constraint.
@@ -180,6 +186,12 @@ class LinearConstraint(spo.LinearConstraint):  # type: ignore[misc]
         values = [fval - lb, ub - fval]
         values = tf.concat(values, axis=-1)
         return values
+
+    def __repr__(self) -> str:
+        """"""
+        return f"""
+            LinearConstraint({self.A!r}, {self.lb!r}, {self.ub!r}, {self.keep_feasible!r})"
+        """
 
     def __eq__(self, other: object) -> bool:
         """
@@ -502,7 +514,7 @@ class Box(SearchSpace):
 
     def __repr__(self) -> str:
         """"""
-        return f"Box({self._lower!r}, {self._upper!r}, {self._constraints!r})"
+        return f"Box({self._lower!r}, {self._upper!r}, {self._constraints!r}, {self._ctol!r})"
 
     @property
     def lower(self) -> tf.Tensor:
