@@ -27,7 +27,7 @@ from gpflow.inducing_variables import (
 from gpflow.logdensities import multivariate_normal
 from gpflow.models import GPR, SGPR, SVGP, VGP
 from gpflow.models.vgp import update_vgp_data
-from gpflow.utilities import is_variable, multiple_assign, read_values
+from gpflow.utilities import add_noise_cov, is_variable, multiple_assign, read_values
 from gpflow.utilities.ops import leading_transpose
 
 from ...data import (
@@ -1610,7 +1610,7 @@ class MultifidelityAutoregressive(TrainableProbabilisticModel):
                         fidelity_observations - self.rho[fidelity] * predictions_from_lower_fidelity
                     )
                     K = gpf_residual_model.kernel(fidelity_query_points)
-                    ks = gpf_residual_model._add_noise_cov(K)
+                    ks = add_noise_cov(K, gpf_residual_model.likelihood.variance)
                     L = tf.linalg.cholesky(ks)
                     m = gpf_residual_model.mean_function(fidelity_query_points)
                     log_prob = multivariate_normal(residuals, m, L)
