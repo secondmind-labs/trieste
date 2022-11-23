@@ -156,8 +156,8 @@ def test_multifidelity_autoregressive_predict_lf_are_consistent_with_multiple_fi
         lf_prediction_direct_var,
     ) = model.lowest_fidelity_signal_model.predict(test_locations_30)
 
-    npt.assert_array_equal(lf_prediction_mean, lf_prediction_direct_mean)  # , rtol=1e-7)
-    npt.assert_array_equal(lf_prediction_var, lf_prediction_direct_var)  # , rtol=1e-7)
+    npt.assert_allclose(lf_prediction_mean, lf_prediction_direct_mean, rtol=1e-7)
+    npt.assert_allclose(lf_prediction_var, lf_prediction_direct_var, rtol=1e-7)
 
 
 def test_multifidelity_autoregressive_predict_hf_is_consistent_when_rho_zero() -> None:

@@ -27,7 +27,7 @@ from gpflow.inducing_variables import (
 from gpflow.logdensities import multivariate_normal
 from gpflow.models import GPR, SGPR, SVGP, VGP
 from gpflow.models.vgp import update_vgp_data
-from gpflow.utilities import is_variable, multiple_assign, read_values
+from gpflow.utilities import add_noise_cov, is_variable, multiple_assign, read_values
 from gpflow.utilities.ops import leading_transpose
 
 from ...data import (
@@ -158,7 +158,7 @@ class GaussianProcessRegression(
 
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         f_mean, f_var = self.predict(query_points)
-        return self.model.likelihood.predict_mean_and_var(f_mean, f_var)
+        return self.model.likelihood.predict_mean_and_var(query_points, f_mean, f_var)
 
     def update(self, dataset: Dataset) -> None:
         self._ensure_variable_model_data()
@@ -515,7 +515,7 @@ class GaussianProcessRegression(
                  and predictive variance at query_points, with shape [..., M, L]
         """
         f_mean, f_var = self.conditional_predict_f(query_points, additional_data)
-        return self.model.likelihood.predict_mean_and_var(f_mean, f_var)
+        return self.model.likelihood.predict_mean_and_var(query_points, f_mean, f_var)
 
 
 class SparseGaussianProcessRegression(
@@ -608,7 +608,7 @@ class SparseGaussianProcessRegression(
 
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         f_mean, f_var = self.predict(query_points)
-        return self.model.likelihood.predict_mean_and_var(f_mean, f_var)
+        return self.model.likelihood.predict_mean_and_var(query_points, f_mean, f_var)
 
     def _ensure_variable_model_data(self) -> None:
         # GPflow stores the data in Tensors. However, since we want to be able to update the data
@@ -930,7 +930,7 @@ class SparseVariational(
 
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         f_mean, f_var = self.predict(query_points)
-        return self.model.likelihood.predict_mean_and_var(f_mean, f_var)
+        return self.model.likelihood.predict_mean_and_var(query_points, f_mean, f_var)
 
     def update(self, dataset: Dataset) -> None:
         self._ensure_variable_model_data()
@@ -1248,7 +1248,7 @@ class VariationalGaussianProcess(
 
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         f_mean, f_var = self.predict(query_points)
-        return self.model.likelihood.predict_mean_and_var(f_mean, f_var)
+        return self.model.likelihood.predict_mean_and_var(query_points, f_mean, f_var)
 
     def update(self, dataset: Dataset, *, jitter: float = DEFAULTS.JITTER) -> None:
         """
@@ -1610,7 +1610,7 @@ class MultifidelityAutoregressive(TrainableProbabilisticModel):
                         fidelity_observations - self.rho[fidelity] * predictions_from_lower_fidelity
                     )
                     K = gpf_residual_model.kernel(fidelity_query_points)
-                    ks = gpf_residual_model._add_noise_cov(K)
+                    ks = add_noise_cov(K, gpf_residual_model.likelihood.variance)
                     L = tf.linalg.cholesky(ks)
                     m = gpf_residual_model.mean_function(fidelity_query_points)
                     log_prob = multivariate_normal(residuals, m, L)

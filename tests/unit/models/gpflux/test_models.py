@@ -102,7 +102,7 @@ def test_deep_gaussian_process_model_attribute(
 
 
 def test_deep_gaussian_process_update(two_layer_model: Callable[[TensorType], DeepGP]) -> None:
-    x = tf.zeros([1, 4])
+    x = tf.zeros([1, 4], dtype=tf.float64)
     dgp = two_layer_model(x)
     model = DeepGaussianProcess(dgp)
 
@@ -126,7 +126,7 @@ def test_deep_gaussian_process_update(two_layer_model: Callable[[TensorType], De
 def test_deep_gaussian_process_update_raises_for_invalid_shapes(
     two_layer_model: Callable[[TensorType], DeepGP], new_data: Dataset
 ) -> None:
-    x = tf.zeros([1, 4])
+    x = tf.zeros([1, 4], dtype=tf.float64)
     dgp = two_layer_model(x)
     model = DeepGaussianProcess(dgp)
 
