@@ -24,6 +24,5 @@ gym<0.22
 box2d
 
 # pin to version of TF used in prod
-gpflux == 0.2.3
-tensorflow ~= 2.6.0
-tensorflow-probability ~= 0.12.0
+tensorflow ~= 2.8.0
+tensorflow-probability ~= 0.13.0

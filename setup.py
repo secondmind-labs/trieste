@@ -39,16 +39,17 @@ setup(
     python_requires="~=3.7",
     install_requires=[
         "absl-py",
-        "dill",
-        "gpflow==2.5.2",
-        "gpflux==0.2.7",
+        "dill!=0.3.6",
+        "gpflow>=2.6.3",
+        "gpflux>=0.3.1",
         "numpy",
-        "tensorflow>=2.6.0",
-        "tensorflow-probability>=0.12",
+        "tensorflow>=2.5",
+        "tensorflow-probability>=0.13",
         "greenlet>=1.1.0",
     ],
     extras_require={
         "plotting": ["seaborn", "plotly"],
+        "qhsri": ["pymoo", "cvxpy"],
     },
 )
 

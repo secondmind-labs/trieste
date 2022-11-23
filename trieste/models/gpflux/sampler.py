@@ -25,6 +25,9 @@ from gpflow.inducing_variables import (
     SharedIndependentInducingVariables,
 )
 from gpflux.layers import GPLayer, LatentVariableLayer
+from trieste.gpflux.layers.basis_functions.fourier_features import RandomFourierFeaturesCosine
+from trieste.gpflux.layers.basis_functions.fourier_features.multioutput import
+    MultiOutputRandomFourierFeaturesCosine
 from gpflux.math import compute_A_inv_b
 from gpflux.models import DeepGP
 
@@ -37,28 +40,6 @@ from ..interfaces import (
     TrajectorySampler,
 )
 from .interface import GPfluxPredictor
-
-"""
-#TODO -- need to revert to this after GPflux PR
-try:
-    # temporary support for gpflux 0.2.3
-    # code ugliness is due to https://github.com/python/mypy/issues/8823
-    RFF: Any = getattr(trieste.gpflux.layers.basis_functions, "RandomFourierFeatures")
-except AttributeError:
-    import trieste.gpflux.layers.basis_functions.fourier_features  # needed for 0.2.7
-
-    RFF = getattr(
-        getattr(trieste.gpflux.layers.basis_functions, "fourier_features"), 
-        "RandomFourierFeaturesCosine"
-    )
-"""
-
-from trieste.gpflux.layers.basis_functions.fourier_features import (
-    RandomFourierFeaturesCosine as RFF,
-)
-from trieste.gpflux.layers.basis_functions.fourier_features.multioutput import (
-    MultiOutputRandomFourierFeaturesCosine as MO_RFF,
-)
 
 
 class DeepGaussianProcessReparamSampler(ReparametrizationSampler[GPfluxPredictor]):
@@ -532,7 +513,11 @@ class DeepGaussianProcessDecoupledLayer(ABC):
         return weight_sampler
 
 
+<<<<<<< HEAD
 class ResampleableDecoupledDeepGaussianProcessFeatureFunctions:
+=======
+class ResampleableDecoupledDeepGaussianProcessFeatureFunctions(RandomFourierFeaturesCosine):
+>>>>>>> develop
     """
     A wrapper around GPflux's random Fourier feature function that allows for efficient in-place
     updating when generating new decompositions. In addition to providing Fourier features,
@@ -587,11 +572,11 @@ class ResampleableDecoupledDeepGaussianProcessFeatureFunctions:
         # Build the RFF objects
         if isinstance(self._kernel, gpflow.kernels.MultioutputKernel):
 
-            self._rff = MO_RFF(self._kernel, self._n_components, dtype=tf.float64)
+            self._rff = MultiOutputRandomFourierFeaturesCosine(self._kernel, self._n_components, dtype=tf.float64)
 
         else:
 
-            self._rff = RFF(self._kernel, self._n_components, dtype=tf.float64)
+            self._rff = RandomFourierFeaturesCosine(self._kernel, self._n_components, dtype=tf.float64)
 
         self.__call__(dummy_X)
         """

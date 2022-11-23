@@ -30,6 +30,7 @@ from trieste.acquisition import (
     GIBBON,
     AcquisitionFunctionClass,
     AugmentedExpectedImprovement,
+    BatchExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
     Fantasizer,
     GreedyAcquisitionFunctionBuilder,
@@ -47,6 +48,7 @@ from trieste.acquisition.rule import (
     AsynchronousGreedy,
     AsynchronousOptimization,
     AsynchronousRuleState,
+    BatchHypervolumeSharpeRatioIndicator,
     DiscreteThompsonSampling,
     EfficientGlobalOptimization,
     TrustRegion,
@@ -81,6 +83,11 @@ from trieste.observer import OBJECTIVE
 from trieste.space import Box, SearchSpace
 from trieste.types import State, TensorType
 
+try:
+    import pymoo
+except ImportError:
+    pymoo = None
+
 
 # Optimizer parameters for testing GPR against the branin function.
 # We also use these for a quicker test against a simple quadratic function
@@ -112,6 +119,14 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                     ).using(OBJECTIVE)
                 ),
                 id="MinValueEntropySearch",
+            ),
+            pytest.param(
+                12,
+                EfficientGlobalOptimization(
+                    BatchExpectedImprovement(sample_size=100).using(OBJECTIVE),
+                    num_query_points=3,
+                ),
+                id="BatchExpectedImprovement",
             ),
             pytest.param(
                 12,
@@ -200,6 +215,12 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                     num_query_points=5,
                 ),
                 id="ParallelContinuousThompsonSampling",
+            ),
+            pytest.param(
+                15,
+                BatchHypervolumeSharpeRatioIndicator() if pymoo else None,
+                id="BatchHypevolumeSharpeRatioIndicator",
+                marks=pytest.mark.qhsri,
             ),
         ],
     )
@@ -655,5 +676,5 @@ def _test_optimizer_finds_minimum(
                 )
                 random_batch = tf.expand_dims(search_space.sample(batch_size), 0)
                 npt.assert_allclose(
-                    acq_function(random_batch), acq_function_copy(random_batch), rtol=2e-7
+                    acq_function(random_batch), acq_function_copy(random_batch), rtol=5e-7
                 )

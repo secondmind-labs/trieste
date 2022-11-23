@@ -21,16 +21,17 @@ universally good solutions.
 from __future__ import annotations
 
 import math
-from typing import Optional
+from typing import Optional, Sequence
 
 import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
 from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
 
-from ...data import Dataset
+from ...data import Dataset, split_dataset_by_fidelity
 from ...space import Box, SearchSpace
 from ...types import TensorType
+from ..gpflow.models import GaussianProcessRegression
 
 KERNEL_LENGTHSCALE = tf.cast(0.2, dtype=gpflow.default_float())
 """
@@ -419,3 +420,53 @@ def _get_inducing_points(
         inducing_points = search_space.sample(num_inducing_points)
 
     return inducing_points
+
+
+def build_multifidelity_autoregressive_models(
+    dataset: Dataset,
+    num_fidelities: int,
+    input_search_space: SearchSpace,
+    likelihood_variance: float = 1e-6,
+    kernel_priors: bool = False,
+    trainable_likelihood: bool = False,
+) -> Sequence[GaussianProcessRegression]:
+    """
+    Build the individual GPR models required for constructing an MultifidelityAutoregressive model
+    with `num_fidelities` fidelities.
+
+    :param dataset: Dataset of points with which to initialise the individual models,
+        where the final column of the final dimension of the query points contains the fidelity
+    :param num_fidelities: Number of fidelities desired for the MultifidelityAutoregressive model
+    :param input_search_space: The input search space of the models
+    :return: List of initialised GPR models
+    """
+    if num_fidelities < 2:
+        raise ValueError(
+            "Invalid number of fidelities to build MultifidelityAutoregressive model for,"
+            f" need at least 2 fidelities, got {num_fidelities}"
+        )
+
+    # Split data into fidelities
+    data = split_dataset_by_fidelity(dataset=dataset, num_fidelities=num_fidelities)
+
+    for i, fidelity_data in enumerate(data):
+        if len(fidelity_data) < 2:
+            raise ValueError(
+                f"Not enough data to create model for fidelity {i},"
+                f" need at least 2 datapoints, got {len(fidelity_data)}"
+            )
+
+    gprs = [
+        GaussianProcessRegression(
+            build_gpr(
+                data[fidelity],
+                input_search_space,
+                likelihood_variance=likelihood_variance,
+                kernel_priors=kernel_priors,
+                trainable_likelihood=trainable_likelihood,
+            )
+        )
+        for fidelity in range(num_fidelities)
+    ]
+
+    return gprs
