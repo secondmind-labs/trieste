@@ -750,11 +750,11 @@ def test_optimizer_scipy_method_select(
     )
     optimizer(search_space, target_function)
 
-    received_method = mocked_minimize.call_args.kwargs["method"]
+    received_method = mocked_minimize.call_args[1]["method"]
     assert received_method == expected_method
 
-    if "constraints" in mocked_minimize.call_args.kwargs:
-        received_constraints = mocked_minimize.call_args.kwargs["constraints"]
+    if "constraints" in mocked_minimize.call_args[1]:
+        received_constraints = mocked_minimize.call_args[1]["constraints"]
     else:
         received_constraints = None
     assert received_constraints == expected_constraints
