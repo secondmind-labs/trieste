@@ -29,6 +29,7 @@ from typing_extensions import Final
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, various_shapes
 from trieste.space import (
     Box,
+    Constraint,
     DiscreteSearchSpace,
     LinearConstraint,
     NonlinearConstraint,
@@ -1104,7 +1105,7 @@ def test___eq___search_spaces(a: SearchSpace, b: SearchSpace, equal: bool) -> No
     ],
 )
 def test_box_constraints_residuals_and_feasibility(
-    constraints: Sequence[LinearConstraint | NonlinearConstraint], points: tf.Tensor
+    constraints: Sequence[Constraint], points: tf.Tensor
 ) -> None:
     space = Box(tf.constant([0.0, 0.0]), tf.constant([1.0, 1.0]), constraints)
     got = space.constraints_residuals(points)

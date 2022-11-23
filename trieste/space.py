@@ -17,7 +17,7 @@ from __future__ import annotations
 import operator
 from abc import ABC, abstractmethod
 from functools import reduce
-from typing import Callable, Optional, Sequence, Tuple, TypeVar, overload
+from typing import Callable, Optional, Sequence, Tuple, TypeVar, Union, overload
 
 import numpy as np
 import scipy.optimize as spo
@@ -106,7 +106,8 @@ class NonlinearConstraint(spo.NonlinearConstraint):  # type: ignore[misc]
         :param points: The points to calculate the residuals for, with shape [..., D].
         :return: A tensor containing the lower and upper residual values with shape [..., M*2].
         """
-        non_d_axes = tf.ones_like(tf.shape(points))[:-1]
+        tf.debugging.assert_rank_at_least(points, 2)
+        non_d_axes = np.ones_like(points.shape)[:-1]  # Avoid adding axes shape to static graph.
         lb = tf.cast(tf.reshape(self.lb, (*non_d_axes, -1)), dtype=points.dtype)
         ub = tf.cast(tf.reshape(self.ub, (*non_d_axes, -1)), dtype=points.dtype)
         fval = self.fun(points)
@@ -130,10 +131,10 @@ class NonlinearConstraint(spo.NonlinearConstraint):  # type: ignore[misc]
         if not isinstance(other, NonlinearConstraint):
             return False
         return bool(
-            tf.reduce_all(self._orig_fun == other._orig_fun)
+            self._orig_fun == other._orig_fun
             and tf.reduce_all(self.lb == other.lb)
             and tf.reduce_all(self.ub == other.ub)
-            and tf.reduce_all(self.keep_feasible == other.keep_feasible)
+            and self.keep_feasible == other.keep_feasible
         )
 
 
@@ -177,7 +178,8 @@ class LinearConstraint(spo.LinearConstraint):  # type: ignore[misc]
         :param points: The points to calculate the residuals for, with shape [..., D].
         :return: A tensor containing the lower and upper residual values with shape [..., M*2].
         """
-        non_d_axes = tf.ones_like(tf.shape(points))[:-1]
+        tf.debugging.assert_rank_at_least(points, 2)
+        non_d_axes = np.ones_like(points.shape)[:-1]  # Avoid adding axes shape to static graph.
         lb = tf.cast(tf.reshape(self.lb, (*non_d_axes, -1)), dtype=points.dtype)
         ub = tf.cast(tf.reshape(self.ub, (*non_d_axes, -1)), dtype=points.dtype)
         A = tf.cast(self.A, dtype=points.dtype)
@@ -206,6 +208,10 @@ class LinearConstraint(spo.LinearConstraint):  # type: ignore[misc]
             and tf.reduce_all(self.ub == other.ub)
             and tf.reduce_all(self.keep_feasible == other.keep_feasible)
         )
+
+
+# Constraint type alias.
+Constraint = Union[LinearConstraint, NonlinearConstraint]
 
 
 class SearchSpace(ABC):
@@ -317,9 +323,13 @@ class SearchSpace(ABC):
         :param points: The points to check constraints feasibility for, with shape [..., D].
         :return: A tensor of booleans. Returns `True` for each point if it is feasible in this
             search space, else `False`.
+        :raise NotImplementedError: If this :class:`SearchSpace` has constraints.
         """
-        # By default assume everything is feasible; can be overridden by a subclass.
-        return True
+        # Everything is feasible in the absence of constraints. Must be overriden if there are
+        # constraints.
+        if self.has_constraints:
+            raise NotImplementedError("Feasibility check is not implemented for this search space.")
+        return tf.cast(tf.ones(points.shape[:-1]), dtype=bool)
 
     @property
     def has_constraints(self) -> bool:
@@ -450,7 +460,7 @@ class Box(SearchSpace):
         self,
         lower: Sequence[float],
         upper: Sequence[float],
-        constraints: Optional[Sequence[LinearConstraint | NonlinearConstraint]] = None,
+        constraints: Optional[Sequence[Constraint]] = None,
         ctol: float = 1e-7,
     ):
         ...
@@ -460,7 +470,7 @@ class Box(SearchSpace):
         self,
         lower: TensorType,
         upper: TensorType,
-        constraints: Optional[Sequence[LinearConstraint | NonlinearConstraint]] = None,
+        constraints: Optional[Sequence[Constraint]] = None,
         ctol: float = 1e-7,
     ):
         ...
@@ -469,8 +479,8 @@ class Box(SearchSpace):
         self,
         lower: Sequence[float] | TensorType,
         upper: Sequence[float] | TensorType,
-        constraints: Optional[Sequence[LinearConstraint | NonlinearConstraint]] = None,
-        ctol: float = 1e-7,
+        constraints: Optional[Sequence[Constraint]] = None,
+        ctol: float | TensorType = 1e-7,
     ):
         r"""
         If ``lower`` and ``upper`` are `Sequence`\ s of floats (such as lists or tuples),
@@ -492,6 +502,7 @@ class Box(SearchSpace):
         tf.debugging.assert_shapes([(lower, ["D"]), (upper, ["D"])])
         tf.assert_rank(lower, 1)
         tf.assert_rank(upper, 1)
+        tf.debugging.assert_non_negative(ctol, message="Tolerance must be non-negative")
 
         if isinstance(lower, Sequence):
             self._lower = tf.constant(lower, dtype=DEFAULT_DTYPE)
@@ -507,7 +518,7 @@ class Box(SearchSpace):
         self._dimension = tf.shape(self._upper)[-1]
 
         if constraints is None:
-            self._constraints: Sequence[LinearConstraint | NonlinearConstraint] = []
+            self._constraints: Sequence[Constraint] = []
         else:
             self._constraints = constraints
         self._ctol = ctol
@@ -532,7 +543,7 @@ class Box(SearchSpace):
         return self._dimension
 
     @property
-    def constraints(self) -> Sequence[LinearConstraint | NonlinearConstraint]:
+    def constraints(self) -> Sequence[Constraint]:
         """The sequence of explicit constraints specified in this search space."""
         return self._constraints
 
@@ -559,6 +570,17 @@ class Box(SearchSpace):
 
         return tf.reduce_all(value >= self._lower) and tf.reduce_all(value <= self._upper)
 
+    def _sample(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
+        # Internal common method to sample randomly from the space.
+        dim = tf.shape(self._lower)[-1]
+        return tf.random.uniform(
+            (num_samples, dim),
+            minval=self._lower,
+            maxval=self._upper,
+            dtype=self._lower.dtype,
+            seed=seed,
+        )
+
     def sample(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
         """
         Sample randomly from the space.
@@ -572,14 +594,25 @@ class Box(SearchSpace):
         tf.debugging.assert_non_negative(num_samples)
         if seed is not None:  # ensure reproducibility
             tf.random.set_seed(seed)
+        return self._sample(num_samples, seed)
+
+    def _sample_halton(
+        self,
+        start: int,
+        num_samples: int,
+        seed: Optional[int] = None,
+    ) -> TensorType:
+        # Internal common method to sample from the space using a Halton sequence.
+        tf.debugging.assert_non_negative(num_samples)
+        if num_samples == 0:
+            return tf.constant([])
+        if seed is not None:  # ensure reproducibility
+            tf.random.set_seed(seed)
         dim = tf.shape(self._lower)[-1]
-        return tf.random.uniform(
-            (num_samples, dim),
-            minval=self._lower,
-            maxval=self._upper,
-            dtype=self._lower.dtype,
-            seed=seed,
-        )
+        sequence_indices = tf.range(start=start, limit=start + num_samples, dtype=tf.int32)
+        return (self._upper - self._lower) * tfp.mcmc.sample_halton_sequence(
+            dim=dim, sequence_indices=sequence_indices, dtype=self._lower.dtype, seed=seed
+        ) + self._lower
 
     def sample_halton(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
         """
@@ -591,16 +624,7 @@ class Box(SearchSpace):
         :return: ``num_samples`` of points, using halton sequence with shape '[num_samples, D]' ,
             where D is the search space dimension.
         """
-
-        tf.debugging.assert_non_negative(num_samples)
-        if num_samples == 0:
-            return tf.constant([])
-        if seed is not None:  # ensure reproducibility
-            tf.random.set_seed(seed)
-        dim = tf.shape(self._lower)[-1]
-        return (self._upper - self._lower) * tfp.mcmc.sample_halton_sequence(
-            dim=dim, num_results=num_samples, dtype=self._lower.dtype, seed=seed
-        ) + self._lower
+        return self._sample_halton(0, num_samples, seed)
 
     def sample_sobol(self, num_samples: int, skip: Optional[int] = None) -> TensorType:
         """
@@ -628,8 +652,17 @@ class Box(SearchSpace):
         sampler: Callable[[], TensorType],
         max_tries: int = 100,
     ) -> TensorType:
-        # Rejection sampling using provided callable. Try ``max_tries`` number of times to find
-        # ``num_samples`` feasible points.
+        """
+        Rejection sampling using provided callable. Try ``max_tries`` number of times to find
+        ``num_samples`` feasible points.
+
+        :param num_samples: The number of feasible points to sample from this search space.
+        :param sampler: Callable to return samples. Called potentially multiple times.
+        :param max_tries: Maximum attempts to sample the requested number of points.
+        :return: ``num_samples`` feasible points sampled using ``sampler``.
+        :raise SampleTimeoutError: If ``max_tries`` are exhausted before ``num_samples`` are
+            sampled.
+        """
         xs = []
         count = 0
         tries = 0
@@ -665,25 +698,17 @@ class Box(SearchSpace):
         :raise SampleTimeoutError: If ``max_tries`` are exhausted before ``num_samples`` are
             sampled.
         """
-        # Without constraints use the normal sample method directly.
-        if not self.has_constraints:
+        tf.debugging.assert_non_negative(num_samples)
+
+        # Without constraints or zero-num-samples use the normal sample method directly.
+        if not self.has_constraints or num_samples == 0:
             return self.sample(num_samples, seed)
 
-        tf.debugging.assert_non_negative(num_samples)
-        if num_samples == 0:
-            return tf.constant([])
         if seed is not None:  # ensure reproducibility
             tf.random.set_seed(seed)
-        dim = tf.shape(self._lower)[-1]
 
         def _sampler() -> TensorType:
-            return tf.random.uniform(
-                (num_samples, dim),
-                minval=self._lower,
-                maxval=self._upper,
-                dtype=self._lower.dtype,
-                seed=seed,
-            )
+            return self._sample(num_samples, seed)
 
         return self._sample_feasible_loop(num_samples, _sampler, max_tries)
 
@@ -702,24 +727,19 @@ class Box(SearchSpace):
         :raise SampleTimeoutError: If ``max_tries`` are exhausted before ``num_samples`` are
             sampled.
         """
-        # Without constraints use the normal sample method directly.
-        if not self.has_constraints:
+        tf.debugging.assert_non_negative(num_samples)
+
+        # Without constraints or zero-num-samples use the normal sample method directly.
+        if not self.has_constraints or num_samples == 0:
             return self.sample_halton(num_samples, seed)
 
-        tf.debugging.assert_non_negative(num_samples)
-        if num_samples == 0:
-            return tf.constant([])
-        dim = tf.shape(self._lower)[-1]
         start = 0
 
         def _sampler() -> TensorType:
             nonlocal start
-            sequence_indices = tf.range(start=start, limit=start + num_samples, dtype=tf.int32)
-            if seed is not None:  # ensure reproducibility and samples from the same sequence
-                tf.random.set_seed(seed)
-            samples = (self._upper - self._lower) * tfp.mcmc.sample_halton_sequence(
-                dim=dim, sequence_indices=sequence_indices, dtype=self._lower.dtype, seed=seed
-            ) + self._lower
+            # Global seed is set on every call in _sample_halton() so that we always sample from
+            # the same (randomised) sequence, and skip the relevant number of beginning samples.
+            samples = self._sample_halton(start, num_samples, seed)
             start += num_samples
             return samples
 
@@ -740,23 +760,20 @@ class Box(SearchSpace):
         :raise SampleTimeoutError: If ``max_tries`` are exhausted before ``num_samples`` are
             sampled.
         """
-        # Without constraints use the normal sample method directly.
-        if not self.has_constraints:
+        tf.debugging.assert_non_negative(num_samples)
+
+        # Without constraints or zero-num-samples use the normal sample method directly.
+        if not self.has_constraints or num_samples == 0:
             return self.sample_sobol(num_samples, skip)
 
-        tf.debugging.assert_non_negative(num_samples)
-        if num_samples == 0:
-            return tf.constant([])
         if skip is None:  # generate random skip
             skip = tf.random.uniform([1], maxval=2 ** 16, dtype=tf.int32)[0]
         _skip: TensorType = skip  # To keep mypy happy.
-        dim = tf.shape(self._lower)[-1]
 
         def _sampler() -> TensorType:
             nonlocal _skip
-            samples = (self._upper - self._lower) * tf.math.sobol_sample(
-                dim=dim, num_results=num_samples, dtype=self._lower.dtype, skip=_skip
-            ) + self._lower
+            samples = self.sample_sobol(num_samples, skip=_skip)
+            # Skip the relevant number of beginning samples from previous iterations.
             _skip += num_samples
             return samples
 
@@ -798,6 +815,7 @@ class Box(SearchSpace):
         return bool(
             tf.reduce_all(self.lower == other.lower)
             and tf.reduce_all(self.upper == other.upper)
+            # Constraints match only if they are exactly the same (in the same order).
             and self._constraints == other._constraints
         )
 
