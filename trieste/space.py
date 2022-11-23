@@ -461,7 +461,7 @@ class Box(SearchSpace):
         lower: Sequence[float],
         upper: Sequence[float],
         constraints: Optional[Sequence[Constraint]] = None,
-        ctol: float = 1e-7,
+        ctol: float | TensorType = 1e-7,
     ):
         ...
 
@@ -471,7 +471,7 @@ class Box(SearchSpace):
         lower: TensorType,
         upper: TensorType,
         constraints: Optional[Sequence[Constraint]] = None,
-        ctol: float = 1e-7,
+        ctol: float | TensorType = 1e-7,
     ):
         ...
 
