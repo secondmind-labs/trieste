@@ -272,7 +272,9 @@ class Pareto:
         return lower_bound, upper_bound
 
 
-def get_reference_point(observations: TensorType,) -> TensorType:
+def get_reference_point(
+    observations: TensorType,
+) -> TensorType:
     """
     Default reference point calculation method that calculates the reference
     point according to a Pareto front extracted from set of observations.

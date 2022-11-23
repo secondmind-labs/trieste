@@ -275,11 +275,14 @@ class EfficientGlobalOptimization(
         """
         if self._acquisition_function is None:
             self._acquisition_function = self._builder.prepare_acquisition_function(
-                models, datasets=datasets,
+                models,
+                datasets=datasets,
             )
         else:
             self._acquisition_function = self._builder.update_acquisition_function(
-                self._acquisition_function, models, datasets=datasets,
+                self._acquisition_function,
+                models,
+                datasets=datasets,
             )
 
         summary_writer = logging.get_tensorboard_writer()
@@ -559,11 +562,14 @@ class AsynchronousOptimization(
 
         if self._acquisition_function is None:
             self._acquisition_function = self._builder.prepare_acquisition_function(
-                models, datasets=datasets,
+                models,
+                datasets=datasets,
             )
         else:
             self._acquisition_function = self._builder.update_acquisition_function(
-                self._acquisition_function, models, datasets=datasets,
+                self._acquisition_function,
+                models,
+                datasets=datasets,
             )
 
         def state_func(
@@ -719,7 +725,9 @@ class AsynchronousGreedy(
 
             if self._acquisition_function is None:
                 self._acquisition_function = self._builder.prepare_acquisition_function(
-                    models, datasets=datasets, pending_points=state.pending_points,
+                    models,
+                    datasets=datasets,
+                    pending_points=state.pending_points,
                 )
             else:
                 self._acquisition_function = self._builder.update_acquisition_function(

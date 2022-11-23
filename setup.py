@@ -52,4 +52,3 @@ setup(
         "qhsri": ["pymoo", "cvxpy"],
     },
 )
-

@@ -28,7 +28,11 @@ from gpflux.layers import GPLayer
 from gpflux.models import DeepGP
 
 from trieste.data import Dataset, TensorType
-from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp, build_vanilla_flexible_deep_gp
+from trieste.models.gpflux import (
+    DeepGaussianProcess,
+    build_vanilla_deep_gp,
+    build_vanilla_flexible_deep_gp,
+)
 from trieste.models.optimizer import KerasOptimizer
 from trieste.space import SearchSpace
 
@@ -38,7 +42,7 @@ def single_layer_dgp_model(x: TensorType) -> DeepGP:
         x = x.numpy()
 
     config = Config(
-        num_inducing=len(x), 
+        num_inducing=len(x),
         inner_layer_qsqrt_factor=1e-5,
         likelihood_noise_variance=1e-2,
         whiten=True,  # whiten = False not supported yet in GPflux for this model
@@ -52,13 +56,15 @@ def single_layer_flexible_dgp_model(x: TensorType, separate_case: bool, output_d
         x = x.numpy()
 
     config = Config(
-        num_inducing=len(x), 
+        num_inducing=len(x),
         inner_layer_qsqrt_factor=1e-5,
         likelihood_noise_variance=1e-2,
         whiten=True,  # whiten = False not supported yet in GPflux for this model
     )
 
-    return build_constant_input_dim_flexible_deep_gp(X=x, num_layers=1, config=config, separate_case=separate_case, output_dim=output_dim)
+    return build_constant_input_dim_flexible_deep_gp(
+        X=x, num_layers=1, config=config, separate_case=separate_case, output_dim=output_dim
+    )
 
 
 def two_layer_dgp_model(x: TensorType) -> DeepGP:
@@ -86,7 +92,10 @@ def two_layer_flexible_dgp_model(x: TensorType, separate_case: bool, output_dim:
         whiten=True,  # whiten = False not supported yet in GPflux for this model
     )
 
-    return build_constant_input_dim_flexible_deep_gp(X=x, num_layers=2, config=config,  separate_case=separate_case, output_dim=output_dim)
+    return build_constant_input_dim_flexible_deep_gp(
+        X=x, num_layers=2, config=config, separate_case=separate_case, output_dim=output_dim
+    )
+
 
 def simple_two_layer_dgp_model(x: TensorType) -> DeepGP:
     if isinstance(x, tf.Tensor):
@@ -117,14 +126,16 @@ def simple_two_layer_dgp_model(x: TensorType) -> DeepGP:
     return DeepGP([gp_layer_1, gp_layer_2], gpflow.likelihoods.Gaussian(0.01))
 
 
-def simple_two_layer_flexible_dgp_model(x: TensorType, separate_case: bool, output_dim: int) -> DeepGP:
+def simple_two_layer_flexible_dgp_model(
+    x: TensorType, separate_case: bool, output_dim: int
+) -> DeepGP:
     if isinstance(x, tf.Tensor):
         x = x.numpy()
     x_shape = x.shape[-1]
     num_data = len(x)
 
     Z = x.copy()
-        
+
     kernel_1 = gpflow.kernels.SquaredExponential()
     inducing_variable_1 = gpflow.inducing_variables.InducingPoints(Z.copy())
     gp_layer_1 = GPLayer(
@@ -184,6 +195,7 @@ def trieste_deep_gaussian_process(
 def two_layer_trieste_dgp(data: Dataset, search_space: SearchSpace) -> DeepGaussianProcess:
     return trieste_deep_gaussian_process(data, search_space, 2, 10, 0.01, 5, 10)[0]
 
+
 def trieste_flexible_deep_gaussian_process(
     data: Dataset,
     search_space: SearchSpace,
@@ -195,7 +207,9 @@ def trieste_flexible_deep_gaussian_process(
     dim_output: int,
     fix_noise: bool = False,
 ) -> Tuple[DeepGaussianProcess, Dict[str, Any]]:
-    dgp = build_vanilla_flexible_deep_gp(dim_output, data, search_space, num_layers, num_inducing_points)
+    dgp = build_vanilla_flexible_deep_gp(
+        dim_output, data, search_space, num_layers, num_inducing_points
+    )
     if fix_noise:
         dgp.likelihood_layer.likelihood.variance.assign(1e-5)
         set_trainable(dgp.likelihood_layer, False)
@@ -219,5 +233,9 @@ def trieste_flexible_deep_gaussian_process(
     return model, fit_args
 
 
-def two_layer_trieste_flexible_dgp(data: Dataset, search_space: SearchSpace, dim_output: int) -> DeepGaussianProcess:
-    return trieste_flexible_deep_gaussian_process(data, search_space, 2, 10, 0.01, 5, 10, dim_output)[0]
+def two_layer_trieste_flexible_dgp(
+    data: Dataset, search_space: SearchSpace, dim_output: int
+) -> DeepGaussianProcess:
+    return trieste_flexible_deep_gaussian_process(
+        data, search_space, 2, 10, 0.01, 5, 10, dim_output
+    )[0]

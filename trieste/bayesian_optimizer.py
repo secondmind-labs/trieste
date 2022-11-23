@@ -885,7 +885,8 @@ def write_summary_observations(
             else:
                 observation_plot_df["pareto"] = non_dominated(datasets[tag].observations)[1]
                 observation_plot_df["observation type"] = observation_plot_df.apply(
-                    lambda x: x["observations"] + x["pareto"] * " (non-dominated)", axis=1,
+                    lambda x: x["observations"] + x["pareto"] * " (non-dominated)",
+                    axis=1,
                 )
                 hue_order += [hue + " (non-dominated)" for hue in hue_order]
                 palette.update(

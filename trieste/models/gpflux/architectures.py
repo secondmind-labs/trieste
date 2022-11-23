@@ -134,7 +134,10 @@ def build_constant_input_dim_flexible_deep_gp(
         _centroids = np.tile(centroids[None, ...], (D_out, 1, 1))
 
         inducing_var = construct_basic_inducing_variables(
-            num_inducing=_num_inducing, input_dim=D_in, share_variables=False, z_init=_centroids,
+            num_inducing=_num_inducing,
+            input_dim=D_in,
+            share_variables=False,
+            z_init=_centroids,
         )
 
         if separate_case:
@@ -142,7 +145,11 @@ def build_constant_input_dim_flexible_deep_gp(
         else:
             _kernels = _construct_kernel(D_in, is_last_layer)
 
-        kernel = construct_basic_kernel(kernels=_kernels, output_dim=D_out, share_hyperparams=True,)
+        kernel = construct_basic_kernel(
+            kernels=_kernels,
+            output_dim=D_out,
+            share_hyperparams=True,
+        )
 
         assert config.whiten is True, "non-whitened case not implemented yet"
 
@@ -157,7 +164,11 @@ def build_constant_input_dim_flexible_deep_gp(
             q_sqrt_scaling = config.inner_layer_qsqrt_factor
 
         layer = GPLayer(
-            kernel, inducing_var, num_data, mean_function=mean_function, name=f"gp_{i_layer}",
+            kernel,
+            inducing_var,
+            num_data,
+            mean_function=mean_function,
+            name=f"gp_{i_layer}",
         )
         layer.q_sqrt.assign(layer.q_sqrt * q_sqrt_scaling)
         gp_layers.append(layer)

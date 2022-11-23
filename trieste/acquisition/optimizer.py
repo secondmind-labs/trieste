@@ -97,7 +97,8 @@ def automatic_optimizer_selector(
         num_samples = tf.maximum(NUM_SAMPLES_MIN, NUM_SAMPLES_DIM * tf.shape(space.lower)[-1])
         num_runs = NUM_RUNS_DIM * tf.shape(space.lower)[-1]
         return generate_continuous_optimizer(
-            num_initial_samples=num_samples, num_optimization_runs=num_runs,
+            num_initial_samples=num_samples,
+            num_optimization_runs=num_runs,
         )(space, target_func)
 
     else:
@@ -269,7 +270,10 @@ def generate_continuous_optimizer(
             chosen_x,
             nfev,
         ) = _perform_parallel_continuous_optimization(  # [num_optimization_runs, V]
-            target_func, space, initial_points, optimizer_args or {},
+            target_func,
+            space,
+            initial_points,
+            optimizer_args or {},
         )
 
         successful_optimization = tf.reduce_all(
@@ -557,7 +561,8 @@ def get_bounds_of_box_relaxation_around_point(
 
 
 def batchify_joint(
-    batch_size_one_optimizer: AcquisitionOptimizer[SearchSpaceType], batch_size: int,
+    batch_size_one_optimizer: AcquisitionOptimizer[SearchSpaceType],
+    batch_size: int,
 ) -> AcquisitionOptimizer[SearchSpaceType]:
     """
     A wrapper around our :const:`AcquisitionOptimizer`s. This class wraps a
@@ -598,7 +603,8 @@ def batchify_joint(
 
 
 def batchify_vectorize(
-    batch_size_one_optimizer: AcquisitionOptimizer[SearchSpaceType], batch_size: int,
+    batch_size_one_optimizer: AcquisitionOptimizer[SearchSpaceType],
+    batch_size: int,
 ) -> AcquisitionOptimizer[SearchSpaceType]:
     """
     A wrapper around our :const:`AcquisitionOptimizer`s. This class wraps a

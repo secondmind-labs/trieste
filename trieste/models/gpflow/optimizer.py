@@ -29,7 +29,9 @@ from ..optimizer import LossClosure, TrainingData, create_loss_function
 
 @create_loss_function.register
 def _create_loss_function_internal(
-    model: InternalDataTrainingLossMixin, data: TrainingData, compile: bool = False,
+    model: InternalDataTrainingLossMixin,
+    data: TrainingData,
+    compile: bool = False,
 ) -> LossClosure:
     return model.training_loss_closure(compile=compile)
 
@@ -51,7 +53,9 @@ class _TrainingLossClosureBuilder:
 
 @create_loss_function.register
 def _create_loss_function_external(
-    model: ExternalDataTrainingLossMixin, data: TrainingData, compile: bool = False,
+    model: ExternalDataTrainingLossMixin,
+    data: TrainingData,
+    compile: bool = False,
 ) -> LossClosure:
 
     if not compile:

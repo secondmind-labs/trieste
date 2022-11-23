@@ -254,7 +254,9 @@ class Box(SearchSpace):
         ...
 
     def __init__(
-        self, lower: Sequence[float] | TensorType, upper: Sequence[float] | TensorType,
+        self,
+        lower: Sequence[float] | TensorType,
+        upper: Sequence[float] | TensorType,
     ):
         r"""
         If ``lower`` and ``upper`` are `Sequence`\ s of floats (such as lists or tuples),

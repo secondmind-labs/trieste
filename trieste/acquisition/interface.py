@@ -132,7 +132,9 @@ class SingleModelAcquisitionBuilder(Generic[ProbabilisticModelType], ABC):
 
     @abstractmethod
     def prepare_acquisition_function(
-        self, model: ProbabilisticModelType, dataset: Optional[Dataset] = None,
+        self,
+        model: ProbabilisticModelType,
+        dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model.
@@ -301,7 +303,9 @@ class SingleModelGreedyAcquisitionBuilder(Generic[ProbabilisticModelType], ABC):
         :return: The updated acquisition function.
         """
         return self.prepare_acquisition_function(
-            model, dataset=dataset, pending_points=pending_points,
+            model,
+            dataset=dataset,
+            pending_points=pending_points,
         )
 
 
@@ -382,6 +386,9 @@ class UpdatablePenalizationFunction(ABC):
 
     @abstractmethod
     def update(
-        self, pending_points: TensorType, lipschitz_constant: TensorType, eta: TensorType,
+        self,
+        pending_points: TensorType,
+        lipschitz_constant: TensorType,
+        eta: TensorType,
     ) -> None:
         """Update penalization function."""

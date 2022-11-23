@@ -82,7 +82,9 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder[Probabilistic
             return f"ExpectedHypervolumeImprovement({self._ref_point_spec!r})"
 
     def prepare_acquisition_function(
-        self, model: ProbabilisticModel, dataset: Optional[Dataset] = None,
+        self,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model.
@@ -241,7 +243,11 @@ class expected_hv_improvement(AcquisitionFunctionClass):
 
         ehvi_cells_based = ehvi_based_on_partitioned_cell(neg_candidate_mean, candidate_std)
 
-        return tf.reduce_sum(ehvi_cells_based, axis=-1, keepdims=True,)
+        return tf.reduce_sum(
+            ehvi_cells_based,
+            axis=-1,
+            keepdims=True,
+        )
 
 
 class BatchMonteCarloExpectedHypervolumeImprovement(
@@ -304,7 +310,9 @@ class BatchMonteCarloExpectedHypervolumeImprovement(
             )
 
     def prepare_acquisition_function(
-        self, model: HasReparamSampler, dataset: Optional[Dataset] = None,
+        self,
+        model: HasReparamSampler,
+        dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model. Must have event shape [1].
@@ -469,7 +477,8 @@ class ExpectedConstrainedHypervolumeImprovement(
         """
         if callable(self._ref_point_spec):
             self._ref_point = tf.cast(
-                self._ref_point_spec(feasible_mean), dtype=feasible_mean.dtype,
+                self._ref_point_spec(feasible_mean),
+                dtype=feasible_mean.dtype,
             )
         else:
             self._ref_point = tf.cast(self._ref_point_spec, dtype=feasible_mean.dtype)
@@ -479,7 +488,8 @@ class ExpectedConstrainedHypervolumeImprovement(
         # prepare the partitioned bounds of non-dominated region for calculating of the
         # hypervolume improvement in this area
         _partition_bounds = prepare_default_non_dominated_partition_bounds(
-            self._ref_point, screened_front,
+            self._ref_point,
+            screened_front,
         )
 
         self._expected_improvement_fn: Optional[AcquisitionFunction]

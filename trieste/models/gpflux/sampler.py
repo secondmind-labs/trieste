@@ -26,8 +26,9 @@ from gpflow.inducing_variables import (
 )
 from gpflux.layers import GPLayer, LatentVariableLayer
 from trieste.gpflux.layers.basis_functions.fourier_features import RandomFourierFeaturesCosine
-from trieste.gpflux.layers.basis_functions.fourier_features.multioutput import
-    MultiOutputRandomFourierFeaturesCosine
+from trieste.gpflux.layers.basis_functions.fourier_features.multioutput import (
+    MultiOutputRandomFourierFeaturesCosine,
+)
 from gpflux.math import compute_A_inv_b
 from gpflux.models import DeepGP
 
@@ -135,7 +136,9 @@ class DeepGaussianProcessDecoupledTrajectorySampler(TrajectorySampler[GPfluxPred
     """
 
     def __init__(
-        self, model: GPfluxPredictor, num_features: int = 1000,
+        self,
+        model: GPfluxPredictor,
+        num_features: int = 1000,
     ):
         """
         :param model: The model to sample from.
@@ -218,7 +221,10 @@ class DeepGaussianProcessDecoupledLayer(ABC):
     """
 
     def __init__(
-        self, model: GPfluxPredictor, layer_number: int, num_features: int = 1000,
+        self,
+        model: GPfluxPredictor,
+        layer_number: int,
+        num_features: int = 1000,
     ):
         """
         :param model: The model to sample from.
@@ -473,15 +479,21 @@ class DeepGaussianProcessDecoupledLayer(ABC):
                 print(weight_space_prior_Z)
 
                 tf.debugging.assert_shapes(
-                    [(u_sample, ["B", "M", "P"]),]
+                    [
+                        (u_sample, ["B", "M", "P"]),
+                    ]
                 )
 
                 tf.debugging.assert_shapes(
-                    [(phi_Z, ["P", "M", "L"]),]
+                    [
+                        (phi_Z, ["P", "M", "L"]),
+                    ]
                 )
 
                 tf.debugging.assert_shapes(
-                    [(weight_space_prior_Z, ["B", "M", "P"]),]
+                    [
+                        (weight_space_prior_Z, ["B", "M", "P"]),
+                    ]
                 )
 
             else:
@@ -497,7 +509,10 @@ class DeepGaussianProcessDecoupledLayer(ABC):
             print(Kmm)
 
             tf.debugging.assert_shapes(
-                [(Kmm, ["P", "M", "M"]), (diff, ["B", "M", "P"]),]
+                [
+                    (Kmm, ["P", "M", "M"]),
+                    (diff, ["B", "M", "P"]),
+                ]
             )
 
             v = tf.transpose(
@@ -505,7 +520,9 @@ class DeepGaussianProcessDecoupledLayer(ABC):
             )  # [B, M, P]
 
             tf.debugging.assert_shapes(
-                [(v, ["B", "M", "P"]),]
+                [
+                    (v, ["B", "M", "P"]),
+                ]
             )
 
             return tf.concat([prior_weights, v], axis=1)  # [B, L + M, P]
@@ -513,11 +530,9 @@ class DeepGaussianProcessDecoupledLayer(ABC):
         return weight_sampler
 
 
-<<<<<<< HEAD
+# usnusre about this bit
+# class ResampleableDecoupledDeepGaussianProcessFeatureFunctions(RandomFourierFeaturesCosine):
 class ResampleableDecoupledDeepGaussianProcessFeatureFunctions:
-=======
-class ResampleableDecoupledDeepGaussianProcessFeatureFunctions(RandomFourierFeaturesCosine):
->>>>>>> develop
     """
     A wrapper around GPflux's random Fourier feature function that allows for efficient in-place
     updating when generating new decompositions. In addition to providing Fourier features,
@@ -572,11 +587,15 @@ class ResampleableDecoupledDeepGaussianProcessFeatureFunctions(RandomFourierFeat
         # Build the RFF objects
         if isinstance(self._kernel, gpflow.kernels.MultioutputKernel):
 
-            self._rff = MultiOutputRandomFourierFeaturesCosine(self._kernel, self._n_components, dtype=tf.float64)
+            self._rff = MultiOutputRandomFourierFeaturesCosine(
+                self._kernel, self._n_components, dtype=tf.float64
+            )
 
         else:
 
-            self._rff = RandomFourierFeaturesCosine(self._kernel, self._n_components, dtype=tf.float64)
+            self._rff = RandomFourierFeaturesCosine(
+                self._kernel, self._n_components, dtype=tf.float64
+            )
 
         self.__call__(dummy_X)
         """

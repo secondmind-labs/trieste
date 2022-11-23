@@ -30,10 +30,10 @@ from tests.util.models.gpflow.models import (
     vgp_model,
 )
 from tests.util.models.gpflux.models import (
-    simple_two_layer_dgp_model, 
+    simple_two_layer_dgp_model,
     two_layer_dgp_model,
-    simple_two_layer_flexible_dgp_model, 
-    two_layer_flexible_dgp_model
+    simple_two_layer_flexible_dgp_model,
+    two_layer_flexible_dgp_model,
 )
 
 from trieste.data import Dataset
@@ -115,6 +115,3 @@ def _separate_case_fixture(request: Any) -> bool:
 @pytest.fixture(name="output_dim", params=[2])
 def _output_dim_fixture(request: Any) -> bool:
     return request.param
-
-
-

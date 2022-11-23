@@ -687,7 +687,10 @@ class SparseGaussianProcessRegression(
                 current_inducing_points, self, dataset
             )
             if not tf.reduce_all(
-                tf.math.equal(new_inducing_points, current_inducing_points,)
+                tf.math.equal(
+                    new_inducing_points,
+                    current_inducing_points,
+                )
             ):  # only bother updating if points actually change
                 self._update_inducing_variables(new_inducing_points)
 
@@ -964,7 +967,10 @@ class SparseVariational(
                 current_inducing_points, self, dataset
             )
             if not tf.reduce_all(
-                tf.math.equal(new_inducing_points, current_inducing_points,)
+                tf.math.equal(
+                    new_inducing_points,
+                    current_inducing_points,
+                )
             ):  # only bother updating if points actually change
                 self._update_inducing_variables(new_inducing_points)
 
@@ -1210,10 +1216,14 @@ class VariationalGaussianProcess(
 
             variable_data = (
                 tf.Variable(
-                    model.data[0], trainable=False, shape=[None, *model.data[0].shape[1:]],
+                    model.data[0],
+                    trainable=False,
+                    shape=[None, *model.data[0].shape[1:]],
                 ),
                 tf.Variable(
-                    model.data[1], trainable=False, shape=[None, *model.data[1].shape[1:]],
+                    model.data[1],
+                    trainable=False,
+                    shape=[None, *model.data[1].shape[1:]],
                 ),
             )
 

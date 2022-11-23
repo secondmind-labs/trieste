@@ -336,7 +336,11 @@ def build_svgp(
     inducing_points = _get_inducing_points(search_space, num_inducing_points)
 
     model = SVGP(
-        kernel, model_likelihood, inducing_points, mean_function=mean, num_data=num_data_points,
+        kernel,
+        model_likelihood,
+        inducing_points,
+        mean_function=mean,
+        num_data=num_data_points,
     )
 
     if not classification:

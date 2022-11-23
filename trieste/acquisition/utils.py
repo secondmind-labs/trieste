@@ -22,7 +22,10 @@ from .interface import AcquisitionFunction
 from .optimizer import AcquisitionOptimizer
 
 
-def split_acquisition_function(fn: AcquisitionFunction, split_size: int,) -> AcquisitionFunction:
+def split_acquisition_function(
+    fn: AcquisitionFunction,
+    split_size: int,
+) -> AcquisitionFunction:
     """
     A wrapper around an :const:`AcquisitionFunction` to split its input into batches.
     Splits `x` into batches along the first dimension, calls `fn` on each batch, and then stitches
@@ -71,7 +74,8 @@ def split_acquisition_function(fn: AcquisitionFunction, split_size: int,) -> Acq
 
 
 def split_acquisition_function_calls(
-    optimizer: AcquisitionOptimizer[SearchSpaceType], split_size: int,
+    optimizer: AcquisitionOptimizer[SearchSpaceType],
+    split_size: int,
 ) -> AcquisitionOptimizer[SearchSpaceType]:
     """
     A wrapper around our :const:`AcquisitionOptimizer`s. This class wraps a

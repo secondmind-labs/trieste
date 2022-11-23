@@ -51,7 +51,9 @@ class PredictiveVariance(SingleModelAcquisitionBuilder[SupportsPredictJoint]):
         return f"PredictiveVariance(jitter={self._jitter!r})"
 
     def prepare_acquisition_function(
-        self, model: SupportsPredictJoint, dataset: Optional[Dataset] = None,
+        self,
+        model: SupportsPredictJoint,
+        dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model.
@@ -146,7 +148,9 @@ class ExpectedFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel]):
         )
 
     def prepare_acquisition_function(
-        self, model: ProbabilisticModel, dataset: Optional[Dataset] = None,
+        self,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model.
@@ -168,7 +172,10 @@ class ExpectedFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel]):
 
 
 def bichon_ranjan_criterion(
-    model: ProbabilisticModel, threshold: float, alpha: float, delta: int,
+    model: ProbabilisticModel,
+    threshold: float,
+    alpha: float,
+    delta: int,
 ) -> AcquisitionFunction:
     r"""
     Return the *bichon* criterion (:cite:`bichon2008efficient`) and *ranjan* criterion
@@ -266,7 +273,9 @@ class IntegratedVarianceReduction(SingleModelAcquisitionBuilder[FastUpdateModel]
         return f"IntegratedVarianceReduction(threshold={self._threshold!r})"
 
     def prepare_acquisition_function(
-        self, model: FastUpdateModel, dataset: Optional[Dataset] = None,
+        self,
+        model: FastUpdateModel,
+        dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model.
@@ -429,7 +438,9 @@ class BayesianActiveLearningByDisagreement(SingleModelAcquisitionBuilder[Probabi
         return f"BayesianActiveLearningByDisagreement(jitter={self._jitter!r})"
 
     def prepare_acquisition_function(
-        self, model: ProbabilisticModel, dataset: Optional[Dataset] = None,
+        self,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model.

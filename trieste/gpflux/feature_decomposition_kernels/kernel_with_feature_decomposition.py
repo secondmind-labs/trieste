@@ -49,7 +49,9 @@ class _ApproximateKernel(gpflow.kernels.Kernel):
     """
 
     def __init__(
-        self, feature_functions: tf.keras.layers.Layer, feature_coefficients: TensorType,
+        self,
+        feature_functions: tf.keras.layers.Layer,
+        feature_coefficients: TensorType,
     ):
         r"""
         :param feature_functions: A Keras layer for which the call evaluates the
@@ -70,7 +72,9 @@ class _ApproximateKernel(gpflow.kernels.Kernel):
             phi2 = self._feature_functions(X2)  # [N2, L]
 
         r = tf.linalg.matmul(
-            phi, tf.linalg.matrix_transpose(self._feature_coefficients) * phi2, transpose_b=True,
+            phi,
+            tf.linalg.matrix_transpose(self._feature_coefficients) * phi2,
+            transpose_b=True,
         )  # [N, N2]
 
         N1, N2 = tf.shape(phi)[0], tf.shape(phi2)[0]
