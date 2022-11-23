@@ -523,13 +523,13 @@ class ScipyOptimizerGreenlet(gr.greenlet):  # type: ignore[misc]
 
             return cast("np.ndarray[Any, Any]", cache_y), cast("np.ndarray[Any, Any]", cache_dy_dx)
 
-        default_optimizer_args = dict(method="l-bfgs-b")
+        optimizer_args = dict(dict(method="l-bfgs-b"), **(optimizer_args or {}))
         return spo.minimize(
             lambda x: value_and_gradient(x)[0],
             start,
             jac=lambda x: value_and_gradient(x)[1],
             bounds=bounds,
-            **dict(default_optimizer_args, **(optimizer_args or {})),
+            **optimizer_args,
         )
 
 
