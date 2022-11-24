@@ -21,6 +21,11 @@ import gpflow
 import tensorflow as tf
 from gpflow.inducing_variables import InducingPoints
 from gpflow.utilities.traversal import _merge_leaf_components, leaf_components
+from gpflow.inducing_variables.multioutput.inducing_variables import (
+    SeparateIndependentInducingVariables,
+    SharedIndependentInducingVariables,
+)
+
 from gpflux.layers import GPLayer, LatentVariableLayer
 from gpflux.models import DeepGP
 from tensorflow.python.keras.callbacks import Callback
@@ -308,19 +313,11 @@ class DeepGaussianProcess(
                 inputs = layer(inputs)
                 continue
 
-            print("------inducing variable ----")
-            print(layer.inducing_variable)
             if isinstance(layer.inducing_variable, InducingPoints):
                 inducing_variable = layer.inducing_variable
-            elif isinstance(
-                layer.inducing_variable,
-                gpflow.inducing_variables.multioutput.inducing_variables.SeparateIndependentInducingVariables,
-            ):
+            elif isinstance(layer.inducing_variable, SeparateIndependentInducingVariables):
                 inducing_variable = layer.inducing_variable.inducing_variable_list[0]
-            elif isinstance(
-                layer.inducing_variable,
-                gpflow.inducing_variables.multioutput.inducing_variables.SharedIndependentInducingVariables,
-            ):
+            elif isinstance(layer.inducing_variable, SharedIndependentInducingVariables):
                 inducing_variable = layer.inducing_variable.inducing_variable
 
             if inputs.shape[-1] != inducing_variable.Z.shape[-1]:

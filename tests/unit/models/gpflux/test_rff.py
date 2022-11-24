@@ -23,7 +23,6 @@ Trieste model).
 """
 
 from __future__ import annotations
-from ast import Mult
 
 from typing import Callable, Tuple
 
@@ -50,10 +49,6 @@ from trieste.models.gpflux.sampler import (
 )
 from trieste.space import Box
 from trieste.types import TensorType
-
-from trieste.gpflux.layers.basis_functions.fourier_features.multioutput.random.base import (
-    MultiOutputRandomFourierFeaturesCosine,
-)
 
 
 @pytest.fixture(name="variance", params=[0.5])
@@ -141,7 +136,9 @@ def test_dgp_reparam_sampler_samples_approximate_expected_distribution(
 
     samples = DeepGaussianProcessReparamSampler(sample_size, model).sample(
         dataset.query_points[:, None, :]  # [N,1,D]
-    )  # [N, S, 1, L] #NOTE -- again I think this should be P instead of L; in the docstrings L was used to refear to the number of Fourier Features
+    )  # [N, S, 1, L]
+    # NOTE -- again I think this should be P instead of L; in the docstrings L was used to
+    # refear to the number of Fourier Features
 
     assert samples.shape == [len(dataset.query_points), sample_size, 1, output_dim]
 
@@ -248,13 +245,8 @@ def test_dgp_decoupled_trajectory_sampler_returns_trajectory_function_with_corre
     trajectory = sampler.get_trajectory()
     xs = _generate_xs_for_decoupled_trajectory(num_evals, batch_size, output_dim)
 
-    traiectoria = trajectory(xs)
-    print(" ----------------- shape of trajectory -------------")
-    print(trajectory)
-
-    tf.debugging.assert_shapes([(trajectory(xs), [num_evals, batch_size, output_dim])])
-
     assert isinstance(trajectory, dgp_feature_decomposition_trajectory)
+    tf.debugging.assert_shapes([(trajectory(xs), [num_evals, batch_size, output_dim])])
 
 
 @random_seed
@@ -441,7 +433,8 @@ def test_dgp_decoupled_layer_raises_for_invalid_number_of_features(num_features:
         DeepGaussianProcessDecoupledLayer(layer, num_features)
 
 
-# TODO -- do we actually have to include this in the original test, since now this feature should work
+# TODO -- do we actually have to include this in the original test,
+# since now this feature should work
 @pytest.mark.skip
 def test_dgp_decoupled_layer_raises_for_invalid_kernel() -> None:
     inducing_var = construct_basic_inducing_variables(
@@ -557,7 +550,9 @@ def test_dgp_decoupled_layer_update_updates(
     two_layer_model_modified: Callable[[TensorType], DeepGP],     separate_case: bool,
     output_dim: int
 ) -> None:
-    _, model = _build_dataset_and_train_deep_gp(two_layer_model_modified, separate_case=separate_case, output_dim=output_dim)
+    _, model = _build_dataset_and_train_deep_gp(
+    two_layer_model_modified, separate_case=separate_case, output_dim=output_dim
+    )
 
     layer = model.model_gpflux.f_layers[0]
 

@@ -32,7 +32,6 @@ from tests.util.models.gpflow.models import (
 from tests.util.models.gpflux.models import (
     simple_two_layer_dgp_model,
     two_layer_dgp_model,
-    simple_two_layer_flexible_dgp_model,
     two_layer_flexible_dgp_model,
 )
 

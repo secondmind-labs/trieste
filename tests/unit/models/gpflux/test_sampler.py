@@ -21,7 +21,7 @@ encapsulation. For example, we should *not* test that methods on the GPflux mode
 (except in the rare case that such behaviour is an explicitly documented behaviour of the
 Trieste model).
 """
-
+"""
 from __future__ import annotations
 
 from typing import Callable, Tuple
@@ -62,8 +62,6 @@ def test_dgp_reparam_sampler_raises_for_invalid_sample_size(sample_size: int) ->
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         DeepGaussianProcessReparamSampler(sample_size, dgp)
 
-
-"""
 
 def test_dgp_reparam_sampler_raises_for_invalid_model() -> None:
     with pytest.raises(ValueError, match="Model must be .*"):

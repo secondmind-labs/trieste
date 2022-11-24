@@ -172,7 +172,7 @@ class DeepGaussianProcessDecoupledTrajectorySampler(TrajectorySampler[GPfluxPred
         Generate an approximate function draw (trajectory) from the deep GP model.
 
         :return: A trajectory function representing an approximate trajectory from the deep GP,
-            taking an input of shape `[N, B, D]` and returning shape `[N, B, L]`.  #NOTE -- L is usually assigned to be the num_features, I think this should be [N, B, P]
+            taking an input of shape `[N, B, D]` and returning shape `[N, B, L]`.
         """
 
         return dgp_feature_decomposition_trajectory(self._model, self._num_features)
@@ -215,9 +215,9 @@ class DeepGaussianProcessDecoupledTrajectorySampler(TrajectorySampler[GPfluxPred
 class DeepGaussianProcessDecoupledLayer(ABC):
     """
     Layer that samples an approximate decoupled trajectory for a GPflux
-    :class:`~gpflux.layers.GPLayer` using Matheron's rule (:cite:`wilson2020efficiently`). Supports multi-output kernels that are part of
-    :class:`~gpflow.kernels.SharedIndependent` kernel and
-    :class:`~gpflow.kernels.SeparateIndependent` kernel.
+    :class:`~gpflux.layers.GPLayer` using Matheron's rule (:cite:`wilson2020efficiently`).
+    Supports multi-output kernels of :class:`~gpflow.kernels.SharedIndependent`
+    kernel type and :class:`~gpflow.kernels.SeparateIndependent` kernel type.
     """
 
     def __init__(
@@ -330,7 +330,8 @@ class DeepGaussianProcessDecoupledLayer(ABC):
             print(counter)
             feature_evaluations.append(
                 unflatten(flattened_feature_evaluations[counter, :, :])[..., None]
-            )  # [N, B, L + M, 1] if Shared or [N, B, L + M, P] if separate #TODO -- check that this is acutally true
+            )  # [N, B, L + M, 1] if Shared or [N, B, L + M, P] if separate
+            # TODO -- check that this is acutally true
         feature_evaluations = tf.concat(feature_evaluations, axis=-1)
         print("---feature_evaluations---")
         print(feature_evaluations)
@@ -338,7 +339,7 @@ class DeepGaussianProcessDecoupledLayer(ABC):
         # TODO -- should probably introduce a tf.debugging.assert_equal just to be sure
         return tf.reduce_sum(
             feature_evaluations
-            * self._weights_sample,  # [N, B, L + M, 1] or [N, B, L + M, P] pending on Shared/Separate  # [B, L + M, P]
+            * self._weights_sample,  # [N, B, L + M, 1] if shared, [N, B, L + M, P] if separate
             -2,
         ) + self._layer.mean_function(
             x
@@ -381,7 +382,8 @@ class DeepGaussianProcessDecoupledLayer(ABC):
         q_mu = self._layer.q_mu  # [M, P]
         q_sqrt = self._layer.q_sqrt  # [P, M, M]
 
-        # NOTE -- I don't understand why in the original code this approach was used and not the gpflow.covariances.Kuu dispatcher
+        # NOTE: I don't understand why in the original code this approach was used and not the
+        # gpflow.covariances.Kuu dispatcher
         """
         Kmm = self._kernel.K(inducing_points, inducing_points)  # [M, M]
         Kmm += tf.eye(tf.shape(inducing_points)[0], dtype=Kmm.dtype) * DEFAULTS.JITTER
@@ -601,7 +603,6 @@ class ResampleableDecoupledDeepGaussianProcessFeatureFunctions:
         """
         if isinstance(self._kernel, list):
             for counter, ker in enumerate(self._kernel):
-                
                 self._rff[counter].b: TensorType = tf.Variable(self._rff[counter].b)
                 self._rff[counter].W: TensorType = tf.Variable(self._rff[counter].W)
         else:
@@ -615,15 +616,17 @@ class ResampleableDecoupledDeepGaussianProcessFeatureFunctions:
         """
         """
         if isinstance(self._kernel, list):
-
             for counter, ker in enumerate(self._kernel):
                 if not hasattr(self._rff[counter], "_bias_init"):
-                    self._rff[counter].b.assign(self._rff[counter]._sample_bias(tf.shape(self._rff[counter].b), dtype=self._rff[counter]._dtype))
-                    self._rff[counter].W.assign(self._rff[counter]._sample_weights(tf.shape(self._rff[counter].W), dtype=self._rff[counter]._dtype))
+                    self._rff[counter].b.assign(self._rff[counter]._sample_bias(tf.shape(self._rff[
+                    counter].b), dtype=self._rff[counter]._dtype))
+                    self._rff[counter].W.assign(self._rff[counter]._sample_weights(tf.shape(
+                    self._rff[counter].W), dtype=self._rff[counter]._dtype))
                 else:
-                    self._rff[counter].b.assign(self._rff[counter]._bias_init(tf.shape(self._rff[counter].b), dtype=self._rff[counter]._dtype))
-                    self._rff[counter].W.assign(self._rff[counter]._weights_init(tf.shape(self._rff[counter].W), dtype=self._rff[counter]._dtype))        
-        
+                    self._rff[counter].b.assign(self._rff[counter]._bias_init(tf.shape(self._rff[
+                    counter].b), dtype=self._rff[counter]._dtype))
+                    self._rff[counter].W.assign(self._rff[counter]._weights_init(tf.shape(self._rff[
+                    counter].W), dtype=self._rff[counter]._dtype))
         else:
         """
         if not hasattr(self._rff, "_bias_init"):
@@ -657,15 +660,6 @@ class ResampleableDecoupledDeepGaussianProcessFeatureFunctions:
             # fourier_feature_eval = tf.stack(fourier_feature_eval, axis = 0)  # [P, N, L]
             fourier_feature_eval = self._rff.__call__(x)  # [P, N, L]
             canonical_feature_eval = self._canonical_feature_functions(x)  # [P, N, M]
-
-            print("*****************************************************************")
-            print("----x------")
-            print(x)
-            print("----fourier_feature_eval------")
-            print(fourier_feature_eval)
-            print("----canonical_feature_eval-----")
-            print(canonical_feature_eval)
-            print("*****************************************************************")
 
             return tf.concat(
                 [fourier_feature_eval, canonical_feature_eval], axis=-1
