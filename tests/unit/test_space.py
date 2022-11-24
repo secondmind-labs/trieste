@@ -402,10 +402,8 @@ def _box_sampling_constraints() -> Sequence[LinearConstraint]:
     return [LinearConstraint(A=tf.eye(3), lb=tf.zeros((3)) + 0.3, ub=tf.ones((3)) - 0.3)]
 
 
-@pytest.mark.parametrize(
-    "num_samples, constraints",
-    ((n, c) for c in [None, _box_sampling_constraints()] for n in [0, 1, 10]),
-)
+@pytest.mark.parametrize("num_samples", [0, 1, 10])
+@pytest.mark.parametrize("constraints", [None, _box_sampling_constraints()])
 def test_box_sampling_returns_correct_shape(
     num_samples: int,
     constraints: Sequence[LinearConstraint],
@@ -415,10 +413,8 @@ def test_box_sampling_returns_correct_shape(
     _assert_correct_number_of_unique_constrained_samples(num_samples, box, samples)
 
 
-@pytest.mark.parametrize(
-    "num_samples, constraints",
-    ((n, c) for c in [None, _box_sampling_constraints()] for n in [0, 1, 10]),
-)
+@pytest.mark.parametrize("num_samples", [0, 1, 10])
+@pytest.mark.parametrize("constraints", [None, _box_sampling_constraints()])
 def test_box_sobol_sampling_returns_correct_shape(
     num_samples: int,
     constraints: Sequence[LinearConstraint],
@@ -428,10 +424,8 @@ def test_box_sobol_sampling_returns_correct_shape(
     _assert_correct_number_of_unique_constrained_samples(num_samples, box, sobol_samples)
 
 
-@pytest.mark.parametrize(
-    "num_samples, constraints",
-    ((n, c) for c in [None, _box_sampling_constraints()] for n in [0, 1, 10]),
-)
+@pytest.mark.parametrize("num_samples", [0, 1, 10])
+@pytest.mark.parametrize("constraints", [None, _box_sampling_constraints()])
 def test_box_halton_sampling_returns_correct_shape(
     num_samples: int,
     constraints: Sequence[LinearConstraint],
@@ -441,10 +435,8 @@ def test_box_halton_sampling_returns_correct_shape(
     _assert_correct_number_of_unique_constrained_samples(num_samples, box, halton_samples)
 
 
-@pytest.mark.parametrize(
-    "num_samples, constraints",
-    ((n, c) for c in [None, _box_sampling_constraints()] for n in [-1, -10]),
-)
+@pytest.mark.parametrize("num_samples", [-1, -10])
+@pytest.mark.parametrize("constraints", [None, _box_sampling_constraints()])
 def test_box_sampling_raises_for_invalid_sample_size(
     num_samples: int,
     constraints: Sequence[LinearConstraint],
@@ -454,10 +446,8 @@ def test_box_sampling_raises_for_invalid_sample_size(
         box.sample_feasible(num_samples)
 
 
-@pytest.mark.parametrize(
-    "num_samples, constraints",
-    ((n, c) for c in [None, _box_sampling_constraints()] for n in [-1, -10]),
-)
+@pytest.mark.parametrize("num_samples", [-1, -10])
+@pytest.mark.parametrize("constraints", [None, _box_sampling_constraints()])
 def test_box_sobol_sampling_raises_for_invalid_sample_size(
     num_samples: int,
     constraints: Sequence[LinearConstraint],
@@ -467,10 +457,8 @@ def test_box_sobol_sampling_raises_for_invalid_sample_size(
         box.sample_sobol_feasible(num_samples)
 
 
-@pytest.mark.parametrize(
-    "num_samples, constraints",
-    ((n, c) for c in [None, _box_sampling_constraints()] for n in [-1, -10]),
-)
+@pytest.mark.parametrize("num_samples", [-1, -10])
+@pytest.mark.parametrize("constraints", [None, _box_sampling_constraints()])
 def test_box_halton_sampling_raises_for_invalid_sample_size(
     num_samples: int,
     constraints: Sequence[LinearConstraint],
@@ -480,10 +468,8 @@ def test_box_halton_sampling_raises_for_invalid_sample_size(
         box.sample_halton_feasible(num_samples)
 
 
-@pytest.mark.parametrize(
-    "seed, constraints",
-    ((s, c) for c in [None, _box_sampling_constraints()] for s in [1, 42, 123]),
-)
+@pytest.mark.parametrize("seed", [1, 42, 123])
+@pytest.mark.parametrize("constraints", [None, _box_sampling_constraints()])
 def test_box_sampling_returns_same_points_for_same_seed(
     seed: int,
     constraints: Sequence[LinearConstraint],
@@ -494,10 +480,8 @@ def test_box_sampling_returns_same_points_for_same_seed(
     npt.assert_allclose(random_samples_1, random_samples_2)
 
 
-@pytest.mark.parametrize(
-    "skip, constraints",
-    ((s, c) for c in [None, _box_sampling_constraints()] for s in [1, 10, 100]),
-)
+@pytest.mark.parametrize("skip", [1, 10, 100])
+@pytest.mark.parametrize("constraints", [None, _box_sampling_constraints()])
 def test_box_sobol_sampling_returns_same_points_for_same_skip(
     skip: int,
     constraints: Sequence[LinearConstraint],
@@ -508,10 +492,8 @@ def test_box_sobol_sampling_returns_same_points_for_same_skip(
     npt.assert_allclose(sobol_samples_1, sobol_samples_2)
 
 
-@pytest.mark.parametrize(
-    "seed, constraints",
-    ((s, c) for c in [None, _box_sampling_constraints()] for s in [1, 42, 123]),
-)
+@pytest.mark.parametrize("seed", [1, 42, 123])
+@pytest.mark.parametrize("constraints", [None, _box_sampling_constraints()])
 def test_box_halton_sampling_returns_same_points_for_same_seed(
     seed: int,
     constraints: Sequence[LinearConstraint],

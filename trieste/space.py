@@ -210,8 +210,8 @@ class LinearConstraint(spo.LinearConstraint):  # type: ignore[misc]
         )
 
 
-# Constraint type alias.
 Constraint = Union[LinearConstraint, NonlinearConstraint]
+""" Type alias for constraints. """
 
 
 class SearchSpace(ABC):
