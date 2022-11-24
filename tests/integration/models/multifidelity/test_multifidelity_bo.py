@@ -3,60 +3,34 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 
 import trieste
-from trieste.data import Dataset, split_dataset_by_fidelity
+from trieste.data import Dataset, split_dataset_by_fidelity, check_and_extract_fidelity_query_points
 from trieste.models.gpflow.models import MultifidelityAutoregressive
 from trieste.models.gpflow.builders import build_multifidelity_autoregressive_models
+from trieste.objectives import Linear2Fidelity
 
 np.random.seed(17943)
 tf.random.set_seed(17943)
 
 from trieste.types import TensorType
-
-
-def linear_multifidelity(x: TensorType):
-
-    x_input = x[..., :-1]
-    x_fidelity = x[..., -1:]
-
-    f = 0.5 * ((6.0 * x_input - 2.0) ** 2) * tf.math.sin(12.0 * x_input - 4.0) + 10.0 * (
-        x_input - 1.0
-    )
-    f = f + x_fidelity * (f - 20.0 * (x_input - 1.0))
-    noise = tf.random.normal(f.shape, stddev=1e-1, dtype=f.dtype)
-    f = f + noise
-
-    return f
-
-
-def noise_free_linear_multifidelity(x: TensorType):
-
-    x_input = x[..., :-1]
-    x_fidelity = x[..., -1:]
-
-    f = 0.5 * ((6.0 * x_input - 2.0) ** 2) * tf.math.sin(12.0 * x_input - 4.0) + 10.0 * (
-        x_input - 1.0
-    )
-    f = f + x_fidelity * (f - 20.0 * (x_input - 1.0))
-
-    return f
-
-
 from trieste.objectives.utils import mk_observer
 
-observer = mk_observer(linear_multifidelity)
-input_dim = 1
-lb = np.zeros(input_dim)
-ub = np.ones(input_dim)
-n_fidelities = 2
+linear_two_fidelity = Linear2Fidelity.objective
+n_fidelities = Linear2Fidelity.num_fidelities
+input_search_space = Linear2Fidelity.input_search_space
+search_space = Linear2Fidelity.search_space
 
-input_search_space = trieste.space.Box(lb, ub)
-fidelity_search_space = trieste.space.DiscreteSearchSpace(
-    np.array([np.arange(n_fidelities, dtype=float)]).reshape(-1, 1)
-)
-search_space = trieste.space.TaggedProductSearchSpace(
-    [input_search_space, fidelity_search_space], ["input", "fidelity"]
-)
 
+def noisy_linear_2_fidelity(x: TensorType) -> TensorType:
+
+    _, fidelities = check_and_extract_fidelity_query_points(x)
+    y = linear_two_fidelity(x)
+    not_lowest_fidelity = fidelities > 0
+    noise = tf.random.normal(y.shape, stddev=1e-1, dtype=y.dtype)
+    y = tf.where(not_lowest_fidelity, y + noise, y)
+    return y
+
+
+observer = mk_observer(noisy_linear_2_fidelity)
 
 n_samples_per_fidelity = [11, 6]
 low_cost = 1.0
@@ -80,7 +54,7 @@ model.update(initial_data)
 model.optimize(initial_data)
 
 data = split_dataset_by_fidelity(initial_data, n_fidelities)
-noise_free_observer = mk_observer(noise_free_linear_multifidelity)
+noise_free_observer = mk_observer(linear_two_fidelity)
 X = tf.linspace(0, 1, 200)[:, None]
 X_list = [tf.concat([X, tf.ones_like(X) * i], 1) for i in range(n_fidelities)]
 predictions = [model.predict(x) for x in X_list]
