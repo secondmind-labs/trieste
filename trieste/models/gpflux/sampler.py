@@ -25,8 +25,8 @@ from gpflow.inducing_variables import (
     SharedIndependentInducingVariables,
 )
 from gpflux.layers import GPLayer, LatentVariableLayer
-from trieste.gpflux.layers.basis_functions.fourier_features import RandomFourierFeaturesCosine
-from trieste.gpflux.layers.basis_functions.fourier_features.multioutput import (
+from gpflux.layers.basis_functions.fourier_features import RandomFourierFeaturesCosine
+from gpflux.layers.basis_functions.fourier_features.multioutput import (
     MultiOutputRandomFourierFeaturesCosine,
 )
 from gpflux.math import compute_A_inv_b
