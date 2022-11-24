@@ -315,6 +315,17 @@ class SearchSpace(ABC):
         :return: Whether the search space is identical to this one.
         """
 
+    def constraints_residuals(self, points: TensorType) -> TensorType:
+        """
+        Return residuals for all the constraints in this :class:`SearchSpace`.
+
+        :param points: The points to get the residuals for, with shape [..., D].
+        :return: A tensor of all the residuals with shape [..., C], where C is the total number of
+            constraints.
+        :raise NotImplementedError: If this :class:`SearchSpace` does not support constraints.
+        """
+        raise NotImplementedError("Constraints are currently not supported for this search space.")
+
     def is_feasible(self, points: TensorType) -> TensorType:
         """
         Checks if points satisfy the explicit constraints of this :class:`SearchSpace`.
