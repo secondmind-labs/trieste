@@ -21,7 +21,7 @@ encapsulation. For example, we should *not* test that methods on the GPflux mode
 (except in the rare case that such behaviour is an explicitly documented behaviour of the
 Trieste model).
 """
-"""
+
 from __future__ import annotations
 
 from typing import Callable, Tuple
@@ -49,6 +49,21 @@ from trieste.models.gpflux.sampler import (
 )
 from trieste.space import Box
 from trieste.types import TensorType
+
+
+# @pytest.fixture(name="two_layer_model_modified", params=[two_layer_flexible_dgp_model])
+# def _two_layer_model_modified_fixture(request: Any) -> Callable[[TensorType], DeepGP]:
+#     return request.param
+
+
+# @pytest.fixture(name="separate_case", params=[True])
+# def _separate_case_fixture(request: Any) -> bool:
+#     return request.param
+
+
+# @pytest.fixture(name="output_dim", params=[2])
+# def _output_dim_fixture(request: Any) -> bool:
+#     return request.param
 
 
 @pytest.mark.parametrize("sample_size", [0, -2])
@@ -515,5 +530,3 @@ def test_dgp_decoupled_layer_update_updates(
         npt.assert_array_less(
             1e-2, tf.reduce_sum(tf.abs(original_W - decoupled_layer._feature_functions.W))
         )
-
-"""

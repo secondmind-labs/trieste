@@ -297,10 +297,6 @@ class DeepGaussianProcessDecoupledLayer(ABC):
             self.resample()
             self._initialized.assign(True)
 
-        print("---- this is inside __call__function -------")
-        print("x")
-        print(x)
-
         tf.debugging.assert_equal(
             tf.shape(x)[-2],
             self._batch_size.value(),
@@ -311,31 +307,19 @@ class DeepGaussianProcessDecoupledLayer(ABC):
             """,
         )
 
-        print("---x---")
-        print(x)
-
         flat_x, unflatten = flatten_leading_dims(x)
-        print("---flat_x----")
-        print(flat_x)
         flattened_feature_evaluations = self._feature_functions(flat_x)
-        print("---flattened_feature_evaluations----")
-        print(flattened_feature_evaluations)
-
+        
         # TODO -- probably have to re-write unflatten to accomodate for this case as well
 
         feature_evaluations = []
-
         for counter in range(2):
-            print("------------counter-------------")
-            print(counter)
             feature_evaluations.append(
                 unflatten(flattened_feature_evaluations[counter, :, :])[..., None]
             )  # [N, B, L + M, 1] if Shared or [N, B, L + M, P] if separate
             # TODO -- check that this is acutally true
         feature_evaluations = tf.concat(feature_evaluations, axis=-1)
-        print("---feature_evaluations---")
-        print(feature_evaluations)
-
+        
         # TODO -- should probably introduce a tf.debugging.assert_equal just to be sure
         return tf.reduce_sum(
             feature_evaluations
@@ -427,10 +411,6 @@ class DeepGaussianProcessDecoupledLayer(ABC):
             )  # [B, P, M, 1]
             u_sample = q_mu + tf.linalg.matrix_transpose(u_noise_sample[..., 0])  # [B, M, P]
 
-            # NOTE -- this checks out
-            print("u_sample")
-            print(u_sample)
-
             if whiten:
                 Luu = tf.linalg.cholesky(Kmm)  # [M, M] if Shared or [P, M, M] if Separate
                 if self.separate_case:
@@ -445,15 +425,10 @@ class DeepGaussianProcessDecoupledLayer(ABC):
                 else:
                     u_sample = tf.matmul(Luu, u_sample)  # [B, M, P]
 
-            # NOTE -- this checks out
-            print("u_sample again")
-            print(u_sample)
-
             # TODO -- need to check the shapes of feature_functions
             if self.separate_case:
 
                 # NOTE -- this is highly innefficient atm; need a smarter choice here
-
                 intermediate_phi_Z = []
                 for counter, ind_var in enumerate(
                     self._layer.inducing_variable.inducing_variable_list
@@ -464,12 +439,8 @@ class DeepGaussianProcessDecoupledLayer(ABC):
                     )  # [M, L+M]
 
                 intermediate_phi_Z = tf.stack(intermediate_phi_Z, axis=0)  # [P, M, L+M]
-                print("intermediate phi_Z")
-                print(intermediate_phi_Z)
                 phi_Z = intermediate_phi_Z[:, :, : self._num_features]  # [P, M, L]
 
-                print("phi_Z")
-                print(phi_Z)
                 weight_space_prior_Z = tf.matmul(
                     phi_Z,  # [P, M, L]
                     tf.expand_dims(tf.transpose(prior_weights, [0, 2, 1]), axis=-1),  # [B, P, L, 1]
@@ -477,8 +448,6 @@ class DeepGaussianProcessDecoupledLayer(ABC):
                     ..., 0
                 ]  # [B, P, M]
                 weight_space_prior_Z = tf.transpose(weight_space_prior_Z, [0, 2, 1])  # [B, M, P]
-                print("weight_space_prior_Z")
-                print(weight_space_prior_Z)
 
                 tf.debugging.assert_shapes(
                     [
@@ -506,10 +475,6 @@ class DeepGaussianProcessDecoupledLayer(ABC):
 
             diff = u_sample - weight_space_prior_Z  # [B, M, P]
 
-            print("***** check shapes here ******")
-            print(diff)
-            print(Kmm)
-
             tf.debugging.assert_shapes(
                 [
                     (Kmm, ["P", "M", "M"]),
@@ -532,9 +497,7 @@ class DeepGaussianProcessDecoupledLayer(ABC):
         return weight_sampler
 
 
-# usnusre about this bit
-# class ResampleableDecoupledDeepGaussianProcessFeatureFunctions(RandomFourierFeaturesCosine):
-class ResampleableDecoupledDeepGaussianProcessFeatureFunctions:
+class ResampleableDecoupledDeepGaussianProcessFeatureFunctions(RandomFourierFeaturesCosine):
     """
     A wrapper around GPflux's random Fourier feature function that allows for efficient in-place
     updating when generating new decompositions. In addition to providing Fourier features,
