@@ -18,9 +18,10 @@
 # %% [markdown]
 # Batch Hypervolume Sharpe Ratio Indicator (qHSRI) is a method for picking a batch of query points during Bayesian Optimisation. It makes use of the Sharpe Ratio, a portfolio selection method used in investment selection to carefully balance risk and reward.
 #
-# This tutorial will cover the main points of how this algorithm works.
+# This tutorial will cover the main points of how this algorithm works, and then demonstrate how to use the `trieste.acquisition.rule.BatchHypervolumeRatioIndicator` acquisition rule.
 #
-# First we will set up our problem and get our initial datapoints. We will use the scaled Branin objective.
+#
+# First we will set up our problem and get our initial datapoints. For this walkthourgh we will use the noiseless scaled Branin objective.
 
 # %%
 
@@ -97,9 +98,9 @@ print(f"There are {len(uniform_non_dominated)} non-dominated points")
 # %% [markdown]
 # We can see that there's only a few non-dominated points to choose from the select the next batch. This set of non-dominated points is the Pareto front in the optimisation task of minimising mean and maximising standard deviation.
 #
-# This means we can improve on this by using optimisation rather than random sampling to pick the points that we will select our batch from. In trieste we make use of the NSGA-II multi-objective optimisation method from the pymoo library to find the Pareto front.
+# This means we can improve on this by using optimisation rather than random sampling to pick the points that we will select our batch from. In trieste we use the NSGA-II multi-objective optimisation method from the [pymoo](https://pymoo.org/) library to find the Pareto front.
 #
-# The `BatchHypervolumeSharpeRatioIndicator` class makes use of the `_MeanStdTradeoff` class, which expresses the optimisation problem in the pymoo framework. Pymoo is then used to run the optimisation.
+# The `BatchHypervolumeSharpeRatioIndicator` acqusition rule makes use of the `_MeanStdTradeoff` class, which expresses the optimisation problem in the pymoo framework. Pymoo is then used to run the optimisation.
 #
 # NSGA-II is a genetic algorithm, and so we need to define a population size and number of generations.
 
@@ -137,11 +138,10 @@ plt.show()
 print(f"There are {len(optimised_non_dominated)} non-dominated points")
 
 # %% [markdown]
-# The question now is, how do we sample points from this Pareto set such that we get an optimal mix of low mean and high standard deviation points.
 #
-# That's where the Sharpe Ratio is used.
+# The Sharpe ratio is used to get an optimal mix of low mean and high standard deviation points from this Pareto front, so that these can then be observed.
 #
-# The portfolio with the maximum Sharpe ratio is defined as:
+# A portfolio with the maximum Sharpe ratio is defined as:
 #
 # $$ \max_{x \in [0,1]^n} h(x) = {{r^{T}x-r_{f}} \over {\sqrt{x^{T}Qx}}} \;\;\; s.t  \sum^{n}_{i=1}x_i = 1 $$
 #
@@ -173,7 +173,6 @@ plt.legend()
 plt.title("Pareto front and selected points for observation")
 plt.show()
 
-
 # %% [markdown]
 # These points can then be observed and the model updated. This aquisition method has been implemented in `trieste` as an acquisition rule, `trieste.acquisition.rule.BatchHypervolumeRatioIndicator`.
 
@@ -183,6 +182,8 @@ plt.show()
 # The `BatchHypervolumeRatioIndicator` can be used in the same way as other batch acquisition rules. Here a noisy scaled Branin problem is set up and optimised using this acquisition rule.
 
 # %%
+from trieste.bayesian_optimizer import BayesianOptimizer
+from trieste.acquisition.rule import BatchHypervolumeSharpeRatioIndicator
 # Create a noisy observer
 def noisy_branin(x):
     y = ScaledBranin.objective(x)
@@ -204,13 +205,12 @@ from trieste.models.gpflow import GaussianProcessRegression, build_gpr
 gpflow_model = build_gpr(initial_data, search_space, likelihood_variance=1e-3)
 model = GaussianProcessRegression(gpflow_model)
 
-# %%
-from trieste.bayesian_optimizer import BayesianOptimizer
-from trieste.acquisition.rule import BatchHypervolumeSharpeRatioIndicator
-
 bo = BayesianOptimizer(observer=observer, search_space=search_space)
 
-results = bo.optimize(acquisition_rule=BatchHypervolumeSharpeRatioIndicator(num_query_points=10), num_steps=20, datasets=initial_data, models=model)
+results = bo.optimize(acquisition_rule=BatchHypervolumeSharpeRatioIndicator(num_query_points=10), num_steps=8, datasets=initial_data, models=model)
+
+# %% [markdown]
+# We can now plot the regret of the observations, and see that the regret has decreased from the initial sample.
 
 # %%
 from trieste.experimental.plotting import plot_regret
@@ -224,9 +224,7 @@ fig, ax = plt.subplots(1, 1)
 plot_regret(observations.numpy(), ax, num_init=5, idx_best=min_idx)
 ax.set_yscale("log")
 ax.set_ylabel("Regret")
-ax.set_ylim(0.00000000001, 100)
+ax.set_ylim(0.00001, 100)
 ax.set_xlabel("# evaluations")
 ax.set_title("Qhsri")
 plt.show()
-
-print(f"Min regret is {min_regret}")
