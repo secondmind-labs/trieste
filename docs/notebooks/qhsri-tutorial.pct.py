@@ -7,7 +7,7 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.14.1
 #   kernelspec:
-#     display_name: Python 3.8.10 ('trieste')
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
@@ -27,15 +27,14 @@
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-from trieste.objectives import scaled_branin
+from trieste.objectives import ScaledBranin
 from trieste.objectives.utils import mk_observer
 from trieste.space import Box
-import trieste
 
 tf.random.set_seed(1)
 
 # Create the observer
-observer = mk_observer(scaled_branin)
+observer = mk_observer(ScaledBranin.objective)
 
 # Define Search space
 search_space = Box([0, 0], [1, 1])
@@ -98,41 +97,19 @@ print(f"There are {len(uniform_non_dominated)} non-dominated points")
 # %% [markdown]
 # We can see that there's only a few non-dominated points to choose from the select the next batch. This set of non-dominated points is the Pareto front in the optimisation task of minimising mean and maximising standard deviation.
 #
-# This means we can improve on this by using optimisation rather than random sampling to pick the points that we will select our batch from. We can use the NSGA-II multi-objective optimisation method from the pymoo library to find the Pareto front.
+# This means we can improve on this by using optimisation rather than random sampling to pick the points that we will select our batch from. In trieste we make use of the NSGA-II multi-objective optimisation method from the pymoo library to find the Pareto front.
 #
-# First we must define the problem as a pymoo problem.
-
-# %%
-import numpy as np
-import pymoo
-
-
-class MeanStdTradeoff(pymoo.core.problem.Problem):
-    def __init__(self, probabilistic_model, search_space):
-        super().__init__(
-            n_var=2,
-            n_obj=2,
-            n_constr=0,
-            xl=np.array(search_space.lower),
-            xu=np.array(search_space.upper),
-        )
-        self.probabilistic_model = probabilistic_model
-
-    def _evaluate(self, x, out, *args, **kwargs):
-        mean, var = self.probabilistic_model.predict_y(x)
-        # Flip sign on std so that minimising is increasing std
-        std = -1 * np.sqrt(np.array(var))
-        out["F"] = np.concatenate([np.array(mean), std], axis=1)
-
-
-# %% [markdown]
+# The `BatchHypervolumeSharpeRatioIndicator` class makes use of the `_MeanStdTradeoff` class, which expresses the optimisation problem in the pymoo framework. Pymoo is then used to run the optimisation.
+#
 # NSGA-II is a genetic algorithm, and so we need to define a population size and number of generations.
 
 # %%
+import numpy as np
+from trieste.acquisition.rule import _MeanStdTradeoff
 from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.optimize import minimize
 
-problem = MeanStdTradeoff(model, search_space)
+problem = _MeanStdTradeoff(model, search_space)
 algorithm = NSGA2(pop_size=500)
 result = minimize(problem, algorithm, ("n_gen", 200), seed=1, verbose=False)
 optimised_points, optimised_mean_std = result.X, result.F
@@ -154,6 +131,7 @@ plt.show()
 
 # %%
 optimised_non_dominated = non_dominated(result.F)[0]
+plt.scatter(result.F[:, 0], result.F[:, 1])
 plt.scatter(optimised_non_dominated[:, 0], optimised_non_dominated[:, 1], c="r")
 plt.show()
 print(f"There are {len(optimised_non_dominated)} non-dominated points")
@@ -169,214 +147,20 @@ print(f"There are {len(optimised_non_dominated)} non-dominated points")
 #
 # where $x_i$ are weights for each asset $i$, $r_i$ is the expected return of asset $i$ and $Q_{i,j}$ is the covariance of assets $i$ and $j$. $r_f$ is a risk free asset, and we will assume this does not exist in this case. Note that weighting assets with high expected rewards will increase the Sharpe ratio, as will weighting assets with low covariance.
 #
-# This problem can be converted into a quadratic programming problem.
+# This problem can be converted into a quadratic programming problem and solved to give a diverse sample from the Pareto front. 
 #
-# $$ \min_{y \in \reals^n} g(y) = y^TQy $$
-#
-# $$ s.t \sum^{n}_{i=1}r_iy_i = 1 $$
-#
-# $$ y_i \geq 0, i = 1,..,n $$
-#
-# If we want to use this formula then we need to find a way to compute $r$ and $Q$. For this we use hypervolumes. Hypervolumes in this context are the volumes dominated by a point with respect to a reference point.
-#
-# We will set a reference point and lower bound here. The lower bound is just used for scaling, so does not matter too much, but the selection of the reference point does affect the result. We set it to the max value in each dimension + 20% of the range of that dimension. We plot these points with the Pareto front.
+# The `trieste.acquisition.multi_objective.Pareto` class has a `sample_diverse_subset` method that implements this. 
 
 # %%
-# Set lower bound
-lower_bound = [
-    float(min(optimised_non_dominated[:, 0])),
-    float(min(optimised_non_dominated[:, 1])),
-]
+from trieste.acquisition.multi_objective import Pareto
 
-# Calculate suitable reference point
-u_deltas = [
-    (float(max(optimised_non_dominated[:, i])) - float(min(optimised_non_dominated[:, i]))) * 0.2
-    for i in range(2)
-]
-reference_point = [float(max(optimised_non_dominated[:, i])) + u_deltas[i] for i in range(2)]
+# Since we've already ensured the set is non-dominated we don't need to repeat this
+front = Pareto(optimised_non_dominated, already_non_dominated=True)
 
-plt.scatter(
-    optimised_non_dominated[:, 0],
-    optimised_non_dominated[:, 1],
-    label="Pareto front",
-)
-plt.scatter(lower_bound[0], lower_bound[1], c="r", label="lower bound", marker="x")
-plt.scatter(
-    reference_point[0],
-    reference_point[1],
-    c="g",
-    label="reference point",
-    marker="x",
-)
-plt.legend()
-plt.title("Reference point and lower bound")
-plt.show()
+sampled_points, _ = front.sample_diverse_subset(sample_size=5, allow_repeats=False)
 
 # %% [markdown]
-# We can then visualise the hypervolume of the first point in the Pareto set.
-
-# %%
-first_point = optimised_non_dominated[250]
-
-# Caculate the size of the rectangle
-width = reference_point[0] - first_point[0]
-height = reference_point[1] - first_point[1]
-
-# Highlight point and plot rectangle
-plt.scatter(
-    optimised_non_dominated[:, 0],
-    optimised_non_dominated[:, 1],
-    label="Pareto front",
-    alpha=0.04,
-)
-plt.scatter(lower_bound[0], lower_bound[1], c="r", label="lower bound", marker="x")
-plt.scatter(
-    reference_point[0],
-    reference_point[1],
-    c="g",
-    label="reference point",
-    marker="x",
-)
-hypervolume_rectangle = plt.Rectangle(first_point, width, height, fc="orange", alpha=0.5)
-plt.gca().add_patch(hypervolume_rectangle)
-plt.scatter(first_point[0], first_point[1], c="orange", label="First point")
-plt.legend()
-plt.title("Hypervolume of a single point w.r.t reference point")
-plt.show()
-
-
-# %% [markdown]
-# This area is the hypervolume for point 250, and is used as $r_{250}$ (after scaling).
-#
-# For two points the value $p_{i,j}$ is the union of the hypervolumes of assets $i$ and $j$. For example:
-
-# %%
-second_point = optimised_non_dominated[251]
-
-# Caculate the size of the rectangle
-width2 = reference_point[0] - second_point[0]
-height2 = reference_point[1] - second_point[1]
-
-# Highlight point and plot rectangle
-plt.scatter(
-    optimised_non_dominated[:, 0],
-    optimised_non_dominated[:, 1],
-    label="Pareto front",
-    alpha=0.04,
-)
-plt.scatter(lower_bound[0], lower_bound[1], c="r", label="lower bound", marker="x")
-plt.scatter(
-    reference_point[0],
-    reference_point[1],
-    c="g",
-    label="reference point",
-    marker="x",
-)
-hypervolume_rectangle = plt.Rectangle(first_point, width, height, fc="orange", alpha=0.5)
-plt.gca().add_patch(hypervolume_rectangle)
-hypervolume_rectangle2 = plt.Rectangle(second_point, width2, height2, fc="blue", alpha=0.5)
-plt.gca().add_patch(hypervolume_rectangle2)
-plt.scatter(first_point[0], first_point[1], c="orange", label="first point")
-plt.scatter(second_point[0], second_point[1], c="blue", label="second point")
-plt.legend()
-plt.title("Hypervolume of two points, and the union of hypervolumes")
-plt.show()
-
-
-# %% [markdown]
-# The area of the union $p_{i,j}$ can be calculated as the reference point minus the max value of the pair of points in each dimension, multiplied together. This is then scaled by the distance between the reference point and the lower bound in each dimension. Formally
-#
-# $$ p_{i,j}(l,u) = \frac{\prod^{d}_{k=1}(u_k - \max{(a^{(i)}_k}, {a^{(j)}_k}))}{\prod^{d}_{k=1}(u_k-l_k)}$$
-#
-# where the number of dimension, $d=2$.
-#
-# We can then use these values to calculate $Q$ as
-#
-# $$ Q = P - rr^T $$
-# where $r = p_i = p_{i,i}$ is the diagonal of $P$.
-
-# %%
-front_size = optimised_non_dominated.shape[0]
-front_dims = optimised_non_dominated.shape[1]
-
-p = np.zeros([front_size, front_size])
-
-# Calculate denominator value for p matrix elements
-denominator = 1.0
-for i in range(front_dims):
-    denominator *= reference_point[i] - lower_bound[i]
-
-# Fill entries of p
-for i in range(front_size):
-    for j in range(front_size):
-        p[i, j] = (
-            reference_point[0] - max(optimised_non_dominated[i, 0], optimised_non_dominated[j, 0])
-        ) * (reference_point[1] - max(optimised_non_dominated[i, 1], optimised_non_dominated[j, 1]))
-
-p = p / denominator
-
-# Calculate q
-p_diag = np.expand_dims(np.diagonal(p), axis=1)
-Q = p - np.dot(p_diag, np.transpose(p_diag))
-
-# %% [markdown]
-# We can then form and solve the quadratic programming problem. We use the `cvxpy` library for this.
-#
-# We are looking to solve:
-# $$ \min_{y \in \reals^n} g(y) = y^TQy $$
-#
-# $$ s.t \sum^{n}_{i=1}r_iy_i = 1 $$
-#
-# $$ y_i \geq 0, i = 1,..,n $$
-
-# %%
-import cvxpy as cp
-
-P = cp.atoms.affine.wraps.psd_wrap(Q)
-G = np.eye(front_size)
-h = np.zeros(front_size)
-A = np.transpose(p_diag)
-b = np.ones(1)
-
-# Define and solve the CVXPY problem.
-y = cp.Variable(front_size)
-prob = cp.Problem(cp.Minimize((1 / 2) * cp.quad_form(y, P)), [G @ y >= h, A @ y == b])
-prob.solve()
-
-
-# %% [markdown]
-# The output of this optimisation is $y^*$ We can then calculate $x^*$ as
-# $$ x_i^* = \frac{y_i^*}{\sum^{n}_{j=1}y_j}
-
-# %%
-# Extract y*
-y_star = y.value
-# Calculate x*
-x_star = y_star / np.sum(y_star)
-
-# %% [markdown]
-# We now have $x^*$, the optimal set of weights for the assets. We now need to choose a batch using these weights. If we had noisy observations we may want to just divide the elements of the batch out proportionally based on weight, as we would then potentially have repeats. For a noiseless problem, we can just take the $q$ most highly weighted assets.
-
-# %%
-batch_size = 5
-
-# Create id array to keep track of points
-id_arr = np.expand_dims(np.arange(front_size), axis=1)
-
-# Stitch id array, x_star and the front together
-stitched_array = np.concatenate(
-    [id_arr, np.expand_dims(x_star, axis=1), np.array(optimised_non_dominated)],
-    axis=1,
-)
-
-# Sort array by x_star descending
-sorted_array = stitched_array[stitched_array[:, 0].argsort()[::-1]]
-
-samples = sorted_array[:batch_size, 2:]
-sample_ids = sorted_array[:batch_size, 0].astype(int)
-
-# %% [markdown]
-# Now we can see which points we selected on the Pareto front
+# Now we can see which points we selected from the Pareto front
 
 # %%
 plt.scatter(
@@ -384,10 +168,65 @@ plt.scatter(
     optimised_non_dominated[:, 1],
     label="Pareto front",
 )
-plt.scatter(samples[:, 0], samples[:, 1], label="selected points")
+plt.scatter(sampled_points[:, 0], sampled_points[:, 1], label="selected points")
 plt.legend()
 plt.title("Pareto front and selected points for observation")
 plt.show()
 
+
 # %% [markdown]
 # These points can then be observed and the model updated. This aquisition method has been implemented in `trieste` as an acquisition rule, `trieste.acquisition.rule.BatchHypervolumeRatioIndicator`.
+
+# %% [markdown]
+# ## Using the Acqusition rule for Bayesian Optimisation
+#
+# The `BatchHypervolumeRatioIndicator` can be used in the same way as other batch acquisition rules. Here a noisy scaled Branin problem is set up and optimised using this acquisition rule.
+
+# %%
+# Create a noisy observer
+def noisy_branin(x):
+    y = ScaledBranin.objective(x)
+    return y + tf.random.normal(y.shape, stddev=1e-3, dtype=y.dtype)
+
+observer = mk_observer(noisy_branin)
+
+# Define Search space
+search_space = Box([0, 0], [1, 1])
+
+# Set initial number of query points
+num_initial_points = 5
+initial_query_points = search_space.sample(num_initial_points)
+initial_data = observer(initial_query_points)
+
+from trieste.models.gpflow import GaussianProcessRegression, build_gpr
+
+# Set up model
+gpflow_model = build_gpr(initial_data, search_space, likelihood_variance=1e-3)
+model = GaussianProcessRegression(gpflow_model)
+
+# %%
+from trieste.bayesian_optimizer import BayesianOptimizer
+from trieste.acquisition.rule import BatchHypervolumeSharpeRatioIndicator
+
+bo = BayesianOptimizer(observer=observer, search_space=search_space)
+
+results = bo.optimize(acquisition_rule=BatchHypervolumeSharpeRatioIndicator(num_query_points=10), num_steps=20, datasets=initial_data, models=model)
+
+# %%
+from trieste.experimental.plotting import plot_regret
+
+observations = results.try_get_final_dataset().observations - ScaledBranin.minimum
+
+min_idx = tf.squeeze(tf.argmin(observations, axis=0))
+min_regret = tf.reduce_min(observations)
+
+fig, ax = plt.subplots(1, 1)
+plot_regret(observations.numpy(), ax, num_init=5, idx_best=min_idx)
+ax.set_yscale("log")
+ax.set_ylabel("Regret")
+ax.set_ylim(0.00000000001, 100)
+ax.set_xlabel("# evaluations")
+ax.set_title("Qhsri")
+plt.show()
+
+print(f"Min regret is {min_regret}")
