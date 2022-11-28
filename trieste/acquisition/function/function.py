@@ -468,6 +468,84 @@ def probability_below_threshold(
     return acquisition
 
 
+class FastConstraintsFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel]):
+    """
+    Uses the :func:`fast_constraints_feasibility` function to build a
+    probability of feasiblity acquisition function from the residuals of direct constraints defined
+    in the search space.
+    """
+
+    def __init__(
+        self,
+        search_space: SearchSpace,
+        smoothing_function: Optional[Callable[[TensorType], TensorType]] = None,
+    ):
+        """
+        :param search_space: The global search space over which the feasibility of the constraints
+            is defined.
+        :param smoothing_function: The smoothing function used for constraints residuals. The
+            default is CDF of the Normal distribution with a small scale.
+        """
+        self._search_space = search_space
+        self._smoothing_function = smoothing_function
+
+    def __repr__(self) -> str:
+        """"""
+        return f"FastConstraintsFeasibility({self._search_space!r}, {self._smoothing_function!r})"
+
+    def prepare_acquisition_function(
+        self,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param model: Unused.
+        :param dataset: Unused.
+        :return: The function for probability of feasibility of constraints.
+        """
+        return fast_constraints_feasibility(self._search_space, self._smoothing_function)
+
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param model: Unused.
+        :param dataset: Unused.
+        :return: The function for probability of feasibility of constraints.
+        """
+        return function  # No need to update anything.
+
+
+def fast_constraints_feasibility(
+    search_space: SearchSpace,
+    smoothing_function: Optional[Callable[[TensorType], TensorType]] = None,
+) -> AcquisitionFunction:
+    """
+    :param search_space: The global search space over which the feasibility of the constraints
+        is defined.
+    :param smoothing_function: The smoothing function used for constraints residuals. The
+        default is CDF of the Normal distribution with a small scale.
+    :return: The function for probability of feasibility of constraints.
+    """
+
+    @tf.function
+    def acquisition(x: TensorType) -> TensorType:
+        if smoothing_function is None:
+            _smoothing_function = tfp.distributions.Normal(
+                tf.cast(0.0, x.dtype), tf.cast(1e-3, x.dtype)
+            ).cdf
+        else:
+            _smoothing_function = smoothing_function
+        residuals = search_space.constraints_residuals(x)
+        return tf.math.reduce_prod(_smoothing_function(residuals), axis=-1)
+
+    return acquisition
+
+
 class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticModelType]):
     """
     Builder for the *expected constrained improvement* acquisition function defined in

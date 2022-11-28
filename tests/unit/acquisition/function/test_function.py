@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Optional
+from typing import Callable, Optional, Sequence
 from unittest.mock import MagicMock
 
 import numpy.testing as npt
@@ -50,6 +50,7 @@ from trieste.acquisition.function.function import (
     BatchMonteCarloExpectedImprovement,
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
+    FastConstraintsFeasibility,
     MakePositive,
     MonteCarloAugmentedExpectedImprovement,
     MonteCarloExpectedImprovement,
@@ -59,6 +60,7 @@ from trieste.acquisition.function.function import (
     ProbabilityOfImprovement,
     augmented_expected_improvement,
     expected_improvement,
+    fast_constraints_feasibility,
     lower_confidence_bound,
     multiple_optimism_lower_confidence_bound,
     probability_below_threshold,
@@ -66,7 +68,7 @@ from trieste.acquisition.function.function import (
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.objectives import Branin
-from trieste.space import Box
+from trieste.space import Box, LinearConstraint
 from trieste.types import TensorType
 
 
@@ -787,6 +789,58 @@ def test_probability_of_feasibility_builder_updates_without_retracing(
     up_acq = builder.update_acquisition_function(acq, model)
     assert up_acq == acq
     npt.assert_allclose(acq(at), expected)
+    assert acq._get_tracing_count() == 1  # type: ignore
+
+
+def _box_feasibility_constraints() -> Sequence[LinearConstraint]:
+    return [LinearConstraint(A=tf.eye(3), lb=tf.zeros((3)) + 0.3, ub=tf.ones((3)) - 0.3)]
+
+
+@pytest.mark.parametrize(
+    "smoother, expected",
+    [
+        (None, tf.constant([1.0, 0.0, 0.0, 1.0])),
+        (tfp.distributions.Normal(0.0, 0.1).cdf, tf.constant([0.871, 0.029, 0.029, 0.462])),
+        (tf.math.sigmoid, tf.constant([0.028, 0.026, 0.026, 0.027])),
+    ],
+)
+def test_fast_constraints_feasibility_smoothing_values(
+    smoother: Optional[Callable[[TensorType], TensorType]],
+    expected: TensorType,
+) -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)), _box_feasibility_constraints())
+    points = box.sample_sobol(4, skip=0)
+    acq = fast_constraints_feasibility(box, smoother)
+    got = tf.squeeze(acq(points))
+
+    npt.assert_allclose(got, expected, atol=0.005)
+
+
+def test_fast_constraints_feasibility_builder_builds_same_func() -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)), _box_feasibility_constraints())
+    points = box.sample_sobol(4)
+    builder = FastConstraintsFeasibility(box)
+    acq = builder.prepare_acquisition_function(QuadraticMeanAndRBFKernel())
+    expected = fast_constraints_feasibility(box)(points)
+
+    npt.assert_allclose(acq(points), expected)
+
+
+def test_fast_constraints_feasibility_builder_updates_without_retracing() -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)), _box_feasibility_constraints())
+    points = box.sample_sobol(4)
+    builder = FastConstraintsFeasibility(box)
+    expected = fast_constraints_feasibility(box)(points)
+    acq = builder.prepare_acquisition_function(QuadraticMeanAndRBFKernel())
+    assert acq._get_tracing_count() == 0  # type: ignore
+    npt.assert_allclose(acq(points), expected)
+    assert acq._get_tracing_count() == 1  # type: ignore
+    up_acq = builder.update_acquisition_function(acq, QuadraticMeanAndRBFKernel())
+    assert up_acq == acq
+
+    points = box.sample_sobol(4)
+    expected = fast_constraints_feasibility(box)(points)
+    npt.assert_allclose(acq(points), expected)
     assert acq._get_tracing_count() == 1  # type: ignore
 
 
