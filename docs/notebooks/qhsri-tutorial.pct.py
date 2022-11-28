@@ -21,7 +21,7 @@
 # This tutorial will cover the main points of how this algorithm works, and then demonstrate how to use the `trieste.acquisition.rule.BatchHypervolumeRatioIndicator` acquisition rule.
 #
 #
-# First we will set up our problem and get our initial datapoints. For this walkthourgh we will use the noiseless scaled Branin objective.
+# First we will set up our problem and get our initial datapoints. For this walkthrough we will use the noiseless scaled Branin objective.
 
 # %%
 
@@ -179,17 +179,14 @@ plt.show()
 # %% [markdown]
 # ## Using the Acqusition rule for Bayesian Optimisation
 #
-# The `BatchHypervolumeRatioIndicator` can be used in the same way as other batch acquisition rules. Here a noisy scaled Branin problem is set up and optimised using this acquisition rule.
+# The `BatchHypervolumeRatioIndicator` can be used in the same way as other batch acquisition rules. We set up the problem as before, and then run `optimize` with the `BatchHypervolumeRatioIndicator` rule.
 
 # %%
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.acquisition.rule import BatchHypervolumeSharpeRatioIndicator
-# Create a noisy observer
-def noisy_branin(x):
-    y = ScaledBranin.objective(x)
-    return y + tf.random.normal(y.shape, stddev=1e-3, dtype=y.dtype)
 
-observer = mk_observer(noisy_branin)
+# Create observer
+observer = mk_observer(ScaledBranin.objective)
 
 # Define Search space
 search_space = Box([0, 0], [1, 1])
