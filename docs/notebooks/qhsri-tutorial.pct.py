@@ -16,10 +16,11 @@
 # # Batch HSRI Tutorial
 
 # %% [markdown]
-# Batch Hypervolume Sharpe Ratio Indicator (qHSRI) is a method for picking a batch of query points during Bayesian Optimisation. It makes use of the Sharpe Ratio, a portfolio selection method used in investment selection to carefully balance risk and reward.
+# Batch Hypervolume Sharpe Ratio Indicator (qHSRI) is a method proposed by Binois et al. (see <cite data-cite="binois2021portfolio"/>) for picking a batch of query points during Bayesian Optimisation. It makes use of the Sharpe Ratio, a portfolio selection method used in investment selection to carefully balance risk and reward.
 #
-# This tutorial will cover the main points of how this algorithm works, and then demonstrate how to use the `trieste.acquisition.rule.BatchHypervolumeRatioIndicator` acquisition rule.
+# This tutorial will first cover the main points of how the `Trieste` implementation of qHSRI works under the hood, and then demonstrate how to use the `trieste.acquisition.rule.BatchHypervolumeRatioIndicator` acquisition rule.
 #
+# Some of the dependencies for `BatchHypervolumeRatioIndicator` are not included in `Trieste` by default, and instead can be installed via `pip install trieste[qhsri]`.
 #
 # First we will set up our problem and get our initial datapoints. For this walkthrough we will use the noiseless scaled Branin objective.
 
@@ -56,12 +57,12 @@ gpflow_model = build_gpr(initial_data, search_space, likelihood_variance=1e-7)
 model = GaussianProcessRegression(gpflow_model)
 
 # %% [markdown]
-# Now consider how we might want to select a batch of $q$ query points to observe. It would be useful for some of these to be "safe bets" that we think are very likely to provide an improvement. It would also be valuable for some of these to be sampling parts of the space that we have no idea what the expected observed value is (i.e. high variance). This problem is very similar to that encountered in building finance portfolios, where you want a mix of high  risk/high reward and low risk/low reward assets. You would also want to know how much of your total capital to invest in each asset.
+# Now consider how we might want to select a batch of $q$ query points to observe. It would be useful for some of these to be "safe bets" that we think are very likely to provide good values (i.e low predicted mean). It would also be valuable for some of these to be sampling parts of the space that we have no idea what the expected observed value is (i.e. high variance). This problem is very similar to that encountered in building finance portfolios, where you want a mix of high risk/high reward and low risk/low reward assets. You would also want to know how much of your total capital to invest in each asset.
 #
-# We can sample from the model to determine the mean and standard deviation of points. For example if we randomly sample 1000 points from the space, we can then plot the mean and standard deviation. As we actually want to maximise standard deviation, we will multiply by -1 once sampled
+# To visualise the different trade-offs, we can sample from the input space, compute the predictive mean and variance at those locations, and plot the mean against minus the standard deviation (so that both quantities need to be minimised)
 
 # %%
-uniform_points = tf.random.uniform([1000, 2], dtype="float64")
+uniform_points = search_space.sample(1000)
 uniform_pts_mean, uniform_pts_var = model.predict(uniform_points)
 uniform_pts_std = -tf.sqrt(uniform_pts_var)
 
@@ -77,7 +78,7 @@ plt.ylabel("Negative std")
 plt.show()
 
 # %% [markdown]
-# Since we only want the best points in terms of the risk reward tradeoff, we want points that have low means and high standard deviations. So we remove any points that are dominated by another point. A point `a` is dominated by another point `b` if `b.mean` <= `a.mean` and `b.std` >= `a.std`.
+# Since we only want the best points in terms of the risk-reward tradeoff, we can remove all the points that are not optimal in the Pareto sense, i.e. the points that are dominated by another point. A point `a` is dominated by another point `b` if `b.mean` <= `a.mean` and `b.std` >= `a.std`.
 #
 # There is a function in trieste that lets us calculate this non-dominated set. Let's find the non-dominated points and plot them on the above chart.
 
@@ -100,7 +101,7 @@ print(f"There are {len(uniform_non_dominated)} non-dominated points")
 #
 # This means we can improve on this by using optimisation rather than random sampling to pick the points that we will select our batch from. In trieste we use the NSGA-II multi-objective optimisation method from the [pymoo](https://pymoo.org/) library to find the Pareto front.
 #
-# The `BatchHypervolumeSharpeRatioIndicator` acqusition rule makes use of the `_MeanStdTradeoff` class, which expresses the optimisation problem in the pymoo framework. Pymoo is then used to run the optimisation.
+# The `BatchHypervolumeSharpeRatioIndicator` acquisition rule makes use of the `_MeanStdTradeoff` class, which expresses the optimisation problem in the pymoo framework. Pymoo is then used to run the optimisation.
 #
 # NSGA-II is a genetic algorithm, and so we need to define a population size and number of generations.
 
@@ -128,7 +129,7 @@ plt.title("Mean vs std of optimised points")
 plt.show()
 
 # %% [markdown]
-# We can check the non-dominated points again, and see that this is a great improvement.
+# We can check the non-dominated points again, and see that the outcome of NSGA-II is much better than the randomly sampled ones.
 
 # %%
 optimised_non_dominated = non_dominated(result.F)[0]
