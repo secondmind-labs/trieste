@@ -147,9 +147,9 @@ print(f"There are {len(optimised_non_dominated)} non-dominated points")
 #
 # where $x_i$ are weights for each asset $i$, $r_i$ is the expected return of asset $i$ and $Q_{i,j}$ is the covariance of assets $i$ and $j$. $r_f$ is a risk free asset, and we will assume this does not exist in this case. Note that weighting assets with high expected rewards will increase the Sharpe ratio, as will weighting assets with low covariance.
 #
-# This problem can be converted into a quadratic programming problem and solved to give a diverse sample from the Pareto front. 
+# This problem can be converted into a quadratic programming problem and solved to give a diverse sample from the Pareto front.
 #
-# The `trieste.acquisition.multi_objective.Pareto` class has a `sample_diverse_subset` method that implements this. 
+# The `trieste.acquisition.multi_objective.Pareto` class has a `sample_diverse_subset` method that implements this.
 
 # %%
 from trieste.acquisition.multi_objective import Pareto
@@ -204,7 +204,12 @@ model = GaussianProcessRegression(gpflow_model)
 
 bo = BayesianOptimizer(observer=observer, search_space=search_space)
 
-results = bo.optimize(acquisition_rule=BatchHypervolumeSharpeRatioIndicator(num_query_points=10), num_steps=8, datasets=initial_data, models=model)
+results = bo.optimize(
+    acquisition_rule=BatchHypervolumeSharpeRatioIndicator(num_query_points=10),
+    num_steps=8,
+    datasets=initial_data,
+    models=model,
+)
 
 # %% [markdown]
 # We can now plot the regret of the observations, and see that the regret has decreased from the initial sample.
