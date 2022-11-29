@@ -178,8 +178,12 @@ _, ax = plot_function_2d(
     search_space.upper,
     grid_density=30,
     contour=True,
+    figsize=(8, 6),
 )
-plot_bo_points(query_points, ax[0, 0], num_initial_points, arg_min_idx)
+
+plot_bo_points(
+    query_points, ax[0, 0], num_initial_points, arg_min_idx, c_pass="green", c_best="purple"
+)
 
 ax[0, 0].contourf(
     xi, xj, constraint_values, levels=1, colors=[(0.2, 0.2, 0.2, 0.7), (1, 1, 1, 0)], zorder=2

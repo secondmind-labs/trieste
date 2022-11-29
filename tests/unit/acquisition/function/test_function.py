@@ -844,6 +844,14 @@ def test_fast_constraints_feasibility_builder_updates_without_retracing() -> Non
     assert acq._get_tracing_count() == 1  # type: ignore
 
 
+def test_fast_constraints_feasibility_raises_without_constraints() -> None:
+    box = Box(tf.zeros((2)), tf.ones((2)))
+    with pytest.raises(NotImplementedError):
+        _ = FastConstraintsFeasibility(box)
+    with pytest.raises(NotImplementedError):
+        _ = fast_constraints_feasibility(box)
+
+
 def test_expected_constrained_improvement_raises_for_non_scalar_min_pof() -> None:
     pof = ProbabilityOfFeasibility(0.0).using("")
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
