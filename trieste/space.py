@@ -92,17 +92,6 @@ class NonlinearConstraint(spo.NonlinearConstraint):  # type: ignore[misc]
         """
         Calculate the residuals between the constraint function and its lower/upper limits.
 
-        For example:
-
-        >>> points = tf.constant([[-1.0, 0.4], [-1.0, 0.6], [0.0, 0.4]], dtype=DEFAULT_DTYPE)
-        >>> nlc = NonlinearConstraint(lambda x: x[..., 0] - tf.math.sin(x[..., 1]), -1.4, 1.9)
-        >>> nlc.residual(points)
-        <tf.Tensor: shape=(3, 2), dtype=float64, numpy=
-        array([[ 0.01058163,  3.28941832],
-               [-0.1646425 ,  3.46464245],
-               [ 1.01058163,  2.28941832]])>
-
-
         :param points: The points to calculate the residuals for, with shape [..., D].
         :return: A tensor containing the lower and upper residual values with shape [..., M*2].
         """
@@ -164,16 +153,6 @@ class LinearConstraint(spo.LinearConstraint):  # type: ignore[misc]
     def residual(self, points: TensorType) -> TensorType:
         """
         Calculate the residuals between the constraint function and its lower/upper limits.
-
-        >>> points = tf.constant([[-1.0, 0.4], [-1.0, 0.6], [0.0, 0.4]], dtype=DEFAULT_DTYPE)
-        >>> lc = LinearConstraint(A=np.array([[-1.0, 1.0], [1.0, 0.0]]),
-        ...                       lb=np.array([-0.4, 0.5]), ub=np.array([-0.2, 0.9]))
-        >>> lc.residual(points)
-        <tf.Tensor: shape=(3, 4), dtype=float64, numpy=
-        array([[ 1.8, -1.5, -1.6,  1.9],
-               [ 2. , -1.5, -1.8,  1.9],
-               [ 0.8, -0.5, -0.6,  0.9]])>
-
 
         :param points: The points to calculate the residuals for, with shape [..., D].
         :return: A tensor containing the lower and upper residual values with shape [..., M*2].

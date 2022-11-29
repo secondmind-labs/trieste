@@ -1069,6 +1069,28 @@ def test___eq___search_spaces(a: SearchSpace, b: SearchSpace, equal: bool) -> No
     assert (a == a) and (b == b)
 
 
+def test_linear_constraints_residual() -> None:
+    points = tf.constant([[-1.0, 0.4], [-1.0, 0.6], [0.0, 0.4]])
+    lc = LinearConstraint(
+        A=tf.constant([[-1.0, 1.0], [1.0, 0.0]]),
+        lb=tf.constant([-0.4, 0.5]),
+        ub=tf.constant([-0.2, 0.9]),
+    )
+    got = lc.residual(points)
+    expected = tf.constant([[1.8, -1.5, -1.6, 1.9], [2.0, -1.5, -1.8, 1.9], [0.8, -0.5, -0.6, 0.9]])
+    npt.assert_allclose(expected, got)
+
+
+def test_nonlinear_constraints_residual() -> None:
+    points = tf.constant([[-1.0, 0.4], [-1.0, 0.6], [0.0, 0.4]])
+    nlc = NonlinearConstraint(lambda x: x[..., 0] - tf.math.sin(x[..., 1]), -1.4, 1.9)
+    got = nlc.residual(points)
+    expected = tf.constant(
+        [[0.01058163, 3.28941832], [-0.1646425, 3.46464245], [1.01058163, 2.28941832]]
+    )
+    npt.assert_allclose(expected, got, atol=1e-7)
+
+
 @pytest.mark.parametrize(
     "constraints, points",
     [
