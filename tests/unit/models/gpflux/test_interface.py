@@ -139,7 +139,7 @@ def test_gpflux_predictor_get_observation_noise() -> None:
 
 
 def test_gpflux_predictor_get_observation_noise_raises_for_non_gaussian_likelihood() -> None:
-    likelihood = gpflow.likelihoods.Softmax(1)
+    likelihood = gpflow.likelihoods.StudentT()
     model = _QuadraticPredictor(likelihood=likelihood)
 
     with pytest.raises(NotImplementedError):

@@ -415,6 +415,7 @@ def _check_likelihood(
                 empirical_variance / SIGNAL_NOISE_RATIO_LIKELIHOOD ** 2,
                 rtol=1e-6,
             )
+        assert isinstance(model.likelihood.variance, gpflow.Parameter)
         assert model.likelihood.variance.trainable == trainable_likelihood
 
 
