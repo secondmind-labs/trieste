@@ -92,11 +92,11 @@ def test_probability_of_improvement_builder_updates_pi_using_best_from_model() -
     )
     model = QuadraticMeanAndRBFKernel()
     acq_fn = ProbabilityOfImprovement().prepare_acquisition_function(model, dataset=dataset)
-    assert acq_fn._get_tracing_count() == 0  # type: ignore
+    assert acq_fn.__call__._get_tracing_count() == 0  # type: ignore
     xs = tf.linspace([[-10.0]], [[10.0]], 100)
     expected = probability_below_threshold(model, tf.constant(1.0))(xs)
     npt.assert_allclose(acq_fn(xs), expected)
-    assert acq_fn._get_tracing_count() == 1  # type: ignore
+    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
 
     new_dataset = Dataset(
         tf.concat([dataset.query_points, tf.constant([[0.0], [1.0], [2.0]])], 0),
@@ -108,7 +108,7 @@ def test_probability_of_improvement_builder_updates_pi_using_best_from_model() -
     # assert updated_acq_fn == acq_fn
     expected = probability_below_threshold(model, tf.constant(0.0))(xs)
     npt.assert_allclose(updated_acq_fn(xs), expected)
-    assert acq_fn._get_tracing_count() == 1  # type: ignore
+    assert acq_fn.__call__._get_tracing_count() == 1  # type: ignore
 
 
 def test_probability_of_improvement_builder_raises_for_empty_data() -> None:
@@ -783,13 +783,13 @@ def test_probability_of_feasibility_builder_updates_without_retracing(
     model = QuadraticMeanAndRBFKernel()
     expected = probability_below_threshold(QuadraticMeanAndRBFKernel(), threshold)(at)
     acq = builder.prepare_acquisition_function(model)
-    assert acq._get_tracing_count() == 0  # type: ignore
+    assert acq.__call__._get_tracing_count() == 0  # type: ignore
     npt.assert_allclose(acq(at), expected)
-    assert acq._get_tracing_count() == 1  # type: ignore
+    assert acq.__call__._get_tracing_count() == 1  # type: ignore
     up_acq = builder.update_acquisition_function(acq, model)
     assert up_acq == acq
     npt.assert_allclose(acq(at), expected)
-    assert acq._get_tracing_count() == 1  # type: ignore
+    assert acq.__call__._get_tracing_count() == 1  # type: ignore
 
 
 def _box_feasibility_constraints() -> Sequence[LinearConstraint]:

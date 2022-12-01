@@ -85,9 +85,10 @@ class ProbabilityOfImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         tf.debugging.Assert(dataset is not None, [])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
+        tf.debugging.Assert(isinstance(function, probability_below_threshold), [tf.constant([])])
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)[0]
-        function = probability_below_threshold(model, eta)
+        function.update(eta)  # type: ignore
         return function
 
 
@@ -436,36 +437,39 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel]
         return function  # no need to update anything
 
 
-def probability_below_threshold(
-    model: ProbabilisticModel, threshold: float | TensorType
-) -> AcquisitionFunction:
-    r"""
-    The probability of being below the threshold. This brings together commonality
-    between probability of improvement and probability of feasiblity.
-    Probability is is caculated with respect to the `model` posterior.
-    For model posterior :math:`f`, this is
-    .. math:: x \mapsto \mathbb P \left (f(x) < \eta)\right]
-    where :math:`\eta` is the threshold.
-    :param model: The model of the objective function.
-    :param threshold: The (scalar) probability of feasibility threshold.
-    :return: The probability of feasibility function. This function will raise
-    :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
-    greater than one.
-    :raise ValueError or tf.errors.InvalidArgumentError: If ``threshold`` is not a scalar.
-    """
-    tf.debugging.assert_scalar(threshold)
+class probability_below_threshold(AcquisitionFunctionClass):
+    def __init__(self, model: ProbabilisticModel, threshold: float | TensorType):
+        r"""
+        The probability of being below the threshold. This brings together commonality
+        between probability of improvement and probability of feasiblity.
+        Probability is is caculated with respect to the `model` posterior.
+        For model posterior :math:`f`, this is
+        .. math:: x \mapsto \mathbb P \left (f(x) < \eta)\right]
+        where :math:`\eta` is the threshold.
+        :param model: The model of the objective function.
+        :param threshold: The (scalar) probability of feasibility threshold.
+        :return: The probability of feasibility function. This function will raise
+        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+        greater than one.
+        :raise ValueError or tf.errors.InvalidArgumentError: If ``threshold`` is not a scalar.
+        """
+        tf.debugging.assert_scalar(threshold)
+        self._model = model
+        self._threshold = tf.Variable(threshold)
 
     @tf.function
-    def acquisition(x: TensorType) -> TensorType:
+    def __call__(self, x: TensorType) -> TensorType:
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],
             message="This acquisition function only supports batch sizes of one.",
         )
-        mean, var = model.predict(tf.squeeze(x, -2))
+        mean, var = self._model.predict(tf.squeeze(x, -2))
         distr = tfp.distributions.Normal(mean, tf.sqrt(var))
-        return distr.cdf(tf.cast(threshold, x.dtype))
+        return distr.cdf(tf.cast(self._threshold, x.dtype))
 
-    return acquisition
+    def update(self, threshold: TensorType) -> None:
+        """Update the acquisition function with a new threshold value."""
+        self._threshold.assign(threshold)
 
 
 class FastConstraintsFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel]):
