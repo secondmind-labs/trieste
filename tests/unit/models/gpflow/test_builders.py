@@ -30,6 +30,7 @@ from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, mk_dataset, quadratic
 from tests.util.models.gpflow.models import mock_data
+from trieste.data import Dataset
 from trieste.models.gpflow.builders import (
     CLASSIFICATION_KERNEL_VARIANCE,
     CLASSIFICATION_KERNEL_VARIANCE_NOISE_FREE,
@@ -39,10 +40,12 @@ from trieste.models.gpflow.builders import (
     SIGNAL_NOISE_RATIO_LIKELIHOOD,
     _get_data_stats,
     build_gpr,
+    build_multifidelity_autoregressive_models,
     build_sgpr,
     build_svgp,
     build_vgp_classifier,
 )
+from trieste.models.gpflow.models import GaussianProcessRegression
 from trieste.space import Box, DiscreteSearchSpace, SearchSpace
 from trieste.types import TensorType
 
@@ -312,6 +315,87 @@ def test_builder_returns_correct_lengthscales_for_unequal_discrete_bounds(
     npt.assert_allclose(model.kernel.lengthscales, expected_lengthscales, rtol=1e-6)
 
 
+def test_build_multifidelity_autoregressive_models_builds_correct_n_gprs() -> None:
+
+    dataset = Dataset(
+        tf.Variable(
+            [[0.0, 0.0], [1.0, 1.0], [2.0, 2.0], [3.0, 1.0], [4.0, 2.0], [5.0, 0.0]],
+            dtype=tf.float64,
+        ),
+        tf.Variable([[2.0], [4.0], [6.0], [8.0], [10.0], [12.0]], dtype=tf.float64),
+    )
+    search_space = Box([0.0], [10.0])
+
+    gprs = build_multifidelity_autoregressive_models(dataset, 3, search_space)
+
+    assert len(gprs) == 3
+    for gpr in gprs:
+        assert isinstance(gpr, GaussianProcessRegression)
+
+
+def test_build_multifidelity_autoregressive_models_raises_for_bad_fidelity() -> None:
+
+    dataset = Dataset(
+        tf.Variable(
+            [[0.0, 0.0], [1.0, 1.0], [2.0, 2.0], [3.0, 1.0], [4.0, 2.0], [5.0, 0.0]],
+            dtype=tf.float64,
+        ),
+        tf.Variable([[2.0], [4.0], [6.0], [8.0], [10.0], [12.0]], dtype=tf.float64),
+    )
+    search_space = Box([0.0], [10.0])
+    with pytest.raises(ValueError):
+        build_multifidelity_autoregressive_models(dataset, -1, search_space)
+
+
+@pytest.mark.parametrize(
+    "query_points,observations",
+    (
+        (
+            [[0.0, 0.0], [1.0, 1.0], [2.0, 2.0], [3.0, 1.0], [4.0, 2.0]],  # Only 1 point for fid 0
+            [[2.0], [4.0], [6.0], [8.0], [10.0]],
+        ),
+        (
+            [[0.0, 0.0], [2.0, 2.0], [4.0, 2.0], [5.0, 0.0]],  # Missing middle fid entirely
+            [[2.0], [4.0], [6.0], [8.0]],
+        ),
+        (
+            [[0.0, 0.0], [2.0, 1.0], [4.0, 1.0], [5.0, 0.0]],  # 2 fid data, but fid set as 3
+            [[2.0], [4.0], [6.0], [8.0]],
+        ),
+    ),
+)
+def test_build_multifidelity_autoregressive_models_raises_not_enough_datapoints(
+    query_points: TensorType, observations: TensorType
+) -> None:
+
+    dataset = Dataset(
+        tf.Variable(
+            query_points,
+            dtype=tf.float64,
+        ),
+        tf.Variable(observations, dtype=tf.float64),
+    )
+    search_space = Box([0.0], [10.0])
+
+    with pytest.raises(ValueError):
+        build_multifidelity_autoregressive_models(dataset, 3, search_space)
+
+
+def test_build_multifidelity_autoregressive_models_raises_not_multifidelity_data() -> None:
+
+    dataset = Dataset(
+        tf.Variable(
+            [[0.0], [1.0], [2.0], [3.0], [4.0]],
+            dtype=tf.float64,
+        ),
+        tf.Variable([[2.0], [4.0], [6.0], [8.0], [10.0]], dtype=tf.float64),
+    )
+    search_space = Box([0.0], [10.0])
+
+    with pytest.raises(ValueError):
+        build_multifidelity_autoregressive_models(dataset, 3, search_space)
+
+
 def _check_likelihood(
     model: GPModel,
     classification: bool,
@@ -331,6 +415,7 @@ def _check_likelihood(
                 empirical_variance / SIGNAL_NOISE_RATIO_LIKELIHOOD ** 2,
                 rtol=1e-6,
             )
+        assert isinstance(model.likelihood.variance, gpflow.Parameter)
         assert model.likelihood.variance.trainable == trainable_likelihood
 
 
