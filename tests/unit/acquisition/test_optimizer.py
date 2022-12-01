@@ -14,12 +14,14 @@
 from __future__ import annotations
 
 import unittest
+import unittest.mock
 from math import ceil
-from typing import Callable, Tuple, TypeVar, Union
+from typing import Any, Callable, Optional, Tuple, TypeVar, Union
 from unittest.mock import MagicMock
 
 import numpy.testing as npt
 import pytest
+import scipy.optimize as spo
 import tensorflow as tf
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, quadratic, random_seed
@@ -717,3 +719,42 @@ def test_split_acquisition_function(batch_size: int) -> None:
         tf.size(call[0][0]) <= expected_batch_size for call in acquisition_function.call_args_list
     )
     assert acquisition_function.call_count == ceil(20 / expected_batch_size)
+
+
+@unittest.mock.patch("scipy.optimize.minimize")
+@pytest.mark.parametrize(
+    "optimizer_args, expected_method, expected_constraints",
+    [
+        (None, "l-bfgs-b", None),
+        (dict(method="trust-constr"), "trust-constr", None),
+        (dict(constraints="dummy"), "l-bfgs-b", "dummy"),
+        (dict(method="trust-constr", constraints="dummy"), "trust-constr", "dummy"),
+    ],
+)
+def test_optimizer_scipy_method_select(
+    mocked_minimize: MagicMock,
+    optimizer_args: Optional[dict[str, Any]],
+    expected_method: str,
+    expected_constraints: Optional[str],
+) -> None:
+    def target_function(x: TensorType) -> TensorType:
+        return -1 * Branin.objective(tf.squeeze(x, 1))
+
+    def side_effect(*args: Any, **kwargs: Any) -> spo.OptimizeResult:
+        return spo.OptimizeResult(fun=0.0, nfev=0, x=Branin.minimizers[0].numpy(), success=True)
+
+    search_space = Branin.search_space
+    mocked_minimize.side_effect = side_effect
+    optimizer = generate_continuous_optimizer(
+        num_initial_samples=2, num_optimization_runs=2, optimizer_args=optimizer_args
+    )
+    optimizer(search_space, target_function)
+
+    received_method = mocked_minimize.call_args[1]["method"]
+    assert received_method == expected_method
+
+    if "constraints" in mocked_minimize.call_args[1]:
+        received_constraints = mocked_minimize.call_args[1]["constraints"]
+    else:
+        received_constraints = None
+    assert received_constraints == expected_constraints
