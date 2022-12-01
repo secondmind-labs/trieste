@@ -32,12 +32,16 @@ from trieste.space import Box, LinearConstraint, NonlinearConstraint
 observer = mk_observer(ScaledBranin.objective)
 
 
-def _nlc_func(x):
+def _nlc_func0(x):
     c0 = x[..., 0] - 0.2 - tf.sin(x[..., 1])
-    c1 = x[..., 0] - tf.cos(x[..., 1])
     c0 = tf.expand_dims(c0, axis=-1)
+    return c0
+
+
+def _nlc_func1(x):
+    c1 = x[..., 0] - tf.cos(x[..., 1])
     c1 = tf.expand_dims(c1, axis=-1)
-    return tf.concat([c0, c1], axis=-1)
+    return c1
 
 
 constraints = [
@@ -46,7 +50,8 @@ constraints = [
         lb=tf.constant([-0.4, 0.15, 0.2]),
         ub=tf.constant([0.5, 0.9, 0.9]),
     ),
-    NonlinearConstraint(_nlc_func, tf.constant([-1.0, -0.8]), tf.constant([0.0, 0.0])),
+    NonlinearConstraint(_nlc_func0, tf.constant(-1.0), tf.constant(0.0)),
+    NonlinearConstraint(_nlc_func1, tf.constant(-0.8), tf.constant(0.0)),
 ]
 
 search_space = Box([0, 0], [1, 1], constraints=constraints)  # type: ignore
@@ -125,26 +130,23 @@ model = GaussianProcessRegression(gpflow_model)
 
 
 # %% [markdown]
-# ## Acquisition function
+# ## Constrained optimization method
 #
-# We can construct the _expected constrained improvement_ acquisition function similar to the [inequality-constraints notebook](inequality_constraints.ipynb). However, instead of using probability of feasibility with respect to the constraint model, we construct feasibility from the explicit input constraints. Feasibility is calculated by passing all the constraints residuals (to their respective limits) through a smoothing function and taking the product.
+# ### Acquisition function
 #
-# Note this method penalises the expected improvement acquisition outside the feasible region. The optimizer uses unconstrained L-BFGS method to find the max of the acquistion function.
+# We can construct the _expected improvement_ acquisition function as usual. In order to handle the constraints, the search space must be passed as a constructor argument.
 
 # %%
-from trieste.acquisition.function import ExpectedConstrainedImprovement, FastConstraintsFeasibility
+from trieste.acquisition.function import ExpectedImprovement
 from trieste.acquisition.rule import EfficientGlobalOptimization
-from trieste.observer import OBJECTIVE
 
-feas = FastConstraintsFeasibility(search_space)
-eci = ExpectedConstrainedImprovement(OBJECTIVE, feas.using(OBJECTIVE))
-
-rule = EfficientGlobalOptimization(eci)  # type: ignore
+ei = ExpectedImprovement(search_space)
+rule = EfficientGlobalOptimization(ei)  # type: ignore
 
 # %% [markdown]
-# ## Run the optimization loop
+# ### Run the optimization loop
 #
-# We can now run the optimization loop.
+# We can now run the optimization loop. As the search space contains constraints, the optimizer will automatically switch to using _scipy_ _trust-constr_ method to optimize the acquisition function.
 
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
@@ -168,27 +170,79 @@ print(f"observation: {observation}")
 # %%
 from trieste.experimental.plotting import plot_bo_points, plot_function_2d
 
-dataset = result.try_get_final_dataset()
-query_points = dataset.query_points.numpy()
-observations = dataset.observations.numpy()
 
-_, ax = plot_function_2d(
-    ScaledBranin.objective,
-    search_space.lower,
-    search_space.upper,
-    grid_density=30,
-    contour=True,
-    figsize=(8, 6),
-)
+def plot_bo_results():
+    dataset = result.try_get_final_dataset()
+    query_points = dataset.query_points.numpy()
+    observations = dataset.observations.numpy()
 
-plot_bo_points(
-    query_points, ax[0, 0], num_initial_points, arg_min_idx, c_pass="green", c_best="purple"
-)
+    _, ax = plot_function_2d(
+        ScaledBranin.objective,
+        search_space.lower,
+        search_space.upper,
+        grid_density=30,
+        contour=True,
+        figsize=(8, 6),
+    )
 
-ax[0, 0].contourf(
-    xi, xj, constraint_values, levels=1, colors=[(0.2, 0.2, 0.2, 0.7), (1, 1, 1, 0)], zorder=2
-)
+    plot_bo_points(
+        query_points, ax[0, 0], num_initial_points, arg_min_idx, c_pass="green", c_best="purple"
+    )
 
-ax[0, 0].set_xlabel(r"$x_1$")
-ax[0, 0].set_ylabel(r"$x_2$")
-plt.show()
+    ax[0, 0].contourf(
+        xi, xj, constraint_values, levels=1, colors=[(0.2, 0.2, 0.2, 0.7), (1, 1, 1, 0)], zorder=2
+    )
+
+    ax[0, 0].set_xlabel(r"$x_1$")
+    ax[0, 0].set_ylabel(r"$x_2$")
+    plt.show()
+
+
+plot_bo_results()
+
+# %% [markdown]
+# ## Penalty method
+#
+# ### Acquisition function
+#
+# An alternative to using a constrained optimization method is to construct the _expected constrained improvement_ acquisition function similar to the [inequality-constraints notebook](inequality_constraints.ipynb). However, instead of using probability of feasibility with respect to the constraint model, we construct feasibility from the explicit input constraints. Feasibility is calculated by passing all the constraints residuals (to their respective limits) through a smoothing function and taking the product.
+#
+# For this method only the `FastConstraintsFeasibility` class should be passed constraints via the search space. `ExpectedConstrainedImprovement` and `BayesianOptimizer` should be set up in the normal way without constraints.
+#
+# Note this method penalises the expected improvement acquisition outside the feasible region. The optimizer uses the default _scipy_ _L-BFGS_ method to find the max of the acquistion function.
+
+# %%
+from trieste.acquisition.function import ExpectedConstrainedImprovement, FastConstraintsFeasibility
+from trieste.acquisition.rule import EfficientGlobalOptimization
+from trieste.observer import OBJECTIVE
+
+feas = FastConstraintsFeasibility(search_space)  # Search space with constraints.
+eci = ExpectedConstrainedImprovement(OBJECTIVE, feas.using(OBJECTIVE))
+
+rule = EfficientGlobalOptimization(eci)
+
+# %% [markdown]
+# ### Run the optimization loop
+#
+# We can now run the optimization loop.
+
+# %%
+# Note: use the search space without constraints for the penalty method.
+bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, ScaledBranin.search_space)
+
+result = bo.optimize(15, initial_data, model, acquisition_rule=rule)
+
+# %% [markdown]
+# We can now get the best point found by the optimizer as before.
+
+# %%
+query_point, observation, arg_min_idx = result.try_get_optimal_point()
+
+print(f"query point: {query_point}")
+print(f"observation: {observation}")
+
+# %% [markdown]
+# Plot the results as before.
+
+# %%
+plot_bo_results()
