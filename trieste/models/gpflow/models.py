@@ -1647,3 +1647,314 @@ class MultifidelityAutoregressive(TrainableProbabilisticModel):
             f_var = tf.where(mask, f_var, f_var * self.rho[fidelity])
 
         return f_var
+
+
+class MultifidelityNonlinearAutoregressive(TrainableProbabilisticModel):
+    def __init__(
+        self,
+        fidelity_models: Sequence[GaussianProcessRegression],
+        num_monte_carlo_samples: int = 100,
+    ) -> None:
+        """
+        Only works for a single output model
+        """
+
+        self.num_fidelities = len(fidelity_models)
+        self.fidelity_models = fidelity_models
+        self.monte_carlo_random_numbers = tf.random.normal(
+            [num_monte_carlo_samples, 1], dtype=tf.float64
+        )
+
+    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
+        """
+        Return ``num_samples`` samples from the independent marginal distributions at
+        ``query_points``.
+        :param query_points: The points at which to sample, with shape [..., N, D].
+        :param num_samples: The number of samples at each point.
+        :return: The samples. For a predictive distribution with event shape E, this has shape
+            [..., S, N] + E, where S is the number of samples.
+        """
+        (
+            query_points_wo_fidelity,
+            query_points_fidelity_col,
+        ) = check_and_extract_fidelity_query_points(
+            query_points, max_fidelity=self.num_fidelities - 1
+        )  # [N, D], [N, 1]
+        # Repeat query_points to get same shape as signal sample
+        query_points_fidelity_col = tf.repeat(
+            query_points_fidelity_col[None, :, :], num_samples, axis=0
+        )
+
+        signal_sample = self.fidelity_models[0].sample(
+            query_points_wo_fidelity, num_samples
+        )  # [S, N, 1]
+
+        for fidelity in range(1, self.num_fidelities):
+
+            qp_repeated = tf.repeat(
+                query_points_wo_fidelity[None, :, :], num_samples, axis=0
+            )  # [S, N, D]
+            qp_augmented = tf.concat([qp_repeated, signal_sample], axis=-1)  # [S, N, D + 1]
+            new_signal_sample = self.fidelity_models[fidelity].sample(
+                qp_augmented, 1
+            )  # [S, 1, N, 1]
+            # Remove second dimension caused by getting a single sample
+            new_signal_sample = new_signal_sample[:, 0, :, :]
+
+            mask = query_points_fidelity_col >= fidelity
+
+            signal_sample = tf.where(mask, new_signal_sample, signal_sample)
+
+        return signal_sample
+
+    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        check_and_extract_fidelity_query_points(query_points, max_fidelity=self.num_fidelities - 1)
+
+        sample_mean, sample_var = self._predict_samples(query_points)
+        variance = tf.reduce_mean(sample_var, axis=2) + tf.math.reduce_variance(sample_mean, axis=2)
+        mean = tf.reduce_mean(sample_mean, axis=2)
+        return mean, variance
+
+    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        check_and_extract_fidelity_query_points(query_points, max_fidelity=self.num_fidelities - 1)
+
+        f_mean, f_var = self.predict(query_points)
+        query_points_fidelity_col = query_points[:, -1:]
+
+        # Get fidelity 0 observation noise
+        observation_noise = (
+            tf.ones_like(query_points_fidelity_col)
+            * self.fidelity_models[0].get_observation_noise()
+        )
+
+        for fidelity in range(1, self.num_fidelities):
+
+            fidelity_observation_noise = self.fidelity_models[fidelity].get_observation_noise()
+
+            mask = query_points_fidelity_col >= fidelity
+
+            observation_noise = tf.where(mask, fidelity_observation_noise, observation_noise)
+        return f_mean, f_var + observation_noise
+
+    def _predict_samples(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        """
+        Draw samples of mean and var from the model at the fidelities passed in the final column
+        of the query points
+        query_points: [..., N, D+1]
+        returns:
+            sample_mean [..., N, 1, S]
+            sample_var [..., N, 1, S]
+        """
+
+        (
+            query_points_wo_fidelity,
+            query_points_fidelity_col,
+        ) = check_and_extract_fidelity_query_points(
+            query_points, max_fidelity=self.num_fidelities - 1
+        )  # [..., N, D], [..., N, 1]
+
+        sample_mean, sample_var = self.fidelity_models[0].predict(
+            query_points_wo_fidelity
+        )  # [..., N, 1], [..., N, 1]
+
+        # Create new dimension to store samples for each query point
+        # Repeat the inital sample mean and variance 100 times and add a dimension in the
+        # middle (so that sample mean and query points can be concatenated sensibly)
+        sample_mean = tf.repeat(sample_mean, self.monte_carlo_random_numbers.shape[0], axis=-1)[
+            ..., :, None, :
+        ]  # [..., N, 1, S]
+        sample_var = tf.repeat(sample_var, self.monte_carlo_random_numbers.shape[0], axis=-1)[
+            ..., :, None, :
+        ]  # [..., N, 1, S]
+
+        # Repeat fidelity points for each sample to match shapes for masking
+        query_points_fidelity_col = tf.repeat(
+            query_points_fidelity_col, self.monte_carlo_random_numbers.shape[0], axis=-1
+        )[
+            ..., :, None, :
+        ]  # [N, 1, S]
+
+        # Predict for all fidelities but stop updating once we have
+        # reached desired fidelity for each query point
+        for fidelity in range(1, self.num_fidelities):
+
+            # sample_mean [..., N, 1, S]
+            # sample_var [..., N, 1, S]
+            (
+                next_fidelity_sample_mean,
+                next_fidelity_sample_var,
+            ) = self._propogate_samples_through_level(
+                query_points_wo_fidelity, fidelity, sample_mean, sample_var
+            )
+
+            mask = query_points_fidelity_col >= fidelity  # [..., N, 1, S]
+
+            sample_mean = tf.where(mask, next_fidelity_sample_mean, sample_mean)  # [..., N, 1, S]
+            sample_var = tf.where(mask, next_fidelity_sample_var, sample_var)  # [..., N, 1, S]
+
+        return sample_mean, sample_var
+
+    def _propogate_samples_through_level(
+        self,
+        query_point: TensorType,
+        fidelity: int,
+        sample_mean: TensorType,
+        sample_var: TensorType,
+    ) -> tuple[TensorType, TensorType]:
+        """
+        query_points: [..., N, D]
+        sample_mean: [..., N, 1, S]
+        sample_var: [..., N, 1, S]
+        returns:
+            sample_mean [..., N, 1, S]
+            sample_var [..., N, 1, S]
+        """
+        # Dims thoughout this are [n_qps, qp_dims, n_samples]
+
+        B, N, D = query_point.shape[:-2], query_point.shape[-2], query_point.shape[-1]
+        S = sample_mean.shape[-1]
+        # Repeat random numbers for each query point and add middle dimension
+        # for concatentation with query points This also means that it has the same
+        # shape as sample_var and sample_mean, so there's no broadcasting required
+        # Note: at the moment we use the same monte carlo values for every value in the batch dim
+        reshaped_random_numbers = tf.repeat(
+            tf.transpose(self.monte_carlo_random_numbers), query_point.shape[0], axis=-2
+        )[
+            :, None, :
+        ]  # [N, 1, S]
+        samples = reshaped_random_numbers * tf.sqrt(sample_var) + sample_mean  # [..., N, 1, S]
+        # Add an extra unit dim to query_point and repeat for each of the samples
+        qp_repeated = tf.repeat(
+            query_point[..., :, :, None],  # [..., N, D, 1]
+            self.monte_carlo_random_numbers.shape[0],
+            axis=-1,
+        )  # [..., N, D, S]
+        qp_augmented = tf.concat([qp_repeated, samples], axis=-2)  # [..., N, D+1, S]
+
+        # Flatten sample dimension to n_qp dimension to pass through predictor
+        # Switch dims to make reshape match up correct dimensions for query points
+        # Use Einsum to switch last two dimensions
+        qp_augmented = tf.linalg.matrix_transpose(qp_augmented)  # [..., N, S, D+1]
+        flat_qp_augmented = tf.reshape(qp_augmented, shape=[*B, N * S, D + 1])  # [..., N*S, D+1]
+
+        # Dim of flat qp augmented is now [n_qps*n_samples, qp_dims], as the model expects
+        sample_mean, sample_var = self.fidelity_models[fidelity].predict(
+            flat_qp_augmented
+        )  # [..., N*S, 1], [..., N*S, 1]
+
+        # Reshape back to have samples as final dimension
+        sample_mean = tf.reshape(sample_mean, [*B, N, S, 1])  # [..., N, S, 1]
+        sample_var = tf.reshape(sample_var, [*B, N, S, 1])  # [..., N, S, 1]
+        sample_mean = tf.linalg.matrix_transpose(sample_mean)  # [..., N, 1, S]
+        sample_var = tf.linalg.matrix_transpose(sample_var)  # [..., N, 1, S]
+
+        return sample_mean, sample_var
+
+    def update(self, dataset: Dataset) -> None:
+        """
+        Update the models on their corresponding data. The data for each model is
+        extracted by splitting the observations in ``dataset`` by fidelity level.
+        :param dataset: The query points and observations for *all* the wrapped models.
+        """
+        check_and_extract_fidelity_query_points(
+            dataset.query_points, max_fidelity=self.num_fidelities - 1
+        )
+        dataset_per_fidelity = split_dataset_by_fidelity(
+            dataset, num_fidelities=self.num_fidelities
+        )
+        for fidelity, dataset_for_fidelity in enumerate(dataset_per_fidelity):
+            if fidelity == 0:
+                self.fidelity_models[0].update(dataset_for_fidelity)
+            else:
+
+                cur_fidelity_model = self.fidelity_models[fidelity]
+                new_final_query_point_col, _ = self.predict(
+                    add_fidelity_column(dataset_for_fidelity.query_points, fidelity - 1)
+                )
+                new_query_points = tf.concat(
+                    [dataset_for_fidelity.query_points, new_final_query_point_col], axis=1
+                )
+                cur_fidelity_model.update(
+                    Dataset(new_query_points, dataset_for_fidelity.observations)
+                )
+
+    def optimize(self, dataset: Dataset) -> None:
+        """
+        Optimize all the models on their corresponding data. The data for each model is
+        extracted by splitting the observations in ``dataset``  by fidelity level.
+        :param dataset: The query points and observations for *all* the wrapped models.
+        """
+        check_and_extract_fidelity_query_points(
+            dataset.query_points, max_fidelity=self.num_fidelities - 1
+        )
+        dataset_per_fidelity = split_dataset_by_fidelity(dataset, self.num_fidelities)
+
+        for fidelity, dataset_for_fidelity in enumerate(dataset_per_fidelity):
+            print(f"Working on fidelity {fidelity}")
+            if fidelity == 0:
+                self.fidelity_models[0].optimize(dataset_for_fidelity)
+            else:
+                fidelity_observations = dataset_for_fidelity.observations
+                fidelity_query_points = dataset_for_fidelity.query_points
+                prev_fidelity_query_points = add_fidelity_column(
+                    fidelity_query_points, fidelity - 1
+                )
+                means_from_lower_fidelity = self.predict(prev_fidelity_query_points)[0]
+                augmented_qps = tf.concat(
+                    [fidelity_query_points, means_from_lower_fidelity], axis=1
+                )
+                self.fidelity_models[fidelity].optimize(
+                    Dataset(augmented_qps, fidelity_observations)
+                )
+                self.fidelity_models[fidelity].update(Dataset(augmented_qps, fidelity_observations))
+
+    def covariance_with_top_fidelity(self, query_points: TensorType) -> TensorType:
+        """
+        Return ``num_samples`` samples from the independent marginal distributions at
+        ``query_points``.
+        :param query_points: The points at which to sample, with shape [..., N, D].
+        :param num_samples: The number of samples at each point.
+        :return: The samples. For a predictive distribution with event shape E, this has shape
+            [..., S, N] + E, where S is the number of samples.
+        """
+        num_samples = 100
+        (
+            query_points_wo_fidelity,
+            query_points_fidelity_col,
+        ) = check_and_extract_fidelity_query_points(
+            query_points, max_fidelity=self.num_fidelities - 1
+        )  # [N, D], [N, 1]
+        # Repeat query_points to get same shape as signal sample
+        query_points_fidelity_col = tf.repeat(
+            query_points_fidelity_col[None, :, :], num_samples, axis=0
+        )
+
+        # Signal sample stops updating once fidelity is reached for that query point
+        signal_sample = self.fidelity_models[0].model.predict_f_samples(
+            query_points_wo_fidelity, num_samples, full_cov=False
+        )
+        # Max fidelity sample keeps updating to the max fidelity
+        max_fidelity_sample = tf.identity(signal_sample)
+
+        for fidelity in range(1, self.num_fidelities):
+
+            qp_repeated = tf.repeat(
+                query_points_wo_fidelity[None, :, :], num_samples, axis=0
+            )  # [S, N, D]
+            # We use max fidelity sample here, which is okay because anything
+            # with a lower fidelity will not be updated
+            qp_augmented = tf.concat([qp_repeated, max_fidelity_sample], axis=-1)  # [S, N, D + 1]
+            new_signal_sample = self.fidelity_models[fidelity].model.predict_f_samples(
+                qp_augmented, 1, full_cov=False
+            )
+            # Remove second dimension caused by getting a single sample
+            new_signal_sample = new_signal_sample[:, 0, :, :]
+
+            mask = query_points_fidelity_col >= fidelity
+
+            signal_sample = tf.where(mask, new_signal_sample, signal_sample)  # [S, N, 1]
+            max_fidelity_sample = new_signal_sample  # [S, N , 1]
+
+        cov = tfp.stats.covariance(signal_sample, max_fidelity_sample)[:, :, 0]
+
+        return cov

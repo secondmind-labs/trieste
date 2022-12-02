@@ -21,11 +21,12 @@ universally good solutions.
 from __future__ import annotations
 
 import math
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Type
 
 import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflow.kernels import Stationary
 from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
 
 from ...data import Dataset, split_dataset_by_fidelity
@@ -116,6 +117,37 @@ def build_gpr(
     empirical_mean, empirical_variance, _ = _get_data_stats(data)
 
     kernel = _get_kernel(empirical_variance, search_space, kernel_priors, kernel_priors)
+    mean = _get_mean_function(empirical_mean)
+
+    model = gpflow.models.GPR(data.astuple(), kernel, mean)
+
+    _set_gaussian_likelihood_variance(model, empirical_variance, likelihood_variance)
+    gpflow.set_trainable(model.likelihood, trainable_likelihood)
+
+    return model
+
+
+def build_gpr_with_kernel(
+    data: Dataset,
+    kernel: gpflow.kernels.Kernel,
+    likelihood_variance: Optional[float] = None,
+    trainable_likelihood: bool = False,
+) -> GPR:
+    """
+    Build a :class:`~gpflow.models.GPR` model with supplied kernel and sensible initial
+     parameters and :class:`~gpflow.mean_functions.Constant` mean function in the model.
+    :param data: Dataset from the initial design, used for estimating the variance of observations.
+    :param kernel: GPFlow kernel to use as the covariance function for the GPR.
+    :param likelihood_variance: Likelihood (noise) variance parameter can be optionally set to a
+        certain value. If left unspecified (default), the noise variance is set to maintain the
+        signal to noise ratio of value given by ``SIGNAL_NOISE_RATIO_LIKELIHOOD``, where signal
+        variance in the kernel is set to the empirical variance.
+    :param trainable_likelihood: If set to `True` Gaussian likelihood parameter is set to
+        non-trainable. By default set to `False`.
+    :return: A :class:`~gpflow.models.GPR` model.
+    """
+    empirical_mean, empirical_variance, _ = _get_data_stats(data)
+
     mean = _get_mean_function(empirical_mean)
 
     model = gpflow.models.GPR(data.astuple(), kernel, mean)
@@ -474,3 +506,66 @@ def build_multifidelity_autoregressive_models(
     ]
 
     return gprs
+
+
+def build_multifidelity_nonlinear_autoregressive_models(
+    dataset: Dataset, num_fidelities: int
+) -> Sequence[GaussianProcessRegression]:
+
+    # Split data into fidelities
+    data = split_dataset_by_fidelity(dataset=dataset, num_fidelities=num_fidelities)
+
+    # Input dim requires excluding fidelity row
+    input_dim = dataset.query_points.shape[1] - 1
+
+    # Create kernels
+    kernels = _create_multifidelity_nonlinear_autoregressive_kernels(
+        gpflow.kernels.Matern32, num_fidelities, input_dim  # type:ignore
+    )
+
+    # Initialise low fidelity GP
+    gprs = [
+        GaussianProcessRegression(
+            build_gpr_with_kernel(data[0], kernel=kernels[0], likelihood_variance=1e-6)
+        )
+    ]
+
+    for fidelity in range(1, num_fidelities):
+
+        # Get query points for this fidelity
+        qps = data[fidelity].query_points
+        samples_column = tf.random.normal([qps.shape[0], 1], dtype=tf.float64)
+
+        augmented_qps = tf.concat([qps, samples_column], axis=1)
+        augmented_dataset = Dataset(augmented_qps, data[fidelity].observations)
+        gprs.append(
+            GaussianProcessRegression(
+                build_gpr_with_kernel(
+                    augmented_dataset, kernel=kernels[fidelity], likelihood_variance=1e-6
+                )
+            )
+        )
+
+    return gprs
+
+
+def _create_multifidelity_nonlinear_autoregressive_kernels(
+    kernel_base_class: Type[Stationary], n_fidelities: int, n_input_dims: int, ard: bool = False
+) -> Sequence[Stationary]:
+
+    dims = list(range(n_input_dims + 1))
+    if ard:
+        lengthscales = tf.ones([n_input_dims])
+    else:
+        lengthscales = 1.0
+    scale_lengthscale = 1.0
+    kernels = [kernel_base_class(lengthscales=lengthscales)]
+
+    for i in range(1, n_fidelities):
+        interaction_kernel = kernel_base_class(lengthscales=lengthscales, active_dims=dims[:-1])
+        scale_kernel = kernel_base_class(lengthscales=scale_lengthscale, active_dims=[dims[-1]])
+        bias_kernel = kernel_base_class(lengthscales=lengthscales, active_dims=dims[:-1])
+
+        kernels.append(interaction_kernel * scale_kernel + bias_kernel)
+
+    return kernels
