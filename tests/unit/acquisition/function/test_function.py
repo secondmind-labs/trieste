@@ -188,9 +188,7 @@ def test_expected_improvement_builder_updates_expected_improvement_using_best_fr
         tf.concat([dataset.query_points, tf.constant([[0.0], [1.0], [2.0]])], 0),
         tf.concat([dataset.observations, tf.constant([[0.1], [1.1], [3.9]])], 0),
     )
-    updated_acq_fn = builder.update_acquisition_function(
-        acq_fn, model, dataset=new_dataset
-    )
+    updated_acq_fn = builder.update_acquisition_function(acq_fn, model, dataset=new_dataset)
     assert updated_acq_fn == acq_fn
     expected = expected_improvement(model, tf.constant([0.0]))(xs)
     npt.assert_allclose(acq_fn(xs), expected)
