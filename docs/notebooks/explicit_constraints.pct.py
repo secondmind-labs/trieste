@@ -132,7 +132,7 @@ model = GaussianProcessRegression(gpflow_model)
 # %% [markdown]
 # ## Constrained optimization method
 #
-# ### Acquisition function
+# ### Acquisition function (constrained optimization)
 #
 # We can construct the _expected improvement_ acquisition function as usual. In order to handle the constraints, the search space must be passed as a constructor argument.
 
@@ -144,7 +144,7 @@ ei = ExpectedImprovement(search_space)
 rule = EfficientGlobalOptimization(ei)  # type: ignore
 
 # %% [markdown]
-# ### Run the optimization loop
+# ### Run the optimization loop (constrained optimization)
 #
 # We can now run the optimization loop. As the search space contains constraints, the optimizer will automatically switch to using _scipy_ _trust-constr_ method to optimize the acquisition function.
 
@@ -203,7 +203,7 @@ plot_bo_results()
 # %% [markdown]
 # ## Penalty method
 #
-# ### Acquisition function
+# ### Acquisition function (penalty method)
 #
 # An alternative to using a constrained optimization method is to construct the _expected constrained improvement_ acquisition function similar to the [inequality-constraints notebook](inequality_constraints.ipynb). However, instead of using probability of feasibility with respect to the constraint model, we construct feasibility from the explicit input constraints. Feasibility is calculated by passing all the constraints residuals (to their respective limits) through a smoothing function and taking the product.
 #
@@ -222,7 +222,7 @@ eci = ExpectedConstrainedImprovement(OBJECTIVE, feas.using(OBJECTIVE))
 rule = EfficientGlobalOptimization(eci)
 
 # %% [markdown]
-# ### Run the optimization loop
+# ### Run the optimization loop (penalty method)
 #
 # We can now run the optimization loop.
 
