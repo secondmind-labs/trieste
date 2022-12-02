@@ -33,7 +33,7 @@ tf.random.set_seed(1793)
 #
 # We define the true functions for the fidelities as:
 #
-# $$ f_{i} : [0, 1] \rightarrow \reals $$
+# $$ f_{i} : [0, 1] \rightarrow \mathbb{R} $$
 #
 # $$ f_0(x) = \frac{\sin(12x -4)(6x - 2)^2 + 10(x-1)}{2}, \quad x \in [0,1] $$
 #
@@ -107,11 +107,10 @@ observer = Observer()
 from trieste.space import Box
 
 input_dim = 1
+n_fidelities = 3
 
 lb = np.zeros(input_dim)
 ub = np.ones(input_dim)
-
-n_fidelities = 3
 
 input_search_space = Box(lb, ub)
 
@@ -120,6 +119,8 @@ input_search_space = Box(lb, ub)
 # ## Create initial dataset
 
 # %%
+from trieste.data import add_fidelity_column
+
 # Define sample sizes of low, mid and high fidelities
 sample_sizes = [18, 12, 6]
 
@@ -131,8 +132,9 @@ for fidelity in range(1, n_fidelities):
         np.random.choice(xs[fidelity - 1][:, 0], size=sample_sizes[fidelity], replace=False)
     )[:, None]
     xs.append(samples)
+# Add fidelity columns to training data
+initial_samples_list = [add_fidelity_column(x, i) for i, x in enumerate(xs)]
 
-initial_samples_list = [tf.concat([x, tf.ones_like(x) * i], 1) for i, x in enumerate(xs)]
 initial_sample = tf.concat(initial_samples_list, 0)
 initial_data = observer(initial_sample, add_noise=True)
 
@@ -171,11 +173,11 @@ multifidelity_model.optimize(initial_data)
 # %% [markdown]
 # ## Plot Results
 #
-# Now we can plot the results to have a look at the fit.
+# Now we can plot the results to have a look at the fit. The `MultifidelityAutoregressive.predict` method requires data with a fidelity column that specifies the fidelity for each data point to be predicted at.  We use the `add_fidelity_column` function to add this.
 
 # %%
 X = tf.linspace(0, 1, 200)[:, None]
-X_list = [tf.concat([X, tf.ones_like(X) * i], 1) for i in range(n_fidelities)]
+X_list = [add_fidelity_column(X, i) for i in range(n_fidelities)]
 predictions = [multifidelity_model.predict(x) for x in X_list]
 
 fig, ax = plt.subplots(1, 1, figsize=(10, 7))
