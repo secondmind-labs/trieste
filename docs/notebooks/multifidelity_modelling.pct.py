@@ -61,11 +61,11 @@ def simulator(x_input, fidelity, add_noise=False):
 
 
 # Plot the fidelities
-xs = np.linspace(0, 1, 400)
+x = np.linspace(0, 1, 400)
 
-y0 = simulator(xs, 0)
-y1 = simulator(xs, 1)
-y2 = simulator(xs, 2)
+y0 = simulator(x, 0)
+y1 = simulator(x, 1)
+y2 = simulator(x, 2)
 
 plt.plot(y0, label="Fidelity 0")
 plt.plot(y1, label="Fidelity 1")
@@ -260,4 +260,4 @@ plt.show()
 
 
 # %% [markdown]
-# It's clear that there is a large benefit to being able to make use of the low fidelity data.
+# It's clear that there is a large benefit to being able to make use of the low fidelity data, and this is particularly noticable in the greatly reduced confidence intervals.
