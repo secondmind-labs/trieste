@@ -1903,23 +1903,16 @@ def test_multifidelity_autoregressive_sample_aligns_with_predict() -> None:
     test_locations = tf.Variable(np.linspace(0, 10, 32), dtype=tf.float64)[:, None]
     lf_test_locations = add_fidelity_column(test_locations, 0)
     hf_test_locations = add_fidelity_column(test_locations, 1)
+    concat_test_locations = tf.concat([lf_test_locations, hf_test_locations], axis=0)
 
-    lf_true_means, lf_true_vars = model.predict(lf_test_locations)
+    true_means, true_vars = model.predict(concat_test_locations)
 
-    hf_true_means, hf_true_vars = model.predict(hf_test_locations)
+    samples = model.sample(concat_test_locations, 100000)
+    sample_means = tf.reduce_mean(samples, axis=0)
+    sample_vars = tf.math.reduce_variance(samples, axis=0)
 
-    lf_samples = model.sample(lf_test_locations, 100000)
-    lf_sample_means = tf.reduce_mean(lf_samples, axis=0)
-    lf_sample_vars = tf.math.reduce_variance(lf_samples, axis=0)
-
-    npt.assert_allclose(lf_true_means, lf_sample_means, atol=1e-3, rtol=1e-3)
-    npt.assert_allclose(lf_true_vars, lf_sample_vars, atol=1e-3, rtol=1e-3)
-
-    hf_samples = model.sample(hf_test_locations, 100000)
-    hf_sample_means = tf.reduce_mean(hf_samples, axis=0)
-    hf_sample_vars = tf.math.reduce_variance(hf_samples, axis=0)
-    npt.assert_allclose(hf_true_means, hf_sample_means, atol=1e-3, rtol=1e-3)
-    npt.assert_allclose(hf_true_vars, hf_sample_vars, atol=1e-3, rtol=1e-3)
+    npt.assert_allclose(true_means, sample_means, atol=1e-3, rtol=1e-3)
+    npt.assert_allclose(true_vars, sample_vars, atol=1e-3, rtol=1e-3)
 
 
 def test_multifidelity_autoregressive_samples_are_varied() -> None:

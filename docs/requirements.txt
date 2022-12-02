@@ -24,7 +24,6 @@ ipython
 nbsphinx
 sphinxcontrib-bibtex
 
-
 # pin to version of TF used in prod
-tensorflow ~= 2.4.1
-tensorflow-probability ~= 0.12.0
+tensorflow ~= 2.8.0
+tensorflow-probability ~= 0.13.0

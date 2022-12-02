@@ -17,7 +17,6 @@ import math
 from typing import List, Type
 
 import gpflow
-import gpflux
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
@@ -40,8 +39,6 @@ from trieste.models.gpflow import (
 )
 from trieste.models.interfaces import ReparametrizationSampler, SupportsPredictJoint
 from trieste.objectives import Branin
-
-GPFLUX_VERSION = getattr(gpflux, "__version__", "0.2.3")
 
 REPARAMETRIZATION_SAMPLERS: List[Type[ReparametrizationSampler[SupportsPredictJoint]]] = [
     BatchReparametrizationSampler,
@@ -287,7 +284,7 @@ def test_rff_trajectory_sampler_returns_trajectory_function_with_correct_shapes(
         noise_variance=tf.constant(1.0, dtype=tf.float64), dataset=dataset
     )
     model.kernel = gpflow.kernels.RBF(
-        tf.random.uniform([1])
+        tf.random.uniform([])
     )  # need a gpflow kernel object for random feature decompositions
     sampler = RandomFourierFeatureTrajectorySampler(model, num_features=num_features)
 

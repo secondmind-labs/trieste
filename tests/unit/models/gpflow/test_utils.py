@@ -65,16 +65,39 @@ def test_gaussian_process_deep_copyable(gpflow_interface_factory: ModelFactoryTy
 
 
 @random_seed
-def test_randomize_hyperparameters_randomizes_kernel_parameters_with_priors(dim: int) -> None:
+@pytest.mark.parametrize("compile", [False, True])
+def test_randomize_hyperparameters_randomizes_kernel_parameters_with_priors(
+    dim: int, compile: bool
+) -> None:
     kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2] * dim)
     kernel.lengthscales.prior = tfp.distributions.LogNormal(
         loc=tf.math.log(kernel.lengthscales), scale=1.0
     )
-    randomize_hyperparameters(kernel)
+    compiler = tf.function if compile else lambda x: x
+    compiler(randomize_hyperparameters)(kernel)
 
     npt.assert_allclose(1.0, kernel.variance)
     npt.assert_array_equal(dim, kernel.lengthscales.shape)
     npt.assert_raises(AssertionError, npt.assert_allclose, [0.2] * dim, kernel.lengthscales)
+    assert len(np.unique(kernel.lengthscales)) == dim
+
+
+@random_seed
+@pytest.mark.parametrize("compile", [False, True])
+def test_randomize_hyperparameters_randomizes_kernel_parameters_with_const_priors(
+    dim: int, compile: bool
+) -> None:
+    kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2] * dim)
+    kernel.lengthscales.prior = tfp.distributions.LogNormal(
+        loc=tf.math.log(0.2), scale=1.0  # constant loc should be applied to every dimension
+    )
+    compiler = tf.function if compile else lambda x: x
+    compiler(randomize_hyperparameters)(kernel)
+
+    npt.assert_allclose(1.0, kernel.variance)
+    npt.assert_array_equal(dim, kernel.lengthscales.shape)
+    npt.assert_raises(AssertionError, npt.assert_allclose, [0.2] * dim, kernel.lengthscales)
+    assert len(np.unique(kernel.lengthscales)) == dim
 
 
 @random_seed

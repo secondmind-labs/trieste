@@ -122,8 +122,6 @@ def check_and_extract_fidelity_query_points(
     we can check that thhe final column values are suitably close to integers.
 
     :param query_points: Data to check final column of.
-    :param max_fidelity: If passed, the fidelities of the query points will be checked to
-        ensure they are not above the maximum fidleity
     :raise: ValueError: If there are not enough columns to be multifidelity data
     :raise InvalidArgumentError: If any value in the final column is far from an integer
     :return: Query points without fidelity column

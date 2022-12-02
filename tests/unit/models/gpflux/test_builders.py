@@ -67,6 +67,7 @@ def test_build_vanilla_deep_gp_returns_correct_defaults() -> None:
     # check likelihood
     assert isinstance(vanilla_deep_gp.likelihood_layer.likelihood, gpflow.likelihoods.Gaussian)
     npt.assert_allclose(vanilla_deep_gp.likelihood_layer.likelihood.variance, LIKELIHOOD_VARIANCE)
+    assert isinstance(vanilla_deep_gp.likelihood_layer.likelihood.variance, gpflow.Parameter)
     assert vanilla_deep_gp.likelihood_layer.likelihood.variance.trainable
 
     # inducing variables and scaling factor
