@@ -246,3 +246,8 @@ print(f"observation: {observation}")
 
 # %%
 plot_bo_results()
+
+# %% [markdown]
+# ## LICENSE
+#
+# [Apache License 2.0](https://github.com/secondmind-labs/trieste/blob/develop/LICENSE)
