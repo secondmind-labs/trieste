@@ -96,6 +96,10 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     """
     Builder for the expected improvement function where the "best" value is taken to be the minimum
     of the posterior mean at observed points.
+
+    In the presence of constraints in the search_space the "best" value is computed only at the
+    feasible query points. If there are no feasible points, this builder builds the
+    `NegativePredictiveMean` instead to help the optimizer find a first feasible point.
     """
 
     def __init__(self, search_space: Optional[SearchSpace] = None):
