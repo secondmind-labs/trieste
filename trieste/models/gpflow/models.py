@@ -1775,13 +1775,14 @@ class MultifidelityNonlinearAutoregressive(TrainableProbabilisticModel):
         self, query_points: TensorType
     ) -> tuple[TensorType, TensorType]:
         """
-        Draw `num_monte_carlo_samples` samples of mean and variance from the model at the fidelities passed in the final column
-        of the query points.
+        Draw `num_monte_carlo_samples` samples of mean and variance from the model at the fidelities
+        passed in the final column of the query points.
 
         :param query_points:  Query points with shape [..., N, D+1], where the
         final column of the final dimension contains the fidelity of the query point
         :return: sample_mean: Samples of the mean at the query points with shape [..., N, 1, S]
-                 and sample_var: Samples of the variance at the query points with shape [..., N, 1, S]
+                 and sample_var: Samples of the variance at the query points
+        with shape [..., N, 1, S]
         """
 
         (
