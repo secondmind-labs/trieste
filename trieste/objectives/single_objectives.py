@@ -168,7 +168,7 @@ ConstrainedScaledBranin = SingleObjectiveTestProblem(
         Branin.search_space.upper,
         constraints=_scaled_branin_constraints(),
     ),
-    minimizers=tf.constant([0.16518, 0.66518], tf.float64),
+    minimizers=tf.constant([[0.16518, 0.66518]], tf.float64),
     minimum=tf.constant([-0.99888], tf.float64),
 )
 """The rescaled Branin-Hoo function with a combination of linear and nonlinear constraints on the
