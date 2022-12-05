@@ -32,9 +32,9 @@ from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.models.gpflow import GaussianProcessRegression, build_gpr
-from trieste.objectives import ScaledBranin
+from trieste.objectives import ConstrainedScaledBranin, ScaledBranin
 from trieste.objectives.utils import mk_observer
-from trieste.space import Box, LinearConstraint, NonlinearConstraint
+from trieste.space import Box
 from trieste.types import TensorType
 
 
@@ -110,6 +110,7 @@ def test_optimizer_finds_minima_of_Gardners_Simulation_1(
 
 
 @random_seed
+@pytest.mark.slow
 @pytest.mark.parametrize(
     "num_steps, acquisition_function_builder",
     [
@@ -122,38 +123,17 @@ def test_constrained_optimizer_finds_minima_of_custom_problem(
     acquisition_function_builder: type[AcquisitionFunctionBuilder[ProbabilisticModel]],
 ) -> None:
     """
-    Test the covergence of constrained algorithms on a custom problem.
+    Test the covergence of constrained algorithms on the constrained scaled Branin problem.
     """
-    observer = mk_observer(ScaledBranin.objective)
-
-    def _nlc_func0(x: TensorType) -> TensorType:
-        c0 = x[..., 0] - 0.2 - tf.sin(x[..., 1])
-        c0 = tf.expand_dims(c0, axis=-1)
-        return c0
-
-    def _nlc_func1(x: TensorType) -> TensorType:
-        c1 = x[..., 0] - tf.cos(x[..., 1])
-        c1 = tf.expand_dims(c1, axis=-1)
-        return c1
-
-    constraints = [
-        LinearConstraint(
-            A=tf.constant([[-1.0, 1.0], [1.0, 0.0], [0.0, 1.0]]),
-            lb=tf.constant([-0.4, 0.15, 0.2]),
-            ub=tf.constant([0.5, 0.9, 0.9]),
-        ),
-        NonlinearConstraint(_nlc_func0, tf.constant(-1.0), tf.constant(0.0)),
-        NonlinearConstraint(_nlc_func1, tf.constant(-0.8), tf.constant(0.0)),
-    ]
-
-    search_space = Box([0, 0], [1, 1], constraints=constraints)  # type: ignore
+    observer = mk_observer(ConstrainedScaledBranin.objective)
+    search_space = ConstrainedScaledBranin.search_space
 
     num_initial_points = 5
     initial_query_points = search_space.sample(num_initial_points)
     initial_data = observer(initial_query_points)
 
-    MINIMUM = -0.998
-    MINIMIZER = [0.165, 0.663]
+    MINIMUM = ConstrainedScaledBranin.minimum
+    MINIMIZER = ConstrainedScaledBranin.minimizers
 
     OBJECTIVE = "OBJECTIVE"
 
@@ -189,8 +169,5 @@ def test_constrained_optimizer_finds_minima_of_custom_problem(
     # these accuracies are the current best for the given number of optimization steps, which makes
     # this is a regression test
 
-    print("best_y:", best_y)
-    print("best_x:", best_x)
-    print("relative_minimizer_err:", relative_minimizer_err)
     assert tf.reduce_all(relative_minimizer_err < 0.03, axis=-1)
     npt.assert_allclose(best_y, MINIMUM, rtol=0.1)

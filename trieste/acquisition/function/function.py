@@ -104,7 +104,8 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
 
     def __init__(self, search_space: Optional[SearchSpace] = None):
         """
-        :param search_space: The global search space over which the optimisation is defined.
+        :param search_space: The global search space over which the optimisation is defined. This is
+            only used to determine explicit constraints.
         """
         self._search_space = search_space
         self._predictive_mean_fn: Optional[AcquisitionFunction] = None
@@ -131,12 +132,12 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
-        self._predictive_mean_fn = NegativePredictiveMean().prepare_acquisition_function(
-            model, dataset=dataset
-        )
-
         # Check feasibility against any explicit constraints in the search space.
         if self._search_space is not None and self._search_space.has_constraints:
+            self._predictive_mean_fn = NegativePredictiveMean().prepare_acquisition_function(
+                model, dataset=dataset
+            )
+
             is_feasible = self._search_space.is_feasible(dataset.query_points)
             if not tf.reduce_any(is_feasible):
                 return self._predictive_mean_fn
@@ -633,7 +634,8 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
         :param constraint_builder: The builder for the constraint function.
         :param min_feasibility_probability: The minimum probability of feasibility for a
             "best point" to be considered feasible.
-        :param search_space: The global search space over which the optimisation is defined.
+        :param search_space: The global search space over which the optimisation is defined. This is
+            only used to determine explicit constraints.
         :raise ValueError (or tf.errors.InvalidArgumentError): If ``min_feasibility_probability``
             is not a scalar in the unit interval :math:`[0, 1]`.
         """

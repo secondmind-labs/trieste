@@ -25,36 +25,11 @@ tf.random.set_seed(1234)
 
 # %%
 from trieste.acquisition.function import fast_constraints_feasibility
-from trieste.objectives import ScaledBranin
+from trieste.objectives import ConstrainedScaledBranin
 from trieste.objectives.utils import mk_observer
-from trieste.space import Box, LinearConstraint, NonlinearConstraint
 
-observer = mk_observer(ScaledBranin.objective)
-
-
-def _nlc_func0(x):
-    c0 = x[..., 0] - 0.2 - tf.sin(x[..., 1])
-    c0 = tf.expand_dims(c0, axis=-1)
-    return c0
-
-
-def _nlc_func1(x):
-    c1 = x[..., 0] - tf.cos(x[..., 1])
-    c1 = tf.expand_dims(c1, axis=-1)
-    return c1
-
-
-constraints = [
-    LinearConstraint(
-        A=tf.constant([[-1.0, 1.0], [1.0, 0.0], [0.0, 1.0]]),
-        lb=tf.constant([-0.4, 0.15, 0.2]),
-        ub=tf.constant([0.5, 0.9, 0.9]),
-    ),
-    NonlinearConstraint(_nlc_func0, tf.constant(-1.0), tf.constant(0.0)),
-    NonlinearConstraint(_nlc_func1, tf.constant(-0.8), tf.constant(0.0)),
-]
-
-search_space = Box([0, 0], [1, 1], constraints=constraints)  # type: ignore
+observer = mk_observer(ConstrainedScaledBranin.objective)
+search_space = ConstrainedScaledBranin.search_space
 
 num_initial_points = 5
 initial_query_points = search_space.sample(num_initial_points)
@@ -72,7 +47,7 @@ class Sim:
 
     @staticmethod
     def objective(input_data):
-        return ScaledBranin.objective(input_data)
+        return ConstrainedScaledBranin.objective(input_data)
 
     @staticmethod
     def constraint(input_data):
@@ -98,7 +73,7 @@ xplot = np.vstack((xi.ravel(), xj.ravel())).T  # Change our input grid to list o
 constraint_values = np.reshape(search_space.is_feasible(xplot), xi.shape)
 
 _, ax = plot_function_2d(
-    ScaledBranin.objective,
+    ConstrainedScaledBranin.objective,
     search_space.lower,
     search_space.upper,
     grid_density=30,
@@ -177,7 +152,7 @@ def plot_bo_results():
     observations = dataset.observations.numpy()
 
     _, ax = plot_function_2d(
-        ScaledBranin.objective,
+        ConstrainedScaledBranin.objective,
         search_space.lower,
         search_space.upper,
         grid_density=30,
@@ -228,7 +203,7 @@ rule = EfficientGlobalOptimization(eci)
 
 # %%
 # Note: use the search space without constraints for the penalty method.
-bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, ScaledBranin.search_space)
+bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, ConstrainedScaledBranin.search_space)
 
 result = bo.optimize(15, initial_data, model, acquisition_rule=rule)
 
