@@ -511,7 +511,20 @@ def build_multifidelity_autoregressive_models(
 def build_multifidelity_nonlinear_autoregressive_models(
     dataset: Dataset, num_fidelities: int
 ) -> Sequence[GaussianProcessRegression]:
+    """
+    Build models for training the trieste.models.gpflow.MultifidelityNonlinearAutoregressive` model
 
+    Builds a basic Matern32 kernel for the lowest fidelity, and the custom kernel described in
+    :cite:`perdikaris2017nonlinear` for the higher fidelities, which also have an extra input
+    dimension. Note that the initial data that the models with fidelity greater than 0 are
+    initialised with contain dummy data in this extra dimension, and so an `update` of the
+    `MultifidelityNonlinearAutoregressive` is required to propogate real data through to these
+    models.
+
+    :param dataset: The dataset to use to initialise the models
+    :param fidelities: The number of fidelities to model
+    :return: gprs: A list containing gprs that can be used for the multifidelity model
+    """
     # Split data into fidelities
     data = split_dataset_by_fidelity(dataset=dataset, num_fidelities=num_fidelities)
 
