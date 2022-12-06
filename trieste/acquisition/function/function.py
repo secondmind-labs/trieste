@@ -98,8 +98,8 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     of the posterior mean at observed points.
 
     In the presence of constraints in the search_space the "best" value is computed only at the
-    feasible query points. If there are no feasible points, this builder builds the
-    `NegativePredictiveMean` instead to help the optimizer find a first feasible point.
+    feasible query points. If there are no feasible points, the "best" value is instead taken to be
+    the maximum of the posterior mean at all observed points.
     """
 
     def __init__(self, search_space: Optional[SearchSpace] = None):
@@ -108,8 +108,6 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
             only used to determine explicit constraints.
         """
         self._search_space = search_space
-        self._predictive_mean_fn: Optional[AcquisitionFunction] = None
-        self._improvement_fn: Optional[AcquisitionFunction] = None
 
     def __repr__(self) -> str:
         """"""
@@ -134,22 +132,22 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
 
         # Check feasibility against any explicit constraints in the search space.
         if self._search_space is not None and self._search_space.has_constraints:
-            self._predictive_mean_fn = NegativePredictiveMean().prepare_acquisition_function(
-                model, dataset=dataset
-            )
-
             is_feasible = self._search_space.is_feasible(dataset.query_points)
             if not tf.reduce_any(is_feasible):
-                return self._predictive_mean_fn
-
-            feasible_query_points = tf.boolean_mask(dataset.query_points, is_feasible)
+                query_points = dataset.query_points
+            else:
+                query_points = tf.boolean_mask(dataset.query_points, is_feasible)
         else:
-            feasible_query_points = dataset.query_points
+            is_feasible = tf.constant([True], dtype=bool)
+            query_points = dataset.query_points
 
-        mean, _ = model.predict(feasible_query_points)
-        eta = tf.reduce_min(mean, axis=0)
-        self._improvement_fn = expected_improvement(model, eta)
-        return self._improvement_fn
+        mean, _ = model.predict(query_points)
+        if not tf.reduce_any(is_feasible):
+            eta = tf.reduce_max(mean, axis=0)
+        else:
+            eta = tf.reduce_min(mean, axis=0)
+
+        return expected_improvement(model, eta)
 
     def update_acquisition_function(
         self,
@@ -165,32 +163,27 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
         tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
+        tf.debugging.Assert(isinstance(function, expected_improvement), [tf.constant([])])
 
         # Check feasibility against any explicit constraints in the search space.
         if self._search_space is not None and self._search_space.has_constraints:
-            tf.debugging.Assert(self._predictive_mean_fn is not None, [tf.constant([])])
-            predictive_mean_fn = cast(AcquisitionFunction, self._predictive_mean_fn)
-
             is_feasible = self._search_space.is_feasible(dataset.query_points)
             if not tf.reduce_any(is_feasible):
-                return predictive_mean_fn
-
-            feasible_query_points = tf.boolean_mask(dataset.query_points, is_feasible)
+                query_points = dataset.query_points
+            else:
+                query_points = tf.boolean_mask(dataset.query_points, is_feasible)
         else:
-            feasible_query_points = dataset.query_points
+            is_feasible = tf.constant([True], dtype=bool)
+            query_points = dataset.query_points
 
-        mean, _ = model.predict(feasible_query_points)
-        eta = tf.reduce_min(mean, axis=0)
-
-        if self._improvement_fn is None:
-            self._improvement_fn = expected_improvement(model, eta)
+        mean, _ = model.predict(query_points)
+        if not tf.reduce_any(is_feasible):
+            eta = tf.reduce_max(mean, axis=0)
         else:
-            tf.debugging.Assert(
-                isinstance(self._improvement_fn, expected_improvement), [tf.constant([])]
-            )
-            self._improvement_fn.update(eta)  # type: ignore
+            eta = tf.reduce_min(mean, axis=0)
 
-        return cast(AcquisitionFunction, self._improvement_fn)
+        function.update(eta)  # type: ignore
+        return function
 
 
 class expected_improvement(AcquisitionFunctionClass):

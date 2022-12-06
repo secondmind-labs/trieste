@@ -56,7 +56,6 @@ from trieste.acquisition.function.function import (
     MonteCarloExpectedImprovement,
     MultipleOptimismNegativeLowerConfidenceBound,
     NegativeLowerConfidenceBound,
-    NegativePredictiveMean,
     ProbabilityOfFeasibility,
     ProbabilityOfImprovement,
     augmented_expected_improvement,
@@ -176,8 +175,7 @@ def test_expected_improvement_builder_updates_expected_improvement_using_best_fr
         tf.constant([[4.1], [0.9]]),
     )
     model = QuadraticMeanAndRBFKernel()
-    builder = ExpectedImprovement()
-    acq_fn = builder.prepare_acquisition_function(model, dataset=dataset)
+    acq_fn = ExpectedImprovement().prepare_acquisition_function(model, dataset=dataset)
     assert acq_fn.__call__._get_tracing_count() == 0  # type: ignore
     xs = tf.linspace([[-10.0]], [[10.0]], 100)
     expected = expected_improvement(model, tf.constant([1.0]))(xs)
@@ -188,7 +186,9 @@ def test_expected_improvement_builder_updates_expected_improvement_using_best_fr
         tf.concat([dataset.query_points, tf.constant([[0.0], [1.0], [2.0]])], 0),
         tf.concat([dataset.observations, tf.constant([[0.1], [1.1], [3.9]])], 0),
     )
-    updated_acq_fn = builder.update_acquisition_function(acq_fn, model, dataset=new_dataset)
+    updated_acq_fn = ExpectedImprovement().update_acquisition_function(
+        acq_fn, model, dataset=new_dataset
+    )
     assert updated_acq_fn == acq_fn
     expected = expected_improvement(model, tf.constant([0.0]))(xs)
     npt.assert_allclose(acq_fn(xs), expected)
@@ -223,28 +223,32 @@ def test_expected_improvement_is_relative_to_feasible_point() -> None:
     npt.assert_allclose(full_ei(tf.constant([[0.1]])), filtered_ei(tf.constant([[0.1]])))
 
 
-def test_expected_improvement_is_predictive_mean_when_no_feasible_points() -> None:
-    search_space = Box([0.0], [1.0], [LinearConstraint(A=tf.constant([[1.0]]), lb=0.5, ub=0.9)])
-    data = Dataset(tf.constant([[0.2], [1.0]]), tf.constant([[4.0], [1.0]]))
+def test_expected_improvement_uses_max_when_no_feasible_points() -> None:
+    search_space = Box([-2.5], [2.5], [LinearConstraint(A=tf.constant([[1.0]]), lb=0.5, ub=0.9)])
+    data = Dataset(
+        tf.constant([[-2.0], [-1.0], [0.0], [1.0], [2.0]]),
+        tf.constant([[4.1], [0.9], [0.1], [1.1], [3.9]]),
+    )
     builder = ExpectedImprovement(search_space)
     ei = builder.prepare_acquisition_function(
         QuadraticMeanAndRBFKernel(),
         dataset=data,
     )
 
-    predictive_mean_fn = NegativePredictiveMean().prepare_acquisition_function(
-        QuadraticMeanAndRBFKernel(), dataset=data
+    filtered_data = Dataset(tf.constant([[-2.0]]), tf.constant([[4.1]]))
+    filtered_ei = ExpectedImprovement().prepare_acquisition_function(
+        QuadraticMeanAndRBFKernel(), dataset=filtered_data
     )
 
     xs = tf.linspace([[-10.0]], [[10.0]], 100)
-    npt.assert_allclose(ei(xs), predictive_mean_fn(xs))
+    npt.assert_allclose(ei(xs), filtered_ei(xs))
 
     ei = builder.update_acquisition_function(
         ei,
         QuadraticMeanAndRBFKernel(),
         dataset=data,
     )
-    npt.assert_allclose(ei(xs), predictive_mean_fn(xs))
+    npt.assert_allclose(ei(xs), filtered_ei(xs))
 
 
 def test_expected_improvement_switches_to_improvement_on_feasible_points() -> None:
