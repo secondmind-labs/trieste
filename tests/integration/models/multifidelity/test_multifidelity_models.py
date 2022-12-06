@@ -11,11 +11,19 @@ from trieste.data import (
     split_dataset_by_fidelity,
 )
 from trieste.models.gpflow import GaussianProcessRegression
-from trieste.models.gpflow.builders import build_gpr, build_multifidelity_autoregressive_models
-from trieste.models.gpflow.models import MultifidelityAutoregressive
+from trieste.models.gpflow.builders import (
+    build_gpr,
+    build_multifidelity_autoregressive_models,
+    build_multifidelity_nonlinear_autoregressive_models,
+)
+from trieste.models.gpflow.models import (
+    MultifidelityAutoregressive,
+    MultifidelityNonlinearAutoregressive,
+)
 from trieste.objectives.utils import mk_observer
 from trieste.space import Box
 from trieste.types import TensorType
+from tensorflow.keras.metrics import mean_squared_error
 
 
 def noisy_linear_multifidelity(x: TensorType) -> TensorType:
@@ -29,6 +37,29 @@ def noisy_linear_multifidelity(x: TensorType) -> TensorType:
     noise = tf.random.normal(f.shape, stddev=1e-1, dtype=f.dtype)
     f = tf.where(x_fidelity > 0, f + noise, f)
     return f
+
+
+def noisy_nonlinear_multifidelity(x: TensorType) -> TensorType:
+
+    x_input, x_fidelity = check_and_extract_fidelity_query_points(x)
+    # Check we only have fidelity = 0 or 1
+    # 1 if element is not 0 or 1
+    bad_fidelities = tf.math.logical_and(x_fidelity != 0, x_fidelity != 1)
+    if tf.math.count_nonzero(bad_fidelities) > 0:
+        raise ValueError("Nonlinear simulator only supports 2 fidelities (0 and 1)")
+
+    else:
+        f = tf.math.sin(8 * np.pi * x_input)
+
+        fh = (x_input - tf.sqrt(tf.Variable(2.0, dtype=tf.float64))) * tf.square(f)
+
+        f = tf.where(x_fidelity > 0, fh, f)
+
+        noise = tf.random.normal(f.shape, stddev=1e-2, dtype=f.dtype)
+
+        f = tf.where(x_fidelity > 0, f + noise, f)
+
+        return f
 
 
 def test_multifidelity_autoregressive_results_close() -> None:
@@ -72,6 +103,47 @@ def test_multifidelity_autoregressive_results_close() -> None:
     gt_obs = observer(test_xs_w_fid).observations
 
     npt.assert_allclose(predictions, gt_obs, rtol=0.20)
+
+
+def test_multifidelity_nonlinear_autoregressive_results_better_than_linear() -> None:
+
+    input_dim = 1
+    lb = np.zeros(input_dim)
+    ub = np.ones(input_dim)
+    n_fidelities = 2
+
+    input_search_space = trieste.space.Box(lb, ub)
+    n_samples_per_fidelity = [
+        2 ** ((n_fidelities - fidelity) + 1) + 10 for fidelity in range(n_fidelities)
+    ]
+
+    xs = [tf.linspace(0, 1, samples)[:, None] for samples in n_samples_per_fidelity]
+    initial_samples_list = [tf.concat([x, tf.ones_like(x) * i], 1) for i, x in enumerate(xs)]
+    initial_sample = tf.concat(initial_samples_list, 0)
+    observer = mk_observer(noisy_nonlinear_multifidelity)
+    initial_data = observer(initial_sample)
+
+    nonlinear_model = MultifidelityNonlinearAutoregressive(
+        build_multifidelity_nonlinear_autoregressive_models(initial_data, n_fidelities)
+    )
+    linear_model = MultifidelityAutoregressive(
+        build_multifidelity_autoregressive_models(initial_data, n_fidelities, input_search_space)
+    )
+
+    mses = list()
+    for model in [nonlinear_model, linear_model]:
+        model.update(initial_data)
+        model.optimize(initial_data)
+
+        test_xs = tf.linspace(0, 1, 111)[:, None]
+        test_xs_w_fid = add_fidelity_column(test_xs, fidelity=1)
+
+        predictions = model.predict(test_xs_w_fid)[0]
+        gt_obs = observer(test_xs_w_fid).observations
+        mses.append(tf.reduce_sum(mean_squared_error(gt_obs, predictions)))
+
+    print(mses)
+    assert mses[0] < mses[1]
 
 
 def test_multifidelity_autoregressive_gets_expected_rhos() -> None:
