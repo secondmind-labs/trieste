@@ -2,6 +2,7 @@ import gpflow
 import numpy as np
 import numpy.testing as npt
 import tensorflow as tf
+from tensorflow.keras.metrics import mean_squared_error
 
 import trieste
 from trieste.data import (
@@ -23,7 +24,6 @@ from trieste.models.gpflow.models import (
 from trieste.objectives.utils import mk_observer
 from trieste.space import Box
 from trieste.types import TensorType
-from tensorflow.keras.metrics import mean_squared_error
 
 
 def noisy_linear_multifidelity(x: TensorType) -> TensorType:

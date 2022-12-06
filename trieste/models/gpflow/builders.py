@@ -136,6 +136,7 @@ def build_gpr_with_kernel(
     """
     Build a :class:`~gpflow.models.GPR` model with supplied kernel and sensible initial
      parameters and :class:`~gpflow.mean_functions.Constant` mean function in the model.
+
     :param data: Dataset from the initial design, used for estimating the variance of observations.
     :param kernel: GPFlow kernel to use as the covariance function for the GPR.
     :param likelihood_variance: Likelihood (noise) variance parameter can be optionally set to a
