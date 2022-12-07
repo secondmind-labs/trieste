@@ -1656,7 +1656,7 @@ class MultifidelityNonlinearAutoregressive(TrainableProbabilisticModel):
     an arbitrary number of fidelities. It is capable of modelling both linear and non-linear
     relationships between fidelities. It models the relationship between sequential fidelities as
 
-    ..math f_{i}(x) =  g_{i}(x, f_{*i-1}(x))
+    .. math:: f_{i}(x) =  g_{i}(x, f_{*i-1}(x))
 
     where :math:`f{*i-1}` is the posterior of the previous fidelity.
     The only base models supported in this implementation are :class:`~gpflow.models.GPR` models.
@@ -1670,13 +1670,13 @@ class MultifidelityNonlinearAutoregressive(TrainableProbabilisticModel):
     ):
         """
         :param fidelity_models: List of
-        :class:`~trieste.models.gpflow.models.GaussianProcessRegression`
-        models, one for each fidelity. The model at index 0 should take
-        inputs with the same number of dimensions as `x` and can use any kernel,
-        whilst the later models should take an extra input dimesion, and use the kernel
-        described in :cite:`perdikaris2017nonlinear`.
+            :class:`~trieste.models.gpflow.models.GaussianProcessRegression`
+            models, one for each fidelity. The model at index 0 should take
+            inputs with the same number of dimensions as `x` and can use any kernel,
+            whilst the later models should take an extra input dimesion, and use the kernel
+            described in :cite:`perdikaris2017nonlinear`.
         :param num_monte_carlo_samples: The number of Monte Carlo samples to use for the
-        sections of prediction and sampling that require the use of Monte Carlo methods.
+            ections of prediction and sampling that require the use of Monte Carlo methods.
         """
 
         self.num_fidelities = len(fidelity_models)
@@ -1689,6 +1689,7 @@ class MultifidelityNonlinearAutoregressive(TrainableProbabilisticModel):
         """
         Return ``num_samples`` samples from the independent marginal distributions at
         ``query_points``.
+
         :param query_points: The points at which to sample, with shape [..., N, D].
         :param num_samples: The number of samples at each point.
         :return: The samples, with shape [..., S, N], where S is the number of samples.
@@ -1733,7 +1734,7 @@ class MultifidelityNonlinearAutoregressive(TrainableProbabilisticModel):
         :param query_points: Query points with shape [N, D+1], where the
             final column of the final dimension contains the fidelity of the query point
         :return: mean: The mean at query_points with shape [N, P],
-                 and var: The variance at query_points with shape [N, P]
+            and var: The variance at query_points with shape [N, P]
         """
         check_and_extract_fidelity_query_points(query_points, max_fidelity=self.num_fidelities - 1)
 
@@ -1749,7 +1750,7 @@ class MultifidelityNonlinearAutoregressive(TrainableProbabilisticModel):
         :param query_points: Query points with shape [..., N, D+1], where the
             final column of the final dimension contains the fidelity of the query point
         :return: mean: The mean at query_points with shape [N, P],
-                 and var: The variance at query_points with shape [N, P]
+            and var: The variance at query_points with shape [N, P]
         """
         check_and_extract_fidelity_query_points(query_points, max_fidelity=self.num_fidelities - 1)
 
@@ -1779,10 +1780,9 @@ class MultifidelityNonlinearAutoregressive(TrainableProbabilisticModel):
         passed in the final column of the query points.
 
         :param query_points:  Query points with shape [..., N, D+1], where the
-        final column of the final dimension contains the fidelity of the query point
+            final column of the final dimension contains the fidelity of the query point
         :return: sample_mean: Samples of the mean at the query points with shape [..., N, 1, S]
-                 and sample_var: Samples of the variance at the query points
-        with shape [..., N, 1, S]
+            and sample_var: Samples of the variance at the query points with shape [..., N, 1, S]
         """
 
         (
@@ -1847,16 +1847,16 @@ class MultifidelityNonlinearAutoregressive(TrainableProbabilisticModel):
         at the given fidelity, using the sample means and variances from the previous fidelity.
 
         :param query_points: The query points to sample at, with no fidelity column,
-        with shape[..., N, D]
+            with shape[..., N, D]
         :param fidelity: The fidelity to propogate the samples through
         :param sample_mean: Samples of the posterior mean at the previous fidelity,
-        with shape [..., N, 1, S]
+            with shape [..., N, 1, S]
         :param sample_var: Samples of the posterior variance at the previous fidelity,
-        with shape [..., N, 1, S]
+            with shape [..., N, 1, S]
         :return: sample_mean: Samples of the posterior mean at the given fidelity,
-        of shape [..., N, 1, S]
+            of shape [..., N, 1, S]
             and sample_var: Samples of the posterior variance at the given fidelity,
-        of shape [..., N, 1, S]
+            of shape [..., N, 1, S]
         """
         # Dims thoughout this are [n_qps, qp_dims, n_samples]
 
