@@ -451,7 +451,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
         self._base_acquisition_function: Optional[AcquisitionFunction] = None
         self._fantasized_acquisition: Optional[AcquisitionFunction] = None
         self._fantasized_models: Mapping[
-            str, _fantasized_model | ModelStack[SupportsPredictJoint]
+            Tag, _fantasized_model | ModelStack[SupportsPredictJoint]
         ] = {}
 
     def _update_base_acquisition_function(
@@ -499,7 +499,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
                 for tag, model in models.items()
             }
             self._fantasized_acquisition = self._builder.prepare_acquisition_function(
-                cast(Dict[str, SupportsPredictJoint], self._fantasized_models), datasets
+                cast(Dict[Tag, SupportsPredictJoint], self._fantasized_models), datasets
             )
         else:
             for tag, model in self._fantasized_models.items():
@@ -516,7 +516,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
                     model.update_fantasized_data(fantasized_data[tag])
             self._builder.update_acquisition_function(
                 self._fantasized_acquisition,
-                cast(Dict[str, SupportsPredictJoint], self._fantasized_models),
+                cast(Dict[Tag, SupportsPredictJoint], self._fantasized_models),
                 datasets,
             )
 

@@ -585,8 +585,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             models = {OBJECTIVE: models}  # type: ignore[dict-item]
 
         # reassure the type checker that everything is tagged
-        datasets = cast(Dict[str, Dataset], datasets)
-        models = cast(Dict[str, TrainableProbabilisticModelType], models)
+        datasets = cast(Dict[Tag, Dataset], datasets)
+        models = cast(Dict[Tag, TrainableProbabilisticModelType], models)
 
         if num_steps < 0:
             raise ValueError(f"num_steps must be at least 0, got {num_steps}")
@@ -795,10 +795,10 @@ def write_summary_initial_model_fit(
 
 def observation_plot_init(
     datasets: Mapping[Tag, Dataset],
-) -> dict[str, pd.DataFrame]:
+) -> dict[Tag, pd.DataFrame]:
     """Initialise query point pairplot dataframes with initial observations.
     Also logs warnings if pairplot dependencies are not installed."""
-    observation_plot_dfs: dict[str, pd.DataFrame] = {}
+    observation_plot_dfs: dict[Tag, pd.DataFrame] = {}
     if logging.get_tensorboard_writer():
 
         seaborn_warning = False
@@ -982,7 +982,7 @@ def stop_at_minimum(
     minimum_rtol: float = 0.05,
     minimizers_atol: float = 0,
     minimizers_rtol: float = 0.05,
-    objective_tag: str = OBJECTIVE,
+    objective_tag: Tag = OBJECTIVE,
 ) -> EarlyStopCallback[TrainableProbabilisticModel, object]:
     """
     Generate an early stop function that terminates a BO loop when it gets close enough to the

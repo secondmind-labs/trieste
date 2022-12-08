@@ -27,7 +27,7 @@ from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.models.gpflow import GaussianProcessRegression, build_gpr
 from trieste.space import Box
-from trieste.types import TensorType
+from trieste.types import Tag, TensorType
 
 
 @random_seed
@@ -64,7 +64,7 @@ def test_optimizer_finds_minima_of_Gardners_Simulation_1(
     CONSTRAINT = "CONSTRAINT"
 
     # observe both objective and constraint data
-    def observer(query_points: TensorType) -> dict[str, Dataset]:
+    def observer(query_points: TensorType) -> dict[Tag, Dataset]:
         return {
             OBJECTIVE: Dataset(query_points, objective(query_points)),
             CONSTRAINT: Dataset(query_points, constraint(query_points)),

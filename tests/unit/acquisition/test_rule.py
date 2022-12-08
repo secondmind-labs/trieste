@@ -98,7 +98,7 @@ def test_discrete_thompson_sampling_raises_for_invalid_init_params(
 )
 @pytest.mark.parametrize("datasets", [{}, {OBJECTIVE: empty_dataset([1], [1])}])
 def test_discrete_thompson_sampling_raises_for_invalid_models_keys(
-    datasets: dict[str, Dataset], models: dict[str, ProbabilisticModel]
+    datasets: dict[Tag, Dataset], models: dict[Tag, ProbabilisticModel]
 ) -> None:
     search_space = Box([-1], [1])
     rule = DiscreteThompsonSampling(100, 10)
@@ -116,7 +116,7 @@ def test_discrete_thompson_sampling_raises_for_invalid_models_keys(
     ],
 )
 def test_discrete_thompson_sampling_raises_for_invalid_dataset_keys(
-    datasets: dict[str, Dataset], models: dict[str, ProbabilisticModel]
+    datasets: dict[Tag, Dataset], models: dict[Tag, ProbabilisticModel]
 ) -> None:
     search_space = Box([-1], [1])
     rule = DiscreteThompsonSampling(10, 100)
@@ -539,7 +539,7 @@ def test_async_keeps_track_of_pending_points(
     "models", [{}, {"foo": QuadraticMeanAndRBFKernel()}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}]
 )
 def test_trust_region_raises_for_missing_datasets_key(
-    datasets: dict[str, Dataset], models: dict[str, ProbabilisticModel]
+    datasets: dict[Tag, Dataset], models: dict[Tag, ProbabilisticModel]
 ) -> None:
     search_space = Box([-1], [1])
     rule = TrustRegion()
@@ -902,7 +902,7 @@ def test_qhsri_raises_invalid_parameters(
 @pytest.mark.parametrize("datasets", [{}, {OBJECTIVE: empty_dataset([1], [1])}])
 @pytest.mark.qhsri
 def test_qhsri_raises_for_invalid_models_keys(
-    datasets: dict[str, Dataset], models: dict[str, ProbabilisticModel]
+    datasets: dict[Tag, Dataset], models: dict[Tag, ProbabilisticModel]
 ) -> None:
     search_space = Box([-1], [1])
     rule = BatchHypervolumeSharpeRatioIndicator()
@@ -921,7 +921,7 @@ def test_qhsri_raises_for_invalid_models_keys(
 )
 @pytest.mark.qhsri
 def test_qhsri_raises_for_invalid_dataset_keys(
-    datasets: dict[str, Dataset], models: dict[str, ProbabilisticModel]
+    datasets: dict[Tag, Dataset], models: dict[Tag, ProbabilisticModel]
 ) -> None:
     search_space = Box([-1], [1])
     rule = BatchHypervolumeSharpeRatioIndicator()

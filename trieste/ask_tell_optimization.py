@@ -189,8 +189,8 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
             models = {OBJECTIVE: models}  # type: ignore[dict-item]
 
         # reassure the type checker that everything is tagged
-        datasets = cast(Dict[str, Dataset], datasets)
-        models = cast(Dict[str, TrainableProbabilisticModelType], models)
+        datasets = cast(Dict[Tag, Dataset], datasets)
+        models = cast(Dict[Tag, TrainableProbabilisticModelType], models)
 
         if datasets.keys() != models.keys():
             raise ValueError(

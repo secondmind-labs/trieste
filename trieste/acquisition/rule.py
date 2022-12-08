@@ -1198,8 +1198,8 @@ class BatchHypervolumeSharpeRatioIndicator(
     def acquire(
         self,
         search_space: SearchSpace,
-        models: Mapping[str, ProbabilisticModel],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModel],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> TensorType:
         """Acquire a batch of points to observe based on the batch hypervolume
         Sharpe ratio indicator method.

@@ -243,7 +243,7 @@ def test_bayesian_optimizer_optimizes_initial_model(fit_initial_model: bool) -> 
     ],
 )
 def test_bayesian_optimizer_optimize_raises_for_invalid_keys(
-    datasets: dict[str, Dataset], models: dict[str, TrainableProbabilisticModel]
+    datasets: dict[Tag, Dataset], models: dict[Tag, TrainableProbabilisticModel]
 ) -> None:
     search_space = Box([-1], [1])
     optimizer = BayesianOptimizer(lambda x: {"foo": Dataset(x, x)}, search_space)
@@ -462,7 +462,7 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
 
             return go
 
-    def linear_and_exponential(query_points: tf.Tensor) -> dict[str, Dataset]:
+    def linear_and_exponential(query_points: tf.Tensor) -> dict[Tag, Dataset]:
         return {
             LINEAR: Dataset(query_points, 2 * query_points),
             EXPONENTIAL: Dataset(query_points, tf.exp(-query_points)),

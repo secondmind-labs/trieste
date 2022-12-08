@@ -520,7 +520,7 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
 
     def __init__(
         self,
-        objective_tag: str = OBJECTIVE,
+        objective_tag: Tag = OBJECTIVE,
         base_acquisition_function_builder: AcquisitionFunctionBuilder[ProbabilisticModelType]
         | SingleModelAcquisitionBuilder[ProbabilisticModelType]
         | None = None,

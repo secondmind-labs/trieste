@@ -46,7 +46,9 @@ constraints = [
         lb=tf.constant([-0.4, 0.15, 0.2]),
         ub=tf.constant([0.5, 0.9, 0.9]),
     ),
-    NonlinearConstraint(_nlc_func, tf.constant([-1.0, -0.8]), tf.constant([0.0, 0.0])),
+    NonlinearConstraint(
+        _nlc_func, tf.constant([-1.0, -0.8]), tf.constant([0.0, 0.0])
+    ),
 ]
 
 search_space = Box([0, 0], [1, 1], constraints=constraints)  # type: ignore
@@ -89,7 +91,9 @@ from trieste.experimental.plotting import plot_function_2d
     np.linspace(search_space.lower[0], search_space.upper[0], 100),
     np.linspace(search_space.lower[1], search_space.upper[1], 100),
 )
-xplot = np.vstack((xi.ravel(), xj.ravel())).T  # Change our input grid to list of coordinates.
+xplot = np.vstack(
+    (xi.ravel(), xj.ravel())
+).T  # Change our input grid to list of coordinates.
 constraint_values = np.reshape(search_space.is_feasible(xplot), xi.shape)
 
 _, ax = plot_function_2d(
@@ -102,10 +106,22 @@ _, ax = plot_function_2d(
 
 points = search_space.sample_halton_feasible(200)
 
-ax[0, 0].scatter(points[:, 0], points[:, 1], s=15, c="tab:orange", edgecolors="black", marker="o")
+ax[0, 0].scatter(
+    points[:, 0],
+    points[:, 1],
+    s=15,
+    c="tab:orange",
+    edgecolors="black",
+    marker="o",
+)
 
 ax[0, 0].contourf(
-    xi, xj, constraint_values, levels=1, colors=[(0.2, 0.2, 0.2, 0.7), (1, 1, 1, 0)], zorder=1
+    xi,
+    xj,
+    constraint_values,
+    levels=1,
+    colors=[(0.2, 0.2, 0.2, 0.7), (1, 1, 1, 0)],
+    zorder=1,
 )
 
 ax[0, 0].set_xlabel(r"$x_1$")
@@ -132,7 +148,10 @@ model = GaussianProcessRegression(gpflow_model)
 # Note this method penalises the expected improvement acquisition outside the feasible region. The optimizer uses unconstrained L-BFGS method to find the max of the acquistion function.
 
 # %%
-from trieste.acquisition.function import ExpectedConstrainedImprovement, FastConstraintsFeasibility
+from trieste.acquisition.function import (
+    ExpectedConstrainedImprovement,
+    FastConstraintsFeasibility,
+)
 from trieste.acquisition.rule import EfficientGlobalOptimization
 from trieste.observer import OBJECTIVE
 
@@ -182,11 +201,21 @@ _, ax = plot_function_2d(
 )
 
 plot_bo_points(
-    query_points, ax[0, 0], num_initial_points, arg_min_idx, c_pass="green", c_best="purple"
+    query_points,
+    ax[0, 0],
+    num_initial_points,
+    arg_min_idx,
+    c_pass="green",
+    c_best="purple",
 )
 
 ax[0, 0].contourf(
-    xi, xj, constraint_values, levels=1, colors=[(0.2, 0.2, 0.2, 0.7), (1, 1, 1, 0)], zorder=2
+    xi,
+    xj,
+    constraint_values,
+    levels=1,
+    colors=[(0.2, 0.2, 0.2, 0.7), (1, 1, 1, 0)],
+    zorder=2,
 )
 
 ax[0, 0].set_xlabel(r"$x_1$")
