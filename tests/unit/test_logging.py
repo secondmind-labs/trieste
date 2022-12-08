@@ -48,7 +48,7 @@ from trieste.logging import (
 )
 from trieste.models import ProbabilisticModel
 from trieste.space import Box, SearchSpace
-from trieste.types import TensorType
+from trieste.types import Tag, TensorType
 
 
 class _PseudoTrainableQuadratic(QuadraticMeanAndRBFKernel, PseudoTrainableProbModel):
@@ -216,8 +216,8 @@ def test_wallclock_time_logging(
         def acquire(
             self,
             search_space: SearchSpace,
-            models: Mapping[str, ProbabilisticModel],
-            datasets: Optional[Mapping[str, Dataset]] = None,
+            models: Mapping[Tag, ProbabilisticModel],
+            datasets: Optional[Mapping[Tag, Dataset]] = None,
         ) -> TensorType:
             sleep(acq_time)
             return self._qp

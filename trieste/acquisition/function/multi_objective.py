@@ -27,7 +27,7 @@ from ...data import Dataset
 from ...models import ProbabilisticModel, ReparametrizationSampler
 from ...models.interfaces import HasReparamSampler
 from ...observer import OBJECTIVE
-from ...types import TensorType
+from ...types import Tag, TensorType
 from ...utils import DEFAULTS
 from ..interface import (
     AcquisitionFunction,
@@ -550,8 +550,8 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
 
     def prepare_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModelType],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
         """
@@ -564,7 +564,7 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
         :raise tf.errors.InvalidArgumentError: If the ``dataset`` is empty.
         """
         tf.debugging.Assert(datasets is not None, [tf.constant([])])
-        datasets = cast(Mapping[str, Dataset], datasets)
+        datasets = cast(Mapping[Tag, Dataset], datasets)
         tf.debugging.Assert(datasets[self._objective_tag] is not None, [tf.constant([])])
         tf.debugging.assert_positive(
             len(datasets[self._objective_tag]),
@@ -580,8 +580,8 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        models: Mapping[str, ProbabilisticModelType],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
     ) -> AcquisitionFunction:
@@ -599,7 +599,7 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
         :return: The updated acquisition function.
         """
         tf.debugging.Assert(datasets is not None, [tf.constant([])])
-        datasets = cast(Mapping[str, Dataset], datasets)
+        datasets = cast(Mapping[Tag, Dataset], datasets)
         tf.debugging.Assert(datasets[self._objective_tag] is not None, [tf.constant([])])
         tf.debugging.assert_positive(
             len(datasets[self._objective_tag]),
@@ -647,8 +647,8 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
 
     def _update_base_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModelType],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> AcquisitionFunction:
         if self._base_acquisition_function is None:
             self._base_acquisition_function = self._base_builder.prepare_acquisition_function(

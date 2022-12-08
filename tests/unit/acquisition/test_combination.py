@@ -27,6 +27,7 @@ from trieste.acquisition.combination import Product, Reducer, Sum
 from trieste.acquisition.rule import AcquisitionFunctionBuilder
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
+from trieste.types import Tag
 
 
 def test_reducer_raises_for_no_builders() -> None:
@@ -54,8 +55,8 @@ def test_reducer__repr_builders() -> None:
 
         def prepare_acquisition_function(
             self,
-            models: Mapping[str, ProbabilisticModel],
-            datasets: Optional[Mapping[str, Dataset]] = None,
+            models: Mapping[Tag, ProbabilisticModel],
+            datasets: Optional[Mapping[Tag, Dataset]] = None,
         ) -> AcquisitionFunction:
             return raise_exc
 
@@ -69,16 +70,16 @@ class _Static(AcquisitionFunctionBuilder[ProbabilisticModel]):
 
     def prepare_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModel],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModel],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> AcquisitionFunction:
         return self._f
 
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        models: Mapping[str, ProbabilisticModel],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModel],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> AcquisitionFunction:
         return lambda x: function(x) + 1
 

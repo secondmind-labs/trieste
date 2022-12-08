@@ -69,7 +69,7 @@ from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.objectives import Branin
 from trieste.space import Box, LinearConstraint
-from trieste.types import TensorType
+from trieste.types import Tag, TensorType
 
 
 def test_probability_of_improvement_builder_builds_pi_using_best_from_model() -> None:
@@ -882,8 +882,8 @@ def test_expected_constrained_improvement_can_reproduce_expected_improvement() -
     class _Certainty(AcquisitionFunctionBuilder[ProbabilisticModel]):
         def prepare_acquisition_function(
             self,
-            models: Mapping[str, ProbabilisticModel],
-            datasets: Optional[Mapping[str, Dataset]] = None,
+            models: Mapping[Tag, ProbabilisticModel],
+            datasets: Optional[Mapping[Tag, Dataset]] = None,
         ) -> AcquisitionFunction:
             return lambda x: tf.ones_like(tf.squeeze(x, -2))
 
@@ -913,8 +913,8 @@ def test_expected_constrained_improvement_is_relative_to_feasible_point() -> Non
     class _Constraint(AcquisitionFunctionBuilder[ProbabilisticModel]):
         def prepare_acquisition_function(
             self,
-            models: Mapping[str, ProbabilisticModel],
-            datasets: Optional[Mapping[str, Dataset]] = None,
+            models: Mapping[Tag, ProbabilisticModel],
+            datasets: Optional[Mapping[Tag, Dataset]] = None,
         ) -> AcquisitionFunction:
             return lambda x: tf.cast(tf.squeeze(x, -2) >= 0, x.dtype)
 
@@ -936,8 +936,8 @@ def test_expected_constrained_improvement_is_less_for_constrained_points() -> No
     class _Constraint(AcquisitionFunctionBuilder[ProbabilisticModel]):
         def prepare_acquisition_function(
             self,
-            models: Mapping[str, ProbabilisticModel],
-            datasets: Optional[Mapping[str, Dataset]] = None,
+            models: Mapping[Tag, ProbabilisticModel],
+            datasets: Optional[Mapping[Tag, Dataset]] = None,
         ) -> AcquisitionFunction:
             return lambda x: tf.cast(tf.squeeze(x, -2) >= 0, x.dtype)
 
@@ -960,8 +960,8 @@ def test_expected_constrained_improvement_raises_for_empty_data() -> None:
     class _Constraint(AcquisitionFunctionBuilder[ProbabilisticModel]):
         def prepare_acquisition_function(
             self,
-            models: Mapping[str, ProbabilisticModel],
-            datasets: Optional[Mapping[str, Dataset]] = None,
+            models: Mapping[Tag, ProbabilisticModel],
+            datasets: Optional[Mapping[Tag, Dataset]] = None,
         ) -> AcquisitionFunction:
             return raise_exc
 
@@ -979,8 +979,8 @@ def test_expected_constrained_improvement_is_constraint_when_no_feasible_points(
     class _Constraint(AcquisitionFunctionBuilder[ProbabilisticModel]):
         def prepare_acquisition_function(
             self,
-            models: Mapping[str, ProbabilisticModel],
-            datasets: Optional[Mapping[str, Dataset]] = None,
+            models: Mapping[Tag, ProbabilisticModel],
+            datasets: Optional[Mapping[Tag, Dataset]] = None,
         ) -> AcquisitionFunction:
             def acquisition(x: TensorType) -> TensorType:
                 x_ = tf.squeeze(x, -2)
@@ -1008,8 +1008,8 @@ def test_expected_constrained_improvement_min_feasibility_probability_bound_is_i
     class _Constraint(AcquisitionFunctionBuilder[ProbabilisticModel]):
         def prepare_acquisition_function(
             self,
-            models: Mapping[str, ProbabilisticModel],
-            datasets: Optional[Mapping[str, Dataset]] = None,
+            models: Mapping[Tag, ProbabilisticModel],
+            datasets: Optional[Mapping[Tag, Dataset]] = None,
         ) -> AcquisitionFunction:
             return pof
 

@@ -33,7 +33,7 @@ from ...models.interfaces import (
 )
 from ...observer import OBJECTIVE
 from ...space import SearchSpace
-from ...types import TensorType
+from ...types import Tag, TensorType
 from ..interface import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
@@ -456,8 +456,8 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
 
     def _update_base_acquisition_function(
         self,
-        models: Mapping[str, FantasizerModelOrStack],
-        datasets: Optional[Mapping[str, Dataset]],
+        models: Mapping[Tag, FantasizerModelOrStack],
+        datasets: Optional[Mapping[Tag, Dataset]],
     ) -> AcquisitionFunction:
 
         if self._base_acquisition_function is not None:
@@ -472,8 +472,8 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
 
     def _update_fantasized_acquisition_function(
         self,
-        models: Mapping[str, FantasizerModelOrStack],
-        datasets: Optional[Mapping[str, Dataset]],
+        models: Mapping[Tag, FantasizerModelOrStack],
+        datasets: Optional[Mapping[Tag, Dataset]],
         pending_points: TensorType,
     ) -> AcquisitionFunction:
 
@@ -524,8 +524,8 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
 
     def prepare_acquisition_function(
         self,
-        models: Mapping[str, FantasizerModelOrStack],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, FantasizerModelOrStack],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
         """
@@ -555,8 +555,8 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        models: Mapping[str, FantasizerModelOrStack],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, FantasizerModelOrStack],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
     ) -> AcquisitionFunction:
