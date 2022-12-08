@@ -555,7 +555,7 @@ def build_multifidelity_nonlinear_autoregressive_models(
     return gprs
 
 
-def _validate_multifidelity_data_modellable(data: list[Dataset], num_fidelities: int):
+def _validate_multifidelity_data_modellable(data: Sequence[Dataset], num_fidelities: int) -> None:
 
     if num_fidelities < 2:
         raise ValueError(
