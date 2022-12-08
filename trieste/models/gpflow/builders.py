@@ -477,21 +477,11 @@ def build_multifidelity_autoregressive_models(
     :param input_search_space: The input search space of the models
     :return: List of initialised GPR models
     """
-    if num_fidelities < 2:
-        raise ValueError(
-            "Invalid number of fidelities to build MultifidelityAutoregressive model for,"
-            f" need at least 2 fidelities, got {num_fidelities}"
-        )
 
     # Split data into fidelities
     data = split_dataset_by_fidelity(dataset=dataset, num_fidelities=num_fidelities)
 
-    for i, fidelity_data in enumerate(data):
-        if len(fidelity_data) < 2:
-            raise ValueError(
-                f"Not enough data to create model for fidelity {i},"
-                f" need at least 2 datapoints, got {len(fidelity_data)}"
-            )
+    _validate_multifidelity_data_modellable(data, num_fidelities)
 
     gprs = [
         GaussianProcessRegression(
@@ -529,6 +519,8 @@ def build_multifidelity_nonlinear_autoregressive_models(
     # Split data into fidelities
     data = split_dataset_by_fidelity(dataset=dataset, num_fidelities=num_fidelities)
 
+    _validate_multifidelity_data_modellable(data, num_fidelities)
+
     # Input dim requires excluding fidelity row
     input_dim = dataset.query_points.shape[1] - 1
 
@@ -561,6 +553,22 @@ def build_multifidelity_nonlinear_autoregressive_models(
         )
 
     return gprs
+
+
+def _validate_multifidelity_data_modellable(data: list[Dataset], num_fidelities: int):
+
+    if num_fidelities < 2:
+        raise ValueError(
+            "Invalid number of fidelities to build Multifidelity model for,"
+            f" need at least 2 fidelities, got {num_fidelities}"
+        )
+
+    for i, fidelity_data in enumerate(data):
+        if len(fidelity_data) < 2:
+            raise ValueError(
+                f"Not enough data to create model for fidelity {i},"
+                f" need at least 2 datapoints, got {len(fidelity_data)}"
+            )
 
 
 def _create_multifidelity_nonlinear_autoregressive_kernels(
