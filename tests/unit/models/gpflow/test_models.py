@@ -2035,8 +2035,12 @@ def test_multifidelity_autoregressive_sample_aligns_with_predict(model_type: str
     sample_means = tf.reduce_mean(samples, axis=0)
     sample_vars = tf.math.reduce_variance(samples, axis=0)
 
-    npt.assert_allclose(true_means, sample_means, atol=1e-3, rtol=1e-3)
-    npt.assert_allclose(true_vars, sample_vars, atol=1e-3, rtol=1e-3)
+    if isinstance(model, MultifidelityAutoregressive):
+        npt.assert_allclose(true_means, sample_means, atol=1e-3, rtol=1e-3)
+        npt.assert_allclose(true_vars, sample_vars, atol=1e-3, rtol=1e-3)
+    else:
+        npt.assert_allclose(true_means, sample_means, atol=1e-2, rtol=1e-2)
+        npt.assert_allclose(true_vars, sample_vars, atol=1e-2, rtol=1e-2)
 
 
 @pytest.mark.parametrize(

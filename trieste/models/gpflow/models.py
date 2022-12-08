@@ -1699,27 +1699,27 @@ class MultifidelityNonlinearAutoregressive(TrainableProbabilisticModel):
             query_points_fidelity_col,
         ) = check_and_extract_fidelity_query_points(
             query_points, max_fidelity=self.num_fidelities - 1
-        )  # [N, D], [N, 1]
+        )  # [..., N, D], [..., N, 1]
         # Repeat query_points to get same shape as signal sample
         query_points_fidelity_col = tf.repeat(
-            query_points_fidelity_col[None, :, :], num_samples, axis=0
-        )
+            query_points_fidelity_col[..., None, :, :], num_samples, axis=-3
+        )  # [..., S, N, 1]
 
         signal_sample = self.fidelity_models[0].sample(
             query_points_wo_fidelity, num_samples
-        )  # [S, N, 1]
+        )  # [..., S, N, 1]
 
         for fidelity in range(1, self.num_fidelities):
 
             qp_repeated = tf.repeat(
-                query_points_wo_fidelity[None, :, :], num_samples, axis=0
-            )  # [S, N, D]
-            qp_augmented = tf.concat([qp_repeated, signal_sample], axis=-1)  # [S, N, D + 1]
+                query_points_wo_fidelity[..., None, :, :], num_samples, axis=-3
+            )  # [..., S, N, D]
+            qp_augmented = tf.concat([qp_repeated, signal_sample], axis=-1)  # [..., S, N, D + 1]
             new_signal_sample = self.fidelity_models[fidelity].sample(
                 qp_augmented, 1
-            )  # [S, 1, N, 1]
+            )  # [..., S, 1, N, 1]
             # Remove second dimension caused by getting a single sample
-            new_signal_sample = new_signal_sample[:, 0, :, :]
+            new_signal_sample = new_signal_sample[..., :, 0, :, :]
 
             mask = query_points_fidelity_col >= fidelity
 
@@ -1731,16 +1731,20 @@ class MultifidelityNonlinearAutoregressive(TrainableProbabilisticModel):
         """
         Predict the marginal mean and variance at query_points.
 
-        :param query_points: Query points with shape [N, D+1], where the
+        :param query_points: Query points with shape [..., N, D+1], where the
             final column of the final dimension contains the fidelity of the query point
-        :return: mean: The mean at query_points with shape [N, P],
-            and var: The variance at query_points with shape [N, P]
+        :return: mean: The mean at query_points with shape [..., N, P],
+            and var: The variance at query_points with shape [..., N, P]
         """
         check_and_extract_fidelity_query_points(query_points, max_fidelity=self.num_fidelities - 1)
 
-        sample_mean, sample_var = self._sample_mean_and_var_at_fidelities(query_points)
-        variance = tf.reduce_mean(sample_var, axis=2) + tf.math.reduce_variance(sample_mean, axis=2)
-        mean = tf.reduce_mean(sample_mean, axis=2)
+        sample_mean, sample_var = self._sample_mean_and_var_at_fidelities(
+            query_points
+        )  # [..., N, 1, S], [..., N, 1, S]
+        variance = tf.reduce_mean(sample_var, axis=-1) + tf.math.reduce_variance(
+            sample_mean, axis=-1
+        )
+        mean = tf.reduce_mean(sample_mean, axis=-1)
         return mean, variance
 
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
@@ -1752,10 +1756,11 @@ class MultifidelityNonlinearAutoregressive(TrainableProbabilisticModel):
         :return: mean: The mean at query_points with shape [N, P],
             and var: The variance at query_points with shape [N, P]
         """
-        check_and_extract_fidelity_query_points(query_points, max_fidelity=self.num_fidelities - 1)
+        _, query_points_fidelity_col = check_and_extract_fidelity_query_points(
+            query_points, max_fidelity=self.num_fidelities - 1
+        )
 
         f_mean, f_var = self.predict(query_points)
-        query_points_fidelity_col = query_points[:, -1:]
 
         # Get fidelity 0 observation noise
         observation_noise = (
@@ -1858,8 +1863,6 @@ class MultifidelityNonlinearAutoregressive(TrainableProbabilisticModel):
             and sample_var: Samples of the posterior variance at the given fidelity,
             of shape [..., N, 1, S]
         """
-        # Dims thoughout this are [n_qps, qp_dims, n_samples]
-
         B, N, D = query_point.shape[:-2], query_point.shape[-2], query_point.shape[-1]
         S = sample_mean.shape[-1]
         # Repeat random numbers for each query point and add middle dimension
@@ -1867,10 +1870,10 @@ class MultifidelityNonlinearAutoregressive(TrainableProbabilisticModel):
         # shape as sample_var and sample_mean, so there's no broadcasting required
         # Note: at the moment we use the same monte carlo values for every value in the batch dim
         reshaped_random_numbers = tf.repeat(
-            tf.transpose(self.monte_carlo_random_numbers), query_point.shape[0], axis=-2
+            tf.transpose(self.monte_carlo_random_numbers), N, axis=-2
         )[
-            :, None, :
-        ]  # [N, 1, S]
+            ..., None, :
+        ]  # [..., N, 1, S]
         samples = reshaped_random_numbers * tf.sqrt(sample_var) + sample_mean  # [..., N, 1, S]
         # Add an extra unit dim to query_point and repeat for each of the samples
         qp_repeated = tf.repeat(
@@ -1941,7 +1944,6 @@ class MultifidelityNonlinearAutoregressive(TrainableProbabilisticModel):
         dataset_per_fidelity = split_dataset_by_fidelity(dataset, self.num_fidelities)
 
         for fidelity, dataset_for_fidelity in enumerate(dataset_per_fidelity):
-            print(f"Working on fidelity {fidelity}")
             if fidelity == 0:
                 self.fidelity_models[0].optimize(dataset_for_fidelity)
             else:

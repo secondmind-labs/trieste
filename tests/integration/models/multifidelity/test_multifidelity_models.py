@@ -142,7 +142,6 @@ def test_multifidelity_nonlinear_autoregressive_results_better_than_linear() -> 
         gt_obs = observer(test_xs_w_fid).observations
         mses.append(tf.reduce_sum(mean_squared_error(gt_obs, predictions)))
 
-    print(mses)
     assert mses[0] < mses[1]
 
 
