@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """This module contains type aliases."""
-from typing import Callable, Tuple, TypeVar, Union
+from typing import Callable, Hashable, Tuple, TypeVar, Union
 
 import tensorflow as tf
 
@@ -32,5 +32,5 @@ state. If the state is updated, it is not updated in-place. Instead, a new state
 is a referentially transparent alternative to mutable state.
 """
 
-Tag = str
+Tag = Hashable
 """Type alias for a tag used to label datasets and models."""

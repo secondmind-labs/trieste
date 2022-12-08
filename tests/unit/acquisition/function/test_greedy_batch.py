@@ -45,6 +45,7 @@ from trieste.acquisition.function.greedy_batch import (
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.models.gpflow import GaussianProcessRegression
+from trieste.observer import OBJECTIVE
 from trieste.space import Box
 from trieste.types import Tag, TensorType
 
@@ -185,14 +186,14 @@ def test_lipschitz_penalizers_raises_for_invalid_pending_points_shape(
 
 def test_fantasized_expected_improvement_builder_raises_for_invalid_fantasize_method() -> None:
     with pytest.raises(tf.errors.InvalidArgumentError):
-        Fantasizer(ExpectedImprovement().using("OBJECTIVE"), "notKB")
+        Fantasizer(ExpectedImprovement().using(OBJECTIVE), "notKB")
 
 
 def test_fantasized_expected_improvement_builder_raises_for_invalid_model() -> None:
     data = {
-        "OBJECTIVE": Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 1], dtype=tf.float64))
+        OBJECTIVE: Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 1], dtype=tf.float64))
     }
-    models = {"OBJECTIVE": QuadraticMeanAndRBFKernel()}
+    models = {OBJECTIVE: QuadraticMeanAndRBFKernel()}
     pending_points = tf.zeros([3, 2], dtype=tf.float64)
     builder = Fantasizer()
 
@@ -205,8 +206,8 @@ def test_fantasized_expected_improvement_builder_raises_for_invalid_observation_
     y1 = tf.ones([3, 1], dtype=tf.float64)
     y2 = tf.ones([3, 2], dtype=tf.float64)
 
-    data = {"OBJECTIVE": Dataset(x, y1)}
-    models = {"OBJECTIVE": GaussianProcessRegression(gpr_model(x, y2))}
+    data = {OBJECTIVE: Dataset(x, y1)}
+    models = {OBJECTIVE: GaussianProcessRegression(gpr_model(x, y2))}
     pending_points = tf.zeros([3, 2], dtype=tf.float64)
     builder = Fantasizer()
 
@@ -221,8 +222,8 @@ def test_fantasized_expected_improvement_builder_raises_for_invalid_pending_poin
     x = tf.zeros([3, 2], dtype=tf.float64)
     y = tf.ones([3, 1], dtype=tf.float64)
 
-    data = {"OBJECTIVE": Dataset(x, y)}
-    models = {"OBJECTIVE": GaussianProcessRegression(gpr_model(x, y))}
+    data = {OBJECTIVE: Dataset(x, y)}
+    models = {OBJECTIVE: GaussianProcessRegression(gpr_model(x, y))}
 
     builder = Fantasizer()
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
@@ -239,14 +240,12 @@ def test_fantasize_with_kriging_believer_does_not_change_negative_predictive_mea
     x_test = to_default_float(tf.constant(np.arange(1, 13).reshape(-1, 1) / 12.0))[..., None]
     pending_points = to_default_float(tf.constant([0.51, 0.81])[:, None])
 
-    data = {"OBJECTIVE": Dataset(x, y)}
+    data = {OBJECTIVE: Dataset(x, y)}
     models: Mapping[Tag, FantasizerModelOrStack]
     if model_type == "stack":
-        models = {
-            "OBJECTIVE": FantasizerModelStack((GaussianProcessRegression(gpr_model(x, y)), 1))
-        }
+        models = {OBJECTIVE: FantasizerModelStack((GaussianProcessRegression(gpr_model(x, y)), 1))}
     else:
-        models = {"OBJECTIVE": GaussianProcessRegression(gpr_model(x, y))}
+        models = {OBJECTIVE: GaussianProcessRegression(gpr_model(x, y))}
 
     builder = Fantasizer(NegativePredictiveMean())
     acq0 = builder.prepare_acquisition_function(models, data)
@@ -267,14 +266,12 @@ def test_fantasize_reduces_predictive_variance(model_type: str, fantasize_method
     x_test = to_default_float(tf.constant(np.arange(1, 13).reshape(-1, 1) / 12.0))[..., None]
     pending_points = to_default_float(tf.constant([0.51, 0.81])[:, None])
 
-    data = {"OBJECTIVE": Dataset(x, y)}
+    data = {OBJECTIVE: Dataset(x, y)}
     models: Mapping[Tag, FantasizerModelOrStack]
     if model_type == "stack":
-        models = {
-            "OBJECTIVE": FantasizerModelStack((GaussianProcessRegression(gpr_model(x, y)), 1))
-        }
+        models = {OBJECTIVE: FantasizerModelStack((GaussianProcessRegression(gpr_model(x, y)), 1))}
     else:
-        models = {"OBJECTIVE": GaussianProcessRegression(gpr_model(x, y))}
+        models = {OBJECTIVE: GaussianProcessRegression(gpr_model(x, y))}
 
     builder = Fantasizer(PredictiveVariance(), fantasize_method=fantasize_method)
     acq0 = builder.prepare_acquisition_function(models, data)

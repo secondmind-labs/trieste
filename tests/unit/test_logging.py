@@ -175,10 +175,11 @@ def test_text(mocked_summary_histogram: unittest.mock.MagicMock) -> None:
 def test_tensorboard_logging(mocked_summary_scalar: unittest.mock.MagicMock) -> None:
     mocked_summary_writer = unittest.mock.MagicMock()
     with tensorboard_writer(mocked_summary_writer):
-        data, models = {"A": mk_dataset([[0.0]], [[0.0]])}, {"A": _PseudoTrainableQuadratic()}
+        tag: Tag = "A"
+        data, models = {tag: mk_dataset([[0.0]], [[0.0]])}, {tag: _PseudoTrainableQuadratic()}
         steps = 5
         rule = FixedAcquisitionRule([[0.0]])
-        BayesianOptimizer(lambda x: {"A": Dataset(x, x ** 2)}, Box([-1], [1])).optimize(
+        BayesianOptimizer(lambda x: {tag: Dataset(x, x ** 2)}, Box([-1], [1])).optimize(
             steps, data, models, rule
         )
 
@@ -224,12 +225,13 @@ def test_wallclock_time_logging(
 
     mocked_summary_writer = unittest.mock.MagicMock()
     with tensorboard_writer(mocked_summary_writer):
-        data, models = {"A": mk_dataset([[0.0]], [[0.0]])}, {
-            "A": _PseudoTrainableQuadraticWithWaiting()
+        tag: Tag = "A"
+        data, models = {tag: mk_dataset([[0.0]], [[0.0]])}, {
+            tag: _PseudoTrainableQuadraticWithWaiting()
         }
         steps = 3
         rule = _FixedAcquisitionRuleWithWaiting([[0.0]])
-        BayesianOptimizer(lambda x: {"A": Dataset(x, x ** 2)}, Box([-1], [1])).optimize(
+        BayesianOptimizer(lambda x: {tag: Dataset(x, x ** 2)}, Box([-1], [1])).optimize(
             steps, data, models, rule, fit_initial_model=fit_initial_model
         )
 
@@ -262,12 +264,13 @@ def test_wallclock_time_logging(
 def test_tensorboard_logging_ask_tell(mocked_summary_scalar: unittest.mock.MagicMock) -> None:
     mocked_summary_writer = unittest.mock.MagicMock()
     with tensorboard_writer(mocked_summary_writer):
-        data, models = {"A": mk_dataset([[0.0]], [[0.0]])}, {"A": _PseudoTrainableQuadratic()}
+        tag: Tag = "A"
+        data, models = {tag: mk_dataset([[0.0]], [[0.0]])}, {tag: _PseudoTrainableQuadratic()}
         rule = FixedAcquisitionRule([[0.0]])
         ask_tell = AskTellOptimizer(Box([-1], [1]), data, models, rule)
         with step_number(3):
             new_point = ask_tell.ask()
-            ask_tell.tell({"A": Dataset(new_point, new_point ** 2)})
+            ask_tell.tell({tag: Dataset(new_point, new_point ** 2)})
 
     ordered_scalar_names = [
         "wallclock/model_fitting",

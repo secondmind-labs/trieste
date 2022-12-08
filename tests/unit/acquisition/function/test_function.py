@@ -71,6 +71,10 @@ from trieste.objectives import Branin
 from trieste.space import Box, LinearConstraint
 from trieste.types import Tag, TensorType
 
+# tags
+FOO: Tag = "foo"
+NA: Tag = ""
+
 
 def test_probability_of_improvement_builder_builds_pi_using_best_from_model() -> None:
 
@@ -853,26 +857,26 @@ def test_fast_constraints_feasibility_raises_without_constraints() -> None:
 
 
 def test_expected_constrained_improvement_raises_for_non_scalar_min_pof() -> None:
-    pof = ProbabilityOfFeasibility(0.0).using("")
+    pof = ProbabilityOfFeasibility(0.0).using(NA)
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        ExpectedConstrainedImprovement("", pof, tf.constant([0.0]))
+        ExpectedConstrainedImprovement(NA, pof, tf.constant([0.0]))
 
 
 def test_expected_constrained_improvement_raises_for_out_of_range_min_pof() -> None:
-    pof = ProbabilityOfFeasibility(0.0).using("")
+    pof = ProbabilityOfFeasibility(0.0).using(NA)
     with pytest.raises(tf.errors.InvalidArgumentError):
-        ExpectedConstrainedImprovement("", pof, 1.5)
+        ExpectedConstrainedImprovement(NA, pof, 1.5)
 
 
 @pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
 def test_expected_constrained_improvement_raises_for_invalid_batch_size(at: TensorType) -> None:
-    pof = ProbabilityOfFeasibility(0.0).using("")
-    builder = ExpectedConstrainedImprovement("", pof, tf.constant(0.0))
+    pof = ProbabilityOfFeasibility(0.0).using(NA)
+    builder = ExpectedConstrainedImprovement(NA, pof, tf.constant(0.0))
     initial_query_points = tf.constant([[-1.0]])
     initial_objective_function_values = tf.constant([[1.0]])
-    data = {"": Dataset(initial_query_points, initial_objective_function_values)}
+    data = {NA: Dataset(initial_query_points, initial_objective_function_values)}
 
-    eci = builder.prepare_acquisition_function({"": QuadraticMeanAndRBFKernel()}, datasets=data)
+    eci = builder.prepare_acquisition_function({NA: QuadraticMeanAndRBFKernel()}, datasets=data)
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         eci(at)
@@ -887,22 +891,22 @@ def test_expected_constrained_improvement_can_reproduce_expected_improvement() -
         ) -> AcquisitionFunction:
             return lambda x: tf.ones_like(tf.squeeze(x, -2))
 
-    data = {"foo": Dataset(tf.constant([[0.5]]), tf.constant([[0.25]]))}
-    models_ = {"foo": QuadraticMeanAndRBFKernel()}
+    data = {FOO: Dataset(tf.constant([[0.5]]), tf.constant([[0.25]]))}
+    models_ = {FOO: QuadraticMeanAndRBFKernel()}
 
-    builder = ExpectedConstrainedImprovement("foo", _Certainty(), 0)
+    builder = ExpectedConstrainedImprovement(FOO, _Certainty(), 0)
     eci = builder.prepare_acquisition_function(models_, datasets=data)
 
-    ei = ExpectedImprovement().using("foo").prepare_acquisition_function(models_, datasets=data)
+    ei = ExpectedImprovement().using(FOO).prepare_acquisition_function(models_, datasets=data)
 
     at = tf.constant([[[-0.1]], [[1.23]], [[-6.78]]])
     npt.assert_allclose(eci(at), ei(at))
 
-    new_data = {"foo": Dataset(tf.constant([[0.5], [1.0]]), tf.constant([[0.25], [0.5]]))}
+    new_data = {FOO: Dataset(tf.constant([[0.5], [1.0]]), tf.constant([[0.25], [0.5]]))}
     up_eci = builder.update_acquisition_function(eci, models_, datasets=new_data)
     assert up_eci == eci
     up_ei = (
-        ExpectedImprovement().using("foo").prepare_acquisition_function(models_, datasets=new_data)
+        ExpectedImprovement().using(FOO).prepare_acquisition_function(models_, datasets=new_data)
     )
 
     npt.assert_allclose(eci(at), up_ei(at))
@@ -918,16 +922,16 @@ def test_expected_constrained_improvement_is_relative_to_feasible_point() -> Non
         ) -> AcquisitionFunction:
             return lambda x: tf.cast(tf.squeeze(x, -2) >= 0, x.dtype)
 
-    models_ = {"foo": QuadraticMeanAndRBFKernel()}
+    models_ = {FOO: QuadraticMeanAndRBFKernel()}
 
-    eci_data = {"foo": Dataset(tf.constant([[-0.2], [0.3]]), tf.constant([[0.04], [0.09]]))}
-    eci = ExpectedConstrainedImprovement("foo", _Constraint()).prepare_acquisition_function(
+    eci_data = {FOO: Dataset(tf.constant([[-0.2], [0.3]]), tf.constant([[0.04], [0.09]]))}
+    eci = ExpectedConstrainedImprovement(FOO, _Constraint()).prepare_acquisition_function(
         models_,
         datasets=eci_data,
     )
 
-    ei_data = {"foo": Dataset(tf.constant([[0.3]]), tf.constant([[0.09]]))}
-    ei = ExpectedImprovement().using("foo").prepare_acquisition_function(models_, datasets=ei_data)
+    ei_data = {FOO: Dataset(tf.constant([[0.3]]), tf.constant([[0.09]]))}
+    ei = ExpectedImprovement().using(FOO).prepare_acquisition_function(models_, datasets=ei_data)
 
     npt.assert_allclose(eci(tf.constant([[0.1]])), ei(tf.constant([[0.1]])))
 
@@ -945,10 +949,10 @@ def test_expected_constrained_improvement_is_less_for_constrained_points() -> No
         return x ** 4 / 4 - x ** 2 / 2
 
     initial_query_points = tf.constant([[-2.0], [0.0], [1.2]])
-    data = {"foo": Dataset(initial_query_points, two_global_minima(initial_query_points))}
-    models_ = {"foo": GaussianProcess([two_global_minima], [rbf()])}
+    data = {FOO: Dataset(initial_query_points, two_global_minima(initial_query_points))}
+    models_ = {FOO: GaussianProcess([two_global_minima], [rbf()])}
 
-    eci = ExpectedConstrainedImprovement("foo", _Constraint()).prepare_acquisition_function(
+    eci = ExpectedConstrainedImprovement(FOO, _Constraint()).prepare_acquisition_function(
         models_,
         datasets=data,
     )
@@ -965,9 +969,9 @@ def test_expected_constrained_improvement_raises_for_empty_data() -> None:
         ) -> AcquisitionFunction:
             return raise_exc
 
-    data = {"foo": Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))}
-    models_ = {"foo": QuadraticMeanAndRBFKernel()}
-    builder = ExpectedConstrainedImprovement("foo", _Constraint())
+    data = {FOO: Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))}
+    models_ = {FOO: QuadraticMeanAndRBFKernel()}
+    builder = ExpectedConstrainedImprovement(FOO, _Constraint())
 
     with pytest.raises(tf.errors.InvalidArgumentError):
         builder.prepare_acquisition_function(models_, datasets=data)
@@ -988,9 +992,9 @@ def test_expected_constrained_improvement_is_constraint_when_no_feasible_points(
 
             return acquisition
 
-    data = {"foo": Dataset(tf.constant([[-2.0], [1.0]]), tf.constant([[4.0], [1.0]]))}
-    models_ = {"foo": QuadraticMeanAndRBFKernel()}
-    eci = ExpectedConstrainedImprovement("foo", _Constraint()).prepare_acquisition_function(
+    data = {FOO: Dataset(tf.constant([[-2.0], [1.0]]), tf.constant([[4.0], [1.0]]))}
+    models_ = {FOO: QuadraticMeanAndRBFKernel()}
+    eci = ExpectedConstrainedImprovement(FOO, _Constraint()).prepare_acquisition_function(
         models_,
         datasets=data,
     )
@@ -1013,17 +1017,17 @@ def test_expected_constrained_improvement_min_feasibility_probability_bound_is_i
         ) -> AcquisitionFunction:
             return pof
 
-    models_ = {"foo": QuadraticMeanAndRBFKernel()}
+    models_ = {FOO: QuadraticMeanAndRBFKernel()}
 
-    data = {"foo": Dataset(tf.constant([[1.1], [2.0]]), tf.constant([[1.21], [4.0]]))}
+    data = {FOO: Dataset(tf.constant([[1.1], [2.0]]), tf.constant([[1.21], [4.0]]))}
     eci = ExpectedConstrainedImprovement(
-        "foo", _Constraint(), min_feasibility_probability=tfp.bijectors.Sigmoid().forward(1.0)
+        FOO, _Constraint(), min_feasibility_probability=tfp.bijectors.Sigmoid().forward(1.0)
     ).prepare_acquisition_function(
         models_,
         datasets=data,
     )
 
-    ei = ExpectedImprovement().using("foo").prepare_acquisition_function(models_, datasets=data)
+    ei = ExpectedImprovement().using(FOO).prepare_acquisition_function(models_, datasets=data)
     x = tf.constant([[1.5]])
     npt.assert_allclose(eci(x), ei(x) * pof(x))
 

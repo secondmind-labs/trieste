@@ -424,7 +424,7 @@ class ExpectedConstrainedHypervolumeImprovement(
 
     def __init__(
         self,
-        objective_tag: str,
+        objective_tag: Tag,
         constraint_builder: AcquisitionFunctionBuilder[ProbabilisticModelType],
         min_feasibility_probability: float | TensorType = 0.5,
         reference_point_spec: Sequence[float]
