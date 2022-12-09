@@ -124,7 +124,9 @@ def test_multifidelity_nonlinear_autoregressive_results_better_than_linear() -> 
     initial_data = observer(initial_sample)
 
     nonlinear_model = MultifidelityNonlinearAutoregressive(
-        build_multifidelity_nonlinear_autoregressive_models(initial_data, n_fidelities)
+        build_multifidelity_nonlinear_autoregressive_models(
+            initial_data, n_fidelities, input_search_space
+        )
     )
     linear_model = MultifidelityAutoregressive(
         build_multifidelity_autoregressive_models(initial_data, n_fidelities, input_search_space)

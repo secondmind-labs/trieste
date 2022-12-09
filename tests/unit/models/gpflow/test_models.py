@@ -1668,8 +1668,11 @@ def multifidelity_nonlinear_autoregressive_model(
     n_dims: int,
 ) -> MultifidelityNonlinearAutoregressive:
 
+    search_space = Box([0.0], [10.0])
     gprs = build_multifidelity_nonlinear_autoregressive_models(
-        multifidelity_autoregressive_nd_dataset(n_dims=n_dims), num_fidelities=3
+        multifidelity_autoregressive_nd_dataset(n_dims=n_dims),
+        num_fidelities=3,
+        input_search_space=search_space,
     )
     return MultifidelityNonlinearAutoregressive(gprs)
 
@@ -1927,7 +1930,9 @@ def test_multifidelity_autoregressive_optimize_reduces_losses(model_type: str) -
         )
     else:
         model = MultifidelityNonlinearAutoregressive(
-            build_multifidelity_nonlinear_autoregressive_models(dataset, num_fidelities=2)
+            build_multifidelity_nonlinear_autoregressive_models(
+                dataset, num_fidelities=2, input_search_space=search_space
+            )
         )
 
     if isinstance(model, MultifidelityAutoregressive):
@@ -2015,7 +2020,9 @@ def test_multifidelity_autoregressive_sample_aligns_with_predict(model_type: str
         gpflow.set_trainable(model.lowest_fidelity_signal_model.model.likelihood, False)
     else:
         model = MultifidelityNonlinearAutoregressive(
-            build_multifidelity_nonlinear_autoregressive_models(dataset, num_fidelities=2)
+            build_multifidelity_nonlinear_autoregressive_models(
+                dataset, num_fidelities=2, input_search_space=search_space
+            )
         )
 
     model.update(dataset)
@@ -2075,7 +2082,9 @@ def test_multifidelity_autoregressive_samples_are_varied(model_type: str) -> Non
         )
     else:
         model = MultifidelityNonlinearAutoregressive(
-            build_multifidelity_nonlinear_autoregressive_models(dataset, num_fidelities=2)
+            build_multifidelity_nonlinear_autoregressive_models(
+                dataset, num_fidelities=2, input_search_space=search_space
+            )
         )
 
     test_locations = tf.Variable([[5.1]], dtype=tf.float64)

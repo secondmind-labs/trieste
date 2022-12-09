@@ -331,7 +331,7 @@ def test_build_multifidelity_builds_correct_n_gprs(model_type: str) -> None:
     if model_type == "linear":
         gprs = build_multifidelity_autoregressive_models(dataset, 3, search_space)
     else:
-        gprs = build_multifidelity_nonlinear_autoregressive_models(dataset, 3)
+        gprs = build_multifidelity_nonlinear_autoregressive_models(dataset, 3, search_space)
 
     assert len(gprs) == 3
     for gpr in gprs:
@@ -353,7 +353,7 @@ def test_build_multifidelity_raises_for_bad_fidelity(model_type: str) -> None:
         if model_type == "linear":
             build_multifidelity_autoregressive_models(dataset, -1, search_space)
         else:
-            build_multifidelity_nonlinear_autoregressive_models(dataset, -1)
+            build_multifidelity_nonlinear_autoregressive_models(dataset, -1, search_space)
 
 
 @pytest.mark.parametrize(
@@ -391,7 +391,7 @@ def test_build_multifidelity_raises_not_enough_datapoints(
         if model_type == "linear":
             build_multifidelity_autoregressive_models(dataset, 3, search_space)
         else:
-            build_multifidelity_nonlinear_autoregressive_models(dataset, 3)
+            build_multifidelity_nonlinear_autoregressive_models(dataset, 3, search_space)
 
 
 @pytest.mark.parametrize("model_type", ("linear", "nonlinear"))
@@ -412,7 +412,7 @@ def test_build_multifidelity_raises_not_multifidelity_data(
         if model_type == "linear":
             build_multifidelity_autoregressive_models(dataset, 3, search_space)
         else:
-            build_multifidelity_nonlinear_autoregressive_models(dataset, 3)
+            build_multifidelity_nonlinear_autoregressive_models(dataset, 3, search_space)
 
 
 def _check_likelihood(
