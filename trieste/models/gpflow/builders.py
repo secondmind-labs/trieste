@@ -477,7 +477,10 @@ def build_multifidelity_autoregressive_models(
 
 
 def build_multifidelity_nonlinear_autoregressive_models(
-    dataset: Dataset, num_fidelities: int, input_search_space: SearchSpace
+    dataset: Dataset,
+    num_fidelities: int,
+    input_search_space: SearchSpace,
+    kernel_base_class: Type[Stationary] = gpflow.kernels.Matern32,
 ) -> Sequence[GaussianProcessRegression]:
     """
     Build models for training the trieste.models.gpflow.MultifidelityNonlinearAutoregressive` model
@@ -503,7 +506,7 @@ def build_multifidelity_nonlinear_autoregressive_models(
 
     # Create kernels
     kernels = _create_multifidelity_nonlinear_autoregressive_kernels(
-        gpflow.kernels.Matern32, num_fidelities, input_dim  # type:ignore
+        kernel_base_class, num_fidelities, input_dim  # type:ignore
     )
 
     # Initialise low fidelity GP

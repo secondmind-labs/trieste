@@ -58,6 +58,7 @@ from .utils import (
     randomize_hyperparameters,
     squeeze_hyperparameters,
 )
+from ...utils.misc import flatten_leading_dims
 
 
 class GaussianProcessRegression(
@@ -1676,7 +1677,7 @@ class MultifidelityNonlinearAutoregressive(TrainableProbabilisticModel):
             whilst the later models should take an extra input dimesion, and use the kernel
             described in :cite:`perdikaris2017nonlinear`.
         :param num_monte_carlo_samples: The number of Monte Carlo samples to use for the
-            ections of prediction and sampling that require the use of Monte Carlo methods.
+            sections of prediction and sampling that require the use of Monte Carlo methods.
         """
 
         self.num_fidelities = len(fidelity_models)
@@ -1802,7 +1803,7 @@ class MultifidelityNonlinearAutoregressive(TrainableProbabilisticModel):
         )  # [..., N, 1], [..., N, 1]
 
         # Create new dimension to store samples for each query point
-        # Repeat the inital sample mean and variance 100 times and add a dimension in the
+        # Repeat the inital sample mean and variance S times and add a dimension in the
         # middle (so that sample mean and query points can be concatenated sensibly)
         sample_mean = tf.repeat(sample_mean, self.monte_carlo_random_numbers.shape[0], axis=-1)[
             ..., :, None, :
@@ -1816,7 +1817,7 @@ class MultifidelityNonlinearAutoregressive(TrainableProbabilisticModel):
             query_points_fidelity_col, self.monte_carlo_random_numbers.shape[0], axis=-1
         )[
             ..., :, None, :
-        ]  # [N, 1, S]
+        ]  # [..., N, 1, S]
 
         # Predict for all fidelities but stop updating once we have
         # reached desired fidelity for each query point
@@ -1827,7 +1828,7 @@ class MultifidelityNonlinearAutoregressive(TrainableProbabilisticModel):
             (
                 next_fidelity_sample_mean,
                 next_fidelity_sample_var,
-            ) = self._propogate_samples_through_level(
+            ) = self._propagate_samples_through_level(
                 query_points_wo_fidelity, fidelity, sample_mean, sample_var
             )
 
@@ -1838,7 +1839,7 @@ class MultifidelityNonlinearAutoregressive(TrainableProbabilisticModel):
 
         return sample_mean, sample_var
 
-    def _propogate_samples_through_level(
+    def _propagate_samples_through_level(
         self,
         query_point: TensorType,
         fidelity: int,
@@ -1846,14 +1847,14 @@ class MultifidelityNonlinearAutoregressive(TrainableProbabilisticModel):
         sample_var: TensorType,
     ) -> tuple[TensorType, TensorType]:
         """
-        Propogate samples through a given fidelity.
+        Propagate samples through a given fidelity.
 
         This takes a set of query points without a fidelity column and calculates samples
         at the given fidelity, using the sample means and variances from the previous fidelity.
 
         :param query_points: The query points to sample at, with no fidelity column,
             with shape[..., N, D]
-        :param fidelity: The fidelity to propogate the samples through
+        :param fidelity: The fidelity to propagate the samples through
         :param sample_mean: Samples of the posterior mean at the previous fidelity,
             with shape [..., N, 1, S]
         :param sample_var: Samples of the posterior variance at the previous fidelity,
@@ -1863,14 +1864,12 @@ class MultifidelityNonlinearAutoregressive(TrainableProbabilisticModel):
             and sample_var: Samples of the posterior variance at the given fidelity,
             of shape [..., N, 1, S]
         """
-        B, N, D = query_point.shape[:-2], query_point.shape[-2], query_point.shape[-1]
-        S = sample_mean.shape[-1]
         # Repeat random numbers for each query point and add middle dimension
         # for concatentation with query points This also means that it has the same
         # shape as sample_var and sample_mean, so there's no broadcasting required
         # Note: at the moment we use the same monte carlo values for every value in the batch dim
         reshaped_random_numbers = tf.repeat(
-            tf.transpose(self.monte_carlo_random_numbers), N, axis=-2
+            tf.transpose(self.monte_carlo_random_numbers), query_point.shape[-2], axis=-2
         )[
             ..., None, :
         ]  # [..., N, 1, S]
@@ -1887,16 +1886,17 @@ class MultifidelityNonlinearAutoregressive(TrainableProbabilisticModel):
         # Switch dims to make reshape match up correct dimensions for query points
         # Use Einsum to switch last two dimensions
         qp_augmented = tf.linalg.matrix_transpose(qp_augmented)  # [..., N, S, D+1]
-        flat_qp_augmented = tf.reshape(qp_augmented, shape=[*B, N * S, D + 1])  # [..., N*S, D+1]
+
+        flat_qp_augmented, unflatten = flatten_leading_dims(qp_augmented)  # [...*N*S, D+1]
 
         # Dim of flat qp augmented is now [n_qps*n_samples, qp_dims], as the model expects
         sample_mean, sample_var = self.fidelity_models[fidelity].predict(
             flat_qp_augmented
-        )  # [..., N*S, 1], [..., N*S, 1]
+        )  # [...*N*S, 1], [...*N*S, 1]
 
         # Reshape back to have samples as final dimension
-        sample_mean = tf.reshape(sample_mean, [*B, N, S, 1])  # [..., N, S, 1]
-        sample_var = tf.reshape(sample_var, [*B, N, S, 1])  # [..., N, S, 1]
+        sample_mean = unflatten(sample_mean)  # [..., N, S, 1]
+        sample_var = unflatten(sample_var)  # [..., N, S, 1]
         sample_mean = tf.linalg.matrix_transpose(sample_mean)  # [..., N, 1, S]
         sample_var = tf.linalg.matrix_transpose(sample_var)  # [..., N, 1, S]
 
