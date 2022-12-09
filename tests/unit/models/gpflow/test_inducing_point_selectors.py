@@ -35,6 +35,7 @@ from trieste.models.gpflow.inducing_point_selectors import (
     KMeansInducingPointSelector,
     RandomSubSampleInducingPointSelector,
     UniformInducingPointSelector,
+    ConditionalVarianceReduction,
 )
 from trieste.space import Box, SearchSpace
 
@@ -45,6 +46,7 @@ from trieste.space import Box, SearchSpace
         UniformInducingPointSelector(Box([0.0], [1.0])),
         RandomSubSampleInducingPointSelector(Box([0.0], [1.0])),
         KMeansInducingPointSelector(Box([0.0], [1.0])),
+        ConditionalVarianceReduction(Box([0.0], [1.0])),
     ],
 )
 def test_inducing_point_selectors_raise_if_more_than_one_set_of_inducing_points(
@@ -65,6 +67,7 @@ def test_inducing_point_selectors_raise_if_more_than_one_set_of_inducing_points(
         UniformInducingPointSelector(Box([0.0], [1.0])),
         RandomSubSampleInducingPointSelector(Box([0.0], [1.0])),
         KMeansInducingPointSelector(Box([0.0], [1.0])),
+        ConditionalVarianceReduction(Box([0.0], [1.0])),
     ],
 )
 def test_inducing_point_selectors_returns_correctly_shaped_inducing_points(
@@ -89,6 +92,7 @@ def test_inducing_point_selectors_returns_correctly_shaped_inducing_points(
         UniformInducingPointSelector(Box([0.0, -1.0], [1.0, 0.0])),
         RandomSubSampleInducingPointSelector(Box([0.0, -1.0], [1.0, 0.0])),
         KMeansInducingPointSelector(Box([0.0, -1.0], [1.0, 0.0])),
+        ConditionalVarianceReduction(Box([0.0], [1.0])),
     ],
 )
 def test_inducing_point_selectors_choose_points_still_in_space(
@@ -111,6 +115,7 @@ def test_inducing_point_selectors_choose_points_still_in_space(
         UniformInducingPointSelector,
         RandomSubSampleInducingPointSelector,
         KMeansInducingPointSelector,
+        ConditionalVarianceReduction
     ],
 )
 @pytest.mark.parametrize("recalc_every_model_update", [True, False])

@@ -23,6 +23,7 @@ from typing import Generic
 
 import tensorflow as tf
 from scipy.cluster.vq import kmeans
+import gpflow
 
 from ...data import Dataset
 from ...space import Box, SearchSpace
@@ -56,10 +57,7 @@ class InducingPointSelector(ABC, Generic[ProbabilisticModelType]):
         self._initialized = False
 
     def calculate_inducing_points(
-        self,
-        current_inducing_points: TensorType,
-        model: ProbabilisticModelType,
-        dataset: Dataset,
+        self, current_inducing_points: TensorType, model: ProbabilisticModelType, dataset: Dataset,
     ) -> TensorType:
         """
         Calculate the new inducing points given the existing inducing points.
@@ -222,3 +220,89 @@ class KMeansInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
             centroids = tf.concat([centroids, extra_centroids], axis=0)  # [M, d]
 
         return centroids  # [M, d]
+
+
+class ConditionalVarianceReduction(InducingPointSelector[ProbabilisticModel]):
+    """
+    An :class:`InducingPointSelector` that greedily chooses the points with maximal (conditional)
+    predictive variance.
+    """
+
+    def __init__(self, search_space: SearchSpace, recalc_every_model_update: bool = True):
+        """
+        :param search_space: The global search space over which the optimization is defined.
+        :param recalc_every_model_update: If True then recalculate the inducing points for each
+            model update, otherwise just recalculate on the first call.
+        """
+        super().__init__(search_space, recalc_every_model_update)
+
+    def _recalculate_inducing_points(
+        self, M: int, model: ProbabilisticModel, dataset: Dataset,
+    ) -> TensorType:
+        """
+        :param M: Desired number of inducing points.
+        :param model: The sparse model.
+        :param dataset: The data from the observer. Must be populated.
+        :return: The new updated inducing points.
+        :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
+        """
+        tf.debugging.Assert(dataset is not None, [])
+        N = tf.shape(dataset.query_points)[0]
+
+        chosen_inducing_points = _greedy_inference_dpp(
+            M=tf.minimum(M, N),
+            kernel=model.get_kernel(),
+            quality_scores=tf.ones(tf.shape(dataset.observations[0]), dtype=tf.float64),  # unit quality function
+            dataset=dataset,
+        )  # [min(M,N), d]
+
+        if N < M:  # if fewer data than inducing points then sample remaining uniformly
+            uniform_sampler = UniformInducingPointSelector(self._search_space)
+            uniform_sample = uniform_sampler._recalculate_inducing_points(
+                M - N, model, dataset,
+            )  # [M-N, d]
+            chosen_inducing_points = tf.concat(
+                [chosen_inducing_points, uniform_sample], 0
+            )  # [M, d]
+        return chosen_inducing_points  # [M, d]
+
+
+def _greedy_inference_dpp(
+    M: int, kernel: gpflow.kernels.Kernel, quality_scores: TensorType, dataset: Dataset,
+) -> TensorType:
+    """
+    TODO
+    """
+    query_points = dataset.query_points
+
+    chosen_indicies = []  # iteratively store chosen points
+
+    N = tf.shape(query_points)[0]
+    c = tf.zeros((M - 1, N))  # [M-1,N]
+    d_squared = kernel.K_diag(query_points)  # [N]
+
+    scores = d_squared * quality_scores ** 2  # [N]
+    chosen_indicies.append(tf.argmax(scores))  # get first element
+    for m in range(M - 1):  # get remaining elements
+        ix = tf.cast(chosen_indicies[-1], dtype=tf.int32)  # increment Cholesky with newest point
+        newest_point = query_points[ix]
+
+        d_temp = tf.math.sqrt(d_squared[ix])  # [1]
+
+        L = kernel.K(query_points, newest_point[None, :])[:, 0]  # [N]
+        if m == 0:
+            e = L / d_temp
+            c = tf.expand_dims(e, 0)  # [1,N]
+        else:
+            c_temp = c[:, ix : ix + 1]  # [m,1]
+            e = (L - tf.matmul(tf.transpose(c_temp), c[:m])) / d_temp  # [N]
+            c = tf.concat([c, e], axis=0)  # [m+1, N]
+            e = tf.squeeze(e, 0)
+
+        d_squared -= e ** 2
+        d_squared = tf.maximum(d_squared, 1e-50)  # numerical stability
+
+        scores = d_squared * quality_scores ** 2  # [N]
+        chosen_indicies.append(tf.argmax(scores))  # get next element as point with largest score
+
+    return tf.gather(query_points, chosen_indicies)
