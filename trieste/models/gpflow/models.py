@@ -38,6 +38,7 @@ from ...data import (
 )
 from ...types import TensorType
 from ...utils import DEFAULTS, jit
+from ...utils.misc import flatten_leading_dims
 from ..interfaces import (
     FastUpdateModel,
     HasTrajectorySampler,
@@ -58,7 +59,6 @@ from .utils import (
     randomize_hyperparameters,
     squeeze_hyperparameters,
 )
-from ...utils.misc import flatten_leading_dims
 
 
 class GaussianProcessRegression(

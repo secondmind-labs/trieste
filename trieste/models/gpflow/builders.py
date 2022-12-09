@@ -128,6 +128,7 @@ def build_gpr(
         kernel = _get_kernel(empirical_variance, search_space, kernel_priors, kernel_priors)
     mean = _get_mean_function(empirical_mean)
 
+    assert isinstance(kernel, gpflow.kernels.Kernel)
     model = gpflow.models.GPR(data.astuple(), kernel, mean)
 
     _set_gaussian_likelihood_variance(model, empirical_variance, likelihood_variance)
@@ -506,7 +507,7 @@ def build_multifidelity_nonlinear_autoregressive_models(
 
     # Create kernels
     kernels = _create_multifidelity_nonlinear_autoregressive_kernels(
-        kernel_base_class, num_fidelities, input_dim  # type:ignore
+        kernel_base_class, num_fidelities, input_dim
     )
 
     # Initialise low fidelity GP
