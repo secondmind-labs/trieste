@@ -55,39 +55,49 @@ class MultiObjectiveTestProblem(ObjectiveTestProblem):
     random number seed."""
 
 
-def vlmop2(x: TensorType) -> TensorType:
+def vlmop2(x: TensorType, d: int) -> TensorType:
     """
     The VLMOP2 synthetic function.
 
-    :param x: The points at which to evaluate the function, with shape [..., 2].
+    :param x: The points at which to evaluate the function, with shape [..., d].
+    :param d: The dimensionality of the synthetic function.
     :return: The function values at ``x``, with shape [..., 2].
     :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
     """
-    tf.debugging.assert_shapes([(x, (..., 2))], message="vlmop2 only allow 2d input")
-    transl = 1 / math.sqrt(2.0)
+    tf.debugging.assert_shapes(
+        [(x, (..., d))],
+        message=f"input x dim: {x.shape[-1]} is not align with pre-specified dim: {d}",
+    )
+    transl = 1 / tf.sqrt(tf.cast(d, x.dtype))
     y1 = 1 - tf.exp(-1 * tf.reduce_sum((x - transl) ** 2, axis=-1))
     y2 = 1 - tf.exp(-1 * tf.reduce_sum((x + transl) ** 2, axis=-1))
     return tf.stack([y1, y2], axis=-1)
 
 
-def vlmop2_gen_pareto_optimal_points(n: int, seed: int | None = None) -> TensorType:
-    tf.debugging.assert_greater(n, 0)
-    _x = tf.linspace([-1 / tf.sqrt(2.0)], [1 / tf.sqrt(2.0)], n)
-    return vlmop2(tf.concat([_x, _x], axis=1))
+def VLMOP2(input_dim: int) -> MultiObjectiveTestProblem:
+    """
+    The VLMOP2 problem, typically evaluated over :math:`[-2, 2]^d`.
+    The idea pareto fronts lies on -1/sqrt(d) - 1/sqrt(d) and x1=...=xdim.
 
+    See :cite:`van1999multiobjective` and :cite:`fonseca1995multiobjective`
+    (the latter for discussion of pareto front property) for details.
 
-VLMOP2 = MultiObjectiveTestProblem(
-    name="VLMOP2",
-    objective=vlmop2,
-    search_space=Box([-2.0], [2.0]) ** 2,
-    gen_pareto_optimal_points=vlmop2_gen_pareto_optimal_points,
-)
-"""
-The VLMOP2 problem, typically evaluated over :math:`[-2, 2]^2`.
-The idea pareto fronts lies on -1/sqrt(2) - 1/sqrt(2) and x1=x2.
-See :cite:`van1999multiobjective` and  :cite: fonseca1995multiobjective
-(the latter for discussion of pareto front property) for details.
-"""
+    :param input_dim: The input dimensionality of the synthetic function.
+    :return: The problem specification.
+    """
+
+    def gen_pareto_optimal_points(n: int, seed: int | None = None) -> TensorType:
+        tf.debugging.assert_greater(n, 0)
+        transl = 1 / tf.sqrt(tf.cast(input_dim, tf.float64))
+        _x = tf.tile(tf.linspace([-transl], [transl], n), [1, input_dim])
+        return vlmop2(_x, input_dim)
+
+    return MultiObjectiveTestProblem(
+        name=f"VLMOP2({input_dim})",
+        objective=partial(vlmop2, d=input_dim),
+        search_space=Box([-2.0], [2.0]) ** input_dim,
+        gen_pareto_optimal_points=gen_pareto_optimal_points,
+    )
 
 
 def dtlz_mkd(input_dim: int, num_objective: int) -> tuple[int, int, int]:
@@ -146,15 +156,21 @@ def dtlz1(x: TensorType, m: int, k: int, d: int) -> TensorType:
 def DTLZ1(input_dim: int, num_objective: int) -> MultiObjectiveTestProblem:
     """
     The DTLZ1 problem, the idea pareto fronts lie on a linear hyper-plane.
-    See :cite:deb2002scalable for details.
+    See :cite:`deb2002scalable` for details.
+
+    :param input_dim: The input dimensionality of the synthetic function.
+    :param num_objective: The number of objectives.
+    :return: The problem specification.
     """
     M, k, d = dtlz_mkd(input_dim, num_objective)
 
     def gen_pareto_optimal_points(n: int, seed: int | None = None) -> TensorType:
         tf.debugging.assert_greater_equal(M, 2)
-        rnd = tf.random.uniform([n, M - 1], minval=0, maxval=1, seed=seed)
+        rnd = tf.random.uniform([n, M - 1], minval=0, maxval=1, seed=seed, dtype=tf.float64)
         strnd = tf.sort(rnd, axis=-1)
-        strnd = tf.concat([tf.zeros([n, 1]), strnd, tf.ones([n, 1])], axis=-1)
+        strnd = tf.concat(
+            [tf.zeros([n, 1], dtype=tf.float64), strnd, tf.ones([n, 1], dtype=tf.float64)], axis=-1
+        )
         return 0.5 * (strnd[..., 1:] - strnd[..., :-1])
 
     return MultiObjectiveTestProblem(
@@ -200,14 +216,17 @@ def dtlz2(x: TensorType, m: int, d: int) -> TensorType:
 def DTLZ2(input_dim: int, num_objective: int) -> MultiObjectiveTestProblem:
     """
     The DTLZ2 problem, the idea pareto fronts lie on (part of) a unit hyper sphere.
-    See :cite:deb2002scalable for details.
-    """
+    See :cite:`deb2002scalable` for details.
 
+    :param input_dim: The input dimensionality of the synthetic function.
+    :param num_objective: The number of objectives.
+    :return: The problem specification.
+    """
     M, k, d = dtlz_mkd(input_dim, num_objective)
 
     def gen_pareto_optimal_points(n: int, seed: int | None = None) -> TensorType:
         tf.debugging.assert_greater_equal(M, 2)
-        rnd = tf.random.normal([n, M], seed=seed)
+        rnd = tf.random.normal([n, M], seed=seed, dtype=tf.float64)
         samples = tf.abs(rnd / tf.norm(rnd, axis=-1, keepdims=True))
         return samples
 

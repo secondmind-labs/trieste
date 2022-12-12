@@ -347,7 +347,7 @@ def ackley_5(x: TensorType) -> TensorType:
         -20.0 * tf.math.exp(exponent_1)
         - tf.math.exp(exponent_2)
         + 20.0
-        + tf.cast(tf.math.exp(1.0), dtype=tf.float64)
+        + tf.cast(tf.math.exp(1.0), dtype=x.dtype)
     )
 
     return tf.expand_dims(function, -1)
@@ -425,7 +425,7 @@ def michalewicz(x: TensorType, d: int = 2, m: int = 10) -> TensorType:
     tf.debugging.assert_greater_equal(d, 1)
     tf.debugging.assert_shapes([(x, (..., d))])
 
-    xi = tf.range(1, (d + 1), delta=1, dtype=tf.float64) * tf.pow(x, 2)
+    xi = tf.range(1, (d + 1), delta=1, dtype=x.dtype) * tf.pow(x, 2)
     result = tf.reduce_sum(tf.sin(x) * tf.pow(tf.sin(xi / math.pi), 2 * m), axis=1, keepdims=True)
 
     return -result
