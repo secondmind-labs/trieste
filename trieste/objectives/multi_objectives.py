@@ -66,7 +66,7 @@ def vlmop2(x: TensorType, d: int) -> TensorType:
     """
     tf.debugging.assert_shapes(
         [(x, (..., d))],
-        message=f"input x dim: {x.shape[-1]} is not align with pre-specified dim: {d}",
+        message=f"input x dim: {x.shape[-1]} does not align with pre-specified dim: {d}",
     )
     transl = 1 / tf.sqrt(tf.cast(d, x.dtype))
     y1 = 1 - tf.exp(-1 * tf.reduce_sum((x - transl) ** 2, axis=-1))
@@ -129,7 +129,7 @@ def dtlz1(x: TensorType, m: int, k: int, d: int) -> TensorType:
     """
     tf.debugging.assert_shapes(
         [(x, (..., d))],
-        message=f"input x dim: {x.shape[-1]} is not align with pre-specified dim: {d}",
+        message=f"input x dim: {x.shape[-1]} does not align with pre-specified dim: {d}",
     )
     tf.debugging.assert_greater(m, 0, message=f"positive objective numbers expected but found {m}")
 
@@ -193,7 +193,7 @@ def dtlz2(x: TensorType, m: int, d: int) -> TensorType:
     """
     tf.debugging.assert_shapes(
         [(x, (..., d))],
-        message=f"input x dim: {x.shape[-1]} is not align with pre-specified dim: {d}",
+        message=f"input x dim: {x.shape[-1]} does not align with pre-specified dim: {d}",
     )
     tf.debugging.assert_greater(m, 0, message=f"positive objective numbers expected but found {m}")
 
