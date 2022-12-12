@@ -21,7 +21,7 @@ import tensorflow as tf
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
-from ..types import TensorType
+from ..types import Tag, TensorType
 from .interface import AcquisitionFunction, AcquisitionFunctionBuilder
 
 
@@ -49,8 +49,8 @@ class Reducer(AcquisitionFunctionBuilder[ProbabilisticModel]):
 
     def prepare_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModel],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModel],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> AcquisitionFunction:
         r"""
         Return an acquisition function. This acquisition function is defined by first building
@@ -75,8 +75,8 @@ class Reducer(AcquisitionFunctionBuilder[ProbabilisticModel]):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        models: Mapping[str, ProbabilisticModel],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModel],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.

@@ -20,7 +20,7 @@ import tensorflow as tf
 from typing_extensions import Final
 
 from .data import Dataset
-from .types import TensorType
+from .types import Tag, TensorType
 
 SingleObserver = Callable[[TensorType], Dataset]
 """
@@ -28,7 +28,7 @@ Type alias for an observer of the objective function (that takes query points an
 unlabelled dataset).
 """
 
-MultiObserver = Callable[[TensorType], Mapping[str, Dataset]]
+MultiObserver = Callable[[TensorType], Mapping[Tag, Dataset]]
 """
 Type alias for an observer of the objective function (that takes query points and returns labelled
 datasets).
@@ -39,7 +39,7 @@ Observer = Union[SingleObserver, MultiObserver]
 Type alias for an observer, returning either labelled datasets or a single unlabelled dataset.
 """
 
-OBJECTIVE: Final[str] = "OBJECTIVE"
+OBJECTIVE: Final[Tag] = "OBJECTIVE"
 """
 A tag typically used by acquisition rules to denote the data sets and models corresponding to the
 optimization objective.

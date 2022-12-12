@@ -85,7 +85,9 @@ plt.show()
 # %%
 from trieste.acquisition.multi_objective.dominance import non_dominated
 
-uniform_non_dominated = non_dominated(tf.concat([uniform_pts_mean, uniform_pts_std], axis=1))[0]
+uniform_non_dominated = non_dominated(
+    tf.concat([uniform_pts_mean, uniform_pts_std], axis=1)
+)[0]
 
 plt.scatter(uniform_pts_mean, uniform_pts_std)
 plt.scatter(uniform_non_dominated[:, 0], uniform_non_dominated[:, 1], c="r")
@@ -158,7 +160,9 @@ from trieste.acquisition.multi_objective import Pareto
 # Since we've already ensured the set is non-dominated we don't need to repeat this
 front = Pareto(optimised_non_dominated, already_non_dominated=True)
 
-sampled_points, _ = front.sample_diverse_subset(sample_size=5, allow_repeats=False)
+sampled_points, _ = front.sample_diverse_subset(
+    sample_size=5, allow_repeats=False
+)
 
 # %% [markdown]
 # Now we can see which points we selected from the Pareto front
@@ -218,7 +222,9 @@ results = bo.optimize(
 # %%
 from trieste.experimental.plotting import plot_regret
 
-observations = results.try_get_final_dataset().observations - ScaledBranin.minimum
+observations = (
+    results.try_get_final_dataset().observations - ScaledBranin.minimum
+)
 
 min_idx = tf.squeeze(tf.argmin(observations, axis=0))
 min_regret = tf.reduce_min(observations)
