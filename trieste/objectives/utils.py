@@ -24,7 +24,7 @@ from typing import Optional, overload
 
 from ..data import Dataset
 from ..observer import MultiObserver, Observer, SingleObserver
-from ..types import TensorType
+from ..types import Tag, TensorType
 
 
 @overload
@@ -33,12 +33,12 @@ def mk_observer(objective: Callable[[TensorType], TensorType]) -> SingleObserver
 
 
 @overload
-def mk_observer(objective: Callable[[TensorType], TensorType], key: str) -> MultiObserver:
+def mk_observer(objective: Callable[[TensorType], TensorType], key: Tag) -> MultiObserver:
     ...
 
 
 def mk_observer(
-    objective: Callable[[TensorType], TensorType], key: Optional[str] = None
+    objective: Callable[[TensorType], TensorType], key: Optional[Tag] = None
 ) -> Observer:
     """
     :param objective: An objective function designed to be used with a single data set and model.

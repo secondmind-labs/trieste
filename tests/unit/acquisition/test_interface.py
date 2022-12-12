@@ -39,7 +39,7 @@ from trieste.acquisition.interface import (
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.models.interfaces import SupportsPredictJoint
-from trieste.types import TensorType
+from trieste.types import Tag, TensorType
 from trieste.utils import DEFAULTS
 
 
@@ -87,9 +87,11 @@ def test_single_model_acquisition_builder_using_passes_on_correct_dataset_and_mo
             assert model is models["foo"]
             return raise_exc
 
-    data = {"foo": empty_dataset([1], [1]), "bar": empty_dataset([1], [1])}
-    models = {"foo": QuadraticMeanAndRBFKernel(), "bar": QuadraticMeanAndRBFKernel()}
-    Builder().using("foo").prepare_acquisition_function(models, datasets=data)
+    FOO: Tag = "foo"
+    BAR: Tag = "bar"
+    data = {FOO: empty_dataset([1], [1]), BAR: empty_dataset([1], [1])}
+    models = {FOO: QuadraticMeanAndRBFKernel(), BAR: QuadraticMeanAndRBFKernel()}
+    Builder().using(FOO).prepare_acquisition_function(models, datasets=data)
 
 
 def test_single_model_greedy_acquisition_builder_raises_immediately_for_wrong_key() -> None:
