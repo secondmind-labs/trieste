@@ -25,14 +25,40 @@ tf.random.set_seed(1234)
 
 # %%
 from trieste.acquisition.function import fast_constraints_feasibility
-from trieste.objectives import ConstrainedScaledBranin
+from trieste.objectives import ScaledBranin
 from trieste.objectives.utils import mk_observer
+from trieste.space import Box, LinearConstraint, NonlinearConstraint
 
-observer = mk_observer(ConstrainedScaledBranin.objective)
-search_space = ConstrainedScaledBranin.search_space
+observer = mk_observer(ScaledBranin.objective)
+
+
+def _nlc_func0(x):
+    c0 = x[..., 0] - 0.2 - tf.sin(x[..., 1])
+    c0 = tf.expand_dims(c0, axis=-1)
+    return c0
+
+
+def _nlc_func1(x):
+    c1 = x[..., 0] - tf.cos(x[..., 1])
+    c1 = tf.expand_dims(c1, axis=-1)
+    return c1
+
+
+constraints = [
+    LinearConstraint(
+        A=tf.constant([[-1.0, 1.0], [1.0, 0.0], [0.0, 1.0]]),
+        lb=tf.constant([-0.4, 0.15, 0.2]),
+        ub=tf.constant([0.5, 0.9, 0.9]),
+    ),
+    NonlinearConstraint(_nlc_func0, tf.constant(-1.0), tf.constant(0.0)),
+    NonlinearConstraint(_nlc_func1, tf.constant(-0.8), tf.constant(0.0)),
+]
+
+unconstrained_search_space = Box([0, 0], [1, 1])
+constrained_search_space = Box([0, 0], [1, 1], constraints=constraints)  # type: ignore
 
 num_initial_points = 5
-initial_query_points = search_space.sample(num_initial_points)
+initial_query_points = constrained_search_space.sample(num_initial_points)
 initial_data = observer(initial_query_points)
 
 # %% [markdown]
@@ -47,16 +73,16 @@ class Sim:
 
     @staticmethod
     def objective(input_data):
-        return ConstrainedScaledBranin.objective(input_data)
+        return ScaledBranin.objective(input_data)
 
     @staticmethod
     def constraint(input_data):
         # `fast_constraints_feasibility` returns the feasibility, so we invert it. The plotting
         # function masks out values above the threshold.
-        return 1.0 - fast_constraints_feasibility(search_space)(input_data)
+        return 1.0 - fast_constraints_feasibility(constrained_search_space)(input_data)
 
 
-plot_objective_and_constraints(search_space, Sim)
+plot_objective_and_constraints(constrained_search_space, Sim)
 plt.show()
 
 # %% [markdown]
@@ -66,23 +92,23 @@ plt.show()
 from trieste.experimental.plotting import plot_function_2d
 
 [xi, xj] = np.meshgrid(
-    np.linspace(search_space.lower[0], search_space.upper[0], 100),
-    np.linspace(search_space.lower[1], search_space.upper[1], 100),
+    np.linspace(constrained_search_space.lower[0], constrained_search_space.upper[0], 100),
+    np.linspace(constrained_search_space.lower[1], constrained_search_space.upper[1], 100),
 )
 xplot = np.vstack(
     (xi.ravel(), xj.ravel())
 ).T  # Change our input grid to list of coordinates.
-constraint_values = np.reshape(search_space.is_feasible(xplot), xi.shape)
+constraint_values = np.reshape(constrained_search_space.is_feasible(xplot), xi.shape)
 
 _, ax = plot_function_2d(
-    ConstrainedScaledBranin.objective,
-    search_space.lower,
-    search_space.upper,
+    ScaledBranin.objective,
+    constrained_search_space.lower,
+    constrained_search_space.upper,
     grid_density=30,
     contour=True,
 )
 
-points = search_space.sample_halton_feasible(200)
+points = constrained_search_space.sample_halton_feasible(200)
 
 ax[0, 0].scatter(
     points[:, 0],
@@ -114,7 +140,7 @@ plt.show()
 # %%
 from trieste.models.gpflow import GaussianProcessRegression, build_gpr
 
-gpflow_model = build_gpr(initial_data, search_space, likelihood_variance=1e-7)
+gpflow_model = build_gpr(initial_data, constrained_search_space, likelihood_variance=1e-7)
 model = GaussianProcessRegression(gpflow_model)
 
 
@@ -123,13 +149,13 @@ model = GaussianProcessRegression(gpflow_model)
 #
 # ### Acquisition function (constrained optimization)
 #
-# We can construct the _expected improvement_ acquisition function as usual. In order to handle the constraints, the search space must be passed as a constructor argument.
+# We can construct the _expected improvement_ acquisition function as usual. However, in order for the acquisition function to handle the constraints, the constrained search space must be passed as a constructor argument. Without the constrained search space, the acquisition function would be unconstrained _expected improvement_.
 
 # %%
 from trieste.acquisition.function import ExpectedImprovement
 from trieste.acquisition.rule import EfficientGlobalOptimization
 
-ei = ExpectedImprovement(search_space)
+ei = ExpectedImprovement(constrained_search_space)
 rule = EfficientGlobalOptimization(ei)  # type: ignore
 
 # %% [markdown]
@@ -138,7 +164,7 @@ rule = EfficientGlobalOptimization(ei)  # type: ignore
 # We can now run the optimization loop. As the search space contains constraints, the optimizer will automatically switch to using _scipy_ _trust-constr_ method to optimize the acquisition function.
 
 # %%
-bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, constrained_search_space)
 
 result = bo.optimize(15, initial_data, model, acquisition_rule=rule)
 
@@ -166,9 +192,9 @@ def plot_bo_results():
     observations = dataset.observations.numpy()
 
     _, ax = plot_function_2d(
-        ConstrainedScaledBranin.objective,
-        search_space.lower,
-        search_space.upper,
+        ScaledBranin.objective,
+        constrained_search_space.lower,
+        constrained_search_space.upper,
         grid_density=30,
         contour=True,
         figsize=(8, 6),
@@ -194,9 +220,9 @@ plot_bo_results()
 #
 # ### Acquisition function (penalty method)
 #
-# An alternative to using a constrained optimization method is to construct the _expected constrained improvement_ acquisition function similar to the [inequality-constraints notebook](inequality_constraints.ipynb). However, instead of using probability of feasibility with respect to the constraint model, we construct feasibility from the explicit input constraints. Feasibility is calculated by passing all the constraints residuals (to their respective limits) through a smoothing function and taking the product.
+# An alternative to using a constrained optimization method is to construct the _expected constrained improvement_ acquisition function similar to the [inequality-constraints notebook](inequality_constraints.ipynb). However, instead of using probability of feasibility with respect to the constraint model, we construct feasibility from the explicit input constraints. Feasibility is calculated by passing all the constraints residuals (to their respective limits) through a smooth step function and taking the product.
 #
-# For this method only the `FastConstraintsFeasibility` class should be passed constraints via the search space. `ExpectedConstrainedImprovement` and `BayesianOptimizer` should be set up in the normal way without constraints.
+# For this method, the `FastConstraintsFeasibility` class should be passed constraints via the search space. `ExpectedConstrainedImprovement` and `BayesianOptimizer` should be set up as usual.
 #
 # Note this method penalises the expected improvement acquisition outside the feasible region. The optimizer uses the default _scipy_ _L-BFGS_ method to find the max of the acquistion function.
 
@@ -205,7 +231,7 @@ from trieste.acquisition.function import ExpectedConstrainedImprovement, FastCon
 from trieste.acquisition.rule import EfficientGlobalOptimization
 from trieste.observer import OBJECTIVE
 
-feas = FastConstraintsFeasibility(search_space)  # Search space with constraints.
+feas = FastConstraintsFeasibility(constrained_search_space)  # Search space with constraints.
 eci = ExpectedConstrainedImprovement(OBJECTIVE, feas.using(OBJECTIVE))
 
 rule = EfficientGlobalOptimization(eci)
@@ -217,7 +243,7 @@ rule = EfficientGlobalOptimization(eci)
 
 # %%
 # Note: use the search space without constraints for the penalty method.
-bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, ConstrainedScaledBranin.search_space)
+bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, unconstrained_search_space)
 
 result = bo.optimize(15, initial_data, model, acquisition_rule=rule)
 
