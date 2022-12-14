@@ -225,7 +225,7 @@ class KMeansInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
 class ConditionalVarianceReduction(InducingPointSelector[ProbabilisticModel]):
     """
     An :class:`InducingPointSelector` that greedily chooses the points with maximal (conditional)
-    predictive variance.
+    predictive variance, see :cite:`burt2019rates`
     """
 
     def __init__(self, search_space: SearchSpace, recalc_every_model_update: bool = True):
@@ -271,25 +271,37 @@ def _greedy_inference_dpp(
     M: int, kernel: gpflow.kernels.Kernel, quality_scores: TensorType, dataset: Dataset,
 ) -> TensorType:
     """
-    TODO
+    Get a greedy approximation of the MAP estimate of the Determinantal Point Process (DPP)
+    over ``dataset`` following the algorithm of :cite:`chen2018fast`. Note that we are using the
+    quality-diversity decomposition of a DPP, specifying both a similarity ``kernel``
+    and ``quality_scores``.
+
+    :param M: Desired set size.
+    :param kernel: The underlying kernel of the DPP.
+    :param quality_scores: The quality score of each item in ``dataset``.
+    :return: The MAP estimate of the DPP.
+    :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty or if the shape of ``quality_scores`` does
+        not match that of ``dataset.observations``.
     """
-    query_points = dataset.query_points
+    tf.debugging.Assert(dataset is not None, [])
+    tf.debugging.assert_equal(tf.shape(dataset.observations), tf.shape(quality_scores))
+
 
     chosen_indicies = []  # iteratively store chosen points
 
-    N = tf.shape(query_points)[0]
+    N = tf.shape(dataset.query_points)[0]
     c = tf.zeros((M - 1, N))  # [M-1,N]
-    d_squared = kernel.K_diag(query_points)  # [N]
+    d_squared = kernel.K_diag(dataset.query_points)  # [N]
 
     scores = d_squared * quality_scores ** 2  # [N]
     chosen_indicies.append(tf.argmax(scores))  # get first element
     for m in range(M - 1):  # get remaining elements
         ix = tf.cast(chosen_indicies[-1], dtype=tf.int32)  # increment Cholesky with newest point
-        newest_point = query_points[ix]
+        newest_point = dataset.query_points[ix]
 
         d_temp = tf.math.sqrt(d_squared[ix])  # [1]
 
-        L = kernel.K(query_points, newest_point[None, :])[:, 0]  # [N]
+        L = kernel.K(dataset.query_points, newest_point[None, :])[:, 0]  # [N]
         if m == 0:
             e = L / d_temp
             c = tf.expand_dims(e, 0)  # [1,N]
@@ -305,4 +317,4 @@ def _greedy_inference_dpp(
         scores = d_squared * quality_scores ** 2  # [N]
         chosen_indicies.append(tf.argmax(scores))  # get next element as point with largest score
 
-    return tf.gather(query_points, chosen_indicies)
+    return tf.gather(dataset.query_points, chosen_indicies)

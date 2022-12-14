@@ -47,7 +47,7 @@ from ..interfaces import (
     TrajectorySampler,
 )
 from ..optimizer import BatchOptimizer, Optimizer
-from .inducing_point_selectors import InducingPointSelector
+from .inducing_point_selectors import InducingPointSelector, KMeansInducingPointSelector
 from .interface import GPflowPredictor, SupportsCovarianceBetweenPoints
 from .sampler import DecoupledTrajectorySampler, RandomFourierFeatureTrajectorySampler
 from .utils import (
@@ -546,7 +546,7 @@ class SparseGaussianProcessRegression(
         optimizer: Optimizer | None = None,
         num_rff_features: int = 1000,
         inducing_point_selector: Optional[
-            InducingPointSelector[SparseGaussianProcessRegression]
+            KMeansInducingPointSelector()
         ] = None,
     ):
         """
