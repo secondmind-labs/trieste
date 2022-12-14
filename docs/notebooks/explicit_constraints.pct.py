@@ -69,7 +69,9 @@ from trieste.experimental.plotting import plot_function_2d
     np.linspace(search_space.lower[0], search_space.upper[0], 100),
     np.linspace(search_space.lower[1], search_space.upper[1], 100),
 )
-xplot = np.vstack((xi.ravel(), xj.ravel())).T  # Change our input grid to list of coordinates.
+xplot = np.vstack(
+    (xi.ravel(), xj.ravel())
+).T  # Change our input grid to list of coordinates.
 constraint_values = np.reshape(search_space.is_feasible(xplot), xi.shape)
 
 _, ax = plot_function_2d(
@@ -82,10 +84,22 @@ _, ax = plot_function_2d(
 
 points = search_space.sample_halton_feasible(200)
 
-ax[0, 0].scatter(points[:, 0], points[:, 1], s=15, c="tab:orange", edgecolors="black", marker="o")
+ax[0, 0].scatter(
+    points[:, 0],
+    points[:, 1],
+    s=15,
+    c="tab:orange",
+    edgecolors="black",
+    marker="o",
+)
 
 ax[0, 0].contourf(
-    xi, xj, constraint_values, levels=1, colors=[(0.2, 0.2, 0.2, 0.7), (1, 1, 1, 0)], zorder=1
+    xi,
+    xj,
+    constraint_values,
+    levels=1,
+    colors=[(0.2, 0.2, 0.2, 0.7), (1, 1, 1, 0)],
+    zorder=1,
 )
 
 ax[0, 0].set_xlabel(r"$x_1$")

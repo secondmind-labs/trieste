@@ -138,7 +138,8 @@ def test_multi_objective_optimizer_finds_pareto_front_of_the_VLMOP2_function(
     acquisition_rule: AcquisitionRule[TensorType, Box, TrainableProbabilisticModel],
     convergence_threshold: float,
 ) -> None:
-    search_space = Box([-2, -2], [2, 2])
+    problem = VLMOP2(2)
+    search_space = problem.search_space
 
     def build_stacked_independent_objectives_model(data: Dataset) -> TrainableModelStack:
         gprs = []
@@ -151,7 +152,7 @@ def test_multi_objective_optimizer_finds_pareto_front_of_the_VLMOP2_function(
 
         return TrainablePredictJointReparamModelStack(*gprs)
 
-    observer = mk_observer(VLMOP2.objective, OBJECTIVE)
+    observer = mk_observer(problem.objective, OBJECTIVE)
 
     initial_query_points = search_space.sample(10)
     initial_data = observer(initial_query_points)
@@ -174,7 +175,7 @@ def test_multi_objective_optimizer_finds_pareto_front_of_the_VLMOP2_function(
     ref_point = get_reference_point(dataset.observations)
 
     obs_hv = Pareto(dataset.observations).hypervolume_indicator(ref_point)
-    ideal_pf = tf.cast(VLMOP2.gen_pareto_optimal_points(100), dtype=tf.float64)
+    ideal_pf = problem.gen_pareto_optimal_points(100)
     ideal_hv = Pareto(ideal_pf).hypervolume_indicator(ref_point)
 
     assert tf.math.log(ideal_hv - obs_hv) < convergence_threshold

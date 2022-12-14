@@ -30,7 +30,7 @@ from ...models.interfaces import (
     SupportsReparamSamplerObservationNoise,
 )
 from ...space import SearchSpace
-from ...types import TensorType
+from ...types import Tag, TensorType
 from ...utils import DEFAULTS
 from ..interface import (
     AcquisitionFunction,
@@ -617,7 +617,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
 
     def __init__(
         self,
-        objective_tag: str,
+        objective_tag: Tag,
         constraint_builder: AcquisitionFunctionBuilder[ProbabilisticModelType],
         min_feasibility_probability: float | TensorType = 0.5,
         search_space: Optional[SearchSpace] = None,
@@ -659,8 +659,8 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
 
     def prepare_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModelType],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> AcquisitionFunction:
         """
         :param models: The models over each tag.
@@ -672,7 +672,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
         :raise tf.errors.InvalidArgumentError: If the objective data is empty.
         """
         tf.debugging.Assert(datasets is not None, [tf.constant([])])
-        datasets = cast(Mapping[str, Dataset], datasets)
+        datasets = cast(Mapping[Tag, Dataset], datasets)
 
         objective_model = models[self._objective_tag]
         objective_dataset = datasets[self._objective_tag]
@@ -713,8 +713,8 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        models: Mapping[str, ProbabilisticModelType],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
@@ -722,7 +722,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
         :param datasets: The data from the observer.
         """
         tf.debugging.Assert(datasets is not None, [tf.constant([])])
-        datasets = cast(Mapping[str, Dataset], datasets)
+        datasets = cast(Mapping[Tag, Dataset], datasets)
 
         objective_model = models[self._objective_tag]
         objective_dataset = datasets[self._objective_tag]

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any, Tuple
+
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
@@ -35,9 +37,9 @@ from trieste.objectives import (
 )
 
 
-@pytest.mark.parametrize(
-    "problem",
-    [
+@pytest.fixture(
+    name="problem",
+    params=[
         Branin,
         ScaledBranin,
         SimpleQuadratic,
@@ -54,6 +56,10 @@ from trieste.objectives import (
         Trid10,
     ],
 )
+def _problem_fixture(request: Any) -> Tuple[SingleObjectiveTestProblem, int]:
+    return request.param
+
+
 def test_objective_maps_minimizers_to_minimum(
     problem: SingleObjectiveTestProblem,
 ) -> None:
@@ -65,25 +71,6 @@ def test_objective_maps_minimizers_to_minimum(
     npt.assert_allclose(objective_values_at_minimizers, tf.squeeze(minimum), atol=1e-4)
 
 
-@pytest.mark.parametrize(
-    "problem",
-    [
-        Branin,
-        ScaledBranin,
-        SimpleQuadratic,
-        GramacyLee,
-        Michalewicz2,
-        Michalewicz5,
-        Michalewicz10,
-        LogarithmicGoldsteinPrice,
-        Hartmann3,
-        Rosenbrock4,
-        Shekel4,
-        Ackley5,
-        Hartmann6,
-        Trid10,
-    ],
-)
 def test_no_function_values_are_less_than_global_minimum(
     problem: SingleObjectiveTestProblem,
 ) -> None:
@@ -92,3 +79,49 @@ def test_no_function_values_are_less_than_global_minimum(
     minimum = problem.minimum
     samples = space.sample(1000 * len(space.lower))
     npt.assert_array_less(tf.squeeze(minimum) - 1e-6, objective(samples))
+
+
+@pytest.mark.parametrize("num_obs", [1, 5, 10])
+@pytest.mark.parametrize("dtype", [tf.float32, tf.float64])
+def test_objective_has_correct_shape_and_dtype(
+    problem: SingleObjectiveTestProblem,
+    num_obs: int,
+    dtype: tf.DType,
+) -> None:
+    x = problem.search_space.sample(num_obs)
+    x = tf.cast(x, dtype)
+    y = problem.objective(x)
+
+    assert y.dtype == x.dtype
+    tf.debugging.assert_shapes([(y, [num_obs, 1])])
+
+
+@pytest.mark.parametrize(
+    "problem, input_dim",
+    [
+        (Branin, 2),
+        (ScaledBranin, 2),
+        (SimpleQuadratic, 2),
+        (GramacyLee, 1),
+        (Michalewicz2, 2),
+        (Michalewicz5, 5),
+        (Michalewicz10, 10),
+        (LogarithmicGoldsteinPrice, 2),
+        (Hartmann3, 3),
+        (Rosenbrock4, 4),
+        (Shekel4, 4),
+        (Ackley5, 5),
+        (Hartmann6, 6),
+        (Trid10, 10),
+    ],
+)
+@pytest.mark.parametrize("num_obs", [1, 5, 10])
+def test_search_space_has_correct_shape_and_default_dtype(
+    problem: SingleObjectiveTestProblem,
+    input_dim: int,
+    num_obs: int,
+) -> None:
+    x = problem.search_space.sample(num_obs)
+
+    assert x.dtype == tf.float64
+    tf.debugging.assert_shapes([(x, [num_obs, input_dim])])

@@ -34,8 +34,9 @@ from trieste.models import ProbabilisticModel
 from trieste.models.gpflow import GaussianProcessRegression, build_gpr
 from trieste.objectives import ConstrainedScaledBranin, ScaledBranin
 from trieste.objectives.utils import mk_observer
+from trieste.observer import OBJECTIVE
 from trieste.space import Box
-from trieste.types import TensorType
+from trieste.types import Tag, TensorType
 
 
 @random_seed
@@ -68,11 +69,10 @@ def test_optimizer_finds_minima_of_Gardners_Simulation_1(
     MINIMUM = -2.0
     MINIMIZER = [math.pi * 1.5, 0.0]
 
-    OBJECTIVE = "OBJECTIVE"
     CONSTRAINT = "CONSTRAINT"
 
     # observe both objective and constraint data
-    def observer(query_points: TensorType) -> dict[str, Dataset]:
+    def observer(query_points: TensorType) -> dict[Tag, Dataset]:
         return {
             OBJECTIVE: Dataset(query_points, objective(query_points)),
             CONSTRAINT: Dataset(query_points, constraint(query_points)),
