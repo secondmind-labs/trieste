@@ -36,3 +36,9 @@ from .single_objectives import (
     SingleObjectiveTestProblem,
     Trid10,
 )
+from .multifidelity_objectives import (
+    Linear2Fidelity,
+    Linear3Fidelity,
+    Linear5Fidelity,
+    SingleObjectiveMultifidelityTestProblem,
+)

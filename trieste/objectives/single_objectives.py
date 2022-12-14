@@ -27,7 +27,7 @@ from typing import Callable
 
 import tensorflow as tf
 
-from ..space import Box
+from ..space import Box, SearchSpace
 from ..types import TensorType
 
 
@@ -43,7 +43,7 @@ class ObjectiveTestProblem:
     objective: Callable[[TensorType], TensorType]
     """The synthetic test function"""
 
-    search_space: Box
+    search_space: SearchSpace
     """The (continuous) search space of the test function"""
 
     @property
