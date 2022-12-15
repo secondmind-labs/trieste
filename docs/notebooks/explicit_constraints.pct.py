@@ -161,7 +161,7 @@ rule = EfficientGlobalOptimization(ei)  # type: ignore
 # %% [markdown]
 # ### Run the optimization loop (constrained optimization)
 #
-# We can now run the optimization loop. As the search space contains constraints, the optimizer will automatically switch to using _scipy_ _trust-constr_ method to optimize the acquisition function.
+# We can now run the optimization loop. As the search space contains constraints, the optimizer will automatically switch to using _scipy_ _trust-constr_ (trust region) method to optimize the acquisition function.
 
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, constrained_search_space)
@@ -220,11 +220,11 @@ plot_bo_results()
 #
 # ### Acquisition function (penalty method)
 #
-# An alternative to using a constrained optimization method is to construct the _expected constrained improvement_ acquisition function similar to the [inequality-constraints notebook](inequality_constraints.ipynb). However, instead of using probability of feasibility with respect to the constraint model, we construct feasibility from the explicit input constraints. Feasibility is calculated by passing all the constraints residuals (to their respective limits) through a smooth step function and taking the product.
+# We recommend using the constrained optimization method above for cases where it can be used, as it should be more efficient. However there are setups when that method cannot be used, e.g. when using batches and some acquisition functions. For such cases, an alternative is to construct the standard _expected constrained improvement_ (similar to the [inequality-constraints notebook](inequality_constraints.ipynb)); except instead of using probability of feasibility with respect to the constraint model, we construct feasibility from the explicit input constraints. This feasibility is calculated by passing all the constraints residuals (to their respective limits) through a smooth step function and taking the product.
 #
-# For this method, the `FastConstraintsFeasibility` class should be passed constraints via the search space. `ExpectedConstrainedImprovement` and `BayesianOptimizer` should be set up as usual.
+# For this method, the `FastConstraintsFeasibility` class should be passed constraints via the search space. `ExpectedConstrainedImprovement` and `BayesianOptimizer` should be set up as usual without the constrained search space.
 #
-# Note this method penalises the expected improvement acquisition outside the feasible region. The optimizer uses the default _scipy_ _L-BFGS_ method to find the max of the acquistion function.
+# Note: this method penalises the expected improvement acquisition outside the feasible region. The optimizer uses the default _scipy_ _L-BFGS-B_ method to find the max of the acquistion function.
 
 # %%
 from trieste.acquisition.function import ExpectedConstrainedImprovement, FastConstraintsFeasibility
