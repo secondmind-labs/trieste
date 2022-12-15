@@ -113,7 +113,7 @@ def test_single_model_greedy_acquisition_builder_repr_includes_class_name() -> N
     cast(
         List[Tuple[SingleModelAcquisitionBuilder[SupportsPredictJoint]]],
         [
-            (ExpectedImprovement(), "ExpectedImprovement()"),
+            (ExpectedImprovement(), "ExpectedImprovement(None)"),
             (AugmentedExpectedImprovement(), "AugmentedExpectedImprovement()"),
             (NegativeLowerConfidenceBound(1.96), "NegativeLowerConfidenceBound(1.96)"),
             (NegativePredictiveMean(), "NegativePredictiveMean()"),
@@ -137,7 +137,7 @@ def test_single_model_acquisition_function_builder_reprs(
     assert repr(function.using("TAG")) == f"{function_repr} using tag 'TAG'"
     assert (
         repr(ExpectedConstrainedImprovement("TAG", function.using("TAG"), 0.0))
-        == f"ExpectedConstrainedImprovement('TAG', {function_repr} using tag 'TAG', 0.0)"
+        == f"ExpectedConstrainedImprovement('TAG', {function_repr} using tag 'TAG', 0.0, None)"
     )
     assert (
         repr(ExpectedConstrainedHypervolumeImprovement("TAG", function.using("TAG"), 0.0))

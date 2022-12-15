@@ -68,7 +68,7 @@ from trieste.acquisition.function.function import (
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.objectives import Branin
-from trieste.space import Box, LinearConstraint
+from trieste.space import Box, LinearConstraint, SearchSpace
 from trieste.types import Tag, TensorType
 
 # tags
@@ -208,6 +208,75 @@ def test_expected_improvement_builder_raises_for_empty_data() -> None:
         )
     with pytest.raises(tf.errors.InvalidArgumentError):
         ExpectedImprovement().prepare_acquisition_function(QuadraticMeanAndRBFKernel())
+
+
+def test_expected_improvement_is_relative_to_feasible_point() -> None:
+    search_space = Box([-1.0], [1.0], [LinearConstraint(A=tf.constant([[1.0]]), lb=0.0, ub=1.0)])
+
+    full_data = Dataset(tf.constant([[-0.2], [0.3]]), tf.constant([[0.04], [0.09]]))
+    full_ei = ExpectedImprovement(search_space).prepare_acquisition_function(
+        QuadraticMeanAndRBFKernel(),
+        dataset=full_data,
+    )
+
+    filtered_data = Dataset(tf.constant([[0.3]]), tf.constant([[0.09]]))
+    filtered_ei = ExpectedImprovement().prepare_acquisition_function(
+        QuadraticMeanAndRBFKernel(), dataset=filtered_data
+    )
+
+    npt.assert_allclose(full_ei(tf.constant([[0.1]])), filtered_ei(tf.constant([[0.1]])))
+
+
+def test_expected_improvement_uses_max_when_no_feasible_points() -> None:
+    search_space = Box([-2.5], [2.5], [LinearConstraint(A=tf.constant([[1.0]]), lb=0.5, ub=0.9)])
+    data = Dataset(
+        tf.constant([[-2.0], [-1.0], [0.0], [1.0], [2.0]]),
+        tf.constant([[4.1], [0.9], [0.1], [1.1], [3.9]]),
+    )
+    builder = ExpectedImprovement(search_space)
+    ei = builder.prepare_acquisition_function(
+        QuadraticMeanAndRBFKernel(),
+        dataset=data,
+    )
+
+    filtered_data = Dataset(tf.constant([[-2.0]]), tf.constant([[4.1]]))
+    filtered_ei = ExpectedImprovement().prepare_acquisition_function(
+        QuadraticMeanAndRBFKernel(), dataset=filtered_data
+    )
+
+    xs = tf.linspace([[-10.0]], [[10.0]], 100)
+    npt.assert_allclose(ei(xs), filtered_ei(xs))
+
+    ei = builder.update_acquisition_function(
+        ei,
+        QuadraticMeanAndRBFKernel(),
+        dataset=data,
+    )
+    npt.assert_allclose(ei(xs), filtered_ei(xs))
+
+
+def test_expected_improvement_switches_to_improvement_on_feasible_points() -> None:
+    search_space = Box([0.0], [1.0], [LinearConstraint(A=tf.constant([[1.0]]), lb=0.5, ub=0.9)])
+    data = Dataset(tf.constant([[0.2], [1.0]]), tf.constant([[4.0], [1.0]]))
+    builder = ExpectedImprovement(search_space)
+    ei = builder.prepare_acquisition_function(
+        QuadraticMeanAndRBFKernel(),
+        dataset=data,
+    )
+
+    data = Dataset(tf.constant([[0.2], [0.7]]), tf.constant([[4.0], [1.0]]))
+    ei = builder.update_acquisition_function(
+        ei,
+        QuadraticMeanAndRBFKernel(),
+        dataset=data,
+    )
+
+    filtered_data = Dataset(tf.constant([[0.7]]), tf.constant([[1.0]]))
+    filtered_ei = ExpectedImprovement().prepare_acquisition_function(
+        QuadraticMeanAndRBFKernel(), dataset=filtered_data
+    )
+
+    npt.assert_allclose(ei(tf.constant([[0.1]])), filtered_ei(tf.constant([[0.1]])))
 
 
 @pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
@@ -913,7 +982,19 @@ def test_expected_constrained_improvement_can_reproduce_expected_improvement() -
     assert eci._get_tracing_count() == 1  # type: ignore
 
 
-def test_expected_constrained_improvement_is_relative_to_feasible_point() -> None:
+@pytest.mark.parametrize(
+    "search_space, dataset",
+    [
+        (None, Dataset(tf.constant([[-0.2], [0.3]]), tf.constant([[0.04], [0.09]]))),
+        (
+            Box([-1.0], [1.0], [LinearConstraint(A=tf.constant([[1.0]]), lb=0.25, ub=1.0)]),
+            Dataset(tf.constant([[-0.2], [0.2], [0.3]]), tf.constant([[0.04], [0.04], [0.09]])),
+        ),
+    ],
+)
+def test_expected_constrained_improvement_is_relative_to_feasible_point(
+    search_space: SearchSpace, dataset: Dataset
+) -> None:
     class _Constraint(AcquisitionFunctionBuilder[ProbabilisticModel]):
         def prepare_acquisition_function(
             self,
@@ -925,7 +1006,9 @@ def test_expected_constrained_improvement_is_relative_to_feasible_point() -> Non
     models_ = {FOO: QuadraticMeanAndRBFKernel()}
 
     eci_data = {FOO: Dataset(tf.constant([[-0.2], [0.3]]), tf.constant([[0.04], [0.09]]))}
-    eci = ExpectedConstrainedImprovement(FOO, _Constraint()).prepare_acquisition_function(
+    eci = ExpectedConstrainedImprovement(
+        FOO, _Constraint(), search_space=search_space
+    ).prepare_acquisition_function(
         models_,
         datasets=eci_data,
     )
@@ -979,7 +1062,20 @@ def test_expected_constrained_improvement_raises_for_empty_data() -> None:
         builder.prepare_acquisition_function(models_)
 
 
-def test_expected_constrained_improvement_is_constraint_when_no_feasible_points() -> None:
+@pytest.mark.parametrize(
+    "search_space, observations",
+    [
+        (None, tf.constant([[-2.0], [1.0]])),
+        (Box([-2.0], [1.0]), tf.constant([[-2.0], [1.0]])),
+        (
+            Box([-2.0], [1.0], [LinearConstraint(A=tf.constant([[1.0]]), lb=0.5, ub=1.0)]),
+            tf.constant([[0.2], [1.0]]),
+        ),
+    ],
+)
+def test_expected_constrained_improvement_is_constraint_when_no_feasible_points(
+    search_space: SearchSpace, observations: TensorType
+) -> None:
     class _Constraint(AcquisitionFunctionBuilder[ProbabilisticModel]):
         def prepare_acquisition_function(
             self,
@@ -994,7 +1090,9 @@ def test_expected_constrained_improvement_is_constraint_when_no_feasible_points(
 
     data = {FOO: Dataset(tf.constant([[-2.0], [1.0]]), tf.constant([[4.0], [1.0]]))}
     models_ = {FOO: QuadraticMeanAndRBFKernel()}
-    eci = ExpectedConstrainedImprovement(FOO, _Constraint()).prepare_acquisition_function(
+    eci = ExpectedConstrainedImprovement(
+        FOO, _Constraint(), search_space=search_space
+    ).prepare_acquisition_function(
         models_,
         datasets=data,
     )

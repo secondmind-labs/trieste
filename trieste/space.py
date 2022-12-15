@@ -46,9 +46,9 @@ class NonlinearConstraint(spo.NonlinearConstraint):  # type: ignore[misc]
         lb <= fun(x) <= ub
 
     :param fun: The function defining the nonlinear constraints; with input shape [..., D] and
-        output shape [..., M], where M is the number of constraints.
-    :param lb: The lower bound of the constraint. Should be a scalar or of shape [M].
-    :param ub: The upper bound of the constraint. Should be a scalar or of shape [M].
+        output shape [..., 1], returning a scalar value for each input point.
+    :param lb: The lower bound of the constraint. Should be a scalar or of shape [1].
+    :param ub: The upper bound of the constraint. Should be a scalar or of shape [1].
     :param keep_feasible: Keep the constraints feasible throughout optimization iterations if this
         is `True`.
     """
@@ -65,6 +65,12 @@ class NonlinearConstraint(spo.NonlinearConstraint):  # type: ignore[misc]
         # and gradient.
         def _constraint_value_and_gradient(x: TensorType) -> Tuple[TensorType, TensorType]:
             val, grad = tfp.math.value_and_gradient(fun, x)
+
+            tf.debugging.assert_shapes(
+                [(val, [..., 1])],
+                message="Nonlinear constraint only supports single output function.",
+            )
+
             return tf.cast(val, dtype=x.dtype), tf.cast(grad, dtype=x.dtype)
 
         cache_x: TensorType = tf.constant([])
@@ -93,7 +99,7 @@ class NonlinearConstraint(spo.NonlinearConstraint):  # type: ignore[misc]
         Calculate the residuals between the constraint function and its lower/upper limits.
 
         :param points: The points to calculate the residuals for, with shape [..., D].
-        :return: A tensor containing the lower and upper residual values with shape [..., M*2].
+        :return: A tensor containing the lower and upper residual values with shape [..., 2].
         """
         tf.debugging.assert_rank_at_least(points, 2)
         non_d_axes = np.ones_like(points.shape)[:-1]  # Avoid adding axes shape to static graph.
@@ -293,6 +299,11 @@ class SearchSpace(ABC):
         :param other: A search space.
         :return: Whether the search space is identical to this one.
         """
+
+    @property
+    def constraints(self) -> Sequence[Constraint]:
+        """The sequence of explicit constraints specified in this search space."""
+        return []
 
     def constraints_residuals(self, points: TensorType) -> TensorType:
         """

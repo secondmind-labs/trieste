@@ -40,7 +40,13 @@ from trieste.acquisition.optimizer import (
 from trieste.acquisition.utils import split_acquisition_function_calls
 from trieste.logging import tensorboard_writer
 from trieste.objectives import Ackley5, Branin, Hartmann3, Hartmann6, ScaledBranin, SimpleQuadratic
-from trieste.space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSpace
+from trieste.space import (
+    Box,
+    DiscreteSearchSpace,
+    LinearConstraint,
+    SearchSpace,
+    TaggedProductSearchSpace,
+)
 from trieste.types import TensorType
 
 
@@ -306,6 +312,18 @@ def test_optimize_continuous_when_target_raises_exception() -> None:
     optimizer = generate_continuous_optimizer(optimizer_args={"options": {"maxiter": 10}})
     with pytest.raises(FailedOptimizationError):
         optimizer(Hartmann3.search_space, _target_fn)
+
+
+def test_continuous_optimizer_returns_raise_on_infeasible_points() -> None:
+    def target_function(x: TensorType) -> TensorType:
+        return -1 * ScaledBranin.objective(tf.squeeze(x, 1))
+
+    search_space = Box([0.0, 0.0], [1.0, 1.0], [LinearConstraint(A=tf.eye(2), lb=0.5, ub=0.5)])
+    optimizer = generate_continuous_optimizer(
+        num_initial_samples=1_000, num_optimization_runs=10, optimizer_args=dict(method="l-bfgs-b")
+    )
+    with pytest.raises(FailedOptimizationError):
+        optimizer(search_space, target_function)
 
 
 @random_seed
@@ -723,16 +741,28 @@ def test_split_acquisition_function(batch_size: int) -> None:
 
 @unittest.mock.patch("scipy.optimize.minimize")
 @pytest.mark.parametrize(
-    "optimizer_args, expected_method, expected_constraints",
+    "search_space, optimizer_args, expected_method, expected_constraints",
     [
-        (None, "l-bfgs-b", None),
-        (dict(method="trust-constr"), "trust-constr", None),
-        (dict(constraints="dummy"), "l-bfgs-b", "dummy"),
-        (dict(method="trust-constr", constraints="dummy"), "trust-constr", "dummy"),
+        (Branin.search_space, None, "l-bfgs-b", []),
+        (Branin.search_space, dict(method="trust-constr"), "trust-constr", []),
+        (Branin.search_space, dict(constraints="dummy"), "l-bfgs-b", "dummy"),
+        (
+            Branin.search_space,
+            dict(method="trust-constr", constraints="dummy"),
+            "trust-constr",
+            "dummy",
+        ),
+        (
+            Box([0, 0], [1, 1], [LinearConstraint(A=tf.eye(2), lb=0, ub=1)]),
+            None,
+            "trust-constr",
+            [LinearConstraint(A=tf.eye(2), lb=0, ub=1)],
+        ),
     ],
 )
 def test_optimizer_scipy_method_select(
     mocked_minimize: MagicMock,
+    search_space: Box,
     optimizer_args: Optional[dict[str, Any]],
     expected_method: str,
     expected_constraints: Optional[str],
@@ -743,7 +773,6 @@ def test_optimizer_scipy_method_select(
     def side_effect(*args: Any, **kwargs: Any) -> spo.OptimizeResult:
         return spo.OptimizeResult(fun=0.0, nfev=0, x=Branin.minimizers[0].numpy(), success=True)
 
-    search_space = Branin.search_space
     mocked_minimize.side_effect = side_effect
     optimizer = generate_continuous_optimizer(
         num_initial_samples=2, num_optimization_runs=2, optimizer_args=optimizer_args
@@ -755,6 +784,8 @@ def test_optimizer_scipy_method_select(
 
     if "constraints" in mocked_minimize.call_args[1]:
         received_constraints = mocked_minimize.call_args[1]["constraints"]
+    elif search_space.has_constraints:
+        received_constraints = search_space.constraints
     else:
         received_constraints = None
     assert received_constraints == expected_constraints
