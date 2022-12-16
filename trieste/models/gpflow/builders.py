@@ -489,6 +489,7 @@ def build_multifidelity_nonlinear_autoregressive_models(
     input_search_space: SearchSpace,
     kernel_base_class: Type[Stationary] = gpflow.kernels.Matern32,
     kernel_priors: bool = True,
+    trainable_likelihood: bool = False,
 ) -> Sequence[GaussianProcessRegression]:
     """
     Build models for training the trieste.models.gpflow.MultifidelityNonlinearAutoregressive` model
@@ -534,6 +535,7 @@ def build_multifidelity_nonlinear_autoregressive_models(
                 search_space=input_search_space,  # This isn't actually used when we pass a kernel
                 kernel=kernels[0],
                 likelihood_variance=1e-6,
+                trainable_likelihood=trainable_likelihood,
             )
         )
     ]
@@ -605,7 +607,7 @@ def _create_multifidelity_nonlinear_autoregressive_kernels(
                 tf.math.log(lengthscales), KERNEL_PRIOR_SCALE
             )
             scale_kernel.lengthscales.prior = tfp.distributions.LogNormal(
-                tf.math.log(scale_lengthscale), KERNEL_PRIOR_SCALE
+                tf.math.log( tf.cast(scale_lengthscale, dtype=gpflow.default_float())), KERNEL_PRIOR_SCALE
             )
 
         if add_prior_to_variance:
