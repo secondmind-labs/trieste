@@ -376,15 +376,8 @@ def _get_kernel(
     add_prior_to_lengthscale: bool,
     add_prior_to_variance: bool,
 ) -> gpflow.kernels.Kernel:
-    lengthscales = (
-        KERNEL_LENGTHSCALE
-        * (search_space.upper - search_space.lower)
-        * math.sqrt(search_space.dimension)
-    )
-    search_space_collapsed = tf.equal(search_space.upper, search_space.lower)
-    lengthscales = tf.where(
-        search_space_collapsed, tf.cast(1.0, dtype=gpflow.default_float()), lengthscales
-    )
+
+    lengthscales = _get_lengthscales(search_space)
 
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=lengthscales)
 
@@ -399,6 +392,17 @@ def _get_kernel(
 
     return kernel
 
+def _get_lengthscales(search_space: SearchSpace):
+    lengthscales = (
+        KERNEL_LENGTHSCALE
+        * (search_space.upper - search_space.lower)
+        * math.sqrt(search_space.dimension)
+    )
+    search_space_collapsed = tf.equal(search_space.upper, search_space.lower)
+    lengthscales = tf.where(
+        search_space_collapsed, tf.cast(1.0, dtype=gpflow.default_float()), lengthscales
+    )
+    return lengthscales
 
 def _get_mean_function(mean: TensorType) -> gpflow.mean_functions.MeanFunction:
     mean_function = gpflow.mean_functions.Constant(mean)
@@ -482,6 +486,7 @@ def build_multifidelity_nonlinear_autoregressive_models(
     num_fidelities: int,
     input_search_space: SearchSpace,
     kernel_base_class: Type[Stationary] = gpflow.kernels.Matern32,
+    kernel_priors: bool = True,
 ) -> Sequence[GaussianProcessRegression]:
     """
     Build models for training the trieste.models.gpflow.MultifidelityNonlinearAutoregressive` model
@@ -494,7 +499,11 @@ def build_multifidelity_nonlinear_autoregressive_models(
     models.
 
     :param dataset: The dataset to use to initialise the models
-    :param fidelities: The number of fidelities to model
+    :param num_fidelities: The number of fidelities to model
+    :param input_search_space: the search space, used to initialise the kernel parameters
+    :param kernel_base_class: a stationary kernel type
+    :param kernel_priors: If set to `True` (default) priors are set for kernel parameters (variance
+        and lengthscale).
     :return: gprs: A list containing gprs that can be used for the multifidelity model
     """
     # Split data into fidelities
@@ -507,7 +516,7 @@ def build_multifidelity_nonlinear_autoregressive_models(
 
     # Create kernels
     kernels = _create_multifidelity_nonlinear_autoregressive_kernels(
-        kernel_base_class, num_fidelities, input_dim
+        kernel_base_class, num_fidelities, input_dim, search_space, kernel_priors, kernel_priors
     )
 
     # Initialise low fidelity GP
@@ -561,14 +570,13 @@ def _validate_multifidelity_data_modellable(data: Sequence[Dataset], num_fidelit
 
 
 def _create_multifidelity_nonlinear_autoregressive_kernels(
-    kernel_base_class: Type[Stationary], n_fidelities: int, n_input_dims: int, ard: bool = False
+    kernel_base_class: Type[Stationary], n_fidelities: int, n_input_dims: int, search_space: SearchSpace,
+        add_prior_to_lengthscale: bool, add_prior_to_variance: bool,
 ) -> Sequence[Stationary]:
 
     dims = list(range(n_input_dims + 1))
-    if ard:
-        lengthscales = tf.ones([n_input_dims])
-    else:
-        lengthscales = 1.0
+    lengthscales = _get_lengthscales(search_space)
+
     scale_lengthscale = 1.0
     kernels = [kernel_base_class(lengthscales=lengthscales)]
 
@@ -576,6 +584,26 @@ def _create_multifidelity_nonlinear_autoregressive_kernels(
         interaction_kernel = kernel_base_class(lengthscales=lengthscales, active_dims=dims[:-1])
         scale_kernel = kernel_base_class(lengthscales=scale_lengthscale, active_dims=[dims[-1]])
         bias_kernel = kernel_base_class(lengthscales=lengthscales, active_dims=dims[:-1])
+        set_trainable(scale_kernel.variance, False)
+
+        if add_prior_to_lengthscale:
+            interaction_kernel.lengthscales.prior = tfp.distributions.LogNormal(
+                tf.math.log(lengthscales), KERNEL_PRIOR_SCALE
+            )
+            bias_kernel.lengthscales.prior = tfp.distributions.LogNormal(
+                tf.math.log(lengthscales), KERNEL_PRIOR_SCALE
+            )
+            scale_kernel.lengthscales.prior = tfp.distributions.LogNormal(
+                tf.math.log(scale_lengthscale), KERNEL_PRIOR_SCALE
+            )
+
+        if add_prior_to_variance:
+            interaction_kernel.variance.prior = tfp.distributions.LogNormal(
+                tf.cast(0.0, dtype=gpflow.default_float()), KERNEL_PRIOR_SCALE
+            )
+            bias_kernel.variance.prior = tfp.distributions.LogNormal(
+                tf.cast(0.0, dtype=gpflow.default_float()), KERNEL_PRIOR_SCALE
+            )
 
         kernels.append(interaction_kernel * scale_kernel + bias_kernel)
 
