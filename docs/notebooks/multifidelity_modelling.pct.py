@@ -48,9 +48,9 @@ tf.random.set_seed(1793)
 # Define the multifidelity simulator
 def simulator(x_input, fidelity, add_noise=False):
 
-    f = 0.5 * ((6.0 * x_input - 2.0) ** 2) * tf.math.sin(12.0 * x_input - 4.0) + 10.0 * (
-        x_input - 1.0
-    )
+    f = 0.5 * ((6.0 * x_input - 2.0) ** 2) * tf.math.sin(
+        12.0 * x_input - 4.0
+    ) + 10.0 * (x_input - 1.0)
     f = f + fidelity * (f - 20.0 * (x_input - 1.0))
     if add_noise:
         noise = tf.random.normal(f.shape, stddev=1e-1, dtype=f.dtype)
@@ -129,7 +129,9 @@ xs = [tf.linspace(0, 1, sample_sizes[0])[:, None]]
 # Take a subsample of each lower fidelity to sample at the next fidelity up
 for fidelity in range(1, n_fidelities):
     samples = tf.Variable(
-        np.random.choice(xs[fidelity - 1][:, 0], size=sample_sizes[fidelity], replace=False)
+        np.random.choice(
+            xs[fidelity - 1][:, 0], size=sample_sizes[fidelity], replace=False
+        )
     )[:, None]
     xs.append(samples)
 # Add fidelity columns to training data
@@ -163,7 +165,9 @@ from trieste.models.gpflow import (
 
 # Initialise model
 multifidelity_model = MultifidelityAutoregressive(
-    build_multifidelity_autoregressive_models(initial_data, n_fidelities, input_search_space)
+    build_multifidelity_autoregressive_models(
+        initial_data, n_fidelities, input_search_space
+    )
 )
 
 # Update and optimize model
@@ -187,9 +191,24 @@ gt_colors = ["tab:red", "tab:purple", "tab:brown"]
 
 for fidelity, prediction in enumerate(predictions):
     mean, var = prediction
-    ax.plot(X, mean, label=f"Predicted fidelity {fidelity}", color=pred_colors[fidelity])
-    ax.plot(X, mean + 1.96 * tf.math.sqrt(var), alpha=0.2, color=pred_colors[fidelity])
-    ax.plot(X, mean - 1.96 * tf.math.sqrt(var), alpha=0.2, color=pred_colors[fidelity])
+    ax.plot(
+        X,
+        mean,
+        label=f"Predicted fidelity {fidelity}",
+        color=pred_colors[fidelity],
+    )
+    ax.plot(
+        X,
+        mean + 1.96 * tf.math.sqrt(var),
+        alpha=0.2,
+        color=pred_colors[fidelity],
+    )
+    ax.plot(
+        X,
+        mean - 1.96 * tf.math.sqrt(var),
+        alpha=0.2,
+        color=pred_colors[fidelity],
+    )
     ax.plot(
         X,
         observer(X_list[fidelity], add_noise=False).observations,
@@ -256,7 +275,9 @@ ax.plot(
 )
 
 # Scatter the data
-ax.scatter(hf_data.query_points, hf_data.observations, label=f"Data", color="tab:green")
+ax.scatter(
+    hf_data.query_points, hf_data.observations, label=f"Data", color="tab:green"
+)
 plt.legend()
 plt.show()
 

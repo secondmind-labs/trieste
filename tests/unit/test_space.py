@@ -976,10 +976,8 @@ def test_product_space_handles_empty_spaces() -> None:
 
 def _nlc_func(x: TensorType) -> TensorType:
     c0 = x[..., 0] - tf.sin(x[..., 1])
-    c1 = x[..., 0] - tf.cos(x[..., 1])
     c0 = tf.expand_dims(c0, axis=-1)
-    c1 = tf.expand_dims(c1, axis=-1)
-    return tf.concat([c0, c1], axis=-1)
+    return c0
 
 
 @pytest.mark.parametrize(
@@ -1083,7 +1081,9 @@ def test_linear_constraints_residual() -> None:
 
 def test_nonlinear_constraints_residual() -> None:
     points = tf.constant([[-1.0, 0.4], [-1.0, 0.6], [0.0, 0.4]])
-    nlc = NonlinearConstraint(lambda x: x[..., 0] - tf.math.sin(x[..., 1]), -1.4, 1.9)
+    nlc = NonlinearConstraint(
+        lambda x: tf.expand_dims(x[..., 0] - tf.math.sin(x[..., 1]), -1), -1.4, 1.9
+    )
     got = nlc.residual(points)
     expected = tf.constant(
         [[0.01058163, 3.28941832], [-0.1646425, 3.46464245], [1.01058163, 2.28941832]]
@@ -1101,7 +1101,7 @@ def test_nonlinear_constraints_residual() -> None:
                     lb=tf.constant([-0.4, 0.15, 0.2]),
                     ub=tf.constant([0.6, 0.9, 0.9]),
                 ),
-                NonlinearConstraint(_nlc_func, tf.constant([-1.0, -0.8]), tf.constant([0.0, 0.0])),
+                NonlinearConstraint(_nlc_func, tf.constant(-1.0), tf.constant(0.0)),
                 LinearConstraint(A=tf.eye(2), lb=tf.zeros((2)), ub=tf.ones((2))),
             ],
             tf.constant([[0.820, 0.057], [0.3, 0.4], [0.582, 0.447], [0.15, 0.75]]),
@@ -1123,9 +1123,7 @@ def test_box_constraints_residuals_and_feasibility(
                 0.07999998,
                 0.843,
                 1.7630308,
-                0.62162405,
                 -0.7630308,
-                0.17837596,
                 0.82,
                 0.057,
                 0.18,
@@ -1139,9 +1137,7 @@ def test_box_constraints_residuals_and_feasibility(
                 0.59999996,
                 0.49999997,
                 0.9105817,
-                0.17893904,
                 0.08941832,
-                0.62106097,
                 0.3,
                 0.4,
                 0.7,
@@ -1155,9 +1151,7 @@ def test_box_constraints_residuals_and_feasibility(
                 0.31799996,
                 0.45299998,
                 1.1497378,
-                0.4802521,
                 -0.14973778,
-                0.31974792,
                 0.582,
                 0.447,
                 0.41799998,
@@ -1171,9 +1165,7 @@ def test_box_constraints_residuals_and_feasibility(
                 0.75,
                 0.14999998,
                 0.46836126,
-                0.21831113,
                 0.53163874,
-                0.5816889,
                 0.15,
                 0.75,
                 0.85,
@@ -1181,6 +1173,7 @@ def test_box_constraints_residuals_and_feasibility(
             ],
         ]
     )
+    print(got)
 
     npt.assert_array_equal(expected, got)
     npt.assert_array_equal(tf.constant([False, True, False, True]), space.is_feasible(points))
@@ -1194,3 +1187,14 @@ def test_discrete_search_space_raises_if_has_constraints() -> None:
     )
     with pytest.raises(NotImplementedError):
         _ = space.discretize(2)
+
+
+def test_nonlinear_constraints_multioutput_raises() -> None:
+    points = tf.constant([[-1.0, 0.4], [-1.0, 0.6], [0.0, 0.4]])
+    nlc = NonlinearConstraint(
+        lambda x: tf.broadcast_to(tf.expand_dims(x[..., 0] - x[..., 1], -1), (x.shape[0], 2)),
+        -1.4,
+        1.9,
+    )
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        nlc.residual(points)

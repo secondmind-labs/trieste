@@ -30,7 +30,7 @@ from trieste.models import ProbabilisticModel
 from trieste.objectives import Branin, Hartmann6
 from trieste.objectives.utils import mk_observer
 from trieste.space import SearchSpace
-from trieste.types import TensorType
+from trieste.types import Tag, TensorType
 from trieste.utils import shapes_equal
 
 TF_DEBUGGING_ERROR_TYPES: Final[tuple[type[Exception], ...]] = (
@@ -179,8 +179,8 @@ class FixedAcquisitionRule(AcquisitionRule[TensorType, SearchSpace, Probabilisti
     def acquire(
         self,
         search_space: SearchSpace,
-        models: Mapping[str, ProbabilisticModel],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModel],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> TensorType:
         """
         :param search_space: Unused.

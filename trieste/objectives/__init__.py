@@ -21,6 +21,7 @@ from .multi_objectives import DTLZ1, DTLZ2, VLMOP2, MultiObjectiveTestProblem
 from .single_objectives import (
     Ackley5,
     Branin,
+    ConstrainedScaledBranin,
     GramacyLee,
     Hartmann3,
     Hartmann6,
