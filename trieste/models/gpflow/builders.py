@@ -607,7 +607,8 @@ def _create_multifidelity_nonlinear_autoregressive_kernels(
                 tf.math.log(lengthscales), KERNEL_PRIOR_SCALE
             )
             scale_kernel.lengthscales.prior = tfp.distributions.LogNormal(
-                tf.math.log( tf.cast(scale_lengthscale, dtype=gpflow.default_float())), KERNEL_PRIOR_SCALE
+                tf.math.log(tf.cast(scale_lengthscale, dtype=gpflow.default_float())),
+                KERNEL_PRIOR_SCALE,
             )
 
         if add_prior_to_variance:
