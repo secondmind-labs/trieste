@@ -392,6 +392,7 @@ def _get_kernel(
 
     return kernel
 
+
 def _get_lengthscales(search_space: SearchSpace):
     lengthscales = (
         KERNEL_LENGTHSCALE
@@ -403,6 +404,7 @@ def _get_lengthscales(search_space: SearchSpace):
         search_space_collapsed, tf.cast(1.0, dtype=gpflow.default_float()), lengthscales
     )
     return lengthscales
+
 
 def _get_mean_function(mean: TensorType) -> gpflow.mean_functions.MeanFunction:
     mean_function = gpflow.mean_functions.Constant(mean)
@@ -516,7 +518,12 @@ def build_multifidelity_nonlinear_autoregressive_models(
 
     # Create kernels
     kernels = _create_multifidelity_nonlinear_autoregressive_kernels(
-        kernel_base_class, num_fidelities, input_dim, search_space, kernel_priors, kernel_priors
+        kernel_base_class,
+        num_fidelities,
+        input_dim,
+        input_search_space,
+        kernel_priors,
+        kernel_priors,
     )
 
     # Initialise low fidelity GP
@@ -570,8 +577,12 @@ def _validate_multifidelity_data_modellable(data: Sequence[Dataset], num_fidelit
 
 
 def _create_multifidelity_nonlinear_autoregressive_kernels(
-    kernel_base_class: Type[Stationary], n_fidelities: int, n_input_dims: int, search_space: SearchSpace,
-        add_prior_to_lengthscale: bool, add_prior_to_variance: bool,
+    kernel_base_class: Type[Stationary],
+    n_fidelities: int,
+    n_input_dims: int,
+    search_space: SearchSpace,
+    add_prior_to_lengthscale: bool,
+    add_prior_to_variance: bool,
 ) -> Sequence[Stationary]:
 
     dims = list(range(n_input_dims + 1))
@@ -584,7 +595,7 @@ def _create_multifidelity_nonlinear_autoregressive_kernels(
         interaction_kernel = kernel_base_class(lengthscales=lengthscales, active_dims=dims[:-1])
         scale_kernel = kernel_base_class(lengthscales=scale_lengthscale, active_dims=[dims[-1]])
         bias_kernel = kernel_base_class(lengthscales=lengthscales, active_dims=dims[:-1])
-        set_trainable(scale_kernel.variance, False)
+        gpflow.set_trainable(scale_kernel.variance, False)
 
         if add_prior_to_lengthscale:
             interaction_kernel.lengthscales.prior = tfp.distributions.LogNormal(
