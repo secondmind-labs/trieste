@@ -11,7 +11,7 @@
 #     language: python
 #     name: python3
 # ---
-
+import gpflow.kernels
 # %% [markdown]
 # # Multifidelity Modelling with Autoregressive Model
 #
@@ -46,7 +46,7 @@ tf.random.set_seed(1793)
 
 # %%
 # Define the multifidelity simulator
-def simulator(x_input, fidelity, add_noise=False):
+def linear_simulator(x_input, fidelity, add_noise=False):
 
     f = 0.5 * ((6.0 * x_input - 2.0) ** 2) * tf.math.sin(
         12.0 * x_input - 4.0
@@ -63,9 +63,9 @@ def simulator(x_input, fidelity, add_noise=False):
 # Plot the fidelities
 x = np.linspace(0, 1, 400)
 
-y0 = simulator(x, 0)
-y1 = simulator(x, 1)
-y2 = simulator(x, 2)
+y0 = linear_simulator(x, 0)
+y1 = linear_simulator(x, 1)
+y2 = linear_simulator(x, 2)
 
 plt.plot(y0, label="Fidelity 0")
 plt.plot(y1, label="Fidelity 1")
@@ -82,7 +82,7 @@ from trieste.data import Dataset, check_and_extract_fidelity_query_points
 
 # Create an observer class to deal with multifidelity input query points
 class Observer:
-    def __init__(self):
+    def __init__(self, simulator):
 
         self.simulator = simulator
 
@@ -98,7 +98,7 @@ class Observer:
 
 
 # Instantiate the observer
-observer = Observer()
+observer = Observer(linear_simulator)
 
 # %% [markdown]
 # Now we can define the other parameters of our problem, such as the input dimension, search space and number of fidelities.
@@ -153,6 +153,9 @@ plt.scatter(data[1].query_points, data[1].observations, label="Fidelity 1")
 plt.scatter(data[2].query_points, data[2].observations, label="Fidelity 2")
 plt.legend()
 plt.show()
+
+# %% [markdown]
+# ## Fit AR(1) model
 
 # %% [markdown]
 # Now we can fit the `MultifidelityAutoregressive` model to this data. We use the `build_multifidelity_autoregressive_models` to create the sub-models required by the multifidelity model.
@@ -284,3 +287,109 @@ plt.show()
 
 # %% [markdown]
 # It's clear that there is a large benefit to being able to make use of the low fidelity data, and this is particularly noticable in the greatly reduced confidence intervals.
+
+# %% [markdown]
+# ## A more complex model for non-linear problems
+
+# %% [markdown]
+# A more complex multifidelity model (NARGP, here `MultifidelityNonlinearAutoregressive`), originally proposed in :cite:`perdikaris2017nonlinear` is also available, to tackle the case where the relation between fidelities is strongly non-linear.
+#
+# We start by defining a new multi-fidelity problem, with two fidelities, for $x \in [0,1]$:
+#
+# $$ f_0(x) = \sin(8 \pi x) $$
+#
+#
+# $$ f_1(x) = x - \sqrt{2} \times f_0(x)^2 $$
+#
+# Contrary to the previous case, the high-fidelity level follows the square of the low-fidelity one. As the low fidelity values oscillate between positive and negative ones, it makes inferring this relationship particularly difficult for the AR(1) model, as we see below.
+#
+# As previously, we create an observer, and some initial data.
+# %%
+def nonlinear_simulator(x_input, fidelity, add_noise):
+    bad_fidelities = tf.math.logical_and(fidelity != 0, fidelity != 1)
+    if tf.math.count_nonzero(bad_fidelities) > 0:
+        raise ValueError("Nonlinear simulator only supports 2 fidelities (0 and 1)")
+    else:
+        f = tf.math.sin(8 * np.pi * x_input)
+        fh = (x_input - tf.sqrt(tf.Variable(2.0, dtype=tf.float64))) * tf.square(f)
+        f = tf.where(fidelity > 0, fh, f)
+
+        if add_noise:
+            f += tf.random.normal(f.shape, stddev=1e-2, dtype=f.dtype)
+
+        return f
+
+observation_noise = True
+observer = Observer(nonlinear_simulator)
+
+n_fidelities = 2
+sample_sizes = [50, 14]
+
+xs = [tf.linspace(0, 1, sample_sizes[0])[:, None]]
+xh = tf.Variable(np.random.choice(xs[0][:, 0], size=sample_sizes[1], replace=False))[:, None]
+xs.append(xh)
+
+initial_samples_list = [tf.concat([x, tf.ones_like(x) * i], 1) for i, x in enumerate(xs)]
+initial_sample = tf.concat(initial_samples_list, 0)
+initial_data = observer(initial_sample, add_noise=observation_noise)
+
+
+# %% [markdown]
+# We create an AR(1) model as before, and use the `build_multifidelity_nonlinear_autoregressive_models` to create the NARGP. We then train both model on the same data.
+
+# %%
+from trieste.models.gpflow import (
+    MultifidelityNonlinearAutoregressive,
+    build_multifidelity_nonlinear_autoregressive_models,
+)
+
+ar1 = MultifidelityAutoregressive(
+    build_multifidelity_autoregressive_models(initial_data, n_fidelities, input_search_space)
+)
+nargp = MultifidelityNonlinearAutoregressive(
+    build_multifidelity_nonlinear_autoregressive_models(initial_data, n_fidelities, input_search_space)
+)
+
+ar1.update(initial_data)
+ar1.optimize(initial_data)
+
+nargp.update(initial_data)
+nargp.optimize(initial_data)
+
+# %% [markdown]
+# Now we can plot the two model predictions.
+
+# %%
+
+data = split_dataset_by_fidelity(initial_data, n_fidelities)
+
+X = tf.linspace(0, 1, 200)[:, None]
+X_list = [tf.concat([X, tf.ones_like(X) * i], 1) for i in range(n_fidelities)]
+predictions_ar1 = [ar1.predict(x) for x in X_list]
+predictions_nargp = [nargp.predict(x) for x in X_list]
+fig, ax = plt.subplots(2, 1, figsize=(10, 7))
+for ax_id, model_predictions in enumerate([predictions_ar1, predictions_nargp]):
+    for fidelity, prediction in enumerate(model_predictions):
+        mean, var = prediction
+        ax[ax_id].plot(X, mean, label=f"Predicted fidelity {fidelity}")
+        ax[ax_id].plot(X, mean + 1.96 * tf.math.sqrt(var), alpha=0.2)
+        ax[ax_id].plot(X, mean - 1.96 * tf.math.sqrt(var), alpha=0.2)
+        ax[ax_id].plot(
+            X,
+            observer(X_list[fidelity], add_noise=False).observations,
+            label=f"True fidelity {fidelity}",
+        )
+        ax[ax_id].scatter(
+            data[fidelity].query_points,
+            data[fidelity].observations,
+            label=f"fidelity {fidelity} data",
+        )
+        ax[ax_id].title.set_text("MultifidelityAutoregressive" if ax_id == 0 else "NARGP")
+    ax[ax_id].legend(loc="center left", bbox_to_anchor=(1, 0.5))
+fig.suptitle("Non-Linear Problem")
+plt.show()
+
+# %% [markdown]
+# The AR(1) model is incapable of using the lower fidelity data and its prediction for the high fidelity level simply returns to the prior when there is no high-fidelity data. In contrast, the NARGP model clearly captures the non-linear relashionship and is able to predict accurately the high-fideility level everywhere.
+
+# %%

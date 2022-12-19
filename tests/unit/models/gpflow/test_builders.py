@@ -41,6 +41,7 @@ from trieste.models.gpflow.builders import (
     _get_data_stats,
     build_gpr,
     build_multifidelity_autoregressive_models,
+    build_multifidelity_nonlinear_autoregressive_models,
     build_sgpr,
     build_svgp,
     build_vgp_classifier,
@@ -315,7 +316,8 @@ def test_builder_returns_correct_lengthscales_for_unequal_discrete_bounds(
     npt.assert_allclose(model.kernel.lengthscales, expected_lengthscales, rtol=1e-6)
 
 
-def test_build_multifidelity_autoregressive_models_builds_correct_n_gprs() -> None:
+@pytest.mark.parametrize("model_type", ("linear", "nonlinear"))
+def test_build_multifidelity_builds_correct_n_gprs(model_type: str) -> None:
 
     dataset = Dataset(
         tf.Variable(
@@ -326,14 +328,18 @@ def test_build_multifidelity_autoregressive_models_builds_correct_n_gprs() -> No
     )
     search_space = Box([0.0], [10.0])
 
-    gprs = build_multifidelity_autoregressive_models(dataset, 3, search_space)
+    if model_type == "linear":
+        gprs = build_multifidelity_autoregressive_models(dataset, 3, search_space)
+    else:
+        gprs = build_multifidelity_nonlinear_autoregressive_models(dataset, 3, search_space)
 
     assert len(gprs) == 3
     for gpr in gprs:
         assert isinstance(gpr, GaussianProcessRegression)
 
 
-def test_build_multifidelity_autoregressive_models_raises_for_bad_fidelity() -> None:
+@pytest.mark.parametrize("model_type", ("linear", "nonlinear"))
+def test_build_multifidelity_raises_for_bad_fidelity(model_type: str) -> None:
 
     dataset = Dataset(
         tf.Variable(
@@ -344,7 +350,10 @@ def test_build_multifidelity_autoregressive_models_raises_for_bad_fidelity() -> 
     )
     search_space = Box([0.0], [10.0])
     with pytest.raises(ValueError):
-        build_multifidelity_autoregressive_models(dataset, -1, search_space)
+        if model_type == "linear":
+            build_multifidelity_autoregressive_models(dataset, -1, search_space)
+        else:
+            build_multifidelity_nonlinear_autoregressive_models(dataset, -1, search_space)
 
 
 @pytest.mark.parametrize(
@@ -364,8 +373,9 @@ def test_build_multifidelity_autoregressive_models_raises_for_bad_fidelity() -> 
         ),
     ),
 )
-def test_build_multifidelity_autoregressive_models_raises_not_enough_datapoints(
-    query_points: TensorType, observations: TensorType
+@pytest.mark.parametrize("model_type", ("linear", "nonlinear"))
+def test_build_multifidelity_raises_not_enough_datapoints(
+    query_points: TensorType, observations: TensorType, model_type: str
 ) -> None:
 
     dataset = Dataset(
@@ -378,10 +388,16 @@ def test_build_multifidelity_autoregressive_models_raises_not_enough_datapoints(
     search_space = Box([0.0], [10.0])
 
     with pytest.raises(ValueError):
-        build_multifidelity_autoregressive_models(dataset, 3, search_space)
+        if model_type == "linear":
+            build_multifidelity_autoregressive_models(dataset, 3, search_space)
+        else:
+            build_multifidelity_nonlinear_autoregressive_models(dataset, 3, search_space)
 
 
-def test_build_multifidelity_autoregressive_models_raises_not_multifidelity_data() -> None:
+@pytest.mark.parametrize("model_type", ("linear", "nonlinear"))
+def test_build_multifidelity_raises_not_multifidelity_data(
+    model_type: str,
+) -> None:
 
     dataset = Dataset(
         tf.Variable(
@@ -393,7 +409,10 @@ def test_build_multifidelity_autoregressive_models_raises_not_multifidelity_data
     search_space = Box([0.0], [10.0])
 
     with pytest.raises(ValueError):
-        build_multifidelity_autoregressive_models(dataset, 3, search_space)
+        if model_type == "linear":
+            build_multifidelity_autoregressive_models(dataset, 3, search_space)
+        else:
+            build_multifidelity_nonlinear_autoregressive_models(dataset, 3, search_space)
 
 
 def _check_likelihood(
