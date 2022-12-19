@@ -393,7 +393,7 @@ def _get_kernel(
     return kernel
 
 
-def _get_lengthscales(search_space: SearchSpace):
+def _get_lengthscales(search_space: SearchSpace) -> TensorType:
     lengthscales = (
         KERNEL_LENGTHSCALE
         * (search_space.upper - search_space.lower)
