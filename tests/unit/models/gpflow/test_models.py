@@ -1668,7 +1668,7 @@ def multifidelity_nonlinear_autoregressive_model(
     n_dims: int,
 ) -> MultifidelityNonlinearAutoregressive:
 
-    search_space = Box([0.0], [10.0])
+    search_space = Box([0.0] * n_dims, [10.0] * n_dims)
     gprs = build_multifidelity_nonlinear_autoregressive_models(
         multifidelity_autoregressive_nd_dataset(n_dims=n_dims),
         num_fidelities=3,
