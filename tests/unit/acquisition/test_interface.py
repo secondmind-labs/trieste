@@ -178,12 +178,13 @@ def test_custom_dataset_mapping() -> None:
             models: Mapping[Tag, ProbabilisticModel],
             datasets: Optional[Mapping[Tag, Dataset]] = None,
         ) -> AcquisitionFunction:
+            assert datasets is not None
             assert len(datasets) == 1
             assert set(datasets) == {OBJECTIVE}
             assert len(datasets[OBJECTIVE]) == 0
             assert "FOO" not in datasets
             assert isinstance(datasets, CustomDatasets)
-            assert cast(CustomDatasets, datasets).iteration_id == 2
+            assert datasets.iteration_id == 2
             return raise_exc
 
     data = CustomDatasets({OBJECTIVE: empty_dataset([1], [1])}, 2)

@@ -79,7 +79,9 @@ class Sim:
     def constraint(input_data):
         # `fast_constraints_feasibility` returns the feasibility, so we invert it. The plotting
         # function masks out values above the threshold.
-        return 1.0 - fast_constraints_feasibility(constrained_search_space)(input_data)
+        return 1.0 - fast_constraints_feasibility(constrained_search_space)(
+            input_data
+        )
 
 
 plot_objective_and_constraints(constrained_search_space, Sim)
@@ -92,13 +94,23 @@ plt.show()
 from trieste.experimental.plotting import plot_function_2d
 
 [xi, xj] = np.meshgrid(
-    np.linspace(constrained_search_space.lower[0], constrained_search_space.upper[0], 100),
-    np.linspace(constrained_search_space.lower[1], constrained_search_space.upper[1], 100),
+    np.linspace(
+        constrained_search_space.lower[0],
+        constrained_search_space.upper[0],
+        100,
+    ),
+    np.linspace(
+        constrained_search_space.lower[1],
+        constrained_search_space.upper[1],
+        100,
+    ),
 )
 xplot = np.vstack(
     (xi.ravel(), xj.ravel())
 ).T  # Change our input grid to list of coordinates.
-constraint_values = np.reshape(constrained_search_space.is_feasible(xplot), xi.shape)
+constraint_values = np.reshape(
+    constrained_search_space.is_feasible(xplot), xi.shape
+)
 
 _, ax = plot_function_2d(
     ScaledBranin.objective,
@@ -140,7 +152,9 @@ plt.show()
 # %%
 from trieste.models.gpflow import GaussianProcessRegression, build_gpr
 
-gpflow_model = build_gpr(initial_data, constrained_search_space, likelihood_variance=1e-7)
+gpflow_model = build_gpr(
+    initial_data, constrained_search_space, likelihood_variance=1e-7
+)
 model = GaussianProcessRegression(gpflow_model)
 
 
@@ -164,7 +178,9 @@ rule = EfficientGlobalOptimization(ei)  # type: ignore
 # We can now run the optimization loop. As the search space contains constraints, the optimizer will automatically switch to using _scipy_ _trust-constr_ (trust region) method to optimize the acquisition function.
 
 # %%
-bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, constrained_search_space)
+bo = trieste.bayesian_optimizer.BayesianOptimizer(
+    observer, constrained_search_space
+)
 
 result = bo.optimize(15, initial_data, model, acquisition_rule=rule)
 
@@ -201,11 +217,21 @@ def plot_bo_results():
     )
 
     plot_bo_points(
-        query_points, ax[0, 0], num_initial_points, arg_min_idx, c_pass="green", c_best="purple"
+        query_points,
+        ax[0, 0],
+        num_initial_points,
+        arg_min_idx,
+        c_pass="green",
+        c_best="purple",
     )
 
     ax[0, 0].contourf(
-        xi, xj, constraint_values, levels=1, colors=[(0.2, 0.2, 0.2, 0.7), (1, 1, 1, 0)], zorder=2
+        xi,
+        xj,
+        constraint_values,
+        levels=1,
+        colors=[(0.2, 0.2, 0.2, 0.7), (1, 1, 1, 0)],
+        zorder=2,
     )
 
     ax[0, 0].set_xlabel(r"$x_1$")
@@ -227,11 +253,16 @@ plot_bo_results()
 # Note: this method penalises the expected improvement acquisition outside the feasible region. The optimizer uses the default _scipy_ _L-BFGS-B_ method to find the max of the acquistion function.
 
 # %%
-from trieste.acquisition.function import ExpectedConstrainedImprovement, FastConstraintsFeasibility
+from trieste.acquisition.function import (
+    ExpectedConstrainedImprovement,
+    FastConstraintsFeasibility,
+)
 from trieste.acquisition.rule import EfficientGlobalOptimization
 from trieste.observer import OBJECTIVE
 
-feas = FastConstraintsFeasibility(constrained_search_space)  # Search space with constraints.
+feas = FastConstraintsFeasibility(
+    constrained_search_space
+)  # Search space with constraints.
 eci = ExpectedConstrainedImprovement(OBJECTIVE, feas.using(OBJECTIVE))
 
 rule = EfficientGlobalOptimization(eci)
@@ -243,7 +274,9 @@ rule = EfficientGlobalOptimization(eci)
 
 # %%
 # Note: use the search space without constraints for the penalty method.
-bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, unconstrained_search_space)
+bo = trieste.bayesian_optimizer.BayesianOptimizer(
+    observer, unconstrained_search_space
+)
 
 result = bo.optimize(15, initial_data, model, acquisition_rule=rule)
 
