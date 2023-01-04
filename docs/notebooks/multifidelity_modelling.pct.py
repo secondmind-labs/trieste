@@ -12,6 +12,7 @@
 #     name: python3
 # ---
 import gpflow.kernels
+
 # %% [markdown]
 # # Multifidelity Modelling with Autoregressive Model
 #
@@ -308,16 +309,21 @@ plt.show()
 def nonlinear_simulator(x_input, fidelity, add_noise):
     bad_fidelities = tf.math.logical_and(fidelity != 0, fidelity != 1)
     if tf.math.count_nonzero(bad_fidelities) > 0:
-        raise ValueError("Nonlinear simulator only supports 2 fidelities (0 and 1)")
+        raise ValueError(
+            "Nonlinear simulator only supports 2 fidelities (0 and 1)"
+        )
     else:
         f = tf.math.sin(8 * np.pi * x_input)
-        fh = (x_input - tf.sqrt(tf.Variable(2.0, dtype=tf.float64))) * tf.square(f)
+        fh = (
+            x_input - tf.sqrt(tf.Variable(2.0, dtype=tf.float64))
+        ) * tf.square(f)
         f = tf.where(fidelity > 0, fh, f)
 
         if add_noise:
             f += tf.random.normal(f.shape, stddev=1e-2, dtype=f.dtype)
 
         return f
+
 
 observation_noise = True
 observer = Observer(nonlinear_simulator)
@@ -326,10 +332,14 @@ n_fidelities = 2
 sample_sizes = [50, 14]
 
 xs = [tf.linspace(0, 1, sample_sizes[0])[:, None]]
-xh = tf.Variable(np.random.choice(xs[0][:, 0], size=sample_sizes[1], replace=False))[:, None]
+xh = tf.Variable(
+    np.random.choice(xs[0][:, 0], size=sample_sizes[1], replace=False)
+)[:, None]
 xs.append(xh)
 
-initial_samples_list = [tf.concat([x, tf.ones_like(x) * i], 1) for i, x in enumerate(xs)]
+initial_samples_list = [
+    tf.concat([x, tf.ones_like(x) * i], 1) for i, x in enumerate(xs)
+]
 initial_sample = tf.concat(initial_samples_list, 0)
 initial_data = observer(initial_sample, add_noise=observation_noise)
 
@@ -344,10 +354,14 @@ from trieste.models.gpflow import (
 )
 
 ar1 = MultifidelityAutoregressive(
-    build_multifidelity_autoregressive_models(initial_data, n_fidelities, input_search_space)
+    build_multifidelity_autoregressive_models(
+        initial_data, n_fidelities, input_search_space
+    )
 )
 nargp = MultifidelityNonlinearAutoregressive(
-    build_multifidelity_nonlinear_autoregressive_models(initial_data, n_fidelities, input_search_space)
+    build_multifidelity_nonlinear_autoregressive_models(
+        initial_data, n_fidelities, input_search_space
+    )
 )
 
 ar1.update(initial_data)
@@ -384,7 +398,9 @@ for ax_id, model_predictions in enumerate([predictions_ar1, predictions_nargp]):
             data[fidelity].observations,
             label=f"fidelity {fidelity} data",
         )
-        ax[ax_id].title.set_text("MultifidelityAutoregressive" if ax_id == 0 else "NARGP")
+        ax[ax_id].title.set_text(
+            "MultifidelityAutoregressive" if ax_id == 0 else "NARGP"
+        )
     ax[ax_id].legend(loc="center left", bbox_to_anchor=(1, 0.5))
 fig.suptitle("Non-Linear Problem")
 plt.show()
