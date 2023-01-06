@@ -36,6 +36,7 @@ from trieste.models.gpflow.inducing_point_selectors import (
     RandomSubSampleInducingPointSelector,
     UniformInducingPointSelector,
     ConditionalVarianceReduction,
+    ConditionalImprovementReduction,
 )
 from trieste.space import Box, SearchSpace
 
@@ -44,9 +45,10 @@ from trieste.space import Box, SearchSpace
     "selector",
     [
         UniformInducingPointSelector(Box([0.0], [1.0])),
-        RandomSubSampleInducingPointSelector(Box([0.0], [1.0])),
-        KMeansInducingPointSelector(Box([0.0], [1.0])),
-        ConditionalVarianceReduction(Box([0.0], [1.0])),
+        RandomSubSampleInducingPointSelector(),
+        KMeansInducingPointSelector(),
+        ConditionalVarianceReduction(),
+        ConditionalImprovementReduction(),
     ],
 )
 def test_inducing_point_selectors_raise_if_more_than_one_set_of_inducing_points(
@@ -65,9 +67,10 @@ def test_inducing_point_selectors_raise_if_more_than_one_set_of_inducing_points(
     "selector",
     [
         UniformInducingPointSelector(Box([0.0], [1.0])),
-        RandomSubSampleInducingPointSelector(Box([0.0], [1.0])),
-        KMeansInducingPointSelector(Box([0.0], [1.0])),
-        ConditionalVarianceReduction(Box([0.0], [1.0])),
+        RandomSubSampleInducingPointSelector(),
+        KMeansInducingPointSelector(),
+        ConditionalVarianceReduction(),
+        ConditionalImprovementReduction(),
     ],
 )
 def test_inducing_point_selectors_returns_correctly_shaped_inducing_points(
@@ -90,22 +93,24 @@ def test_inducing_point_selectors_returns_correctly_shaped_inducing_points(
     "selector",
     [
         UniformInducingPointSelector(Box([0.0, -1.0], [1.0, 0.0])),
-        RandomSubSampleInducingPointSelector(Box([0.0, -1.0], [1.0, 0.0])),
-        KMeansInducingPointSelector(Box([0.0, -1.0], [1.0, 0.0])),
-        ConditionalVarianceReduction(Box([0.0, -1.0], [1.0, 0.0])),
+        RandomSubSampleInducingPointSelector(),
+        KMeansInducingPointSelector(),
+        ConditionalVarianceReduction(),
+        ConditionalImprovementReduction(),
     ],
 )
 def test_inducing_point_selectors_choose_points_still_in_space(
     selector: InducingPointSelector[SparseVariational],
 ) -> None:
+    search_space = Box([0.0, -1.0], [1.0, 0.0])
     X = tf.constant([[0.01, -0.99], [0.99, -0.01]], dtype=tf.float64)
     Y = fnc_3x_plus_10(X)
     dataset = Dataset(X, Y)
     svgp = svgp_model(X, Y)
     model = SparseVariational(svgp)
-    inducing_points = selector._search_space.sample(10)
+    inducing_points = search_space.sample(10)
     new_inducing_points = selector.calculate_inducing_points(inducing_points, model, dataset)
-    assert tf.reduce_all([point in selector._search_space for point in new_inducing_points])
+    assert tf.reduce_all([point in search_space for point in new_inducing_points])
 
 
 @random_seed
@@ -115,7 +120,8 @@ def test_inducing_point_selectors_choose_points_still_in_space(
         UniformInducingPointSelector,
         RandomSubSampleInducingPointSelector,
         KMeansInducingPointSelector,
-        ConditionalVarianceReduction
+        ConditionalVarianceReduction,
+        ConditionalImprovementReduction,
     ],
 )
 @pytest.mark.parametrize("recalc_every_model_update", [True, False])
@@ -123,7 +129,10 @@ def test_inducing_point_selectors_update_correct_number_of_times(
     selector_name: Callable[[SearchSpace, bool], InducingPointSelector[SparseVariational]],
     recalc_every_model_update: bool,
 ) -> None:
-    selector = selector_name(Box([0.0], [1.0]), recalc_every_model_update)
+    if selector_name==UniformInducingPointSelector:
+        selector = selector_name(Box([0.0], [1.0]), recalc_every_model_update)
+    else:
+        selector = selector_name(recalc_every_model_update)
     dataset = Dataset(*mock_data())
     svgp = svgp_model(*mock_data())
     model = SparseVariational(svgp)

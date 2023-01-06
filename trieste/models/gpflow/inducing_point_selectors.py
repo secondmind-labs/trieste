@@ -19,14 +19,14 @@ of sparse variational Gaussian processes (i.e. our :class:`SparseVariational` wr
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Generic
+from typing import Generic, Callable
 
 import tensorflow as tf
 from scipy.cluster.vq import kmeans
 import gpflow
 
 from ...data import Dataset
-from ...space import Box, SearchSpace
+from ...space import Box, SearchSpace, DiscreteSearchSpace
 from ...types import TensorType
 from ..interfaces import ProbabilisticModel, ProbabilisticModelType
 
@@ -45,14 +45,11 @@ class InducingPointSelector(ABC, Generic[ProbabilisticModelType]):
     our :class:`InducingPointSelectors`.
     """
 
-    def __init__(self, search_space: SearchSpace, recalc_every_model_update: bool = True):
+    def __init__(self, recalc_every_model_update: bool = True):
         """
-        :param search_space: The global search space over which the optimization is defined.
         :param recalc_every_model_update: If True then recalculate the inducing points for each
             model update, otherwise just recalculate on the first call.
         """
-
-        self._search_space = search_space
         self._recalc_every_model_update = recalc_every_model_update
         self._initialized = False
 
@@ -115,6 +112,19 @@ class UniformInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
     An :class:`InducingPointSelector` that chooses points sampled uniformly across the search space.
     """
 
+    def __init__(self, 
+        search_space: SearchSpace, 
+        recalc_every_model_update: bool = True
+        ):
+        """
+        :param search_space: The global search space over which the optimization is defined.
+        :param recalc_every_model_update: If True then recalculate the inducing points for each
+            model update, otherwise just recalculate on the first call.
+        """
+        super().__init__(recalc_every_model_update)
+        self._search_space = search_space
+
+
     def _recalculate_inducing_points(
         self, M: int, model: ProbabilisticModel, dataset: Dataset
     ) -> TensorType:
@@ -161,7 +171,13 @@ class RandomSubSampleInducingPointSelector(InducingPointSelector[ProbabilisticMo
         sub_sample = shuffled_query_points[: tf.math.minimum(N, M), :]
 
         if N < M:  # if fewer data than inducing points then sample remaining uniformly
-            uniform_sampler = UniformInducingPointSelector(self._search_space)
+            data_as_discrete_search_space = DiscreteSearchSpace(dataset.query_points)
+            convex_hull_of_data = Box(
+                lower = data_as_discrete_search_space.lower,
+                upper = data_as_discrete_search_space.upper,
+                )
+
+            uniform_sampler = UniformInducingPointSelector(convex_hull_of_data)
             uniform_sample = uniform_sampler._recalculate_inducing_points(
                 M - N, model, dataset
             )  # [M-N, d]
@@ -213,7 +229,12 @@ class KMeansInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
             centroids *= query_points_stds  # [M, d]
 
         if len(centroids) < M:  # choose remaining points as random samples
-            uniform_sampler = UniformInducingPointSelector(self._search_space)
+            data_as_discrete_search_space = DiscreteSearchSpace(dataset.query_points)
+            convex_hull_of_data = Box(
+                lower = data_as_discrete_search_space.lower,
+                upper = data_as_discrete_search_space.upper,
+                )
+            uniform_sampler = UniformInducingPointSelector(convex_hull_of_data)
             extra_centroids = uniform_sampler._recalculate_inducing_points(  # [M-C, d]
                 M - len(centroids), model, dataset
             )
@@ -222,19 +243,34 @@ class KMeansInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
         return centroids  # [M, d]
 
 
-class ConditionalVarianceReduction(InducingPointSelector[ProbabilisticModel]):
+
+class QualityFunction(ABC):
     """
-    An :class:`InducingPointSelector` that greedily chooses the points with maximal (conditional)
-    predictive variance, see :cite:`burt2019rates`
+    todo
     """
 
-    def __init__(self, search_space: SearchSpace, recalc_every_model_update: bool = True):
+    @abstractmethod
+    def __call__(self, model: ProbabilisticModel,  dataset: Dataset) -> TensorType:
+        """Call acquisition function."""
+
+
+class DPPInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
+    """
+    An :class:`InducingPointSelector` that greedily chooses the points with maximal (conditional)
+    predictive variance, see :cite:`burt2019rates` todo
+    """
+
+    def __init__(self, 
+        quality_function: QualityFunction,
+        recalc_every_model_update: bool = True
+        ):
         """
-        :param search_space: The global search space over which the optimization is defined.
+        :param quality_function: TODO
         :param recalc_every_model_update: If True then recalculate the inducing points for each
             model update, otherwise just recalculate on the first call.
         """
-        super().__init__(search_space, recalc_every_model_update)
+        super().__init__(recalc_every_model_update)
+        self._quality_function = quality_function
 
     def _recalculate_inducing_points(
         self, M: int, model: ProbabilisticModel, dataset: Dataset,
@@ -249,15 +285,22 @@ class ConditionalVarianceReduction(InducingPointSelector[ProbabilisticModel]):
         tf.debugging.Assert(dataset is not None, [])
         N = tf.shape(dataset.query_points)[0]
 
+        quality_scores = self._quality_function(model, dataset)
+
         chosen_inducing_points = _greedy_inference_dpp(
             M=tf.minimum(M, N),
             kernel=model.get_kernel(),
-            quality_scores=tf.ones(tf.shape(dataset.observations[0]), dtype=tf.float64),  # unit quality function
+            quality_scores= quality_scores, 
             dataset=dataset,
         )  # [min(M,N), d]
 
         if N < M:  # if fewer data than inducing points then sample remaining uniformly
-            uniform_sampler = UniformInducingPointSelector(self._search_space)
+            data_as_discrete_search_space = DiscreteSearchSpace(dataset.query_points)
+            convex_hull_of_data = Box(
+                lower = data_as_discrete_search_space.lower,
+                upper = data_as_discrete_search_space.upper,
+                )
+            uniform_sampler = UniformInducingPointSelector(convex_hull_of_data)
             uniform_sample = uniform_sampler._recalculate_inducing_points(
                 M - N, model, dataset,
             )  # [M-N, d]
@@ -265,6 +308,84 @@ class ConditionalVarianceReduction(InducingPointSelector[ProbabilisticModel]):
                 [chosen_inducing_points, uniform_sample], 0
             )  # [M, d]
         return chosen_inducing_points  # [M, d]
+
+
+
+class UnitQualityFunction(QualityFunction):
+    """
+    todo
+    """
+
+    def __call__(self, model: ProbabilisticModel, dataset: Dataset) -> TensorType:
+        return tf.ones(tf.shape(dataset.query_points)[0], dtype=tf.float64)  
+
+
+class ModelBasedImprovementQualityFunction(QualityFunction):
+    """
+    todo
+    """
+    def __init__(self, num_samples: int):
+        """
+        todo
+        """
+        self._num_samples = num_samples
+
+
+    def __call__(self, model: ProbabilisticModel, dataset: Dataset) -> TensorType:
+        samples = model.sample(dataset.query_points, self._num_samples)[:,:,0] # [S, N]
+        baseline = tf.reduce_max(tf.reduce_mean(samples,0))
+        imp = tf.maximum(baseline - samples, 0.0) # [S, N]
+        imp = tf.reduce_mean(imp, 0) # [N]
+        return imp
+
+
+
+
+
+
+class ConditionalVarianceReduction(DPPInducingPointSelector):
+    """
+    An :class:`InducingPointSelector` that greedily chooses the points with maximal (conditional)
+    predictive variance, see :cite:`burt2019rates`
+    """
+
+    def __init__(self, recalc_every_model_update: bool = True):
+        """
+        :param recalc_every_model_update: If True then recalculate the inducing points for each
+            model update, otherwise just recalculate on the first call.
+        """
+
+        super().__init__(UnitQualityFunction(), recalc_every_model_update)
+
+
+class ConditionalImprovementReduction(DPPInducingPointSelector):
+    """
+    An :class:`InducingPointSelector` that greedily chooses the points with maximal (conditional)
+    predictive variance, see :cite:`burt2019rates` todo
+    """
+
+    def __init__(self, 
+        recalc_every_model_update: bool = True,
+        num_samples: int=10,
+
+        ):
+        """
+        :param recalc_every_model_update: If True then recalculate the inducing points for each
+            model update, otherwise just recalculate on the first call.
+        :param num_samples: todo
+        """
+
+        self._num_samples = num_samples
+
+        
+        super().__init__(ModelBasedImprovementQualityFunction(self._num_samples), recalc_every_model_update)
+
+
+
+
+
+
+
 
 
 def _greedy_inference_dpp(
@@ -284,7 +405,7 @@ def _greedy_inference_dpp(
         not match that of ``dataset.observations``.
     """
     tf.debugging.Assert(dataset is not None, [])
-    tf.debugging.assert_equal(tf.shape(dataset.observations), tf.shape(quality_scores))
+    tf.debugging.assert_equal(tf.shape(dataset.observations)[0], tf.shape(quality_scores)[0])
 
 
     chosen_indicies = []  # iteratively store chosen points
