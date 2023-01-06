@@ -43,7 +43,7 @@ from .data import Dataset
 from .models import TrainableProbabilisticModel
 from .observer import OBJECTIVE
 from .space import SearchSpace
-from .types import State, TensorType
+from .types import State, Tag, TensorType
 from .utils import Ok, Timer
 
 StateType = TypeVar("StateType")
@@ -69,8 +69,8 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
     def __init__(
         self,
         search_space: SearchSpaceType,
-        datasets: Mapping[str, Dataset],
-        models: Mapping[str, TrainableProbabilisticModelType],
+        datasets: Mapping[Tag, Dataset],
+        models: Mapping[Tag, TrainableProbabilisticModelType],
         *,
         fit_model: bool = True,
     ):
@@ -80,8 +80,8 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
     def __init__(
         self,
         search_space: SearchSpaceType,
-        datasets: Mapping[str, Dataset],
-        models: Mapping[str, TrainableProbabilisticModelType],
+        datasets: Mapping[Tag, Dataset],
+        models: Mapping[Tag, TrainableProbabilisticModelType],
         acquisition_rule: AcquisitionRule[
             TensorType, SearchSpaceType, TrainableProbabilisticModelType
         ],
@@ -94,8 +94,8 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
     def __init__(
         self,
         search_space: SearchSpaceType,
-        datasets: Mapping[str, Dataset],
-        models: Mapping[str, TrainableProbabilisticModelType],
+        datasets: Mapping[Tag, Dataset],
+        models: Mapping[Tag, TrainableProbabilisticModelType],
         acquisition_rule: AcquisitionRule[
             State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
         ],
@@ -148,8 +148,8 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
     def __init__(
         self,
         search_space: SearchSpaceType,
-        datasets: Mapping[str, Dataset] | Dataset,
-        models: Mapping[str, TrainableProbabilisticModelType] | TrainableProbabilisticModelType,
+        datasets: Mapping[Tag, Dataset] | Dataset,
+        models: Mapping[Tag, TrainableProbabilisticModelType] | TrainableProbabilisticModelType,
         acquisition_rule: AcquisitionRule[
             TensorType | State[StateType | None, TensorType],
             SearchSpaceType,
@@ -189,8 +189,8 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
             models = {OBJECTIVE: models}  # type: ignore[dict-item]
 
         # reassure the type checker that everything is tagged
-        datasets = cast(Dict[str, Dataset], datasets)
-        models = cast(Dict[str, TrainableProbabilisticModelType], models)
+        datasets = cast(Dict[Tag, Dataset], datasets)
+        models = cast(Dict[Tag, TrainableProbabilisticModelType], models)
 
         if datasets.keys() != models.keys():
             raise ValueError(
@@ -239,7 +239,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
                {self._acquisition_state!r}"""
 
     @property
-    def datasets(self) -> Mapping[str, Dataset]:
+    def datasets(self) -> Mapping[Tag, Dataset]:
         """The current datasets."""
         return self._datasets
 
@@ -252,12 +252,12 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
             raise ValueError(f"Expected a single dataset, found {len(self.datasets)}")
 
     @property
-    def models(self) -> Mapping[str, TrainableProbabilisticModelType]:
+    def models(self) -> Mapping[Tag, TrainableProbabilisticModelType]:
         """The current models."""
         return self._models
 
     @models.setter
-    def models(self, models: Mapping[str, TrainableProbabilisticModelType]) -> None:
+    def models(self, models: Mapping[Tag, TrainableProbabilisticModelType]) -> None:
         """Update the current models."""
         if models.keys() != self.models.keys():
             raise ValueError(
@@ -323,7 +323,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         return cls(
             search_space,
             record.datasets,
-            cast(Mapping[str, TrainableProbabilisticModelType], record.models),
+            cast(Mapping[Tag, TrainableProbabilisticModelType], record.models),
             acquisition_rule=acquisition_rule,  # type: ignore
             acquisition_state=record.acquisition_state,
             fit_model=False,
@@ -402,7 +402,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
 
         return query_points
 
-    def tell(self, new_data: Mapping[str, Dataset] | Dataset) -> None:
+    def tell(self, new_data: Mapping[Tag, Dataset] | Dataset) -> None:
         """Updates optimizer state with new data.
 
         :param new_data: New observed data.

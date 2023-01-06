@@ -30,7 +30,7 @@ from ...models.interfaces import (
     SupportsReparamSamplerObservationNoise,
 )
 from ...space import SearchSpace
-from ...types import TensorType
+from ...types import Tag, TensorType
 from ...utils import DEFAULTS
 from ..interface import (
     AcquisitionFunction,
@@ -96,11 +96,22 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     """
     Builder for the expected improvement function where the "best" value is taken to be the minimum
     of the posterior mean at observed points.
+
+    In the presence of constraints in the search_space the "best" value is computed only at the
+    feasible query points. If there are no feasible points, the "best" value is instead taken to be
+    the maximum of the posterior mean at all observed points.
     """
+
+    def __init__(self, search_space: Optional[SearchSpace] = None):
+        """
+        :param search_space: The global search space over which the optimisation is defined. This is
+            only used to determine explicit constraints.
+        """
+        self._search_space = search_space
 
     def __repr__(self) -> str:
         """"""
-        return "ExpectedImprovement()"
+        return f"ExpectedImprovement({self._search_space!r})"
 
     def prepare_acquisition_function(
         self,
@@ -118,8 +129,24 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
         tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
-        mean, _ = model.predict(dataset.query_points)
-        eta = tf.reduce_min(mean, axis=0)
+
+        # Check feasibility against any explicit constraints in the search space.
+        if self._search_space is not None and self._search_space.has_constraints:
+            is_feasible = self._search_space.is_feasible(dataset.query_points)
+            if not tf.reduce_any(is_feasible):
+                query_points = dataset.query_points
+            else:
+                query_points = tf.boolean_mask(dataset.query_points, is_feasible)
+        else:
+            is_feasible = tf.constant([True], dtype=bool)
+            query_points = dataset.query_points
+
+        mean, _ = model.predict(query_points)
+        if not tf.reduce_any(is_feasible):
+            eta = tf.reduce_max(mean, axis=0)
+        else:
+            eta = tf.reduce_min(mean, axis=0)
+
         return expected_improvement(model, eta)
 
     def update_acquisition_function(
@@ -137,8 +164,24 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         tf.debugging.Assert(isinstance(function, expected_improvement), [tf.constant([])])
-        mean, _ = model.predict(dataset.query_points)
-        eta = tf.reduce_min(mean, axis=0)
+
+        # Check feasibility against any explicit constraints in the search space.
+        if self._search_space is not None and self._search_space.has_constraints:
+            is_feasible = self._search_space.is_feasible(dataset.query_points)
+            if not tf.reduce_any(is_feasible):
+                query_points = dataset.query_points
+            else:
+                query_points = tf.boolean_mask(dataset.query_points, is_feasible)
+        else:
+            is_feasible = tf.constant([True], dtype=bool)
+            query_points = dataset.query_points
+
+        mean, _ = model.predict(query_points)
+        if not tf.reduce_any(is_feasible):
+            eta = tf.reduce_max(mean, axis=0)
+        else:
+            eta = tf.reduce_min(mean, axis=0)
+
         function.update(eta)  # type: ignore
         return function
 
@@ -574,15 +617,18 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
 
     def __init__(
         self,
-        objective_tag: str,
+        objective_tag: Tag,
         constraint_builder: AcquisitionFunctionBuilder[ProbabilisticModelType],
         min_feasibility_probability: float | TensorType = 0.5,
+        search_space: Optional[SearchSpace] = None,
     ):
         """
         :param objective_tag: The tag for the objective data and model.
         :param constraint_builder: The builder for the constraint function.
         :param min_feasibility_probability: The minimum probability of feasibility for a
             "best point" to be considered feasible.
+        :param search_space: The global search space over which the optimisation is defined. This is
+            only used to determine explicit constraints.
         :raise ValueError (or tf.errors.InvalidArgumentError): If ``min_feasibility_probability``
             is not a scalar in the unit interval :math:`[0, 1]`.
         """
@@ -598,6 +644,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
 
         self._objective_tag = objective_tag
         self._constraint_builder = constraint_builder
+        self._search_space = search_space
         self._min_feasibility_probability = min_feasibility_probability
         self._constraint_fn: Optional[AcquisitionFunction] = None
         self._expected_improvement_fn: Optional[AcquisitionFunction] = None
@@ -607,13 +654,13 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
         """"""
         return (
             f"ExpectedConstrainedImprovement({self._objective_tag!r}, {self._constraint_builder!r},"
-            f" {self._min_feasibility_probability!r})"
+            f" {self._min_feasibility_probability!r}, {self._search_space!r})"
         )
 
     def prepare_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModelType],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> AcquisitionFunction:
         """
         :param models: The models over each tag.
@@ -625,7 +672,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
         :raise tf.errors.InvalidArgumentError: If the objective data is empty.
         """
         tf.debugging.Assert(datasets is not None, [tf.constant([])])
-        datasets = cast(Mapping[str, Dataset], datasets)
+        datasets = cast(Mapping[Tag, Dataset], datasets)
 
         objective_model = models[self._objective_tag]
         objective_dataset = datasets[self._objective_tag]
@@ -641,6 +688,11 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
         )
         pof = self._constraint_fn(objective_dataset.query_points[:, None, ...])
         is_feasible = tf.squeeze(pof >= self._min_feasibility_probability, axis=-1)
+
+        # Check feasibility against any explicit constraints in the search space.
+        if self._search_space is not None and self._search_space.has_constraints:
+            ss_is_feasible = self._search_space.is_feasible(objective_dataset.query_points)
+            is_feasible = tf.logical_and(is_feasible, ss_is_feasible)
 
         if not tf.reduce_any(is_feasible):
             return self._constraint_fn
@@ -661,8 +713,8 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        models: Mapping[str, ProbabilisticModelType],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
@@ -670,7 +722,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
         :param datasets: The data from the observer.
         """
         tf.debugging.Assert(datasets is not None, [tf.constant([])])
-        datasets = cast(Mapping[str, Dataset], datasets)
+        datasets = cast(Mapping[Tag, Dataset], datasets)
 
         objective_model = models[self._objective_tag]
         objective_dataset = datasets[self._objective_tag]
@@ -688,6 +740,11 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
         )
         pof = constraint_fn(objective_dataset.query_points[:, None, ...])
         is_feasible = tf.squeeze(pof >= self._min_feasibility_probability, axis=-1)
+
+        # Check feasibility against any explicit constraints in the search space.
+        if self._search_space is not None and self._search_space.has_constraints:
+            ss_is_feasible = self._search_space.is_feasible(objective_dataset.query_points)
+            is_feasible = tf.logical_and(is_feasible, ss_is_feasible)
 
         if not tf.reduce_any(is_feasible):
             return constraint_fn
