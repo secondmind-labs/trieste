@@ -546,9 +546,7 @@ class SparseGaussianProcessRegression(
         model: SGPR,
         optimizer: Optimizer | None = None,
         num_rff_features: int = 1000,
-        inducing_point_selector: Optional[
-            KMeansInducingPointSelector()
-        ] = None,
+        inducing_point_selector: Optional[InducingPointSelector] = KMeansInducingPointSelector(),
     ):
         """
         :param model: The GPflow model to wrap.
@@ -560,7 +558,7 @@ class SparseGaussianProcessRegression(
             kernels (e.g. RBF) can be well-approximated with fewer features.
         :param inducing_point_selector: The (optional) desired inducing point selector that
             will update the underlying GPflow SGPR model's inducing points as
-            the optimization progresses.
+            the optimization progresses. todo
         :raise NotImplementedError (or ValueError): If we try to use a model with invalid
             ``num_rff_features``, or an ``inducing_point_selector`` with a model
             that has more than one set of inducing points.
@@ -854,7 +852,7 @@ class SparseVariational(
         model: SVGP,
         optimizer: Optimizer | None = None,
         num_rff_features: int = 1000,
-        inducing_point_selector: Optional[InducingPointSelector[SparseVariational]] = None,
+        inducing_point_selector: Optional[InducingPointSelector[SparseVariational]] = KMeansInducingPointSelector(),
     ):
         """
         :param model: The underlying GPflow sparse variational model.
@@ -868,7 +866,7 @@ class SparseVariational(
             can be well-approximated with fewer features.
         :param inducing_point_selector: The (optional) desired inducing_point_selector that
             will update the underlying GPflow sparse variational model's inducing points as
-            the optimization progresses.
+            the optimization progresses. todo
         :raise NotImplementedError: If we try to use an inducing_point_selector with a model
             that has more than one set of inducing points.
         """

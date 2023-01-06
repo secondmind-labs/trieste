@@ -21,6 +21,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Generic, Callable
 
+import tensorflow_probability as tfp
 import tensorflow as tf
 from scipy.cluster.vq import kmeans
 import gpflow
@@ -246,7 +247,7 @@ class KMeansInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
 
 class QualityFunction(ABC):
     """
-    todo
+    todo -> [N]
     """
 
     @abstractmethod
@@ -287,7 +288,7 @@ class DPPInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
 
         quality_scores = self._quality_function(model, dataset)
 
-        chosen_inducing_points = _greedy_inference_dpp(
+        chosen_inducing_points = greedy_inference_dpp(
             M=tf.minimum(M, N),
             kernel=model.get_kernel(),
             quality_scores= quality_scores, 
@@ -332,13 +333,12 @@ class ModelBasedImprovementQualityFunction(QualityFunction):
 
 
     def __call__(self, model: ProbabilisticModel, dataset: Dataset) -> TensorType:
-        samples = model.sample(dataset.query_points, self._num_samples)[:,:,0] # [S, N]
-        baseline = tf.reduce_max(tf.reduce_mean(samples,0))
-        imp = tf.maximum(baseline - samples, 0.0) # [S, N]
-        imp = tf.reduce_mean(imp, 0) # [N]
-        return imp
-
-
+        #todo 
+        mean, variance = model.predict(dataset.query_points) # [N, 1], [N, 1]
+        baseline = tf.reduce_max(mean)
+        normal = tfp.distributions.Normal(mean, tf.sqrt(variance))
+        improvement = (baseline - mean) * normal.cdf(baseline) + variance * normal.prob(baseline) # [N, 1]
+        return improvement[:,0] # [N]
 
 
 
@@ -385,10 +385,7 @@ class ConditionalImprovementReduction(DPPInducingPointSelector):
 
 
 
-
-
-
-def _greedy_inference_dpp(
+def greedy_inference_dpp(
     M: int, kernel: gpflow.kernels.Kernel, quality_scores: TensorType, dataset: Dataset,
 ) -> TensorType:
     """
@@ -406,7 +403,7 @@ def _greedy_inference_dpp(
     """
     tf.debugging.Assert(dataset is not None, [])
     tf.debugging.assert_equal(tf.shape(dataset.observations)[0], tf.shape(quality_scores)[0])
-
+    tf.debugging.Assert(len(dataset.query_points) >= M, [])
 
     chosen_indicies = []  # iteratively store chosen points
 
