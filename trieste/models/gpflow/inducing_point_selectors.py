@@ -55,7 +55,10 @@ class InducingPointSelector(ABC, Generic[ProbabilisticModelType]):
         self._initialized = False
 
     def calculate_inducing_points(
-        self, current_inducing_points: TensorType, model: ProbabilisticModelType, dataset: Dataset,
+        self,
+        current_inducing_points: TensorType,
+        model: ProbabilisticModelType,
+        dataset: Dataset,
     ) -> TensorType:
         """
         Calculate the new inducing points given the existing inducing points.
@@ -113,10 +116,7 @@ class UniformInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
     An :class:`InducingPointSelector` that chooses points sampled uniformly across the search space.
     """
 
-    def __init__(self, 
-        search_space: SearchSpace, 
-        recalc_every_model_update: bool = True
-        ):
+    def __init__(self, search_space: SearchSpace, recalc_every_model_update: bool = True):
         """
         :param search_space: The global search space over which the optimization is defined.
         :param recalc_every_model_update: If True then recalculate the inducing points for each
@@ -124,7 +124,6 @@ class UniformInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
         """
         super().__init__(recalc_every_model_update)
         self._search_space = search_space
-
 
     def _recalculate_inducing_points(
         self, M: int, model: ProbabilisticModel, dataset: Dataset
@@ -174,9 +173,9 @@ class RandomSubSampleInducingPointSelector(InducingPointSelector[ProbabilisticMo
         if N < M:  # if fewer data than inducing points then sample remaining uniformly
             data_as_discrete_search_space = DiscreteSearchSpace(dataset.query_points)
             convex_hull_of_data = Box(
-                lower = data_as_discrete_search_space.lower,
-                upper = data_as_discrete_search_space.upper,
-                )
+                lower=data_as_discrete_search_space.lower,
+                upper=data_as_discrete_search_space.upper,
+            )
 
             uniform_sampler = UniformInducingPointSelector(convex_hull_of_data)
             uniform_sample = uniform_sampler._recalculate_inducing_points(
@@ -232,9 +231,9 @@ class KMeansInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
         if len(centroids) < M:  # choose remaining points as random samples
             data_as_discrete_search_space = DiscreteSearchSpace(dataset.query_points)
             convex_hull_of_data = Box(
-                lower = data_as_discrete_search_space.lower,
-                upper = data_as_discrete_search_space.upper,
-                )
+                lower=data_as_discrete_search_space.lower,
+                upper=data_as_discrete_search_space.upper,
+            )
             uniform_sampler = UniformInducingPointSelector(convex_hull_of_data)
             extra_centroids = uniform_sampler._recalculate_inducing_points(  # [M-C, d]
                 M - len(centroids), model, dataset
@@ -244,14 +243,13 @@ class KMeansInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
         return centroids  # [M, d]
 
 
-
 class QualityFunction(ABC):
     """
     todo -> [N]
     """
 
     @abstractmethod
-    def __call__(self, model: ProbabilisticModel,  dataset: Dataset) -> TensorType:
+    def __call__(self, model: ProbabilisticModel, dataset: Dataset) -> TensorType:
         """Call acquisition function."""
 
 
@@ -261,10 +259,7 @@ class DPPInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
     predictive variance, see :cite:`burt2019rates` todo
     """
 
-    def __init__(self, 
-        quality_function: QualityFunction,
-        recalc_every_model_update: bool = True
-        ):
+    def __init__(self, quality_function: QualityFunction, recalc_every_model_update: bool = True):
         """
         :param quality_function: TODO
         :param recalc_every_model_update: If True then recalculate the inducing points for each
@@ -274,7 +269,10 @@ class DPPInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
         self._quality_function = quality_function
 
     def _recalculate_inducing_points(
-        self, M: int, model: ProbabilisticModel, dataset: Dataset,
+        self,
+        M: int,
+        model: ProbabilisticModel,
+        dataset: Dataset,
     ) -> TensorType:
         """
         :param M: Desired number of inducing points.
@@ -291,25 +289,26 @@ class DPPInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
         chosen_inducing_points = greedy_inference_dpp(
             M=tf.minimum(M, N),
             kernel=model.get_kernel(),
-            quality_scores= quality_scores, 
+            quality_scores=quality_scores,
             dataset=dataset,
         )  # [min(M,N), d]
 
         if N < M:  # if fewer data than inducing points then sample remaining uniformly
             data_as_discrete_search_space = DiscreteSearchSpace(dataset.query_points)
             convex_hull_of_data = Box(
-                lower = data_as_discrete_search_space.lower,
-                upper = data_as_discrete_search_space.upper,
-                )
+                lower=data_as_discrete_search_space.lower,
+                upper=data_as_discrete_search_space.upper,
+            )
             uniform_sampler = UniformInducingPointSelector(convex_hull_of_data)
             uniform_sample = uniform_sampler._recalculate_inducing_points(
-                M - N, model, dataset,
+                M - N,
+                model,
+                dataset,
             )  # [M-N, d]
             chosen_inducing_points = tf.concat(
                 [chosen_inducing_points, uniform_sample], 0
             )  # [M, d]
         return chosen_inducing_points  # [M, d]
-
 
 
 class UnitQualityFunction(QualityFunction):
@@ -318,29 +317,29 @@ class UnitQualityFunction(QualityFunction):
     """
 
     def __call__(self, model: ProbabilisticModel, dataset: Dataset) -> TensorType:
-        return tf.ones(tf.shape(dataset.query_points)[0], dtype=tf.float64)  
+        return tf.ones(tf.shape(dataset.query_points)[0], dtype=tf.float64)
 
 
 class ModelBasedImprovementQualityFunction(QualityFunction):
     """
     todo
     """
+
     def __init__(self, num_samples: int):
         """
         todo
         """
         self._num_samples = num_samples
 
-
     def __call__(self, model: ProbabilisticModel, dataset: Dataset) -> TensorType:
-        #todo 
-        mean, variance = model.predict(dataset.query_points) # [N, 1], [N, 1]
+        # todo
+        mean, variance = model.predict(dataset.query_points)  # [N, 1], [N, 1]
         baseline = tf.reduce_max(mean)
         normal = tfp.distributions.Normal(mean, tf.sqrt(variance))
-        improvement = (baseline - mean) * normal.cdf(baseline) + variance * normal.prob(baseline) # [N, 1]
-        return improvement[:,0] # [N]
-
-
+        improvement = (baseline - mean) * normal.cdf(baseline) + variance * normal.prob(
+            baseline
+        )  # [N, 1]
+        return improvement[:, 0]  # [N]
 
 
 class ConditionalVarianceReduction(DPPInducingPointSelector):
@@ -364,11 +363,11 @@ class ConditionalImprovementReduction(DPPInducingPointSelector):
     predictive variance, see :cite:`burt2019rates` todo
     """
 
-    def __init__(self, 
+    def __init__(
+        self,
         recalc_every_model_update: bool = True,
-        num_samples: int=10,
-
-        ):
+        num_samples: int = 10,
+    ):
         """
         :param recalc_every_model_update: If True then recalculate the inducing points for each
             model update, otherwise just recalculate on the first call.
@@ -377,16 +376,16 @@ class ConditionalImprovementReduction(DPPInducingPointSelector):
 
         self._num_samples = num_samples
 
-        
-        super().__init__(ModelBasedImprovementQualityFunction(self._num_samples), recalc_every_model_update)
-
-
-
-
+        super().__init__(
+            ModelBasedImprovementQualityFunction(self._num_samples), recalc_every_model_update
+        )
 
 
 def greedy_inference_dpp(
-    M: int, kernel: gpflow.kernels.Kernel, quality_scores: TensorType, dataset: Dataset,
+    M: int,
+    kernel: gpflow.kernels.Kernel,
+    quality_scores: TensorType,
+    dataset: Dataset,
 ) -> TensorType:
     """
     Get a greedy approximation of the MAP estimate of the Determinantal Point Process (DPP)

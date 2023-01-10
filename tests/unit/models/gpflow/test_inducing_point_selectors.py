@@ -133,7 +133,7 @@ def test_inducing_point_selectors_update_correct_number_of_times(
     selector_name: Callable[[SearchSpace, bool], InducingPointSelector[SparseVariational]],
     recalc_every_model_update: bool,
 ) -> None:
-    if selector_name==UniformInducingPointSelector:
+    if selector_name == UniformInducingPointSelector:
         selector = selector_name(Box([0.0], [1.0]), recalc_every_model_update)
     else:
         selector = selector_name(recalc_every_model_update)
@@ -155,18 +155,17 @@ def test_inducing_point_selectors_update_correct_number_of_times(
         npt.assert_array_equal(new_inducing_points_1, new_inducing_points_2)
 
 
-
 def test_unit_quality_function_returns_correct_scores() -> None:
     search_space = Box([0.0, -1.0], [1.0, 0.0])
     X = search_space.sample(100)
     Y = fnc_3x_plus_10(X)
     dataset = Dataset(X, Y)
-    svgp = svgp_model(X,Y)
+    svgp = svgp_model(X, Y)
     model = SparseVariational(svgp)
-    quality_scores = UnitQualityFunction()(model, dataset)   
-    npt.assert_array_equal(quality_scores, tf.ones(tf.shape(dataset.query_points)[0], dtype=tf.float64))
-
-
+    quality_scores = UnitQualityFunction()(model, dataset)
+    npt.assert_array_equal(
+        quality_scores, tf.ones(tf.shape(dataset.query_points)[0], dtype=tf.float64)
+    )
 
 
 @random_seed
@@ -175,19 +174,16 @@ def test_improvement_quality_function_returns_approximately_correct_scores() -> 
     X = search_space.sample(10)
     Y = fnc_3x_plus_10(X)
     dataset = Dataset(X, Y)
-    svgp = svgp_model(X,Y)
+    svgp = svgp_model(X, Y)
     model = SparseVariational(svgp)
     quality_scores = ModelBasedImprovementQualityFunction(num_samples=1000)(model, dataset)
 
-    samples = model.sample(dataset.query_points, 10000)[:,:,0] # [S, N]
-    baseline = tf.reduce_max(tf.reduce_mean(samples,0))
-    empirical_scores = tf.maximum(baseline - samples, 0.0) # [S, N]
-    empirical_scores = tf.reduce_mean(empirical_scores, 0) # [N]
-    
-    npt.assert_allclose(quality_scores,  empirical_scores, atol=0.01)
+    samples = model.sample(dataset.query_points, 10000)[:, :, 0]  # [S, N]
+    baseline = tf.reduce_max(tf.reduce_mean(samples, 0))
+    empirical_scores = tf.maximum(baseline - samples, 0.0)  # [S, N]
+    empirical_scores = tf.reduce_mean(empirical_scores, 0)  # [N]
 
-
-
+    npt.assert_allclose(quality_scores, empirical_scores, atol=0.01)
 
 
 def test_greedy_inference_dpp_raises_errors() -> None:
@@ -195,35 +191,34 @@ def test_greedy_inference_dpp_raises_errors() -> None:
     X = search_space.sample(100)
     Y = fnc_3x_plus_10(X)
     dataset = Dataset(X, Y)
-    svgp = svgp_model(X,Y)
+    svgp = svgp_model(X, Y)
     model = SparseVariational(svgp)
     quality_scores = UnitQualityFunction()(model, dataset)
 
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES): # dataset must be populated
-        greedy_inference_dpp(10, svgp.kernel, quality_scores, dataset=None) 
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES): # dataset size must match quality score
-        greedy_inference_dpp(10, svgp.kernel, quality_scores[:-1], dataset) 
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES): # sample must be smaller than dataset size
-        greedy_inference_dpp(101, svgp.kernel, quality_scores, dataset) 
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):  # dataset must be populated
+        greedy_inference_dpp(10, svgp.kernel, quality_scores, dataset=None)
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):  # dataset size must match quality score
+        greedy_inference_dpp(10, svgp.kernel, quality_scores[:-1], dataset)
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):  # sample must be smaller than dataset size
+        greedy_inference_dpp(101, svgp.kernel, quality_scores, dataset)
 
 
-
-
-@pytest.mark.parametrize("quality_function", [UnitQualityFunction(), ModelBasedImprovementQualityFunction(num_samples=10)])
+@pytest.mark.parametrize(
+    "quality_function",
+    [UnitQualityFunction(), ModelBasedImprovementQualityFunction(num_samples=10)],
+)
 @pytest.mark.parametrize("num_points", [1, 10, 50])
-def test_greedy_inference_dpp_returns_correct_number_of_points(quality_function: QualityFunction, num_points: int) -> None:
+def test_greedy_inference_dpp_returns_correct_number_of_points(
+    quality_function: QualityFunction, num_points: int
+) -> None:
     search_space = Box([0.0, -1.0], [1.0, 0.0])
     X = search_space.sample(100)
     Y = fnc_3x_plus_10(X)
     dataset = Dataset(X, Y)
-    svgp = svgp_model(X,Y)
+    svgp = svgp_model(X, Y)
     model = SparseVariational(svgp)
     quality_scores = quality_function(model, dataset)
-    sample = greedy_inference_dpp(num_points, svgp.kernel, quality_scores, dataset) 
+    sample = greedy_inference_dpp(num_points, svgp.kernel, quality_scores, dataset)
 
-    assert sample.shape[0]==num_points
-    assert sample.shape[1]==search_space.dimension
-
-
-
-
+    assert sample.shape[0] == num_points
+    assert sample.shape[1] == search_space.dimension
