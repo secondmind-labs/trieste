@@ -19,15 +19,15 @@ of sparse variational Gaussian processes (i.e. our :class:`SparseVariational` wr
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Generic, Callable
+from typing import Callable, Generic
 
-import tensorflow_probability as tfp
-import tensorflow as tf
-from scipy.cluster.vq import kmeans
 import gpflow
+import tensorflow as tf
+import tensorflow_probability as tfp
+from scipy.cluster.vq import kmeans
 
 from ...data import Dataset
-from ...space import Box, SearchSpace, DiscreteSearchSpace
+from ...space import Box, DiscreteSearchSpace, SearchSpace
 from ...types import TensorType
 from ..interfaces import ProbabilisticModel, ProbabilisticModelType
 

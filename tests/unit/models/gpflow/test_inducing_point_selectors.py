@@ -25,22 +25,22 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
-from tests.util.misc import random_seed, TF_DEBUGGING_ERROR_TYPES
+from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, random_seed
 from tests.util.models.gpflow.models import mock_data, svgp_model
 from tests.util.models.models import fnc_3x_plus_10
 from trieste.data import Dataset
 from trieste.models.gpflow import SparseVariational
 from trieste.models.gpflow.inducing_point_selectors import (
+    ConditionalImprovementReduction,
+    ConditionalVarianceReduction,
     InducingPointSelector,
     KMeansInducingPointSelector,
+    ModelBasedImprovementQualityFunction,
+    QualityFunction,
     RandomSubSampleInducingPointSelector,
     UniformInducingPointSelector,
-    ConditionalVarianceReduction,
-    ConditionalImprovementReduction,
-    greedy_inference_dpp,
-    QualityFunction,
     UnitQualityFunction,
-    ModelBasedImprovementQualityFunction,
+    greedy_inference_dpp,
 )
 from trieste.space import Box, SearchSpace
 
