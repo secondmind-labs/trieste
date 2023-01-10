@@ -23,11 +23,11 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from math import pi
-from typing import Callable
+from typing import Callable, Sequence
 
 import tensorflow as tf
 
-from ..space import Box, SearchSpace
+from ..space import Box, Constraint, LinearConstraint, NonlinearConstraint
 from ..types import TensorType
 
 
@@ -134,6 +134,45 @@ ScaledBranin = SingleObjectiveTestProblem(
 )
 """The Branin-Hoo function, rescaled to have zero mean and unit variance over :math:`[0, 1]^2`. See
 :cite:`Picheny2013` for details."""
+
+
+def _scaled_branin_constraints() -> Sequence[Constraint]:
+    def _nlc_func0(x: TensorType) -> TensorType:
+        c0 = x[..., 0] - 0.2 - tf.sin(x[..., 1])
+        c0 = tf.expand_dims(c0, axis=-1)
+        return c0
+
+    def _nlc_func1(x: TensorType) -> TensorType:
+        c1 = x[..., 0] - tf.cos(x[..., 1])
+        c1 = tf.expand_dims(c1, axis=-1)
+        return c1
+
+    constraints: Sequence[Constraint] = [
+        LinearConstraint(
+            A=tf.constant([[-1.0, 1.0], [1.0, 0.0], [0.0, 1.0]]),
+            lb=tf.constant([-0.4, 0.15, 0.2]),
+            ub=tf.constant([0.5, 0.9, 0.9]),
+        ),
+        NonlinearConstraint(_nlc_func0, tf.constant(-1.0), tf.constant(0.0)),
+        NonlinearConstraint(_nlc_func1, tf.constant(-0.8), tf.constant(0.0)),
+    ]
+
+    return constraints
+
+
+ConstrainedScaledBranin = SingleObjectiveTestProblem(
+    name="Constrained Scaled Branin",
+    objective=scaled_branin,
+    search_space=Box(
+        Branin.search_space.lower,
+        Branin.search_space.upper,
+        constraints=_scaled_branin_constraints(),
+    ),
+    minimizers=tf.constant([[0.16518, 0.66518]], tf.float64),
+    minimum=tf.constant([-0.99888], tf.float64),
+)
+"""The rescaled Branin-Hoo function with a combination of linear and nonlinear constraints on the
+search space."""
 
 
 def simple_quadratic(x: TensorType) -> TensorType:
@@ -347,7 +386,7 @@ def ackley_5(x: TensorType) -> TensorType:
         -20.0 * tf.math.exp(exponent_1)
         - tf.math.exp(exponent_2)
         + 20.0
-        + tf.cast(tf.math.exp(1.0), dtype=tf.float64)
+        + tf.cast(tf.math.exp(1.0), dtype=x.dtype)
     )
 
     return tf.expand_dims(function, -1)
@@ -425,7 +464,7 @@ def michalewicz(x: TensorType, d: int = 2, m: int = 10) -> TensorType:
     tf.debugging.assert_greater_equal(d, 1)
     tf.debugging.assert_shapes([(x, (..., d))])
 
-    xi = tf.range(1, (d + 1), delta=1, dtype=tf.float64) * tf.pow(x, 2)
+    xi = tf.range(1, (d + 1), delta=1, dtype=x.dtype) * tf.pow(x, 2)
     result = tf.reduce_sum(tf.sin(x) * tf.pow(tf.sin(xi / math.pi), 2 * m), axis=1, keepdims=True)
 
     return -result

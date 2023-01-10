@@ -30,7 +30,7 @@ from ...models.interfaces import (
     SupportsReparamSamplerObservationNoise,
 )
 from ...space import SearchSpace
-from ...types import TensorType
+from ...types import Tag, TensorType
 from ...utils import DEFAULTS
 from ..interface import (
     AcquisitionFunction,
@@ -85,9 +85,10 @@ class ProbabilityOfImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         tf.debugging.Assert(dataset is not None, [])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
+        tf.debugging.Assert(isinstance(function, probability_below_threshold), [tf.constant([])])
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)[0]
-        function = probability_below_threshold(model, eta)
+        function.update(eta)  # type: ignore
         return function
 
 
@@ -95,11 +96,22 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     """
     Builder for the expected improvement function where the "best" value is taken to be the minimum
     of the posterior mean at observed points.
+
+    In the presence of constraints in the search_space the "best" value is computed only at the
+    feasible query points. If there are no feasible points, the "best" value is instead taken to be
+    the maximum of the posterior mean at all observed points.
     """
+
+    def __init__(self, search_space: Optional[SearchSpace] = None):
+        """
+        :param search_space: The global search space over which the optimisation is defined. This is
+            only used to determine explicit constraints.
+        """
+        self._search_space = search_space
 
     def __repr__(self) -> str:
         """"""
-        return "ExpectedImprovement()"
+        return f"ExpectedImprovement({self._search_space!r})"
 
     def prepare_acquisition_function(
         self,
@@ -117,8 +129,24 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
         tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
-        mean, _ = model.predict(dataset.query_points)
-        eta = tf.reduce_min(mean, axis=0)
+
+        # Check feasibility against any explicit constraints in the search space.
+        if self._search_space is not None and self._search_space.has_constraints:
+            is_feasible = self._search_space.is_feasible(dataset.query_points)
+            if not tf.reduce_any(is_feasible):
+                query_points = dataset.query_points
+            else:
+                query_points = tf.boolean_mask(dataset.query_points, is_feasible)
+        else:
+            is_feasible = tf.constant([True], dtype=bool)
+            query_points = dataset.query_points
+
+        mean, _ = model.predict(query_points)
+        if not tf.reduce_any(is_feasible):
+            eta = tf.reduce_max(mean, axis=0)
+        else:
+            eta = tf.reduce_min(mean, axis=0)
+
         return expected_improvement(model, eta)
 
     def update_acquisition_function(
@@ -136,8 +164,24 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         tf.debugging.Assert(isinstance(function, expected_improvement), [tf.constant([])])
-        mean, _ = model.predict(dataset.query_points)
-        eta = tf.reduce_min(mean, axis=0)
+
+        # Check feasibility against any explicit constraints in the search space.
+        if self._search_space is not None and self._search_space.has_constraints:
+            is_feasible = self._search_space.is_feasible(dataset.query_points)
+            if not tf.reduce_any(is_feasible):
+                query_points = dataset.query_points
+            else:
+                query_points = tf.boolean_mask(dataset.query_points, is_feasible)
+        else:
+            is_feasible = tf.constant([True], dtype=bool)
+            query_points = dataset.query_points
+
+        mean, _ = model.predict(query_points)
+        if not tf.reduce_any(is_feasible):
+            eta = tf.reduce_max(mean, axis=0)
+        else:
+            eta = tf.reduce_min(mean, axis=0)
+
         function.update(eta)  # type: ignore
         return function
 
@@ -436,34 +480,129 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel]
         return function  # no need to update anything
 
 
-def probability_below_threshold(
-    model: ProbabilisticModel, threshold: float | TensorType
-) -> AcquisitionFunction:
-    r"""
-    The probability of being below the threshold. This brings together commonality
-    between probability of improvement and probability of feasiblity.
-    Probability is is caculated with respect to the `model` posterior.
-    For model posterior :math:`f`, this is
-    .. math:: x \mapsto \mathbb P \left (f(x) < \eta)\right]
-    where :math:`\eta` is the threshold.
-    :param model: The model of the objective function.
-    :param threshold: The (scalar) probability of feasibility threshold.
-    :return: The probability of feasibility function. This function will raise
-    :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
-    greater than one.
-    :raise ValueError or tf.errors.InvalidArgumentError: If ``threshold`` is not a scalar.
-    """
-    tf.debugging.assert_scalar(threshold)
+class probability_below_threshold(AcquisitionFunctionClass):
+    def __init__(self, model: ProbabilisticModel, threshold: float | TensorType):
+        r"""
+        The probability of being below the threshold. This brings together commonality
+        between probability of improvement and probability of feasiblity.
+        Probability is is caculated with respect to the `model` posterior.
+        For model posterior :math:`f`, this is
+        .. math:: x \mapsto \mathbb P \left (f(x) < \eta)\right]
+        where :math:`\eta` is the threshold.
+        :param model: The model of the objective function.
+        :param threshold: The (scalar) probability of feasibility threshold.
+        :return: The probability of feasibility function. This function will raise
+        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+        greater than one.
+        :raise ValueError or tf.errors.InvalidArgumentError: If ``threshold`` is not a scalar.
+        """
+        tf.debugging.assert_scalar(threshold)
+        self._model = model
+        self._threshold = tf.Variable(threshold)
 
     @tf.function
-    def acquisition(x: TensorType) -> TensorType:
+    def __call__(self, x: TensorType) -> TensorType:
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],
             message="This acquisition function only supports batch sizes of one.",
         )
-        mean, var = model.predict(tf.squeeze(x, -2))
+        mean, var = self._model.predict(tf.squeeze(x, -2))
         distr = tfp.distributions.Normal(mean, tf.sqrt(var))
-        return distr.cdf(tf.cast(threshold, x.dtype))
+        return distr.cdf(tf.cast(self._threshold, x.dtype))
+
+    def update(self, threshold: TensorType) -> None:
+        """Update the acquisition function with a new threshold value."""
+        self._threshold.assign(threshold)
+
+
+class FastConstraintsFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel]):
+    """
+    Builds a feasiblity acquisition function from the residuals of explicit constraints defined in
+    the search space.
+    """
+
+    def __init__(
+        self,
+        search_space: SearchSpace,
+        smoothing_function: Optional[Callable[[TensorType], TensorType]] = None,
+    ):
+        """
+        :param search_space: The global search space over which the feasibility of the constraints
+            is defined.
+        :param smoothing_function: The smoothing function used for constraints residuals. The
+            default is CDF of the Normal distribution with a scale of `1e-3`.
+        :raise NotImplementedError: If the `search_space` does not have constraints.
+        """
+        if not search_space.has_constraints:
+            raise NotImplementedError(
+                "FastConstraintsFeasibility requires constraints in the search space."
+            )
+
+        self._search_space = search_space
+        self._smoothing_function = smoothing_function
+
+    def __repr__(self) -> str:
+        """"""
+        return f"FastConstraintsFeasibility({self._search_space!r}, {self._smoothing_function!r})"
+
+    def prepare_acquisition_function(
+        self,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param model: Unused.
+        :param dataset: Unused.
+        :return: The function for feasibility of constraints.
+        """
+        return fast_constraints_feasibility(self._search_space, self._smoothing_function)
+
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param model: Unused.
+        :param dataset: Unused.
+        :return: The function for feasibility of constraints.
+        """
+        return function  # No need to update anything.
+
+
+def fast_constraints_feasibility(
+    search_space: SearchSpace,
+    smoothing_function: Optional[Callable[[TensorType], TensorType]] = None,
+) -> AcquisitionFunction:
+    """
+    Returns a feasiblity acquisition function from the residuals of explicit constraints defined in
+    the search space.
+
+    :param search_space: The global search space over which the feasibility of the constraints
+        is defined.
+    :param smoothing_function: The smoothing function used for constraints residuals. The
+        default is CDF of the Normal distribution with a scale of `1e-3`.
+    :return: The function for feasibility of constraints.
+    :raise NotImplementedError: If the `search_space` does not have constraints.
+    """
+
+    if not search_space.has_constraints:
+        raise NotImplementedError(
+            "fast_constraints_feasibility requires constraints in the search space."
+        )
+
+    @tf.function
+    def acquisition(x: TensorType) -> TensorType:
+        if smoothing_function is None:
+            _smoothing_function = tfp.distributions.Normal(
+                tf.cast(0.0, x.dtype), tf.cast(1e-3, x.dtype)
+            ).cdf
+        else:
+            _smoothing_function = smoothing_function
+        residuals = search_space.constraints_residuals(x)
+        return tf.math.reduce_prod(_smoothing_function(residuals), axis=-1)
 
     return acquisition
 
@@ -478,15 +617,18 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
 
     def __init__(
         self,
-        objective_tag: str,
+        objective_tag: Tag,
         constraint_builder: AcquisitionFunctionBuilder[ProbabilisticModelType],
         min_feasibility_probability: float | TensorType = 0.5,
+        search_space: Optional[SearchSpace] = None,
     ):
         """
         :param objective_tag: The tag for the objective data and model.
         :param constraint_builder: The builder for the constraint function.
         :param min_feasibility_probability: The minimum probability of feasibility for a
             "best point" to be considered feasible.
+        :param search_space: The global search space over which the optimisation is defined. This is
+            only used to determine explicit constraints.
         :raise ValueError (or tf.errors.InvalidArgumentError): If ``min_feasibility_probability``
             is not a scalar in the unit interval :math:`[0, 1]`.
         """
@@ -502,6 +644,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
 
         self._objective_tag = objective_tag
         self._constraint_builder = constraint_builder
+        self._search_space = search_space
         self._min_feasibility_probability = min_feasibility_probability
         self._constraint_fn: Optional[AcquisitionFunction] = None
         self._expected_improvement_fn: Optional[AcquisitionFunction] = None
@@ -511,13 +654,13 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
         """"""
         return (
             f"ExpectedConstrainedImprovement({self._objective_tag!r}, {self._constraint_builder!r},"
-            f" {self._min_feasibility_probability!r})"
+            f" {self._min_feasibility_probability!r}, {self._search_space!r})"
         )
 
     def prepare_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModelType],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> AcquisitionFunction:
         """
         :param models: The models over each tag.
@@ -529,7 +672,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
         :raise tf.errors.InvalidArgumentError: If the objective data is empty.
         """
         tf.debugging.Assert(datasets is not None, [tf.constant([])])
-        datasets = cast(Mapping[str, Dataset], datasets)
+        datasets = cast(Mapping[Tag, Dataset], datasets)
 
         objective_model = models[self._objective_tag]
         objective_dataset = datasets[self._objective_tag]
@@ -545,6 +688,11 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
         )
         pof = self._constraint_fn(objective_dataset.query_points[:, None, ...])
         is_feasible = tf.squeeze(pof >= self._min_feasibility_probability, axis=-1)
+
+        # Check feasibility against any explicit constraints in the search space.
+        if self._search_space is not None and self._search_space.has_constraints:
+            ss_is_feasible = self._search_space.is_feasible(objective_dataset.query_points)
+            is_feasible = tf.logical_and(is_feasible, ss_is_feasible)
 
         if not tf.reduce_any(is_feasible):
             return self._constraint_fn
@@ -565,8 +713,8 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        models: Mapping[str, ProbabilisticModelType],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
@@ -574,7 +722,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
         :param datasets: The data from the observer.
         """
         tf.debugging.Assert(datasets is not None, [tf.constant([])])
-        datasets = cast(Mapping[str, Dataset], datasets)
+        datasets = cast(Mapping[Tag, Dataset], datasets)
 
         objective_model = models[self._objective_tag]
         objective_dataset = datasets[self._objective_tag]
@@ -592,6 +740,11 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
         )
         pof = constraint_fn(objective_dataset.query_points[:, None, ...])
         is_feasible = tf.squeeze(pof >= self._min_feasibility_probability, axis=-1)
+
+        # Check feasibility against any explicit constraints in the search space.
+        if self._search_space is not None and self._search_space.has_constraints:
+            ss_is_feasible = self._search_space.is_feasible(objective_dataset.query_points)
+            is_feasible = tf.logical_and(is_feasible, ss_is_feasible)
 
         if not tf.reduce_any(is_feasible):
             return constraint_fn

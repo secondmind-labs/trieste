@@ -19,7 +19,7 @@ This module contains functionality for optimizing
 
 from __future__ import annotations
 
-from typing import Any, Callable, List, Optional, Tuple, Union, cast
+from typing import Any, Callable, List, Optional, Sequence, Tuple, Union, cast
 
 import greenlet as gr
 import numpy as np
@@ -28,7 +28,14 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from .. import logging
-from ..space import Box, DiscreteSearchSpace, SearchSpace, SearchSpaceType, TaggedProductSearchSpace
+from ..space import (
+    Box,
+    Constraint,
+    DiscreteSearchSpace,
+    SearchSpace,
+    SearchSpaceType,
+    TaggedProductSearchSpace,
+)
 from ..types import TensorType
 from .interface import AcquisitionFunction
 
@@ -439,9 +446,11 @@ def _perform_parallel_continuous_optimization(
     )
 
     # Set up child greenlets
-    child_greenlets = [ScipyLbfgsBGreenlet() for _ in range(num_optimization_runs)]
+    child_greenlets = [ScipyOptimizerGreenlet() for _ in range(num_optimization_runs)]
     vectorized_child_results: List[Union[spo.OptimizeResult, "np.ndarray[Any, Any]"]] = [
-        gr.switch(vectorized_starting_points[i].numpy(), bounds[i], optimizer_args)
+        gr.switch(
+            vectorized_starting_points[i].numpy(), bounds[i], space.constraints, optimizer_args
+        )
         for i, gr in enumerate(child_greenlets)
     ]
 
@@ -482,6 +491,11 @@ def _perform_parallel_continuous_optimization(
         [result.nfev for result in final_vectorized_child_results], dtype=tf_dtype
     )
 
+    # Ensure chosen points satisfy any constraints in the search-space.
+    if space.has_constraints:
+        is_feasible = space.is_feasible(vectorized_chosen_x)
+        vectorized_successes = tf.logical_and(vectorized_successes, is_feasible)
+
     successes = tf.reshape(vectorized_successes, [-1, V])  # [num_optimization_runs, V]
     fun_values = tf.reshape(vectorized_fun_values, [-1, V])  # [num_optimization_runs, V]
     chosen_x = tf.reshape(vectorized_chosen_x, [-1, V, D])  # [num_optimization_runs, V, D]
@@ -490,10 +504,10 @@ def _perform_parallel_continuous_optimization(
     return (successes, fun_values, chosen_x, nfev)
 
 
-class ScipyLbfgsBGreenlet(gr.greenlet):  # type: ignore[misc]
+class ScipyOptimizerGreenlet(gr.greenlet):  # type: ignore[misc]
     """
-    Worker greenlet that runs a single Scipy L-BFGS-B. Each greenlet performs all the L-BFGS-B
-    update steps required for an individual optimization. However, the evaluation
+    Worker greenlet that runs a single Scipy L-BFGS-B (by default). Each greenlet performs all the
+    optimizer update steps required for an individual optimization. However, the evaluation
     of our acquisition function (and its gradients) is delegated back to the main Tensorflow
     process (the parent greenlet) where evaluations can be made efficiently in parallel.
     """
@@ -502,6 +516,7 @@ class ScipyLbfgsBGreenlet(gr.greenlet):  # type: ignore[misc]
         self,
         start: "np.ndarray[Any, Any]",
         bounds: spo.Bounds,
+        constraints: Sequence[Constraint],
         optimizer_args: Optional[dict[str, Any]] = None,
     ) -> spo.OptimizeResult:
         cache_x = start + 1  # Any value different from `start`.
@@ -523,13 +538,16 @@ class ScipyLbfgsBGreenlet(gr.greenlet):  # type: ignore[misc]
 
             return cast("np.ndarray[Any, Any]", cache_y), cast("np.ndarray[Any, Any]", cache_dy_dx)
 
+        method = "trust-constr" if len(constraints) else "l-bfgs-b"
+        optimizer_args = dict(
+            dict(method=method, constraints=constraints), **(optimizer_args or {})
+        )
         return spo.minimize(
             lambda x: value_and_gradient(x)[0],
             start,
             jac=lambda x: value_and_gradient(x)[1],
-            method="l-bfgs-b",
             bounds=bounds,
-            **(optimizer_args or {}),
+            **optimizer_args,
         )
 
 

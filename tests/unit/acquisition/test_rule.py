@@ -58,7 +58,7 @@ from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.observer import OBJECTIVE
 from trieste.space import Box
-from trieste.types import State, TensorType
+from trieste.types import State, Tag, TensorType
 
 
 def _line_search_maximize(
@@ -98,7 +98,7 @@ def test_discrete_thompson_sampling_raises_for_invalid_init_params(
 )
 @pytest.mark.parametrize("datasets", [{}, {OBJECTIVE: empty_dataset([1], [1])}])
 def test_discrete_thompson_sampling_raises_for_invalid_models_keys(
-    datasets: dict[str, Dataset], models: dict[str, ProbabilisticModel]
+    datasets: dict[Tag, Dataset], models: dict[Tag, ProbabilisticModel]
 ) -> None:
     search_space = Box([-1], [1])
     rule = DiscreteThompsonSampling(100, 10)
@@ -116,7 +116,7 @@ def test_discrete_thompson_sampling_raises_for_invalid_models_keys(
     ],
 )
 def test_discrete_thompson_sampling_raises_for_invalid_dataset_keys(
-    datasets: dict[str, Dataset], models: dict[str, ProbabilisticModel]
+    datasets: dict[Tag, Dataset], models: dict[Tag, ProbabilisticModel]
 ) -> None:
     search_space = Box([-1], [1])
     rule = DiscreteThompsonSampling(10, 100)
@@ -306,8 +306,8 @@ def test_efficient_global_optimization_initial_acquisition_function() -> None:
 class _JointBatchModelMinusMeanMaximumSingleBuilder(AcquisitionFunctionBuilder[ProbabilisticModel]):
     def prepare_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModel],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModel],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> AcquisitionFunction:
         return lambda at: -tf.reduce_max(models[OBJECTIVE].predict(at)[0], axis=-2)
 
@@ -436,8 +436,8 @@ class _VectorizedBatchModelMinusMeanMaximumSingleBuilder(
 ):
     def prepare_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModel],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModel],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> AcquisitionFunction:
         return lambda at: tf.squeeze(-models[OBJECTIVE].predict(at)[0], -1)
 
@@ -539,7 +539,7 @@ def test_async_keeps_track_of_pending_points(
     "models", [{}, {"foo": QuadraticMeanAndRBFKernel()}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}]
 )
 def test_trust_region_raises_for_missing_datasets_key(
-    datasets: dict[str, Dataset], models: dict[str, ProbabilisticModel]
+    datasets: dict[Tag, Dataset], models: dict[Tag, ProbabilisticModel]
 ) -> None:
     search_space = Box([-1], [1])
     rule = TrustRegion()
@@ -551,8 +551,8 @@ class _Midpoint(AcquisitionRule[TensorType, Box, ProbabilisticModel]):
     def acquire(
         self,
         search_space: Box,
-        models: Mapping[str, ProbabilisticModel],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModel],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> TensorType:
         return (search_space.upper[None] + search_space.lower[None]) / 2
 
@@ -902,7 +902,7 @@ def test_qhsri_raises_invalid_parameters(
 @pytest.mark.parametrize("datasets", [{}, {OBJECTIVE: empty_dataset([1], [1])}])
 @pytest.mark.qhsri
 def test_qhsri_raises_for_invalid_models_keys(
-    datasets: dict[str, Dataset], models: dict[str, ProbabilisticModel]
+    datasets: dict[Tag, Dataset], models: dict[Tag, ProbabilisticModel]
 ) -> None:
     search_space = Box([-1], [1])
     rule = BatchHypervolumeSharpeRatioIndicator()
@@ -921,7 +921,7 @@ def test_qhsri_raises_for_invalid_models_keys(
 )
 @pytest.mark.qhsri
 def test_qhsri_raises_for_invalid_dataset_keys(
-    datasets: dict[str, Dataset], models: dict[str, ProbabilisticModel]
+    datasets: dict[Tag, Dataset], models: dict[Tag, ProbabilisticModel]
 ) -> None:
     search_space = Box([-1], [1])
     rule = BatchHypervolumeSharpeRatioIndicator()

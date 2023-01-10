@@ -27,6 +27,7 @@ The following tutorials explore various optimization problems using Trieste.
    notebooks/batch_optimization
    notebooks/thompson_sampling
    notebooks/inequality_constraints
+   notebooks/explicit_constraints
    notebooks/failure_ego
    notebooks/multi_objective_ehvi
    notebooks/deep_gaussian_processes
@@ -36,6 +37,8 @@ The following tutorials explore various optimization problems using Trieste.
    notebooks/feasible_sets
    notebooks/openai_gym_lunar_lander
    notebooks/scalable_thompson_sampling_using_sparse_gaussian_processes
+   notebooks/qhsri-tutorial
+   notebooks/multifidelity_modelling
 
 Frequently asked questions
 --------------------------
