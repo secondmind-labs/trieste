@@ -48,7 +48,7 @@ from ..interfaces import (
     TrajectorySampler,
 )
 from ..optimizer import BatchOptimizer, Optimizer
-from .inducing_point_selectors import InducingPointSelector, KMeansInducingPointSelector
+from .inducing_point_selectors import InducingPointSelector
 from .interface import GPflowPredictor, SupportsCovarianceBetweenPoints
 from .sampler import DecoupledTrajectorySampler, RandomFourierFeatureTrajectorySampler
 from .utils import (
@@ -546,7 +546,7 @@ class SparseGaussianProcessRegression(
         model: SGPR,
         optimizer: Optimizer | None = None,
         num_rff_features: int = 1000,
-        inducing_point_selector: Optional[InducingPointSelector] = KMeansInducingPointSelector(),
+        inducing_point_selector: Optional[InducingPointSelector] = None,
     ):
         """
         :param model: The GPflow model to wrap.
@@ -854,7 +854,7 @@ class SparseVariational(
         num_rff_features: int = 1000,
         inducing_point_selector: Optional[
             InducingPointSelector[SparseVariational]
-        ] = KMeansInducingPointSelector(),
+        ] = NoneKMeansInducingPointSelector(),
     ):
         """
         :param model: The underlying GPflow sparse variational model.
