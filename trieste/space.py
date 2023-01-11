@@ -25,7 +25,6 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from .types import TensorType
-from .utils import shapes_equal
 
 SearchSpaceType = TypeVar("SearchSpaceType", bound="SearchSpace")
 """ A type variable bound to :class:`SearchSpace`. """
@@ -212,15 +211,49 @@ class SearchSpace(ABC):
         :return: ``num_samples`` i.i.d. random points, sampled uniformly from this search space.
         """
 
-    @abstractmethod
-    def __contains__(self, value: TensorType) -> bool | TensorType:
+    def contains(self, value: TensorType) -> TensorType:
+        """Method for checking containment. Supports broadcasting.
+
+        :param value: A point or points to check for membership of this :class:`SearchSpace`.
+        :return: A boolean array showing membership for each point in value.
+        :raise ValueError (or tf.errors.InvalidArgumentError): If ``value`` has a different
+            dimensionality points from this :class:`SearchSpace`.
         """
-        :param value: A point to check for membership of this :class:`SearchSpace`.
-        :return: `True` if ``value`` is a member of this search space, else `False`. May return a
-            scalar boolean `TensorType` instead of the `bool` itself.
+        tf.debugging.assert_equal(
+            tf.rank(value) > 0 and tf.shape(value)[-1] == self.dimension,
+            True,
+            message=f"""
+                Dimensionality mismatch: space is {self.dimension}, value is {tf.shape(value)[-1]}
+                """,
+        )
+        return self._contains(value)
+
+    @abstractmethod
+    def _contains(self, value: TensorType) -> TensorType:
+        """Space-specific implementation of containment. Can assume valid input shape.
+
+        :param value: A point or points to check for membership of this :class:`SearchSpace`.
+        :return: A boolean array showing membership for each point in value.
+        """
+
+    def __contains__(self, value: TensorType) -> bool:
+        """Method called by `in` operator. Doesn't support broadcasting as Python insists
+        on converting the result to a boolean.
+
+        :param value: A single point to check for membership of this :class:`SearchSpace`.
+        :return: `True` if ``value`` is a member of this search space, else `False`.
         :raise ValueError (or tf.errors.InvalidArgumentError): If ``value`` has a different
             dimensionality from this :class:`SearchSpace`.
         """
+        tf.debugging.assert_equal(
+            tf.rank(value) == 1,
+            True,
+            message=f"""
+                Rank mismatch: expected 1, got {tf.rank(value)}. To broadcast containment use
+                `space.contains(value)` method rather than `value in space`.
+                """,
+        )
+        return self.contains(value)
 
     @property
     @abstractmethod
@@ -387,9 +420,9 @@ class DiscreteSearchSpace(SearchSpace):
         """The number of inputs in this search space."""
         return self._dimension
 
-    def __contains__(self, value: TensorType) -> bool | TensorType:
-        tf.debugging.assert_shapes([(value, self.points.shape[1:])])
-        return tf.reduce_any(tf.reduce_all(value == self._points, axis=1))
+    def _contains(self, value: TensorType) -> TensorType:
+        comparison = tf.math.equal(self._points, tf.expand_dims(value, -2))  # [..., N, D]
+        return tf.reduce_any(tf.reduce_all(comparison, axis=-1), axis=-1)  # [...]
 
     def sample(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
         """
@@ -548,28 +581,18 @@ class Box(SearchSpace):
         """The sequence of explicit constraints specified in this search space."""
         return self._constraints
 
-    def __contains__(self, value: TensorType) -> bool | TensorType:
+    def _contains(self, value: TensorType) -> TensorType:
         """
-        Return `True` if ``value`` is a member of this search space, else `False`. A point is a
-        member if all of its coordinates lie in the closed intervals bounded by the lower and upper
-        bounds.
+        For each point in ``value``, return `True` if the point is a member of this search space,
+        else `False`. A point is a member if all of its coordinates lie in the closed intervals
+        bounded by the lower and upper bounds.
 
-        :param value: A point to check for membership of this :class:`SearchSpace`.
-        :return: `True` if ``value`` is a member of this search space, else `False`. May return a
-            scalar boolean `TensorType` instead of the `bool` itself.
-        :raise ValueError (or tf.errors.InvalidArgumentError): If ``value`` has a different
-            dimensionality from the search space.
+        :param value: A point or points to check for membership of this :class:`SearchSpace`.
+        :return: A boolean array showing membership for each point in value.
         """
-
-        tf.debugging.assert_equal(
-            shapes_equal(value, self._lower),
-            True,
-            message=f"""
-                Dimensionality mismatch: space is {self._lower}, value is {tf.shape(value)}
-                """,
+        return tf.reduce_all(value >= self._lower, axis=-1) & tf.reduce_all(
+            value <= self._upper, axis=-1
         )
-
-        return tf.reduce_all(value >= self._lower) and tf.reduce_all(value <= self._upper)
 
     def _sample(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
         # Internal common method to sample randomly from the space.
@@ -984,7 +1007,7 @@ class TaggedProductSearchSpace(SearchSpace):
 
     def get_subspace_component(self, tag: str, values: TensorType) -> TensorType:
         """
-        Returns the components of ``values`` lying in a particular subspace.
+        Returns the components of ``values`` lying in a particular subspace. Supports broadcasting.
 
         :param tag: Subspace tag.
         :param values: Points from the :class:`TaggedProductSearchSpace` of shape [N,Dprod].
@@ -994,9 +1017,9 @@ class TaggedProductSearchSpace(SearchSpace):
 
         starting_index_of_subspace = self._subspace_starting_indices[tag]
         ending_index_of_subspace = starting_index_of_subspace + self._subspace_sizes_by_tag[tag]
-        return values[:, starting_index_of_subspace:ending_index_of_subspace]
+        return values[..., starting_index_of_subspace:ending_index_of_subspace]
 
-    def __contains__(self, value: TensorType) -> bool | TensorType:
+    def _contains(self, value: TensorType) -> TensorType:
         """
         Return `True` if ``value`` is a member of this search space, else `False`. A point is a
         member if each of its subspace components lie in each subspace.
@@ -1010,20 +1033,11 @@ class TaggedProductSearchSpace(SearchSpace):
         :raise ValueError (or tf.errors.InvalidArgumentError): If ``value`` has a different
             dimensionality from the search space.
         """
-
-        tf.debugging.assert_equal(
-            tf.shape(value),
-            self.dimension,
-            message=f"""
-                Dimensionality mismatch: space is {self.dimension}, value is {tf.shape(value)}
-                """,
-        )
-        value = value[tf.newaxis, ...]
         in_each_subspace = [
-            self._spaces[tag].__contains__(self.get_subspace_component(tag, value)[0, :])
+            self._spaces[tag].contains(self.get_subspace_component(tag, value))
             for tag in self._tags
         ]
-        return tf.reduce_all(in_each_subspace)
+        return tf.reduce_all(in_each_subspace, axis=0)
 
     def sample(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
         """

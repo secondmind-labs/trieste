@@ -55,7 +55,7 @@ class Integers(SearchSpace):
     def sample(self, num_samples: int, seed: Optional[int] = None) -> tf.Tensor:
         return tf.random.shuffle(tf.range(self.limit), seed=seed)[:num_samples]
 
-    def __contains__(self, point: tf.Tensor) -> bool | TensorType:
+    def _contains(self, point: tf.Tensor) -> bool | TensorType:
         tf.debugging.assert_integer(point)
         return 0 <= point < self.limit
 
@@ -101,6 +101,15 @@ def test_discrete_search_space_points() -> None:
 @pytest.mark.parametrize("point", list(_points_in_2D_search_space()))
 def test_discrete_search_space_contains_all_its_points(point: tf.Tensor) -> None:
     assert point in DiscreteSearchSpace(_points_in_2D_search_space())
+    assert DiscreteSearchSpace(_points_in_2D_search_space()).contains(point)
+
+
+def test_discrete_search_space_contains_all_its_points_at_once() -> None:
+    points = _points_in_2D_search_space()
+    space = DiscreteSearchSpace(points)
+    contains = space.contains(points)
+    assert len(contains) == len(points)
+    assert tf.reduce_all(contains)
 
 
 @pytest.mark.parametrize(
@@ -114,6 +123,31 @@ def test_discrete_search_space_contains_all_its_points(point: tf.Tensor) -> None
 )
 def test_discrete_search_space_does_not_contain_other_points(point: tf.Tensor) -> None:
     assert point not in DiscreteSearchSpace(_points_in_2D_search_space())
+    assert not DiscreteSearchSpace(_points_in_2D_search_space()).contains(point)
+
+
+def test_discrete_search_space_contains_some_points_but_not_others() -> None:
+    points = tf.constant([[-1.0, -0.4], [-1.0, 0.4], [-1.0, 0.5]])
+    space = DiscreteSearchSpace(_points_in_2D_search_space())
+    contains = space.contains(points)
+    assert list(contains) == [False, True, False]
+
+
+@pytest.mark.parametrize(
+    "test_points, contains",
+    [
+        (tf.constant([[0.0, 0.0], [1.0, 1.0]]), tf.constant([True, False])),
+        (tf.constant([[[0.0, 0.0]]]), tf.constant([[True]])),
+    ],
+)
+def test_discrete_search_space_contains_handles_broadcast(
+    test_points: tf.Tensor, contains: tf.Tensor
+) -> None:
+    space = DiscreteSearchSpace(tf.constant([[0.0, 0.0]]))
+    tf.assert_equal(contains, space.contains(test_points))
+    # point in space raises (because python insists on a bool)
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        _ = test_points in space
 
 
 @pytest.mark.parametrize(
@@ -166,6 +200,8 @@ def test_discrete_search_space_contains_raises_for_invalid_shapes(
     space = DiscreteSearchSpace(points)
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         _ = test_point in space
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        _ = space.contains(test_point)
 
 
 @pytest.mark.parametrize("num_samples", [0, 1, 3, 5, 6, 10, 20])
@@ -358,6 +394,7 @@ def test_box_bounds_attributes() -> None:
 )
 def test_box_contains_point(point: tf.Tensor) -> None:
     assert point in Box(tf.constant([-1.0, 0.0, -2.0]), tf.constant([2.0, 1.0, -0.5]))
+    assert Box(tf.constant([-1.0, 0.0, -2.0]), tf.constant([2.0, 1.0, -0.5])).contains(point)
 
 
 @pytest.mark.parametrize(
@@ -370,6 +407,22 @@ def test_box_contains_point(point: tf.Tensor) -> None:
 )
 def test_box_does_not_contain_point(point: tf.Tensor) -> None:
     assert point not in Box(tf.constant([-1.0, 0.0, -2.0]), tf.constant([2.0, 1.0, -0.5]))
+    assert not Box(tf.constant([-1.0, 0.0, -2.0]), tf.constant([2.0, 1.0, -0.5])).contains(point)
+
+
+@pytest.mark.parametrize(
+    "points, contains",
+    [
+        (tf.constant([[-1.0, 0.0, -2.0], [-1.1, 0.0, -2.0]]), tf.constant([True, False])),
+        (tf.constant([[[0.5, 0.5, -1.5]]]), tf.constant([[True]])),
+    ],
+)
+def test_box_contains_broadcasts(points: tf.Tensor, contains: tf.Tensor) -> None:
+    box = Box(tf.constant([-1.0, 0.0, -2.0]), tf.constant([2.0, 1.0, -0.5]))
+    npt.assert_array_equal(contains, box.contains(points))
+    # point in space raises (because python insists on a bool)
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        _ = points in box
 
 
 @pytest.mark.parametrize(
@@ -385,6 +438,8 @@ def test_box_contains_raises_on_point_of_different_shape(
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         _ = point in box
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        _ = box.contains(point)
 
 
 def _assert_correct_number_of_unique_constrained_samples(
@@ -811,6 +866,7 @@ def test_product_space_contains_point(point: tf.Tensor) -> None:
     space_B = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]], dtype=tf.float64))
     product_space = TaggedProductSearchSpace(spaces=[space_A, space_B])
     assert point in product_space
+    assert product_space.contains(point)
 
 
 @pytest.mark.parametrize(
@@ -828,6 +884,18 @@ def test_product_space_does_not_contain_point(point: tf.Tensor) -> None:
     space_B = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]], dtype=tf.float64))
     product_space = TaggedProductSearchSpace(spaces=[space_A, space_B])
     assert point not in product_space
+    assert not product_space.contains(point)
+
+
+def test_product_space_contains_broadcasts() -> None:
+    space_A = Box([-1.0, -2.0], [2.0, 3.0])
+    space_B = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]], dtype=tf.float64))
+    product_space = TaggedProductSearchSpace(spaces=[space_A, space_B])
+    points = tf.constant([[-1.1, 0.0, -0.5, 0.5], [-1.0, 0.0, -0.5, 0.5]], dtype=tf.float64)
+    tf.assert_equal(product_space.contains(points), [False, True])
+    # point in space raises (because python insists on a bool)
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        _ = points in product_space
 
 
 @pytest.mark.parametrize(
@@ -854,6 +922,8 @@ def test_product_space_contains_raises_on_point_of_different_shape(
         point = tf.zeros([wrong_input_shape])
         with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
             _ = point in space
+        with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+            _ = space.contains(point)
 
 
 @pytest.mark.parametrize("num_samples", [0, 1, 10])
