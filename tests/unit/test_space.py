@@ -427,7 +427,11 @@ def test_box_contains_broadcasts(points: tf.Tensor, contains: tf.Tensor) -> None
 
 @pytest.mark.parametrize(
     "bound_shape, point_shape",
-    ((bs, ps) for bs, ps in _pairs_of_shapes() if bs != ps and len(bs) == 1 and bs != (0,)),
+    (
+        (bs, ps)
+        for bs, ps in _pairs_of_shapes()
+        if bs[-1:] != ps[-1:] and len(bs) == 1 and bs != (0,)
+    ),
 )
 def test_box_contains_raises_on_point_of_different_shape(
     bound_shape: ShapeLike,
