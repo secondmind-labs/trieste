@@ -170,7 +170,7 @@ class BatchExpectedConstrainedImprovement(
             for tag, model in models.items()
         }
 
-        pf = trieste.acquisition.probability_of_feasibility(
+        pf = trieste.acquisition.probability_below_threshold(
             models[CONSTRAINT], self._threshold
         )(tf.expand_dims(objective_dataset.query_points, 1))
         is_feasible = pf >= 0.5

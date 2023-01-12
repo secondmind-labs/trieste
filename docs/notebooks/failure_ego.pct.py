@@ -23,7 +23,7 @@ import trieste
 
 def masked_branin(x):
     mask_nan = np.sqrt((x[:, 0] - 0.5) ** 2 + (x[:, 1] - 0.4) ** 2) < 0.3
-    y = np.array(trieste.objectives.branin(x))
+    y = np.array(trieste.objectives.Branin.objective(x))
     y[mask_nan] = np.nan
     return tf.convert_to_tensor(y.reshape(-1, 1), x.dtype)
 
@@ -116,9 +116,10 @@ from trieste.models.gpflow.models import (
     VariationalGaussianProcess,
 )
 from trieste.models.optimizer import BatchOptimizer
+from trieste.types import Tag
 
 
-models: dict[str, TrainableProbabilisticModel] = {
+models: dict[Tag, TrainableProbabilisticModel] = {
     OBJECTIVE: GaussianProcessRegression(regression_model),
     FAILURE: VariationalGaussianProcess(
         classification_model,

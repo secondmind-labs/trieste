@@ -16,7 +16,7 @@ import trieste
 from trieste.ask_tell_optimization import AskTellOptimizer
 from trieste.data import Dataset
 from trieste.models.gpflow import GaussianProcessRegression
-from trieste.objectives import TRID_10_MINIMUM, TRID_10_SEARCH_SPACE, trid_10
+from trieste.objectives import Trid10
 from trieste.objectives.utils import mk_observer
 from trieste.space import Box
 
@@ -39,9 +39,9 @@ tf.get_logger().setLevel("ERROR")
 # As an example, we will be searching for a minimum of a 10-dimensional [Trid function](https://www.sfu.ca/~ssurjano/trid.html). The range of variation of the Trid function values is large. It varies from values of $10^5$ to its global minimum $f(x^∗) = −210$. This large variation range makes it difficult for Bayesian optimization with Gaussian processes to find the global minimum. However, with data normalisation it becomes possible (see <cite data-cite="hebbal2019bayesian">[Hebbal et al. 2019](https://arxiv.org/abs/1905.03350)</cite>).
 
 # %%
-function = trid_10
-F_MINIMUM = TRID_10_MINIMUM
-search_space = TRID_10_SEARCH_SPACE
+function = Trid10.objective
+F_MINIMUM = Trid10.minimum
+search_space = Trid10.search_space
 
 
 # %% [markdown]

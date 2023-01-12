@@ -147,17 +147,13 @@ plt.show()
 
 
 # %%
-from trieste.objectives import (
-    michalewicz_2,
-    MICHALEWICZ_2_MINIMUM,
-    MICHALEWICZ_2_SEARCH_SPACE,
-)
+from trieste.objectives import Michalewicz2
 from trieste.experimental.plotting import plot_function_plotly
 
-search_space = MICHALEWICZ_2_SEARCH_SPACE
-function = michalewicz_2
-MINIMUM = MICHALEWICZ_2_MINIMUM
-MINIMIZER = MICHALEWICZ_2_MINIMUM
+search_space = Michalewicz2.search_space
+function = Michalewicz2.objective
+MINIMUM = Michalewicz2.minimum
+MINIMIZER = Michalewicz2.minimum
 
 # we illustrate the 2-dimensional Michalewicz function
 fig = plot_function_plotly(

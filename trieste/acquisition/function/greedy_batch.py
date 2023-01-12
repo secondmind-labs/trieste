@@ -33,7 +33,7 @@ from ...models.interfaces import (
 )
 from ...observer import OBJECTIVE
 from ...space import SearchSpace
-from ...types import TensorType
+from ...types import Tag, TensorType
 from ..interface import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
@@ -127,7 +127,7 @@ class LocalPenalization(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel])
         :return: The (log) expected improvement penalized with respect to the pending points.
         :raise tf.errors.InvalidArgumentError: If the ``dataset`` is empty.
         """
-        tf.debugging.Assert(dataset is not None, [])
+        tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
@@ -156,10 +156,10 @@ class LocalPenalization(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel])
             for the current step. Defaults to ``True``.
         :return: The updated acquisition function.
         """
-        tf.debugging.Assert(dataset is not None, [])
+        tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
-        tf.debugging.Assert(self._base_acquisition_function is not None, [])
+        tf.debugging.Assert(self._base_acquisition_function is not None, [tf.constant([])])
 
         if new_optimization_step:
             self._update_base_acquisition_function(dataset, model)
@@ -437,7 +437,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
             See class docs for more details.
         :raise tf.errors.InvalidArgumentError: If ``fantasize_method`` is not "KB" or "sample".
         """
-        tf.debugging.Assert(fantasize_method in ["KB", "sample"], [])
+        tf.debugging.Assert(fantasize_method in ["KB", "sample"], [tf.constant([])])
 
         if base_acquisition_function_builder is None:
             base_acquisition_function_builder = ExpectedImprovement()
@@ -451,13 +451,13 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
         self._base_acquisition_function: Optional[AcquisitionFunction] = None
         self._fantasized_acquisition: Optional[AcquisitionFunction] = None
         self._fantasized_models: Mapping[
-            str, _fantasized_model | ModelStack[SupportsPredictJoint]
+            Tag, _fantasized_model | ModelStack[SupportsPredictJoint]
         ] = {}
 
     def _update_base_acquisition_function(
         self,
-        models: Mapping[str, FantasizerModelOrStack],
-        datasets: Optional[Mapping[str, Dataset]],
+        models: Mapping[Tag, FantasizerModelOrStack],
+        datasets: Optional[Mapping[Tag, Dataset]],
     ) -> AcquisitionFunction:
 
         if self._base_acquisition_function is not None:
@@ -472,8 +472,8 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
 
     def _update_fantasized_acquisition_function(
         self,
-        models: Mapping[str, FantasizerModelOrStack],
-        datasets: Optional[Mapping[str, Dataset]],
+        models: Mapping[Tag, FantasizerModelOrStack],
+        datasets: Optional[Mapping[Tag, Dataset]],
         pending_points: TensorType,
     ) -> AcquisitionFunction:
 
@@ -499,7 +499,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
                 for tag, model in models.items()
             }
             self._fantasized_acquisition = self._builder.prepare_acquisition_function(
-                cast(Dict[str, SupportsPredictJoint], self._fantasized_models), datasets
+                cast(Dict[Tag, SupportsPredictJoint], self._fantasized_models), datasets
             )
         else:
             for tag, model in self._fantasized_models.items():
@@ -516,7 +516,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
                     model.update_fantasized_data(fantasized_data[tag])
             self._builder.update_acquisition_function(
                 self._fantasized_acquisition,
-                cast(Dict[str, SupportsPredictJoint], self._fantasized_models),
+                cast(Dict[Tag, SupportsPredictJoint], self._fantasized_models),
                 datasets,
             )
 
@@ -524,8 +524,8 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
 
     def prepare_acquisition_function(
         self,
-        models: Mapping[str, FantasizerModelOrStack],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, FantasizerModelOrStack],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
         """
@@ -555,8 +555,8 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        models: Mapping[str, FantasizerModelOrStack],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, FantasizerModelOrStack],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
     ) -> AcquisitionFunction:

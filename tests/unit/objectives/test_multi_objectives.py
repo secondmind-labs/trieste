@@ -11,19 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Callable
 
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES
-from trieste.objectives.multi_objectives import (
-    DTLZ1,
-    DTLZ2,
-    VLMOP2,
-    MultiObjectiveTestProblem,
-    vlmop2,
-)
+from trieste.objectives.multi_objectives import DTLZ1, DTLZ2, VLMOP2, MultiObjectiveTestProblem
 from trieste.types import TensorType
 
 
@@ -49,7 +44,8 @@ from trieste.types import TensorType
     ],
 )
 def test_vlmop2_has_expected_output(test_x: TensorType, expected: TensorType) -> None:
-    npt.assert_allclose(vlmop2(test_x), expected, rtol=1e-5)
+    f = VLMOP2(2).objective
+    npt.assert_allclose(f(test_x), expected, rtol=1e-5)
 
 
 @pytest.mark.parametrize(
@@ -75,7 +71,7 @@ def test_vlmop2_has_expected_output(test_x: TensorType, expected: TensorType) ->
 def test_dtlz1_has_expected_output(
     test_x: TensorType, input_dim: int, num_obj: int, expected: TensorType
 ) -> None:
-    f = DTLZ1(input_dim, num_obj).objective()
+    f = DTLZ1(input_dim, num_obj).objective
     npt.assert_allclose(f(test_x), expected, rtol=1e-5)
 
 
@@ -107,33 +103,38 @@ def test_dtlz1_has_expected_output(
 def test_dtlz2_has_expected_output(
     test_x: TensorType, input_dim: int, num_obj: int, expected: TensorType
 ) -> None:
-    f = DTLZ2(input_dim, num_obj).objective()
+    f = DTLZ2(input_dim, num_obj).objective
     npt.assert_allclose(f(test_x), expected, rtol=1e-4)
 
 
 @pytest.mark.parametrize(
-    "obj_inst, input_dim, num_obj, gen_pf_num",
+    "obj_type, input_dim, num_obj, gen_pf_num",
     [
-        (DTLZ1(3, 2), 3, 2, 1000),
-        (DTLZ1(5, 3), 5, 3, 1000),
-        (DTLZ2(3, 2), 3, 2, 1000),
-        (DTLZ2(12, 6), 12, 6, 1000),
+        (DTLZ1, 3, 2, 1000),
+        (DTLZ1, 5, 3, 1000),
+        (DTLZ2, 3, 2, 1000),
+        (DTLZ2, 12, 6, 1000),
     ],
 )
 def test_gen_pareto_front_is_equal_to_math_defined(
-    obj_inst: MultiObjectiveTestProblem, input_dim: int, num_obj: int, gen_pf_num: int
+    obj_type: Callable[[int, int], MultiObjectiveTestProblem],
+    input_dim: int,
+    num_obj: int,
+    gen_pf_num: int,
 ) -> None:
-    pfs = obj_inst.gen_pareto_optimal_points(gen_pf_num)
-    if isinstance(obj_inst, DTLZ1):
-        tf.assert_equal(tf.reduce_sum(pfs, axis=1), 0.5)
-    elif isinstance(obj_inst, DTLZ2):
-        tf.debugging.assert_near(tf.norm(pfs, axis=1), 1.0, rtol=1e-6)
+    obj_inst = obj_type(input_dim, num_obj)
+    pfs = obj_inst.gen_pareto_optimal_points(gen_pf_num, None)
+    if obj_type == DTLZ1:
+        tf.assert_equal(tf.reduce_sum(pfs, axis=1), tf.cast(0.5, pfs.dtype))
+    else:
+        assert obj_type == DTLZ2
+        tf.debugging.assert_near(tf.norm(pfs, axis=1), tf.cast(1.0, pfs.dtype), rtol=1e-6)
 
 
 @pytest.mark.parametrize(
     "obj_inst, actual_x",
     [
-        (VLMOP2(), tf.constant([[0.4, 0.2, 0.5]])),
+        (VLMOP2(2), tf.constant([[0.4, 0.2, 0.5]])),
         (DTLZ1(3, 2), tf.constant([[0.3, 0.1]])),
         (DTLZ2(5, 2), tf.constant([[0.3, 0.1]])),
     ],
@@ -142,4 +143,39 @@ def test_func_raises_specified_input_dim_not_align_with_actual_input_dim(
     obj_inst: MultiObjectiveTestProblem, actual_x: TensorType
 ) -> None:
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        obj_inst.objective()(actual_x)
+        obj_inst.objective(actual_x)
+
+
+@pytest.mark.parametrize(
+    "problem, input_dim, num_obj",
+    [
+        (VLMOP2(2), 2, 2),
+        (VLMOP2(10), 10, 2),
+        (DTLZ1(3, 2), 3, 2),
+        (DTLZ1(10, 5), 10, 5),
+        (DTLZ2(3, 2), 3, 2),
+        (DTLZ2(10, 5), 10, 5),
+    ],
+)
+@pytest.mark.parametrize("num_obs", [1, 5, 10])
+@pytest.mark.parametrize("dtype", [tf.float32, tf.float64])
+def test_objective_has_correct_shape_and_dtype(
+    problem: MultiObjectiveTestProblem,
+    input_dim: int,
+    num_obj: int,
+    num_obs: int,
+    dtype: tf.DType,
+) -> None:
+    x = problem.search_space.sample(num_obs)
+    assert x.dtype == tf.float64  # default dtype
+
+    x = tf.cast(x, dtype)
+    y = problem.objective(x)
+    pf = problem.gen_pareto_optimal_points(num_obs * 2)
+
+    assert y.dtype == x.dtype
+    tf.debugging.assert_shapes([(x, [num_obs, input_dim])])
+    tf.debugging.assert_shapes([(y, [num_obs, num_obj])])
+
+    assert pf.dtype == tf.float64  # default dtype
+    tf.debugging.assert_shapes([(pf, [num_obs * 2, num_obj])])

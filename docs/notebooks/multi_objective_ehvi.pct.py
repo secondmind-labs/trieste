@@ -38,12 +38,12 @@ tf.random.set_seed(1793)
 # ## Describe the problem
 #
 # In this tutorial, we provide a multi-objective optimization example using the expected hypervolume improvement acquisition function.
-# We consider the VLMOP2 function --- a synthetic benchmark problem with two objectives. We start by defining the problem parameters.
+# We consider the VLMOP2 problem --- a synthetic benchmark problem with two objectives and input dimensionality of two. We start by defining the problem parameters.
 
 
 # %%
-vlmop2 = VLMOP2().objective()
-observer = trieste.objectives.utils.mk_observer(vlmop2)
+vlmop2 = VLMOP2(2)
+observer = trieste.objectives.utils.mk_observer(vlmop2.objective)
 
 # %%
 mins = [-2, -2]
@@ -64,7 +64,7 @@ initial_data = observer(initial_query_points)
 
 # %%
 _, ax = plot_function_2d(
-    vlmop2,
+    vlmop2.objective,
     mins,
     maxs,
     grid_density=100,
@@ -143,7 +143,7 @@ data_query_points = dataset.query_points
 data_observations = dataset.observations
 
 _, ax = plot_function_2d(
-    vlmop2,
+    vlmop2.objective,
     mins,
     maxs,
     grid_density=100,
@@ -180,7 +180,7 @@ plt.show()
 # First we need to calculate the $\text{HV}_{\text{actual}}$ based on the actual Pareto front. For some multi-objective synthetic functions like VLMOP2, the actual Pareto front has a clear definition, thus we could use `gen_pareto_optimal_points` to near uniformly sample on the actual Pareto front. And use these generated Pareto optimal points to (approximately) calculate the hypervolume of the actual Pareto frontier:
 
 # %%
-actual_pf = VLMOP2().gen_pareto_optimal_points(100)  # gen 100 pf points
+actual_pf = vlmop2.gen_pareto_optimal_points(100)  # gen 100 pf points
 ref_point = get_reference_point(data_observations)
 idea_hv = Pareto(
     tf.cast(actual_pf, dtype=data_observations.dtype)
@@ -242,7 +242,7 @@ batch_data_query_points = dataset.query_points
 batch_data_observations = dataset.observations
 
 _, ax = plot_function_2d(
-    vlmop2,
+    vlmop2.objective,
     mins,
     maxs,
     grid_density=100,
@@ -285,7 +285,7 @@ class Sim:
 
     @staticmethod
     def objective(input_data):
-        return vlmop2(input_data)
+        return vlmop2.objective(input_data)
 
     @staticmethod
     def constraint(input_data):

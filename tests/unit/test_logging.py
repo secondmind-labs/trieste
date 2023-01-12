@@ -48,7 +48,7 @@ from trieste.logging import (
 )
 from trieste.models import ProbabilisticModel
 from trieste.space import Box, SearchSpace
-from trieste.types import TensorType
+from trieste.types import Tag, TensorType
 
 
 class _PseudoTrainableQuadratic(QuadraticMeanAndRBFKernel, PseudoTrainableProbModel):
@@ -175,20 +175,21 @@ def test_text(mocked_summary_histogram: unittest.mock.MagicMock) -> None:
 def test_tensorboard_logging(mocked_summary_scalar: unittest.mock.MagicMock) -> None:
     mocked_summary_writer = unittest.mock.MagicMock()
     with tensorboard_writer(mocked_summary_writer):
-        data, models = {"A": mk_dataset([[0.0]], [[0.0]])}, {"A": _PseudoTrainableQuadratic()}
+        tag: Tag = "A"
+        data, models = {tag: mk_dataset([[0.0]], [[0.0]])}, {tag: _PseudoTrainableQuadratic()}
         steps = 5
         rule = FixedAcquisitionRule([[0.0]])
-        BayesianOptimizer(lambda x: {"A": Dataset(x, x ** 2)}, Box([-1], [1])).optimize(
+        BayesianOptimizer(lambda x: {tag: Dataset(x, x ** 2)}, Box([-1], [1])).optimize(
             steps, data, models, rule
         )
 
     ordered_scalar_names = [
         "A.observation/best_new_observation",
         "A.observation/best_overall",
-        "query_points/[0]",
-        "wallclock/step",
-        "wallclock/query_point_generation",
         "wallclock/model_fitting",
+        "query_points/[0]",
+        "wallclock/query_point_generation",
+        "wallclock/step",
     ]
     for call_arg, scalar_name in zip_longest(
         mocked_summary_scalar.call_args_list,
@@ -216,20 +217,21 @@ def test_wallclock_time_logging(
         def acquire(
             self,
             search_space: SearchSpace,
-            models: Mapping[str, ProbabilisticModel],
-            datasets: Optional[Mapping[str, Dataset]] = None,
+            models: Mapping[Tag, ProbabilisticModel],
+            datasets: Optional[Mapping[Tag, Dataset]] = None,
         ) -> TensorType:
             sleep(acq_time)
             return self._qp
 
     mocked_summary_writer = unittest.mock.MagicMock()
     with tensorboard_writer(mocked_summary_writer):
-        data, models = {"A": mk_dataset([[0.0]], [[0.0]])}, {
-            "A": _PseudoTrainableQuadraticWithWaiting()
+        tag: Tag = "A"
+        data, models = {tag: mk_dataset([[0.0]], [[0.0]])}, {
+            tag: _PseudoTrainableQuadraticWithWaiting()
         }
         steps = 3
         rule = _FixedAcquisitionRuleWithWaiting([[0.0]])
-        BayesianOptimizer(lambda x: {"A": Dataset(x, x ** 2)}, Box([-1], [1])).optimize(
+        BayesianOptimizer(lambda x: {tag: Dataset(x, x ** 2)}, Box([-1], [1])).optimize(
             steps, data, models, rule, fit_initial_model=fit_initial_model
         )
 
@@ -262,12 +264,13 @@ def test_wallclock_time_logging(
 def test_tensorboard_logging_ask_tell(mocked_summary_scalar: unittest.mock.MagicMock) -> None:
     mocked_summary_writer = unittest.mock.MagicMock()
     with tensorboard_writer(mocked_summary_writer):
-        data, models = {"A": mk_dataset([[0.0]], [[0.0]])}, {"A": _PseudoTrainableQuadratic()}
+        tag: Tag = "A"
+        data, models = {tag: mk_dataset([[0.0]], [[0.0]])}, {tag: _PseudoTrainableQuadratic()}
         rule = FixedAcquisitionRule([[0.0]])
         ask_tell = AskTellOptimizer(Box([-1], [1]), data, models, rule)
         with step_number(3):
             new_point = ask_tell.ask()
-            ask_tell.tell({"A": Dataset(new_point, new_point ** 2)})
+            ask_tell.tell({tag: Dataset(new_point, new_point ** 2)})
 
     ordered_scalar_names = [
         "wallclock/model_fitting",

@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import unittest.mock
 from time import time
-from typing import Any, Optional, cast
+from typing import Callable, Optional, Union, cast
 
 import gpflow
 import numpy as np
@@ -53,15 +53,20 @@ from tests.util.models.gpflow.models import (
     vgp_model,
 )
 from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
-from trieste.data import Dataset
+from trieste.data import Dataset, add_fidelity_column
 from trieste.logging import step_number, tensorboard_writer
 from trieste.models import TrainableProbabilisticModel
-from trieste.models.config import create_model
 from trieste.models.gpflow import (
     GaussianProcessRegression,
+    MultifidelityAutoregressive,
+    MultifidelityNonlinearAutoregressive,
     SparseGaussianProcessRegression,
     SparseVariational,
     VariationalGaussianProcess,
+)
+from trieste.models.gpflow.builders import (
+    build_multifidelity_autoregressive_models,
+    build_multifidelity_nonlinear_autoregressive_models,
 )
 from trieste.models.gpflow.inducing_point_selectors import (
     InducingPointSelector,
@@ -524,17 +529,21 @@ def test_gaussian_process_regression_correctly_returns_internal_data() -> None:
     "trieste.models.gpflow.models.GaussianProcessRegression.find_best_model_initialization"
 )
 @pytest.mark.parametrize("prior_for_lengthscale", [True, False])
+@pytest.mark.parametrize("num_kernel_samples", [10, 0])
 def test_gaussian_process_regression_correctly_counts_params_that_can_be_sampled(
-    mocked_model_initializer: Any,
+    mocked_model_initializer: unittest.mock.MagicMock,
     dim: int,
     prior_for_lengthscale: bool,
+    num_kernel_samples: int,
 ) -> None:
     x = tf.constant(np.arange(1, 5 * dim + 1).reshape(-1, dim), dtype=tf.float64)  # shape: [5, d]
     optimizer = Optimizer(
         optimizer=gpflow.optimizers.Scipy(),
         minimize_args={"options": dict(maxiter=10)},
     )
-    model = GaussianProcessRegression(gpr_model(x, fnc_3x_plus_10(x)), optimizer=optimizer)
+    model = GaussianProcessRegression(
+        gpr_model(x, fnc_3x_plus_10(x)), optimizer=optimizer, num_kernel_samples=num_kernel_samples
+    )
     model.model.kernel = gpflow.kernels.RBF(lengthscales=tf.ones([dim], dtype=tf.float64))
     model.model.likelihood.variance.assign(1.0)
     gpflow.set_trainable(model.model.likelihood, True)
@@ -558,9 +567,12 @@ def test_gaussian_process_regression_correctly_counts_params_that_can_be_sampled
     dataset = Dataset(x, tf.cast(fnc_3x_plus_10(x), dtype=tf.float64))
     model.optimize(dataset)
 
-    mocked_model_initializer.assert_called_once()
-    num_samples = mocked_model_initializer.call_args[0][0]
-    npt.assert_array_equal(num_samples, 10 * (dim + 1))
+    if num_kernel_samples == 0:
+        mocked_model_initializer.assert_not_called()
+    else:
+        mocked_model_initializer.assert_called_once()
+        num_samples = mocked_model_initializer.call_args[0][0]
+        npt.assert_array_equal(num_samples, num_kernel_samples * (dim + 1))
 
 
 def test_gaussian_process_regression_best_initialization_changes_params_with_priors(
@@ -737,17 +749,6 @@ def test_gaussian_process_regression_trajectory_sampler_has_correct_samples(
     npt.assert_allclose(sample_variance[:3], true_variance[:3], rtol=0.5)
 
 
-def test_gpr_config_builds_and_default_optimizer_is_correct() -> None:
-    data = mock_data()
-
-    model_config = {"model": gpr_model(*data)}
-    model = create_model(model_config)
-
-    assert isinstance(model, GaussianProcessRegression)
-    assert isinstance(model.optimizer, Optimizer)
-    assert isinstance(model.optimizer.optimizer, gpflow.optimizers.Scipy)
-
-
 def test_gaussian_process_regression_conditional_predict_equations() -> None:
     x = gpflow.utilities.to_default_float(
         tf.constant(np.arange(1, 8).reshape(-1, 1) / 8.0)
@@ -893,17 +894,6 @@ def test_sparse_gaussian_process_regression_model_attribute() -> None:
     assert model.model is sgpr
     assert isinstance(model.model, SGPR)
     assert model.inducing_point_selector is None
-
-
-def test_sgpr_config_builds_and_default_optimizer_is_correct() -> None:
-    data = mock_data()
-
-    model_config = {"model": sgpr_model(*data)}
-    model = create_model(model_config)
-
-    assert isinstance(model, SparseGaussianProcessRegression)
-    assert isinstance(model.optimizer, Optimizer)
-    assert isinstance(model.optimizer.optimizer, gpflow.optimizers.Scipy)
 
 
 def test_sparse_gaussian_process_regression_correctly_returns_internal_data() -> None:
@@ -1388,22 +1378,6 @@ def test_variational_gaussian_process_default_optimizer_is_correct(use_natgrads:
         assert isinstance(model.optimizer.optimizer, gpflow.optimizers.Scipy)
 
 
-@pytest.mark.parametrize("use_natgrads", [True, False])
-def test_vgp_config_builds_and_default_optimizer_is_correct(use_natgrads: bool) -> None:
-    data = mock_data()
-
-    model_config = {"model": vgp_model(*data), "model_args": {"use_natgrads": use_natgrads}}
-    model = create_model(model_config)
-
-    assert isinstance(model, VariationalGaussianProcess)
-    if use_natgrads:
-        assert isinstance(model.optimizer, BatchOptimizer)
-        assert isinstance(model.optimizer.optimizer, tf.optimizers.Optimizer)
-    else:
-        assert isinstance(model.optimizer, Optimizer)
-        assert isinstance(model.optimizer.optimizer, gpflow.optimizers.Scipy)
-
-
 def test_sparse_variational_raises_for_model_with_q_diag_true() -> None:
     x = mock_data()[0]
     model = SVGP(
@@ -1675,17 +1649,6 @@ def test_sparse_variational_default_optimizer_is_correct() -> None:
     assert isinstance(model.optimizer.optimizer, tf.optimizers.Optimizer)
 
 
-def test_svgp_config_builds_and_default_optimizer_is_correct() -> None:
-    data = mock_data()
-
-    model_config = {"model": svgp_model(*data)}
-    model = create_model(model_config)
-
-    assert isinstance(model, SparseVariational)
-    assert isinstance(model.optimizer, BatchOptimizer)
-    assert isinstance(model.optimizer.optimizer, tf.optimizers.Optimizer)
-
-
 def test_sparse_variational_raises_for_invalid_init() -> None:
     x_observed = np.linspace(0, 100, 100).reshape((-1, 1))
     y_observed = _3x_plus_gaussian_noise(x_observed)
@@ -1734,3 +1697,467 @@ def test_sparse_variational_pairwise_covariance_for_non_whitened(
     actual_covariance = model.covariance_between_points(query_points_1, query_points_2)
 
     np.testing.assert_allclose(expected_covariance, actual_covariance, atol=1e-4)
+
+
+def multifidelity_autoregressive_nd_dataset(n_dims: int = 1) -> Dataset:
+
+    dataset = Dataset(
+        tf.Variable(
+            [
+                [0.0] * n_dims + [0.0],
+                [1.0] * n_dims + [1.0],
+                [2.0] * n_dims + [2.0],
+                [3.0] * n_dims + [1.0],
+                [4.0] * n_dims + [2.0],
+                [5.0] * n_dims + [0.0],
+            ],
+            dtype=tf.float64,
+        ),
+        tf.Variable([[2.0], [4.0], [6.0], [8.0], [10.0], [12.0]], dtype=tf.float64),
+    )
+    return dataset
+
+
+def multifidelity_autoregressive_model(n_dims: int) -> MultifidelityAutoregressive:
+
+    search_space = Box([0.0] * n_dims, [10.0] * n_dims)
+    gprs = build_multifidelity_autoregressive_models(
+        multifidelity_autoregressive_nd_dataset(n_dims=n_dims),
+        num_fidelities=3,
+        input_search_space=search_space,
+    )
+    return MultifidelityAutoregressive(gprs)
+
+
+def multifidelity_nonlinear_autoregressive_model(
+    n_dims: int,
+) -> MultifidelityNonlinearAutoregressive:
+
+    search_space = Box([0.0] * n_dims, [10.0] * n_dims)
+    gprs = build_multifidelity_nonlinear_autoregressive_models(
+        multifidelity_autoregressive_nd_dataset(n_dims=n_dims),
+        num_fidelities=3,
+        input_search_space=search_space,
+    )
+    return MultifidelityNonlinearAutoregressive(gprs)
+
+
+MULTIFIDELITY_MODEL_BUILDER_TYPE = Callable[
+    [int], Union[MultifidelityAutoregressive, MultifidelityNonlinearAutoregressive]
+]
+
+
+@pytest.mark.parametrize(
+    "input_data,output_shape",
+    (
+        ([[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]], [3, 1]),
+        ([[0.1, 0.0, 0.0], [1.1, 1.0, 1.0], [2.1, 2.0, 2.0]], [3, 1]),
+        ([[0.1, 0.0, 0.0, 0.0], [1.1, 1.0, 1.0, 1.0], [2.1, 2.0, 2.0, 2.0]], [3, 1]),
+        ([[[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]]] * 5, [5, 3, 1]),
+        ([[[[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]]] * 5] * 7, [7, 5, 3, 1]),
+    ),
+)
+@pytest.mark.parametrize(
+    "multifidelity_model",
+    (multifidelity_autoregressive_model, multifidelity_nonlinear_autoregressive_model),
+)
+def test_multifidelity_autoregressive_predict_returns_expected_shape(
+    input_data: list[list[Union[float, list[float]]]],
+    output_shape: list[int],
+    multifidelity_model: MULTIFIDELITY_MODEL_BUILDER_TYPE,
+) -> None:
+
+    query_points = tf.Variable(input_data, dtype=tf.float64)
+    D = query_points.shape[-1] - 1
+    model = multifidelity_model(D)
+    pred_mean, pred_var = model.predict(query_points)
+    assert pred_mean.shape == output_shape
+    assert pred_var.shape == output_shape
+
+
+@pytest.mark.parametrize(
+    "input_data,output_shape",
+    (
+        ([[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]], [3, 1]),
+        ([[0.1, 0.0, 0.0], [1.1, 1.0, 1.0], [2.1, 2.0, 2.0]], [3, 1]),
+        ([[0.1, 0.0, 0.0, 0.0], [1.1, 1.0, 1.0, 1.0], [2.1, 2.0, 2.0, 2.0]], [3, 1]),
+        ([[[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]]] * 5, [5, 3, 1]),
+        ([[[[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]]] * 5] * 7, [7, 5, 3, 1]),
+    ),
+)
+@pytest.mark.parametrize(
+    "multifidelity_model",
+    (multifidelity_autoregressive_model, multifidelity_nonlinear_autoregressive_model),
+)
+def test_multifidelity_autoregressive_predict_y_returns_expected_shape(
+    input_data: list[list[Union[float, list[float]]]],
+    output_shape: list[int],
+    multifidelity_model: MULTIFIDELITY_MODEL_BUILDER_TYPE,
+) -> None:
+
+    query_points = tf.Variable(input_data, dtype=tf.float64)
+    D = query_points.shape[-1] - 1
+    model = multifidelity_model(D)
+    pred_mean, pred_var = model.predict_y(query_points)
+    assert pred_mean.shape == output_shape
+    assert pred_var.shape == output_shape
+
+
+@pytest.mark.parametrize(
+    "input_data,output_shape",
+    (
+        ([[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]], [3, 1]),
+        ([[0.1, 0.0, 0.0], [1.1, 1.0, 1.0], [2.1, 2.0, 2.0]], [3, 1]),
+        ([[0.1, 0.0, 0.0, 0.0], [1.1, 1.0, 1.0, 1.0], [2.1, 2.0, 2.0, 2.0]], [3, 1]),
+        ([[[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]]] * 5, [5, 3, 1]),
+        ([[[[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]]] * 5] * 7, [7, 5, 3, 1]),
+    ),
+)
+@pytest.mark.parametrize(
+    "multifidelity_model",
+    (multifidelity_autoregressive_model, multifidelity_nonlinear_autoregressive_model),
+)
+def test_multifidelity_autoregressive_sample_returns_expected_shape(
+    input_data: list[list[Union[float, list[float]]]],
+    output_shape: list[int],
+    multifidelity_model: MULTIFIDELITY_MODEL_BUILDER_TYPE,
+) -> None:
+
+    query_points = tf.Variable(input_data, dtype=tf.float64)
+    D = query_points.shape[-1] - 1
+    model = multifidelity_model(D)
+    samples = model.sample(query_points, 13)
+    assert samples.shape == output_shape[:-2] + [13] + output_shape[-2:]
+
+
+@pytest.mark.parametrize(
+    "multifidelity_model",
+    (multifidelity_autoregressive_model, multifidelity_nonlinear_autoregressive_model),
+)
+def test_multifidelity_autoregressive_covariance_with_top_fidelity_returns_expected_shape(
+    multifidelity_model: MULTIFIDELITY_MODEL_BUILDER_TYPE,
+) -> None:
+
+    model = multifidelity_model(1)
+    input_data = tf.Variable([[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]], dtype=tf.float64)
+    covs = model.covariance_with_top_fidelity(input_data)
+    assert covs.shape == [3, 1]
+
+
+@pytest.mark.parametrize(
+    "input_data", (([[0.1, 0.0], [1.1, -1.0], [2.1, 2.0]]), [[0.1, 0.0], [1.1, 3.0], [2.1, 2.0]])
+)
+@pytest.mark.parametrize(
+    "multifidelity_model",
+    (multifidelity_autoregressive_model, multifidelity_nonlinear_autoregressive_model),
+)
+def test_multifidelity_autoregressive_raises_bad_fidleity(
+    input_data: list[list[float]],
+    multifidelity_model: MULTIFIDELITY_MODEL_BUILDER_TYPE,
+) -> None:
+
+    input_data = tf.Variable(input_data, dtype=tf.float64)
+    model = multifidelity_model(1)
+    with pytest.raises(ValueError):
+        model.predict(input_data)
+    with pytest.raises(ValueError):
+        model.predict_y(input_data)
+    with pytest.raises(ValueError):
+        model.sample(input_data, 13)
+    with pytest.raises(ValueError):
+        model.covariance_with_top_fidelity(input_data)
+
+
+@pytest.mark.parametrize(
+    "multifidelity_model",
+    (multifidelity_autoregressive_model, multifidelity_nonlinear_autoregressive_model),
+)
+def test_multifidelity_autoregressive_update_increases_internal_data_count(
+    multifidelity_model: MULTIFIDELITY_MODEL_BUILDER_TYPE,
+) -> None:
+
+    model = multifidelity_model(1)
+    if isinstance(model, MultifidelityAutoregressive):
+        initial_fid_0_data_length = tf.shape(
+            model.lowest_fidelity_signal_model.get_internal_data().query_points
+        )[0]
+        initial_fid_1_data_length = tf.shape(
+            model.fidelity_residual_models[1].get_internal_data().query_points
+        )[0]
+        initial_fid_2_data_length = tf.shape(
+            model.fidelity_residual_models[2].get_internal_data().query_points
+        )[0]
+    else:
+        initial_fid_0_data_length = tf.shape(
+            model.fidelity_models[0].get_internal_data().query_points
+        )[0]
+        initial_fid_1_data_length = tf.shape(
+            model.fidelity_models[1].get_internal_data().query_points
+        )[0]
+        initial_fid_2_data_length = tf.shape(
+            model.fidelity_models[2].get_internal_data().query_points
+        )[0]
+
+    new_data = Dataset(
+        tf.Variable([[0.2, 0.0], [0.3, 0.0], [0.5, 1.0]], dtype=tf.float64),
+        tf.Variable([[1.0], [2.0], [3.0]], dtype=tf.float64),
+    )
+
+    model.update(multifidelity_autoregressive_nd_dataset(n_dims=1) + new_data)
+    if isinstance(model, MultifidelityAutoregressive):
+        assert (
+            tf.shape(model.lowest_fidelity_signal_model.get_internal_data().query_points)[0]
+            == initial_fid_0_data_length + 2
+        )
+        assert (
+            tf.shape(model.fidelity_residual_models[1].get_internal_data().query_points)[0]
+            == initial_fid_1_data_length + 1
+        )
+        assert (
+            tf.shape(model.fidelity_residual_models[2].get_internal_data().query_points)[0]
+            == initial_fid_2_data_length
+        )
+    else:
+        assert (
+            tf.shape(model.fidelity_models[0].get_internal_data().query_points)[0]
+            == initial_fid_0_data_length + 2
+        )
+        assert (
+            tf.shape(model.fidelity_models[1].get_internal_data().query_points)[0]
+            == initial_fid_1_data_length + 1
+        )
+        assert (
+            tf.shape(model.fidelity_models[2].get_internal_data().query_points)[0]
+            == initial_fid_2_data_length
+        )
+
+
+@pytest.mark.parametrize(
+    "new_data,problem",
+    (
+        ([[0.0, 8.0]], "too_high_fid"),
+        ([[0.0, -1.0]], "negative_fid"),
+        ([[0.0, 1.3]], "non_int_fid"),
+    ),
+)
+@pytest.mark.parametrize(
+    "multifidelity_model",
+    (multifidelity_autoregressive_model, multifidelity_nonlinear_autoregressive_model),
+)
+def test_multifidelity_autoregressive_update_raises_for_bad_new_data(
+    new_data: list[list[float]],
+    problem: str,
+    multifidelity_model: MULTIFIDELITY_MODEL_BUILDER_TYPE,
+) -> None:
+
+    new_dataset = Dataset(
+        tf.Variable(new_data, dtype=tf.float64), tf.Variable([[0.1]], dtype=tf.float64)
+    )
+    model = multifidelity_model(1)
+    dataset = multifidelity_autoregressive_nd_dataset()
+    if problem == "non_int_fid":
+        with pytest.raises(tf.errors.InvalidArgumentError):
+            model.update(dataset + new_dataset)
+    else:
+        with pytest.raises(ValueError):
+            model.update(dataset + new_dataset)
+
+
+@pytest.mark.parametrize(
+    "model_type",
+    ("linear", "nonlinear"),
+)
+def test_multifidelity_autoregressive_optimize_reduces_losses(model_type: str) -> None:
+
+    xs_low = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
+    xs_high = tf.Variable(np.linspace(0, 10, 10), dtype=tf.float64)[:, None]
+    lf_obs = tf.sin(xs_low) + tf.random.normal(xs_low.shape, mean=0, stddev=1e-1, dtype=tf.float64)
+    hf_obs = 2 * tf.sin(xs_high) + tf.random.normal(
+        xs_high.shape, mean=0, stddev=1e-1, dtype=tf.float64
+    )
+
+    lf_query_points = add_fidelity_column(xs_low, 0)
+    hf_query_points = add_fidelity_column(xs_high, 1)
+
+    lf_dataset = Dataset(lf_query_points, lf_obs)
+    hf_dataset = Dataset(hf_query_points, hf_obs)
+
+    dataset = lf_dataset + hf_dataset
+
+    search_space = Box([0.0], [10.0])
+
+    model: Union[MultifidelityAutoregressive, MultifidelityNonlinearAutoregressive]
+    if model_type == "linear":
+        model = MultifidelityAutoregressive(
+            build_multifidelity_autoregressive_models(
+                dataset, num_fidelities=2, input_search_space=search_space
+            )
+        )
+    else:
+        model = MultifidelityNonlinearAutoregressive(
+            build_multifidelity_nonlinear_autoregressive_models(
+                dataset, num_fidelities=2, input_search_space=search_space
+            )
+        )
+
+    if isinstance(model, MultifidelityAutoregressive):
+        starting_f0_model_loss = model.lowest_fidelity_signal_model.model.training_loss()
+        starting_f1_model_loss = model.fidelity_residual_models[1].model.training_loss()
+
+        model.update(dataset)
+        model.optimize(dataset)
+
+        assert model.lowest_fidelity_signal_model.model.training_loss() < starting_f0_model_loss
+        assert model.fidelity_residual_models[1].model.training_loss() < starting_f1_model_loss
+    else:
+        starting_f0_model_loss = model.fidelity_models[0].model.training_loss()
+        starting_f1_model_loss = model.fidelity_models[1].model.training_loss()
+
+        model.update(dataset)
+        model.optimize(dataset)
+
+        assert model.fidelity_models[0].model.training_loss() < starting_f0_model_loss
+        assert model.fidelity_models[1].model.training_loss() < starting_f1_model_loss
+
+
+@pytest.mark.parametrize(
+    "new_data,problem",
+    (
+        ([[0.0, 8.0]], "too_high_fid"),
+        ([[0.0, -1.0]], "negative_fid"),
+        ([[0.0, 1.3]], "non_int_fid"),
+    ),
+)
+@pytest.mark.parametrize(
+    "multifidelity_model",
+    (multifidelity_autoregressive_model, multifidelity_nonlinear_autoregressive_model),
+)
+def test_multifidelity_autoregressive_optimize_raises_for_bad_new_data(
+    new_data: list[list[float]],
+    problem: str,
+    multifidelity_model: MULTIFIDELITY_MODEL_BUILDER_TYPE,
+) -> None:
+
+    new_dataset = Dataset(
+        tf.Variable(new_data, dtype=tf.float64), tf.Variable([[0.1]], dtype=tf.float64)
+    )
+    model = multifidelity_model(1)
+    dataset = multifidelity_autoregressive_nd_dataset()
+    if problem == "non_int_fid":
+        with pytest.raises(tf.errors.InvalidArgumentError):
+            model.optimize(dataset + new_dataset)
+    else:
+        with pytest.raises(ValueError):
+            model.optimize(dataset + new_dataset)
+
+
+@pytest.mark.parametrize(
+    "model_type",
+    ("linear", "nonlinear"),
+)
+def test_multifidelity_autoregressive_sample_aligns_with_predict(model_type: str) -> None:
+
+    xs_low = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
+    xs_high = tf.Variable(np.linspace(0, 10, 10), dtype=tf.float64)[:, None]
+    lf_obs = tf.sin(xs_low)
+    hf_obs = 2 * tf.sin(xs_high) + tf.random.normal(
+        xs_high.shape, mean=0, stddev=1e-1, dtype=tf.float64
+    )
+
+    lf_query_points = add_fidelity_column(xs_low, 0)
+    hf_query_points = add_fidelity_column(xs_high, 1)
+
+    lf_dataset = Dataset(lf_query_points, lf_obs)
+    hf_dataset = Dataset(hf_query_points, hf_obs)
+
+    dataset = lf_dataset + hf_dataset
+
+    search_space = Box([0.0], [10.0])
+
+    model: Union[MultifidelityAutoregressive, MultifidelityNonlinearAutoregressive]
+    if model_type == "linear":
+        model = MultifidelityAutoregressive(
+            build_multifidelity_autoregressive_models(
+                dataset, num_fidelities=2, input_search_space=search_space
+            )
+        )
+        model.lowest_fidelity_signal_model.model.likelihood.variance.assign(1.1e-6)
+        gpflow.set_trainable(model.lowest_fidelity_signal_model.model.likelihood, False)
+    else:
+        model = MultifidelityNonlinearAutoregressive(
+            build_multifidelity_nonlinear_autoregressive_models(
+                dataset, num_fidelities=2, input_search_space=search_space
+            )
+        )
+
+    model.update(dataset)
+    model.optimize(dataset)
+
+    test_locations = tf.Variable(np.linspace(0, 10, 32), dtype=tf.float64)[:, None]
+    lf_test_locations = add_fidelity_column(test_locations, 0)
+    hf_test_locations = add_fidelity_column(test_locations, 1)
+    concat_test_locations = tf.concat([lf_test_locations, hf_test_locations], axis=0)
+
+    true_means, true_vars = model.predict(concat_test_locations)
+
+    if isinstance(model, MultifidelityAutoregressive):
+        samples = model.sample(concat_test_locations, 100000)
+    else:
+        samples = model.sample(concat_test_locations, 10000)
+    sample_means = tf.reduce_mean(samples, axis=0)
+    sample_vars = tf.math.reduce_variance(samples, axis=0)
+
+    if isinstance(model, MultifidelityAutoregressive):
+        npt.assert_allclose(true_means, sample_means, atol=1e-3, rtol=1e-3)
+        npt.assert_allclose(true_vars, sample_vars, atol=1e-3, rtol=1e-3)
+    else:
+        npt.assert_allclose(true_means, sample_means, atol=1e-2, rtol=1e-2)
+        npt.assert_allclose(true_vars, sample_vars, atol=1e-2, rtol=1e-2)
+
+
+@pytest.mark.parametrize(
+    "model_type",
+    ("linear", "nonlinear"),
+)
+def test_multifidelity_autoregressive_samples_are_varied(model_type: str) -> None:
+
+    xs_low = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
+    xs_high = tf.Variable(np.linspace(0, 10, 10), dtype=tf.float64)[:, None]
+    lf_obs = tf.sin(xs_low)
+    hf_obs = 2 * tf.sin(xs_high) + tf.random.normal(
+        xs_high.shape, mean=0, stddev=1e-1, dtype=tf.float64
+    )
+
+    lf_query_points = add_fidelity_column(xs_low, 0)
+    hf_query_points = add_fidelity_column(xs_high, 1)
+
+    lf_dataset = Dataset(lf_query_points, lf_obs)
+    hf_dataset = Dataset(hf_query_points, hf_obs)
+
+    dataset = lf_dataset + hf_dataset
+
+    search_space = Box([0.0], [10.0])
+
+    model: Union[MultifidelityAutoregressive, MultifidelityNonlinearAutoregressive]
+    if model_type == "linear":
+        model = MultifidelityAutoregressive(
+            build_multifidelity_autoregressive_models(
+                dataset, num_fidelities=2, input_search_space=search_space
+            )
+        )
+    else:
+        model = MultifidelityNonlinearAutoregressive(
+            build_multifidelity_nonlinear_autoregressive_models(
+                dataset, num_fidelities=2, input_search_space=search_space
+            )
+        )
+
+    test_locations = tf.Variable([[5.1]], dtype=tf.float64)
+    lf_test_locations = add_fidelity_column(test_locations, 0)
+    hf_test_locations = add_fidelity_column(test_locations, 1)
+
+    lf_samples = model.sample(lf_test_locations, 2)
+    assert lf_samples[0] != lf_samples[1]
+
+    hf_samples = model.sample(hf_test_locations, 2)
+    assert hf_samples[0] != hf_samples[1]

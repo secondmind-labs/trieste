@@ -15,13 +15,13 @@
 from __future__ import annotations
 
 from abc import ABC
-from typing import Any, Callable, cast
+from typing import Callable, cast
 
 import gpflow.kernels
-import gpflux.layers.basis_functions
 import tensorflow as tf
 from gpflow.inducing_variables import InducingPoints
 from gpflux.layers import GPLayer, LatentVariableLayer
+from gpflux.layers.basis_functions.fourier_features import RandomFourierFeaturesCosine
 from gpflux.math import compute_A_inv_b
 from gpflux.models import DeepGP
 
@@ -34,17 +34,6 @@ from ..interfaces import (
     TrajectorySampler,
 )
 from .interface import GPfluxPredictor
-
-try:
-    # temporary support for gpflux 0.2.3
-    # code ugliness is due to https://github.com/python/mypy/issues/8823
-    RFF: Any = getattr(gpflux.layers.basis_functions, "RandomFourierFeatures")
-except AttributeError:
-    import gpflux.layers.basis_functions.fourier_features  # needed for 0.2.7
-
-    RFF = getattr(
-        getattr(gpflux.layers.basis_functions, "fourier_features"), "RandomFourierFeaturesCosine"
-    )
 
 
 class DeepGaussianProcessReparamSampler(ReparametrizationSampler[GPfluxPredictor]):
@@ -192,7 +181,9 @@ class DeepGaussianProcessDecoupledTrajectorySampler(TrajectorySampler[GPfluxPred
             :class:`dgp_feature_decomposition_trajectory`
         """
 
-        tf.debugging.Assert(isinstance(trajectory, dgp_feature_decomposition_trajectory), [])
+        tf.debugging.Assert(
+            isinstance(trajectory, dgp_feature_decomposition_trajectory), [tf.constant([])]
+        )
 
         cast(dgp_feature_decomposition_trajectory, trajectory).update()
         return trajectory
@@ -207,7 +198,9 @@ class DeepGaussianProcessDecoupledTrajectorySampler(TrajectorySampler[GPfluxPred
         :raise InvalidArgumentError: If ``trajectory`` is not a
             :class:`dgp_feature_decomposition_trajectory`
         """
-        tf.debugging.Assert(isinstance(trajectory, dgp_feature_decomposition_trajectory), [])
+        tf.debugging.Assert(
+            isinstance(trajectory, dgp_feature_decomposition_trajectory), [tf.constant([])]
+        )
         cast(dgp_feature_decomposition_trajectory, trajectory).resample()
         return trajectory
 
@@ -382,7 +375,7 @@ class DeepGaussianProcessDecoupledLayer(ABC):
         return weight_sampler
 
 
-class ResampleableDecoupledDeepGaussianProcessFeatureFunctions(RFF):  # type: ignore[misc]
+class ResampleableDecoupledDeepGaussianProcessFeatureFunctions(RandomFourierFeaturesCosine):
     """
     A wrapper around GPflux's random Fourier feature function that allows for efficient in-place
     updating when generating new decompositions. In addition to providing Fourier features,

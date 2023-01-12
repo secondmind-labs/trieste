@@ -19,11 +19,11 @@ GPflow wrappers.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Optional, Tuple, TypeVar, Union, cast
+from typing import Callable, Optional, Tuple, TypeVar, Union, cast
 
-import gpflux.layers.basis_functions
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflux.layers.basis_functions.fourier_features import RandomFourierFeaturesCosine
 from gpflux.math import compute_A_inv_b
 from typing_extensions import Protocol, runtime_checkable
 
@@ -42,17 +42,6 @@ from ..interfaces import (
     TrajectoryFunctionClass,
     TrajectorySampler,
 )
-
-try:
-    # temporary support for gpflux 0.2.3
-    # code ugliness is due to https://github.com/python/mypy/issues/8823
-    RFF: Any = getattr(gpflux.layers.basis_functions, "RandomFourierFeatures")
-except AttributeError:
-    import gpflux.layers.basis_functions.fourier_features  # needed for 0.2.7
-
-    RFF = getattr(
-        getattr(gpflux.layers.basis_functions, "fourier_features"), "RandomFourierFeaturesCosine"
-    )
 
 
 class IndependentReparametrizationSampler(ReparametrizationSampler[ProbabilisticModel]):
@@ -315,7 +304,9 @@ class FeatureDecompositionTrajectorySampler(
         :param trajectory: The trajectory function to be resampled.
         :return: The new resampled trajectory function.
         """
-        tf.debugging.Assert(isinstance(trajectory, feature_decomposition_trajectory), [])
+        tf.debugging.Assert(
+            isinstance(trajectory, feature_decomposition_trajectory), [tf.constant([])]
+        )
 
         self._feature_functions.resample()  # resample Fourier feature decomposition
         weight_sampler = self._prepare_weight_sampler()  # recalculate weight distribution
@@ -332,7 +323,9 @@ class FeatureDecompositionTrajectorySampler(
         :param trajectory: The trajectory function to be resampled.
         :return: The new resampled trajectory function.
         """
-        tf.debugging.Assert(isinstance(trajectory, feature_decomposition_trajectory), [])
+        tf.debugging.Assert(
+            isinstance(trajectory, feature_decomposition_trajectory), [tf.constant([])]
+        )
         cast(feature_decomposition_trajectory, trajectory).resample()
         return trajectory  # return trajectory with resampled weights
 
@@ -634,7 +627,7 @@ class DecoupledTrajectorySampler(
         return weight_sampler
 
 
-class ResampleableRandomFourierFeatureFunctions(RFF):  # type: ignore[misc]
+class ResampleableRandomFourierFeatureFunctions(RandomFourierFeaturesCosine):
     """
     A wrapper around GPFlux's random Fourier feature function that allows for
     efficient in-place updating when generating new decompositions.
@@ -692,14 +685,8 @@ class ResampleableRandomFourierFeatureFunctions(RFF):  # type: ignore[misc]
         """
         Resample weights and biases
         """
-
-        if not hasattr(self, "_bias_init"):
-            # maintain support for gpflux 0.2.3
-            self.b.assign(self._sample_bias(tf.shape(self.b), dtype=self._dtype))
-            self.W.assign(self._sample_weights(tf.shape(self.W), dtype=self._dtype))
-        else:
-            self.b.assign(self._bias_init(tf.shape(self.b), dtype=self._dtype))
-            self.W.assign(self._weights_init(tf.shape(self.W), dtype=self._dtype))
+        self.b.assign(self._bias_init(tf.shape(self.b), dtype=self._dtype))
+        self.W.assign(self._weights_init(tf.shape(self.W), dtype=self._dtype))
 
 
 class ResampleableDecoupledFeatureFunctions(ResampleableRandomFourierFeatureFunctions):

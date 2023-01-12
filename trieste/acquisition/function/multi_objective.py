@@ -27,7 +27,7 @@ from ...data import Dataset
 from ...models import ProbabilisticModel, ReparametrizationSampler
 from ...models.interfaces import HasReparamSampler
 from ...observer import OBJECTIVE
-from ...types import TensorType
+from ...types import Tag, TensorType
 from ...utils import DEFAULTS
 from ..interface import (
     AcquisitionFunction,
@@ -91,7 +91,7 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder[Probabilistic
         :param dataset: The data from the observer. Must be populated.
         :return: The expected hypervolume improvement acquisition function.
         """
-        tf.debugging.Assert(dataset is not None, [])
+        tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         mean, _ = model.predict(dataset.query_points)
@@ -121,10 +121,10 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder[Probabilistic
         :param model: The model.
         :param dataset: The data from the observer. Must be populated.
         """
-        tf.debugging.Assert(dataset is not None, [])
+        tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
-        tf.debugging.Assert(isinstance(function, expected_hv_improvement), [])
+        tf.debugging.Assert(isinstance(function, expected_hv_improvement), [tf.constant([])])
         mean, _ = model.predict(dataset.query_points)
 
         if callable(self._ref_point_spec):
@@ -319,7 +319,7 @@ class BatchMonteCarloExpectedHypervolumeImprovement(
         :param dataset: The data from the observer. Must be populated.
         :return: The batch expected hypervolume improvement acquisition function.
         """
-        tf.debugging.Assert(dataset is not None, [])
+        tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         mean, _ = model.predict(dataset.query_points)
@@ -424,7 +424,7 @@ class ExpectedConstrainedHypervolumeImprovement(
 
     def __init__(
         self,
-        objective_tag: str,
+        objective_tag: Tag,
         constraint_builder: AcquisitionFunctionBuilder[ProbabilisticModelType],
         min_feasibility_probability: float | TensorType = 0.5,
         reference_point_spec: Sequence[float]
@@ -520,7 +520,7 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
 
     def __init__(
         self,
-        objective_tag: str = OBJECTIVE,
+        objective_tag: Tag = OBJECTIVE,
         base_acquisition_function_builder: AcquisitionFunctionBuilder[ProbabilisticModelType]
         | SingleModelAcquisitionBuilder[ProbabilisticModelType]
         | None = None,
@@ -550,8 +550,8 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
 
     def prepare_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModelType],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
         """
@@ -563,9 +563,9 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
         :return: The HIPPO acquisition function.
         :raise tf.errors.InvalidArgumentError: If the ``dataset`` is empty.
         """
-        tf.debugging.Assert(datasets is not None, [])
-        datasets = cast(Mapping[str, Dataset], datasets)
-        tf.debugging.Assert(datasets[self._objective_tag] is not None, [])
+        tf.debugging.Assert(datasets is not None, [tf.constant([])])
+        datasets = cast(Mapping[Tag, Dataset], datasets)
+        tf.debugging.Assert(datasets[self._objective_tag] is not None, [tf.constant([])])
         tf.debugging.assert_positive(
             len(datasets[self._objective_tag]),
             message=f"{self._objective_tag} dataset must be populated.",
@@ -580,8 +580,8 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        models: Mapping[str, ProbabilisticModelType],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
     ) -> AcquisitionFunction:
@@ -598,14 +598,14 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
             for the current step. Defaults to ``True``.
         :return: The updated acquisition function.
         """
-        tf.debugging.Assert(datasets is not None, [])
-        datasets = cast(Mapping[str, Dataset], datasets)
-        tf.debugging.Assert(datasets[self._objective_tag] is not None, [])
+        tf.debugging.Assert(datasets is not None, [tf.constant([])])
+        datasets = cast(Mapping[Tag, Dataset], datasets)
+        tf.debugging.Assert(datasets[self._objective_tag] is not None, [tf.constant([])])
         tf.debugging.assert_positive(
             len(datasets[self._objective_tag]),
             message=f"{self._objective_tag} dataset must be populated.",
         )
-        tf.debugging.Assert(self._base_acquisition_function is not None, [])
+        tf.debugging.Assert(self._base_acquisition_function is not None, [tf.constant([])])
 
         if new_optimization_step:
             self._update_base_acquisition_function(models, datasets)
@@ -647,8 +647,8 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
 
     def _update_base_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModelType],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> AcquisitionFunction:
         if self._base_acquisition_function is None:
             self._base_acquisition_function = self._base_builder.prepare_acquisition_function(
@@ -688,7 +688,9 @@ class hippo_penalizer:
         :return: The penalization function. This function will raise
             :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
             greater than one."""
-        tf.debugging.Assert(pending_points is not None and len(pending_points) != 0, [])
+        tf.debugging.Assert(
+            pending_points is not None and len(pending_points) != 0, [tf.constant([])]
+        )
 
         self._model = model
         self._pending_points = tf.Variable(pending_points, shape=[None, *pending_points.shape[1:]])
@@ -698,7 +700,9 @@ class hippo_penalizer:
 
     def update(self, pending_points: TensorType) -> None:
         """Update the penalizer with new pending points."""
-        tf.debugging.Assert(pending_points is not None and len(pending_points) != 0, [])
+        tf.debugging.Assert(
+            pending_points is not None and len(pending_points) != 0, [tf.constant([])]
+        )
 
         self._pending_points.assign(pending_points)
         pending_means, pending_vars = self._model.predict(self._pending_points)
