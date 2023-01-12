@@ -180,7 +180,7 @@ def test_multi_objective_optimizer_finds_pareto_front_of_the_VLMOP2_function(
         obs_hv = obs_pareto.hypervolume_indicator(ref_point)
     else:
         obs_hv = 0
-    
+
     ideal_hv = Pareto(ideal_pf).hypervolume_indicator(ref_point)
 
     assert tf.math.log(ideal_hv - obs_hv) < convergence_threshold
