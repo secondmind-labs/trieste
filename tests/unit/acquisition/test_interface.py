@@ -172,6 +172,12 @@ class CustomDatasets(Mapping[Tag, Dataset]):
 
 
 def test_custom_dataset_mapping() -> None:
+    """
+    Check that the datasets argument can be an arbitrary Mapping[Tag, Dataset], not just
+    a dict. In particular, check that we can store metadata there and retrieve it in the
+    acquisition function.
+    """
+
     class _CustomData(AcquisitionFunctionBuilder[ProbabilisticModel]):
         def prepare_acquisition_function(
             self,
