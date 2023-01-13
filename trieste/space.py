@@ -212,7 +212,7 @@ class SearchSpace(ABC):
         """
 
     def contains(self, value: TensorType) -> TensorType:
-        """Method for checking containment. Supports broadcasting.
+        """Method for checking membership. Supports broadcasting.
 
         :param value: A point or points to check for membership of this :class:`SearchSpace`.
         :return: A boolean array showing membership for each point in value.
@@ -230,7 +230,7 @@ class SearchSpace(ABC):
 
     @abstractmethod
     def _contains(self, value: TensorType) -> TensorType:
-        """Space-specific implementation of containment. Can assume valid input shape.
+        """Space-specific implementation of membership. Can assume valid input shape.
 
         :param value: A point or points to check for membership of this :class:`SearchSpace`.
         :return: A boolean array showing membership for each point in value.
@@ -249,8 +249,9 @@ class SearchSpace(ABC):
             tf.rank(value) == 1,
             True,
             message=f"""
-                Rank mismatch: expected 1, got {tf.rank(value)}. To broadcast containment use
-                `space.contains(value)` method rather than `value in space`.
+                Rank mismatch: expected 1, got {tf.rank(value)}. To get a tensor of boolean
+                membership values from a tensor of points, use `space.contains(value)`
+                rather than `value in space`.
                 """,
         )
         return self.contains(value)
@@ -1007,7 +1008,7 @@ class TaggedProductSearchSpace(SearchSpace):
 
     def get_subspace_component(self, tag: str, values: TensorType) -> TensorType:
         """
-        Returns the components of ``values`` lying in a particular subspace. Supports broadcasting.
+        Returns the components of ``values`` lying in a particular subspace.
 
         :param tag: Subspace tag.
         :param values: Points from the :class:`TaggedProductSearchSpace` of shape [N,Dprod].

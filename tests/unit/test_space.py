@@ -100,8 +100,9 @@ def test_discrete_search_space_points() -> None:
 
 @pytest.mark.parametrize("point", list(_points_in_2D_search_space()))
 def test_discrete_search_space_contains_all_its_points(point: tf.Tensor) -> None:
-    assert point in DiscreteSearchSpace(_points_in_2D_search_space())
-    assert DiscreteSearchSpace(_points_in_2D_search_space()).contains(point)
+    space = DiscreteSearchSpace(_points_in_2D_search_space())
+    assert point in space
+    assert space.contains(point)
 
 
 def test_discrete_search_space_contains_all_its_points_at_once() -> None:
@@ -122,8 +123,9 @@ def test_discrete_search_space_contains_all_its_points_at_once() -> None:
     ],
 )
 def test_discrete_search_space_does_not_contain_other_points(point: tf.Tensor) -> None:
-    assert point not in DiscreteSearchSpace(_points_in_2D_search_space())
-    assert not DiscreteSearchSpace(_points_in_2D_search_space()).contains(point)
+    space = DiscreteSearchSpace(_points_in_2D_search_space())
+    assert point not in space
+    assert not space.contains(point)
 
 
 def test_discrete_search_space_contains_some_points_but_not_others() -> None:
@@ -393,8 +395,9 @@ def test_box_bounds_attributes() -> None:
     ],
 )
 def test_box_contains_point(point: tf.Tensor) -> None:
-    assert point in Box(tf.constant([-1.0, 0.0, -2.0]), tf.constant([2.0, 1.0, -0.5]))
-    assert Box(tf.constant([-1.0, 0.0, -2.0]), tf.constant([2.0, 1.0, -0.5])).contains(point)
+    box = Box(tf.constant([-1.0, 0.0, -2.0]), tf.constant([2.0, 1.0, -0.5]))
+    assert point in box
+    assert box.contains(point)
 
 
 @pytest.mark.parametrize(
@@ -406,8 +409,9 @@ def test_box_contains_point(point: tf.Tensor) -> None:
     ],
 )
 def test_box_does_not_contain_point(point: tf.Tensor) -> None:
-    assert point not in Box(tf.constant([-1.0, 0.0, -2.0]), tf.constant([2.0, 1.0, -0.5]))
-    assert not Box(tf.constant([-1.0, 0.0, -2.0]), tf.constant([2.0, 1.0, -0.5])).contains(point)
+    box = Box(tf.constant([-1.0, 0.0, -2.0]), tf.constant([2.0, 1.0, -0.5]))
+    assert point not in box
+    assert not box.contains(point)
 
 
 @pytest.mark.parametrize(
