@@ -212,7 +212,7 @@ class SearchSpace(ABC):
         """
 
     def contains(self, value: TensorType) -> TensorType:
-        """Method for checking membership. Supports broadcasting.
+        """Method for checking membership.
 
         :param value: A point or points to check for membership of this :class:`SearchSpace`.
         :return: A boolean array showing membership for each point in value.
