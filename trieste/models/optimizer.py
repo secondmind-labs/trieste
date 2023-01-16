@@ -68,9 +68,6 @@ class Optimizer:
     compile: bool = False
     """ If `True`, the optimization process will be compiled with :func:`~tf.function`. """
 
-    result: OptimizationResult = None
-    """ If `True`, the optimization process will be compiled with :func:`~tf.function`. """
-
     def create_loss(self, model: tf.Module, dataset: Dataset) -> LossClosure:
         """
         Build a loss function for the specified `model` with the `dataset` using a
@@ -95,8 +92,7 @@ class Optimizer:
         """
         loss_fn = self.create_loss(model, dataset)
         variables = model.trainable_variables
-        self.result = self.optimizer.minimize(loss_fn, variables, **self.minimize_args)
-        return self.result
+        return self.optimizer.minimize(loss_fn, variables, **self.minimize_args)
 
 
 @dataclass
@@ -147,15 +143,12 @@ class BatchOptimizer(Optimizer):
         loss_fn = self.create_loss(model, dataset)
         variables = model.trainable_variables
 
-        model.history = tf.keras.callbacks.History()
-
         @jit(apply=self.compile)
         def train_fn() -> None:
             self.optimizer.minimize(loss_fn, variables, **self.minimize_args)
 
         for _ in range(self.max_iter):
             train_fn()
-        # breakpoint()
 
 
 @dataclass

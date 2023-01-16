@@ -163,17 +163,6 @@ class GPflowPredictor(
                 write_summary_kernel_parameters(self.get_kernel())
                 # likelihood parameters
                 write_summary_likelihood_parameters(self.model.likelihood)
-                # optimization
-                # breakpoint()
-                # if isinstance(self.optimizer, Optimizer):
-                #     logging.scalar("optim/fun", lambda: self.optimizer.result['fun'])
-                #     logging.scalar("optim/nfev", lambda: self.optimizer.result['nfev'])
-                #     logging.scalar("optim/success", lambda: self.optimizer.result['success']*1)
-                # elif isinstance(self.optimizer, BatchOptimizer):
-                #     for k, v in self.model.history.history.items():
-                #         logging.histogram(f"{k}/epoch", lambda: v)
-                #         logging.scalar(f"{k}/final", lambda: v[-1])
-                #         logging.scalar(f"{k}/diff", lambda: v[0] - v[-1])
                 # training data based diagnostics
                 if dataset:
                     write_summary_data_based_metrics(dataset=dataset, model=self, prefix="training")
