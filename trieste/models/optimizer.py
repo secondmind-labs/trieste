@@ -155,7 +155,7 @@ class BatchOptimizer(Optimizer):
 
         for _ in range(self.max_iter):
             train_fn()
-        breakpoint()
+        # breakpoint()
 
 
 @dataclass

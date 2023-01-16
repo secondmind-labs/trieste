@@ -21,7 +21,6 @@ import gpflow
 import tensorflow as tf
 from gpflow.models import GPModel
 from gpflow.posteriors import BasePosterior, PrecomputeCacheType
-from gpflow.utilities.traversal import _merge_leaf_components, leaf_components
 from typing_extensions import Protocol
 
 from ... import logging
@@ -34,7 +33,12 @@ from ..interfaces import (
     SupportsGetObservationNoise,
     SupportsPredictJoint,
 )
-from ..optimizer import Optimizer, BatchOptimizer
+from ..optimizer import Optimizer
+from ..utils import (
+    write_summary_data_based_metrics,
+    write_summary_kernel_parameters,
+    write_summary_likelihood_parameters,
+)
 from .sampler import BatchReparametrizationSampler
 
 
@@ -142,12 +146,13 @@ class GPflowPredictor(
 
         :param dataset: The data with which to optimize the `model`.
         """
-        breakpoint()
         self.optimizer.optimize(self.model, dataset)
 
     def log(self, dataset: Optional[Dataset] = None) -> None:
         """
-        Log model-specific information at a given optimization step.
+        Log model training information at a given optimization step to the Tensorboard.
+        We log kernel and likelihood parameters. We also log several training data based metrics,
+        such as root mean square error between predictions and observations and several others.
 
         :param dataset: Optional data that can be used to log additional data-based model summaries.
         """
@@ -155,59 +160,23 @@ class GPflowPredictor(
         if summary_writer:
             with summary_writer.as_default(step=logging.get_step_number()):
                 # kernel parameters
-                kernel = self.get_kernel()
-                components = _merge_leaf_components(leaf_components(kernel))
-                for k, v in components.items():
-                    if v.trainable:
-                        if tf.rank(v) == 0:
-                            logging.scalar(f"kernel.{k}", v)
-                        elif tf.rank(v) == 1:
-                            for i, vi in enumerate(v):
-                                logging.scalar(f"kernel.{k}[{i}]", vi)
+                write_summary_kernel_parameters(self.get_kernel())
                 # likelihood parameters
-                likelihood_components = _merge_leaf_components(leaf_components(self.model.likelihood)
-                )
-                for k, v in likelihood_components.items():
-                    if v.trainable:
-                        logging.scalar(f"likelihood/{k}", v)
+                write_summary_likelihood_parameters(self.model.likelihood)
                 # optimization
                 # breakpoint()
-                if isinstance(self.optimizer, Optimizer):
-                    logging.scalar("optim/fun", lambda: self.optimizer.result['fun'])
-                    logging.scalar("optim/nfev", lambda: self.optimizer.result['nfev'])
-                    logging.scalar("optim/success", lambda: self.optimizer.result['success']*1)
-                elif isinstance(self.optimizer, BatchOptimizer):
-                    for k, v in self.model.history.history.items():
-                        logging.histogram(f"{k}/epoch", lambda: v)
-                        logging.scalar(f"{k}/final", lambda: v[-1])
-                        logging.scalar(f"{k}/diff", lambda: v[0] - v[-1])
+                # if isinstance(self.optimizer, Optimizer):
+                #     logging.scalar("optim/fun", lambda: self.optimizer.result['fun'])
+                #     logging.scalar("optim/nfev", lambda: self.optimizer.result['nfev'])
+                #     logging.scalar("optim/success", lambda: self.optimizer.result['success']*1)
+                # elif isinstance(self.optimizer, BatchOptimizer):
+                #     for k, v in self.model.history.history.items():
+                #         logging.histogram(f"{k}/epoch", lambda: v)
+                #         logging.scalar(f"{k}/final", lambda: v[-1])
+                #         logging.scalar(f"{k}/diff", lambda: v[0] - v[-1])
                 # training data based diagnostics
                 if dataset:
-                    predict = self.predict(dataset.query_points)
-                    # training accuracy
-                    diffs = dataset.observations - predict[0]
-                    z_residuals = diffs / tf.math.sqrt(predict[1])
-                    logging.histogram("accuracy/absolute_errors", tf.math.abs(diffs))
-                    logging.histogram("accuracy/z_residuals", z_residuals)
-                    logging.scalar(
-                        "accuracy/root_mean_square_error", tf.math.sqrt(tf.reduce_mean(diffs ** 2))
-                    )
-                    logging.scalar(
-                        "accuracy/mean_absolute_error", tf.reduce_mean(tf.math.abs(diffs))
-                    )
-                    logging.scalar("accuracy/z_residuals_std", tf.math.reduce_std(z_residuals))
-                    # training variance
-                    variance_error = predict[1] - diffs ** 2
-                    logging.histogram("variance/predict_variance", predict[1])
-                    logging.histogram("variance/variance_error", variance_error)
-                    logging.scalar("variance/predict_variance_mean", tf.reduce_mean(predict[1]))
-                    logging.scalar(
-                        "variance/root_mean_variance_error",
-                        tf.math.sqrt(tf.reduce_mean(variance_error ** 2)),
-                    )
-                    # data stats
-                    empirical_variance = tf.math.reduce_variance(dataset.observations)
-                    logging.scalar("variance/empirical", empirical_variance)
+                    write_summary_data_based_metrics(dataset=dataset, model=self, prefix="training")
 
     def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[GPflowPredictor]:
         """
