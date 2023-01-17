@@ -13,9 +13,9 @@
 # limitations under the License.
 
 from __future__ import annotations
-from typing import Tuple
 
 import unittest.mock
+from typing import Tuple
 
 import gpflow
 import numpy as np
