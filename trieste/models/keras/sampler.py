@@ -25,7 +25,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from ...types import TensorType
-from ...utils import flatten_leading_dims
+from ...utils import DEFAULTS, flatten_leading_dims
 from ..interfaces import TrajectoryFunction, TrajectoryFunctionClass, TrajectorySampler
 from .interface import DeepEnsembleModel
 from .utils import sample_model_index
@@ -48,8 +48,7 @@ class DeepEnsembleTrajectorySampler(TrajectorySampler[DeepEnsembleModel]):
             trajectories (`False` by default). See class docstring for details.
         :param seed: Random number seed to use for trajectory sampling.
         :raise NotImplementedError: If we try to use the model that is not instance of
-            :class:`DeepEnsembleModel` or a multiple output model together with ``diversify``
-            option.
+            :class:`DeepEnsembleModel`.
         """
         if not isinstance(model, DeepEnsembleModel):
             raise NotImplementedError(
@@ -63,13 +62,6 @@ class DeepEnsembleTrajectorySampler(TrajectorySampler[DeepEnsembleModel]):
         self._model = model
         self._diversify = diversify
         self._seed = seed or int(tf.random.uniform(shape=(), maxval=10000, dtype=tf.int32))
-
-        if self._diversify:
-            if self._model.num_outputs > 1:
-                raise NotImplementedError(
-                    f"EnsembleTrajectorySampler with diversify=True only works single output models"
-                    f", however received a model with {self._model.num_outputs} outputs."
-                )
 
     def __repr__(self) -> str:
         """"""
@@ -137,10 +129,11 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
 
         self._initialized = tf.Variable(False, trainable=False)
         self._batch_size = tf.Variable(0, dtype=tf.int32, trainable=False)
+        self._num_outputs = tf.Variable(0, dtype=tf.int32, trainable=False)
 
         if self._diversify:
-            self._quantiles = tf.Variable(
-                tf.zeros([0], dtype=tf.float32), shape=[None], trainable=False
+            self._eps = tf.Variable(
+                tf.zeros([0,0], dtype=tf.float64), shape=[None,None], trainable=False
             )
         else:
             self._indices = tf.Variable(
@@ -173,24 +166,25 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
 
         if self._diversify:
             predicted_means, predicted_vars = self._model.predict(flat_x)  # ([N*B, 1], [N*B, 1])
-            normal = tfp.distributions.Normal(predicted_means, tf.sqrt(predicted_vars))
-            predictions = tf.map_fn(normal.quantile, self._quantiles)  # [B, N*B, 1]
+            predicted_vars = predicted_vars + tf.cast(DEFAULTS.JITTER, predicted_vars.dtype)
+            predictions = predicted_means + tf.sqrt(predicted_vars) * tf.tile(tf.cast(self._eps, predicted_vars.dtype), [x.shape[0], 1])   # [N*B, 1]
+            return unflatten(predictions)  # [N, B, 1]
         else:
             ensemble_distributions = self._model.ensemble_distributions(flat_x)
             predicted_means = tf.convert_to_tensor([dist.mean() for dist in ensemble_distributions])
             predictions = tf.gather(predicted_means, self._indices)  # [B, N*B, 1]
 
-        tensor_predictions = tf.map_fn(unflatten, predictions)  # [B, N, B, 1]
+            tensor_predictions = tf.map_fn(unflatten, predictions)  # [B, N, B, 1]
 
-        # here we select simultaneously networks and batch dimension according to batch indices
-        # this is needed because we compute a whole batch with each network
-        batch_index = tf.range(self._batch_size)
-        indices = tf.stack([batch_index, batch_index], axis=1)
-        batch_predictions = tf.gather_nd(
-            tf.transpose(tensor_predictions, perm=[0, 2, 1, 3]), indices
-        )  # [B,N]
+            # here we select simultaneously networks and batch dimension according to batch indices
+            # this is needed because we compute a whole batch with each network
+            batch_index = tf.range(self._batch_size)
+            indices = tf.stack([batch_index, batch_index], axis=1)
+            batch_predictions = tf.gather_nd(
+                tf.transpose(tensor_predictions, perm=[0, 2, 1, 3]), indices
+            )  # [B,N]
 
-        return tf.transpose(batch_predictions, perm=[1, 0, 2])  # [N, B, 1]
+            return tf.transpose(batch_predictions, perm=[1, 0, 2])  # [N, B, 1]
 
     def resample(self) -> None:
         """
@@ -200,12 +194,10 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
             self._seed += 1  # increment operation seed
 
         if self._diversify:
-            self._quantiles.assign(
-                tf.random.uniform(
-                    shape=(self._batch_size,),
-                    minval=0.000001,
-                    maxval=0.999999,
-                    dtype=tf.float32,
+            self._eps.assign(
+                tf.random.normal(
+                    shape=(self._batch_size, self._model.num_outputs),
+                    dtype=tf.float64,
                     seed=self._seed,
                 )
             )  # [B]
@@ -223,7 +215,7 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
             "batch_size": self._batch_size,
         }
         if self._diversify:
-            state["quantiles"] = self._quantiles
+            state["eps"] = self._eps
         else:
             state["indices"] = self._indices
 

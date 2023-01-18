@@ -50,14 +50,6 @@ def _batch_size_fixture(request: Any) -> int:
     return request.param
 
 
-def test_ensemble_trajectory_sampler_raises_for_multi_output_model() -> None:
-    example_data = empty_dataset([2], [2])
-    model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE)
-
-    with pytest.raises(NotImplementedError):
-        DeepEnsembleTrajectorySampler(model, diversify=True)
-
-
 @pytest.mark.parametrize("diversify, num_outputs", [(True, 1), (False, 1), (False, 2)])
 def test_ensemble_trajectory_sampler_returns_trajectory_function_with_correctly_shaped_output(
     num_evals: int,
@@ -102,7 +94,7 @@ def test_ensemble_trajectory_sampler_returns_deterministic_trajectory(
     npt.assert_allclose(eval_1, eval_2)
 
 
-@pytest.mark.skip(reason="Seems fragile. Unrelated changes causing it to fail. Issue being raised.")
+# @pytest.mark.skip(reason="Seems fragile. Unrelated changes causing it to fail. Issue being raised.")
 @pytest.mark.parametrize("seed", [42, None])
 def test_ensemble_trajectory_sampler_is_not_too_deterministic(
     seed: Optional[int], diversify: bool
@@ -111,7 +103,7 @@ def test_ensemble_trajectory_sampler_is_not_too_deterministic(
     Different trajectories should have different internal state, even if we set the global RNG seed.
     """
     num_evals, batch_size, dim = 19, 5, 10
-    state = "_quantiles" if diversify else "_indices"
+    state = "_eps" if diversify else "_indices"
     example_data = empty_dataset([dim], [1])
     test_data = tf.random.uniform([num_evals, batch_size, dim])  # [N, B, d]
 
@@ -421,8 +413,8 @@ def test_ensemble_trajectory_sampler_returns_state(batch_size: int, diversify: b
     trajectory = cast(deep_ensemble_trajectory, sampler.get_trajectory())
 
     if diversify:
-        dtype = tf.float32
-        rnd_state_name = "quantiles"
+        dtype = tf.float64
+        rnd_state_name = "eps"
     else:
         dtype = tf.int32
         rnd_state_name = "indices"
