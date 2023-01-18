@@ -25,7 +25,9 @@ from typing import Optional
 import gpflow
 import numpy as np
 import tensorflow as tf
-from gpflux.architectures import Config, build_constant_input_dim_deep_gp
+from gpflow.kernels import SquaredExponential
+from gpflux.architectures.config import GaussianLikelihoodConfig, ModelHyperParametersConfig
+from gpflux.architectures.factory import build_constant_input_dim_architecture
 from gpflux.models import DeepGP
 
 from ...data import Dataset
@@ -77,7 +79,7 @@ def build_vanilla_deep_gp(
     universally good solution.
 
     Note that although we set all the relevant parameters to sensible values, we rely on
-    ``build_constant_input_dim_deep_gp`` from :mod:`~gpflux.architectures` to build the model.
+    ``build_constant_input_dim_architecture`` from :mod:`~gpflux.architectures` to build the model.
 
     :param data: Dataset from the initial design, used to estimate the variance of observations
         and to provide query points which are used to determine inducing point locations with
@@ -103,7 +105,7 @@ def build_vanilla_deep_gp(
     tf.debugging.assert_positive(inner_layer_sqrt_factor)
     tf.debugging.assert_positive(likelihood_variance)
 
-    # Input data to ``build_constant_input_dim_deep_gp`` must be np.ndarray for k-means algorithm
+    # Input to ``build_constant_input_dim_architecture`` must be np.ndarray for k-means algorithm
     query_points = data.query_points.numpy()
 
     empirical_mean, empirical_variance, num_data_points = _get_data_stats(data)
@@ -125,14 +127,15 @@ def build_vanilla_deep_gp(
             additional_points = search_space.sample(num_inducing_points - len(query_points)).numpy()
         query_points = np.concatenate([query_points, additional_points], 0)
 
-    config = Config(
-        num_inducing_points,
-        inner_layer_sqrt_factor,
-        likelihood_variance,
+    config = ModelHyperParametersConfig(
+        num_layers=num_layers,
+        kernel=SquaredExponential,
+        likelihood=GaussianLikelihoodConfig(noise_variance=likelihood_variance),
+        inner_layer_qsqrt_factor=inner_layer_sqrt_factor,
         whiten=True,  # whiten = False not supported yet in GPflux for this model
+        num_inducing=num_inducing_points,
     )
-
-    model = build_constant_input_dim_deep_gp(query_points, num_layers, config)
+    model = build_constant_input_dim_architecture(config, query_points)
 
     model.f_layers[-1].kernel.kernel.variance.assign(empirical_variance)
     model.f_layers[-1].mean_function = gpflow.mean_functions.Constant(empirical_mean)
