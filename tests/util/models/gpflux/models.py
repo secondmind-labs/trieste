@@ -21,8 +21,10 @@ from typing import Any, Dict, Tuple
 
 import gpflow
 import tensorflow as tf
+from gpflow.kernels import SquaredExponential
 from gpflow.utilities import set_trainable
-from gpflux.architectures import Config, build_constant_input_dim_deep_gp
+from gpflux.architectures.config import GaussianLikelihoodConfig, ModelHyperParametersConfig
+from gpflux.architectures.factory import build_constant_input_dim_architecture
 from gpflux.layers import GPLayer
 from gpflux.models import DeepGP
 
@@ -36,28 +38,32 @@ def single_layer_dgp_model(x: TensorType) -> DeepGP:
     if isinstance(x, tf.Tensor):
         x = x.numpy()
 
-    config = Config(
-        num_inducing=len(x),
+    config = ModelHyperParametersConfig(
+        num_layers=1,
+        kernel=SquaredExponential,
+        likelihood=GaussianLikelihoodConfig(noise_variance=1e-2),
         inner_layer_qsqrt_factor=1e-5,
-        likelihood_noise_variance=1e-2,
         whiten=True,  # whiten = False not supported yet in GPflux for this model
+        num_inducing=len(x),
     )
 
-    return build_constant_input_dim_deep_gp(X=x, num_layers=1, config=config)
+    return build_constant_input_dim_architecture(config, x)
 
 
 def two_layer_dgp_model(x: TensorType) -> DeepGP:
     if isinstance(x, tf.Tensor):
         x = x.numpy()
 
-    config = Config(
-        num_inducing=len(x),
+    config = ModelHyperParametersConfig(
+        num_layers=2,
+        kernel=SquaredExponential,
+        likelihood=GaussianLikelihoodConfig(noise_variance=1e-2),
         inner_layer_qsqrt_factor=1e-5,
-        likelihood_noise_variance=1e-2,
         whiten=True,  # whiten = False not supported yet in GPflux for this model
+        num_inducing=len(x),
     )
 
-    return build_constant_input_dim_deep_gp(X=x, num_layers=2, config=config)
+    return build_constant_input_dim_architecture(config, x)
 
 
 def simple_two_layer_dgp_model(x: TensorType) -> DeepGP:
