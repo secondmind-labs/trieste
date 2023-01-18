@@ -27,7 +27,6 @@ import tensorflow as tf
 from gpflow.kernels import SquaredExponential
 from gpflux.architectures.config import GaussianLikelihoodConfig, ModelHyperParametersConfig
 from gpflux.architectures.factory import build_constant_input_dim_architecture
-
 from gpflux.models import DeepGP
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, mk_dataset, quadratic
@@ -112,7 +111,7 @@ def test_build_vanilla_deep_gp_returns_correct_model(
     # comparison to the gpflux builder
     config = ModelHyperParametersConfig(
         num_layers=num_layers,
-        kernel=SquaredExponential,
+        kernel=SquaredExponential,  # type: ignore
         likelihood=GaussianLikelihoodConfig(noise_variance=likelihood_variance),
         inner_layer_qsqrt_factor=inner_layer_sqrt_factor,
         whiten=True,  # whiten = False not supported yet in GPflux for this model

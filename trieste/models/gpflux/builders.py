@@ -129,7 +129,7 @@ def build_vanilla_deep_gp(
 
     config = ModelHyperParametersConfig(
         num_layers=num_layers,
-        kernel=SquaredExponential,
+        kernel=SquaredExponential,  # type: ignore
         likelihood=GaussianLikelihoodConfig(noise_variance=likelihood_variance),
         inner_layer_qsqrt_factor=inner_layer_sqrt_factor,
         whiten=True,  # whiten = False not supported yet in GPflux for this model

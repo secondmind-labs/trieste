@@ -40,7 +40,7 @@ def single_layer_dgp_model(x: TensorType) -> DeepGP:
 
     config = ModelHyperParametersConfig(
         num_layers=1,
-        kernel=SquaredExponential,
+        kernel=SquaredExponential,  # type: ignore
         likelihood=GaussianLikelihoodConfig(noise_variance=1e-2),
         inner_layer_qsqrt_factor=1e-5,
         whiten=True,  # whiten = False not supported yet in GPflux for this model
@@ -56,7 +56,7 @@ def two_layer_dgp_model(x: TensorType) -> DeepGP:
 
     config = ModelHyperParametersConfig(
         num_layers=2,
-        kernel=SquaredExponential,
+        kernel=SquaredExponential,  # type: ignore
         likelihood=GaussianLikelihoodConfig(noise_variance=1e-2),
         inner_layer_qsqrt_factor=1e-5,
         whiten=True,  # whiten = False not supported yet in GPflux for this model
