@@ -50,7 +50,11 @@ def _batch_size_fixture(request: Any) -> int:
     return request.param
 
 
-@pytest.mark.parametrize("diversify, num_outputs", [(True, 1), (False, 1), (False, 2)])
+@pytest.fixture(name="num_outputs", params=[1, 3])
+def _num_outputs_fixture(request: Any) -> int:
+    return request.param
+
+
 def test_ensemble_trajectory_sampler_returns_trajectory_function_with_correctly_shaped_output(
     num_evals: int,
     batch_size: int,
@@ -74,13 +78,13 @@ def test_ensemble_trajectory_sampler_returns_trajectory_function_with_correctly_
 
 
 def test_ensemble_trajectory_sampler_returns_deterministic_trajectory(
-    num_evals: int, batch_size: int, dim: int, diversify: bool
+    num_evals: int, batch_size: int, dim: int, diversify: bool, num_outputs: int
 ) -> None:
     """
     Evaluating the same data with the same trajectory multiple times should yield
     exactly the same output.
     """
-    example_data = empty_dataset([dim], [1])
+    example_data = empty_dataset([dim], [num_outputs])
     test_data = tf.random.uniform([num_evals, batch_size, dim])  # [N, B, d]
 
     model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE)
@@ -94,7 +98,6 @@ def test_ensemble_trajectory_sampler_returns_deterministic_trajectory(
     npt.assert_allclose(eval_1, eval_2)
 
 
-# @pytest.mark.skip(reason="Seems fragile. Unrelated changes causing it to fail. Issue being raised.")
 @pytest.mark.parametrize("seed", [42, None])
 def test_ensemble_trajectory_sampler_is_not_too_deterministic(
     seed: Optional[int], diversify: bool
