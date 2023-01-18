@@ -24,7 +24,11 @@ import numpy as np
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
-from gpflux.architectures import Config, build_constant_input_dim_deep_gp
+from gpflow.kernels import SquaredExponential
+from gpflow.utilities import set_trainable
+from gpflux.architectures.config import GaussianLikelihoodConfig, ModelHyperParametersConfig
+from gpflux.architectures.factory import build_constant_input_dim_architecture
+
 from gpflux.models import DeepGP
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, mk_dataset, quadratic
@@ -107,12 +111,15 @@ def test_build_vanilla_deep_gp_returns_correct_model(
     assert vanilla_deep_gp.likelihood_layer.likelihood.variance.trainable == trainable_likelihood
 
     # comparison to the gpflux builder
-    config = Config(
-        num_inducing,
-        inner_layer_sqrt_factor,
-        likelihood_variance,
+    config = ModelHyperParametersConfig(
+        num_layers=num_layers,
+        kernel=SquaredExponential,
+        likelihood=GaussianLikelihoodConfig(noise_variance=likelihood_variance),
+        inner_layer_qsqrt_factor=inner_layer_sqrt_factor,
+        whiten=True,  # whiten = False not supported yet in GPflux for this model
+        num_inducing=num_inducing,
     )
-    ref_deep_gp = build_constant_input_dim_deep_gp(x, num_layers=num_layers, config=config)
+    ref_deep_gp = build_constant_input_dim_architecture(config, x)
     npt.assert_equal(len(vanilla_deep_gp.f_layers), len(ref_deep_gp.f_layers))
     for i, layer in enumerate(vanilla_deep_gp.f_layers):
         ref_layer = ref_deep_gp.f_layers[i]
