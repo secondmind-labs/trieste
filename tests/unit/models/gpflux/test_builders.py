@@ -25,7 +25,6 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 from gpflow.kernels import SquaredExponential
-from gpflow.utilities import set_trainable
 from gpflux.architectures.config import GaussianLikelihoodConfig, ModelHyperParametersConfig
 from gpflux.architectures.factory import build_constant_input_dim_architecture
 
