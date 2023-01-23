@@ -171,7 +171,7 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
             predicted_vars = predicted_vars + tf.cast(DEFAULTS.JITTER, predicted_vars.dtype)
             predictions = predicted_means + tf.sqrt(predicted_vars) * tf.tile(
                 tf.cast(self._eps, predicted_vars.dtype), [x.shape[0], 1]
-            )   # [N*B, 1]
+            )  # [N*B, 1]
             return unflatten(predictions)  # [N, B, 1]
         else:
             ensemble_distributions = self._model.ensemble_distributions(flat_x)
