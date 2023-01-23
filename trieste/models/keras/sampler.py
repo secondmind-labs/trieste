@@ -22,7 +22,6 @@ from __future__ import annotations
 from typing import Dict, Optional
 
 import tensorflow as tf
-import tensorflow_probability as tfp
 
 from ...types import TensorType
 from ...utils import DEFAULTS, flatten_leading_dims
@@ -34,9 +33,13 @@ from .utils import sample_model_index
 class DeepEnsembleTrajectorySampler(TrajectorySampler[DeepEnsembleModel]):
     """
     This class builds functions that approximate a trajectory by randomly choosing a network from
-    the ensemble and using its predicted means as a trajectory. Option `diversify` can be used to
-    increase the diversity in case of optimizing very large batches of trajectories, but this is not
-    supported for multiple output models.
+    the ensemble and using its predicted means as a trajectory.
+
+    Option `diversify` can be used to increase the diversity in case of optimizing very large
+    batches of trajectories. We use quantiles from the approximate Gaussian distribution of
+    the ensemble as trajectories, with randomly chosen quantiles approximating a trajectory and
+    using a reparametrisation trick to speed up computation. Note that quantiles are not true
+    trajectories, so this will likely have some performance costs.
     """
 
     def __init__(
@@ -44,8 +47,8 @@ class DeepEnsembleTrajectorySampler(TrajectorySampler[DeepEnsembleModel]):
     ):
         """
         :param model: The ensemble model to sample from.
-        :param diversify: Whether to use quantiles from final probabilistic layer as
-            trajectories (`False` by default). See class docstring for details.
+        :param diversify: Whether to use quantiles from the approximate Gaussian distribution of
+            the ensemble as trajectories (`False` by default). See class docstring for details.
         :param seed: Random number seed to use for trajectory sampling.
         :raise NotImplementedError: If we try to use the model that is not instance of
             :class:`DeepEnsembleModel`.
@@ -109,10 +112,10 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
     networks from the ensemble and using their predicted means as trajectories.
 
     Option `diversify` can be used to increase the diversity in case of optimizing very large
-    batches of trajectories. Instead of using mean predictions of individual networks quantiles are
-    drawn from Gaussian approximation of the whole ensemble, with randomly chosen quantiles
-    approximating a trajectory. Since quantiles are difficult to compute for multivariate
-    distributions, multiple outputs are not supported with `diversify` option.
+    batches of trajectories. We use quantiles from the approximate Gaussian distribution of
+    the ensemble as trajectories, with randomly chosen quantiles approximating a trajectory and
+    using a reparametrisation trick to speed up computation. Note that quantiles are not true
+    trajectories, so this will likely have some performance costs.
     """
 
     def __init__(self, model: DeepEnsembleModel, diversify: bool, seed: Optional[int] = None):
@@ -132,7 +135,7 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
 
         if self._diversify:
             self._eps = tf.Variable(
-                tf.zeros([0,0], dtype=tf.float64), shape=[None,None], trainable=False
+                tf.zeros([0, 0], dtype=tf.float64), shape=[None, None], trainable=False
             )
         else:
             self._indices = tf.Variable(
@@ -166,7 +169,9 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
         if self._diversify:
             predicted_means, predicted_vars = self._model.predict(flat_x)  # ([N*B, 1], [N*B, 1])
             predicted_vars = predicted_vars + tf.cast(DEFAULTS.JITTER, predicted_vars.dtype)
-            predictions = predicted_means + tf.sqrt(predicted_vars) * tf.tile(tf.cast(self._eps, predicted_vars.dtype), [x.shape[0], 1])   # [N*B, 1]
+            predictions = predicted_means + tf.sqrt(predicted_vars) * tf.tile(
+                tf.cast(self._eps, predicted_vars.dtype), [x.shape[0], 1]
+            )   # [N*B, 1]
             return unflatten(predictions)  # [N, B, 1]
         else:
             ensemble_distributions = self._model.ensemble_distributions(flat_x)

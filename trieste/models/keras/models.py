@@ -94,11 +94,10 @@ class DeepEnsemble(
             arguments.
         :param bootstrap: Sample with replacement data for training each network in the ensemble.
             By default set to `False`.
-        :param diversify: Whether to use quantiles from final probabilistic layer as trajectories
-            instead of mean predictions when calling :meth:`trajectory_sampler`. Quantiles are
-            sampled uniformly from a unit interval. This mode can be used to increase the diversity
-            in case of optimizing very large batches of trajectories. When batch size is larger
-            than the ensemble size, multiple quantiles will be used with the same network. By
+        :param diversify: Whether to use quantiles from the approximate Gaussian distribution of
+            the ensemble as trajectories instead of mean predictions when calling
+            :meth:`trajectory_sampler`. This mode can be used to increase the diversity
+            in case of optimizing very large batches of trajectories. By
             default set to `False`.
         :param continuous_optimisation: If True (default), the optimizer will keep track of the
             number of epochs across BO iterations and use this number as initial_epoch. This is
@@ -327,7 +326,6 @@ class DeepEnsemble(
         Return a trajectory sampler. For :class:`DeepEnsemble`, we use an ensemble
         sampler that randomly picks a network from the ensemble and uses its predicted means
         for generating a trajectory, or optionally randomly sampled quantiles rather than means.
-        Only models with single output are supported with diversify option.
 
         :return: The trajectory sampler.
         """
