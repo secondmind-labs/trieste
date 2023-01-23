@@ -159,13 +159,12 @@ class GPflowPredictor(
         summary_writer = logging.get_tensorboard_writer()
         if summary_writer:
             with summary_writer.as_default(step=logging.get_step_number()):
-                # kernel parameters
                 write_summary_kernel_parameters(self.get_kernel())
-                # likelihood parameters
                 write_summary_likelihood_parameters(self.model.likelihood)
-                # training data based diagnostics
                 if dataset:
-                    write_summary_data_based_metrics(dataset=dataset, model=self, prefix="training")
+                    write_summary_data_based_metrics(
+                        dataset=dataset, model=self, prefix="training_"
+                    )
 
     def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[GPflowPredictor]:
         """

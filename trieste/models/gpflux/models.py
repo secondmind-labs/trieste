@@ -380,16 +380,14 @@ class DeepGaussianProcess(
         if summary_writer:
             with summary_writer.as_default(step=logging.get_step_number()):
                 logging.scalar("epochs/num_epochs", len(self.model_keras.history.epoch))
-                # kernel parameters
                 for idx, layer in enumerate(self.model_gpflux.f_layers):
-                    write_summary_kernel_parameters(layer.kernel, f"layer[{idx}]/")
-                # likelihood parameters
+                    write_summary_kernel_parameters(layer.kernel, prefix=f"layer[{idx}]/")
                 write_summary_likelihood_parameters(self.model_gpflux.likelihood_layer.likelihood)
-                # losses and metrics
                 for k, v in self.model_keras.history.history.items():
                     logging.histogram(f"{k}/epoch", lambda: v)
                     logging.scalar(f"{k}/final", lambda: v[-1])
                     logging.scalar(f"{k}/diff", lambda: v[0] - v[-1])
-                # training data based diagnostics
                 if dataset:
-                    write_summary_data_based_metrics(dataset=dataset, model=self, prefix="training")
+                    write_summary_data_based_metrics(
+                        dataset=dataset, model=self, prefix="training_"
+                    )
