@@ -129,7 +129,6 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
 
         self._initialized = tf.Variable(False, trainable=False)
         self._batch_size = tf.Variable(0, dtype=tf.int32, trainable=False)
-        self._num_outputs = tf.Variable(0, dtype=tf.int32, trainable=False)
 
         if self._diversify:
             self._eps = tf.Variable(
