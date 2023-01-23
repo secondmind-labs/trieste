@@ -28,6 +28,7 @@ from ...data import Dataset
 from ...types import TensorType
 from ..interfaces import HasTrajectorySampler, TrainableProbabilisticModel, TrajectorySampler
 from ..optimizer import KerasOptimizer
+from ..utils import write_summary_data_based_metrics
 from .architectures import KerasEnsemble, MultivariateNormalTriL
 from .interface import DeepEnsembleModel, KerasPredictor
 from .sampler import DeepEnsembleTrajectorySampler
@@ -428,27 +429,8 @@ class DeepEnsemble(
                         logging.scalar(f"{pre}/min{post}", lambda: tf.reduce_min(v))
                         logging.scalar(f"{pre}/max{post}", lambda: tf.reduce_max(v))
                 if dataset:
-                    predict = self.predict(dataset.query_points)
-                    # training accuracy
-                    diffs = tf.cast(dataset.observations, predict[0].dtype) - predict[0]
-                    z_residuals = diffs / tf.math.sqrt(predict[1])
-                    logging.histogram("accuracy/absolute_errors", tf.math.abs(diffs))
-                    logging.histogram("accuracy/z_residuals", z_residuals)
-                    logging.scalar(
-                        "accuracy/root_mean_square_error", tf.math.sqrt(tf.reduce_mean(diffs ** 2))
-                    )
-                    logging.scalar(
-                        "accuracy/mean_absolute_error", tf.reduce_mean(tf.math.abs(diffs))
-                    )
-                    logging.scalar("accuracy/z_residuals_std", tf.math.reduce_std(z_residuals))
-                    # training variance
-                    variance_error = predict[1] - diffs ** 2
-                    logging.histogram("variance/predict_variance", predict[1])
-                    logging.histogram("variance/variance_error", variance_error)
-                    logging.scalar("variance/predict_variance_mean", tf.reduce_mean(predict[1]))
-                    logging.scalar(
-                        "variance/root_mean_variance_error",
-                        tf.math.sqrt(tf.reduce_mean(variance_error ** 2)),
+                    write_summary_data_based_metrics(
+                        dataset=dataset, model=self, prefix="training_"
                     )
                     if logging.include_summary("_ensemble"):
                         predict_ensemble_variance = self.predict_ensemble(dataset.query_points)[1]
@@ -461,9 +443,6 @@ class DeepEnsemble(
                                 f"variance/_ensemble/predict_variance_mean_model_{i}",
                                 tf.reduce_mean(predict_ensemble_variance[i, ...]),
                             )
-                    # data stats
-                    empirical_variance = tf.math.reduce_variance(dataset.observations)
-                    logging.scalar("variance/empirical", empirical_variance)
 
     def __getstate__(self) -> dict[str, Any]:
         # use to_json and get_weights to save any optimizer fit_arg callback models
