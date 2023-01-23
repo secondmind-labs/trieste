@@ -161,7 +161,7 @@ def test_write_summary_data_based_metrics(
     y = fnc_3x_plus_10(x)
     dataset = Dataset(x, y)
 
-    def _mocked_predict(x: TensorType) -> Tuple[TensorType, TensorType]:
+    def _mocked_predict(query_points: TensorType) -> Tuple[TensorType, TensorType]:
         return (
             y,
             tf.math.abs(y),
@@ -170,7 +170,7 @@ def test_write_summary_data_based_metrics(
     mock_model: TrainableProbabilisticModel = unittest.mock.MagicMock(
         spec=TrainableProbabilisticModel
     )
-    mock_model.predict = _mocked_predict
+    mock_model.predict = _mocked_predict  # type: ignore
 
     write_summary_data_based_metrics(dataset=dataset, model=mock_model, prefix=prefix)
 

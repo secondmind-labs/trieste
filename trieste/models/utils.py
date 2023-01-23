@@ -24,12 +24,12 @@ from gpflow.utilities.traversal import _merge_leaf_components, leaf_components
 
 from .. import logging
 from ..data import Dataset
-from .interfaces import TrainableProbabilisticModel
+from .interfaces import ProbabilisticModel
 
 
 def write_summary_data_based_metrics(
     dataset: Dataset,
-    model: TrainableProbabilisticModel,
+    model: ProbabilisticModel,
     prefix: str = "",
 ) -> None:
     """
