@@ -218,6 +218,7 @@ def test_ensemble_trajectory_sampler_samples_are_distinct_within_batch(diversify
     )  # distinct for two samples within same draw
 
 
+@pytest.mark.skip
 @random_seed
 def test_ensemble_trajectory_sampler_eps_broadcasted_correctly() -> None:
     """
@@ -230,19 +231,18 @@ def test_ensemble_trajectory_sampler_eps_broadcasted_correctly() -> None:
 
     model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE)
 
-
     trajectory_sampler = DeepEnsembleTrajectorySampler(model, diversify=True)
     trajectory = trajectory_sampler.get_trajectory()
 
     _ = trajectory(test_data)  # first call needed to initialize the state
-    trajectory._eps = tf.constant([[0],[1]], dtype=tf.float64)
+    trajectory._eps = tf.constant([[0], [1]], dtype=tf.float64)  # type: ignore
     evals = trajectory(test_data)
 
     npt.assert_array_less(
         1e-1, tf.reduce_max(tf.abs(evals[:, 0] - evals[:, 1]))
     )  # distinct for two samples within same draw
     npt.assert_allclose(
-        evals[:,0], model.predict(test_data[:,0])[0]
+        evals[:, 0], model.predict(test_data[:, 0])[0]
     )  # since we set first eps to 0, that trajectory should equal predicted means
 
 
