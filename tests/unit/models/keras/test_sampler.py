@@ -219,6 +219,34 @@ def test_ensemble_trajectory_sampler_samples_are_distinct_within_batch(diversify
 
 
 @random_seed
+def test_ensemble_trajectory_sampler_eps_broadcasted_correctly() -> None:
+    """
+    We check if eps are broadcasted correctly in diversify mode.
+    """
+    example_data = empty_dataset([1], [1])
+    test_data = tf.linspace([-10.0], [10.0], 100)
+    test_data = tf.expand_dims(test_data, -2)  # [N, 1, d]
+    test_data = tf.tile(test_data, [1, 2, 1])  # [N, 2, D]
+
+    model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE)
+
+
+    trajectory_sampler = DeepEnsembleTrajectorySampler(model, diversify=True)
+    trajectory = trajectory_sampler.get_trajectory()
+
+    _ = trajectory(test_data)  # first call needed to initialize the state
+    trajectory._eps = tf.constant([[0],[1]], dtype=tf.float64)
+    evals = trajectory(test_data)
+
+    npt.assert_array_less(
+        1e-1, tf.reduce_max(tf.abs(evals[:, 0] - evals[:, 1]))
+    )  # distinct for two samples within same draw
+    npt.assert_allclose(
+        evals[:,0], model.predict(test_data[:,0])[0]
+    )  # since we set first eps to 0, that trajectory should equal predicted means
+
+
+@random_seed
 def test_ensemble_trajectory_sampler_resample_with_new_sampler_does_not_change_old_sampler(
     diversify: bool,
 ) -> None:

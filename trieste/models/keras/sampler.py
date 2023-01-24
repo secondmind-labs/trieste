@@ -75,7 +75,7 @@ class DeepEnsembleTrajectorySampler(TrajectorySampler[DeepEnsembleModel]):
         Generate an approximate function draw (trajectory) from the ensemble.
 
         :return: A trajectory function representing an approximate trajectory
-            from the model, taking an input of shape `[N, B, D]` and returning shape `[N, B, 1]`.
+            from the model, taking an input of shape `[N, B, D]` and returning shape `[N, B, L]`.
         """
         return deep_ensemble_trajectory(self._model, self._diversify, self._seed)
 
@@ -143,7 +143,7 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
             )
 
     @tf.function
-    def __call__(self, x: TensorType) -> TensorType:  # [N, B, d] -> [N, B, 1]
+    def __call__(self, x: TensorType) -> TensorType:  # [N, B, D] -> [N, B, L]
         """
         Call trajectory function. Note that we are flattening the batch dimension and
         doing a forward pass with each network in the ensemble with the whole batch. This is
@@ -164,21 +164,21 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
             by calling the get_trajectory method of the trajectory sampler.
             """,
         )
-        flat_x, unflatten = flatten_leading_dims(x)  # [N*B, d]
+        flat_x, unflatten = flatten_leading_dims(x)  # [N*B, D]
 
         if self._diversify:
-            predicted_means, predicted_vars = self._model.predict(flat_x)  # ([N*B, 1], [N*B, 1])
+            predicted_means, predicted_vars = self._model.predict(flat_x)  # ([N*B, L], [N*B, L])
             predicted_vars = predicted_vars + tf.cast(DEFAULTS.JITTER, predicted_vars.dtype)
             predictions = predicted_means + tf.sqrt(predicted_vars) * tf.tile(
                 tf.cast(self._eps, predicted_vars.dtype), [x.shape[0], 1]
-            )  # [N*B, 1]
-            return unflatten(predictions)  # [N, B, 1]
+            )  # [N*B, L]
+            return unflatten(predictions)  # [N, B, L]
         else:
             ensemble_distributions = self._model.ensemble_distributions(flat_x)
             predicted_means = tf.convert_to_tensor([dist.mean() for dist in ensemble_distributions])
-            predictions = tf.gather(predicted_means, self._indices)  # [B, N*B, 1]
+            predictions = tf.gather(predicted_means, self._indices)  # [B, N*B, L]
 
-            tensor_predictions = tf.map_fn(unflatten, predictions)  # [B, N, B, 1]
+            tensor_predictions = tf.map_fn(unflatten, predictions)  # [B, N, B, L]
 
             # here we select simultaneously networks and batch dimension according to batch indices
             # this is needed because we compute a whole batch with each network
@@ -188,7 +188,7 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
                 tf.transpose(tensor_predictions, perm=[0, 2, 1, 3]), indices
             )  # [B,N]
 
-            return tf.transpose(batch_predictions, perm=[1, 0, 2])  # [N, B, 1]
+            return tf.transpose(batch_predictions, perm=[1, 0, 2])  # [N, B, L]
 
     def resample(self) -> None:
         """
