@@ -694,21 +694,28 @@ class MUMBO(MinValueEntropySearch):
 
 
 class mumbo(min_value_entropy_search):
-    @tf.function
+    
+    #@tf.function
     def __call__(self, x: TensorType) -> TensorType:
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],
             message="This acquisition function only supports batch sizes of one.",
         )
 
+        top_fidelity_idx = self._model.num_fidelities - 1 
         x_on_top_fidelity = tf.concat(
-            [tf.squeeze(x, -2)[:, :-1], tf.ones_like(tf.squeeze(x, -2)[:, -1:])], -1
+            [tf.squeeze(x, -2)[:, :-1], top_fidelity_idx * tf.ones_like(tf.squeeze(x, -2)[:, -1:])], -1
         )
+
+
         fmean, fvar = self._model.predict(x_on_top_fidelity)
         ymean, yvar = self._model.predict_y(tf.squeeze(x, -2))
         cov = self._model.covariance_with_top_fidelity(tf.squeeze(x, -2))
-        rho_squared = cov**2 / (fvar * yvar) # squared correlation between observations and high-fidelity latent function
+
+        # calculate squared correlation between observations and high-fidelity latent function
+        rho_squared = (cov**2) / (fvar * yvar) 
         rho_squared = tf.clip_by_value(rho_squared, 0.0, 1.0)
+
 
         fsd = tf.clip_by_value(
             tf.math.sqrt(fvar), CLAMP_LB, fmean.dtype.max
@@ -726,10 +733,12 @@ class mumbo(min_value_entropy_search):
 
 class CostWeighting(SingleModelAcquisitionBuilder):
     def __init__(self, low_fidelity_cost, high_fidelity_cost):
+        # note that this does not work with >2 fidelities, despite it being used >2 in integration tests
         self._low_fidelity_cost = low_fidelity_cost
         self._high_fidelity_cost = high_fidelity_cost
 
     def prepare_acquisition_function(self, model, dataset=None):
+        #@tf.function
         def acquisition(x):
             tf.debugging.assert_shapes(
                 [(x, [..., 1, None])],

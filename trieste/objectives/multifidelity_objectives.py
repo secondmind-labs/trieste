@@ -30,12 +30,14 @@ def linear_multifidelity(x: TensorType):
     return f
 
 
-_LINEAR_MULTIFIDELITY_MINIMIZERS = {2: 0.75724875, 3: 0.76333767, 5: 0.76801846}
+_LINEAR_MULTIFIDELITY_MINIMIZERS = {2: tf.constant([[0.75724875]], tf.float64), 3: tf.constant([[0.76333767]], tf.float64), 5: tf.constant([[0.76801846]], tf.float64)}
+
+
 
 _LINEAR_MULTIFIDELITY_MINIMA = {
-    2: -6.020740055,
-    3: -6.634287061,
-    5: -7.933019704,
+    2: tf.constant([-6.020740055], tf.float64),
+    3: tf.constant([-6.634287061], tf.float64),
+    5: tf.constant([-7.933019704], tf.float64),
 }
 
 
