@@ -624,7 +624,17 @@ class gibbon_repulsion_term(UpdatablePenalizationFunction):
         return repulsion_weight * repulsion
 
 
+
+
+
+
+
+
+
 class MUMBO(MinValueEntropySearch):
+    """
+    TODO
+    """
     def __repr__(self) -> str:
         return "MUMBO()"
 
@@ -684,7 +694,7 @@ class MUMBO(MinValueEntropySearch):
 
 
 class mumbo(min_value_entropy_search):
-    # @tf.function
+    @tf.function
     def __call__(self, x: TensorType) -> TensorType:
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],
@@ -695,56 +705,23 @@ class mumbo(min_value_entropy_search):
             [tf.squeeze(x, -2)[:, :-1], tf.ones_like(tf.squeeze(x, -2)[:, -1:])], -1
         )
         fmean, fvar = self._model.predict(x_on_top_fidelity)
-        fsd = tf.math.sqrt(fvar)
         ymean, yvar = self._model.predict_y(tf.squeeze(x, -2))
         cov = self._model.covariance_with_top_fidelity(tf.squeeze(x, -2))
-        correlations = cov / tf.math.sqrt(fvar * yvar)
-        correlations = tf.clip_by_value(correlations, -1.0, 1.0)
+        rho_squared = cov**2 / (fvar * yvar) # squared correlation between observations and high-fidelity latent function
+        rho_squared = tf.clip_by_value(rho_squared, 0.0, 1.0)
 
-        # Calculate moments of extended skew Gaussian distributions (ESG)
-        # These will be used to define reasonable ranges for the numerical
-        # intergration of the ESG's differential entropy.
+        fsd = tf.clip_by_value(
+            tf.math.sqrt(fvar), CLAMP_LB, fmean.dtype.max
+        )  # clip below to improve numerical stability
         gamma = (tf.squeeze(self._samples) - fmean) / fsd
+
         normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
         log_minus_cdf = normal.log_cdf(-gamma)
         ratio = tf.math.exp(normal.log_prob(gamma) - log_minus_cdf)
-        ESGmean = correlations * ratio
-        ESGvar = 1 + correlations * ESGmean * (gamma - ratio)
-        ESGvar = tf.math.maximum(ESGvar, 0)  # Clip  to improve numerical stability
+        inner_log = 1 + rho_squared * ratio * (gamma - ratio)
 
-        # get upper limits for numerical integration
-        # we need this range to contain almost all of the ESG's probability density
-        # we found +-5 standard deviations provides a tight enough approximation
-        upper_limit = ESGmean + 5 * tf.math.sqrt(ESGvar)
-        lower_limit = ESGmean - 5 * tf.math.sqrt(ESGvar)
+        return -0.5 * tf.math.reduce_mean(tf.math.log(inner_log), axis=1, keepdims=True)  # [N, 1]
 
-        # perform numerical integrations
-        z = tf.linspace(lower_limit, upper_limit, num=1000)  # build discretisation
-        minus_correlations = tf.math.sqrt(
-            1 - correlations ** 2
-        )  # calculate ESG density at these points
-        minus_correlations = tf.math.maximum(
-            minus_correlations, 1e-10
-        )  # clip below for numerical stability
-
-        density = tf.math.exp(
-            normal.log_prob(z)
-            - log_minus_cdf
-            + normal.log_cdf(-(gamma - correlations * z) / minus_correlations)
-        )
-        # calculate point-wise entropy function contributions (carefuly where density is 0)
-        entropy_function = -density * tf.where(density != 0, tf.math.log(density), 0.0)
-        approximate_entropy = tfp.math.trapz(
-            entropy_function, z, axis=0
-        )  # perform integration over ranges
-
-        approximate_entropy = tf.reduce_mean(
-            approximate_entropy, axis=-1
-        )  # build monte-carlo estimate over the gumbel samples
-        f_acqu_x = (
-            tf.cast(0.5 * tf.math.log(2.0 * math.pi * math.e), tf.float64) - approximate_entropy
-        )
-        return f_acqu_x[:, None]
 
 
 class CostWeighting(SingleModelAcquisitionBuilder):
