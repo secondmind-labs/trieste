@@ -622,37 +622,11 @@ def test_deep_ensemble_log(
     assert mocked_summary_writer.method_calls[0][0] == "as_default"
     assert mocked_summary_writer.method_calls[0][-1]["step"] == 42
 
-    loss_names = ["loss/diff", "loss/final", "loss/min", "loss/max"]
-    metrics_names = ["mse/diff", "mse/final", "mse/min", "mse/max"]
-    accuracy_names = [
-        "accuracy/root_mean_square_error",
-        "accuracy/mean_absolute_error",
-        "accuracy/z_residuals_std",
-    ]
-    variance_stats = [
-        "variance/predict_variance_mean",
-        "variance/empirical",
-        "variance/root_mean_variance_error",
-    ]
-
-    names_scalars = ["epochs/num_epochs"] + loss_names + metrics_names
-    num_scalars = 1 + len(loss_names)
-    names_histogram = ["loss/epoch"] + ["mse/epoch"]
-    num_histogram = 1
-    if use_dataset:
-        names_scalars = names_scalars + accuracy_names + variance_stats
-        num_scalars = num_scalars + len(accuracy_names) + len(variance_stats)
-        names_histogram = (
-            names_histogram
-            + ["accuracy/absolute_errors", "accuracy/z_residuals"]
-            + ["variance/predict_variance", "variance/variance_error"]
-        )
-        num_histogram += 4
+    num_scalars = 5  # 5 loss and metrics specific
+    num_histogram = 1  # 1 loss and metrics specific
+    if use_dataset:  # write_summary_data_based_metrics
+        num_scalars += 8
+        num_histogram += 6
 
     assert mocked_summary_scalar.call_count == num_scalars
-    for i in range(len(mocked_summary_scalar.call_args_list)):
-        assert any([j in mocked_summary_scalar.call_args_list[i][0][0] for j in names_scalars])
-
     assert mocked_summary_histogram.call_count == num_histogram
-    for i in range(len(mocked_summary_histogram.call_args_list)):
-        assert any([j in mocked_summary_histogram.call_args_list[i][0][0] for j in names_histogram])

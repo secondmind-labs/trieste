@@ -172,10 +172,15 @@ def test_multi_objective_optimizer_finds_pareto_front_of_the_VLMOP2_function(
             )
 
     # A small log hypervolume difference corresponds to a succesful optimization.
-    ref_point = get_reference_point(dataset.observations)
-
-    obs_hv = Pareto(dataset.observations).hypervolume_indicator(ref_point)
     ideal_pf = problem.gen_pareto_optimal_points(100)
+    ref_point = get_reference_point(ideal_pf)
+
+    obs_pareto = Pareto(dataset.observations)
+    if obs_pareto.front.shape[0] > 0:
+        obs_hv = obs_pareto.hypervolume_indicator(ref_point)
+    else:
+        obs_hv = 0
+
     ideal_hv = Pareto(ideal_pf).hypervolume_indicator(ref_point)
 
     assert tf.math.log(ideal_hv - obs_hv) < convergence_threshold

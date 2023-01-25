@@ -20,7 +20,6 @@ import dill
 import gpflow
 import tensorflow as tf
 from gpflow.inducing_variables import InducingPoints
-from gpflow.utilities.traversal import _merge_leaf_components, leaf_components
 from gpflux.layers import GPLayer, LatentVariableLayer
 from gpflux.models import DeepGP
 from tensorflow.python.keras.callbacks import Callback
@@ -36,6 +35,11 @@ from ..interfaces import (
     TrajectorySampler,
 )
 from ..optimizer import KerasOptimizer
+from ..utils import (
+    write_summary_data_based_metrics,
+    write_summary_kernel_parameters,
+    write_summary_likelihood_parameters,
+)
 from .interface import GPfluxPredictor
 from .sampler import (
     DeepGaussianProcessDecoupledTrajectorySampler,
@@ -376,53 +380,14 @@ class DeepGaussianProcess(
         if summary_writer:
             with summary_writer.as_default(step=logging.get_step_number()):
                 logging.scalar("epochs/num_epochs", len(self.model_keras.history.epoch))
-                # kernel parameters
                 for idx, layer in enumerate(self.model_gpflux.f_layers):
-                    kernel_components = _merge_leaf_components(leaf_components(layer.kernel))
-                    for k, v in kernel_components.items():
-                        if v.trainable:
-                            if tf.rank(v) == 0:
-                                logging.scalar(f"layer[{idx}]/kernel.{k}", v)
-                            elif tf.rank(v) == 1:
-                                for i, vi in enumerate(v):
-                                    logging.scalar(f"layer[{idx}]/kernel.{k}[{i}]", vi)
-                # likelihood parameters
-                likelihood_components = _merge_leaf_components(
-                    leaf_components(self.model_gpflux.likelihood_layer.likelihood)
-                )
-                for k, v in likelihood_components.items():
-                    if v.trainable:
-                        logging.scalar(f"likelihood/{k}", v)
-
-                # losses and metrics
+                    write_summary_kernel_parameters(layer.kernel, prefix=f"layer[{idx}]/")
+                write_summary_likelihood_parameters(self.model_gpflux.likelihood_layer.likelihood)
                 for k, v in self.model_keras.history.history.items():
                     logging.histogram(f"{k}/epoch", lambda: v)
                     logging.scalar(f"{k}/final", lambda: v[-1])
                     logging.scalar(f"{k}/diff", lambda: v[0] - v[-1])
-                # training data based diagnostics
                 if dataset:
-                    predict = self.predict(dataset.query_points)
-                    # training accuracy
-                    diffs = dataset.observations - predict[0]
-                    z_residuals = diffs / tf.math.sqrt(predict[1])
-                    logging.histogram("accuracy/absolute_errors", tf.math.abs(diffs))
-                    logging.histogram("accuracy/z_residuals", z_residuals)
-                    logging.scalar(
-                        "accuracy/root_mean_square_error", tf.math.sqrt(tf.reduce_mean(diffs ** 2))
+                    write_summary_data_based_metrics(
+                        dataset=dataset, model=self, prefix="training_"
                     )
-                    logging.scalar(
-                        "accuracy/mean_absolute_error", tf.reduce_mean(tf.math.abs(diffs))
-                    )
-                    logging.scalar("accuracy/z_residuals_std", tf.math.reduce_std(z_residuals))
-                    # training variance
-                    variance_error = predict[1] - diffs ** 2
-                    logging.histogram("variance/predict_variance", predict[1])
-                    logging.histogram("variance/variance_error", variance_error)
-                    logging.scalar("variance/predict_variance_mean", tf.reduce_mean(predict[1]))
-                    logging.scalar(
-                        "variance/root_mean_variance_error",
-                        tf.math.sqrt(tf.reduce_mean(variance_error ** 2)),
-                    )
-                    # data stats
-                    empirical_variance = tf.math.reduce_variance(dataset.observations)
-                    logging.scalar("variance/empirical", empirical_variance)

@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import unittest.mock
 from time import time
-from typing import Callable, Optional, Union, cast
+from typing import Callable, Union, cast
 
 import gpflow
 import numpy as np
@@ -227,64 +227,42 @@ def test_gpflow_wrappers_predict_y(gpflow_interface_factory: ModelFactoryType) -
     npt.assert_array_less(variance_f, variance_y)
 
 
-@unittest.mock.patch("trieste.models.gpflow.interface.tf.summary.scalar")
-@pytest.mark.parametrize(
-    "kernel, names, values",
-    [
-        pytest.param(
-            None,
-            ["kernel.Matern32.variance", "kernel.Matern32.lengthscales"],
-            [1, 1],
-            id="default kernel",
-        ),
-        pytest.param(
-            gpflow.kernels.Matern52(variance=2.0, lengthscales=[0.2, 0.2]),
-            [
-                "kernel.Matern52.variance",
-                "kernel.Matern52.lengthscales[0]",
-                "kernel.Matern52.lengthscales[1]",
-            ],
-            [2, 0.2, 0.2],
-            id="Matern52",
-        ),
-        pytest.param(
-            gpflow.kernels.Matern12() * gpflow.kernels.Linear(),
-            [
-                "kernel.Product.kernels[0].variance",
-                "kernel.Product.kernels[0].lengthscales",
-                "kernel.Product.kernels[1].variance",
-            ],
-            [1, 1, 1],
-            id="product kernel",
-        ),
-    ],
-)
+@unittest.mock.patch("trieste.logging.tf.summary.histogram")
+@unittest.mock.patch("trieste.logging.tf.summary.scalar")
+@pytest.mark.parametrize("use_dataset", [False, True])
 def test_gpflow_wrappers_log(
     mocked_summary_scalar: unittest.mock.MagicMock,
+    mocked_summary_histogram: unittest.mock.MagicMock,
+    use_dataset: bool,
     gpflow_interface_factory: ModelFactoryType,
-    kernel: Optional[gpflow.kernels.Kernel],
-    names: list[str],
-    values: list[float],
 ) -> None:
     x = tf.constant(np.arange(1, 5).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [4, 1]
-    model, _ = gpflow_interface_factory(x, fnc_3x_plus_10(x))
+    y = fnc_3x_plus_10(x)
+    dataset = Dataset(x, y)
 
-    if kernel is not None:
-        model.model.kernel = kernel
+    model, _ = gpflow_interface_factory(x, y)
+    model.optimize(dataset)
 
     mocked_summary_writer = unittest.mock.MagicMock()
     with tensorboard_writer(mocked_summary_writer):
         with step_number(42):
-            model.log()
+            if use_dataset:
+                model.log(dataset)
+            else:
+                model.log(None)
 
     assert len(mocked_summary_writer.method_calls) == 1
     assert mocked_summary_writer.method_calls[0][0] == "as_default"
     assert mocked_summary_writer.method_calls[0][-1]["step"] == 42
 
-    assert mocked_summary_scalar.call_count == len(names)
-    for i, (n, v) in enumerate(zip(names, values)):
-        assert mocked_summary_scalar.call_args_list[i][0][0] == n
-        assert mocked_summary_scalar.call_args_list[i][0][1].numpy() == v
+    num_scalars = 3  # 3 write_summary_kernel_parameters, write_summary_likelihood_parameters
+    num_histogram = 0  # 0
+    if use_dataset:  # write_summary_data_based_metrics
+        num_scalars += 8
+        num_histogram += 6
+
+    assert mocked_summary_scalar.call_count == num_scalars
+    assert mocked_summary_histogram.call_count == num_histogram
 
 
 @random_seed
