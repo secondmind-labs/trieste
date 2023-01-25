@@ -19,7 +19,7 @@ of sparse variational Gaussian processes (i.e. our :class:`SparseVariational` wr
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Callable, Generic
+from typing import Generic
 
 import gpflow
 import tensorflow as tf
@@ -245,8 +245,8 @@ class KMeansInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
 
 class QualityFunction(ABC):
     """
-    An :const:`QualityFunction` uses a  `model` to measure the quality of each of the `N` query points
-    in the provided `dataset`, returning shape `[N]`.
+    An :const:`QualityFunction` uses a  `model` to measure the quality of each of
+    the `N` query points in the provided `dataset`, returning shape `[N]`.
     """
 
     @abstractmethod
@@ -266,7 +266,7 @@ class DPPInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
 
     The DPP is defined through its diveristy-quality decomposition, i.e. its similarity kernel
     is just the kernel of the considered model and its quality scores come from the
-    provided :class:`QualityFunction`. 
+    provided :class:`QualityFunction`.
 
     """
 
@@ -337,7 +337,7 @@ class UnitQualityFunction(QualityFunction):
         :return: The quality scores.
         """
 
-        return tf.ones(tf.shape(dataset.query_points)[0], dtype=tf.float64) # [N]
+        return tf.ones(tf.shape(dataset.query_points)[0], dtype=tf.float64)  # [N]
 
 
 class ModelBasedImprovementQualityFunction(QualityFunction):
@@ -417,8 +417,8 @@ def greedy_inference_dpp(
     :param kernel: The underlying kernel of the DPP.
     :param quality_scores: The quality score of each item in ``dataset``.
     :return: The MAP estimate of the DPP.
-    :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty or if the shape of ``quality_scores`` does
-        not match that of ``dataset.observations``.
+    :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty or if the shape of
+    ``quality_scores`` does not match that of ``dataset.observations``.
     """
     tf.debugging.Assert(dataset is not None, [])
     tf.debugging.assert_equal(tf.shape(dataset.observations)[0], tf.shape(quality_scores)[0])

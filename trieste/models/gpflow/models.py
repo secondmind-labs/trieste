@@ -852,9 +852,7 @@ class SparseVariational(
         model: SVGP,
         optimizer: Optimizer | None = None,
         num_rff_features: int = 1000,
-        inducing_point_selector: Optional[
-            InducingPointSelector[SparseVariational]
-        ] = None,
+        inducing_point_selector: Optional[InducingPointSelector[SparseVariational]] = None,
     ):
         """
         :param model: The underlying GPflow sparse variational model.
