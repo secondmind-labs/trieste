@@ -55,13 +55,13 @@ def non_dominated(observations: TensorType) -> tuple[TensorType, TensorType]:
         cond,
         body,
         loop_vars=(
-            0,
-            tf.gather(tf.range(num_points), sorting_indices),
-        ),  # i  # indices
+            0,  # i
+            tf.gather(tf.range(num_points), sorting_indices),  # indices
+        ),
         shape_invariants=(
-            tf.TensorShape([]),
-            tf.TensorShape([None]),
-        ),  # i  # indices
+            tf.TensorShape([]),  # i
+            tf.TensorShape([None]),  # indices
+        ),
     )
 
     nondominated_observations = tf.gather(observations, indices)
