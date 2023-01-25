@@ -245,23 +245,34 @@ class KMeansInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
 
 class QualityFunction(ABC):
     """
-    todo -> [N]
+    An :const:`QualityFunction` uses a  `model` to measure the quality of each of the `N` query points
+    in the provided `dataset`, returning shape `[N]`.
     """
 
     @abstractmethod
     def __call__(self, model: ProbabilisticModel, dataset: Dataset) -> TensorType:
-        """Call acquisition function."""
+        """
+        Evaluate the quality of the data-points according to the model.
+        :param model: The sparse model.
+        :param dataset: The data from the observer. Must be populated.
+        :return: The quality scores.
+        """
 
 
 class DPPInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
     """
-    An :class:`InducingPointSelector` that greedily chooses the points with maximal (conditional)
-    predictive variance, see :cite:`burt2019rates` todo
+    An :class:`InducingPointSelector` that follows :cite:`chen2018fast` to get a greedy appoximation
+    to the MAP estimate of the specified Determinantal Point Process (DPP).
+
+    The DPP is defined through its diveristy-quality decomposition, i.e. its similarity kernel
+    is just the kernel of the considered model and its quality scores come from the
+    provided :class:`QualityFunction`. 
+
     """
 
     def __init__(self, quality_function: QualityFunction, recalc_every_model_update: bool = True):
         """
-        :param quality_function: TODO
+        :param quality_function: A function measuring the quality of each candidate inducing point.
         :param recalc_every_model_update: If True then recalculate the inducing points for each
             model update, otherwise just recalculate on the first call.
         """
@@ -313,26 +324,38 @@ class DPPInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
 
 class UnitQualityFunction(QualityFunction):
     """
-    todo
+    A :class:`QualityFunction` where all points are considered equal, i.e. using
+    this quality function for inducing point allocation corresponds to allocating
+    inducing points with the sole aim of minimizing predictive variance.
     """
 
     def __call__(self, model: ProbabilisticModel, dataset: Dataset) -> TensorType:
-        return tf.ones(tf.shape(dataset.query_points)[0], dtype=tf.float64)
+        """
+        Evaluate the quality of the data-points according to the model.
+        :param model: The sparse model.
+        :param dataset: The data from the observer. Must be populated.
+        :return: The quality scores.
+        """
+
+        return tf.ones(tf.shape(dataset.query_points)[0], dtype=tf.float64) # [N]
 
 
 class ModelBasedImprovementQualityFunction(QualityFunction):
     """
-    todo
+    A :class:`QualityFunction` where the quality of points are given by their expected
+    improvement with respect to a conservative baseline. Expectations are according
+    to the model from the previous BO step). See :cite:`moss2023IPA` for details
+    and justification.
     """
 
-    def __init__(self, num_samples: int):
-        """
-        todo
-        """
-        self._num_samples = num_samples
-
     def __call__(self, model: ProbabilisticModel, dataset: Dataset) -> TensorType:
-        # todo
+        """
+        Evaluate the quality of the data-points according to the model.
+        :param model: The sparse model.
+        :param dataset: The data from the observer. Must be populated.
+        :return: The quality scores.
+        """
+
         mean, variance = model.predict(dataset.query_points)  # [N, 1], [N, 1]
         baseline = tf.reduce_max(mean)
         normal = tfp.distributions.Normal(mean, tf.sqrt(variance))
@@ -345,7 +368,7 @@ class ModelBasedImprovementQualityFunction(QualityFunction):
 class ConditionalVarianceReduction(DPPInducingPointSelector):
     """
     An :class:`InducingPointSelector` that greedily chooses the points with maximal (conditional)
-    predictive variance, see :cite:`burt2019rates`
+    predictive variance, see :cite:`burt2019rates`.
     """
 
     def __init__(self, recalc_every_model_update: bool = True):
@@ -359,8 +382,8 @@ class ConditionalVarianceReduction(DPPInducingPointSelector):
 
 class ConditionalImprovementReduction(DPPInducingPointSelector):
     """
-    An :class:`InducingPointSelector` that greedily chooses the points with maximal (conditional)
-    predictive variance, see :cite:`burt2019rates` todo
+    An :class:`InducingPointSelector` that greedily chooses points with large predictive variance
+    and that are likely to be in promising regions of the search space, see :cite:`moss2023IPA`.
     """
 
     def __init__(
@@ -371,10 +394,7 @@ class ConditionalImprovementReduction(DPPInducingPointSelector):
         """
         :param recalc_every_model_update: If True then recalculate the inducing points for each
             model update, otherwise just recalculate on the first call.
-        :param num_samples: todo
         """
-
-        self._num_samples = num_samples
 
         super().__init__(
             ModelBasedImprovementQualityFunction(self._num_samples), recalc_every_model_update
