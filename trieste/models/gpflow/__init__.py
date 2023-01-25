@@ -27,12 +27,12 @@ from .builders import (
     build_vgp_classifier,
 )
 from .inducing_point_selectors import (
+    ConditionalImprovementReduction,
+    ConditionalVarianceReduction,
     InducingPointSelector,
     KMeansInducingPointSelector,
     RandomSubSampleInducingPointSelector,
     UniformInducingPointSelector,
-    ConditionalVarianceReduction,
-    ConditionalImprovementReduction,
 )
 from .interface import GPflowPredictor
 from .models import (
