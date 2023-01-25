@@ -31,6 +31,8 @@ from .inducing_point_selectors import (
     KMeansInducingPointSelector,
     RandomSubSampleInducingPointSelector,
     UniformInducingPointSelector,
+    ConditionalVarianceReduction,
+    ConditionalImprovementReduction,
 )
 from .interface import GPflowPredictor
 from .models import (

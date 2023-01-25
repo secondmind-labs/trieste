@@ -66,7 +66,7 @@ from trieste.models import TrainableProbabilisticModel, TrajectoryFunctionClass
 from trieste.models.gpflow import (
     GaussianProcessRegression,
     GPflowPredictor,
-    RandomSubSampleInducingPointSelector,
+    ConditionalImprovementReduction,
     SparseGaussianProcessRegression,
     SparseVariational,
     VariationalGaussianProcess,
@@ -573,7 +573,7 @@ def _test_optimizer_finds_minimum(
         model = SparseVariational(
             svgp,
             **model_args,
-            inducing_point_selector=RandomSubSampleInducingPointSelector(search_space),
+            inducing_point_selector=ConditionalImprovementReduction(),
         )
 
     elif model_type is DeepGaussianProcess:
