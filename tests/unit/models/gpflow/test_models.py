@@ -69,6 +69,8 @@ from trieste.models.gpflow.builders import (
     build_multifidelity_nonlinear_autoregressive_models,
 )
 from trieste.models.gpflow.inducing_point_selectors import (
+    ConditionalImprovementReduction,
+    ConditionalVarianceReduction,
     InducingPointSelector,
     KMeansInducingPointSelector,
     RandomSubSampleInducingPointSelector,
@@ -958,8 +960,10 @@ def test_sparse_gaussian_process_regression_correctly_returns_inducing_points() 
     "selector",
     [
         UniformInducingPointSelector(Box([0.0], [1.0])),
-        RandomSubSampleInducingPointSelector(Box([0.0], [1.0])),
-        KMeansInducingPointSelector(Box([0.0], [1.0])),
+        RandomSubSampleInducingPointSelector(),
+        KMeansInducingPointSelector(),
+        ConditionalVarianceReduction(),
+        ConditionalImprovementReduction(),
     ],
 )
 def test_sparse_gaussian_process_regression_assigns_correct_inducing_point_selector(
@@ -1339,8 +1343,10 @@ def test_sparse_variational_model_attribute() -> None:
     "selector",
     [
         UniformInducingPointSelector(Box([0.0], [1.0])),
-        RandomSubSampleInducingPointSelector(Box([0.0], [1.0])),
-        KMeansInducingPointSelector(Box([0.0], [1.0])),
+        RandomSubSampleInducingPointSelector(),
+        KMeansInducingPointSelector(),
+        ConditionalVarianceReduction(),
+        ConditionalImprovementReduction(),
     ],
 )
 def test_sparse_variational_assigns_correct_inducing_point_selector(

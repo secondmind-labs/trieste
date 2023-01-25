@@ -121,7 +121,6 @@ def test_inducing_point_selectors_choose_points_still_in_space(
 @pytest.mark.parametrize(
     "selector_name",
     [
-        UniformInducingPointSelector,
         RandomSubSampleInducingPointSelector,
         KMeansInducingPointSelector,
         ConditionalVarianceReduction,
@@ -133,10 +132,8 @@ def test_inducing_point_selectors_update_correct_number_of_times(
     selector_name: Callable[[SearchSpace, bool], InducingPointSelector[SparseVariational]],
     recalc_every_model_update: bool,
 ) -> None:
-    if selector_name == UniformInducingPointSelector:
-        selector = selector_name(Box([0.0], [1.0]), recalc_every_model_update)
-    else:
-        selector = selector_name(recalc_every_model_update)
+
+    selector = selector_name(recalc_every_model_update)  # type: ignore
     dataset = Dataset(*mock_data())
     svgp = svgp_model(*mock_data())
     model = SparseVariational(svgp)
@@ -176,7 +173,7 @@ def test_improvement_quality_function_returns_approximately_correct_scores() -> 
     dataset = Dataset(X, Y)
     svgp = svgp_model(X, Y)
     model = SparseVariational(svgp)
-    quality_scores = ModelBasedImprovementQualityFunction(num_samples=1000)(model, dataset)
+    quality_scores = ModelBasedImprovementQualityFunction()(model, dataset)
 
     samples = model.sample(dataset.query_points, 10000)[:, :, 0]  # [S, N]
     baseline = tf.reduce_max(tf.reduce_mean(samples, 0))
@@ -196,7 +193,7 @@ def test_greedy_inference_dpp_raises_errors() -> None:
     quality_scores = UnitQualityFunction()(model, dataset)
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):  # dataset must be populated
-        greedy_inference_dpp(10, svgp.kernel, quality_scores, dataset=None)
+        greedy_inference_dpp(10, svgp.kernel, quality_scores, dataset=None)  # type: ignore
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):  # dataset size must match quality score
         greedy_inference_dpp(10, svgp.kernel, quality_scores[:-1], dataset)
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):  # sample must be smaller than dataset size
@@ -205,7 +202,7 @@ def test_greedy_inference_dpp_raises_errors() -> None:
 
 @pytest.mark.parametrize(
     "quality_function",
-    [UnitQualityFunction(), ModelBasedImprovementQualityFunction(num_samples=10)],
+    [UnitQualityFunction(), ModelBasedImprovementQualityFunction()],
 )
 @pytest.mark.parametrize("num_points", [1, 10, 50])
 def test_greedy_inference_dpp_returns_correct_number_of_points(

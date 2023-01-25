@@ -29,7 +29,8 @@ from scipy.cluster.vq import kmeans
 from ...data import Dataset
 from ...space import Box, DiscreteSearchSpace, SearchSpace
 from ...types import TensorType
-from ..interfaces import ProbabilisticModel, ProbabilisticModelType
+from ..interfaces import ProbabilisticModelType
+from .interfaces import GPflowPredictor
 
 
 class InducingPointSelector(ABC, Generic[ProbabilisticModelType]):
@@ -111,7 +112,7 @@ class InducingPointSelector(ABC, Generic[ProbabilisticModelType]):
         raise NotImplementedError
 
 
-class UniformInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
+class UniformInducingPointSelector(InducingPointSelector[GPflowPredictor]):
     """
     An :class:`InducingPointSelector` that chooses points sampled uniformly across the search space.
     """
@@ -126,7 +127,7 @@ class UniformInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
         self._search_space = search_space
 
     def _recalculate_inducing_points(
-        self, M: int, model: ProbabilisticModel, dataset: Dataset
+        self, M: int, model: GPflowPredictor, dataset: Dataset
     ) -> TensorType:
         """
         Sample `M` points. If `search_space` is a :class:`Box` then we use a space-filling Sobol
@@ -144,13 +145,13 @@ class UniformInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
             return self._search_space.sample(M)
 
 
-class RandomSubSampleInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
+class RandomSubSampleInducingPointSelector(InducingPointSelector[GPflowPredictor]):
     """
     An :class:`InducingPointSelector` that chooses points at random from the training data.
     """
 
     def _recalculate_inducing_points(
-        self, M: int, model: ProbabilisticModel, dataset: Dataset
+        self, M: int, model: GPflowPredictor, dataset: Dataset
     ) -> TensorType:
         """
         Sample `M` points from the training data without replacement. If we require more
@@ -185,14 +186,14 @@ class RandomSubSampleInducingPointSelector(InducingPointSelector[ProbabilisticMo
         return sub_sample  # [M, d]
 
 
-class KMeansInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
+class KMeansInducingPointSelector(InducingPointSelector[GPflowPredictor]):
     """
     An :class:`InducingPointSelector` that chooses points as centroids of a K-means clustering
     of the training data.
     """
 
     def _recalculate_inducing_points(
-        self, M: int, model: ProbabilisticModel, dataset: Dataset
+        self, M: int, model: GPflowPredictor, dataset: Dataset
     ) -> TensorType:
         """
         Calculate `M` centroids from a K-means clustering of the training data.
@@ -250,7 +251,7 @@ class QualityFunction(ABC):
     """
 
     @abstractmethod
-    def __call__(self, model: ProbabilisticModel, dataset: Dataset) -> TensorType:
+    def __call__(self, model: GPflowPredictor, dataset: Dataset) -> TensorType:
         """
         Evaluate the quality of the data-points according to the model.
         :param model: The sparse model.
@@ -259,7 +260,7 @@ class QualityFunction(ABC):
         """
 
 
-class DPPInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
+class DPPInducingPointSelector(InducingPointSelector[GPflowPredictor]):
     """
     An :class:`InducingPointSelector` that follows :cite:`chen2018fast` to get a greedy appoximation
     to the MAP estimate of the specified Determinantal Point Process (DPP).
@@ -282,7 +283,7 @@ class DPPInducingPointSelector(InducingPointSelector[ProbabilisticModel]):
     def _recalculate_inducing_points(
         self,
         M: int,
-        model: ProbabilisticModel,
+        model: GPflowPredictor,
         dataset: Dataset,
     ) -> TensorType:
         """
@@ -329,7 +330,7 @@ class UnitQualityFunction(QualityFunction):
     inducing points with the sole aim of minimizing predictive variance.
     """
 
-    def __call__(self, model: ProbabilisticModel, dataset: Dataset) -> TensorType:
+    def __call__(self, model: GPflowPredictor, dataset: Dataset) -> TensorType:
         """
         Evaluate the quality of the data-points according to the model.
         :param model: The sparse model.
@@ -348,7 +349,7 @@ class ModelBasedImprovementQualityFunction(QualityFunction):
     and justification.
     """
 
-    def __call__(self, model: ProbabilisticModel, dataset: Dataset) -> TensorType:
+    def __call__(self, model: GPflowPredictor, dataset: Dataset) -> TensorType:
         """
         Evaluate the quality of the data-points according to the model.
         :param model: The sparse model.
@@ -389,16 +390,13 @@ class ConditionalImprovementReduction(DPPInducingPointSelector):
     def __init__(
         self,
         recalc_every_model_update: bool = True,
-        num_samples: int = 10,
     ):
         """
         :param recalc_every_model_update: If True then recalculate the inducing points for each
             model update, otherwise just recalculate on the first call.
         """
 
-        super().__init__(
-            ModelBasedImprovementQualityFunction(self._num_samples), recalc_every_model_update
-        )
+        super().__init__(ModelBasedImprovementQualityFunction(), recalc_every_model_update)
 
 
 def greedy_inference_dpp(

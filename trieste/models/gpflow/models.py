@@ -546,7 +546,9 @@ class SparseGaussianProcessRegression(
         model: SGPR,
         optimizer: Optimizer | None = None,
         num_rff_features: int = 1000,
-        inducing_point_selector: Optional[InducingPointSelector] = None,
+        inducing_point_selector: Optional[
+            InducingPointSelector[SparseGaussianProcessRegression]
+        ] = None,
     ):
         """
         :param model: The GPflow model to wrap.
