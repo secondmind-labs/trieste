@@ -57,7 +57,7 @@ gpflow_model = build_svgp(
     initial_data, search_space, likelihood_variance=0.01, num_inducing_points=50
 )
 
-inducing_point_selector = KMeansInducingPointSelector(search_space)
+inducing_point_selector = KMeansInducingPointSelector()
 
 model = SparseVariational(
     gpflow_model,
