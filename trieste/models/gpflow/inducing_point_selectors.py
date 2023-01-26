@@ -30,7 +30,7 @@ from ...data import Dataset
 from ...space import Box, DiscreteSearchSpace, SearchSpace
 from ...types import TensorType
 from ..interfaces import ProbabilisticModelType
-from .interfaces import GPflowPredictor
+from .interface import GPflowPredictor
 
 
 class InducingPointSelector(ABC, Generic[ProbabilisticModelType]):
