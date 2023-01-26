@@ -246,7 +246,7 @@ class KMeansInducingPointSelector(InducingPointSelector[GPflowPredictor]):
 
 class QualityFunction(ABC):
     """
-    An :const:`QualityFunction` uses a  `model` to measure the quality of each of
+    A :const:`QualityFunction` uses a  `model` to measure the quality of each of
     the `N` query points in the provided `dataset`, returning shape `[N]`.
     """
 
@@ -416,7 +416,7 @@ def greedy_inference_dpp(
     :param quality_scores: The quality score of each item in ``dataset``.
     :return: The MAP estimate of the DPP.
     :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty or if the shape of
-    ``quality_scores`` does not match that of ``dataset.observations``.
+        ``quality_scores`` does not match that of ``dataset.observations``.
     """
     tf.debugging.Assert(dataset is not None, [])
     tf.debugging.assert_equal(tf.shape(dataset.observations)[0], tf.shape(quality_scores)[0])
