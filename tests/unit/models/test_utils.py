@@ -146,7 +146,7 @@ def test_write_summary_likelihood_parameters(
     assert mocked_summary_scalar.call_count == len(names)
     for i, (n, v) in enumerate(zip(names, values)):
         assert mocked_summary_scalar.call_args_list[i][0][0] == n
-        assert tf.reduce_all(mocked_summary_scalar.call_args_list[i][0][1].numpy() == v)
+        assert tf.reduce_all(np.isclose(mocked_summary_scalar.call_args_list[i][0][1].numpy(), v))
 
 
 @unittest.mock.patch("trieste.logging.tf.summary.histogram")
