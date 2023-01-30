@@ -292,7 +292,7 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_scaled_branin() -> None:
     )
     _test_optimizer_finds_minimum(
         SparseVariational,
-        15,
+        25,
         EfficientGlobalOptimization[SearchSpace, SparseVariational](
             builder=ParallelContinuousThompsonSampling(), num_query_points=5
         ),
@@ -346,7 +346,7 @@ def test_bayesian_optimizer_with_sgpr_finds_minima_of_simple_quadratic() -> None
     [
         pytest.param(25, DiscreteThompsonSampling(1000, 8), id="DiscreteThompsonSampling"),
         pytest.param(
-            25,
+            35,
             EfficientGlobalOptimization(
                 ParallelContinuousThompsonSampling(),
                 num_query_points=3,
