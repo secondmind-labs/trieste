@@ -19,7 +19,7 @@ on:
     tags: v[0-9]+.[0-9]+.[0-9]+*
 
 jobs:
-  alltests:
+  slowtests:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -27,9 +27,9 @@ jobs:
       with:
         python-version: 3.7
     - run: pip install tox
-    - run: tox -e tests -- --runslow yes
+    - run: tox -e tests -- --runslow only
 
-  alltests_latest:
+  slowtests_latest:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -37,7 +37,7 @@ jobs:
       with:
         python-version: 3.9
     - run: pip install tox
-    - run: tox -e tests_latest -- --runslow yes
+    - run: tox -e tests_latest -- --runslow only
 
   fulldocs:
     runs-on: ubuntu-latest
