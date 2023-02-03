@@ -82,6 +82,9 @@ from .function import (
     predictive_variance,
     probability_below_threshold,
     soft_local_penalizer,
+    RandomScalarization,
+    random_scalarization,
+    hippo_penalizer,
 )
 from .interface import (
     AcquisitionFunction,
@@ -100,4 +103,9 @@ from .sampler import (
     GumbelSampler,
     ThompsonSampler,
     ThompsonSamplerFromTrajectory,
+)
+from .multi_objective import (
+    Pareto, get_reference_point,
+    Scalarizer,
+    Chebyshev,
 )
