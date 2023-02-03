@@ -16,10 +16,8 @@ from __future__ import annotations
 import copy
 import itertools
 import operator
-from collections import Sequence
-from collections.abc import Container
 from functools import reduce
-from typing import Optional
+from typing import Container, Optional, Sequence
 
 import numpy.testing as npt
 import pytest
