@@ -2,13 +2,13 @@
 
 [![PyPI](https://img.shields.io/pypi/v/trieste.svg)](https://pypi.org/project/trieste)
 [![License](https://img.shields.io/badge/license-Apache-green.svg)](LICENSE)
-[![Quality checks](https://github.com/secondmind-labs/trieste/actions/workflows/quality-checks.yaml/badge.svg)](https://github.com/secondmind-labs/trieste/actions?query=workflows%3Aquality-checks)
+[![Quality checks](https://github.com/secondmind-labs/trieste/actions/workflows/develop-checks.yaml/badge.svg)](https://github.com/secondmind-labs/trieste/actions?query=workflows%3Adevelop-checks)
 [![Docs](https://github.com/secondmind-labs/trieste/actions/workflows/deploy.yaml/badge.svg)](https://github.com/secondmind-labs/trieste/actions/workflows/deploy.yaml)
 [![Codecov](https://img.shields.io/codecov/c/github/secondmind-labs/trieste/coverage.svg?branch=master)](https://codecov.io/github/secondmind-labs/trieste?branch=master)
 [![Slack Status](https://img.shields.io/badge/slack-trieste-green.svg?logo=Slack)](https://join.slack.com/t/secondmind-labs/shared_invite/zt-ph07nuie-gMlkle__tjvXBay4FNSLkw)
 
 
-[Documentation (release)](https://secondmind-labs.github.io/trieste/1.0.0/index.html) |
+[Documentation (release)](https://secondmind-labs.github.io/trieste) |
 [Documentation (develop)](https://secondmind-labs.github.io/trieste/develop/index.html) |
 [Tutorials](https://secondmind-labs.github.io/trieste/1.0.0/tutorials.html) |
 [API reference](https://secondmind-labs.github.io/trieste/1.0.0/autoapi/trieste/index.html) |
@@ -16,18 +16,33 @@
 
 ## What does Trieste do?
 
-Trieste (pronounced tree-est) is a Bayesian optimization toolbox built on [TensorFlow](https://www.tensorflow.org/). Trieste is named after the bathyscaphe Trieste, the first vehicle to take a crew to Challenger Deep in the Mariana Trench, the lowest point on the Earth’s surface: the literal global minimum.
+Trieste (pronounced tree-est) is a Bayesian optimization toolbox built on [TensorFlow](https://www.tensorflow.org/). Trieste is named after the bathyscaphe [Trieste](https://en.wikipedia.org/wiki/Trieste_%28bathyscaphe%29), the first vehicle to take a crew to Challenger Deep in the Mariana Trench, the lowest point on the Earth’s surface: the literal global minimum.
+
+**Why Trieste?**  
+- Highly modular design and easily customizable. Extend it with your custom model or acquisition functions. Ideal for practitioners that want to use it in their systems or for researchers wishing to implement their latest ideas.
+- Seamless integration with TensorFlow. Leveraging fully its auto differentiation - no more writing of gradients for your acquisition functions!, and scalability capabilities via its support for highly parallelized modern hardware (e.g. GPUs).
+- General purpose toolbox. Advanced algorithms covering all corners of Bayesian optimization and Active learning - batch, asynchronous, constraints, multi-fidelity, multi-objective - you name it, Trieste has it. 
+- Versatile model support out-of-the-box. From gold-standard Gaussian processes (GPs; [GPflow](https://github.com/GPflow/GPflow)) to alternatives like sparse variational GPs, Deep GPs ([GPflux](https://github.com/secondmind-labs/GPflux)) or Deep Ensembles ([Keras](https://keras.io/)), that scale much better with the number of function evaluations.
+- Real-world oriented. Our Ask-Tell interface allows users to apply Bayesian optimization across a range of non-standard real-world settings where control over black-box function is partial. Built on TensorFlow and with comprehensive testing Trieste is production-ready.
 
 
 ## Getting started
 
+Here's a quick overview of the main components of a Bayesian optimization loop. 
 
+1. Fit a probabilistic model to data, Gaussian Process, for example
+```python
+```
 
+2. Choose an acquisition rule and acquisition function
+```python
+```
 
-In the [Documentation](https://secondmind-labs.github.io/trieste/), we have multiple [Tutorials](https://secondmind-labs.github.io/trieste/tutorials.html) showing the basic functionality of the toolbox, a [benchmark implementation](https://secondmind-labs.github.io/trieste/notebooks/benchmarks.html) and a comprehensive [API reference](https://secondmind-labs.github.io/trieste/autoapi/gpflux/index.html).
+3. Obtain the query points
+```python
+```
 
-
-Trieste has a [documentation site](https://secondmind-labs.github.io/trieste) with tutorials on how to use the library, and an API reference. You can also run the tutorials interactively. They can be found in the notebooks directory, and are written as Python scripts for running with Jupytext. To run them, first install trieste from sources as above, then install additional 
+For more details, see our [Documentation](https://secondmind-labs.github.io/trieste) where we have multiple [Tutorials](https://secondmind-labs.github.io/trieste/1.0.0/tutorials.html) covering both the basic functionalities of the toolbox, as well as more advanced usage.
 
 
 ## Installation
@@ -35,7 +50,7 @@ Trieste has a [documentation site](https://secondmind-labs.github.io/trieste) wi
 Trieste supports Python 3.7 onwards and uses [semantic versioning](https://semver.org/).
 
 
-#### For users
+### For users
 
 To install the latest (stable) release of the toolbox from [PyPI](https://pypi.org/), use `pip`:
 ```bash
@@ -48,16 +63,18 @@ $ pip install .
 in the repository root.
 
 
-#### For contributors
+### For contributors
 
 To install this project in editable mode, run the commands below from the root directory of the `trieste` repository.
 ```bash
+git clone https://github.com/secondmind-labs/trieste.git
+cd trieste
 pip install -e .
 ```
-For detailed instructions, see [the guidelines for contributors](CONTRIBUTING.md).
+For quality checks and other details, see [the guidelines for contributors](CONTRIBUTING.md).
 
 
-#### Tutorials
+### Tutorials
 
 Trieste has a [documentation site](https://secondmind-labs.github.io/trieste) with tutorials on how to use the library, and an API reference. You can also run the tutorials interactively. They can be found in the notebooks directory, and are written as Python scripts for running with Jupytext. To run them, first install trieste from sources as above, then install additional dependencies with
 ```bash
@@ -93,7 +110,7 @@ To cite Trieste, please reference our [arXiv](https://arxiv.org/) paper where we
 ```
 @article{trieste2023,
   author = {XXX},
-    title = "{XXX}",
+    title = "{Trieste: Efficiently Exploring The Depths of Black-box Functions with TensorFlow}",
   journal = {XXX},
   year    = {2023},
   url     = {http://arxiv.org/XXX}
