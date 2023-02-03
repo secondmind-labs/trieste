@@ -265,7 +265,7 @@ def ConstrainedBraninCurrin() -> ConstrainedMultiObjectiveTestProblem:
 
     def evaluate_slack_true(x: TensorType) -> TensorType:
         """
-        The constraint of branincurrin problem
+        The constraint of branincurrin problem, < 0 is feasible
 
         :param x: The points at which to evaluate the function, with shape [..., d].
         :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
