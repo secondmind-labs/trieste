@@ -276,7 +276,7 @@ def ConstrainedBraninCurrin() -> ConstrainedMultiObjectiveTestProblem:
         return (x[..., :1] - 2.5) ** 2 + (x[..., 1:] - 7.5) ** 2 - 50
 
     return ConstrainedMultiObjectiveTestProblem(
-        name=f"ConstrainedBraninCurrin()",
+        name="ConstrainedBraninCurrin",
         objective=branin_currin,
         constraint=evaluate_slack_true,
         search_space=Box([0.0], [1.0]) ** 2,
