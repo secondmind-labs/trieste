@@ -170,7 +170,7 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
             predicted_means, predicted_vars = self._model.predict(flat_x)  # ([N*B, L], [N*B, L])
             predicted_vars = predicted_vars + tf.cast(DEFAULTS.JITTER, predicted_vars.dtype)
             predictions = predicted_means + tf.sqrt(predicted_vars) * tf.tile(
-                tf.cast(self._eps, predicted_vars.dtype), [x.shape[0], 1]
+                tf.cast(self._eps, predicted_vars.dtype), [tf.shape(x)[0], 1]
             )  # [N*B, L]
             return unflatten(predictions)  # [N, B, L]
         else:
