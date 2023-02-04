@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/license-Apache-green.svg)](LICENSE)
 [![Quality checks](https://github.com/secondmind-labs/trieste/actions/workflows/develop-checks.yaml/badge.svg)](https://github.com/secondmind-labs/trieste/actions?query=workflows%3Adevelop-checks)
 [![Docs](https://github.com/secondmind-labs/trieste/actions/workflows/deploy.yaml/badge.svg)](https://github.com/secondmind-labs/trieste/actions/workflows/deploy.yaml)
-[![Codecov](https://img.shields.io/codecov/c/github/secondmind-labs/trieste/coverage.svg?branch=master)](https://codecov.io/github/secondmind-labs/trieste?branch=master)
+<!-- [![Codecov](https://img.shields.io/codecov/c/github/secondmind-labs/trieste/coverage.svg?branch=master)](https://codecov.io/github/secondmind-labs/trieste?branch=master) -->
 [![Slack Status](https://img.shields.io/badge/slack-trieste-green.svg?logo=Slack)](https://join.slack.com/t/secondmind-labs/shared_invite/zt-ph07nuie-gMlkle__tjvXBay4FNSLkw)
 
 
@@ -30,16 +30,39 @@ Trieste (pronounced tree-est) is a Bayesian optimization toolbox built on [Tenso
 
 Here's a quick overview of the main components of a Bayesian optimization loop. 
 
-1. Fit a probabilistic model to data, Gaussian Process, for example
+Let's set up a synthetic black-box objective function we wish to minimize, for example, a popular Branin optimization function, and generate some initial data
 ```python
+from trieste.objectives import Branin, mk_observer
+
+observer = mk_observer(Branin.objective)
+
+initial_query_points = Branin.search_space.sample(5)
+initial_data = observer(initial_query_points)
 ```
 
-2. Choose an acquisition rule and acquisition function
+First step is to crate a probabilistic model, for example a Gaussian Process
 ```python
+from trieste.models import build_gpr, GaussianProcessRegression
+
+gpflow_model = build_gpr(initial_data, Branin.search_space)
+model = GaussianProcessRegression(gpflow_model)
 ```
 
-3. Obtain the query points
+Next ingredient is to choose an acquisition rule and acquisition function
 ```python
+from trieste.acquisition import EfficientGlobalOptimization, ExpectedImprovement
+
+acquisition_rule = EfficientGlobalOptimization(ExpectedImprovement())
+```
+
+Finally, we optimize the acquisition function using our model for a number of steps and we obtain the obtained minimum
+```python
+from trieste.bayesian_optimizer import BayesianOptimizer
+
+bo = BayesianOptimizer(observer, search_space)
+num_steps = 15
+result = bo.optimize(num_steps, initial_data, model)
+query_point, observation, arg_min_idx = result.try_get_optimal_point()
 ```
 
 For more details, see our [Documentation](https://secondmind-labs.github.io/trieste) where we have multiple [Tutorials](https://secondmind-labs.github.io/trieste/1.0.0/tutorials.html) covering both the basic functionalities of the toolbox, as well as more advanced usage.
