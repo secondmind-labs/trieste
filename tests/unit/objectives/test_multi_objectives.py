@@ -115,37 +115,44 @@ def test_dtlz2_has_expected_output(
 
 
 @pytest.mark.parametrize(
-    "test_x, expected_obj, expected_con",
+    "test_x, expected_obj, expected_con, threshold",
     [
         (
             tf.constant([[0.0, 0.0]]),
             tf.constant([[308.12909601160663, 3.0]]),
             tf.constant([[62.5]]),
+            0.0,
         ),
         (
             tf.constant([[0.5, 1.0]]),
             tf.constant([[150.45202034083485, 4.609388478538837]]),
-            tf.constant([[6.25]]),
+            tf.constant([[-3.75]]),
+            10.0,
         ),
         (
             tf.constant([[[0.5, 1.0]], [[0.0, 0.0]]]),
             tf.constant([[[150.45202034083485, 4.609388478538837]], [[308.12909601160663, 3.0]]]),
             tf.constant([[[6.25]], [[62.5]]]),
+            0.0,
         ),
         (
             tf.constant([[0.5, 1.0], [0.0, 0.0]]),
             tf.constant([[150.45202034083485, 4.609388478538837], [308.12909601160663, 3.0]]),
-            tf.constant([[6.25], [62.5]]),
+            tf.constant([[11.25], [67.5]]),
+            -5.0,
         ),
     ],
 )
 def test_constrainedbranincurrin_has_expected_output(
-    test_x: TensorType, expected_obj: TensorType, expected_con: TensorType
+    test_x: TensorType,
+    expected_obj: TensorType,
+    expected_con: TensorType,
+    threshold: Union[TensorType, float],
 ) -> None:
     f = ConstrainedBraninCurrin().objective
     c = ConstrainedBraninCurrin().constraint
     npt.assert_allclose(f(test_x), expected_obj, rtol=1e-5)
-    npt.assert_allclose(c(test_x), expected_con, rtol=1e-5)
+    npt.assert_allclose(c(test_x, threshold), expected_con, rtol=1e-5)
 
 
 @pytest.mark.parametrize(
@@ -193,23 +200,25 @@ def test_func_raises_specified_input_dim_not_align_with_actual_input_dim(
 
 
 @pytest.mark.parametrize(
-    "problem, input_dim, num_obj",
+    "problem, input_dim, num_obj, num_con",
     [
-        (VLMOP2(2), 2, 2),
-        (VLMOP2(10), 10, 2),
-        (DTLZ1(3, 2), 3, 2),
-        (DTLZ1(10, 5), 10, 5),
-        (DTLZ2(3, 2), 3, 2),
-        (DTLZ2(10, 5), 10, 5),
+        (VLMOP2(2), 2, 2, 0),
+        (VLMOP2(10), 10, 2, 0),
+        (DTLZ1(3, 2), 3, 2, 0),
+        (DTLZ1(10, 5), 10, 5, 0),
+        (DTLZ2(3, 2), 3, 2, 0),
+        (DTLZ2(10, 5), 10, 5, 0),
+        (ConstrainedBraninCurrin(), 2, 2, 1),
     ],
 )
 @pytest.mark.parametrize("num_obs", [1, 5, 10])
 @pytest.mark.parametrize("dtype", [tf.float32, tf.float64])
-def test_objective_has_correct_shape_and_dtype(
-    problem: MultiObjectiveTestProblem,
+def test_objective_and_constraint_has_correct_shape_and_dtype(
+    problem: Union[MultiObjectiveTestProblem, ConstrainedMultiObjectiveTestProblem],
     input_dim: int,
     num_obj: int,
     num_obs: int,
+    num_con: int,
     dtype: tf.DType,
 ) -> None:
     x = problem.search_space.sample(num_obs)
@@ -223,5 +232,10 @@ def test_objective_has_correct_shape_and_dtype(
     tf.debugging.assert_shapes([(x, [num_obs, input_dim])])
     tf.debugging.assert_shapes([(y, [num_obs, num_obj])])
 
+    if isinstance(problem, ConstrainedMultiObjectiveTestProblem):
+        c = problem.constraint(x)
+        tf.debugging.assert_shapes([(c, [num_obs, num_con])])
+
     assert pf.dtype == tf.float64  # default dtype
-    tf.debugging.assert_shapes([(pf, [num_obs * 2, num_obj])])
+    if tf.size(pf) != 0:  # the problem has a valid `gen_pareto_optimal_points` method
+        tf.debugging.assert_shapes([(pf, [num_obs * 2, num_obj])])

@@ -19,7 +19,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from functools import partial
-from typing import Callable
+from typing import Callable, Optional
 
 import tensorflow as tf
 from typing_extensions import Protocol
@@ -54,6 +54,17 @@ class MultiObjectiveTestProblem(ObjectiveTestProblem):
     gen_pareto_optimal_points: GenParetoOptimalPoints
     """Function to generate Pareto optimal points, given the number of points and an optional
     random number seed."""
+
+
+@dataclass(frozen=True)
+class ConstrainedMultiObjectiveTestProblem(MultiObjectiveTestProblem):
+    """
+    Convenience container class for synthetic constrained multi-objective test functions, containing
+    additionally a constraint function.
+    """
+
+    constraint: Callable[[TensorType, Optional[float]], TensorType]
+    """The synthetic test function's constraints"""
 
 
 def vlmop2(x: TensorType, d: int) -> TensorType:
@@ -239,18 +250,6 @@ def DTLZ2(input_dim: int, num_objective: int) -> MultiObjectiveTestProblem:
     )
 
 
-@dataclass(frozen=True)
-class ConstrainedMultiObjectiveTestProblem(MultiObjectiveTestProblem):
-    """
-    Convenience container class for synthetic constrained multi-objective test functions, containing
-    a generator for the pareto optimal points, which can be used as a reference of performance
-    measure of certain multi-objective optimization algorithms.
-    """
-
-    constraint: Callable[[TensorType], TensorType]
-    """The synthetic test function's constraints"""
-
-
 def ConstrainedBraninCurrin() -> ConstrainedMultiObjectiveTestProblem:
     """
     The ConstrainedBraninCurrin problem, typically evaluated over :math:`[0, 1]^2`.
@@ -261,24 +260,26 @@ def ConstrainedBraninCurrin() -> ConstrainedMultiObjectiveTestProblem:
     """
 
     def gen_pareto_optimal_points(n: int, seed: int | None = None) -> TensorType:
-        return tf.zeros(shape=0)
+        return tf.zeros(shape=0, dtype=tf.float64)
 
-    def evaluate_slack_true(x: TensorType) -> TensorType:
+    def evaluate_constraint(x: TensorType, threshold: Optional[float] = 0.0) -> TensorType:
         """
-        The constraint of branincurrin problem, < 0 is feasible
+        The constraint of branincurrin problem, < threshold is feasible
 
         :param x: The points at which to evaluate the function, with shape [..., d].
+        :param threshold: a feasibility threshold used to determine the constraint, by default 0 is
+            used as in the original problem.
         :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
         """
         x = x * (
             tf.constant([10.0, 15.0], dtype=x.dtype) - tf.constant([-5.0, 0.0], dtype=x.dtype)
         ) + tf.constant([-5.0, 0.0], dtype=x.dtype)
-        return (x[..., :1] - 2.5) ** 2 + (x[..., 1:] - 7.5) ** 2 - 50
+        return (x[..., :1] - 2.5) ** 2 + (x[..., 1:] - 7.5) ** 2 - 50 - threshold
 
     return ConstrainedMultiObjectiveTestProblem(
         name="ConstrainedBraninCurrin",
         objective=branin_currin,
-        constraint=evaluate_slack_true,
+        constraint=evaluate_constraint,
         search_space=Box([0.0], [1.0]) ** 2,
         gen_pareto_optimal_points=gen_pareto_optimal_points,
     )
