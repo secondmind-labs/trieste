@@ -28,7 +28,7 @@ Trieste (pronounced tree-est) is a Bayesian optimization toolbox built on [Tenso
 
 ## Getting started
 
-Here's a quick overview of the main components of a Bayesian optimization loop. 
+Here's a quick overview of the main components of a Bayesian optimization loop. For more details, see our [Documentation](https://secondmind-labs.github.io/trieste) where we have multiple [Tutorials](https://secondmind-labs.github.io/trieste/1.0.0/tutorials.html) covering both the basic functionalities of the toolbox, as well as more advanced usage.
 
 Let's set up a synthetic black-box objective function we wish to minimize, for example, a popular Branin optimization function, and generate some initial data
 ```python
@@ -55,7 +55,7 @@ from trieste.acquisition import EfficientGlobalOptimization, ExpectedImprovement
 acquisition_rule = EfficientGlobalOptimization(ExpectedImprovement())
 ```
 
-Finally, we optimize the acquisition function using our model for a number of steps and we obtain the obtained minimum
+Finally, we optimize the acquisition function using our model for a number of steps and we check the obtained minimum
 ```python
 from trieste.bayesian_optimizer import BayesianOptimizer
 
@@ -65,12 +65,10 @@ result = bo.optimize(num_steps, initial_data, model)
 query_point, observation, arg_min_idx = result.try_get_optimal_point()
 ```
 
-For more details, see our [Documentation](https://secondmind-labs.github.io/trieste) where we have multiple [Tutorials](https://secondmind-labs.github.io/trieste/1.0.0/tutorials.html) covering both the basic functionalities of the toolbox, as well as more advanced usage.
-
 
 ## Installation
 
-Trieste supports Python 3.7 onwards and uses [semantic versioning](https://semver.org/).
+Trieste supports Python 3.7+ and TensorFlow 2.5+, and uses [semantic versioning](https://semver.org/).
 
 
 ### For users
@@ -94,7 +92,7 @@ git clone https://github.com/secondmind-labs/trieste.git
 cd trieste
 pip install -e .
 ```
-For quality checks and other details, see [the guidelines for contributors](CONTRIBUTING.md).
+For installation to be able to run quality checks, as well as other details, see [the guidelines for contributors](CONTRIBUTING.md).
 
 
 ### Tutorials
