@@ -1517,7 +1517,7 @@ class MultifidelityAutoregressive(TrainableProbabilisticModel):
             )  # [S, N, P]
 
             mask = query_points_fidelity_col >= fidelity  # [N, P]
-            mask = tf.repeat(mask[..., None, :, :], num_samples, axis=-3)
+            mask = tf.broadcast_to(mask[..., None, :, :], tf.shape(new_fidelity_signal_sample))
 
             signal_sample = tf.where(mask, new_fidelity_signal_sample, signal_sample)
 
@@ -1700,19 +1700,21 @@ class MultifidelityNonlinearAutoregressive(TrainableProbabilisticModel):
         ) = check_and_extract_fidelity_query_points(
             query_points, max_fidelity=self.num_fidelities - 1
         )  # [..., N, D], [..., N, 1]
-        # Repeat query_points to get same shape as signal sample
-        query_points_fidelity_col = tf.repeat(
-            query_points_fidelity_col[..., None, :, :], num_samples, axis=-3
-        )  # [..., S, N, 1]
 
         signal_sample = self.fidelity_models[0].sample(
             query_points_wo_fidelity, num_samples
         )  # [..., S, N, 1]
 
+        # Repeat query_points to get same shape as signal sample
+        query_points_fidelity_col = tf.broadcast_to(
+            query_points_fidelity_col[..., None, :, :], tf.shape(signal_sample)
+        )  # [..., S, N, 1]
+
         for fidelity in range(1, self.num_fidelities):
 
-            qp_repeated = tf.repeat(
-                query_points_wo_fidelity[..., None, :, :], num_samples, axis=-3
+            qp_repeated = tf.broadcast_to(
+                query_points_wo_fidelity[..., None, :, :],
+                tf.shape(signal_sample)[:-1] + tf.shape(query_points_wo_fidelity)[-1],
             )  # [..., S, N, D]
             qp_augmented = tf.concat([qp_repeated, signal_sample], axis=-1)  # [..., S, N, D + 1]
             new_signal_sample = self.fidelity_models[fidelity].sample(
@@ -1804,16 +1806,21 @@ class MultifidelityNonlinearAutoregressive(TrainableProbabilisticModel):
         # Create new dimension to store samples for each query point
         # Repeat the inital sample mean and variance S times and add a dimension in the
         # middle (so that sample mean and query points can be concatenated sensibly)
-        sample_mean = tf.repeat(sample_mean, self.monte_carlo_random_numbers.shape[0], axis=-1)[
+        sample_mean = tf.broadcast_to(
+            sample_mean, tf.shape(sample_mean)[:-1] + tf.shape(self.monte_carlo_random_numbers)[0]
+        )[
             ..., :, None, :
         ]  # [..., N, 1, S]
-        sample_var = tf.repeat(sample_var, self.monte_carlo_random_numbers.shape[0], axis=-1)[
+        sample_var = tf.broadcast_to(
+            sample_var, tf.shape(sample_var)[:-1] + tf.shape(self.monte_carlo_random_numbers)[0]
+        )[
             ..., :, None, :
         ]  # [..., N, 1, S]
 
         # Repeat fidelity points for each sample to match shapes for masking
-        query_points_fidelity_col = tf.repeat(
-            query_points_fidelity_col, self.monte_carlo_random_numbers.shape[0], axis=-1
+        query_points_fidelity_col = tf.broadcast_to(
+            query_points_fidelity_col,
+            tf.shape(query_points_fidelity_col)[:-1] + tf.shape(self.monte_carlo_random_numbers)[0],
         )[
             ..., :, None, :
         ]  # [..., N, 1, S]
@@ -1867,17 +1874,16 @@ class MultifidelityNonlinearAutoregressive(TrainableProbabilisticModel):
         # for concatentation with query points This also means that it has the same
         # shape as sample_var and sample_mean, so there's no broadcasting required
         # Note: at the moment we use the same monte carlo values for every value in the batch dim
-        reshaped_random_numbers = tf.repeat(
-            tf.transpose(self.monte_carlo_random_numbers), query_point.shape[-2], axis=-2
-        )[
-            ..., None, :
-        ]  # [..., N, 1, S]
+
+        reshaped_random_numbers = tf.broadcast_to(
+            tf.transpose(self.monte_carlo_random_numbers)[..., None, :],
+            tf.shape(sample_mean),
+        )  # [..., N, 1, S]
         samples = reshaped_random_numbers * tf.sqrt(sample_var) + sample_mean  # [..., N, 1, S]
         # Add an extra unit dim to query_point and repeat for each of the samples
-        qp_repeated = tf.repeat(
+        qp_repeated = tf.broadcast_to(
             query_point[..., :, :, None],  # [..., N, D, 1]
-            self.monte_carlo_random_numbers.shape[0],
-            axis=-1,
+            tf.shape(query_point) + tf.shape(samples)[-1],
         )  # [..., N, D, S]
         qp_augmented = tf.concat([qp_repeated, samples], axis=-2)  # [..., N, D+1, S]
 
@@ -1976,22 +1982,24 @@ class MultifidelityNonlinearAutoregressive(TrainableProbabilisticModel):
         ) = check_and_extract_fidelity_query_points(
             query_points, max_fidelity=self.num_fidelities - 1
         )  # [N, D], [N, 1]
-        # Repeat query_points to get same shape as signal sample
-        query_points_fidelity_col = tf.repeat(
-            query_points_fidelity_col[None, :, :], num_samples, axis=0
-        )
 
         # Signal sample stops updating once fidelity is reached for that query point
         signal_sample = self.fidelity_models[0].model.predict_f_samples(
             query_points_wo_fidelity, num_samples, full_cov=False
+        )
+
+        # Repeat query_points to get same shape as signal sample
+        query_points_fidelity_col = tf.broadcast_to(
+            query_points_fidelity_col[None, :, :], tf.shape(signal_sample)
         )
         # Max fidelity sample keeps updating to the max fidelity
         max_fidelity_sample = tf.identity(signal_sample)
 
         for fidelity in range(1, self.num_fidelities):
 
-            qp_repeated = tf.repeat(
-                query_points_wo_fidelity[None, :, :], num_samples, axis=0
+            qp_repeated = tf.broadcast_to(
+                query_points_wo_fidelity[None, :, :],
+                tf.shape([num_samples]) + tf.shape(query_points_wo_fidelity),
             )  # [S, N, D]
             # We use max fidelity sample here, which is okay because anything
             # with a lower fidelity will not be updated
