@@ -30,10 +30,7 @@ try:
     from pymoo.operators.sampling.rnd import FloatRandomSampling
     from pymoo.optimize import minimize
 except ImportError:
-    raise ImportError(
-        "PF2ES requires pymoo, "
-        "which can be installed via `pip install pymoo`"
-    )
+    raise ImportError("PF2ES requires pymoo, " "which can be installed via `pip install pymoo`")
 
 from functools import partial
 from typing import Callable, List, Mapping, Optional, Tuple, Union
@@ -111,9 +108,7 @@ def prepare_default_non_dominated_partition_bounds(
     def specify_default_anti_reference_point(
         ref: TensorType, obs: Optional[TensorType]
     ) -> TensorType:
-        anti_ref = -1e10 * tf.ones(
-            shape=(tf.shape(reference)), dtype=reference.dtype
-        )
+        anti_ref = -1e10 * tf.ones(shape=(tf.shape(reference)), dtype=reference.dtype)
         tf.debugging.assert_greater_equal(
             ref,
             anti_ref,
@@ -121,9 +116,7 @@ def prepare_default_non_dominated_partition_bounds(
             "anti-reference point ([-1e10, ..., -1e10]), try specify a lower "
             "anti-reference point.",
         )
-        if not is_empty_obs(
-            obs
-        ):  # make sure given (valid) observations are larger than -1e10
+        if not is_empty_obs(obs):  # make sure given (valid) observations are larger than -1e10
             tf.debugging.assert_greater_equal(
                 obs,
                 anti_ref,
@@ -136,17 +129,13 @@ def prepare_default_non_dominated_partition_bounds(
     tf.debugging.assert_shapes([(reference, ["D"])])
     if anti_reference is None:
         # if anti_reference point is not specified, use a -1e10 as default (act as -inf)
-        anti_reference = specify_default_anti_reference_point(
-            reference, observations
-        )
+        anti_reference = specify_default_anti_reference_point(reference, observations)
     else:
         # anti_reference point is specified
         tf.debugging.assert_shapes([(anti_reference, ["D"])])
 
     if is_empty_obs(observations):  # if no valid observations
-        assert tf.reduce_all(
-            tf.less_equal(anti_reference, reference)
-        ), ValueError(
+        assert tf.reduce_all(tf.less_equal(anti_reference, reference)), ValueError(
             f"anti_reference point: {anti_reference} contains at least one value larger "
             f"than reference point: {reference}"
         )
@@ -254,9 +243,7 @@ class HypervolumeBoxDecompositionIncrementalDominated:
         :param new_obs with shape [N, D]
         """
         tf.debugging.assert_greater_equal(self._reference_point, new_obs)
-        tf.debugging.assert_greater_equal(
-            new_obs, self._dummy_anti_reference_point
-        )
+        tf.debugging.assert_greater_equal(new_obs, self._dummy_anti_reference_point)
         (
             self.U_set,
             self.Z_set,
@@ -267,9 +254,7 @@ class HypervolumeBoxDecompositionIncrementalDominated:
         )
 
     def partition_bounds(self) -> Tuple[TensorType, TensorType]:
-        return _get_partition_bounds_hbda(
-            self.Z_set, self.U_set, self._reference_point
-        )
+        return _get_partition_bounds_hbda(self.Z_set, self.U_set, self._reference_point)
 
 
 def _update_local_upper_bounds_incremental(
@@ -290,9 +275,7 @@ def _update_local_upper_bounds_incremental(
 
     tf.debugging.assert_shapes([(new_observations, ["N", "D"])])
     for new_obs in new_observations:  # incrementally update local upper bounds
-        u_set, z_set = _compute_new_local_upper_bounds(
-            u_set, z_set, z_bar=new_obs
-        )
+        u_set, z_set = _compute_new_local_upper_bounds(u_set, z_set, z_bar=new_obs)
     return u_set, z_set
 
 
@@ -324,30 +307,22 @@ def _compute_new_local_upper_bounds(
 
     # condition check in Theorem 2.2: if not need to update (z_bar doesn't strict dominate anything)
     z_bar_dominates_u_set_mask = tf.reduce_all(z_bar < u_set, -1)
-    if not tf.reduce_any(
-        z_bar_dominates_u_set_mask
-    ):  # z_bar does not dominate any point in set U
+    if not tf.reduce_any(z_bar_dominates_u_set_mask):  # z_bar does not dominate any point in set U
         return u_set, z_set
 
     # elements in U that has been dominated by z_bar and needs to be updated (step 5 of Alg. 2)
-    u_set_need_update = u_set[
-        z_bar_dominates_u_set_mask
-    ]  # [M, D], same as A in the paper
+    u_set_need_update = u_set[z_bar_dominates_u_set_mask]  # [M, D], same as A in the paper
     z_set_need_update = z_set[z_bar_dominates_u_set_mask]  # [M, D, D]
 
     # Container of new local upper bound (lub) points and its defining set
     updated_u_set = tf.zeros(shape=(0, num_outcomes), dtype=u_set.dtype)
-    updated_z_set = tf.zeros(
-        shape=(0, num_outcomes, num_outcomes), dtype=u_set.dtype
-    )
+    updated_z_set = tf.zeros(shape=(0, num_outcomes, num_outcomes), dtype=u_set.dtype)
 
     # update local upper bound and its corresponding defining points
     for j in tf.range(num_outcomes):  # check update per dimension
         # for jth output dimension, check if if zbar_j can form a new lub
         # (if zbar_j ≥ max_{k≠j}{z_j^k(u)} get all lub's defining point and check:
-        indices = tf.constant(
-            [dim for dim in range(num_outcomes) if dim != j], dtype=tf.int32
-        )
+        indices = tf.constant([dim for dim in range(num_outcomes) if dim != j], dtype=tf.int32)
         mask_j_dim = tf.constant(
             [0 if dim != j else 1 for dim in range(num_outcomes)],
             dtype=z_bar.dtype,
@@ -365,17 +340,12 @@ def _compute_new_local_upper_bounds(
         # any of original local upper bounds (in A) can be updated
         if tf.reduce_any(u_mask_to_be_replaced_by_zbar_j):
             # update u with new lub: (zbar_j, u_{-j})
-            u_need_update_j_dim = u_set_need_update[
-                u_mask_to_be_replaced_by_zbar_j
-            ]  # [M', D]
+            u_need_update_j_dim = u_set_need_update[u_mask_to_be_replaced_by_zbar_j]  # [M', D]
             # tensorflow tricky to replace u_j's j dimension with z_bar[j]
-            new_u_updated_j_dim = (
-                u_need_update_j_dim * mask_not_j_dim
-                + tf.repeat(
-                    (mask_j_dim * z_bar[j])[tf.newaxis],
-                    u_need_update_j_dim.shape[0],
-                    axis=0,
-                )
+            new_u_updated_j_dim = u_need_update_j_dim * mask_not_j_dim + tf.repeat(
+                (mask_j_dim * z_bar[j])[tf.newaxis],
+                u_need_update_j_dim.shape[0],
+                axis=0,
             )
             # add the new local upper bound point: u_j
             updated_u_set = tf.concat([updated_u_set, new_u_updated_j_dim], 0)
@@ -422,27 +392,19 @@ def _get_partition_bounds_hbda(
     l_bounds = tf.zeros(shape=[0, tf.shape(u_set)[-1]], dtype=u_set.dtype)
     u_bounds = tf.zeros(shape=[0, tf.shape(u_set)[-1]], dtype=u_set.dtype)
 
-    for u_idx in range(
-        tf.shape(u_set)[0]
-    ):  # get partition through each of the lub point
+    for u_idx in range(tf.shape(u_set)[0]):  # get partition through each of the lub point
         l_bound_new = tf.zeros(shape=0, dtype=u_set.dtype)
         u_bound_new = tf.zeros(shape=0, dtype=u_set.dtype)
         # for each (partitioned) hyper-cell, get its bounds through each objective dimension
         # get bounds on 1st dim: [z_1^1(u), z_1^r]
-        l_bound_new = tf.concat(
-            [l_bound_new, z_set[u_idx, 0, 0][tf.newaxis]], 0
-        )
-        u_bound_new = tf.concat(
-            [u_bound_new, reference_point[0][tf.newaxis]], 0
-        )
+        l_bound_new = tf.concat([l_bound_new, z_set[u_idx, 0, 0][tf.newaxis]], 0)
+        u_bound_new = tf.concat([u_bound_new, reference_point[0][tf.newaxis]], 0)
 
         for j in range(1, u_set.shape[-1]):  # get bounds on rest dim
             l_bound_new = tf.concat(
                 [l_bound_new, tf.reduce_max(z_set[u_idx, :j, j])[tf.newaxis]], 0
             )
-            u_bound_new = tf.concat(
-                [u_bound_new, u_set[u_idx, j][tf.newaxis]], 0
-            )
+            u_bound_new = tf.concat([u_bound_new, u_set[u_idx, j][tf.newaxis]], 0)
         l_bounds = tf.concat([l_bounds, l_bound_new[tf.newaxis]], 0)
         u_bounds = tf.concat([u_bounds, u_bound_new[tf.newaxis]], 0)
 
@@ -513,9 +475,7 @@ class HasTrajectorySamplerModelStack(ModelStack[HasTrajectorySampler]):
                     f"method; received {model.__repr__()}"
                 )
 
-        self._trajectory_samplers = [
-            model.trajectory_sampler() for model in self._models
-        ]
+        self._trajectory_samplers = [model.trajectory_sampler() for model in self._models]
         self._trajectory_samples: list = []
         self.gen_initial_trajectories()
 
@@ -524,9 +484,7 @@ class HasTrajectorySamplerModelStack(ModelStack[HasTrajectorySampler]):
         for trajectory_sampler in self._trajectory_samplers:
             self._trajectory_samples.append(trajectory_sampler.get_trajectory())
 
-    def get_trajectories(
-        self, regenerate: bool = False
-    ) -> List[TrajectoryFunction]:
+    def get_trajectories(self, regenerate: bool = False) -> List[TrajectoryFunction]:
         """
         Get sampled trajectories, if no trajectories have been generated, it will run
         `gen_initial_trajectories` first to generate trajectories first, otherwise, it will
@@ -539,16 +497,12 @@ class HasTrajectorySamplerModelStack(ModelStack[HasTrajectorySampler]):
         """
         if regenerate is True:
             if len(self._trajectory_samples) == 0:
-                print(
-                    "No existing trajectories have been found, generate new trajectories"
-                )
+                print("No existing trajectories have been found, generate new trajectories")
                 self.gen_initial_trajectories()
             else:  # regenerate trajectories
                 self._trajectory_samples = []
                 for trajectory_sampler in self._trajectory_samplers:
-                    self._trajectory_samples.append(
-                        trajectory_sampler.get_trajectory()
-                    )
+                    self._trajectory_samples.append(trajectory_sampler.get_trajectory())
         return self._trajectory_samples
 
     def update_trajectories(self):
@@ -556,24 +510,20 @@ class HasTrajectorySamplerModelStack(ModelStack[HasTrajectorySampler]):
         Update trajectories
         """
         assert len(self._trajectory_samples) != 0
-        for trajectory, idx in zip(
-            self._trajectory_samples, range(len(self._trajectory_samples))
-        ):
-            self._trajectory_samples[idx] = self._trajectory_samplers[
-                idx
-            ].update_trajectory(trajectory)
+        for trajectory, idx in zip(self._trajectory_samples, range(len(self._trajectory_samples))):
+            self._trajectory_samples[idx] = self._trajectory_samplers[idx].update_trajectory(
+                trajectory
+            )
 
     def resample_trajectories(self):
         """
         Resample trajectories
         """
         assert len(self._trajectory_samples) != 0
-        for trajectory, idx in zip(
-            self._trajectory_samples, range(len(self._trajectory_samples))
-        ):
-            self._trajectory_samples[idx] = self._trajectory_samplers[
-                idx
-            ].update_trajectory(trajectory)
+        for trajectory, idx in zip(self._trajectory_samples, range(len(self._trajectory_samples))):
+            self._trajectory_samples[idx] = self._trajectory_samplers[idx].update_trajectory(
+                trajectory
+            )
 
     def eval_on_trajectory(self, query_points: TensorType) -> TensorType:
         r"""
@@ -585,17 +535,12 @@ class HasTrajectorySamplerModelStack(ModelStack[HasTrajectorySampler]):
         if len(self._trajectory_samples) == 0:
             self.gen_initial_trajectories()
         return tf.concat(
-            [
-                trajectory_sample(query_points)
-                for trajectory_sample in self._trajectory_samples
-            ],
+            [trajectory_sample(query_points) for trajectory_sample in self._trajectory_samples],
             axis=-1,
         )
 
 
-class TrainableHasTrajectorySamplerModelStack(
-    HasTrajectorySamplerModelStack, TrainableModelStack
-):
+class TrainableHasTrajectorySamplerModelStack(HasTrajectorySamplerModelStack, TrainableModelStack):
     """
     A stack of models that are both trainable and support trajectory sample
     """
@@ -616,10 +561,7 @@ class TrainableHasTrajectoryAndPredictJointReparamModelStack(
         return Dataset(
             self._models[0].get_internal_data().query_points,
             tf.concat(
-                [
-                    model.get_internal_data().observations
-                    for model in self._models
-                ],
+                [model.get_internal_data().observations for model in self._models],
                 axis=-1,
             ),
         )
@@ -647,16 +589,11 @@ def extract_pf_from_data(
         )
 
         feasible_mask = tf.reduce_all(
-            dataset[constraint_tag].observations
-            <= tf.zeros(shape=1, dtype=obj_obs.dtype),
+            dataset[constraint_tag].observations <= tf.zeros(shape=1, dtype=obj_obs.dtype),
             axis=-1,
         )
-        _, un_constraint_dominance_rank = non_dominated(
-            dataset[OBJECTIVE].observations
-        )
-        un_constraint_dominance_mask = tf.squeeze(
-            un_constraint_dominance_rank == True
-        )
+        _, un_constraint_dominance_rank = non_dominated(dataset[OBJECTIVE].observations)
+        un_constraint_dominance_mask = tf.squeeze(un_constraint_dominance_rank == True)
         feasible_pf_obs = dataset[OBJECTIVE].observations[
             tf.logical_and(un_constraint_dominance_mask, feasible_mask)
         ]
@@ -666,9 +603,7 @@ def extract_pf_from_data(
         return feasible_pf_x, feasible_pf_obs
     else:
         return (
-            tf.boolean_mask(
-                dataset[objective_tag].query_points, pf_boolean_mask == True
-            ),
+            tf.boolean_mask(dataset[objective_tag].query_points, pf_boolean_mask == True),
             pf_obs,
         )
 
@@ -705,13 +640,9 @@ class MOOResult:
         constraints: TensorType = None,
     ):
         self._res.X = tf.zeros(shape=(0, inputs.shape[-1]), dtype=inputs.dtype)
-        self._res.F = tf.zeros(
-            shape=(0, observations.shape[-1]), dtype=observations.dtype
-        )
+        self._res.F = tf.zeros(shape=(0, observations.shape[-1]), dtype=observations.dtype)
         if constraints is not None:
-            self._res.G = tf.zeros(
-                shape=(0, constraints.shape[-1]), dtype=constraints.dtype
-            )
+            self._res.G = tf.zeros(shape=(0, constraints.shape[-1]), dtype=constraints.dtype)
 
     def _check_if_existing_result_is_empty(self):
         if self._res.X is None:
@@ -728,9 +659,7 @@ class MOOResult:
         """
 
         if self._check_if_existing_result_is_empty():
-            self._initialize_existing_result_as_empty(
-                inputs, observations, constraints
-            )
+            self._initialize_existing_result_as_empty(inputs, observations, constraints)
         aug_inputs = tf.concat([self._res.X, inputs], axis=0)
         aug_observations = tf.concat([self._res.F, observations], axis=0)
         if constraints is not None:
@@ -739,9 +668,7 @@ class MOOResult:
         else:  # no constrain, all feasible
             aug_constraints = None
             feasible_mask = tf.ones(aug_observations.shape[0], dtype=tf.bool)
-        _, dominance_mask_on_feasible_candidate = non_dominated(
-            aug_observations[feasible_mask]
-        )
+        _, dominance_mask_on_feasible_candidate = non_dominated(aug_observations[feasible_mask])
         self._res.X = tf.boolean_mask(
             aug_inputs[feasible_mask],
             dominance_mask_on_feasible_candidate == True,
@@ -822,16 +749,12 @@ def moo_nsga2_pymoo(
     else:
         # https://pymoo.org/customization/initialization.html
         if initial_candidates.shape[0] >= popsize:  #
-            pop = initial_candidates[
-                :popsize
-            ].numpy()  # we only use the first pop size
+            pop = initial_candidates[:popsize].numpy()  # we only use the first pop size
         else:  # we need to fill a bit more
             pop = tf.concat(
                 [
                     initial_candidates,
-                    Box(bounds[0], bounds[1]).sample_halton(
-                        popsize - initial_candidates.shape[0]
-                    ),
+                    Box(bounds[0], bounds[1]).sample_halton(popsize - initial_candidates.shape[0]),
                 ],
                 axis=0,
             ).numpy()
@@ -862,9 +785,7 @@ def sample_pareto_fronts_from_parametric_gp_posterior(
     sample_pf_num: int,
     search_space: Box,
     cons_num: int = 0,
-    constraint_models: Optional[
-        Union[HasTrajectorySamplerModelStack, ModelStack]
-    ] = None,
+    constraint_models: Optional[Union[HasTrajectorySamplerModelStack, ModelStack]] = None,
     moo_solver="nsga2",
     return_pf_input: bool = False,
     return_pf_constraints: Optional[bool] = False,
@@ -907,9 +828,7 @@ def sample_pareto_fronts_from_parametric_gp_posterior(
         assert isinstance(objective_models, HasTrajectorySamplerModelStack)
         if constraint_models is not None:
             assert isinstance(constraint_models, HasTrajectorySamplerModelStack)
-        for trajectory_idx in range(
-            sample_pf_num
-        ):  # for each sample of trajectories, calculate pf
+        for trajectory_idx in range(sample_pf_num):  # for each sample of trajectories, calculate pf
             # construct objective and constraint function
             objective_models.resample_trajectories()
             obj_func = lambda x: tf.squeeze(
@@ -934,19 +853,14 @@ def sample_pareto_fronts_from_parametric_gp_posterior(
                 cons_num=cons_num
                 # here assume each model only have 1 output
             )
-            if (
-                reference_pf_inputs is not None
-                and tf.size(reference_pf_inputs) != 0
-            ):
+            if reference_pf_inputs is not None and tf.size(reference_pf_inputs) != 0:
                 reference_obj = obj_func(reference_pf_inputs)
                 if constraint_models is not None:
                     assert con_func is not None
                     reference_con = con_func(reference_pf_inputs)
                 else:
                     reference_con = None
-                moo_res.concatenate_with(
-                    reference_pf_inputs, reference_obj, reference_con
-                )
+                moo_res.concatenate_with(reference_pf_inputs, reference_obj, reference_con)
             pf_samples.append(moo_res.fronts)
             if return_pf_input:
                 pf_samples_x.append(moo_res.inputs)
@@ -954,8 +868,7 @@ def sample_pareto_fronts_from_parametric_gp_posterior(
                 pf_sample_cons.append(moo_res.constraint)
     else:
         raise NotImplementedError(
-            f"moo_solver: {moo_solver} do not supported yet! "
-            f"only support [nsga2] at the moment"
+            f"moo_solver: {moo_solver} do not supported yet! " f"only support [nsga2] at the moment"
         )
     if return_pf_input and return_pf_constraints:
         return pf_samples, pf_samples_x, pf_sample_cons
@@ -971,9 +884,7 @@ def inference_pareto_fronts_from_gp_mean(
     search_space: Box,
     popsize: int = 20,
     num_moo_iter: int = 500,
-    cons_models: Optional[
-        TrainableHasTrajectoryAndPredictJointReparamModelStack
-    ] = None,
+    cons_models: Optional[TrainableHasTrajectoryAndPredictJointReparamModelStack] = None,
     min_feasibility_probability=0.5,
     constraint_enforce_percentage: float = 0.0,
     use_model_data_as_initialization: bool = True,
@@ -993,25 +904,18 @@ def inference_pareto_fronts_from_gp_mean(
         """
         mean, var = cons_models.predict(at)
         prob_fea = tfd.Normal(mean, tf.sqrt(var)).cdf(0.0 - enforcement)
-        return min_feasibility_probability - tf.reduce_prod(
-            prob_fea, axis=-1, keepdims=True
-        )
+        return min_feasibility_probability - tf.reduce_prod(prob_fea, axis=-1, keepdims=True)
 
     if cons_models is not None and constraint_enforce_percentage != 0.0:
         assert constraint_enforce_percentage >= 0
         stacked_constraint_obs = tf.concat(
-            [
-                _model.get_internal_data().observations
-                for _model in cons_models._models
-            ],
+            [_model.get_internal_data().observations for _model in cons_models._models],
             1,
         )
-        constraint_range = tf.reduce_max(
+        constraint_range = tf.reduce_max(stacked_constraint_obs, -2) - tf.reduce_min(
             stacked_constraint_obs, -2
-        ) - tf.reduce_min(stacked_constraint_obs, -2)
-        constraint_enforcement = (
-            constraint_range * constraint_enforce_percentage
         )
+        constraint_enforcement = constraint_range * constraint_enforce_percentage
     else:
         constraint_enforcement = 0.0
 
@@ -1211,16 +1115,10 @@ class PF2ES(AcquisitionFunctionBuilder[HasReparamSampler]):
         :param pending_points If `pending_points` is not None: perform a greedy batch acquisition function optimization,
         otherwise perform a joint batch acquisition function optimization
         """
-        if (
-            self._constraint_tag is None
-        ):  # prepare unconstrained acquisition function
-            return self.prepare_unconstrained_acquisition_function(
-                models, datasets
-            )
+        if self._constraint_tag is None:  # prepare unconstrained acquisition function
+            return self.prepare_unconstrained_acquisition_function(models, datasets)
         else:  # prepare constraint acquisition function
-            return self.prepare_constrained_acquisition_function(
-                models, datasets
-            )
+            return self.prepare_constrained_acquisition_function(models, datasets)
 
     def estimate_pareto_frontier_ranges(
         self, obj_num: int, dtype, sample_wise_maximum: bool = True
@@ -1246,9 +1144,7 @@ class PF2ES(AcquisitionFunctionBuilder[HasReparamSampler]):
                         tf.cast(obj_wise_min, pf.dtype),
                         tf.reduce_min(pf, axis=-2),
                     )
-            return tf.stack(
-                [[obj_wise_max - obj_wise_min] * len(self._pf_samples)], axis=0
-            )
+            return tf.stack([[obj_wise_max - obj_wise_min] * len(self._pf_samples)], axis=0)
         else:
             pareto_frontier_ranges = []
             for pf in self._pf_samples:
@@ -1257,14 +1153,10 @@ class PF2ES(AcquisitionFunctionBuilder[HasReparamSampler]):
                         tf.reduce_max(pf, axis=-2) - tf.reduce_min(pf, axis=-2)
                     )
                 else:
-                    pareto_frontier_ranges.append(
-                        tf.zeros(shape=obj_num, dtype=dtype)
-                    )
+                    pareto_frontier_ranges.append(tf.zeros(shape=obj_num, dtype=dtype))
             return tf.stack(pareto_frontier_ranges, axis=0)
 
-    def calculate_maximum_discrepancy_objective_vise(
-        self, obj_num: int
-    ) -> TensorType:
+    def calculate_maximum_discrepancy_objective_vise(self, obj_num: int) -> TensorType:
         """
         Calculate Maximum Discrepancy for each sub Pareto Frontier
         """
@@ -1299,13 +1191,9 @@ class PF2ES(AcquisitionFunctionBuilder[HasReparamSampler]):
         :param models
         """
         assert datasets is not None, ValueError("Dataset must be populated.")
-        tf.debugging.assert_positive(
-            len(datasets), message="Dataset must be populated."
-        )
+        tf.debugging.assert_positive(len(datasets), message="Dataset must be populated.")
         obj_model = models[self._objective_tag]
-        assert isinstance(
-            obj_model, TrainableHasTrajectoryAndPredictJointReparamModelStack
-        )
+        assert isinstance(obj_model, TrainableHasTrajectoryAndPredictJointReparamModelStack)
         obj_number = len(obj_model._models)  # assume each obj has only
         current_pf_x, _ = extract_pf_from_data(datasets)
 
@@ -1325,9 +1213,7 @@ class PF2ES(AcquisitionFunctionBuilder[HasReparamSampler]):
         )
         self._pareto_epsilon = self.estimate_pareto_frontier_ranges(
             obj_num=obj_number, dtype=current_pf_x.dtype
-        ) * tf.convert_to_tensor(
-            self._percentage_pareto_epsilon, dtype=current_pf_x.dtype
-        )
+        ) * tf.convert_to_tensor(self._percentage_pareto_epsilon, dtype=current_pf_x.dtype)
 
         # get partition bounds
         self._partitioned_bounds = [
@@ -1376,12 +1262,8 @@ class PF2ES(AcquisitionFunctionBuilder[HasReparamSampler]):
         obj_model = models[self._objective_tag]
         cons_model = models[self._constraint_tag]
         assert datasets is not None, ValueError("Dataset must be populated.")
-        assert isinstance(
-            obj_model, TrainableHasTrajectoryAndPredictJointReparamModelStack
-        )
-        assert isinstance(
-            cons_model, TrainableHasTrajectoryAndPredictJointReparamModelStack
-        )
+        assert isinstance(obj_model, TrainableHasTrajectoryAndPredictJointReparamModelStack)
+        assert isinstance(cons_model, TrainableHasTrajectoryAndPredictJointReparamModelStack)
         obj_number = len(obj_model._models)
         cons_number = len(cons_model._models)
         _constraint_threshold = tf.zeros(
@@ -1411,11 +1293,7 @@ class PF2ES(AcquisitionFunctionBuilder[HasReparamSampler]):
             return_pf_input=True,
         )
 
-        self._pareto_epsilon = (
-            self.calculate_maximum_discrepancy_objective_vise(
-                obj_num=obj_number
-            )
-        )
+        self._pareto_epsilon = self.calculate_maximum_discrepancy_objective_vise(obj_num=obj_number)
 
         for _fea_pf, _id in zip(self._pf_samples, range(len(self._pf_samples))):
             if _fea_pf is None or tf.size(_fea_pf) == 0:
@@ -1427,13 +1305,9 @@ class PF2ES(AcquisitionFunctionBuilder[HasReparamSampler]):
                     [1e20] * obj_number,
                     dtype=datasets[self._objective_tag].query_points.dtype,
                 ),
-                non_dominated(_fea_pf - _pf_epsilon)[0]
-                if _fea_pf is not None
-                else None,
+                non_dominated(_fea_pf - _pf_epsilon)[0] if _fea_pf is not None else None,
             )
-            for _fea_pf, _pf_epsilon in zip(
-                self._pf_samples, self._pareto_epsilon
-            )
+            for _fea_pf, _pf_epsilon in zip(self._pf_samples, self._pareto_epsilon)
         ]
 
         if not isinstance(obj_model, HasReparamSampler):
@@ -1503,17 +1377,13 @@ class sequential_pareto_frontier_entropy_search(AcquisitionFunctionClass):
 
     @tf.function
     def __call__(self, x: TensorType):
-        prob_improve = tf.zeros(
-            shape=(tf.shape(x)[0], 1), dtype=x.dtype
-        )  # [N, 1]
+        prob_improve = tf.zeros(shape=(tf.shape(x)[0], 1), dtype=x.dtype)  # [N, 1]
         for (lb_points, ub_points), pareto_frontier in zip(
             self._partition_bounds, self._pf_samples
         ):
             # partition the dominated region
             # The upper bound is also a placeholder: as idealy it is inf
-            lb_points = tf.maximum(
-                lb_points, -1e100
-            )  # increase numerical stability
+            lb_points = tf.maximum(lb_points, -1e100)  # increase numerical stability
             prob_iprv = analytic_non_dominated_prob(
                 self._model,
                 x,
@@ -1521,31 +1391,23 @@ class sequential_pareto_frontier_entropy_search(AcquisitionFunctionClass):
                 ub_points,
                 clip_to_enable_numerical_stability=True,
             )
-            prob_improve = tf.concat(
-                [prob_improve, prob_iprv], axis=-1
-            )  # [..., N, pf_mc_size + 1]
+            prob_improve = tf.concat([prob_improve, prob_iprv], axis=-1)  # [..., N, pf_mc_size + 1]
 
         # [N, 1 + pf_mc_size] -> [N, 1]
         return tf.reduce_mean(prob_improve[..., 1:], axis=-1, keepdims=True)
 
 
-class parallel_pareto_frontier_entropy_search(
-    sequential_pareto_frontier_entropy_search
-):
+class parallel_pareto_frontier_entropy_search(sequential_pareto_frontier_entropy_search):
     """q-PF2ES for MOO problem"""
 
     def __call__(self, x: TensorType):
-        prob_improve = tf.zeros(
-            shape=(tf.shape(x)[0], 1), dtype=x.dtype
-        )  # [N, 1]
+        prob_improve = tf.zeros(shape=(tf.shape(x)[0], 1), dtype=x.dtype)  # [N, 1]
         for (lb_points, ub_points), pareto_frontier in zip(
             self._partition_bounds, self._pf_samples
         ):
             # partition the dominated region
             # The upper bound is also a placeholder: as idealy it is inf
-            lb_points = tf.maximum(
-                lb_points, -1e100
-            )  # increase numerical stability
+            lb_points = tf.maximum(lb_points, -1e100)  # increase numerical stability
             prob_iprv = monte_carlo_non_dominated_prob(
                 self._sampler,
                 x,
@@ -1554,19 +1416,13 @@ class parallel_pareto_frontier_entropy_search(
                 self._tau,
                 enable_qmc=self._qMC,
             )
-            prob_improve = tf.concat(
-                [prob_improve, prob_iprv], axis=-1
-            )  # [..., N, pf_mc_size + 1]
+            prob_improve = tf.concat([prob_improve, prob_iprv], axis=-1)  # [..., N, pf_mc_size + 1]
 
         # [N, 1 + pf_mc_size] -> [N, 1]
-        return tf.reduce_mean(
-            -tf.math.log(1 - prob_improve[..., 1:]), axis=-1, keepdims=True
-        )
+        return tf.reduce_mean(-tf.math.log(1 - prob_improve[..., 1:]), axis=-1, keepdims=True)
 
 
-class sequential_feasible_pareto_frontier_entropy_search(
-    AcquisitionFunctionClass
-):
+class sequential_feasible_pareto_frontier_entropy_search(AcquisitionFunctionClass):
     def __init__(
         self,
         objective_models: ProbabilisticModelType,
@@ -1597,17 +1453,13 @@ class sequential_feasible_pareto_frontier_entropy_search(
 
     @tf.function
     def __call__(self, x: TensorType):
-        prob_improve = tf.zeros(
-            shape=(x.shape[0], 1), dtype=x.dtype
-        )  # [Batch_dim, 1]
+        prob_improve = tf.zeros(shape=(x.shape[0], 1), dtype=x.dtype)  # [Batch_dim, 1]
 
         # pareto class is not yet supported batch, we have to hence rely on a loop
         for lb_points, ub_points in self._partition_bounds:
             # partition the dominated region
             lb_points = tf.maximum(lb_points, -1e100)
-            _analytic_pof = analytic_pof(
-                self._con_model, x, self._constraint_threshold
-            )
+            _analytic_pof = analytic_pof(self._con_model, x, self._constraint_threshold)
             prob_iprv = (
                 analytic_non_dominated_prob(
                     self._obj_model,
@@ -1623,24 +1475,18 @@ class sequential_feasible_pareto_frontier_entropy_search(
             prob_iprv = prob_iprv * tf.cast(
                 tf.greater_equal(_analytic_pof, 1e-5), dtype=prob_iprv.dtype
             )
-            tf.debugging.assert_all_finite(
-                prob_iprv, f"prob_iprv: {prob_iprv} has NaN!"
-            )
+            tf.debugging.assert_all_finite(prob_iprv, f"prob_iprv: {prob_iprv} has NaN!")
             prob_improve = tf.concat(
                 [prob_improve, prob_iprv], axis=-1
             )  # [pending_mc_size, N, pf_mc_size]
-        return tf.reduce_mean(
-            -tf.math.log(1 - prob_improve[..., 1:]), axis=-1, keepdims=True
-        )
+        return tf.reduce_mean(-tf.math.log(1 - prob_improve[..., 1:]), axis=-1, keepdims=True)
 
 
 class parallel_feasible_pareto_frontier_entropy_search(
     sequential_feasible_pareto_frontier_entropy_search
 ):
     def __call__(self, x: TensorType):
-        prob_improve = tf.zeros(
-            shape=(x.shape[0], 1), dtype=x.dtype
-        )  # [Batch_dim, 1]
+        prob_improve = tf.zeros(shape=(x.shape[0], 1), dtype=x.dtype)  # [Batch_dim, 1]
 
         # pareto class is not yet supported batch, we have to hence rely on a loop
         for lb_points, ub_points in self._partition_bounds:
@@ -1660,9 +1506,7 @@ class parallel_feasible_pareto_frontier_entropy_search(
             prob_improve = tf.concat(
                 [prob_improve, prob_iprv], axis=-1
             )  # [pending_mc_size, N, pf_mc_size]
-        return tf.reduce_mean(
-            -tf.math.log(1 - prob_improve[..., 1:]), axis=-1, keepdims=True
-        )
+        return tf.reduce_mean(-tf.math.log(1 - prob_improve[..., 1:]), axis=-1, keepdims=True)
 
 
 def prob_being_in_triangle_region(
@@ -1670,9 +1514,7 @@ def prob_being_in_triangle_region(
     input: TensorType,
     pareto_frontier: TensorType,
 ):
-    def analytical_calculation_of_the_probability(
-        mu_x, mu_y, sigma_x, sigma_y, l1, l2
-    ):
+    def analytical_calculation_of_the_probability(mu_x, mu_y, sigma_x, sigma_y, l1, l2):
         """
         Test of being in the triangular region
         """
@@ -1686,9 +1528,9 @@ def prob_being_in_triangle_region(
             ],
             [[1.0, rho], [rho, 1.0]],
         )
-        cdf_diff = rv.cdf(
-            [__a / ((1 + __b ** 2) ** 0.5), (l1 - mu_x) / sigma_x]
-        ) - rv.cdf([__a / ((1 + __b ** 2) ** 0.5), (-mu_x) / sigma_x])
+        cdf_diff = rv.cdf([__a / ((1 + __b ** 2) ** 0.5), (l1 - mu_x) / sigma_x]) - rv.cdf(
+            [__a / ((1 + __b ** 2) ** 0.5), (-mu_x) / sigma_x]
+        )
         sub_part = norm().cdf(-mu_y / sigma_y) * (
             norm().cdf((l1 - mu_x) / sigma_x) - norm().cdf((-mu_x) / sigma_x)
         )
@@ -1707,15 +1549,11 @@ def prob_being_in_triangle_region(
     element_res = []
     for mean, std in zip(means, stds):
         element_prob = 0.0
-        for pf_point_a, pf_point_b in zip(
-            sorted_pareto_frontier, sorted_pareto_frontier[1:]
-        ):
+        for pf_point_a, pf_point_b in zip(sorted_pareto_frontier, sorted_pareto_frontier[1:]):
             _l1 = (pf_point_b - pf_point_a)[0]
             _l2 = (pf_point_a - pf_point_b)[1]
             # since we derive the expresion in 1st quadrant， we transform our problem there
-            moved_mean = -(
-                mean - tf.convert_to_tensor([pf_point_b[0], pf_point_a[-1]])
-            )
+            moved_mean = -(mean - tf.convert_to_tensor([pf_point_b[0], pf_point_a[-1]]))
             element_prob += analytical_calculation_of_the_probability(
                 moved_mean[0], moved_mean[1], std[0], std[1], _l1, _l2
             )
@@ -1749,13 +1587,9 @@ def analytic_non_dominated_prob(
         [(inputs, ["N", 1, None])],
         message="This acquisition function only supports batch sizes of one.",
     )
-    standard_normal = tfp.distributions.Normal(
-        tf.cast(0, inputs.dtype), tf.cast(1, inputs.dtype)
-    )
+    standard_normal = tfp.distributions.Normal(tf.cast(0, inputs.dtype), tf.cast(1, inputs.dtype))
     fmean, fvar = model.predict(tf.squeeze(inputs, -2))
-    fvar = tf.clip_by_value(
-        fvar, 1e-100, 1e100
-    )  # clip below to improve numerical stability
+    fvar = tf.clip_by_value(fvar, 1e-100, 1e100)  # clip below to improve numerical stability
 
     mean = tf.expand_dims(fmean, -2)
     std = tf.expand_dims(tf.sqrt(fvar), -2)
@@ -1767,12 +1601,8 @@ def analytic_non_dominated_prob(
     alpha_l = tf.clip_by_value(
         alpha_l, alpha_l.dtype.min, alpha_l.dtype.max
     )  # clip to improve numerical stability
-    z_ml = standard_normal.cdf(alpha_u) - standard_normal.cdf(
-        alpha_l
-    )  # [..., N_Data, N, M+C]
-    z_m = tf.reduce_prod(
-        z_ml, axis=-1
-    )  # [..., N_Data, N, M+C] -> [..., N_Data, N]
+    z_ml = standard_normal.cdf(alpha_u) - standard_normal.cdf(alpha_l)  # [..., N_Data, N, M+C]
+    z_m = tf.reduce_prod(z_ml, axis=-1)  # [..., N_Data, N, M+C] -> [..., N_Data, N]
     z = tf.reduce_sum(z_m, axis=-1, keepdims=True)  # [..., N_Data, 1]
     if clip_to_enable_numerical_stability:
         z = tf.maximum(z, 1e-10)  # clip to improve numerical stability
@@ -1815,15 +1645,9 @@ def monte_carlo_non_dominated_prob(
     soft_any_of_q_in_cell = tf.reduce_prod(
         soft_above_lower_bound * soft_below_upper_bound, axis=-1, keepdims=True
     )  # [N, mc_num, N_bd, q, 1]
-    soft_any_of_q_in_cell = tf.reduce_max(
-        soft_any_of_q_in_cell, axis=-2
-    )  # [N, mc_num, N_bd, 1]
-    prob_any_non_dominated = tf.reduce_max(
-        soft_any_of_q_in_cell, -2
-    )  # [N, mc_num, 1]
-    prob_any_non_dominated = tf.reduce_mean(
-        prob_any_non_dominated, -2
-    )  # [N, 1]
+    soft_any_of_q_in_cell = tf.reduce_max(soft_any_of_q_in_cell, axis=-2)  # [N, mc_num, N_bd, 1]
+    prob_any_non_dominated = tf.reduce_max(soft_any_of_q_in_cell, -2)  # [N, mc_num, 1]
+    prob_any_non_dominated = tf.reduce_mean(prob_any_non_dominated, -2)  # [N, 1]
     return prob_any_non_dominated
 
 
@@ -1841,18 +1665,10 @@ def monte_carlo_non_dominated_feasible_prob(
     Note, this represent the probability that
     probability that at least one of q is feasible and satisfy the constraint
     """
-    observations_smp = obj_sampler.sample(
-        input, qMC=enable_qmc
-    )  # [N, mc_num, q, M]
-    constraints_smp = cons_sampler.sample(
-        input, qMC=enable_qmc
-    )  # [N, mc_num, q, C]
-    tf.debugging.assert_all_finite(
-        observations_smp, f"observations_smp samples: has NaN"
-    )
-    tf.debugging.assert_all_finite(
-        constraints_smp, f"constraints_smp samples: has NaN"
-    )
+    observations_smp = obj_sampler.sample(input, qMC=enable_qmc)  # [N, mc_num, q, M]
+    constraints_smp = cons_sampler.sample(input, qMC=enable_qmc)  # [N, mc_num, q, C]
+    tf.debugging.assert_all_finite(observations_smp, f"observations_smp samples: has NaN")
+    tf.debugging.assert_all_finite(constraints_smp, f"constraints_smp samples: has NaN")
     # aug_samp = tf.concat([observations_smp, constraints_smp], axis=-1) # [N, mc_num, q, M+C]
     expand_obs = tf.expand_dims(observations_smp, -3)  # [N, mc_num, 1, q, M]
     expand_cons = tf.expand_dims(constraints_smp, -3)  # [N, mc_num, 1, q, C]
@@ -1887,9 +1703,7 @@ def monte_carlo_non_dominated_feasible_prob(
     soft_of_any_cand_in_any_cell = tf.reduce_max(
         soft_of_any_cand_in_cell_and_feasible, axis=-2
     )  # [N, mc_num, 1]
-    prob_any_non_dominated = tf.reduce_mean(
-        soft_of_any_cand_in_any_cell, axis=-2
-    )  # [N, 1]
+    prob_any_non_dominated = tf.reduce_mean(soft_of_any_cand_in_any_cell, axis=-2)  # [N, 1]
     prob_any_non_dominated = tf.minimum(
         prob_any_non_dominated, 1 - 1e-10
     )  # clip to improve numerical stability
@@ -1906,13 +1720,9 @@ def analytic_pof(
     """
     cmean, cvar = constraint_predictor.predict(tf.squeeze(input, -2))
 
-    cvar = tf.clip_by_value(
-        cvar, 1e-100, 1e100
-    )  # clip below to improve numerical stability
+    cvar = tf.clip_by_value(cvar, 1e-100, 1e100)  # clip below to improve numerical stability
     pof = tf.reduce_prod(
-        tfp.distributions.Normal(cmean, tf.sqrt(cvar)).cdf(
-            constraint_threshold
-        ),
+        tfp.distributions.Normal(cmean, tf.sqrt(cvar)).cdf(constraint_threshold),
         axis=-1,
         keepdims=True,
     )  # [MC_size, batch_size, 1]
@@ -1955,9 +1765,7 @@ class AskTellOptimizer_with_PF_inference(AskTellOptimizer):
             )
 
         if callable(points_or_stateful):
-            self._acquisition_state, query_points = points_or_stateful(
-                self._acquisition_state
-            )
+            self._acquisition_state, query_points = points_or_stateful(self._acquisition_state)
         else:
             query_points = points_or_stateful
 
@@ -1967,13 +1775,9 @@ class AskTellOptimizer_with_PF_inference(AskTellOptimizer):
                 if tf.rank(query_points) == 2:
                     for i in tf.range(tf.shape(query_points)[1]):
                         if len(query_points) == 1:
-                            logging.scalar(
-                                f"query_points/[{i}]", float(query_points[0, i])
-                            )
+                            logging.scalar(f"query_points/[{i}]", float(query_points[0, i]))
                         else:
-                            logging.histogram(
-                                f"query_points/[{i}]", query_points[:, i]
-                            )
+                            logging.histogram(f"query_points/[{i}]", query_points[:, i])
                     logging.histogram(
                         "query_points/euclidean_distances",
                         lambda: pdist(query_points),
@@ -2052,11 +1856,7 @@ def plot_mobo_points_in_obj_space(
     )
 
     _, dom = non_dominated(obs_values)
-    idx_pareto = (
-        np.where(dom)
-        if mask_fail is None
-        else np.where(np.logical_and(dom, ~mask_fail))
-    )
+    idx_pareto = np.where(dom) if mask_fail is None else np.where(np.logical_and(dom, ~mask_fail))
 
     pts = obs_values.numpy() if tf.is_tensor(obs_values) else obs_values
     num_pts = pts.shape[0]
@@ -2088,13 +1888,9 @@ def plot_mobo_points_in_obj_space(
     path_collections = []
     for i in range(pts.shape[0]):
         if not inverse_plot:
-            path_collections.append(
-                ax.scatter(*pts[i], c=col_pts[i], marker=mark_pts[i])
-            )
+            path_collections.append(ax.scatter(*pts[i], c=col_pts[i], marker=mark_pts[i]))
         else:
-            path_collections.append(
-                ax.scatter(*-pts[i], c=col_pts[i], marker=mark_pts[i])
-            )
+            path_collections.append(ax.scatter(*-pts[i], c=col_pts[i], marker=mark_pts[i]))
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     if obj_num == 3:
@@ -2205,24 +2001,18 @@ def safer_cholesky(matrix, max_attempts: int = 10, jitter: float = 1e-6):
 
         _, matrix, jitter, _ = state
         res, ok = _cholesky(matrix)
-        new_matrix = tf.cond(
-            ok, lambda: matrix, lambda: update_diag(matrix, jitter)
-        )
+        new_matrix = tf.cond(ok, lambda: matrix, lambda: update_diag(matrix, jitter))
         break_flag = tf.logical_not(ok)
         return [(break_flag, new_matrix, jitter * 10, res)]
 
     jitter = tf.cast(jitter, matrix.dtype)
     init_state = (True, update_diag(matrix, jitter), jitter, matrix)
-    result = tf.while_loop(
-        cond, body, [init_state], maximum_iterations=max_attempts
-    )
+    result = tf.while_loop(cond, body, [init_state], maximum_iterations=max_attempts)
 
     return result[-1][-1]
 
 
-class BatchReparametrizationSampler(
-    ReparametrizationSampler[SupportsPredictJoint]
-):
+class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoint]):
     r"""
     This sampler employs the *reparameterization trick* to approximate batches of samples from a
     :class:`ProbabilisticModel`\ 's predictive joint distribution as
@@ -2323,28 +2113,18 @@ class BatchReparametrizationSampler(
 
             identity = tf.eye(batch_size, dtype=cov.dtype)  # [B, B]
 
-            cov_cholesky = safer_cholesky(
-                cov + jitter * identity
-            )  # [..., L, B, B]
+            cov_cholesky = safer_cholesky(cov + jitter * identity)  # [..., L, B, B]
 
-            variance_contribution = cov_cholesky @ tf.cast(
-                self._eps, cov.dtype
-            )  # [..., L, B, S]
+            variance_contribution = cov_cholesky @ tf.cast(self._eps, cov.dtype)  # [..., L, B, S]
             tf.debugging.assert_all_finite(
                 variance_contribution,
                 message=f"variance_contribution {variance_contribution} have NaN",
             )
             leading_indices = tf.range(tf.rank(variance_contribution) - 3)
-            absolute_trailing_indices = [-1, -2, -3] + tf.rank(
-                variance_contribution
-            )
-            new_order = tf.concat(
-                [leading_indices, absolute_trailing_indices], axis=0
-            )
+            absolute_trailing_indices = [-1, -2, -3] + tf.rank(variance_contribution)
+            new_order = tf.concat([leading_indices, absolute_trailing_indices], axis=0)
 
-            return mean[..., None, :, :] + tf.transpose(
-                variance_contribution, new_order
-            )
+            return mean[..., None, :, :] + tf.transpose(variance_contribution, new_order)
         else:  # enable qMC sampler
             if not self._initialized:
                 # The cholesky matrix for decomposition is BL * BL
@@ -2368,15 +2148,9 @@ class BatchReparametrizationSampler(
                 linalg.LinearOperatorFullMatrix(tf.squeeze(block, axis=-3))
                 for block in splitted_cov
             ]
-            aug_cov = linalg.LinearOperatorBlockDiag(
-                linop_blocks
-            ).to_dense()  # [..., B * L, B * L]
-            aug_identity = tf.eye(
-                batch_size * tf.shape(mean)[-1], dtype=aug_cov.dtype
-            )
-            cov_cholesky = safer_cholesky(
-                aug_cov + jitter * aug_identity
-            )  # [..., BL, BL]
+            aug_cov = linalg.LinearOperatorBlockDiag(linop_blocks).to_dense()  # [..., B * L, B * L]
+            aug_identity = tf.eye(batch_size * tf.shape(mean)[-1], dtype=aug_cov.dtype)
+            cov_cholesky = safer_cholesky(aug_cov + jitter * aug_identity)  # [..., BL, BL]
             cov_cholesky = tf.where(
                 tf.math.is_nan(cov_cholesky),
                 tf.zeros_like(cov_cholesky, dtype=cov_cholesky.dtype),
@@ -2387,9 +2161,7 @@ class BatchReparametrizationSampler(
                 message="qMC sampler covariance decomposition has NaN",
             )
             # [..., BL, BL] * [..., BL, S] -> [..., BL, S]
-            variance_contribution = cov_cholesky @ tf.cast(
-                self._eps[0], cov.dtype
-            )
+            variance_contribution = cov_cholesky @ tf.cast(self._eps[0], cov.dtype)
             # [..., B, L] -> [..., BL]
             aug_mean = tf.reshape(
                 tf.transpose(
@@ -2399,21 +2171,13 @@ class BatchReparametrizationSampler(
                         axis=0,
                     ),
                 ),
-                shape=tf.concat(
-                    [mean.shape[:-2], [batch_size * tf.shape(mean)[-1]]], axis=0
-                ),
+                shape=tf.concat([mean.shape[:-2], [batch_size * tf.shape(mean)[-1]]], axis=0),
             )
-            aug_sample = (
-                tf.expand_dims(aug_mean, axis=-1) + variance_contribution
-            )  # [..., BL, S]
+            aug_sample = tf.expand_dims(aug_mean, axis=-1) + variance_contribution  # [..., BL, S]
             # [..., BL, S] -> [..., S, BL]
             leading_indices = tf.range(tf.rank(variance_contribution) - 2)
-            absolute_trailing_indices = [-1, -2] + tf.rank(
-                variance_contribution
-            )
-            new_order = tf.concat(
-                [leading_indices, absolute_trailing_indices], axis=0
-            )
+            absolute_trailing_indices = [-1, -2] + tf.rank(variance_contribution)
+            new_order = tf.concat([leading_indices, absolute_trailing_indices], axis=0)
             aug_sample = tf.transpose(aug_sample, perm=new_order)
             # [..., S, BL] -> [..., S, B, L]
             new_shape = tf.concat(
@@ -2444,9 +2208,7 @@ class GaussianProcessRegression_with_qMC_sampler(GaussianProcessRegression):
     GaussianProcessRegression with qMC reparam sampler
     """
 
-    def reparam_sampler(
-        self, num_samples: int
-    ) -> ReparametrizationSampler[GPflowPredictor]:
+    def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[GPflowPredictor]:
         """
         Return a reparametrization sampler providing `num_samples` samples.
 
@@ -2460,9 +2222,7 @@ def build_stacked_has_traj_and_reparam_sampler_independent_objectives_model(
 ) -> TrainableHasTrajectoryAndPredictJointReparamModelStack:
     gprs = []
     for idx in range(num_output):
-        single_obj_data = Dataset(
-            data.query_points, tf.gather(data.observations, [idx], axis=1)
-        )
+        single_obj_data = Dataset(data.query_points, tf.gather(data.observations, [idx], axis=1))
         gpr = build_gpr(
             single_obj_data,
             search_space,
@@ -2471,9 +2231,7 @@ def build_stacked_has_traj_and_reparam_sampler_independent_objectives_model(
         )
         gprs.append(
             (
-                GaussianProcessRegression_with_qMC_sampler(
-                    gpr, use_decoupled_sampler=False
-                ),
+                GaussianProcessRegression_with_qMC_sampler(gpr, use_decoupled_sampler=False),
                 1,
             )
         )
@@ -2482,18 +2240,14 @@ def build_stacked_has_traj_and_reparam_sampler_independent_objectives_model(
 
 
 # %%
-vlmop2_model = (
-    build_stacked_has_traj_and_reparam_sampler_independent_objectives_model(
-        vlmop2_initial_data, vlmop2_num_objective, vlmop2_search_space
-    )
+vlmop2_model = build_stacked_has_traj_and_reparam_sampler_independent_objectives_model(
+    vlmop2_initial_data, vlmop2_num_objective, vlmop2_search_space
 )
 ask_tell = AskTellOptimizer_with_PF_inference(
     vlmop2_search_space,
     vlmop2_initial_data,
     vlmop2_model,
-    acquisition_rule=BuilderAccesableEfficientGlobalOptimization(
-        PF2ES(vlmop2_search_space)
-    ),
+    acquisition_rule=BuilderAccesableEfficientGlobalOptimization(PF2ES(vlmop2_search_space)),
 )
 
 # %% [markdown]
@@ -2556,9 +2310,7 @@ for step in range(n_steps):
 
     if step == 0:
         im3 = axs[0].legend()
-    axs[0].add_artist(
-        im3
-    )  # https://github.com/matplotlib/matplotlib/issues/12833
+    axs[0].add_artist(im3)  # https://github.com/matplotlib/matplotlib/issues/12833
     # plot actual BO samples
     axs[1], ploted_path_lists = plot_mobo_points_in_obj_space(
         vlmop2_model.get_internal_data().observations,
@@ -2615,9 +2367,7 @@ ax.scatter(
     s=5,
 )
 plt.legend()
-plt.title(
-    "Comparison of Out-of-sample recommendation vs reference Pareto Frontier"
-)
+plt.title("Comparison of Out-of-sample recommendation vs reference Pareto Frontier")
 plt.show()
 
 # %% [markdown]
@@ -2629,19 +2379,15 @@ plt.show()
 # We note the only change to enable q- \{PF\}$^2$ES is by specifying `parallel_sampling=True` to let the acquisition function know its performed in a batch setting, we can also specify the Monte Carlo sample size to 128 by using `batch_mc_sample_size=128` (here for speed we only use 64), eventually, we set `num_query_points=2`as we would like to sample 2 points in a batch.
 
 # %%
-vlmop2_model = (
-    build_stacked_has_traj_and_reparam_sampler_independent_objectives_model(
-        vlmop2_initial_data, vlmop2_num_objective, vlmop2_search_space
-    )
+vlmop2_model = build_stacked_has_traj_and_reparam_sampler_independent_objectives_model(
+    vlmop2_initial_data, vlmop2_num_objective, vlmop2_search_space
 )
 ask_tell = AskTellOptimizer_with_PF_inference(
     vlmop2_search_space,
     vlmop2_initial_data,
     vlmop2_model,
     acquisition_rule=BuilderAccesableEfficientGlobalOptimization(
-        PF2ES(
-            vlmop2_search_space, parallel_sampling=True, batch_mc_sample_size=64
-        ),
+        PF2ES(vlmop2_search_space, parallel_sampling=True, batch_mc_sample_size=64),
         num_query_points=2,
     ),
 )
@@ -2701,9 +2447,7 @@ for step in range(n_steps):
         im12s.append(axs[0].add_artist(ellipse))
     if step == 0:
         im3 = axs[0].legend()
-    axs[0].add_artist(
-        im3
-    )  # https://github.com/matplotlib/matplotlib/issues/12833
+    axs[0].add_artist(im3)  # https://github.com/matplotlib/matplotlib/issues/12833
     im12s.append(im3)
     # plot actual BO samples
     axs[1], ploted_path_lists = plot_mobo_points_in_obj_space(
@@ -2761,9 +2505,7 @@ ax.scatter(
     s=5,
 )
 plt.legend()
-plt.title(
-    "Comparison of Out-of-sample recommendation vs reference Pareto Frontier"
-)
+plt.title("Comparison of Out-of-sample recommendation vs reference Pareto Frontier")
 plt.show()
 
 # %% [markdown]
@@ -2915,14 +2657,9 @@ for step in range(n_steps):
     im2 = axs[0].add_artist(ellipse)
     if step == 0:
         im3 = axs[0].legend()
-    axs[0].add_artist(
-        im3
-    )  # https://github.com/matplotlib/matplotlib/issues/12833
+    axs[0].add_artist(im3)  # https://github.com/matplotlib/matplotlib/issues/12833
     # plot actual BO
-    mask_fail = (
-        ask_tell._models[CONSTRAINT].get_internal_data().observations.numpy()
-        > 0
-    )
+    mask_fail = ask_tell._models[CONSTRAINT].get_internal_data().observations.numpy() > 0
     axs[1], ploted_path_lists = plot_mobo_points_in_obj_space(
         cvlmop2_model[OBJECTIVE].get_internal_data().observations,
         ax4plot=axs[1],
@@ -2995,9 +2732,7 @@ ax.scatter(
     s=5,
 )
 plt.legend()
-plt.title(
-    "Comparison of Out-of-sample recommendation vs reference Pareto Frontier"
-)
+plt.title("Comparison of Out-of-sample recommendation vs reference Pareto Frontier")
 plt.show()
 
 
@@ -3093,14 +2828,9 @@ for step in range(n_steps):
         im12s.append(axs[0].add_artist(ellipse))
     if step == 0:
         im3 = axs[0].legend()
-    axs[0].add_artist(
-        im3
-    )  # https://github.com/matplotlib/matplotlib/issues/12833
+    axs[0].add_artist(im3)  # https://github.com/matplotlib/matplotlib/issues/12833
     # plot actual BO
-    mask_fail = (
-        ask_tell._models[CONSTRAINT].get_internal_data().observations.numpy()
-        > 0
-    )
+    mask_fail = ask_tell._models[CONSTRAINT].get_internal_data().observations.numpy() > 0
     axs[1], ploted_path_lists = plot_mobo_points_in_obj_space(
         cvlmop2_model[OBJECTIVE].get_internal_data().observations,
         ax4plot=axs[1],
@@ -3175,7 +2905,5 @@ ax.scatter(
     s=5,
 )
 plt.legend()
-plt.title(
-    "Comparison of Out-of-sample recommendation vs reference Pareto Frontier"
-)
+plt.title("Comparison of Out-of-sample recommendation vs reference Pareto Frontier")
 plt.show()
