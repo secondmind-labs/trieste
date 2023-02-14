@@ -14,7 +14,7 @@
 
 numpy
 plotly
-pandas<1.0
+pandas
 Jinja2<3.1
 matplotlib
 ray[default]
