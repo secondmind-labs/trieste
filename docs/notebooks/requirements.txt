@@ -21,4 +21,3 @@ ray[default]
 jupyterlab
 jupytext
 gym<0.22
-box2d
