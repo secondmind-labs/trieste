@@ -28,7 +28,7 @@ jobs:
     - run: pip install tox
     - run: tox -e types
 
-  types_latest:
+  types_old:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -58,7 +58,7 @@ jobs:
     - run: pip install tox
     - run: tox -e tests
 
-  tests_latest:
+  tests_old:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -74,7 +74,7 @@ jobs:
     - uses: actions/checkout@v2
     - uses: actions/setup-python@v2
       with:
-        python-version: "3.10"
+        python-version: "3.7"
     - run: pip install tox
     - run: |
         TEMP_DEB="$(mktemp)" &&
