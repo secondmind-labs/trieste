@@ -75,7 +75,7 @@ jobs:
     - uses: actions/setup-python@v2
       with:
         python-version: "3.7"
-    - run: pip install tox
+    - run: pip install tox 
     - run: |
         TEMP_DEB="$(mktemp)" &&
         wget -O "$TEMP_DEB" 'https://github.com/jgm/pandoc/releases/download/2.10.1/pandoc-2.10.1-1-amd64.deb' &&
