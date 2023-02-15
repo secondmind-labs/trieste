@@ -27,7 +27,7 @@ from typing import Callable, Sequence
 
 import tensorflow as tf
 
-from ..space import Box, Constraint, LinearConstraint, NonlinearConstraint
+from ..space import Box, Constraint, LinearConstraint, NonlinearConstraint, SearchSpace
 from ..types import TensorType
 
 

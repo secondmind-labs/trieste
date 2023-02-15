@@ -1,10 +1,11 @@
-import tensorflow as tf
-import numpy as np
 from dataclasses import dataclass
 
-from .single_objectives import SingleObjectiveTestProblem
+import numpy as np
+import tensorflow as tf
+
+from ..space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSpace
 from ..types import TensorType
-from ..space import Box, DiscreteSearchSpace, TaggedProductSearchSpace, SearchSpace
+from .single_objectives import SingleObjectiveTestProblem
 
 
 @dataclass(frozen=True)
@@ -30,8 +31,11 @@ def linear_multifidelity(x: TensorType):
     return f
 
 
-_LINEAR_MULTIFIDELITY_MINIMIZERS = {2: tf.constant([[0.75724875]], tf.float64), 3: tf.constant([[0.76333767]], tf.float64), 5: tf.constant([[0.76801846]], tf.float64)}
-
+_LINEAR_MULTIFIDELITY_MINIMIZERS = {
+    2: tf.constant([[0.75724875]], tf.float64),
+    3: tf.constant([[0.76333767]], tf.float64),
+    5: tf.constant([[0.76801846]], tf.float64),
+}
 
 
 _LINEAR_MULTIFIDELITY_MINIMA = {

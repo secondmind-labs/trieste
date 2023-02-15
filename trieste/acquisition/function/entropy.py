@@ -15,9 +15,8 @@
 This module contains entropy-based acquisition function builders.
 """
 from __future__ import annotations
-import math
 
-from typing import Optional, TypeVar, cast, overload
+from typing import List, Optional, TypeVar, cast, overload
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -28,8 +27,8 @@ from ...models import ProbabilisticModel
 from ...models.gpflow.interface import SupportsCovarianceBetweenPoints
 from ...models.interfaces import (
     HasTrajectorySampler,
-    SupportsGetObservationNoise,
     SupportsCovarianceWithTopFidelity,
+    SupportsGetObservationNoise,
 )
 from ...space import SearchSpace
 from ...types import TensorType
@@ -624,9 +623,6 @@ class gibbon_repulsion_term(UpdatablePenalizationFunction):
         return repulsion_weight * repulsion
 
 
-
-
-
 class MUMBO(MinValueEntropySearch):
     r"""
     Builder for the MUMBO acquisition function modified for objective
@@ -699,9 +695,9 @@ class MUMBO(MinValueEntropySearch):
 class mumbo(min_value_entropy_search):
     r"""
     The MUMBO acquisition function of :cite:`moss2021mumbo`, modified for objective minimisation.
-    This function calculates the information gain (or change in entropy) in the distribution over the
-    objective minimum :math:`y^*`, if we were to evaluate the objective at a given point on a given
-    fidelity level. 
+    This function calculates the information gain (or change in entropy) in the distribution over
+    the objective minimum :math:`y^*`, if we were to evaluate the objective at a given point on a
+    given fidelity level.
 
     To speed up calculations, we use a trick from :cite:`Moss:2021` and use moment-matching to
     calculate MUMBO's entropy terms rather than numerical integration.
@@ -723,9 +719,10 @@ class mumbo(min_value_entropy_search):
             message="This acquisition function only supports batch sizes of one.",
         )
 
-        top_fidelity_idx = self._model.num_fidelities - 1 
+        top_fidelity_idx = self._model.num_fidelities - 1
         x_on_top_fidelity = tf.concat(
-            [tf.squeeze(x, -2)[:, :-1], top_fidelity_idx * tf.ones_like(tf.squeeze(x, -2)[:, -1:])], -1
+            [tf.squeeze(x, -2)[:, :-1], top_fidelity_idx * tf.ones_like(tf.squeeze(x, -2)[:, -1:])],
+            -1,
         )
 
         fmean, fvar = self._model.predict(x_on_top_fidelity)
@@ -734,10 +731,10 @@ class mumbo(min_value_entropy_search):
         )  # clip below to improve numerical stability
 
         ymean, yvar = self._model.predict_y(tf.squeeze(x, -2))
-        cov = self._model.covariance_with_top_fidelity(tf.squeeze(x, -2))       
+        cov = self._model.covariance_with_top_fidelity(tf.squeeze(x, -2))
 
-         # calculate squared correlation between observations and high-fidelity latent function
-        rho_squared = (cov**2) / (fvar * yvar) 
+        # calculate squared correlation between observations and high-fidelity latent function
+        rho_squared = (cov ** 2) / (fvar * yvar)
         rho_squared = tf.clip_by_value(rho_squared, 0.0, 1.0)
 
         normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
@@ -750,7 +747,6 @@ class mumbo(min_value_entropy_search):
         return -0.5 * tf.math.reduce_mean(tf.math.log(inner_log), axis=1, keepdims=True)  # [N, 1]
 
 
-
 class CostWeighting(SingleModelAcquisitionBuilder):
     def __init__(self, fidelity_costs: List[float]):
         """
@@ -760,18 +756,19 @@ class CostWeighting(SingleModelAcquisitionBuilder):
         Note that the fidelity level is assumed to be contained in the inputs final dimension.
 
         The primary use of this acquisition function is to be used as a product with
-        multi-fidelity acquisition functions. 
+        multi-fidelity acquisition functions.
         """
 
         self._fidelity_costs = fidelity_costs
         self._num_fidelities = len(self._fidelity_costs)
 
-    def prepare_acquisition_function(self, model, dataset=None)-> AcquisitionFunction:
+    def prepare_acquisition_function(self, model, dataset=None) -> AcquisitionFunction:
         """
         :param model: The model.
         :param dataset: The data from the observer. Not actually used here.
         :return: The reciprocal of the costs corresponding to the fidelity level of each input.
         """
+
         @tf.function
         def acquisition(x: TensorType) -> TensorType:
             tf.debugging.assert_shapes(
@@ -780,18 +777,18 @@ class CostWeighting(SingleModelAcquisitionBuilder):
             )
             fidelities = x[..., -1]  # [..., 1]
             tf.debugging.assert_greater(
-                tf.cast(self._num_fidelities, fidelities.dtype), 
+                tf.cast(self._num_fidelities, fidelities.dtype),
                 tf.reduce_max(fidelities),
-                message= "You are trying to use more fidelity levels than cost levels."
-                )
+                message="You are trying to use more fidelity levels than cost levels.",
+            )
 
             costs = tf.gather(self._fidelity_costs, tf.cast(fidelities, tf.int32))
 
-            return tf.cast(1.0 / costs, x.dtype) # [N, 1]
+            return tf.cast(1.0 / costs, x.dtype)  # [N, 1]
 
         return acquisition
 
-    def update_acquisition_function(self, function, model, dataset=None)-> AcquisitionFunction:
+    def update_acquisition_function(self, function, model, dataset=None) -> AcquisitionFunction:
         """
         Nothing to do here, so just return previous cost function.
 

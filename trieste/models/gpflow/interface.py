@@ -196,7 +196,3 @@ class SupportsCovarianceBetweenPoints(SupportsPredictJoint, Protocol):
             (L being the number of latent GPs = number of output dimensions)
         """
         raise NotImplementedError
-
-
-
-

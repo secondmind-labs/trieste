@@ -24,10 +24,10 @@ from .interfaces import (
     ProbabilisticModel,
     ProbabilisticModelType,
     ReparametrizationSampler,
+    SupportsCovarianceWithTopFidelity,
     TrainableModelStack,
     TrainableProbabilisticModel,
     TrajectoryFunction,
     TrajectoryFunctionClass,
     TrajectorySampler,
-    SupportsCovarianceWithTopFidelity,
 )
