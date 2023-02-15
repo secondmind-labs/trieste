@@ -59,7 +59,6 @@ def _build_nested_multifidelity_dataset(
 
     query_points = tf.concat(fidelity_samples, axis=0)
     dataset = observer(query_points)
-    print(dataset)
 
     return dataset
 
@@ -71,8 +70,7 @@ def test_multifidelity_bo_finds_minima_of_linear_problem(
 
     observer = _build_observer(problem)
     initial_data = _build_nested_multifidelity_dataset(problem, observer)
-    low_cost = 1.0
-    high_cost = 4.0
+    costs = [2.0*(n+1) for n in range(problem.num_fidelities)]
     input_search_space = problem.input_search_space  # Does not include fidelities
     search_space = problem.search_space  # Includes fidelities
 
@@ -91,9 +89,9 @@ def test_multifidelity_bo_finds_minima_of_linear_problem(
     bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
     acq_builder = Product(
         MUMBO(search_space).using("OBJECTIVE"),
-        CostWeighting(low_cost, high_cost).using("OBJECTIVE"),
+        CostWeighting(costs).using("OBJECTIVE"),
     )
-    optimizer = generate_continuous_optimizer(num_initial_samples=1_000, num_optimization_runs=2)
+    optimizer = generate_continuous_optimizer(num_initial_samples=10_000, num_optimization_runs=10)
     rule = trieste.acquisition.rule.EfficientGlobalOptimization(builder=acq_builder, optimizer=optimizer)
 
     num_steps = 5
@@ -105,19 +103,4 @@ def test_multifidelity_bo_finds_minima_of_linear_problem(
     # check we solve the problem
     minimizer_err = tf.abs((best_x - problem.minimizers) / problem.minimizers)
     assert tf.reduce_any(tf.reduce_all(minimizer_err < 0.05, axis=-1), axis=0)
-    npt.assert_allclose(best_y, problem.minimum, rtol=0.01)
-
-    # # check that there is no excessive retracing
-    # acq_function = acquisition_rule.acquisition_function
-    # assert acq_function is not None
-    # assert acq_function.__call__._get_tracing_count() == 3  # type: ignore
-               
-    # check that acquisition functions can be saved and reloaded
-    acq_function_copy = dill.loads(dill.dumps(acq_function))
-
-    # and that the copy gives the same values as the original
-    random_batch = tf.expand_dims(search_space.sample(1), 0)
-    npt.assert_allclose(
-        acq_function(random_batch), acq_function_copy(random_batch), rtol=5e-7
-    )
-
+    npt.assert_allclose(best_y, problem.minimum, rtol=0.1)

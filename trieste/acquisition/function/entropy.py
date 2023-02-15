@@ -627,53 +627,19 @@ class gibbon_repulsion_term(UpdatablePenalizationFunction):
 
 
 
-
-
-<<<<<<< HEAD
-@runtime_checkable
-class SupportsCovarianceObservationNoiseMultiFidelity(
-    SupportsCovarianceBetweenPoints, SupportsGetObservationNoise, SupportsCovarianceWithTopFidelity, Protocol
-):
-    """A model that supports covariance_between_points, get_observation_noise and covariance_with_top_fidelity."""
-
-    pass
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-class MultiFidelityGIBBON(GIBBON[SupportsCovarianceObservationNoiseMultiFidelity]):
-=======
-
-
 class MUMBO(MinValueEntropySearch):
+    r"""
+    Builder for the MUMBO acquisition function modified for objective
+    minimisation. :class:`MinValueEntropySearch` estimates the information in the distribution
+    of the objective minimum that would be gained by evaluating the objective at a given point
+    on a given fidelity level.
+
+    This implementation largely follows :cite:`moss2021mumbo` and samples the objective's minimum
+    :math:`y^*` across a large set of sampled locations via either a Gumbel sampler, an exact
+    Thompson sampler or an approximate random Fourier feature-based Thompson sampler, with the
+    Gumbel sampler being the cheapest but least accurate. Default behavior is to use the
+    exact Thompson sampler.
     """
-    TODO
-    """
->>>>>>> 434f23f66d663c4f258ae3e02ad3672a9ca1625f
-    def __repr__(self) -> str:
-        return "GIBBON()" # todo
 
     def prepare_acquisition_function(
         self,
@@ -692,7 +658,7 @@ class MUMBO(MinValueEntropySearch):
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         min_value_samples = self.get_min_value_samples_on_top_fidelity(model, dataset)
-        return multifidelity_gibbon(model, min_value_samples)
+        return mumbo(model, min_value_samples)
 
     def update_acquisition_function(
         self,
@@ -730,15 +696,28 @@ class MUMBO(MinValueEntropySearch):
         )
 
 
-<<<<<<< HEAD
-class multifidelity_gibbon(min_value_entropy_search):
-    # @tf.function
-=======
 class mumbo(min_value_entropy_search):
-    
+    r"""
+    The MUMBO acquisition function of :cite:`moss2021mumbo`, modified for objective minimisation.
+    This function calculates the information gain (or change in entropy) in the distribution over the
+    objective minimum :math:`y^*`, if we were to evaluate the objective at a given point on a given
+    fidelity level. 
+
+    To speed up calculations, we use a trick from :cite:`Moss:2021` and use moment-matching to
+    calculate MUMBO's entropy terms rather than numerical integration.
+
+    :param model: The model of the objective function.
+    :param samples: Samples from the distribution over :math:`y^*`.
+    :return: The MUMBO acquisition function modified for objective
+        minimisation. This function will raise :exc:`ValueError` or
+        :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
+    :raise ValueError or tf.errors.InvalidArgumentError: If ``samples`` has rank less than two,
+        or is empty.
+    """
+
     #@tf.function
->>>>>>> 434f23f66d663c4f258ae3e02ad3672a9ca1625f
     def __call__(self, x: TensorType) -> TensorType:
+
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],
             message="This acquisition function only supports batch sizes of one.",
@@ -749,118 +728,75 @@ class mumbo(min_value_entropy_search):
             [tf.squeeze(x, -2)[:, :-1], top_fidelity_idx * tf.ones_like(tf.squeeze(x, -2)[:, -1:])], -1
         )
 
-
         fmean, fvar = self._model.predict(x_on_top_fidelity)
-        ymean, yvar = self._model.predict_y(tf.squeeze(x, -2))
-        cov = self._model.covariance_with_top_fidelity(tf.squeeze(x, -2))
-
-<<<<<<< HEAD
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        # Calculate moments of extended skew Gaussian distributions (ESG)
-        # These will be used to define reasonable ranges for the numerical
-        # intergration of the ESG's differential entropy.
-=======
-        # calculate squared correlation between observations and high-fidelity latent function
-        rho_squared = (cov**2) / (fvar * yvar) 
-        rho_squared = tf.clip_by_value(rho_squared, 0.0, 1.0)
-
-
         fsd = tf.clip_by_value(
             tf.math.sqrt(fvar), CLAMP_LB, fmean.dtype.max
         )  # clip below to improve numerical stability
->>>>>>> 434f23f66d663c4f258ae3e02ad3672a9ca1625f
-        gamma = (tf.squeeze(self._samples) - fmean) / fsd
+
+        ymean, yvar = self._model.predict_y(tf.squeeze(x, -2))
+        cov = self._model.covariance_with_top_fidelity(tf.squeeze(x, -2))       
+
+         # calculate squared correlation between observations and high-fidelity latent function
+        rho_squared = (cov**2) / (fvar * yvar) 
+        rho_squared = tf.clip_by_value(rho_squared, 0.0, 1.0)
 
         normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
+        gamma = (tf.squeeze(self._samples) - fmean) / fsd
         log_minus_cdf = normal.log_cdf(-gamma)
         ratio = tf.math.exp(normal.log_prob(gamma) - log_minus_cdf)
-<<<<<<< HEAD
-        ESGmean = correlations * ratio
-        ESGvar = 1 + correlations * ESGmean * (gamma - ratio)
-        ESGvar = tf.math.maximum(ESGvar, 0)  # Clip  to improve numerical stability
 
-
-
-        # get upper limits for numerical integration
-        # we need this range to contain almost all of the ESG's probability density
-        # we found +-5 standard deviations provides a tight enough approximation
-        upper_limit = ESGmean + 5 * tf.math.sqrt(ESGvar)
-        lower_limit = ESGmean - 5 * tf.math.sqrt(ESGvar)
-
-        # perform numerical integrations
-        z = tf.linspace(lower_limit, upper_limit, num=1000)  # build discretisation
-        minus_correlations = tf.math.sqrt(
-            1 - correlations ** 2
-        )  # calculate ESG density at these points
-        minus_correlations = tf.math.maximum(
-            minus_correlations, 1e-10
-        )  # clip below for numerical stability
-
-        density = tf.math.exp(
-            normal.log_prob(z)
-            - log_minus_cdf
-            + normal.log_cdf(-(gamma - correlations * z) / minus_correlations)
-        )
-        # calculate point-wise entropy function contributions (carefuly where density is 0)
-        entropy_function = -density * tf.where(density != 0, tf.math.log(density), 0.0)
-        approximate_entropy = tfp.math.trapz(
-            entropy_function, z, axis=0
-        )  # perform integration over ranges
-
-        approximate_entropy = tf.reduce_mean(
-            approximate_entropy, axis=-1
-        )  # build monte-carlo estimate over the gumbel samples
-        f_acqu_x = (
-            tf.cast(0.5 * tf.math.log(2.0 * math.pi * math.e), tf.float64) - approximate_entropy
-        )
-        return f_acqu_x[:, None]
-=======
         inner_log = 1 + rho_squared * ratio * (gamma - ratio)
 
         return -0.5 * tf.math.reduce_mean(tf.math.log(inner_log), axis=1, keepdims=True)  # [N, 1]
 
->>>>>>> 434f23f66d663c4f258ae3e02ad3672a9ca1625f
-
-
-
-
-
 
 
 class CostWeighting(SingleModelAcquisitionBuilder):
-    def __init__(self, low_fidelity_cost, high_fidelity_cost):
-        # note that this does not work with >2 fidelities, despite it being used >2 in integration tests
-        self._low_fidelity_cost = low_fidelity_cost
-        self._high_fidelity_cost = high_fidelity_cost
+    def __init__(self, fidelity_costs: List[float]):
+        """
+        Builder for a cost-weighted acquisition function which returns the reciprocal of the cost
+        associated with the fidelity of each input.
 
-    def prepare_acquisition_function(self, model, dataset=None):
-        #@tf.function
-        def acquisition(x):
+        Note that the fidelity level is assumed to be contained in the inputs final dimension.
+
+        The primary use of this acquisition function is to be used as a product with
+        multi-fidelity acquisition functions. 
+        """
+
+        self._fidelity_costs = fidelity_costs
+        self._num_fidelities = len(self._fidelity_costs)
+
+    def prepare_acquisition_function(self, model, dataset=None)-> AcquisitionFunction:
+        """
+        :param model: The model.
+        :param dataset: The data from the observer. Not actually used here.
+        :return: The reciprocal of the costs corresponding to the fidelity level of each input.
+        """
+        @tf.function
+        def acquisition(x: TensorType) -> TensorType:
             tf.debugging.assert_shapes(
                 [(x, [..., 1, None])],
                 message="This acquisition function only supports batch sizes of one.",
             )
-            fidelities = x[..., -1:]  # [..., 1]
-            costs = tf.where(fidelities == 0.0, self._low_fidelity_cost, self._high_fidelity_cost)
-            return tf.cast(1.0 / costs, x.dtype)[:, 0, :]
+            fidelities = x[..., -1]  # [..., 1]
+            tf.debugging.assert_greater(
+                tf.cast(self._num_fidelities, fidelities.dtype), 
+                tf.reduce_max(fidelities),
+                message= "You are trying to use more fidelity levels than cost levels."
+                )
+
+            costs = tf.gather(self._fidelity_costs, tf.cast(fidelities, tf.int32))
+
+            return tf.cast(1.0 / costs, x.dtype) # [N, 1]
 
         return acquisition
 
-    def update_acquisition_function(self, function, model, dataset=None):
+    def update_acquisition_function(self, function, model, dataset=None)-> AcquisitionFunction:
+        """
+        Nothing to do here, so just return previous cost function.
+
+        :param function: The acquisition function to update.
+        :param model: The model.
+        :param dataset: The data from the observer.
+        """
         return function
