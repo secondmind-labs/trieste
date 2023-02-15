@@ -624,9 +624,47 @@ class gibbon_repulsion_term(UpdatablePenalizationFunction):
         return repulsion_weight * repulsion
 
 
-class MUMBO(MinValueEntropySearch):
+
+
+
+
+
+@runtime_checkable
+class SupportsCovarianceObservationNoiseMultiFidelity(
+    SupportsCovarianceBetweenPoints, SupportsGetObservationNoise, SupportsCovarianceWithTopFidelity, Protocol
+):
+    """A model that supports covariance_between_points, get_observation_noise and covariance_with_top_fidelity."""
+
+    pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class MultiFidelityGIBBON(GIBBON[SupportsCovarianceObservationNoiseMultiFidelity]):
     def __repr__(self) -> str:
-        return "MUMBO()"
+        return "GIBBON()" # todo
 
     def prepare_acquisition_function(
         self,
@@ -645,7 +683,7 @@ class MUMBO(MinValueEntropySearch):
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         min_value_samples = self.get_min_value_samples_on_top_fidelity(model, dataset)
-        return mumbo(model, min_value_samples)
+        return multifidelity_gibbon(model, min_value_samples)
 
     def update_acquisition_function(
         self,
@@ -683,7 +721,7 @@ class MUMBO(MinValueEntropySearch):
         )
 
 
-class mumbo(min_value_entropy_search):
+class multifidelity_gibbon(min_value_entropy_search):
     # @tf.function
     def __call__(self, x: TensorType) -> TensorType:
         tf.debugging.assert_shapes(
@@ -701,6 +739,23 @@ class mumbo(min_value_entropy_search):
         correlations = cov / tf.math.sqrt(fvar * yvar)
         correlations = tf.clip_by_value(correlations, -1.0, 1.0)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         # Calculate moments of extended skew Gaussian distributions (ESG)
         # These will be used to define reasonable ranges for the numerical
         # intergration of the ESG's differential entropy.
@@ -711,6 +766,8 @@ class mumbo(min_value_entropy_search):
         ESGmean = correlations * ratio
         ESGvar = 1 + correlations * ESGmean * (gamma - ratio)
         ESGvar = tf.math.maximum(ESGvar, 0)  # Clip  to improve numerical stability
+
+
 
         # get upper limits for numerical integration
         # we need this range to contain almost all of the ESG's probability density
@@ -745,6 +802,11 @@ class mumbo(min_value_entropy_search):
             tf.cast(0.5 * tf.math.log(2.0 * math.pi * math.e), tf.float64) - approximate_entropy
         )
         return f_acqu_x[:, None]
+
+
+
+
+
 
 
 class CostWeighting(SingleModelAcquisitionBuilder):
