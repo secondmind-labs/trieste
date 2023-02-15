@@ -22,10 +22,9 @@ from __future__ import annotations
 from typing import Dict, Optional
 
 import tensorflow as tf
-import tensorflow_probability as tfp
 
 from ...types import TensorType
-from ...utils import flatten_leading_dims
+from ...utils import DEFAULTS, flatten_leading_dims
 from ..interfaces import TrajectoryFunction, TrajectoryFunctionClass, TrajectorySampler
 from .interface import DeepEnsembleModel
 from .utils import sample_model_index
@@ -34,9 +33,13 @@ from .utils import sample_model_index
 class DeepEnsembleTrajectorySampler(TrajectorySampler[DeepEnsembleModel]):
     """
     This class builds functions that approximate a trajectory by randomly choosing a network from
-    the ensemble and using its predicted means as a trajectory. Option `diversify` can be used to
-    increase the diversity in case of optimizing very large batches of trajectories, but this is not
-    supported for multiple output models.
+    the ensemble and using its predicted means as a trajectory.
+
+    Option `diversify` can be used to increase the diversity in case of optimizing very large
+    batches of trajectories. We use quantiles from the approximate Gaussian distribution of
+    the ensemble as trajectories, with randomly chosen quantiles approximating a trajectory and
+    using a reparametrisation trick to speed up computation. Note that quantiles are not true
+    trajectories, so this will likely have some performance costs.
     """
 
     def __init__(
@@ -44,12 +47,11 @@ class DeepEnsembleTrajectorySampler(TrajectorySampler[DeepEnsembleModel]):
     ):
         """
         :param model: The ensemble model to sample from.
-        :param diversify: Whether to use quantiles from final probabilistic layer as
-            trajectories (`False` by default). See class docstring for details.
+        :param diversify: Whether to use quantiles from the approximate Gaussian distribution of
+            the ensemble as trajectories (`False` by default). See class docstring for details.
         :param seed: Random number seed to use for trajectory sampling.
         :raise NotImplementedError: If we try to use the model that is not instance of
-            :class:`DeepEnsembleModel` or a multiple output model together with ``diversify``
-            option.
+            :class:`DeepEnsembleModel`.
         """
         if not isinstance(model, DeepEnsembleModel):
             raise NotImplementedError(
@@ -64,13 +66,6 @@ class DeepEnsembleTrajectorySampler(TrajectorySampler[DeepEnsembleModel]):
         self._diversify = diversify
         self._seed = seed or int(tf.random.uniform(shape=(), maxval=10000, dtype=tf.int32))
 
-        if self._diversify:
-            if self._model.num_outputs > 1:
-                raise NotImplementedError(
-                    f"EnsembleTrajectorySampler with diversify=True only works single output models"
-                    f", however received a model with {self._model.num_outputs} outputs."
-                )
-
     def __repr__(self) -> str:
         """"""
         return f"{self.__class__.__name__}({self._model!r}"
@@ -80,7 +75,7 @@ class DeepEnsembleTrajectorySampler(TrajectorySampler[DeepEnsembleModel]):
         Generate an approximate function draw (trajectory) from the ensemble.
 
         :return: A trajectory function representing an approximate trajectory
-            from the model, taking an input of shape `[N, B, D]` and returning shape `[N, B, 1]`.
+            from the model, taking an input of shape `[N, B, D]` and returning shape `[N, B, L]`.
         """
         return deep_ensemble_trajectory(self._model, self._diversify, self._seed)
 
@@ -117,10 +112,10 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
     networks from the ensemble and using their predicted means as trajectories.
 
     Option `diversify` can be used to increase the diversity in case of optimizing very large
-    batches of trajectories. Instead of using mean predictions of individual networks quantiles are
-    drawn from Gaussian approximation of the whole ensemble, with randomly chosen quantiles
-    approximating a trajectory. Since quantiles are difficult to compute for multivariate
-    distributions, multiple outputs are not supported with `diversify` option.
+    batches of trajectories. We use quantiles from the approximate Gaussian distribution of
+    the ensemble as trajectories, with randomly chosen quantiles approximating a trajectory and
+    using a reparametrisation trick to speed up computation. Note that quantiles are not true
+    trajectories, so this will likely have some performance costs.
     """
 
     def __init__(self, model: DeepEnsembleModel, diversify: bool, seed: Optional[int] = None):
@@ -139,8 +134,8 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
         self._batch_size = tf.Variable(0, dtype=tf.int32, trainable=False)
 
         if self._diversify:
-            self._quantiles = tf.Variable(
-                tf.zeros([0], dtype=tf.float32), shape=[None], trainable=False
+            self._eps = tf.Variable(
+                tf.zeros([0, 0], dtype=tf.float64), shape=[None, None], trainable=False
             )
         else:
             self._indices = tf.Variable(
@@ -148,7 +143,7 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
             )
 
     @tf.function
-    def __call__(self, x: TensorType) -> TensorType:  # [N, B, d] -> [N, B, 1]
+    def __call__(self, x: TensorType) -> TensorType:  # [N, B, D] -> [N, B, L]
         """
         Call trajectory function. Note that we are flattening the batch dimension and
         doing a forward pass with each network in the ensemble with the whole batch. This is
@@ -169,28 +164,31 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
             by calling the get_trajectory method of the trajectory sampler.
             """,
         )
-        flat_x, unflatten = flatten_leading_dims(x)  # [N*B, d]
+        flat_x, unflatten = flatten_leading_dims(x)  # [N*B, D]
 
         if self._diversify:
-            predicted_means, predicted_vars = self._model.predict(flat_x)  # ([N*B, 1], [N*B, 1])
-            normal = tfp.distributions.Normal(predicted_means, tf.sqrt(predicted_vars))
-            predictions = tf.map_fn(normal.quantile, self._quantiles)  # [B, N*B, 1]
+            predicted_means, predicted_vars = self._model.predict(flat_x)  # ([N*B, L], [N*B, L])
+            predicted_vars = predicted_vars + tf.cast(DEFAULTS.JITTER, predicted_vars.dtype)
+            predictions = predicted_means + tf.sqrt(predicted_vars) * tf.tile(
+                tf.cast(self._eps, predicted_vars.dtype), [tf.shape(x)[0], 1]
+            )  # [N*B, L]
+            return unflatten(predictions)  # [N, B, L]
         else:
             ensemble_distributions = self._model.ensemble_distributions(flat_x)
             predicted_means = tf.convert_to_tensor([dist.mean() for dist in ensemble_distributions])
-            predictions = tf.gather(predicted_means, self._indices)  # [B, N*B, 1]
+            predictions = tf.gather(predicted_means, self._indices)  # [B, N*B, L]
 
-        tensor_predictions = tf.map_fn(unflatten, predictions)  # [B, N, B, 1]
+            tensor_predictions = tf.map_fn(unflatten, predictions)  # [B, N, B, L]
 
-        # here we select simultaneously networks and batch dimension according to batch indices
-        # this is needed because we compute a whole batch with each network
-        batch_index = tf.range(self._batch_size)
-        indices = tf.stack([batch_index, batch_index], axis=1)
-        batch_predictions = tf.gather_nd(
-            tf.transpose(tensor_predictions, perm=[0, 2, 1, 3]), indices
-        )  # [B,N]
+            # here we select simultaneously networks and batch dimension according to batch indices
+            # this is needed because we compute a whole batch with each network
+            batch_index = tf.range(self._batch_size)
+            indices = tf.stack([batch_index, batch_index], axis=1)
+            batch_predictions = tf.gather_nd(
+                tf.transpose(tensor_predictions, perm=[0, 2, 1, 3]), indices
+            )  # [B,N]
 
-        return tf.transpose(batch_predictions, perm=[1, 0, 2])  # [N, B, 1]
+            return tf.transpose(batch_predictions, perm=[1, 0, 2])  # [N, B, L]
 
     def resample(self) -> None:
         """
@@ -200,12 +198,10 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
             self._seed += 1  # increment operation seed
 
         if self._diversify:
-            self._quantiles.assign(
-                tf.random.uniform(
-                    shape=(self._batch_size,),
-                    minval=0.000001,
-                    maxval=0.999999,
-                    dtype=tf.float32,
+            self._eps.assign(
+                tf.random.normal(
+                    shape=(self._batch_size, self._model.num_outputs),
+                    dtype=tf.float64,
                     seed=self._seed,
                 )
             )  # [B]
@@ -223,7 +219,7 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
             "batch_size": self._batch_size,
         }
         if self._diversify:
-            state["quantiles"] = self._quantiles
+            state["eps"] = self._eps
         else:
             state["indices"] = self._indices
 

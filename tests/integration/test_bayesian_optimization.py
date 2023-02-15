@@ -64,9 +64,9 @@ from trieste.bayesian_optimizer import (
 from trieste.logging import tensorboard_writer
 from trieste.models import TrainableProbabilisticModel, TrajectoryFunctionClass
 from trieste.models.gpflow import (
+    ConditionalImprovementReduction,
     GaussianProcessRegression,
     GPflowPredictor,
-    RandomSubSampleInducingPointSelector,
     SparseGaussianProcessRegression,
     SparseVariational,
     VariationalGaussianProcess,
@@ -292,7 +292,7 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_scaled_branin() -> None:
     )
     _test_optimizer_finds_minimum(
         SparseVariational,
-        15,
+        25,
         EfficientGlobalOptimization[SearchSpace, SparseVariational](
             builder=ParallelContinuousThompsonSampling(), num_query_points=5
         ),
@@ -349,7 +349,7 @@ def test_bayesian_optimizer_with_sgpr_finds_minima_of_simple_quadratic() -> None
             25,
             EfficientGlobalOptimization(
                 ParallelContinuousThompsonSampling(),
-                num_query_points=3,
+                num_query_points=4,
             ),
             id="ParallelContinuousThompsonSampling",
         ),
@@ -557,7 +557,7 @@ def _test_optimizer_finds_minimum(
         model = SparseGaussianProcessRegression(
             sgpr,
             **model_args,
-            inducing_point_selector=RandomSubSampleInducingPointSelector(search_space),
+            inducing_point_selector=ConditionalImprovementReduction(),
         )
 
     elif model_type is VariationalGaussianProcess:
@@ -573,7 +573,7 @@ def _test_optimizer_finds_minimum(
         model = SparseVariational(
             svgp,
             **model_args,
-            inducing_point_selector=RandomSubSampleInducingPointSelector(search_space),
+            inducing_point_selector=ConditionalImprovementReduction(),
         )
 
     elif model_type is DeepGaussianProcess:
