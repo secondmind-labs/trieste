@@ -29,4 +29,5 @@ from .interfaces import (
     TrajectoryFunction,
     TrajectoryFunctionClass,
     TrajectorySampler,
+    SupportsCovarianceWithTopFidelity,
 )

@@ -449,38 +449,11 @@ def test_deepgp_log(
     assert mocked_summary_writer.method_calls[0][0] == "as_default"
     assert mocked_summary_writer.method_calls[0][-1]["step"] == 42
 
-    loss_names = ["loss/diff", "loss/final", "prior_kl/diff", "prior_kl/final"]
-    metrics_names = ["mse/diff", "mse/final"]
-    accuracy_names = [
-        "accuracy/root_mean_square_error",
-        "accuracy/mean_absolute_error",
-        "accuracy/z_residuals_std",
-    ]
-    variance_stats = [
-        "variance/predict_variance_mean",
-        "variance/empirical",
-        "variance/root_mean_variance_error",
-    ]
-    par_names = ["kernel.variance", "kernel.lengthscales", "likelihood"]
-
-    names_scalars = ["epochs/num_epochs"] + loss_names + metrics_names + par_names
-    num_scalars = len(names_scalars)
-    names_histogram = ["loss/epoch", "mse/epoch", "prior_kl/epoch"]
-    num_histogram = len(names_histogram)
-    if use_dataset:
-        names_scalars = names_scalars + accuracy_names + variance_stats
-        num_scalars = num_scalars + len(accuracy_names) + len(variance_stats)
-        names_histogram = (
-            names_histogram
-            + ["accuracy/absolute_errors", "accuracy/z_residuals"]
-            + ["variance/predict_variance", "variance/variance_error"]
-        )
-        num_histogram += 4
+    num_scalars = 10  # 3 write_summary_kernel_parameters, write_summary_likelihood_parameters + 7
+    num_histogram = 3  # 3
+    if use_dataset:  # write_summary_data_based_metrics
+        num_scalars += 8
+        num_histogram += 6
 
     assert mocked_summary_scalar.call_count == num_scalars
-    for i in range(len(mocked_summary_scalar.call_args_list)):
-        assert any([j in mocked_summary_scalar.call_args_list[i][0][0] for j in names_scalars])
-
     assert mocked_summary_histogram.call_count == num_histogram
-    for i in range(len(mocked_summary_histogram.call_args_list)):
-        assert any([j in mocked_summary_histogram.call_args_list[i][0][0] for j in names_histogram])

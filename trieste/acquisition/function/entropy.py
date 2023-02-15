@@ -629,6 +629,7 @@ class gibbon_repulsion_term(UpdatablePenalizationFunction):
 
 
 
+<<<<<<< HEAD
 @runtime_checkable
 class SupportsCovarianceObservationNoiseMultiFidelity(
     SupportsCovarianceBetweenPoints, SupportsGetObservationNoise, SupportsCovarianceWithTopFidelity, Protocol
@@ -663,6 +664,14 @@ class SupportsCovarianceObservationNoiseMultiFidelity(
 
 
 class MultiFidelityGIBBON(GIBBON[SupportsCovarianceObservationNoiseMultiFidelity]):
+=======
+
+
+class MUMBO(MinValueEntropySearch):
+    """
+    TODO
+    """
+>>>>>>> 434f23f66d663c4f258ae3e02ad3672a9ca1625f
     def __repr__(self) -> str:
         return "GIBBON()" # todo
 
@@ -721,24 +730,31 @@ class MultiFidelityGIBBON(GIBBON[SupportsCovarianceObservationNoiseMultiFidelity
         )
 
 
+<<<<<<< HEAD
 class multifidelity_gibbon(min_value_entropy_search):
     # @tf.function
+=======
+class mumbo(min_value_entropy_search):
+    
+    #@tf.function
+>>>>>>> 434f23f66d663c4f258ae3e02ad3672a9ca1625f
     def __call__(self, x: TensorType) -> TensorType:
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],
             message="This acquisition function only supports batch sizes of one.",
         )
 
+        top_fidelity_idx = self._model.num_fidelities - 1 
         x_on_top_fidelity = tf.concat(
-            [tf.squeeze(x, -2)[:, :-1], tf.ones_like(tf.squeeze(x, -2)[:, -1:])], -1
+            [tf.squeeze(x, -2)[:, :-1], top_fidelity_idx * tf.ones_like(tf.squeeze(x, -2)[:, -1:])], -1
         )
+
+
         fmean, fvar = self._model.predict(x_on_top_fidelity)
-        fsd = tf.math.sqrt(fvar)
         ymean, yvar = self._model.predict_y(tf.squeeze(x, -2))
         cov = self._model.covariance_with_top_fidelity(tf.squeeze(x, -2))
-        correlations = cov / tf.math.sqrt(fvar * yvar)
-        correlations = tf.clip_by_value(correlations, -1.0, 1.0)
 
+<<<<<<< HEAD
 
 
 
@@ -759,10 +775,22 @@ class multifidelity_gibbon(min_value_entropy_search):
         # Calculate moments of extended skew Gaussian distributions (ESG)
         # These will be used to define reasonable ranges for the numerical
         # intergration of the ESG's differential entropy.
+=======
+        # calculate squared correlation between observations and high-fidelity latent function
+        rho_squared = (cov**2) / (fvar * yvar) 
+        rho_squared = tf.clip_by_value(rho_squared, 0.0, 1.0)
+
+
+        fsd = tf.clip_by_value(
+            tf.math.sqrt(fvar), CLAMP_LB, fmean.dtype.max
+        )  # clip below to improve numerical stability
+>>>>>>> 434f23f66d663c4f258ae3e02ad3672a9ca1625f
         gamma = (tf.squeeze(self._samples) - fmean) / fsd
+
         normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
         log_minus_cdf = normal.log_cdf(-gamma)
         ratio = tf.math.exp(normal.log_prob(gamma) - log_minus_cdf)
+<<<<<<< HEAD
         ESGmean = correlations * ratio
         ESGvar = 1 + correlations * ESGmean * (gamma - ratio)
         ESGvar = tf.math.maximum(ESGvar, 0)  # Clip  to improve numerical stability
@@ -802,6 +830,12 @@ class multifidelity_gibbon(min_value_entropy_search):
             tf.cast(0.5 * tf.math.log(2.0 * math.pi * math.e), tf.float64) - approximate_entropy
         )
         return f_acqu_x[:, None]
+=======
+        inner_log = 1 + rho_squared * ratio * (gamma - ratio)
+
+        return -0.5 * tf.math.reduce_mean(tf.math.log(inner_log), axis=1, keepdims=True)  # [N, 1]
+
+>>>>>>> 434f23f66d663c4f258ae3e02ad3672a9ca1625f
 
 
 
@@ -811,10 +845,12 @@ class multifidelity_gibbon(min_value_entropy_search):
 
 class CostWeighting(SingleModelAcquisitionBuilder):
     def __init__(self, low_fidelity_cost, high_fidelity_cost):
+        # note that this does not work with >2 fidelities, despite it being used >2 in integration tests
         self._low_fidelity_cost = low_fidelity_cost
         self._high_fidelity_cost = high_fidelity_cost
 
     def prepare_acquisition_function(self, model, dataset=None):
+        #@tf.function
         def acquisition(x):
             tf.debugging.assert_shapes(
                 [(x, [..., 1, None])],

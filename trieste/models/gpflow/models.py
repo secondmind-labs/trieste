@@ -46,6 +46,7 @@ from ..interfaces import (
     SupportsGetInternalData,
     TrainableProbabilisticModel,
     TrajectorySampler,
+    SupportsCovarianceWithTopFidelity,
 )
 from ..optimizer import BatchOptimizer, Optimizer
 from .inducing_point_selectors import InducingPointSelector
@@ -281,7 +282,6 @@ class GaussianProcessRegression(
             self.find_best_model_initialization(
                 self._num_kernel_samples * num_trainable_params_with_priors_or_constraints
             )
-
         self.optimizer.optimize(self.model, dataset)
         self.update_posterior_cache()
 
@@ -1371,7 +1371,8 @@ class VariationalGaussianProcess(
         )
 
 
-class MultifidelityAutoregressive(TrainableProbabilisticModel):
+
+class MultifidelityAutoregressive(TrainableProbabilisticModel, SupportsCovarianceWithTopFidelity):
     r"""
     A :class:`TrainableProbabilisticModel` implementation of the model
     from :cite:`Kennedy2000`. This is a multi-fidelity model that works with an
@@ -1650,7 +1651,7 @@ class MultifidelityAutoregressive(TrainableProbabilisticModel):
         return f_var
 
 
-class MultifidelityNonlinearAutoregressive(TrainableProbabilisticModel):
+class MultifidelityNonlinearAutoregressive(TrainableProbabilisticModel, SupportsCovarianceWithTopFidelity):
     r"""
     A :class:`TrainableProbabilisticModel` implementation of the model from
     :cite:`perdikaris2017nonlinear`. This is a multifidelity model that works with
