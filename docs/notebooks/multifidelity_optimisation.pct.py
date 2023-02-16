@@ -7,10 +7,12 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.14.1
 #   kernelspec:
-#     display_name: Python 3.7.13 64-bit ('multifidelity')
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
+
+# %%
 import gpflow.kernels
 
 # %% [markdown]
@@ -407,5 +409,3 @@ plt.show()
 
 # %% [markdown]
 # The AR(1) model is incapable of using the lower fidelity data and its prediction for the high fidelity level simply returns to the prior when there is no high-fidelity data. In contrast, the NARGP model clearly captures the non-linear relashionship and is able to predict accurately the high-fideility level everywhere.
-
-# %%
