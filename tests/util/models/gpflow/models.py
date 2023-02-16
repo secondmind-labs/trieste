@@ -29,6 +29,7 @@ from trieste.models import (
     ReparametrizationSampler,
     TrainableProbabilisticModel,
     TrajectorySampler,
+    MultifidelityNonlinearAutoregressive,
 )
 from trieste.models.gpflow import (
     BatchReparametrizationSampler,
@@ -42,6 +43,9 @@ from trieste.models.interfaces import (
     HasTrajectorySampler,
     SupportsGetKernel,
     SupportsGetObservationNoise,
+)
+from trieste.models.gpflow.builders import (
+    build_multifidelity_autoregressive_models,
 )
 from trieste.models.optimizer import Optimizer
 from trieste.types import TensorType
@@ -191,6 +195,10 @@ class QuadraticMeanAndRBFKernel(GaussianProcess, SupportsGetKernel, SupportsGetO
 
     def get_mean_function(self) -> Callable[[TensorType], TensorType]:
         return self.mean_function
+
+
+class MultiFidelityQuadraticMeanAndRBFKernel(GaussianProcess, SupportsGetKernel, SupportsGetObservationNoise)
+
 
 
 def mock_data() -> tuple[tf.Tensor, tf.Tensor]:

@@ -711,7 +711,7 @@ class mumbo(min_value_entropy_search):
         or is empty.
     """
 
-    #@tf.function
+    #@tf.function WORK OUT WHY THIS DOESNT WORK
     def __call__(self, x: TensorType) -> TensorType:
 
         tf.debugging.assert_shapes(
