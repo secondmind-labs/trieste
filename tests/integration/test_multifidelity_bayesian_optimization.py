@@ -50,7 +50,7 @@ def _build_nested_multifidelity_dataset(
     num_fidelities = problem.num_fidelities
     initial_sample_sizes = [10 + 2 * (num_fidelities - i) for i in range(num_fidelities)]
     fidelity_samples = list()
-    lowest_fidelity_sample = problem.input_search_space.sample(initial_sample_sizes[0])
+    lowest_fidelity_sample = problem.search_space.sample(initial_sample_sizes[0])
     lowest_fidelity_sample = add_fidelity_column(lowest_fidelity_sample, 0)
     fidelity_samples.append(lowest_fidelity_sample)
 
@@ -77,8 +77,8 @@ def test_multifidelity_bo_finds_minima_of_linear_problem(
     observer = _build_observer(problem)
     initial_data = _build_nested_multifidelity_dataset(problem, observer)
     costs = [2.0 * (n + 1) for n in range(problem.num_fidelities)]
-    input_search_space = problem.input_search_space  # Does not include fidelities
-    search_space = problem.search_space  # Includes fidelities
+    input_search_space = problem.search_space  # Does not include fidelities
+    search_space = problem.fidelity_search_space  # Includes fidelities
 
     model = MultifidelityAutoregressive(
         build_multifidelity_autoregressive_models(

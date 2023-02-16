@@ -676,7 +676,7 @@ class MUMBO(MinValueEntropySearch):
 
     def get_min_value_samples_on_top_fidelity(
         self, model: ProbabilisticModelType, dataset: Dataset
-    ):
+    ) -> TensorType:
         """
         :param model: The model.
         :param dataset: The data from the observer.
@@ -747,7 +747,7 @@ class mumbo(min_value_entropy_search):
         return -0.5 * tf.math.reduce_mean(tf.math.log(inner_log), axis=1, keepdims=True)  # [N, 1]
 
 
-class CostWeighting(SingleModelAcquisitionBuilder):
+class CostWeighting(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     def __init__(self, fidelity_costs: List[float]):
         """
         Builder for a cost-weighted acquisition function which returns the reciprocal of the cost
@@ -762,7 +762,7 @@ class CostWeighting(SingleModelAcquisitionBuilder):
         self._fidelity_costs = fidelity_costs
         self._num_fidelities = len(self._fidelity_costs)
 
-    def prepare_acquisition_function(self, model, dataset=None) -> AcquisitionFunction:
+    def prepare_acquisition_function(self, model: ProbabilisticModel, dataset: Optional[Dataset] = None) -> AcquisitionFunction:
         """
         :param model: The model.
         :param dataset: The data from the observer. Not actually used here.
@@ -788,7 +788,7 @@ class CostWeighting(SingleModelAcquisitionBuilder):
 
         return acquisition
 
-    def update_acquisition_function(self, function, model, dataset=None) -> AcquisitionFunction:
+    def update_acquisition_function(self, function: AcquisitionFunction, model: ProbabilisticModel, dataset: Optional[Dataset]=None) -> AcquisitionFunction:
         """
         Nothing to do here, so just return previous cost function.
 

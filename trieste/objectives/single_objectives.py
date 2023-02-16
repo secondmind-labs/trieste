@@ -43,7 +43,7 @@ class ObjectiveTestProblem:
     objective: Callable[[TensorType], TensorType]
     """The synthetic test function"""
 
-    search_space: SearchSpace
+    search_space: Box
     """The (continuous) search space of the test function"""
 
     @property
