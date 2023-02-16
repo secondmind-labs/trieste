@@ -1431,10 +1431,16 @@ class MultifidelityAutoregressive(TrainableProbabilisticModel):
             query_points_wo_fidelity
         )  # [..., N, P], [..., N, P]
 
-        for fidelity in range(1, int(tf.reduce_max(query_points_fidelity_col)) + 1):
+        for fidelity, (fidelity_residual_model, rho) in enumerate(
+            zip(self.fidelity_residual_models, self.rho)
+        ):
+
+            if fidelity == 0:
+                continue
 
             # Find indices of query points that need predicting for
-            mask = query_points_fidelity_col >= fidelity  # [..., N, 1]
+            fidelity_float = tf.cast(fidelity, query_points.dtype)
+            mask = query_points_fidelity_col >= fidelity_float  # [..., N, 1]
             fidelity_indices = tf.where(mask)[..., :-1]
             # Gather necessary query points and  predict
             fidelity_filtered_query_points = tf.gather_nd(
@@ -1443,7 +1449,7 @@ class MultifidelityAutoregressive(TrainableProbabilisticModel):
             (
                 filtered_fidelity_residual_mean,
                 filtered_fidelity_residual_var,
-            ) = self.fidelity_residual_models[fidelity].predict(fidelity_filtered_query_points)
+            ) = fidelity_residual_model.predict(fidelity_filtered_query_points)
 
             # Scatter predictions back into correct location
             fidelity_residual_mean = tf.tensor_scatter_nd_update(
@@ -1454,11 +1460,11 @@ class MultifidelityAutoregressive(TrainableProbabilisticModel):
             )
 
             # Calculate mean and var for all columns (will be incorrect for qps with fid < fidelity)
-            new_fidelity_signal_mean = self.rho[fidelity] * signal_mean + fidelity_residual_mean
-            new_fidelity_signal_var = fidelity_residual_var + (self.rho[fidelity] ** 2) * signal_var
+            new_fidelity_signal_mean = rho * signal_mean + fidelity_residual_mean
+            new_fidelity_signal_var = fidelity_residual_var + (rho ** 2) * signal_var
 
             # Mask out incorrect values and update mean and var for correct ones
-            mask = query_points_fidelity_col >= fidelity
+            mask = query_points_fidelity_col >= fidelity_float
             signal_mean = tf.where(mask, new_fidelity_signal_mean, signal_mean)
             signal_var = tf.where(mask, new_fidelity_signal_var, signal_var)
 
