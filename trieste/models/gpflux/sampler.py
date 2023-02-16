@@ -297,7 +297,7 @@ class DeepGaussianProcessDecoupledLayer(ABC):
         )
 
         flat_x, unflatten = flatten_leading_dims(x)
-        flattened_feature_evaluations = self._feature_functions(flat_x)
+        flattened_feature_evaluations = self._feature_functions(flat_x)  # [P, N, L + M] or [N, L + M]
         feature_evaluations = unflatten(flattened_feature_evaluations)[
             ..., None
         ]  # [N, B, L + M, 1]
@@ -352,7 +352,7 @@ class DeepGaussianProcessDecoupledLayer(ABC):
         )
 
         def weight_sampler(batch_size: int) -> TensorType:
-            prior_weights = tf.random.normal([batch_size, self._num_features, P], dtype=tf.float64)
+            prior_weights = tf.random.normal([batch_size, P, self._num_features, 1], dtype=tf.float64)  # [B, P, L, 1]
 
             u_noise_sample = tf.matmul(
                 q_sqrt,  # [P, M, M]
@@ -364,8 +364,10 @@ class DeepGaussianProcessDecoupledLayer(ABC):
                 Luu = tf.linalg.cholesky(Kmm)  # [M, M]
                 u_sample = tf.matmul(Luu, u_sample)
 
-            phi_Z = self._feature_functions(inducing_points)[:, : self._num_features]
-            weight_space_prior_Z = phi_Z @ prior_weights  # [B, M, P]
+            phi_Z = self._feature_functions(inducing_points)[:, : self._num_features]  # [M, L] or [M, L, P]
+            if tf.experimental.numpy.ndim(phi_Z) == 3:
+                phi_Z = tf.transpose(phi_Z, perm=[2, 0, 1])  # [P, M, L]
+            weight_space_prior_Z = tf.transpose((phi_Z @ prior_weights)[..., 0], perm=[0, 2, 1])  # [B, M, P]
 
             diff = u_sample - weight_space_prior_Z  # [B, M, P]
             v = compute_A_inv_b(Kmm, diff)  # [B, M, P]
@@ -432,9 +434,13 @@ class ResampleableDecoupledDeepGaussianProcessFeatureFunctions(RandomFourierFeat
         """
         Evaluate and combine prior basis functions and canonical basic functions at the input.
         """
-        fourier_feature_eval = super().__call__(x)  # [N, L]
+        fourier_feature_eval = super().__call__(x)  # [N, L] or [P, N, L]
         canonical_feature_eval = self._canonical_feature_functions(x)  # [N, M]
-        return tf.concat([fourier_feature_eval, canonical_feature_eval], axis=-1)  # [N, L + M]
+        if self.num_latent_gps is not None:
+            canonical_feature_eval = tf.tile(canonical_feature_eval[None, :, :], [self.num_latent_gps, 1, 1])  # [P, N, M]
+            return tf.transpose(tf.concat([fourier_feature_eval, canonical_feature_eval], axis=-1), perm=[1, 2, 0])  # [N, L + M, P]
+        else:
+            return tf.concat([fourier_feature_eval, canonical_feature_eval], axis=-1)  # [N, L + M]
 
 
 class dgp_feature_decomposition_trajectory(TrajectoryFunctionClass):
@@ -455,7 +461,7 @@ class dgp_feature_decomposition_trajectory(TrajectoryFunctionClass):
             for i in range(len(model.model_gpflux.f_layers))
         ]
 
-    @tf.function
+    # @tf.function
     def __call__(self, x: TensorType) -> TensorType:
         """
         Call trajectory function by looping through layers.
