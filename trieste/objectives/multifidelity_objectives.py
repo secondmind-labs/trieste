@@ -18,7 +18,7 @@ class SingleObjectiveMultifidelityTestProblem(SingleObjectiveTestProblem):
     """The search space including fidelities"""
 
 
-def linear_multifidelity(x: TensorType):
+def linear_multifidelity(x: TensorType) -> TensorType:
 
     x_input = x[..., :-1]
     x_fidelity = x[..., -1:]
@@ -46,7 +46,7 @@ _LINEAR_MULTIFIDELITY_MINIMA = {
 
 
 def _linear_multifidelity_search_space_builder(
-    n_fidelities: int, input_search_space
+    n_fidelities: int, input_search_space: SearchSpace
 ) -> TaggedProductSearchSpace:
 
     fidelity_search_space = DiscreteSearchSpace(
@@ -62,7 +62,9 @@ Linear2Fidelity = SingleObjectiveMultifidelityTestProblem(
     name="Linear 2 Fidelity",
     objective=linear_multifidelity,
     search_space=Box(np.zeros(1), np.ones(1)),
-    fidelity_search_space=_linear_multifidelity_search_space_builder(2, Box(np.zeros(1), np.ones(1))),
+    fidelity_search_space=_linear_multifidelity_search_space_builder(
+        2, Box(np.zeros(1), np.ones(1))
+    ),
     minimizers=_LINEAR_MULTIFIDELITY_MINIMIZERS[2],
     minimum=_LINEAR_MULTIFIDELITY_MINIMA[2],
     num_fidelities=2,
@@ -72,7 +74,9 @@ Linear3Fidelity = SingleObjectiveMultifidelityTestProblem(
     name="Linear 3 Fidelity",
     objective=linear_multifidelity,
     search_space=Box(np.zeros(1), np.ones(1)),
-    fidelity_search_space=_linear_multifidelity_search_space_builder(3, Box(np.zeros(1), np.ones(1))),
+    fidelity_search_space=_linear_multifidelity_search_space_builder(
+        3, Box(np.zeros(1), np.ones(1))
+    ),
     minimizers=_LINEAR_MULTIFIDELITY_MINIMIZERS[3],
     minimum=_LINEAR_MULTIFIDELITY_MINIMA[3],
     num_fidelities=3,
@@ -82,7 +86,9 @@ Linear5Fidelity = SingleObjectiveMultifidelityTestProblem(
     name="Linear 5 Fidelity",
     objective=linear_multifidelity,
     search_space=Box(np.zeros(1), np.ones(1)),
-    fidelity_search_space=_linear_multifidelity_search_space_builder(5, Box(np.zeros(1), np.ones(1))),
+    fidelity_search_space=_linear_multifidelity_search_space_builder(
+        5, Box(np.zeros(1), np.ones(1))
+    ),
     minimizers=_LINEAR_MULTIFIDELITY_MINIMIZERS[5],
     minimum=_LINEAR_MULTIFIDELITY_MINIMA[5],
     num_fidelities=5,

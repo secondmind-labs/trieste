@@ -623,7 +623,14 @@ class gibbon_repulsion_term(UpdatablePenalizationFunction):
         return repulsion_weight * repulsion
 
 
-class MUMBO(MinValueEntropySearch):
+@runtime_checkable
+class MUMBOModelType(SupportsCovarianceWithTopFidelity, SupportsGetObservationNoise, Protocol):
+    """A model that supports both reparam_sampler and get_observation_noise."""
+
+    pass
+
+
+class MUMBO(MinValueEntropySearch[MUMBOModelType]):
     r"""
     Builder for the MUlti-task Max-value Bayesian Optimization MUMBO acquisition function modified
     for objective minimisation. :class:`MinValueEntropySearch` estimates the information in the
@@ -639,7 +646,7 @@ class MUMBO(MinValueEntropySearch):
 
     def prepare_acquisition_function(
         self,
-        model: SupportsCovarianceWithTopFidelity,
+        model: MUMBOModelType,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
@@ -659,7 +666,7 @@ class MUMBO(MinValueEntropySearch):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        model: ProbabilisticModelType,
+        model: MUMBOModelType,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         """
@@ -675,7 +682,7 @@ class MUMBO(MinValueEntropySearch):
         return function
 
     def get_min_value_samples_on_top_fidelity(
-        self, model: ProbabilisticModelType, dataset: Dataset
+        self, model: MUMBOModelType, dataset: Dataset
     ) -> TensorType:
         """
         :param model: The model.
@@ -692,24 +699,36 @@ class MUMBO(MinValueEntropySearch):
         )
 
 
-class mumbo(min_value_entropy_search):
-    r"""
-    The MUMBO acquisition function of :cite:`moss2021mumbo`, modified for objective minimisation.
-    This function calculates the information gain (or change in entropy) in the distribution over
-    the objective minimum :math:`y^*`, if we were to evaluate the objective at a given point on a
-    given fidelity level.
+class mumbo(AcquisitionFunctionClass):
+    def __init__(self, model: MUMBOModelType, samples: TensorType):
+        r"""
+        The MUMBO acquisition function of :cite:`moss2021mumbo`, modified for objective
+        minimisation. This function calculates the information gain (or change in entropy) in the
+        distribution over the objective minimum :math:`y^*`, if we were to evaluate the objective
+        at a given point on a given fidelity level.
 
-    To speed up calculations, we use a trick from :cite:`Moss:2021` and use moment-matching to
-    calculate MUMBO's entropy terms rather than numerical integration.
+        To speed up calculations, we use a trick from :cite:`Moss:2021` and use moment-matching to
+        calculate MUMBO's entropy terms rather than numerical integration.
 
-    :param model: The model of the objective function.
-    :param samples: Samples from the distribution over :math:`y^*`.
-    :return: The MUMBO acquisition function modified for objective
-        minimisation. This function will raise :exc:`ValueError` or
-        :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
-    :raise ValueError or tf.errors.InvalidArgumentError: If ``samples`` has rank less than two,
-        or is empty.
-    """
+        :param model: The model of the objective function.
+        :param samples: Samples from the distribution over :math:`y^*`.
+        :return: The MUMBO acquisition function modified for objective
+            minimisation. This function will raise :exc:`ValueError` or
+            :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
+        :raise ValueError or tf.errors.InvalidArgumentError: If ``samples`` has rank less than two,
+            or is empty.
+        """
+        tf.debugging.assert_rank(samples, 2)
+        tf.debugging.assert_positive(len(samples))
+
+        self._model = model
+        self._samples = tf.Variable(samples)
+
+    def update(self, samples: TensorType) -> None:
+        """Update the acquisition function with new samples."""
+        tf.debugging.assert_rank(samples, 2)
+        tf.debugging.assert_positive(len(samples))
+        self._samples.assign(samples)
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:
@@ -762,7 +781,9 @@ class CostWeighting(SingleModelAcquisitionBuilder[ProbabilisticModel]):
         self._fidelity_costs = fidelity_costs
         self._num_fidelities = len(self._fidelity_costs)
 
-    def prepare_acquisition_function(self, model: ProbabilisticModel, dataset: Optional[Dataset] = None) -> AcquisitionFunction:
+    def prepare_acquisition_function(
+        self, model: ProbabilisticModel, dataset: Optional[Dataset] = None
+    ) -> AcquisitionFunction:
         """
         :param model: The model.
         :param dataset: The data from the observer. Not actually used here.
@@ -788,7 +809,12 @@ class CostWeighting(SingleModelAcquisitionBuilder[ProbabilisticModel]):
 
         return acquisition
 
-    def update_acquisition_function(self, function: AcquisitionFunction, model: ProbabilisticModel, dataset: Optional[Dataset]=None) -> AcquisitionFunction:
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
         """
         Nothing to do here, so just return previous cost function.
 

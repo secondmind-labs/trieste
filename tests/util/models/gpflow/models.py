@@ -264,9 +264,12 @@ class MultiFidelityQuadraticMeanAndRBFKernel(
         super().__init__(
             x_shift=x_shift, kernel_amplitude=kernel_amplitude, noise_variance=noise_variance
         )
-        self.num_fidelities = 5
 
-    def covariance_with_top_fidelity(self, x: TensorType):
+    @property
+    def num_fidelities(self) -> int:
+        return 5
+
+    def covariance_with_top_fidelity(self, x: TensorType) -> TensorType:
         mean, _ = self.predict(x)
         return tf.ones_like(mean, dtype=mean.dtype)  # dummy covariances of correct shape
 
@@ -293,9 +296,12 @@ class MultiFidelityQuadraticMeanAndRBFKernelWithSamplers(
             kernel_amplitude=kernel_amplitude,
             noise_variance=noise_variance,
         )
-        self.num_fidelities = 5
 
-    def covariance_with_top_fidelity(self, x: TensorType):
+    @property
+    def num_fidelities(self) -> int:
+        return 5
+
+    def covariance_with_top_fidelity(self, x: TensorType) -> TensorType:
         mean, _ = self.predict(x)
         return tf.ones_like(mean, dtype=mean.dtype)  # dummy covariances of correct shape
 

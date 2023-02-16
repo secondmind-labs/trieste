@@ -668,6 +668,14 @@ class SupportsCovarianceWithTopFidelity(ProbabilisticModel, Protocol):
     """A probabilistic model is multifidelity and has access to a method to calculate the
     covariance between a point and the same point at the top fidelity"""
 
+    @property
+    @abstractmethod
+    def num_fidelities(self) -> int:
+        """
+        The number of fidelities
+        """
+        raise NotImplementedError
+
     @abstractmethod
     def covariance_with_top_fidelity(self, query_points: TensorType) -> TensorType:
         """

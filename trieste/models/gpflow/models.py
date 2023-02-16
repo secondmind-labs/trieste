@@ -1397,7 +1397,7 @@ class MultifidelityAutoregressive(TrainableProbabilisticModel, SupportsCovarianc
             for the lowest fidelity and models at higher indices will be used as the residual
             model for each higher fidelity.
         """
-        self.num_fidelities = len(fidelity_models)
+        self._num_fidelities = len(fidelity_models)
 
         self.lowest_fidelity_signal_model = fidelity_models[0]
         # Note: The 0th index in the below is not a residual model, and should not be used.
@@ -1411,6 +1411,10 @@ class MultifidelityAutoregressive(TrainableProbabilisticModel, SupportsCovarianc
             gpflow.Parameter(1.0, trainable=False, name="dummy_variable"),
             *rho,
         ]
+
+    @property
+    def num_fidelities(self) -> int:
+        return self._num_fidelities
 
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
@@ -1688,11 +1692,15 @@ class MultifidelityNonlinearAutoregressive(
             sections of prediction and sampling that require the use of Monte Carlo methods.
         """
 
-        self.num_fidelities = len(fidelity_models)
+        self._num_fidelities = len(fidelity_models)
         self.fidelity_models = fidelity_models
         self.monte_carlo_random_numbers = tf.random.normal(
             [num_monte_carlo_samples, 1], dtype=tf.float64
         )
+
+    @property
+    def num_fidelities(self) -> int:
+        return self._num_fidelities
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         """
