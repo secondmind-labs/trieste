@@ -1777,13 +1777,13 @@ def test_multifidelity_autoregressive_raises_bad_fidleity(
 
     input_data = tf.Variable(input_data, dtype=tf.float64)
     model = multifidelity_model(1)
-    with pytest.raises(ValueError):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         model.predict(input_data)
-    with pytest.raises(ValueError):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         model.predict_y(input_data)
-    with pytest.raises(ValueError):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         model.sample(input_data, 13)
-    with pytest.raises(ValueError):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         model.covariance_with_top_fidelity(input_data)
 
 
@@ -1878,7 +1878,7 @@ def test_multifidelity_autoregressive_update_raises_for_bad_new_data(
         with pytest.raises(tf.errors.InvalidArgumentError):
             model.update(dataset + new_dataset)
     else:
-        with pytest.raises(ValueError):
+        with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
             model.update(dataset + new_dataset)
 
 
@@ -1966,7 +1966,7 @@ def test_multifidelity_autoregressive_optimize_raises_for_bad_new_data(
         with pytest.raises(tf.errors.InvalidArgumentError):
             model.optimize(dataset + new_dataset)
     else:
-        with pytest.raises(ValueError):
+        with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
             model.optimize(dataset + new_dataset)
 
 
