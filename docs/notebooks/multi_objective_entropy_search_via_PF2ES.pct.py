@@ -1043,7 +1043,7 @@ class BuilderAccesableEfficientGlobalOptimization(EfficientGlobalOptimization):
 
 class PF2ES(AcquisitionFunctionBuilder[HasReparamSampler]):
     """
-    Implementation of Parallel Feasible Pareto Frontier Entropy Search by :cite:`qing2022text`
+    Implementation of Parallel Feasible Pareto Frontier Entropy Search
     """
 
     def __init__(
@@ -1910,7 +1910,7 @@ def plot_mobo_points_in_obj_space(
 
 
 # %% [markdown]
-# ### Problem Definition
+# ### MOO Problem Definition
 
 # %% [markdown]
 # We consider the VLMOP2 function --- a synthetic benchmark problem with two objectives. We start by defining the problem parameters.
@@ -2515,10 +2515,10 @@ plt.show()
 # ## Demonstration on  CMOO problem
 
 # %% [markdown]
-# ### Problem Definition
+# We now demonstrate that \{PF\}$^2$ES and its parallel version are also able to perform Constraint MOO (CMOO) problem.
 
 # %% [markdown]
-# We now demonstrate that \{PF\}$^2$ES and its parallel version are also able to perform Constraint MOO (CMOO) problem.
+# ### CMOO Problem Definition
 
 # %% [markdown]
 # As we are able to see from the 1st subfigure: the uncertainty of Pareto frontier samples getting decrease w.r.t the BO samples.
