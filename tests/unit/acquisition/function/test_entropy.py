@@ -25,6 +25,8 @@ import tensorflow_probability as tfp
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, quadratic, random_seed
 from tests.util.models.gpflow.models import (
     GaussianProcess,
+    MultiFidelityQuadraticMeanAndRBFKernel,
+    MultiFidelityQuadraticMeanAndRBFKernelWithSamplers,
     QuadraticMeanAndRBFKernel,
     QuadraticMeanAndRBFKernelWithSamplers,
 )
@@ -524,27 +526,26 @@ def test_batch_gibbon_is_sum_of_individual_gibbons_and_repulsion_term(
         )
 
 
-
-
-
-
-
-
-
 def test_mumbo_builder_raises_for_empty_data() -> None:
     empty_data = Dataset(tf.zeros([0, 2], dtype=tf.float64), tf.ones([0, 2], dtype=tf.float64))
     non_empty_data = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
     builder = MUMBO(search_space)
     with pytest.raises(tf.errors.InvalidArgumentError):
-        builder.prepare_acquisition_function(QuadraticMeanAndRBFKernel(), dataset=empty_data)
+        builder.prepare_acquisition_function(
+            MultiFidelityQuadraticMeanAndRBFKernel(), dataset=empty_data
+        )
     with pytest.raises(tf.errors.InvalidArgumentError):
-        builder.prepare_acquisition_function(QuadraticMeanAndRBFKernel())
-    acq = builder.prepare_acquisition_function(QuadraticMeanAndRBFKernel(), dataset=non_empty_data)
+        builder.prepare_acquisition_function(MultiFidelityQuadraticMeanAndRBFKernel())
+    acq = builder.prepare_acquisition_function(
+        MultiFidelityQuadraticMeanAndRBFKernel(), dataset=non_empty_data
+    )
     with pytest.raises(tf.errors.InvalidArgumentError):
-        builder.update_acquisition_function(acq, QuadraticMeanAndRBFKernel(), dataset=empty_data)
+        builder.update_acquisition_function(
+            acq, MultiFidelityQuadraticMeanAndRBFKernel(), dataset=empty_data
+        )
     with pytest.raises(tf.errors.InvalidArgumentError):
-        builder.update_acquisition_function(acq, QuadraticMeanAndRBFKernel())
+        builder.update_acquisition_function(acq, MultiFidelityQuadraticMeanAndRBFKernel())
 
 
 @pytest.mark.parametrize("param", [-2, 0])
@@ -598,12 +599,12 @@ def test_mumbo_raises_when_use_trajectory_sampler_and_model_without_trajectories
     builder = MUMBO(
         search_space, min_value_sampler=ThompsonSamplerFromTrajectory(sample_min_value=True)
     )
-    model = QuadraticMeanAndRBFKernel()
+    model = MultiFidelityQuadraticMeanAndRBFKernel()
     with pytest.raises(ValueError):
         builder.prepare_acquisition_function(model, dataset=dataset)  # type: ignore
 
 
-@unittest.mock.patch("trieste.acquisition.function.entropy.min_value_entropy_search")
+@unittest.mock.patch("trieste.acquisition.function.entropy.mumbo")
 @pytest.mark.parametrize(
     "min_value_sampler",
     [ExactThompsonSampler(sample_min_value=True), GumbelSampler(sample_min_value=True)],
@@ -614,7 +615,7 @@ def test_mumbo_builder_builds_min_value_samples(
     dataset = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
     builder = MUMBO(search_space, min_value_sampler=min_value_sampler)
-    model = QuadraticMeanAndRBFKernelWithSamplers(dataset)
+    model = MultiFidelityQuadraticMeanAndRBFKernelWithSamplers(dataset)
     model.kernel = (
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
@@ -637,7 +638,9 @@ def test_mumbo_builder_updates_acquisition_function(
     min_value_sampler: ThompsonSampler[GaussianProcess],
 ) -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
-    model = QuadraticMeanAndRBFKernel(noise_variance=tf.constant(1e-10, dtype=tf.float64))
+    model = MultiFidelityQuadraticMeanAndRBFKernel(
+        noise_variance=tf.constant(1e-10, dtype=tf.float64)
+    )
     model.kernel = (
         gpflow.kernels.RBF()
     )  # need a gpflow kernel object for random feature decompositions
@@ -676,7 +679,7 @@ def test_mumbo_builder_builds_min_value_samples_trajectory_sampler(
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
     ys = quadratic(xs)
     dataset = Dataset(xs, ys)
-    model = QuadraticMeanAndRBFKernelWithSamplers(
+    model = MultiFidelityQuadraticMeanAndRBFKernelWithSamplers(
         dataset=dataset, noise_variance=tf.constant(1e-10, dtype=tf.float64)
     )
     model.kernel = (
@@ -702,44 +705,20 @@ def test_mumbo_raises_for_min_values_samples_with_invalid_shape(
     samples: TensorType,
 ) -> None:
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        mumbo(QuadraticMeanAndRBFKernel(), samples)
+        mumbo(MultiFidelityQuadraticMeanAndRBFKernel(), samples)
 
 
 @pytest.mark.parametrize("at", [tf.constant([[0.0], [1.0]]), tf.constant([[[0.0], [1.0]]])])
 def test_mumbo_raises_for_invalid_batch_size(at: TensorType) -> None:
-    mes = mumbo(QuadraticMeanAndRBFKernel(), tf.constant([[1.0], [2.0]]))
+    mes = mumbo(MultiFidelityQuadraticMeanAndRBFKernel(), tf.constant([[1.0], [2.0]]))
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         mes(at)
 
 
 def test_mumbo_returns_correct_shape() -> None:
-    model = QuadraticMeanAndRBFKernel()
+    model = MultiFidelityQuadraticMeanAndRBFKernel()
     min_value_samples = tf.constant([[1.0], [2.0]])
     query_at = tf.linspace([[-10.0]], [[10.0]], 5)
     evals = mumbo(model, min_value_samples)(query_at)
     npt.assert_array_equal(evals.shape, tf.constant([5, 1]))
-
-
-def test_mumbo_chooses_same_as_probability_of_improvement() -> None:
-    """
-    When based on a single max-value sample, MES should choose the same point that probability of
-    improvement would when calcualted with the max-value as its threshold (See :cite:`wang2017max`).
-    """
-
-    kernel = tfp.math.psd_kernels.MaternFiveHalves()
-    model = GaussianProcess([Branin.objective], [kernel])
-
-    x_range = tf.linspace(0.0, 1.0, 11)
-    x_range = tf.cast(x_range, dtype=tf.float64)
-    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
-
-    min_value_sample = tf.constant([[1.0]], dtype=tf.float64)
-    mes_evals = mumbo(model, min_value_sample)(xs[..., None, :])
-
-    mean, variance = model.predict(xs)
-    gamma = (tf.cast(min_value_sample, dtype=mean.dtype) - mean) / tf.sqrt(variance)
-    norm = tfp.distributions.Normal(tf.cast(0, dtype=mean.dtype), tf.cast(1, dtype=mean.dtype))
-    pi_evals = norm.cdf(gamma)
-
-    npt.assert_array_equal(tf.argmax(mes_evals), tf.argmax(pi_evals))

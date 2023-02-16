@@ -625,10 +625,10 @@ class gibbon_repulsion_term(UpdatablePenalizationFunction):
 
 class MUMBO(MinValueEntropySearch):
     r"""
-    Builder for the MUMBO acquisition function modified for objective
-    minimisation. :class:`MinValueEntropySearch` estimates the information in the distribution
-    of the objective minimum that would be gained by evaluating the objective at a given point
-    on a given fidelity level.
+    Builder for the MUlti-task Max-value Bayesian Optimization MUMBO acquisition function modified
+    for objective minimisation. :class:`MinValueEntropySearch` estimates the information in the
+    distribution of the objective minimum that would be gained by evaluating the objective at a
+    given point on a given fidelity level.
 
     This implementation largely follows :cite:`moss2021mumbo` and samples the objective's minimum
     :math:`y^*` across a large set of sampled locations via either a Gumbel sampler, an exact
@@ -711,7 +711,7 @@ class mumbo(min_value_entropy_search):
         or is empty.
     """
 
-    #@tf.function WORK OUT WHY THIS DOESNT WORK
+    @tf.function
     def __call__(self, x: TensorType) -> TensorType:
 
         tf.debugging.assert_shapes(
@@ -729,8 +729,8 @@ class mumbo(min_value_entropy_search):
         fsd = tf.clip_by_value(
             tf.math.sqrt(fvar), CLAMP_LB, fmean.dtype.max
         )  # clip below to improve numerical stability
-
-        ymean, yvar = self._model.predict_y(tf.squeeze(x, -2))
+        noise_variance = self._model.get_observation_noise()
+        yvar = fvar + tf.cast(noise_variance, fmean.dtype)  # predictive variance of observations
         cov = self._model.covariance_with_top_fidelity(tf.squeeze(x, -2))
 
         # calculate squared correlation between observations and high-fidelity latent function
