@@ -681,6 +681,7 @@ class SupportsCovarianceWithTopFidelity(ProbabilisticModel, Protocol):
         """
         Calculate the covariance of the output at `query_point` and a given fidelity with the
         highest fidelity output at the same `query_point`.
+        
         :param query_points: The query points to calculate the covariance for, of shape [N, D+1],
             where the final column of the final dimension contains the fidelity of the query point
         :return: The covariance with the top fidelity for the `query_points`, of shape [N, P]
