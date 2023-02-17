@@ -623,19 +623,10 @@ class gibbon_repulsion_term(UpdatablePenalizationFunction):
         return repulsion_weight * repulsion
 
 
-@runtime_checkable
-class SupportsFidelityCovarianceObservationNoise(
-    SupportsCovarianceWithTopFidelity, SupportsGetObservationNoise, Protocol
-):
-    """A model that supports both reparam_sampler and get_observation_noise."""
-
-    pass
-
-
 MUMBOModelType = TypeVar(
-    "MUMBOModelType", bound=SupportsFidelityCovarianceObservationNoise, contravariant=True
+    "MUMBOModelType", bound=SupportsCovarianceWithTopFidelity, contravariant=True
 )
-""" Type variable bound to :class:`~trieste.models.SupportsFidelityCovarianceObservationNoise`. """
+""" Type variable bound to :class:`~trieste.models.SupportsCovarianceWithTopFidelity`. """
 
 
 class MUMBO(MinValueEntropySearch[MUMBOModelType]):
@@ -654,7 +645,7 @@ class MUMBO(MinValueEntropySearch[MUMBOModelType]):
 
     @overload
     def __init__(
-        self: "MUMBO[SupportsFidelityCovarianceObservationNoise]",
+        self: "MUMBO[SupportsCovarianceWithTopFidelity]",
         search_space: SearchSpace,
         num_samples: int = 5,
         grid_size: int = 1000,
@@ -785,8 +776,7 @@ class mumbo(AcquisitionFunctionClass):
         fsd = tf.clip_by_value(
             tf.math.sqrt(fvar), CLAMP_LB, fmean.dtype.max
         )  # clip below to improve numerical stability
-        noise_variance = self._model.get_observation_noise()
-        yvar = fvar + tf.cast(noise_variance, fmean.dtype)  # predictive variance of observations
+        ymean, yvar = self._model.predict_y(tf.squeeze(x, -2))
         cov = self._model.covariance_with_top_fidelity(tf.squeeze(x, -2))
 
         # calculate squared correlation between observations and high-fidelity latent function
