@@ -14,7 +14,7 @@ class SingleObjectiveMultifidelityTestProblem(SingleObjectiveTestProblem):
     num_fidelities: int
     """The number of fidelities of test function"""
 
-    fidelity_search_space: SearchSpace
+    fidelity_search_space: TaggedProductSearchSpace
     """The search space including fidelities"""
 
 

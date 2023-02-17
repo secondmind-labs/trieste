@@ -34,7 +34,9 @@ from trieste.acquisition.function.entropy import (
     GIBBON,
     MUMBO,
     MinValueEntropySearch,
+    MUMBOModelType,
     SupportsCovarianceObservationNoiseTrajectory,
+    SupportsFidelityCovarianceObservationNoise,
     gibbon_quality_term,
     gibbon_repulsion_term,
     min_value_entropy_search,
@@ -565,7 +567,7 @@ def test_mumbo_builder_raises_for_invalid_init_params(param: int) -> None:
     ],
 )
 def test_mumbo_raises_if_passed_sampler_with_sample_min_value_False(
-    sampler: ThompsonSampler[GaussianProcess],
+    sampler: ThompsonSampler[MUMBOModelType],
 ) -> None:
     search_space = Box([0, 0], [1, 1])
     with pytest.raises(ValueError):
@@ -587,7 +589,7 @@ def test_mumbo_default_sampler_is_exact_thompson() -> None:
         ThompsonSamplerFromTrajectory(sample_min_value=True),
     ],
 )
-def test_mumbo_initialized_with_passed_sampler(sampler: ThompsonSampler[GaussianProcess]) -> None:
+def test_mumbo_initialized_with_passed_sampler(sampler: ThompsonSampler[MUMBOModelType]) -> None:
     search_space = Box([0, 0], [1, 1])
     builder = MUMBO(search_space, min_value_sampler=sampler)
     assert builder._min_value_sampler == sampler
@@ -596,7 +598,7 @@ def test_mumbo_initialized_with_passed_sampler(sampler: ThompsonSampler[Gaussian
 def test_mumbo_raises_when_use_trajectory_sampler_and_model_without_trajectories() -> None:
     dataset = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
-    builder = MUMBO(
+    builder = MUMBO(  # type: ignore
         search_space, min_value_sampler=ThompsonSamplerFromTrajectory(sample_min_value=True)
     )
     model = MultiFidelityQuadraticMeanAndRBFKernel()
@@ -610,7 +612,8 @@ def test_mumbo_raises_when_use_trajectory_sampler_and_model_without_trajectories
     [ExactThompsonSampler(sample_min_value=True), GumbelSampler(sample_min_value=True)],
 )
 def test_mumbo_builder_builds_min_value_samples(
-    mocked_mves: MagicMock, min_value_sampler: ThompsonSampler[GaussianProcess]
+    mocked_mves: MagicMock,
+    min_value_sampler: ThompsonSampler[SupportsFidelityCovarianceObservationNoise],
 ) -> None:
     dataset = Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))
     search_space = Box([0, 0], [1, 1])
@@ -635,7 +638,7 @@ def test_mumbo_builder_builds_min_value_samples(
     [ExactThompsonSampler(sample_min_value=True), GumbelSampler(sample_min_value=True)],
 )
 def test_mumbo_builder_updates_acquisition_function(
-    min_value_sampler: ThompsonSampler[GaussianProcess],
+    min_value_sampler: ThompsonSampler[SupportsFidelityCovarianceObservationNoise],
 ) -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     model = MultiFidelityQuadraticMeanAndRBFKernel(

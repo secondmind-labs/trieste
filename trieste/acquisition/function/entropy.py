@@ -624,10 +624,18 @@ class gibbon_repulsion_term(UpdatablePenalizationFunction):
 
 
 @runtime_checkable
-class MUMBOModelType(SupportsCovarianceWithTopFidelity, SupportsGetObservationNoise, Protocol):
+class SupportsFidelityCovarianceObservationNoise(
+    SupportsCovarianceWithTopFidelity, SupportsGetObservationNoise, Protocol
+):
     """A model that supports both reparam_sampler and get_observation_noise."""
 
     pass
+
+
+MUMBOModelType = TypeVar(
+    "MUMBOModelType", bound=SupportsFidelityCovarianceObservationNoise, contravariant=True
+)
+""" Type variable bound to :class:`~trieste.models.SupportsFidelityCovarianceObservationNoise`. """
 
 
 class MUMBO(MinValueEntropySearch[MUMBOModelType]):
@@ -643,6 +651,35 @@ class MUMBO(MinValueEntropySearch[MUMBOModelType]):
     Gumbel sampler being the cheapest but least accurate. Default behavior is to use the
     exact Thompson sampler.
     """
+
+    @overload
+    def __init__(
+        self: "MUMBO[SupportsFidelityCovarianceObservationNoise]",
+        search_space: SearchSpace,
+        num_samples: int = 5,
+        grid_size: int = 1000,
+        min_value_sampler: None = None,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self: "MUMBO[MUMBOModelType]",
+        search_space: SearchSpace,
+        num_samples: int = 5,
+        grid_size: int = 1000,
+        min_value_sampler: Optional[ThompsonSampler[MUMBOModelType]] = None,
+    ):
+        ...
+
+    def __init__(
+        self,
+        search_space: SearchSpace,
+        num_samples: int = 5,
+        grid_size: int = 1000,
+        min_value_sampler: Optional[ThompsonSampler[MUMBOModelType]] = None,
+    ):
+        super().__init__(search_space, num_samples, grid_size, min_value_sampler)
 
     def prepare_acquisition_function(
         self,

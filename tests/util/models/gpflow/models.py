@@ -247,7 +247,7 @@ class QuadraticMeanAndRBFKernelWithSamplers(
 
 
 class MultiFidelityQuadraticMeanAndRBFKernel(
-    QuadraticMeanAndRBFKernel, SupportsCovarianceWithTopFidelity
+    QuadraticMeanAndRBFKernel, SupportsCovarianceWithTopFidelity, SupportsGetObservationNoise
 ):
     r"""
     A Gaussian process with scalar quadratic mean, an RBF kernel and
@@ -272,6 +272,9 @@ class MultiFidelityQuadraticMeanAndRBFKernel(
     def covariance_with_top_fidelity(self, x: TensorType) -> TensorType:
         mean, _ = self.predict(x)
         return tf.ones_like(mean, dtype=mean.dtype)  # dummy covariances of correct shape
+
+    def get_observation_noise(self) -> TensorType:
+        return tf.constant(1.0)
 
 
 class MultiFidelityQuadraticMeanAndRBFKernelWithSamplers(
@@ -304,6 +307,9 @@ class MultiFidelityQuadraticMeanAndRBFKernelWithSamplers(
     def covariance_with_top_fidelity(self, x: TensorType) -> TensorType:
         mean, _ = self.predict(x)
         return tf.ones_like(mean, dtype=mean.dtype)  # dummy covariances of correct shape
+
+    def get_observation_noise(self) -> TensorType:
+        return tf.constant(1.0)
 
 
 class QuadraticMeanAndRBFKernelWithBatchSamplers(

@@ -1,3 +1,16 @@
+# Copyright 2023 The Trieste Contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
@@ -23,11 +36,13 @@ from trieste.objectives import (
     Linear5Fidelity,
     SingleObjectiveMultifidelityTestProblem,
 )
-from trieste.objectives.utils import Observer, mk_observer
+from trieste.objectives.utils import mk_observer
+from trieste.observer import SingleObserver
+from trieste.space import TaggedProductSearchSpace
 from trieste.types import TensorType
 
 
-def _build_observer(problem: SingleObjectiveMultifidelityTestProblem) -> Observer:
+def _build_observer(problem: SingleObjectiveMultifidelityTestProblem) -> SingleObserver:
 
     objective_function = problem.objective
 
@@ -44,7 +59,7 @@ def _build_observer(problem: SingleObjectiveMultifidelityTestProblem) -> Observe
 
 
 def _build_nested_multifidelity_dataset(
-    problem: SingleObjectiveMultifidelityTestProblem, observer: Observer
+    problem: SingleObjectiveMultifidelityTestProblem, observer: SingleObserver
 ) -> Dataset:
 
     num_fidelities = problem.num_fidelities
@@ -72,7 +87,7 @@ def _build_nested_multifidelity_dataset(
 @pytest.mark.parametrize("problem", ((Linear2Fidelity), (Linear3Fidelity), (Linear5Fidelity)))
 def test_multifidelity_bo_finds_minima_of_linear_problem(
     problem: SingleObjectiveMultifidelityTestProblem,
-):
+) -> None:
 
     observer = _build_observer(problem)
     initial_data = _build_nested_multifidelity_dataset(problem, observer)
@@ -92,15 +107,18 @@ def test_multifidelity_bo_finds_minima_of_linear_problem(
     model.update(initial_data)
     model.optimize(initial_data)
 
-    bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+    bo = trieste.bayesian_optimizer.BayesianOptimizer[TaggedProductSearchSpace](
+        observer, search_space
+    )
     acq_builder = Product(
-        MUMBO(search_space).using("OBJECTIVE"),
+        # (Reducer doesn't support model type generics)
+        MUMBO(search_space).using("OBJECTIVE"),  # type: ignore
         CostWeighting(costs).using("OBJECTIVE"),
     )
     optimizer = generate_continuous_optimizer(num_initial_samples=10_000, num_optimization_runs=10)
-    rule = trieste.acquisition.rule.EfficientGlobalOptimization(
-        builder=acq_builder, optimizer=optimizer
-    )
+    rule = trieste.acquisition.rule.EfficientGlobalOptimization[
+        TaggedProductSearchSpace, MultifidelityAutoregressive
+    ](builder=acq_builder, optimizer=optimizer)
 
     num_steps = 5
     result = bo.optimize(num_steps, initial_data, model, acquisition_rule=rule)
