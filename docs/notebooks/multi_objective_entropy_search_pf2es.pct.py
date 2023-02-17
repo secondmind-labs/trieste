@@ -2254,7 +2254,7 @@ ask_tell = AskTellOptimizer_with_PF_inference(
 # ### Sequential MOO by \{PF\}$^2$ES (~10min)
 
 # %% [markdown]
-# We now conduct multi-objective optimization on VLMOP2 based on our sequential \{PF\}$^2$ES, the whole below process may takes around 6-10 minutes depending on the setting of `n_steps`.
+# We now conduct multi-objective optimization on VLMOP2 based on our sequential \{PF\}$^2$ES, the whole below process may takes around 6-10 minutes.
 #
 # We note since we demonstrate the plot investigation of intermediate results within each BO iter here, this consumes larger time than just performing BO for \{PF\}$^2$ES, which's acquiring time has been printed below and only takes around 4 mins.
 
@@ -2604,7 +2604,7 @@ ask_tell = AskTellOptimizer_with_PF_inference(
 )
 
 # %% [markdown]
-# We now conduct CMOO on constraint-VLMOP2 based on our sequential \{PF\}$^2$ES, the whole below process may takes around 6-10 minutes depending on the setting of `n_steps`. Note the experiments conducted below may take 20 minutes
+# We now conduct CMOO on constraint-VLMOP2 based on our sequential \{PF\}$^2$ES, the whole below process may takes around 6-10 minutes. Note the experiments conducted below may take 20 minutes
 
 # %%
 import matplotlib
