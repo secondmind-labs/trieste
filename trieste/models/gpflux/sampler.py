@@ -240,17 +240,18 @@ class DeepGaussianProcessDecoupledLayer(ABC):
         tf.debugging.assert_positive(num_features)
         self._num_features = num_features
 
-        if isinstance(layer.kernel, gpflow.kernels.MultioutputKernel):
-            if not isinstance(layer.kernel, gpflow.kernels.SharedIndependent):
-                raise ValueError(
-                    f"Multioutput kernels other than gpflow.kernels.SharedIndependent are not"
-                    f"currently supported, received {type(layer.kernel)}"
-                )
-            self._kernel = layer.kernel.kernel
-        else:
-            # GPLayers are supposed to only use multioutput kernels but we also use them with
-            # simple kernels
-            self._kernel = layer.kernel  # type: ignore[unreachable]
+        self._kernel = layer.kernel
+        # if isinstance(layer.kernel, gpflow.kernels.MultioutputKernel):
+        #     if not isinstance(layer.kernel, gpflow.kernels.SharedIndependent):
+        #         raise ValueError(
+        #             f"Multioutput kernels other than gpflow.kernels.SharedIndependent are not"
+        #             f"currently supported, received {type(layer.kernel)}"
+        #         )
+        #     self._kernel = layer.kernel.kernel
+        # else:
+        #     # GPLayers are supposed to only use multioutput kernels but we also use them with
+        #     # simple kernels
+        #     self._kernel = layer.kernel  # type: ignore[unreachable]
 
         self._feature_functions = ResampleableDecoupledDeepGaussianProcessFeatureFunctions(
             layer, num_features
@@ -297,10 +298,11 @@ class DeepGaussianProcessDecoupledLayer(ABC):
         )
 
         flat_x, unflatten = flatten_leading_dims(x)
-        flattened_feature_evaluations = self._feature_functions(flat_x)  # [P, N, L + M] or [N, L + M]
-        feature_evaluations = unflatten(flattened_feature_evaluations)[
-            ..., None
-        ]  # [N, B, L + M, 1]
+        flattened_feature_evaluations = self._feature_functions(flat_x)  # [N, L + M, P] or [N, L + M]
+        if self._feature_functions.num_latent_gps is not None:
+            feature_evaluations = unflatten(flattened_feature_evaluations)  # [N, B, L + M, P]
+        else:
+            feature_evaluations = unflatten(flattened_feature_evaluations)[..., None]  # [N, B, L + M, 1]
 
         return tf.reduce_sum(
             feature_evaluations * self._weights_sample, -2
@@ -337,7 +339,10 @@ class DeepGaussianProcessDecoupledLayer(ABC):
 
         q_mu = self._layer.q_mu  # [M, P]
         q_sqrt = self._layer.q_sqrt  # [P, M, M]
-        Kmm = self._kernel.K(inducing_points, inducing_points)  # [M, M]
+        if self._feature_functions.num_latent_gps is not None:
+            Kmm = self._kernel.K(inducing_points, inducing_points, full_output_cov=False)  # [P, M, M]
+        else:
+            Kmm = self._kernel.K(inducing_points, inducing_points)
         Kmm += tf.eye(tf.shape(inducing_points)[0], dtype=Kmm.dtype) * DEFAULTS.JITTER
         whiten = self._layer.whiten
         M, P = tf.shape(q_mu)[0], tf.shape(q_mu)[1]
@@ -347,10 +352,11 @@ class DeepGaussianProcessDecoupledLayer(ABC):
                 (inducing_points, ["M", "D"]),
                 (q_mu, ["M", "P"]),
                 (q_sqrt, ["P", "M", "M"]),
-                (Kmm, ["M", "M"]),
+                # (Kmm, ["M", "M"]),
             ]
         )
 
+        # TODO: SIMPLIFY SHAPES AND TRANSPOSES
         def weight_sampler(batch_size: int) -> TensorType:
             prior_weights = tf.random.normal([batch_size, P, self._num_features, 1], dtype=tf.float64)  # [B, P, L, 1]
 
@@ -361,8 +367,9 @@ class DeepGaussianProcessDecoupledLayer(ABC):
             u_sample = q_mu + tf.linalg.matrix_transpose(u_noise_sample[..., 0])  # [B, M, P]
 
             if whiten:
-                Luu = tf.linalg.cholesky(Kmm)  # [M, M]
-                u_sample = tf.matmul(Luu, u_sample)
+                Luu = tf.linalg.cholesky(Kmm)  # [M, M] or [P, M, M]
+                u_sample = tf.matmul(Luu, tf.linalg.matrix_transpose(u_sample)[..., None])  # [B, P, M, 1]
+                u_sample = tf.linalg.matrix_transpose(u_sample[..., 0])  # [B, M, P]
 
             phi_Z = self._feature_functions(inducing_points)[:, : self._num_features]  # [M, L] or [M, L, P]
             if tf.experimental.numpy.ndim(phi_Z) == 3:
@@ -370,9 +377,11 @@ class DeepGaussianProcessDecoupledLayer(ABC):
             weight_space_prior_Z = tf.transpose((phi_Z @ prior_weights)[..., 0], perm=[0, 2, 1])  # [B, M, P]
 
             diff = u_sample - weight_space_prior_Z  # [B, M, P]
-            v = compute_A_inv_b(Kmm, diff)  # [B, M, P]
+            diff = tf.transpose(diff[..., None], perm=[0, 2, 1, 3])  # [B, P, M, 1]
+            v = compute_A_inv_b(Kmm, diff)  # [B, P, M, 1]
+            v = tf.transpose(v[..., 0], perm=[0, 2, 1])  # [B, M, P]
 
-            return tf.concat([prior_weights, v], axis=1)  # [B, L + M, P]
+            return tf.concat([tf.linalg.matrix_transpose(prior_weights[..., 0]), v], axis=1)  # [B, L + M, P]
 
         return weight_sampler
 
@@ -397,10 +406,11 @@ class ResampleableDecoupledDeepGaussianProcessFeatureFunctions(RandomFourierFeat
                 f"gpflux.layers.GPLayer layers, received {type(layer)} instead"
             )
 
-        if isinstance(layer.kernel, gpflow.kernels.SharedIndependent):
-            self._kernel = layer.kernel.kernel
-        else:
-            self._kernel = layer.kernel
+        self._kernel = layer.kernel
+        # if isinstance(layer.kernel, gpflow.kernels.SharedIndependent):
+        #     self._kernel = layer.kernel.kernel
+        # else:
+        #     self._kernel = layer.kernel
         self._n_components = n_components
         super().__init__(self._kernel, self._n_components, dtype=tf.float64)
 
@@ -409,9 +419,14 @@ class ResampleableDecoupledDeepGaussianProcessFeatureFunctions(RandomFourierFeat
         else:
             inducing_points = layer.inducing_variable.inducing_variable.Z
 
-        self._canonical_feature_functions = lambda x: tf.linalg.matrix_transpose(
-            self._kernel.K(inducing_points, x)
-        )
+        if self.num_latent_gps is not None:
+            self._canonical_feature_functions = lambda x: tf.linalg.matrix_transpose(
+                self._kernel.K(inducing_points, x, full_output_cov=False)
+            )
+        else:
+            self._canonical_feature_functions = lambda x: tf.linalg.matrix_transpose(
+                self._kernel.K(inducing_points, x)
+            )
 
         dummy_X = inducing_points[0:1, :]
 
@@ -435,9 +450,9 @@ class ResampleableDecoupledDeepGaussianProcessFeatureFunctions(RandomFourierFeat
         Evaluate and combine prior basis functions and canonical basic functions at the input.
         """
         fourier_feature_eval = super().__call__(x)  # [N, L] or [P, N, L]
-        canonical_feature_eval = self._canonical_feature_functions(x)  # [N, M]
+        canonical_feature_eval = self._canonical_feature_functions(x)  # [P, N, M] or [N, M]
         if self.num_latent_gps is not None:
-            canonical_feature_eval = tf.tile(canonical_feature_eval[None, :, :], [self.num_latent_gps, 1, 1])  # [P, N, M]
+            # canonical_feature_eval = tf.tile(canonical_feature_eval[None, :, :], [self.num_latent_gps, 1, 1])  # [P, N, M]
             return tf.transpose(tf.concat([fourier_feature_eval, canonical_feature_eval], axis=-1), perm=[1, 2, 0])  # [N, L + M, P]
         else:
             return tf.concat([fourier_feature_eval, canonical_feature_eval], axis=-1)  # [N, L + M]
