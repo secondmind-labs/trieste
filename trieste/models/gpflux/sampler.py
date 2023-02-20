@@ -372,7 +372,7 @@ class DeepGaussianProcessDecoupledLayer(ABC):
                 u_sample = tf.linalg.matrix_transpose(u_sample[..., 0])  # [B, M, P]
 
             phi_Z = self._feature_functions(inducing_points)[:, : self._num_features]  # [M, L] or [M, L, P]
-            if tf.experimental.numpy.ndim(phi_Z) == 3:
+            if self._feature_functions.num_latent_gps is not None:
                 phi_Z = tf.transpose(phi_Z, perm=[2, 0, 1])  # [P, M, L]
             weight_space_prior_Z = tf.transpose((phi_Z @ prior_weights)[..., 0], perm=[0, 2, 1])  # [B, M, P]
 
