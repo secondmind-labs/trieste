@@ -75,13 +75,13 @@ def _branin_internals(x: TensorType, scale: TensorType, translate: TensorType) -
     x0 = x[..., :1] * 15.0 - 5.0
     x1 = x[..., 1:] * 15.0
 
-    b = 5.1 / (4 * math.pi ** 2)
+    b = 5.1 / (4 * math.pi**2)
     c = 5 / math.pi
     r = 6
     s = 10
     t = 1 / (8 * math.pi)
 
-    return scale * ((x1 - b * x0 ** 2 + c * x0 - r) ** 2 + s * (1 - t) * tf.cos(x0) + translate)
+    return scale * ((x1 - b * x0**2 + c * x0 - r) ** 2 + s * (1 - t) * tf.cos(x0) + translate)
 
 
 def branin(x: TensorType) -> TensorType:
@@ -236,9 +236,9 @@ def logarithmic_goldstein_price(x: TensorType) -> TensorType:
     x0, x1 = tf.split(4 * x - 2, 2, axis=-1)
 
     a = (x0 + x1 + 1) ** 2
-    b = 19 - 14 * x0 + 3 * x0 ** 2 - 14 * x1 + 6 * x0 * x1 + 3 * x1 ** 2
+    b = 19 - 14 * x0 + 3 * x0**2 - 14 * x1 + 6 * x0 * x1 + 3 * x1**2
     c = (2 * x0 - 3 * x1) ** 2
-    d = 18 - 32 * x0 + 12 * x0 ** 2 + 48 * x1 - 36 * x0 * x1 + 27 * x1 ** 2
+    d = 18 - 32 * x0 + 12 * x0**2 + 48 * x1 - 36 * x0 * x1 + 27 * x1**2
 
     return (1 / 2.427) * (tf.math.log((1 + a * b) * (30 + c * d)) - 8.693)
 
@@ -379,7 +379,7 @@ def ackley_5(x: TensorType) -> TensorType:
 
     x = (x - 0.5) * (32.768 * 2.0)
 
-    exponent_1 = -0.2 * tf.math.sqrt((1 / 5.0) * tf.reduce_sum(x ** 2, -1))
+    exponent_1 = -0.2 * tf.math.sqrt((1 / 5.0) * tf.reduce_sum(x**2, -1))
     exponent_2 = (1 / 5.0) * tf.reduce_sum(tf.math.cos(2.0 * math.pi * x), -1)
 
     function = (
@@ -578,7 +578,7 @@ def trid_10(x: TensorType) -> TensorType:
 Trid10 = SingleObjectiveTestProblem(
     name="Trid 10",
     objective=trid_10,
-    search_space=Box([-(10 ** 2)], [10 ** 2]) ** 10,
+    search_space=Box([-(10**2)], [10**2]) ** 10,
     minimizers=tf.constant([[i * (10 + 1 - i) for i in range(1, 10 + 1)]], tf.float64),
     minimum=tf.constant([-10 * (10 + 4) * (10 - 1) / 6], tf.float64),
 )

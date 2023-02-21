@@ -209,7 +209,6 @@ def test_squeeze_raises_for_invalid_alpha(alpha: float) -> None:
 
 
 def test_check_optimizer_raises_for_invalid_optimizer_wrapper_combination() -> None:
-
     with pytest.raises(ValueError):
         optimizer1 = BatchOptimizer(gpflow.optimizers.Scipy())
         check_optimizer(optimizer1)

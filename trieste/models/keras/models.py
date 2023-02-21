@@ -257,7 +257,7 @@ class DeepEnsemble(
             tf.math.reduce_mean(
                 [dist.variance() + dist.mean() ** 2 for dist in ensemble_distributions], axis=0
             )
-            - predicted_means ** 2
+            - predicted_means**2
         )
 
         return predicted_means, predicted_vars
