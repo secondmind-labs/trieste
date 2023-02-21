@@ -1410,7 +1410,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
 
         Sigma = tf.zeros(shape=(B, Q, Q, Q))
 
-        def compute_single_slice(q: int) -> TensorType:
+        def compute_single_slice(q: int) -> TensorType:  # pragma: no cover (tf.map_fn)
 
             diq = self._delta(q, Q, B, transpose=False, dtype=dtype)
             dqj = self._delta(q, Q, B, transpose=True, dtype=dtype)
@@ -1559,7 +1559,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
 
         R_whole = Sigma_uv - Sigma_iu * Sigma_iv / Sigma_ii
 
-        def create_blocks(q: int) -> TensorType:
+        def create_blocks(q: int) -> TensorType: # pragma: no cover (tf.map_fn)
 
             block1 = tf.concat(
                 [
