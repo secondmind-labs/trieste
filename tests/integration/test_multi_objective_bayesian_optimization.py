@@ -47,7 +47,7 @@ from trieste.types import TensorType
 
 try:
     import pymoo
-except ImportError: # pragma: no cover (tested but not by coverage)
+except ImportError:  # pragma: no cover (tested but not by coverage)
     pymoo = None
 
 

@@ -1558,7 +1558,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
 
         R_whole = Sigma_uv - Sigma_iu * Sigma_iv / Sigma_ii
 
-        def create_blocks(q: int) -> TensorType: # pragma: no cover (tf.map_fn)
+        def create_blocks(q: int) -> TensorType:  # pragma: no cover (tf.map_fn)
             block1 = tf.concat(
                 [
                     R_whole[:, q, :q, :q],
