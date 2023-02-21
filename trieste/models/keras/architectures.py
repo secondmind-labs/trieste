@@ -282,7 +282,6 @@ class GaussianNetwork(KerasEnsembleNetwork):
         self._independent = independent
 
     def _gen_input_tensor(self) -> tf.keras.Input:
-
         input_tensor = tf.keras.Input(
             shape=self.input_tensor_spec.shape,
             dtype=self.input_tensor_spec.dtype,
@@ -291,7 +290,6 @@ class GaussianNetwork(KerasEnsembleNetwork):
         return input_tensor
 
     def _gen_hidden_layers(self, input_tensor: tf.Tensor) -> tf.Tensor:
-
         for index, hidden_layer_args in enumerate(self._hidden_layer_args):
             layer_name = f"{self.network_name}dense_{index}"
             layer = tf.keras.layers.Dense(**hidden_layer_args, name=layer_name)
@@ -300,7 +298,6 @@ class GaussianNetwork(KerasEnsembleNetwork):
         return input_tensor
 
     def _gen_multi_output_layer(self, input_tensor: tf.Tensor) -> tf.Tensor:
-
         dist_layer = tfp.layers.IndependentNormal if self._independent else MultivariateNormalTriL
         n_params = dist_layer.params_size(self.flattened_output_shape)
 
@@ -317,7 +314,6 @@ class GaussianNetwork(KerasEnsembleNetwork):
         return distribution
 
     def _gen_single_output_layer(self, input_tensor: tf.Tensor) -> tf.Tensor:
-
         parameter_layer = tf.keras.layers.Dense(2, name=self.network_name + "dense_parameters")(
             input_tensor
         )

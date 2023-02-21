@@ -73,9 +73,11 @@ class LocalPenalization(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel])
         self,
         search_space: SearchSpace,
         num_samples: int = 500,
-        penalizer: Callable[
-            [ProbabilisticModel, TensorType, TensorType, TensorType],
-            Union[PenalizationFunction, UpdatablePenalizationFunction],
+        penalizer: Optional[
+            Callable[
+                [ProbabilisticModel, TensorType, TensorType, TensorType],
+                Union[PenalizationFunction, UpdatablePenalizationFunction],
+            ]
         ] = None,
         base_acquisition_function_builder: ExpectedImprovement
         | MinValueEntropySearch[ProbabilisticModel]
@@ -305,7 +307,6 @@ class local_penalizer(UpdatablePenalizationFunction):
 
 
 class soft_local_penalizer(local_penalizer):
-
     r"""
     Return the soft local penalization function used for single-objective greedy batch Bayesian
     optimization in :cite:`Gonzalez:2016`.
@@ -459,7 +460,6 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
         models: Mapping[Tag, FantasizerModelOrStack],
         datasets: Optional[Mapping[Tag, Dataset]],
     ) -> AcquisitionFunction:
-
         if self._base_acquisition_function is not None:
             self._base_acquisition_function = self._builder.update_acquisition_function(
                 self._base_acquisition_function, models, datasets
@@ -476,7 +476,6 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
         datasets: Optional[Mapping[Tag, Dataset]],
         pending_points: TensorType,
     ) -> AcquisitionFunction:
-
         tf.debugging.assert_rank(pending_points, 2)
 
         fantasized_data = {

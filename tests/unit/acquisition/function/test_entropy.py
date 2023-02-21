@@ -391,7 +391,6 @@ def test_gibbon_builder_builds_min_value_samples(
 def test_gibbon_builder_updates_acquisition_function(
     min_value_sampler: ThompsonSampler[GaussianProcess],
 ) -> None:
-
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     x_range = tf.cast(tf.linspace(0.0, 1.0, 5), dtype=tf.float64)
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
