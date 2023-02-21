@@ -32,7 +32,7 @@ class _QuadraticPredictor(GPflowPredictor):
         return _QuadraticGPModel()
 
     def update(self, dataset: Dataset) -> None:
-        pass
+        return
 
 
 class _QuadraticGPModel(GPModel):

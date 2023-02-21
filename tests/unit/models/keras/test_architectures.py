@@ -142,7 +142,7 @@ def test_keras_ensemble_can_be_compiled() -> None:
 
 class _DummyKerasEnsembleNetwork(KerasEnsembleNetwork):
     def connect_layers(self) -> Tuple[tf.Tensor, tf.Tensor]:
-        pass
+        raise NotImplementedError
 
 
 def test_keras_ensemble_network_raises_on_incorrect_tensor_spec() -> None:

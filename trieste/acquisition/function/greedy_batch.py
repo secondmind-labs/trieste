@@ -73,10 +73,10 @@ class LocalPenalization(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel])
         self,
         search_space: SearchSpace,
         num_samples: int = 500,
-        penalizer: Callable[
+        penalizer: Optional[Callable[
             [ProbabilisticModel, TensorType, TensorType, TensorType],
             Union[PenalizationFunction, UpdatablePenalizationFunction],
-        ] = None,
+        ]] = None,
         base_acquisition_function_builder: ExpectedImprovement
         | MinValueEntropySearch[ProbabilisticModel]
         | MakePositive[ProbabilisticModel]

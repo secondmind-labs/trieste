@@ -58,10 +58,10 @@ class PseudoTrainableProbModel(TrainableProbabilisticModel, Protocol):
     """A model that does nothing on :meth:`update` and :meth:`optimize`."""
 
     def update(self, dataset: Dataset) -> None:
-        pass
+        return
 
     def optimize(self, dataset: Dataset) -> None:
-        pass
+        return
 
 
 class GaussianMarginal(ProbabilisticModel):

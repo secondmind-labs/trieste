@@ -147,12 +147,12 @@ class GizmoModel(
     def predict(
         self, query_points: TensorType
     ) -> tuple[TensorType, TensorType]:
-        ...
+        raise NotImplementedError
 
     def reparam_sampler(
         self, num_samples: int
     ) -> ReparametrizationSampler[GizmoModel]:
-        ...
+        raise NotImplementedError
 
     ...  # sample, update, optimize, get_observation_noise
 

@@ -66,7 +66,7 @@ class _QuadraticPredictor(GPfluxPredictor):
         return samples
 
     def update(self, dataset: Dataset) -> None:
-        pass
+        return
 
 
 class _QuadraticGPModel(DeepGP):

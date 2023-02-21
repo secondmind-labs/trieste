@@ -338,7 +338,7 @@ class DeepEnsemble(
         `TrainableProbabilisticModel` interface, however, requires an update method, so
         here we simply pass the execution.
         """
-        pass
+        return
 
     def optimize(self, dataset: Dataset) -> None:
         """
