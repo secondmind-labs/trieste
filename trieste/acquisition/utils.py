@@ -95,7 +95,6 @@ def split_acquisition_function_calls(
         search_space: SearchSpaceType,
         f: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]],
     ) -> TensorType:
-
         af, n = f if isinstance(f, tuple) else (f, 1)
         taf = split_acquisition_function(af, split_size)
         return optimizer(search_space, (taf, n) if isinstance(f, tuple) else taf)

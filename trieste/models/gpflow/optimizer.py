@@ -37,7 +37,6 @@ def _create_loss_function_internal(
 
 
 class _TrainingLossClosureBuilder:
-
     # A cached, compiled training loss closure builder to avoid having to generate a new
     # closure each time. Stored in a separate class, so we can avoid pickling it.
 
@@ -57,7 +56,6 @@ def _create_loss_function_external(
     data: TrainingData,
     compile: bool = False,
 ) -> LossClosure:
-
     if not compile:
         return model.training_loss_closure(data, compile=False)
 
