@@ -1,3 +1,19 @@
+# Copyright 2023 The Trieste Contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""
+This module contains synthetic multi-fidelity objective functions, useful for experimentation.
+"""
 from dataclasses import dataclass
 
 import numpy as np
@@ -49,9 +65,7 @@ def _linear_multifidelity_search_space_builder(
     n_fidelities: int, input_search_space: SearchSpace
 ) -> TaggedProductSearchSpace:
 
-    fidelity_search_space = DiscreteSearchSpace(
-        np.array([np.arange(n_fidelities, dtype=float)]).reshape(-1, 1)
-    )
+    fidelity_search_space = DiscreteSearchSpace(np.arange(n_fidelities, dtype=float).reshape(-1, 1))
     search_space = TaggedProductSearchSpace(
         [input_search_space, fidelity_search_space], ["input", "fidelity"]
     )
