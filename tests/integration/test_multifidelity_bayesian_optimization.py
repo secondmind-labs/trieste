@@ -43,11 +43,9 @@ from trieste.types import TensorType
 
 
 def _build_observer(problem: SingleObjectiveMultifidelityTestProblem) -> SingleObserver:
-
     objective_function = problem.objective
 
     def noisy_objective(x: TensorType) -> TensorType:
-
         _, fidelities = check_and_extract_fidelity_query_points(x)
         y = objective_function(x)
         not_lowest_fidelity = fidelities > 0
@@ -61,7 +59,6 @@ def _build_observer(problem: SingleObjectiveMultifidelityTestProblem) -> SingleO
 def _build_nested_multifidelity_dataset(
     problem: SingleObjectiveMultifidelityTestProblem, observer: SingleObserver
 ) -> Dataset:
-
     num_fidelities = problem.num_fidelities
     initial_sample_sizes = [10 + 2 * (num_fidelities - i) for i in range(num_fidelities)]
     fidelity_samples = list()
@@ -88,7 +85,6 @@ def _build_nested_multifidelity_dataset(
 def test_multifidelity_bo_finds_minima_of_linear_problem(
     problem: SingleObjectiveMultifidelityTestProblem,
 ) -> None:
-
     observer = _build_observer(problem)
     initial_data = _build_nested_multifidelity_dataset(problem, observer)
     costs = [2.0 * (n + 1) for n in range(problem.num_fidelities)]
