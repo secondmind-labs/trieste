@@ -387,7 +387,7 @@ class GaussianProcessRegression(
         L_add = tf.linalg.cholesky(cov_add + noise)  # [..., L, N, N]
         A = tf.linalg.triangular_solve(L_add, cov_cross, lower=True)  # [..., L, N, M]
         var_qp_new = var_qp - leading_transpose(
-            tf.reduce_sum(A ** 2, axis=-2), [..., -1, -2]
+            tf.reduce_sum(A**2, axis=-2), [..., -1, -2]
         )  # [..., M, L]
 
         mean_add_diff = additional_data.observations - mean_add  # [..., N, L]
@@ -1214,7 +1214,6 @@ class VariationalGaussianProcess(
 
         model = self.model
         if not all(isinstance(x, tf.Variable) and x.shape[0] is None for x in model.data):
-
             variable_data = (
                 tf.Variable(
                     model.data[0],
@@ -1278,7 +1277,6 @@ class VariationalGaussianProcess(
         model = self.model
 
         if self._use_natgrads:  # optimize variational params with natgrad optimizer
-
             natgrad_optimizer = gpflow.optimizers.NaturalGradient(gamma=self._natgrad_gamma)
             base_optimizer = self.optimizer
 
@@ -1439,7 +1437,6 @@ class MultifidelityAutoregressive(TrainableProbabilisticModel, SupportsCovarianc
         for fidelity, (fidelity_residual_model, rho) in enumerate(
             zip(self.fidelity_residual_models, self.rho)
         ):
-
             if fidelity == 0:
                 continue
 
@@ -1466,7 +1463,7 @@ class MultifidelityAutoregressive(TrainableProbabilisticModel, SupportsCovarianc
 
             # Calculate mean and var for all columns (will be incorrect for qps with fid < fidelity)
             new_fidelity_signal_mean = rho * signal_mean + fidelity_residual_mean
-            new_fidelity_signal_var = fidelity_residual_var + (rho ** 2) * signal_var
+            new_fidelity_signal_var = fidelity_residual_var + (rho**2) * signal_var
 
             # Mask out incorrect values and update mean and var for correct ones
             mask = query_points_fidelity_col >= fidelity_float
@@ -1518,7 +1515,6 @@ class MultifidelityAutoregressive(TrainableProbabilisticModel, SupportsCovarianc
         )  # [S, N, P]
 
         for fidelity in range(1, int(tf.reduce_max(query_points_fidelity_col)) + 1):
-
             fidelity_residual_sample = self.fidelity_residual_models[fidelity].sample(
                 query_points_wo_fidelity, num_samples
             )
@@ -1554,7 +1550,6 @@ class MultifidelityAutoregressive(TrainableProbabilisticModel, SupportsCovarianc
         )
 
         for fidelity in range(1, self.num_fidelities):
-
             fidelity_observation_noise = (
                 self.rho[fidelity] ** 2
             ) * observation_noise + self.fidelity_residual_models[fidelity].get_observation_noise()
@@ -1652,7 +1647,6 @@ class MultifidelityAutoregressive(TrainableProbabilisticModel, SupportsCovarianc
         _, f_var = self.predict(query_points)
 
         for fidelity in range(self.num_fidelities - 1, -1, -1):
-
             mask = fidelities < fidelity
 
             f_var = tf.where(mask, f_var, f_var * self.rho[fidelity])
@@ -1727,7 +1721,6 @@ class MultifidelityNonlinearAutoregressive(
         )  # [..., S, N, 1]
 
         for fidelity in range(1, self.num_fidelities):
-
             qp_repeated = tf.repeat(
                 query_points_wo_fidelity[..., None, :, :], num_samples, axis=-3
             )  # [..., S, N, D]
@@ -1786,7 +1779,6 @@ class MultifidelityNonlinearAutoregressive(
         )
 
         for fidelity in range(1, self.num_fidelities):
-
             fidelity_observation_noise = self.fidelity_models[fidelity].get_observation_noise()
 
             mask = query_points_fidelity_col >= fidelity
@@ -1838,7 +1830,6 @@ class MultifidelityNonlinearAutoregressive(
         # Predict for all fidelities but stop updating once we have
         # reached desired fidelity for each query point
         for fidelity in range(1, self.num_fidelities):
-
             # sample_mean [..., N, 1, S]
             # sample_var [..., N, 1, S]
             (
@@ -1935,7 +1926,6 @@ class MultifidelityNonlinearAutoregressive(
             if fidelity == 0:
                 self.fidelity_models[0].update(dataset_for_fidelity)
             else:
-
                 cur_fidelity_model = self.fidelity_models[fidelity]
                 new_final_query_point_col, _ = self.predict(
                     add_fidelity_column(dataset_for_fidelity.query_points, fidelity - 1)
@@ -2006,7 +1996,6 @@ class MultifidelityNonlinearAutoregressive(
         max_fidelity_sample = tf.identity(signal_sample)
 
         for fidelity in range(1, self.num_fidelities):
-
             qp_repeated = tf.repeat(
                 query_points_wo_fidelity[None, :, :], num_samples, axis=0
             )  # [S, N, D]

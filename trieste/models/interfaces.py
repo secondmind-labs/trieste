@@ -86,6 +86,7 @@ class ProbabilisticModel(Protocol):
             ``query_points``. For a predictive distribution with event shape E, the mean and
             variance will both have shape [...] + E.
         """
+        pass  # (required so that mypy doesn't think this method is abstract)
         raise NotImplementedError(
             f"Model {self!r} does not support predicting observations, just the latent function"
         )
@@ -96,7 +97,7 @@ class ProbabilisticModel(Protocol):
 
         :param dataset: Optional data that can be used to log additional data-based model summaries.
         """
-        pass
+        return
 
 
 @runtime_checkable

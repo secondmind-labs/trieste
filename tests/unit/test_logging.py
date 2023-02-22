@@ -179,7 +179,7 @@ def test_tensorboard_logging(mocked_summary_scalar: unittest.mock.MagicMock) -> 
         data, models = {tag: mk_dataset([[0.0]], [[0.0]])}, {tag: _PseudoTrainableQuadratic()}
         steps = 5
         rule = FixedAcquisitionRule([[0.0]])
-        BayesianOptimizer(lambda x: {tag: Dataset(x, x ** 2)}, Box([-1], [1])).optimize(
+        BayesianOptimizer(lambda x: {tag: Dataset(x, x**2)}, Box([-1], [1])).optimize(
             steps, data, models, rule
         )
 
@@ -205,7 +205,6 @@ def test_wallclock_time_logging(
     mocked_summary_scalar: unittest.mock.MagicMock,
     fit_initial_model: bool,
 ) -> None:
-
     model_fit_time = 0.2
     acq_time = 0.1
 
@@ -231,7 +230,7 @@ def test_wallclock_time_logging(
         }
         steps = 3
         rule = _FixedAcquisitionRuleWithWaiting([[0.0]])
-        BayesianOptimizer(lambda x: {tag: Dataset(x, x ** 2)}, Box([-1], [1])).optimize(
+        BayesianOptimizer(lambda x: {tag: Dataset(x, x**2)}, Box([-1], [1])).optimize(
             steps, data, models, rule, fit_initial_model=fit_initial_model
         )
 
@@ -270,7 +269,7 @@ def test_tensorboard_logging_ask_tell(mocked_summary_scalar: unittest.mock.Magic
         ask_tell = AskTellOptimizer(Box([-1], [1]), data, models, rule)
         with step_number(3):
             new_point = ask_tell.ask()
-            ask_tell.tell({tag: Dataset(new_point, new_point ** 2)})
+            ask_tell.tell({tag: Dataset(new_point, new_point**2)})
 
     ordered_scalar_names = [
         "wallclock/model_fitting",

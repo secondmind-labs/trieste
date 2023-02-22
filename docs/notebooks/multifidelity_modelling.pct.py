@@ -47,10 +47,10 @@ tf.random.set_seed(1793)
 # 1. The lowest fidelity is noise-free
 # 2. The data is cascading, e.g any point that has an observation at a high fidelity also has one at the lower fidelities.
 
+
 # %%
 # Define the multifidelity simulator
 def linear_simulator(x_input, fidelity, add_noise=False):
-
     f = 0.5 * ((6.0 * x_input - 2.0) ** 2) * tf.math.sin(
         12.0 * x_input - 4.0
     ) + 10.0 * (x_input - 1.0)
@@ -83,14 +83,13 @@ plt.show()
 # %%
 from trieste.data import Dataset, check_and_extract_fidelity_query_points
 
+
 # Create an observer class to deal with multifidelity input query points
 class Observer:
     def __init__(self, simulator):
-
         self.simulator = simulator
 
     def __call__(self, x, add_noise=True):
-
         # Extract raw input and fidelity columns
         x_input, x_fidelity = check_and_extract_fidelity_query_points(x)
 
@@ -293,6 +292,7 @@ plt.show()
 
 # %% [markdown]
 # ## A more complex model for non-linear problems
+
 
 # %% [markdown]
 # A more complex multifidelity model (NARGP, here `MultifidelityNonlinearAutoregressive`), originally proposed in :cite:`perdikaris2017nonlinear` is also available, to tackle the case where the relation between fidelities is strongly non-linear.

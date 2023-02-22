@@ -142,11 +142,10 @@ def test_keras_ensemble_can_be_compiled() -> None:
 
 class _DummyKerasEnsembleNetwork(KerasEnsembleNetwork):
     def connect_layers(self) -> Tuple[tf.Tensor, tf.Tensor]:
-        pass
+        raise NotImplementedError
 
 
 def test_keras_ensemble_network_raises_on_incorrect_tensor_spec() -> None:
-
     with pytest.raises(ValueError):
         _DummyKerasEnsembleNetwork(
             [1],
@@ -182,7 +181,6 @@ def test_keras_ensemble_network_network_and_layer_name() -> None:
 
 @pytest.mark.parametrize("n_dims", list(range(10)))
 def test_keras_ensemble_network_flattened_output_shape(n_dims: int) -> None:
-
     shape = np.random.randint(1, 10, (n_dims,))
     tensor = np.random.randint(0, 1, shape)
     tensor_spec = tf.TensorSpec(shape)

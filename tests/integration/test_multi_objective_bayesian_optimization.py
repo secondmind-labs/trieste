@@ -164,7 +164,6 @@ def test_multi_objective_optimizer_finds_pareto_front_of_the_VLMOP2_function(
 
         set_summary_filter(lambda x: True)
         with tensorboard_writer(summary_writer):
-
             dataset = (
                 BayesianOptimizer(observer, search_space)
                 .optimize(num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule)

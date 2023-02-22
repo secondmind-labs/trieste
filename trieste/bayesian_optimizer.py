@@ -642,7 +642,6 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                 break
 
             try:
-
                 if track_state:
                     try:
                         if track_path is None:
@@ -807,7 +806,6 @@ def observation_plot_init(
     Also logs warnings if pairplot dependencies are not installed."""
     observation_plot_dfs: dict[Tag, pd.DataFrame] = {}
     if logging.get_tensorboard_writer():
-
         seaborn_warning = False
         if logging.include_summary("query_points/_pairplot") and not (pd and sns):
             seaborn_warning = True
@@ -842,7 +840,6 @@ def write_summary_observations(
 ) -> None:
     """Write TensorBoard summary for the current step observations."""
     for tag in datasets:
-
         with tf.name_scope(f"{tag}.model"):
             models[tag].log(datasets[tag])
 

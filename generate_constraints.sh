@@ -24,7 +24,7 @@ generate_for_env () {
   #
   # $1: The base path of the requirements and constraints files
   # $2: If true, installs the library dependencies
-  python3.7 -m venv $VENV_DIR/$1
+  python3 -m venv $VENV_DIR/$1
   source $VENV_DIR/$1/bin/activate
   pip install --upgrade pip
   if [ "$2" = true ]; then
