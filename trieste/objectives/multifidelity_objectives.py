@@ -26,7 +26,6 @@ from .single_objectives import SingleObjectiveTestProblem
 
 @dataclass(frozen=True)
 class SingleObjectiveMultifidelityTestProblem(SingleObjectiveTestProblem):
-
     num_fidelities: int
     """The number of fidelities of test function"""
 
@@ -35,7 +34,6 @@ class SingleObjectiveMultifidelityTestProblem(SingleObjectiveTestProblem):
 
 
 def linear_multifidelity(x: TensorType) -> TensorType:
-
     x_input = x[..., :-1]
     x_fidelity = x[..., -1:]
 
@@ -64,7 +62,6 @@ _LINEAR_MULTIFIDELITY_MINIMA = {
 def _linear_multifidelity_search_space_builder(
     n_fidelities: int, input_search_space: SearchSpace
 ) -> TaggedProductSearchSpace:
-
     fidelity_search_space = DiscreteSearchSpace(np.arange(n_fidelities, dtype=float).reshape(-1, 1))
     search_space = TaggedProductSearchSpace(
         [input_search_space, fidelity_search_space], ["input", "fidelity"]

@@ -760,7 +760,6 @@ class mumbo(AcquisitionFunctionClass):
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:
-
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],
             message="This acquisition function only supports batch sizes of one.",
@@ -780,7 +779,7 @@ class mumbo(AcquisitionFunctionClass):
         cov = self._model.covariance_with_top_fidelity(tf.squeeze(x, -2))
 
         # calculate squared correlation between observations and high-fidelity latent function
-        rho_squared = (cov ** 2) / (fvar * yvar)
+        rho_squared = (cov**2) / (fvar * yvar)
         rho_squared = tf.clip_by_value(rho_squared, 0.0, 1.0)
 
         normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
