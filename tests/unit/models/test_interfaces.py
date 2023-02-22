@@ -58,10 +58,12 @@ class _QuadraticModel(
         )
 
 
-def _model_stack() -> tuple[
-    TrainablePredictJointReparamModelStack,
-    tuple[TrainableSupportsPredictJointHasReparamSampler, ...],
-]:
+def _model_stack() -> (
+    tuple[
+        TrainablePredictJointReparamModelStack,
+        tuple[TrainableSupportsPredictJointHasReparamSampler, ...],
+    ]
+):
     model01 = _QuadraticModel([0.0, 0.5], [1.0, 0.3])
     model2 = _QuadraticModel([2.0], [2.0])
     model3 = _QuadraticModel([-1.0], [0.1])

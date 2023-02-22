@@ -255,7 +255,6 @@ def _compute_kernel_blocks(
 
     if isinstance(kernel, (gpflow.kernels.SharedIndependent, gpflow.kernels.SeparateIndependent)):
         if isinstance(inducing_points, list):
-
             K = tf.concat(
                 [ker(Z)[None, ...] for ker, Z in zip(kernel.kernels, inducing_points)], axis=0
             )

@@ -65,9 +65,9 @@ initial_data = observer(initial_query_points)
 #
 # Here as the first example, we model the objective function using the original data, without performing any data transformation. In the next example we will model it using normalised data. We also put priors on the parameters of our GP model's kernel in order to stabilize model fitting. We found the priors below to be highly effective for objective functions defined over the unit hypercube and with an output normalised to have zero mean and unit variance. Since the non-normalised data from the original objective function comes with different scaling, we rescale the priors based on approximate standard deviation of inputs and outputs.
 
+
 # %%
 def build_gp_model(data, x_std=1.0, y_std=0.1):
-
     dim = data.query_points.shape[-1]
     empirical_variance = tf.math.reduce_variance(data.observations)
 
@@ -138,6 +138,7 @@ print(f"observation: {observations[arg_min_idx, :]}")
 # %% [markdown]
 # We can plot regret for each optimization step to illustrate the performance more completely.
 
+
 # %%
 def plot_regret_with_min(dataset):
     observations = dataset.observations.numpy()
@@ -164,6 +165,7 @@ plot_regret_with_min(dataset)
 # We will now show how data normalization can improve results achieved by Bayesian optimization.
 #
 # We first write a simple function for doing the standardisation of the data, that is, we scale the data to have a zero mean and a variance equal to 1. We also return the mean and standard deviation parameters as we will use them to transform new points.
+
 
 # %%
 def normalise(x, mean=None, std=None):
@@ -195,7 +197,6 @@ normalised_data = Dataset(query_points=x_sta, observations=y_sta)
 
 dataset = initial_data
 for step in range(num_steps):
-
     if step == 0:
         model = build_gp_model(normalised_data)
         model.optimize(normalised_data)
