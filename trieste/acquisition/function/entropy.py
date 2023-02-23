@@ -22,7 +22,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 from typing_extensions import Protocol, runtime_checkable
 
-from ...data import Dataset
+from ...data import Dataset, add_fidelity_column
 from ...models import ProbabilisticModel
 from ...models.gpflow.interface import SupportsCovarianceBetweenPoints
 from ...models.interfaces import (
@@ -719,8 +719,8 @@ class MUMBO(MinValueEntropySearch[MUMBOModelType]):
         query_points = self._search_space.sample(num_samples=self._grid_size)
         tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
         query_points = tf.concat([dataset.query_points, query_points], 0)
-        query_points_on_top_fidelity = tf.concat(
-            [query_points[:, :-1], tf.ones_like(query_points[:, -1:])], -1
+        query_points_on_top_fidelity = add_fidelity_column(
+            query_points[:, :-1], model.num_fidelities - 1
         )
         return self._min_value_sampler.sample(
             model, self._num_samples, query_points_on_top_fidelity
@@ -765,18 +765,15 @@ class mumbo(AcquisitionFunctionClass):
             message="This acquisition function only supports batch sizes of one.",
         )
 
-        top_fidelity_idx = self._model.num_fidelities - 1
-        x_on_top_fidelity = tf.concat(
-            [tf.squeeze(x, -2)[:, :-1], top_fidelity_idx * tf.ones_like(tf.squeeze(x, -2)[:, -1:])],
-            -1,
-        )
+        x_squeezed = tf.squeeze(x, -2)
+        x_on_top_fidelity = add_fidelity_column(x_squeezed[:, :-1], self._model.num_fidelities - 1)
 
         fmean, fvar = self._model.predict(x_on_top_fidelity)
         fsd = tf.clip_by_value(
             tf.math.sqrt(fvar), CLAMP_LB, fmean.dtype.max
         )  # clip below to improve numerical stability
-        ymean, yvar = self._model.predict_y(tf.squeeze(x, -2))
-        cov = self._model.covariance_with_top_fidelity(tf.squeeze(x, -2))
+        ymean, yvar = self._model.predict_y(x_squeezed)
+        cov = self._model.covariance_with_top_fidelity(x_squeezed)
 
         # calculate squared correlation between observations and high-fidelity latent function
         rho_squared = (cov**2) / (fvar * yvar)
