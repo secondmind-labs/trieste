@@ -58,10 +58,10 @@ class PseudoTrainableProbModel(TrainableProbabilisticModel, Protocol):
     """A model that does nothing on :meth:`update` and :meth:`optimize`."""
 
     def update(self, dataset: Dataset) -> None:
-        pass
+        return
 
     def optimize(self, dataset: Dataset) -> None:
-        pass
+        return
 
 
 class GaussianMarginal(ProbabilisticModel):
@@ -329,7 +329,6 @@ def vgp_matern_model(x: tf.Tensor, y: tf.Tensor) -> VGP:
 
 
 def two_output_svgp_model(x: tf.Tensor, type: str, whiten: bool) -> SVGP:
-
     ker1 = gpflow.kernels.Matern32()
     ker2 = gpflow.kernels.Matern52()
 
@@ -358,7 +357,6 @@ def two_output_svgp_model(x: tf.Tensor, type: str, whiten: bool) -> SVGP:
 
 
 def two_output_sgpr_model(x: tf.Tensor, y: tf.Tensor, type: str = "separate+separate") -> SGPR:
-
     ker1 = gpflow.kernels.Matern32()
     ker2 = gpflow.kernels.Matern52()
 

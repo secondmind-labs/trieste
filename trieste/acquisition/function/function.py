@@ -1305,14 +1305,14 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         self._mvn_cdf_1: Optional[MultivariateNormalCDF] = None
         self._mvn_cdf_2: Optional[MultivariateNormalCDF] = None
 
-        self._num_sobol_skip = int(tf.math.floor(10 ** 9 * tf.random.uniform((), dtype=tf.float32)))
+        self._num_sobol_skip = int(tf.math.floor(10**9 * tf.random.uniform((), dtype=tf.float32)))
 
     def update(self, eta: TensorType) -> None:
         """Update the acquisition function with a new eta value and reset the
         reparam sampler.
         """
         self._eta.assign(eta)
-        self._num_sobol_skip = int(tf.math.floor(10 ** 9 * tf.random.uniform((), dtype=tf.float32)))
+        self._num_sobol_skip = int(tf.math.floor(10**9 * tf.random.uniform((), dtype=tf.float32)))
 
     def _compute_bm(
         self,
@@ -1411,7 +1411,6 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         Sigma = tf.zeros(shape=(B, Q, Q, Q))
 
         def compute_single_slice(q: int) -> TensorType:
-
             diq = self._delta(q, Q, B, transpose=False, dtype=dtype)
             dqj = self._delta(q, Q, B, transpose=True, dtype=dtype)
 
@@ -1560,7 +1559,6 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         R_whole = Sigma_uv - Sigma_iu * Sigma_iv / Sigma_ii
 
         def create_blocks(q: int) -> TensorType:
-
             block1 = tf.concat(
                 [
                     R_whole[:, q, :q, :q],
@@ -1725,7 +1723,7 @@ class batch_expected_improvement(AcquisitionFunctionClass):
 
         # Compute univariate pdfs
         S_diag = tf.linalg.diag_part(Sigma)
-        normal = tfp.distributions.Normal(loc=m, scale=S_diag ** 0.5)
+        normal = tfp.distributions.Normal(loc=m, scale=S_diag**0.5)
         uvn_pdfs = tf.math.exp(normal.log_prob(b))  # (B, Q, Q)
 
         Sigma_diag = tf.linalg.diag_part(tf.transpose(Sigma, perm=[0, 2, 1, 3]))
@@ -1775,10 +1773,14 @@ class batch_expected_improvement(AcquisitionFunctionClass):
 
         mean = mean[:, :, 0]
         covariance = covariance[:, 0, :, :]
-        covariance = covariance + 1e-6 * tf.eye(
-            covariance.shape[-1],
-            dtype=covariance.dtype,
-        )[None, :, :]
+        covariance = (
+            covariance
+            + 1e-6
+            * tf.eye(
+                covariance.shape[-1],
+                dtype=covariance.dtype,
+            )[None, :, :]
+        )
 
         threshold = tf.tile(self._eta, (mean.shape[0],))
 
@@ -1881,7 +1883,6 @@ class multiple_optimism_lower_confidence_bound(AcquisitionFunctionClass):
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:
-
         batch_size = tf.shape(x)[-2]
         tf.debugging.assert_positive(batch_size)
 

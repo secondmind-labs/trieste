@@ -147,12 +147,12 @@ class GizmoModel(
     def predict(
         self, query_points: TensorType
     ) -> tuple[TensorType, TensorType]:
-        ...
+        raise NotImplementedError
 
     def reparam_sampler(
         self, num_samples: int
     ) -> ReparametrizationSampler[GizmoModel]:
-        ...
+        raise NotImplementedError
 
     ...  # sample, update, optimize, get_observation_noise
 
@@ -176,6 +176,7 @@ class HasGizmo(ProbabilisticModel, Protocol):
 
 # %% [markdown]
 # If your acquisition function depends on a combination of features, then you can define an intersection protocol and use it when defining the acquisition function:
+
 
 # %%
 @runtime_checkable
@@ -213,6 +214,7 @@ class ProbabilityOfValidity(SingleModelAcquisitionBuilder[ProbabilisticModel]):
 
 # %% [markdown]
 # For efficiency, it usually makes sense to compile the generated acquisition function into a TensorFlow graph using `tf.function`. Furthermore, to avoid generating (and compiling) a new acquisition function on each Bayesian optimization loop, you can define an `update_acquisition_function` method that can instead update the previously generated acquisition function using the new models and data. This may involve updating the acquisition function's internal state (which you should store in `tf.Variable`s), though if the function has no internal state then it is suficient to simply return the old function unchanged.
+
 
 # %%
 class ProbabilityOfValidity2(SingleModelAcquisitionBuilder[ProbabilisticModel]):
