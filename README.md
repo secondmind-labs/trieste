@@ -8,8 +8,8 @@
 [![Slack Status](https://img.shields.io/badge/slack-trieste-green.svg?logo=Slack)](https://join.slack.com/t/secondmind-labs/shared_invite/zt-ph07nuie-gMlkle__tjvXBay4FNSLkw)
 
 
-[Documentation (release)](https://secondmind-labs.github.io/trieste) |
 [Documentation (develop)](https://secondmind-labs.github.io/trieste/develop/index.html) |
+[Documentation (release)](https://secondmind-labs.github.io/trieste) |
 [Tutorials](https://secondmind-labs.github.io/trieste/1.0.0/tutorials.html) |
 [API reference](https://secondmind-labs.github.io/trieste/1.0.0/autoapi/trieste/index.html) |
 
@@ -129,12 +129,13 @@ All constructive input is very much welcome. For detailed information, see [the 
 To cite Trieste, please reference our [arXiv](https://arxiv.org/) paper where we review the framework and describe the design. Sample Bibtex is given below:
 
 ```
-@article{trieste2023,
-  author = {XXX},
-    title = "{Trieste: Efficiently Exploring The Depths of Black-box Functions with TensorFlow}",
-  journal = {XXX},
-  year    = {2023},
-  url     = {http://arxiv.org/XXX}
+@misc{trieste2023,
+  author = {Picheny, Victor and Berkeley, Joel and Moss, Henry B. and Stojic, Hrvoje and Granta, Uri and Ober, Sebastian W. and Artemev, Artem and Ghani, Khurram and Goodall, Alexander and Paleyes, Andrei and Vakili, Sattar and Pascual-Diaz, Sergio and Markou, Stratis and Qing, Jixiang and Loka, Nasrulloh R. B. S and Couckuyt, Ivo},
+  title = {Trieste: Efficiently Exploring The Depths of Black-box Functions with TensorFlow},
+  publisher = {arXiv},
+  year = {2023},
+  doi = {10.48550/ARXIV.2302.08436},
+  url = {https://arxiv.org/abs/2302.08436}
 }
 ```
 
