@@ -1355,7 +1355,9 @@ class batch_expected_improvement(AcquisitionFunctionClass):
 
         return b, m
 
-    def _delta(self, idx: int, dim: int, B: int, transpose: bool, dtype: tf.DType) -> TensorType:
+    def _delta(
+        self, idx: int, dim: int, B: int, transpose: bool, dtype: tf.DType
+    ) -> TensorType:  # pragma: no cover (tf.map_fn)
         """Helper function for the _compute_Sigma function, which computes a
         *delta* tensor of shape (B, idx, idx) such that
 
