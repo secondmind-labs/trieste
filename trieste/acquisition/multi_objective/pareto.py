@@ -16,7 +16,7 @@ from __future__ import annotations
 
 try:
     import cvxpy as cp
-except ImportError:
+except ImportError:  # pragma: no cover (tested but not by coverage)
     cp = None
 import numpy as np
 import tensorflow as tf

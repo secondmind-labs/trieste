@@ -663,7 +663,7 @@ class _fantasized_model(SupportsPredictJoint, SupportsGetKernel, SupportsGetObse
             where ... are the leading dimensions of fantasized_data
         """
 
-        def fun(qp: TensorType) -> tuple[TensorType, TensorType]:
+        def fun(qp: TensorType) -> tuple[TensorType, TensorType]:  # pragma: no cover (tf.map_fn)
             fantasized_data = Dataset(
                 self._fantasized_query_points.value(), self._fantasized_observations.value()
             )
@@ -682,7 +682,7 @@ class _fantasized_model(SupportsPredictJoint, SupportsGetKernel, SupportsGetObse
             where ... are the leading dimensions of fantasized_data
         """
 
-        def fun(qp: TensorType) -> tuple[TensorType, TensorType]:
+        def fun(qp: TensorType) -> tuple[TensorType, TensorType]:  # pragma: no cover (tf.map_fn)
             fantasized_data = Dataset(
                 self._fantasized_query_points.value(), self._fantasized_observations.value()
             )
@@ -727,7 +727,7 @@ class _fantasized_model(SupportsPredictJoint, SupportsGetKernel, SupportsGetObse
             where ... are the leading dimensions of fantasized_data
         """
 
-        def fun(qp: TensorType) -> tuple[TensorType, TensorType]:
+        def fun(qp: TensorType) -> tuple[TensorType, TensorType]:  # pragma: no cover (tf.map_fn)
             fantasized_data = Dataset(
                 self._fantasized_query_points.value(), self._fantasized_observations.value()
             )
