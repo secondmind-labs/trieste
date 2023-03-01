@@ -260,11 +260,15 @@ def ConstrainedBraninCurrin() -> ConstrainedMultiObjectiveTestProblem:
     """
 
     def gen_pareto_optimal_points(n: int, seed: int | None = None) -> TensorType:
+        """
+        return an empty tensor as there is no explicit way of defining
+        this problem's Pareto frontier.
+        """
         return tf.zeros(shape=0, dtype=tf.float64)
 
     def evaluate_constraint(x: TensorType, threshold: Optional[float] = 0.0) -> TensorType:
         """
-        The constraint of branincurrin problem, < threshold is feasible
+        The constraint of branincurrin problem, < ``threshold`` is feasible.
 
         :param x: The points at which to evaluate the function, with shape [..., d].
         :param threshold: a feasibility threshold used to determine the constraint, by default 0 is
