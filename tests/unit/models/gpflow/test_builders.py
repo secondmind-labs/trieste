@@ -318,7 +318,6 @@ def test_builder_returns_correct_lengthscales_for_unequal_discrete_bounds(
 
 @pytest.mark.parametrize("model_type", ("linear", "nonlinear"))
 def test_build_multifidelity_builds_correct_n_gprs(model_type: str) -> None:
-
     dataset = Dataset(
         tf.Variable(
             [[0.0, 0.0], [1.0, 1.0], [2.0, 2.0], [3.0, 1.0], [4.0, 2.0], [5.0, 0.0]],
@@ -340,7 +339,6 @@ def test_build_multifidelity_builds_correct_n_gprs(model_type: str) -> None:
 
 @pytest.mark.parametrize("model_type", ("linear", "nonlinear"))
 def test_build_multifidelity_raises_for_bad_fidelity(model_type: str) -> None:
-
     dataset = Dataset(
         tf.Variable(
             [[0.0, 0.0], [1.0, 1.0], [2.0, 2.0], [3.0, 1.0], [4.0, 2.0], [5.0, 0.0]],
@@ -377,7 +375,6 @@ def test_build_multifidelity_raises_for_bad_fidelity(model_type: str) -> None:
 def test_build_multifidelity_raises_not_enough_datapoints(
     query_points: TensorType, observations: TensorType, model_type: str
 ) -> None:
-
     dataset = Dataset(
         tf.Variable(
             query_points,
@@ -398,7 +395,6 @@ def test_build_multifidelity_raises_not_enough_datapoints(
 def test_build_multifidelity_raises_not_multifidelity_data(
     model_type: str,
 ) -> None:
-
     dataset = Dataset(
         tf.Variable(
             [[0.0], [1.0], [2.0], [3.0], [4.0]],
@@ -431,7 +427,7 @@ def _check_likelihood(
         else:
             npt.assert_allclose(
                 model.likelihood.variance,
-                empirical_variance / SIGNAL_NOISE_RATIO_LIKELIHOOD ** 2,
+                empirical_variance / SIGNAL_NOISE_RATIO_LIKELIHOOD**2,
                 rtol=1e-6,
             )
         assert isinstance(model.likelihood.variance, gpflow.Parameter)

@@ -101,7 +101,6 @@ from trieste.experimental.plotting import plot_bo_points, plot_function_2d
 def plot_active_learning_query(
     result, bo_iter, num_initial_points, query_points, num_query=1
 ):
-
     for i in range(bo_iter):
 
         def pred_var(x):

@@ -582,7 +582,7 @@ class DecoupledTrajectorySampler(
             q_sqrt = tf.math.sqrt(self._model.get_observation_noise()) * q_sqrt
             whiten = False
             Kmm = (
-                self._model.get_kernel().K(inducing_points, inducing_points) + q_sqrt ** 2
+                self._model.get_kernel().K(inducing_points, inducing_points) + q_sqrt**2
             )  # [M, M]
 
         tf.debugging.assert_shapes(
@@ -595,7 +595,6 @@ class DecoupledTrajectorySampler(
         )
 
         def weight_sampler(batch_size: int) -> Tuple[TensorType, TensorType]:
-
             prior_weights = tf.random.normal(  # Non-RFF features will require scaling here
                 [self._num_features, batch_size], dtype=tf.float64
             )  # [L, B]

@@ -1619,7 +1619,6 @@ def test_sparse_variational_pairwise_covariance_for_non_whitened(
 
 
 def multifidelity_autoregressive_nd_dataset(n_dims: int = 1) -> Dataset:
-
     dataset = Dataset(
         tf.Variable(
             [
@@ -1638,7 +1637,6 @@ def multifidelity_autoregressive_nd_dataset(n_dims: int = 1) -> Dataset:
 
 
 def multifidelity_autoregressive_model(n_dims: int) -> MultifidelityAutoregressive:
-
     search_space = Box([0.0] * n_dims, [10.0] * n_dims)
     gprs = build_multifidelity_autoregressive_models(
         multifidelity_autoregressive_nd_dataset(n_dims=n_dims),
@@ -1651,7 +1649,6 @@ def multifidelity_autoregressive_model(n_dims: int) -> MultifidelityAutoregressi
 def multifidelity_nonlinear_autoregressive_model(
     n_dims: int,
 ) -> MultifidelityNonlinearAutoregressive:
-
     search_space = Box([0.0] * n_dims, [10.0] * n_dims)
     gprs = build_multifidelity_nonlinear_autoregressive_models(
         multifidelity_autoregressive_nd_dataset(n_dims=n_dims),
@@ -1685,7 +1682,6 @@ def test_multifidelity_autoregressive_predict_returns_expected_shape(
     output_shape: list[int],
     multifidelity_model: MULTIFIDELITY_MODEL_BUILDER_TYPE,
 ) -> None:
-
     query_points = tf.Variable(input_data, dtype=tf.float64)
     D = query_points.shape[-1] - 1
     model = multifidelity_model(D)
@@ -1713,7 +1709,6 @@ def test_multifidelity_autoregressive_predict_y_returns_expected_shape(
     output_shape: list[int],
     multifidelity_model: MULTIFIDELITY_MODEL_BUILDER_TYPE,
 ) -> None:
-
     query_points = tf.Variable(input_data, dtype=tf.float64)
     D = query_points.shape[-1] - 1
     model = multifidelity_model(D)
@@ -1741,7 +1736,6 @@ def test_multifidelity_autoregressive_sample_returns_expected_shape(
     output_shape: list[int],
     multifidelity_model: MULTIFIDELITY_MODEL_BUILDER_TYPE,
 ) -> None:
-
     query_points = tf.Variable(input_data, dtype=tf.float64)
     D = query_points.shape[-1] - 1
     model = multifidelity_model(D)
@@ -1756,7 +1750,6 @@ def test_multifidelity_autoregressive_sample_returns_expected_shape(
 def test_multifidelity_autoregressive_covariance_with_top_fidelity_returns_expected_shape(
     multifidelity_model: MULTIFIDELITY_MODEL_BUILDER_TYPE,
 ) -> None:
-
     model = multifidelity_model(1)
     input_data = tf.Variable([[0.1, 0.0], [1.1, 1.0], [2.1, 2.0]], dtype=tf.float64)
     covs = model.covariance_with_top_fidelity(input_data)
@@ -1774,16 +1767,15 @@ def test_multifidelity_autoregressive_raises_bad_fidleity(
     input_data: list[list[float]],
     multifidelity_model: MULTIFIDELITY_MODEL_BUILDER_TYPE,
 ) -> None:
-
     input_data = tf.Variable(input_data, dtype=tf.float64)
     model = multifidelity_model(1)
-    with pytest.raises(ValueError):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         model.predict(input_data)
-    with pytest.raises(ValueError):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         model.predict_y(input_data)
-    with pytest.raises(ValueError):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         model.sample(input_data, 13)
-    with pytest.raises(ValueError):
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         model.covariance_with_top_fidelity(input_data)
 
 
@@ -1794,7 +1786,6 @@ def test_multifidelity_autoregressive_raises_bad_fidleity(
 def test_multifidelity_autoregressive_update_increases_internal_data_count(
     multifidelity_model: MULTIFIDELITY_MODEL_BUILDER_TYPE,
 ) -> None:
-
     model = multifidelity_model(1)
     if isinstance(model, MultifidelityAutoregressive):
         initial_fid_0_data_length = tf.shape(
@@ -1868,7 +1859,6 @@ def test_multifidelity_autoregressive_update_raises_for_bad_new_data(
     problem: str,
     multifidelity_model: MULTIFIDELITY_MODEL_BUILDER_TYPE,
 ) -> None:
-
     new_dataset = Dataset(
         tf.Variable(new_data, dtype=tf.float64), tf.Variable([[0.1]], dtype=tf.float64)
     )
@@ -1878,7 +1868,7 @@ def test_multifidelity_autoregressive_update_raises_for_bad_new_data(
         with pytest.raises(tf.errors.InvalidArgumentError):
             model.update(dataset + new_dataset)
     else:
-        with pytest.raises(ValueError):
+        with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
             model.update(dataset + new_dataset)
 
 
@@ -1887,7 +1877,6 @@ def test_multifidelity_autoregressive_update_raises_for_bad_new_data(
     ("linear", "nonlinear"),
 )
 def test_multifidelity_autoregressive_optimize_reduces_losses(model_type: str) -> None:
-
     xs_low = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
     xs_high = tf.Variable(np.linspace(0, 10, 10), dtype=tf.float64)[:, None]
     lf_obs = tf.sin(xs_low) + tf.random.normal(xs_low.shape, mean=0, stddev=1e-1, dtype=tf.float64)
@@ -1956,7 +1945,6 @@ def test_multifidelity_autoregressive_optimize_raises_for_bad_new_data(
     problem: str,
     multifidelity_model: MULTIFIDELITY_MODEL_BUILDER_TYPE,
 ) -> None:
-
     new_dataset = Dataset(
         tf.Variable(new_data, dtype=tf.float64), tf.Variable([[0.1]], dtype=tf.float64)
     )
@@ -1966,7 +1954,7 @@ def test_multifidelity_autoregressive_optimize_raises_for_bad_new_data(
         with pytest.raises(tf.errors.InvalidArgumentError):
             model.optimize(dataset + new_dataset)
     else:
-        with pytest.raises(ValueError):
+        with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
             model.optimize(dataset + new_dataset)
 
 
@@ -1975,7 +1963,6 @@ def test_multifidelity_autoregressive_optimize_raises_for_bad_new_data(
     ("linear", "nonlinear"),
 )
 def test_multifidelity_autoregressive_sample_aligns_with_predict(model_type: str) -> None:
-
     xs_low = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
     xs_high = tf.Variable(np.linspace(0, 10, 10), dtype=tf.float64)[:, None]
     lf_obs = tf.sin(xs_low)
@@ -2039,7 +2026,6 @@ def test_multifidelity_autoregressive_sample_aligns_with_predict(model_type: str
     ("linear", "nonlinear"),
 )
 def test_multifidelity_autoregressive_samples_are_varied(model_type: str) -> None:
-
     xs_low = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
     xs_high = tf.Variable(np.linspace(0, 10, 10), dtype=tf.float64)[:, None]
     lf_obs = tf.sin(xs_low)

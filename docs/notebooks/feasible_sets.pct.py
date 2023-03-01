@@ -44,6 +44,7 @@ search_space = Branin.search_space
 # threshold is arbitrary, but has to be within the range of the function
 threshold = 80.0
 
+
 # define a modified branin function
 def thresholded_branin(x):
     y = np.array(branin(x))
@@ -148,7 +149,6 @@ def excursion_probability(x, model, threshold=80):
 def plot_excursion_probability(
     title, model=None, query_points=None, threshold=80.0
 ):
-
     if model is None:
         objective_function = thresholded_branin
     else:
@@ -193,9 +193,7 @@ initial_model.optimize(initial_data)
 plot_excursion_probability(
     "Probability of excursion, initial data",
     initial_model,
-    query_points[
-        :num_initial_points,
-    ],
+    query_points[:num_initial_points,],
 )
 
 

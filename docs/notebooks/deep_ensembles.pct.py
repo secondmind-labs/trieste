@@ -191,6 +191,7 @@ initial_data = observer(initial_query_points)
 #
 # Below we change the `build_model` function to adapt the model slightly for the Michalewicz function. Since it's a more complex function we increase the number of hidden layers but keep the number of nodes per layer on the lower side. Note the large number of epochs
 
+
 # %%
 def build_model(data: Dataset) -> DeepEnsemble:
     ensemble_size = 5

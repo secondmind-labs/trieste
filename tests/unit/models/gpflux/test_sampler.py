@@ -126,7 +126,7 @@ def test_dgp_reparam_sampler_samples_approximate_expected_distribution(
         means.append(Fmean_sample)
         vars.append(Fvar_sample)
     ref_mean = tf.reduce_mean(tf.stack(means), axis=0)
-    ref_variance = tf.reduce_mean(tf.stack(vars) + tf.stack(means) ** 2, axis=0) - ref_mean ** 2
+    ref_variance = tf.reduce_mean(tf.stack(vars) + tf.stack(means) ** 2, axis=0) - ref_mean**2
 
     error = 1 / tf.sqrt(tf.cast(num_samples, tf.float32))
     npt.assert_allclose(sample_mean, ref_mean, atol=2 * error)
@@ -264,7 +264,7 @@ def test_dgp_decoupled_trajectory_sampler_samples_approximate_expected_distribut
         means.append(Fmean_sample)
         vars.append(Fvar_sample)
     ref_mean = tf.reduce_mean(tf.stack(means), axis=0)
-    ref_variance = tf.reduce_mean(tf.stack(vars) + tf.stack(means) ** 2, axis=0) - ref_mean ** 2
+    ref_variance = tf.reduce_mean(tf.stack(vars) + tf.stack(means) ** 2, axis=0) - ref_mean**2
 
     error = 1 / tf.sqrt(tf.cast(num_samples, tf.float32))
     npt.assert_allclose(sample_mean, ref_mean, atol=2 * error)

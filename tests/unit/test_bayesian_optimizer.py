@@ -194,7 +194,7 @@ def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> Non
 
         def __call__(self, x: tf.Tensor) -> Dataset:
             self.call_count += 1
-            return Dataset(x, tf.reduce_sum(x ** 2, axis=-1, keepdims=True))
+            return Dataset(x, tf.reduce_sum(x**2, axis=-1, keepdims=True))
 
     observer = _CountingObserver()
     optimizer = BayesianOptimizer(observer, Box([-1], [1]))
@@ -297,7 +297,7 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
 
     data, models = {NA: mk_dataset([[0.0]], [[0.0]])}, {NA: _PseudoTrainableQuadratic()}
     final_state, history = (
-        BayesianOptimizer(lambda x: {NA: Dataset(x, x ** 2)}, Box([-1], [1]))
+        BayesianOptimizer(lambda x: {NA: Dataset(x, x**2)}, Box([-1], [1]))
         .optimize(3, data, models, rule, starting_state)
         .astuple()
     )

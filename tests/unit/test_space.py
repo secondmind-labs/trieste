@@ -74,11 +74,11 @@ class Integers(SearchSpace):
 def test_search_space___pow___raises_for_non_positive_exponent(exponent: int) -> None:
     space = Integers(3)
     with pytest.raises(tf.errors.InvalidArgumentError):
-        space ** exponent
+        space**exponent
 
 
 def test_search_space___pow___multiplies_correct_number_of_search_spaces() -> None:
-    assert (Integers(5) ** 7).limit == 5 ** 7
+    assert (Integers(5) ** 7).limit == 5**7
 
 
 def _points_in_2D_search_space() -> tf.Tensor:
