@@ -19,7 +19,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from functools import partial
-from typing import Callable, Optional
+from typing import Optional
 
 import tensorflow as tf
 from typing_extensions import Protocol
@@ -39,7 +39,21 @@ class GenParetoOptimalPoints(Protocol):
         :param n: The number of pareto optimal points to be generated.
         :param seed: An integer used to create a random seed for distributions that
          used to generate pareto optimal points.
-        :return: The Pareto optimal points
+        :return: The Pareto optimal points.
+        """
+
+
+class Constraint(Protocol):
+    """A Protocol representing function returning constraint values given specified inputs."""
+
+    def __call__(self, x: TensorType, threshold: Optional[float] = 0.0) -> TensorType:
+        """
+        return the constraint value given specified inputs `x` and `threshold`
+
+        :param x: The points at which to evaluate the function, with shape [..., d].
+        :param threshold: a feasibility threshold used to determine the constraint, by default 0 is
+            used as in the original problem.
+        :return: The constraint values.
         """
 
 
@@ -63,7 +77,7 @@ class ConstrainedMultiObjectiveTestProblem(MultiObjectiveTestProblem):
     additionally a constraint function.
     """
 
-    constraint: Callable[[TensorType, Optional[float]], TensorType]
+    constraint: Constraint
     """The synthetic test function's constraints"""
 
 
