@@ -47,7 +47,7 @@ from trieste.acquisition.sampler import (
     ThompsonSampler,
     ThompsonSamplerFromTrajectory,
 )
-from trieste.data import Dataset
+from trieste.data import Dataset, add_fidelity_column
 from trieste.models import SupportsCovarianceWithTopFidelity
 from trieste.objectives import Branin
 from trieste.space import Box
@@ -628,6 +628,7 @@ def test_mumbo_builder_builds_min_value_samples(
     min_value_samples = mocked_mves.call_args[0][1]
     query_points = builder._search_space.sample(num_samples=builder._grid_size)
     query_points = tf.concat([dataset.query_points, query_points], 0)
+    query_points = add_fidelity_column(query_points[:, :-1], model.num_fidelities - 1)
     fmean, _ = model.predict(query_points)
     assert max(min_value_samples) < min(fmean)
 
