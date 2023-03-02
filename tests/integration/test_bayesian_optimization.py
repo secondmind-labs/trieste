@@ -85,7 +85,7 @@ from trieste.types import State, TensorType
 
 try:
     import pymoo
-except ImportError:
+except ImportError:  # pragma: no cover (tested but not by coverage)
     pymoo = None
 
 
