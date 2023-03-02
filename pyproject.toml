@@ -56,6 +56,7 @@ line_length = 100
 
 [tool.taskipy.tasks]
 tests = "pytest --mypy --cov trieste --cov-report html:htmlcov --durations 6"
+coverage = "pytest --eager --qhsri yes --cov trieste --cov-report html:htmlcov"
 alltests = "pytest --mypy --durations 6 --runslow yes"
 slowtests = "pytest --mypy --durations 6 --runslow only"
 quicktests = "pytest -x --ff -rN -Wignore --ignore-glob=tests/integration/*"
@@ -65,6 +66,9 @@ check_format = "pytest -v --black --flake8 --isort -m 'black or flake8 or isort'
 format = "black . && flake8 . && isort . && black -l 80 notebooks/*pct.py"
 
 [tool.coverage.report]
+omit = [
+    "*/experimental/*"
+]
 exclude_lines = [
     "pragma: no cover",
     "raise NotImplementedError",
