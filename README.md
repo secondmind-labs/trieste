@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/license-Apache-green.svg)](LICENSE)
 [![Quality checks](https://github.com/secondmind-labs/trieste/actions/workflows/develop-checks.yaml/badge.svg)](https://github.com/secondmind-labs/trieste/actions?query=workflows%3Adevelop-checks)
 [![Docs](https://github.com/secondmind-labs/trieste/actions/workflows/deploy.yaml/badge.svg)](https://github.com/secondmind-labs/trieste/actions/workflows/deploy.yaml)
-[![Codecov](https://img.shields.io/codecov/c/github/secondmind-labs/trieste/coverage.svg?branch=develop)](https://codecov.io/c/github/secondmind-labs/trieste?branch=develop)
+[![Codecov](https://img.shields.io/codecov/c/github/secondmind-labs/trieste/coverage.svg?branch=develop)](https://app.codecov.io/github/secondmind-labs/trieste/tree/develop)
 [![Slack Status](https://img.shields.io/badge/slack-trieste-green.svg?logo=Slack)](https://join.slack.com/t/secondmind-labs/shared_invite/zt-ph07nuie-gMlkle__tjvXBay4FNSLkw)
 
 
