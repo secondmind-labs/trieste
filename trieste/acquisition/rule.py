@@ -30,7 +30,7 @@ try:
     from pymoo.algorithms.moo.nsga2 import NSGA2
     from pymoo.core.problem import Problem as PymooProblem
     from pymoo.optimize import minimize
-except ImportError:
+except ImportError:  # pragma: no cover (tested but not by coverage)
     pymoo = None
     PymooProblem = object
 
