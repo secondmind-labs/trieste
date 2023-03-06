@@ -126,7 +126,7 @@ All constructive input is very much welcome. For detailed information, see [the 
 
 ## Citing Trieste
 
-To cite Trieste, please reference our [arXiv](https://arxiv.org/) paper where we review the framework and describe the design. Sample Bibtex is given below:
+To cite Trieste, please reference our [arXiv](https://arxiv.org/abs/2302.08436) paper where we review the framework and describe the design. Sample Bibtex is given below:
 
 ```
 @misc{trieste2023,
