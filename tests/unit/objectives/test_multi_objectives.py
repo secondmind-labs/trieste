@@ -235,6 +235,7 @@ def test_objective_and_constraint_has_correct_shape_and_dtype(
     if isinstance(problem, ConstrainedMultiObjectiveTestProblem):
         c = problem.constraint(x)
         tf.debugging.assert_shapes([(c, [num_obs, num_con])])
+        assert x.dtype == c.dtype
 
     assert pf.dtype == tf.float64  # default dtype
     if tf.size(pf) != 0:  # the problem has a valid `gen_pareto_optimal_points` method
