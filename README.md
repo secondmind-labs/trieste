@@ -10,8 +10,8 @@
 
 [Documentation (develop)](https://secondmind-labs.github.io/trieste/develop/index.html) |
 [Documentation (release)](https://secondmind-labs.github.io/trieste) |
-[Tutorials](https://secondmind-labs.github.io/trieste/1.0.0/tutorials.html) |
-[API reference](https://secondmind-labs.github.io/trieste/1.0.0/autoapi/trieste/index.html) |
+[Tutorials](https://secondmind-labs.github.io/trieste/tutorials.html) |
+[API reference](https://secondmind-labs.github.io/trieste/autoapi.html) |
 
 
 ## What does Trieste do?
@@ -28,7 +28,7 @@ Trieste (pronounced tree-est) is a Bayesian optimization toolbox built on [Tenso
 
 ## Getting started
 
-Here's a quick overview of the main components of a Bayesian optimization loop. For more details, see our [Documentation](https://secondmind-labs.github.io/trieste) where we have multiple [Tutorials](https://secondmind-labs.github.io/trieste/1.0.0/tutorials.html) covering both the basic functionalities of the toolbox, as well as more advanced usage.
+Here's a quick overview of the main components of a Bayesian optimization loop. For more details, see our [Documentation](https://secondmind-labs.github.io/trieste) where we have multiple [Tutorials](https://secondmind-labs.github.io/trieste/tutorials.html) covering both the basic functionalities of the toolbox, as well as more advanced usage.
 
 Let's set up a synthetic black-box objective function we wish to minimize, for example, a popular Branin optimization function, and generate some initial data
 ```python
@@ -40,7 +40,7 @@ initial_query_points = Branin.search_space.sample(5)
 initial_data = observer(initial_query_points)
 ```
 
-First step is to crate a probabilistic model, for example a Gaussian Process
+First step is to create a probabilistic model of the objective function, for example a Gaussian Process model
 ```python
 from trieste.models import build_gpr, GaussianProcessRegression
 
