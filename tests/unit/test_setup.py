@@ -26,6 +26,8 @@ VERSION = BASE_PATH / "trieste" / "VERSION"
 VERSIONS = BASE_PATH / "versions.json"
 CITATION = BASE_PATH / "CITATION.cff"
 REDIRECT = BASE_PATH / "redirect.html"
+REDIRECT_AUTOAPI = BASE_PATH / "redirect_autoapi.html"
+REDIRECT_TUTORIALS = BASE_PATH / "redirect_tutorials.html"
 
 
 @pytest.fixture(name="version")
@@ -51,6 +53,16 @@ def _redirect() -> str:
     return REDIRECT.read_text()
 
 
+@pytest.fixture(name="redirect_autoapi")
+def _redirect_autoapi() -> str:
+    return REDIRECT_AUTOAPI.read_text()
+
+
+@pytest.fixture(name="redirect_tutorials")
+def _redirect_tutorials() -> str:
+    return REDIRECT_TUTORIALS.read_text()
+
+
 def test_version_is_valid(version: str) -> None:
     assert re.match(r"\d+\.\d+\.\d+", version)
 
@@ -72,5 +84,9 @@ def test_citation_version(version: str, citation: dict[str, Any]) -> None:
     assert citation["version"] == version
 
 
-def test_redirect_version(version: str, redirect: str) -> None:
+def test_redirect_version(
+    version: str, redirect: str, redirect_autoapi: str, redirect_tutorials: str
+) -> None:
     assert "$VERSION/index.html" in redirect
+    assert "$VERSION/autoapi/trieste/index.html" in redirect_autoapi
+    assert "$VERSION/tutorials.html" in redirect_tutorials
