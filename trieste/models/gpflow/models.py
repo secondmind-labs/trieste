@@ -1012,6 +1012,7 @@ class SparseVariational(
             new_q_mu, new_q_sqrt = _whiten_points(self, new_inducing_points)
         else:
             new_q_mu, new_f_cov = self.predict_joint(new_inducing_points)  # [N, L], [L, N, N]
+            new_q_mu -= self.model.mean_function(new_inducing_points)
             jitter_mat = DEFAULTS.JITTER * tf.eye(
                 tf.shape(new_inducing_points)[0], dtype=new_f_cov.dtype
             )
