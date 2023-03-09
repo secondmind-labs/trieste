@@ -733,14 +733,16 @@ def test_rff_and_decoupled_trajectory_give_similar_results(noise_var: float) -> 
         ([1, 2, 3, 4], 5),
     ],
 )
-def test_idealised_normal_samples__various_shapes(batch_shape: list[int], n_sample_dim: int):
+def test_idealised_normal_samples__various_shapes(
+    batch_shape: list[int], n_sample_dim: int
+) -> None:
     samples = idealised_normal_samples(tf.TensorShape(batch_shape), n_sample_dim)
     assert samples.shape == batch_shape + [
         n_sample_dim,
     ]
 
 
-def test_kl_divergence_normal_samples():
+def test_kl_divergence_normal_samples() -> None:
     n_samples = 10_000
 
     idealised_samples = idealised_normal_samples(
@@ -756,7 +758,7 @@ def test_kl_divergence_normal_samples():
     )[0]
     random_sample_counts = np.histogram2d(random_samples[:, 0], random_samples[:, 1], bins=bins)[0]
 
-    def compute_kl_divergence(a: np.ndarray, b: np.ndarray):
+    def compute_kl_divergence(a: np.ndarray, b: np.ndarray) -> np.ndarray:
         return np.sum(np.where(np.logical_and(a != 0, b != 0), a * np.log(a / b), 0))
 
     kl_div = compute_kl_divergence(
