@@ -17,10 +17,12 @@ import math
 from typing import List, Type
 
 import gpflow
+import numpy as np
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
+from tensorflow_probability.python.distributions import MultivariateNormalDiag
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, quadratic, random_seed
 from tests.util.models.gpflow.models import (
@@ -37,6 +39,7 @@ from trieste.models.gpflow import (
     RandomFourierFeatureTrajectorySampler,
     feature_decomposition_trajectory,
 )
+from trieste.models.gpflow.sampler import idealised_normal_samples
 from trieste.models.interfaces import ReparametrizationSampler, SupportsPredictJoint
 from trieste.objectives import Branin
 
@@ -719,3 +722,44 @@ def test_rff_and_decoupled_trajectory_give_similar_results(noise_var: float) -> 
     npt.assert_allclose(
         tf.math.reduce_variance(eval_1, 1), tf.math.reduce_variance(eval_2, 1), rtol=1.0
     )  # variance across samples should (very) roughly agree for different samplers
+
+
+@pytest.mark.parametrize(
+    ("batch_shape", "n_sample_dim"),
+    [
+        ([5], 1),
+        ([5], 2),
+        ([5, 5], 2),
+        ([1, 2, 3, 4], 5),
+    ],
+)
+def test_idealised_normal_samples__various_shapes(batch_shape: list[int], n_sample_dim: int):
+    samples = idealised_normal_samples(tf.TensorShape(batch_shape), n_sample_dim)
+    assert samples.shape == batch_shape + [
+        n_sample_dim,
+    ]
+
+
+def test_kl_divergence_normal_samples():
+    n_samples = 10_000
+
+    idealised_samples = idealised_normal_samples(
+        batch_shape=tf.TensorShape([n_samples]), n_sample_dim=2
+    )
+
+    multivariate_gaussian_dist = MultivariateNormalDiag(scale_diag=[1.0, 1.0])
+    random_samples = multivariate_gaussian_dist.sample(sample_shape=n_samples)
+
+    bins = [np.linspace(-4, 4, 9), np.linspace(-4, 4, 9)]
+    idealised_sample_counts = np.histogram2d(
+        idealised_samples[:, 0], idealised_samples[:, 1], bins=bins
+    )[0]
+    random_sample_counts = np.histogram2d(random_samples[:, 0], random_samples[:, 1], bins=bins)[0]
+
+    def compute_kl_divergence(a: np.ndarray, b: np.ndarray):
+        return np.sum(np.where(np.logical_and(a != 0, b != 0), a * np.log(a / b), 0))
+
+    kl_div = compute_kl_divergence(
+        idealised_sample_counts / n_samples, random_sample_counts / n_samples
+    )
+    assert kl_div < 0.005

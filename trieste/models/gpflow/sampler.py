@@ -46,8 +46,8 @@ from ..interfaces import (
 
 def idealised_normal_samples(batch_shape: tf.TensorShape, n_sample_dim: int) -> tf.Tensor:
     """
-    Generates a batch of shape :param:`batch_shape` sobol samples, where each sample
-    has dimension :param:`n_sample_dim`.
+    Generates a batch of shape `batch_shape` sobol samples, where each sample
+    has dimension `n_sample_dim`.
     """
     sobol_samples = tf.math.sobol_sample(
         dim=n_sample_dim,
