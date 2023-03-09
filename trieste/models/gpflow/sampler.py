@@ -44,15 +44,18 @@ from ..interfaces import (
 )
 
 
-def idealised_normal_samples(batch_shape: tf.TensorShape, n_sample_dim: int) -> tf.Tensor:
+def idealised_normal_samples(
+    batch_shape: tf.TensorShape, n_sample_dim: int, skip: int = 0
+) -> tf.Tensor:
     """
-    Generates a batch of shape `batch_shape` sobol samples, where each sample
-    has dimension `n_sample_dim`.
+    Generates a batch of shape `batch_shape` sobol samples, sking the first `skip`, where each
+    sample has dimension `n_sample_dim`.
     """
     sobol_samples = tf.math.sobol_sample(
         dim=n_sample_dim,
         num_results=tf.reduce_prod(batch_shape),
         dtype=tf.float64,
+        skip=skip,
     )
 
     dist = tfp.distributions.Normal(
@@ -75,6 +78,9 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
     where :math:`\epsilon \sim \mathcal N (0, 1)` is constant for a given sampler, thus ensuring
     samples form a continuous curve.
     """
+
+    skip: int = 0
+    """Number of sobol sequence points to skip. This is incremented for each sampler."""
 
     def __init__(self, sample_size: int, model: ProbabilisticModel):
         """
@@ -113,8 +119,10 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
         var = var + jitter
 
         if not self._initialized:
+            self._skip = IndependentReparametrizationSampler.skip
+            IndependentReparametrizationSampler.skip += self._sample_size
             normal_samples = idealised_normal_samples(
-                tf.TensorShape(self._sample_size), mean.shape[-1]
+                tf.TensorShape(self._sample_size), mean.shape[-1], self._skip
             )  # [S, L]
             self._eps.assign(normal_samples)
             self._initialized.assign(True)
