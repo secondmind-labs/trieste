@@ -44,27 +44,6 @@ from ..interfaces import (
 )
 
 
-def idealised_normal_samples(batch_shape: tf.TensorShape, n_sample_dim: int) -> tf.Tensor:
-    """
-    Generates a batch of shape :param:`batch_shape` sobol samples, where each sample
-    has dimension :param:`n_sample_dim`.
-    """
-    sobol_samples = tf.math.sobol_sample(
-        dim=n_sample_dim,
-        num_results=tf.reduce_prod(batch_shape),
-        dtype=tf.float64,
-    )
-
-    dist = tfp.distributions.Normal(
-        loc=tf.constant(0.0, dtype=tf.float64),
-        scale=tf.constant(1.0, dtype=tf.float64),
-    )
-    samples_shape = batch_shape + (n_sample_dim,)
-    normal_samples = tf.reshape(dist.quantile(sobol_samples), samples_shape)
-    tf.debugging.assert_shapes([(normal_samples, samples_shape)])
-    return normal_samples
-
-
 class IndependentReparametrizationSampler(ReparametrizationSampler[ProbabilisticModel]):
     r"""
     This sampler employs the *reparameterization trick* to approximate samples from a
@@ -113,10 +92,9 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
         var = var + jitter
 
         if not self._initialized:
-            normal_samples = idealised_normal_samples(
-                tf.TensorShape(self._sample_size), mean.shape[-1]
+            self._eps.assign(
+                tf.random.normal([self._sample_size, tf.shape(mean)[-1]], dtype=tf.float64)
             )  # [S, L]
-            self._eps.assign(normal_samples)
             self._initialized.assign(True)
 
         return mean + tf.sqrt(var) * tf.cast(self._eps[:, None, :], var.dtype)  # [..., S, 1, L]
