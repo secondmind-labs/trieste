@@ -48,7 +48,7 @@ def idealised_normal_samples(
     batch_shape: tf.TensorShape, n_sample_dim: int, skip: int = 0
 ) -> tf.Tensor:
     """
-    Generates a batch of shape `batch_shape` sobol samples, sking the first `skip`, where each
+    Generates a batch of shape `batch_shape` sobol samples, skipping the first `skip`, where each
     sample has dimension `n_sample_dim`.
     """
     sobol_samples = tf.math.sobol_sample(
