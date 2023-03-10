@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import math
-from typing import List, Type
+from typing import Any, List, Type
 
 import gpflow
 import numpy as np
@@ -156,12 +156,13 @@ def test_independent_reparametrization_sampler_reset_sampler() -> None:
     sampler = IndependentReparametrizationSampler(100, _dim_two_gp())
     assert not sampler._initialized
     xs = tf.random.uniform([100, 1, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
-    sampler.sample(xs)
+    samples1 = sampler.sample(xs)
     assert sampler._initialized
     sampler.reset_sampler()
     assert not sampler._initialized
-    sampler.sample(xs)
+    samples2 = sampler.sample(xs)
     assert sampler._initialized
+    npt.assert_array_less(1e-9, tf.abs(samples2 - samples1))
 
 
 @pytest.mark.parametrize("sample_size", [0, -2])
@@ -758,7 +759,9 @@ def test_kl_divergence_normal_samples() -> None:
     )[0]
     random_sample_counts = np.histogram2d(random_samples[:, 0], random_samples[:, 1], bins=bins)[0]
 
-    def compute_kl_divergence(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    def compute_kl_divergence(
+        a: "np.ndarray[Any, Any]", b: "np.ndarray[Any, Any]"
+    ) -> "np.ndarray[Any, Any]":
         return np.sum(np.where(np.logical_and(a != 0, b != 0), a * np.log(a / b), 0))
 
     kl_div = compute_kl_divergence(

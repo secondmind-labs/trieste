@@ -79,7 +79,7 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
     samples form a continuous curve.
     """
 
-    skip: int = 0
+    skip: TensorType = tf.Variable(0)
     """Number of sobol sequence points to skip. This is incremented for each sampler."""
 
     def __init__(self, sample_size: int, model: ProbabilisticModel):
@@ -119,10 +119,10 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
         var = var + jitter
 
         if not self._initialized:
-            self._skip = IndependentReparametrizationSampler.skip
-            IndependentReparametrizationSampler.skip += self._sample_size
+            skip = IndependentReparametrizationSampler.skip
+            IndependentReparametrizationSampler.skip.assign(skip + self._sample_size)
             normal_samples = idealised_normal_samples(
-                tf.TensorShape(self._sample_size), mean.shape[-1], self._skip
+                tf.TensorShape(self._sample_size), mean.shape[-1], skip
             )  # [S, L]
             self._eps.assign(normal_samples)
             self._initialized.assign(True)
