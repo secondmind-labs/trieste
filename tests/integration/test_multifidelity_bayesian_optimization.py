@@ -49,7 +49,7 @@ def _build_observer(problem: SingleObjectiveMultifidelityTestProblem) -> SingleO
         _, fidelities = check_and_extract_fidelity_query_points(x)
         y = objective_function(x)
         not_lowest_fidelity = fidelities > 0
-        noise = tf.random.normal(y.shape, stddev=1e-1, dtype=y.dtype)
+        noise = tf.random.normal(y.shape, stddev=2e-2, dtype=y.dtype)
         y = tf.where(not_lowest_fidelity, y + noise, y)
         return y
 
