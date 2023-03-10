@@ -59,6 +59,7 @@ from trieste.logging import step_number, tensorboard_writer
 from trieste.models import ProbabilisticModelType, TrainableProbabilisticModel
 from trieste.models.gpflow import (
     GaussianProcessRegression,
+    GPflowPredictor,
     MultifidelityAutoregressive,
     MultifidelityNonlinearAutoregressive,
     SparseGaussianProcessRegression,
@@ -1618,9 +1619,9 @@ def test_sparse_variational_pairwise_covariance_for_non_whitened(
     np.testing.assert_allclose(expected_covariance, actual_covariance, atol=1e-4)
 
 
-class DummyInducingPointSelector(InducingPointSelector):
-    def __init__(self, new_inducing_points):
-        super().__init__()
+class DummyInducingPointSelector(InducingPointSelector[GPflowPredictor]):
+    def __init__(self, new_inducing_points: TensorType, recalc_every_model_update: bool = True):
+        super().__init__(recalc_every_model_update)
         self._new_inducing_points = new_inducing_points
 
     def _recalculate_inducing_points(
@@ -1634,15 +1635,15 @@ class DummyInducingPointSelector(InducingPointSelector):
 def test_sparse_variational_inducing_updates_preserves_posterior(
     whiten: bool,
 ) -> None:
-    x = tf.constant(
-        np.linspace(0.0, 1.0, 8).reshape(-1, 1), dtype=gpflow.default_float()
-    )  # shape: [4, 1]
+    x = tf.constant(np.linspace(0.0, 1.0, 8).reshape(-1, 1), dtype=gpflow.default_float())
     y1 = fnc_3x_plus_10(x)
-    xnew = tf.constant(
-        np.linspace(0.31, 0.77, 4).reshape(-1, 1), dtype=gpflow.default_float()
-    )  # shape: [4, 1]
 
-    svgp = svgp_model_with_mean(x, y1, whiten=whiten)
+    num_inducing_points = 4
+    xnew = tf.constant(
+        np.linspace(0.31, 0.77, num_inducing_points).reshape(-1, 1), dtype=gpflow.default_float()
+    )
+
+    svgp = svgp_model_with_mean(x, y1, whiten, num_inducing_points)
     inducing_point_selector = DummyInducingPointSelector(xnew)
     model = SparseVariational(
         svgp,
@@ -1652,15 +1653,18 @@ def test_sparse_variational_inducing_updates_preserves_posterior(
 
     model.optimize(Dataset(x, y1))
 
-    old_mu, old_sqrt = model.model.predict_f(xnew)  # predict old posterior
+    old_mu, old_sqrt = model.model.predict_f(xnew, full_cov=True)  # predict old posterior
 
     model.update(Dataset(x, y1))
 
     npt.assert_raises(
-        AssertionError, npt.assert_array_equal, model.model.inducing_variable.Z, x[:4]
+        AssertionError,
+        npt.assert_array_equal,
+        model.model.inducing_variable.Z,
+        x[:num_inducing_points],
     )
 
-    new_mu, new_sqrt = model.model.predict_f(xnew)  # predict new posterior
+    new_mu, new_sqrt = model.model.predict_f(xnew, full_cov=True)  # predict new posterior
 
     np.testing.assert_allclose(old_mu, new_mu, atol=1e-4)
     np.testing.assert_allclose(old_sqrt, new_sqrt, atol=1e-4)
