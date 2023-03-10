@@ -54,7 +54,7 @@ except ModuleNotFoundError:
 from . import logging
 from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from .data import Dataset
-from .models import TrainableProbabilisticModel
+from .models import SupportsCovarianceWithTopFidelity, TrainableProbabilisticModel
 from .observer import OBJECTIVE, Observer
 from .space import SearchSpace
 from .types import State, Tag, TensorType
@@ -229,6 +229,13 @@ class OptimizationResult(Generic[StateType]):
         dataset = self.try_get_final_dataset()
         if tf.rank(dataset.observations) != 2 or dataset.observations.shape[1] != 1:
             raise ValueError("Expected a single objective")
+        if tf.reduce_any(
+            [
+                isinstance(model, SupportsCovarianceWithTopFidelity)
+                for model in self.try_get_final_models()
+            ]
+        ):
+            raise ValueError("Expected single fidelity models")
         arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
         return dataset.query_points[arg_min_idx], dataset.observations[arg_min_idx], arg_min_idx
 
