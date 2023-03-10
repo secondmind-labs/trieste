@@ -138,6 +138,9 @@ def test_min_value_entropy_search_builder_builds_min_value_samples(
     search_space = Box([0, 0], [1, 1])
     builder = MinValueEntropySearch(search_space, min_value_sampler=min_value_sampler)
     model = QuadraticMeanAndRBFKernelWithSamplers(dataset)
+    model.kernel = (
+        gpflow.kernels.RBF()
+    )  # need a gpflow kernel object for random feature decompositions
     builder.prepare_acquisition_function(model, dataset=dataset)
     mocked_mves.assert_called_once()
 
@@ -682,6 +685,10 @@ def test_mumbo_builder_builds_min_value_samples_trajectory_sampler(
     model = MultiFidelityQuadraticMeanAndRBFKernelWithSamplers(
         dataset=dataset, noise_variance=tf.constant(1e-10, dtype=tf.float64)
     )
+    model.kernel = (
+        gpflow.kernels.RBF()
+    )  # need a gpflow kernel object for random feature decompositions
+
     builder = MinValueEntropySearch(
         search_space, min_value_sampler=ThompsonSamplerFromTrajectory(sample_min_value=True)
     )

@@ -229,9 +229,6 @@ class QuadraticMeanAndRBFKernelWithSamplers(
                 dataset.observations, trainable=False, shape=[None, *dataset.observations.shape[1:]]
             ),
         )
-        self.kernel = (
-            gpflow.kernels.RBF()
-        )  # need a gpflow kernel object for random feature decompositions
 
     def trajectory_sampler(self) -> TrajectorySampler[QuadraticMeanAndRBFKernelWithSamplers]:
         return RandomFourierFeatureTrajectorySampler(self, 100)
