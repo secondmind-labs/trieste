@@ -497,7 +497,7 @@ def build_multifidelity_nonlinear_autoregressive_models(
     :cite:`perdikaris2017nonlinear` for the higher fidelities, which also have an extra input
     dimension. Note that the initial data that the models with fidelity greater than 0 are
     initialised with contain dummy data in this extra dimension, and so an `update` of the
-    `MultifidelityNonlinearAutoregressive` is required to propogate real data through to these
+    `MultifidelityNonlinearAutoregressive` is required to propagate real data through to these
     models.
 
     :param dataset: The dataset to use to initialise the models
