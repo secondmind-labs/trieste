@@ -330,7 +330,7 @@ def _whiten_points(
 
     old_mean = model.model.mean_function(inducing_points)
     f_mu, f_cov = model.model.predict_f(inducing_points, full_cov=True)  # [N, L], [L, N, N]
-    new_q_mu -= old_mean
+    f_mu -= old_mean
     Knn = model.get_kernel()(inducing_points, full_cov=True)  # [N, N]
     jitter_mat = DEFAULTS.JITTER * tf.eye(tf.shape(inducing_points)[0], dtype=Knn.dtype)
     Lnn = tf.linalg.cholesky(Knn + jitter_mat)  # [N, N]

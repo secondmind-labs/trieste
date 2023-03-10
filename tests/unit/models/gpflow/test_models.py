@@ -48,6 +48,7 @@ from tests.util.models.gpflow.models import (
     mock_data,
     sgpr_model,
     svgp_model,
+    svgp_model_with_mean,
     two_output_svgp_model,
     vgp_matern_model,
     vgp_model,
@@ -55,7 +56,7 @@ from tests.util.models.gpflow.models import (
 from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.data import Dataset, add_fidelity_column
 from trieste.logging import step_number, tensorboard_writer
-from trieste.models import TrainableProbabilisticModel
+from trieste.models import ProbabilisticModelType, TrainableProbabilisticModel
 from trieste.models.gpflow import (
     GaussianProcessRegression,
     MultifidelityAutoregressive,
@@ -1599,8 +1600,7 @@ def test_sparse_variational_pairwise_covariance_for_non_whitened(
     y1 = fnc_3x_plus_10(x)
     y2 = y1 * 0.5
 
-    svgp = two_output_svgp_model(x, mo_type, whiten)
-
+    svgp = svgp_model(x, mo_type, whiten)
     model = SparseVariational(svgp, BatchOptimizer(tf.optimizers.Adam(), max_iter=3, batch_size=10))
     model.model.whiten = whiten
 
@@ -1616,6 +1616,54 @@ def test_sparse_variational_pairwise_covariance_for_non_whitened(
     actual_covariance = model.covariance_between_points(query_points_1, query_points_2)
 
     np.testing.assert_allclose(expected_covariance, actual_covariance, atol=1e-4)
+
+
+class DummyInducingPointSelector(InducingPointSelector):
+    def __init__(self, new_inducing_points):
+        super().__init__()
+        self._new_inducing_points = new_inducing_points
+
+    def _recalculate_inducing_points(
+        self, M: int, model: ProbabilisticModelType, dataset: Dataset
+    ) -> TensorType:
+        return self._new_inducing_points
+
+
+@random_seed
+@pytest.mark.parametrize("whiten", [False, True])
+def test_sparse_variational_inducing_updates_preserves_posterior(
+    whiten: bool,
+) -> None:
+    x = tf.constant(
+        np.linspace(0.0, 1.0, 8).reshape(-1, 1), dtype=gpflow.default_float()
+    )  # shape: [4, 1]
+    y1 = fnc_3x_plus_10(x)
+    xnew = tf.constant(
+        np.linspace(0.31, 0.77, 4).reshape(-1, 1), dtype=gpflow.default_float()
+    )  # shape: [4, 1]
+
+    svgp = svgp_model_with_mean(x, y1, whiten=whiten)
+    inducing_point_selector = DummyInducingPointSelector(xnew)
+    model = SparseVariational(
+        svgp,
+        BatchOptimizer(tf.optimizers.Adam(), max_iter=3, batch_size=10),
+        inducing_point_selector=inducing_point_selector,
+    )
+
+    model.optimize(Dataset(x, y1))
+
+    old_mu, old_sqrt = model.model.predict_f(xnew)  # predict old posterior
+
+    model.update(Dataset(x, y1))
+
+    npt.assert_raises(
+        AssertionError, npt.assert_array_equal, model.model.inducing_variable.Z, x[:4]
+    )
+
+    new_mu, new_sqrt = model.model.predict_f(xnew)  # predict new posterior
+
+    np.testing.assert_allclose(old_mu, new_mu, atol=1e-4)
+    np.testing.assert_allclose(old_sqrt, new_sqrt, atol=1e-4)
 
 
 def multifidelity_autoregressive_nd_dataset(n_dims: int = 1) -> Dataset:
