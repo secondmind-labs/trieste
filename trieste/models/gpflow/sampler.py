@@ -89,12 +89,7 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
         :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
         """
         super().__init__(sample_size, model)
-
-        # _eps is essentially a lazy constant. It is declared and assigned an empty tensor here, and
-        # populated on the first call to sample
-        self._eps = tf.Variable(
-            tf.ones([sample_size, 0], dtype=tf.float64), shape=[sample_size, None]
-        )  # [S, 0]
+        self._eps: Optional[tf.Variable] = None
 
     def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
         """
@@ -118,14 +113,23 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
         mean, var = self._model.predict(at[..., None, :, :])  # [..., 1, 1, L], [..., 1, 1, L]
         var = var + jitter
 
-        if not self._initialized:
+        def sample_eps() -> tf.Tensor:
+            self._initialized.assign(True)
             skip = IndependentReparametrizationSampler.skip
             IndependentReparametrizationSampler.skip.assign(skip + self._sample_size)
             normal_samples = idealised_normal_samples(
                 tf.TensorShape(self._sample_size), mean.shape[-1], skip
-            )  # [S, L]
-            self._eps.assign(normal_samples)
-            self._initialized.assign(True)
+            )
+            return normal_samples  # [S, L]
+
+        if self._eps is None:
+            self._eps = tf.Variable(sample_eps())
+
+        tf.cond(
+            self._initialized,
+            lambda: self._eps,
+            lambda: self._eps.assign(sample_eps()),
+        )
 
         return mean + tf.sqrt(var) * tf.cast(self._eps[:, None, :], var.dtype)  # [..., S, 1, L]
 
