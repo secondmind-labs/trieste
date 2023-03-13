@@ -1653,16 +1653,13 @@ def test_sparse_variational_inducing_updates_preserves_posterior(
 
     model.optimize(Dataset(x, y1))
 
+    np.testing.assert_array_equal(model.model.inducing_variable.Z, x[:num_inducing_points])
+
     old_mu, old_sqrt = model.model.predict_f(xnew, full_cov=True)  # predict old posterior
 
     model.update(Dataset(x, y1))  # this changes inducing points to xnew
 
-    npt.assert_raises(
-        AssertionError,
-        npt.assert_array_equal,
-        model.model.inducing_variable.Z,
-        x[:num_inducing_points],
-    )
+    np.testing.assert_array_equal(model.model.inducing_variable.Z, xnew)
 
     new_mu, new_sqrt = model.model.predict_f(xnew, full_cov=True)  # predict new posterior
 

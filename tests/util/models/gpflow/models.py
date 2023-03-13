@@ -317,7 +317,7 @@ def svgp_model(x: tf.Tensor, y: tf.Tensor, num_latent_gps: int = 1) -> SVGP:
 def svgp_model_with_mean(
     x: tf.Tensor, y: tf.Tensor, whiten: bool, num_inducing_points: int, num_latent_gps: int = 1
 ) -> SVGP:
-    return SVGP(
+    m = SVGP(
         gpflow.kernels.Matern32(),
         gpflow.likelihoods.Gaussian(),
         x[:num_inducing_points],
@@ -326,6 +326,8 @@ def svgp_model_with_mean(
         mean_function=gpflow.mean_functions.Linear(),
         whiten=whiten,
     )
+    gpflow.set_trainable(m.inducing_variable.Z, False)
+    return m
 
 
 def vgp_model(x: tf.Tensor, y: tf.Tensor, num_latent_gps: int = 1) -> VGP:
