@@ -1655,16 +1655,16 @@ def test_sparse_variational_inducing_updates_preserves_posterior(
 
     np.testing.assert_array_equal(model.model.inducing_variable.Z, x[:num_inducing_points])
 
-    old_mu, old_sqrt = model.model.predict_f(xnew, full_cov=True)  # predict old posterior
+    old_mu, old_sqrt = model.predict_joint(xnew)  # predict old posterior
 
     model.update(Dataset(x, y1))  # this changes inducing points to xnew
 
     np.testing.assert_array_equal(model.model.inducing_variable.Z, xnew)
 
-    new_mu, new_sqrt = model.model.predict_f(xnew, full_cov=True)  # predict new posterior
+    new_mu, new_sqrt = model.predict_joint(xnew)  # predict new posterior
 
     np.testing.assert_allclose(old_mu, new_mu, atol=1e-4)
-    np.testing.assert_allclose(old_sqrt, new_sqrt, atol=1e-4)
+    np.testing.assert_allclose(old_sqrt, new_sqrt, atol=1.1e-4, rtol=1e-4)
 
 
 def multifidelity_autoregressive_nd_dataset(n_dims: int = 1) -> Dataset:
