@@ -325,8 +325,8 @@ def svgp_model_with_mean(
     q_mu = np.random.randn(num_inducing_points, 1)
     q_sqrt = np.tril(np.random.randn(1, num_inducing_points, num_inducing_points))
     m = SVGP(
-        gpflow.kernels.Matern32(),
-        gpflow.likelihoods.Gaussian(),
+        gpflow.kernels.Matern32(variance=0.91),
+        gpflow.likelihoods.Gaussian(variance=0.23),
         x[:num_inducing_points],
         num_data=len(x),
         num_latent_gps=num_latent_gps,

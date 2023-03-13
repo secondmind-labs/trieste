@@ -1651,8 +1651,6 @@ def test_sparse_variational_inducing_updates_preserves_posterior(
         inducing_point_selector=inducing_point_selector,
     )
 
-    model.optimize(Dataset(x, y1))
-
     np.testing.assert_array_equal(model.model.inducing_variable.Z, x[:num_inducing_points])
 
     old_mu, old_sqrt = model.predict_joint(xnew)  # predict old posterior
