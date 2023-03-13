@@ -17,6 +17,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 
 import gpflow
+import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
@@ -317,15 +318,20 @@ def svgp_model(x: tf.Tensor, y: tf.Tensor, num_latent_gps: int = 1) -> SVGP:
 def svgp_model_with_mean(
     x: tf.Tensor, y: tf.Tensor, whiten: bool, num_inducing_points: int, num_latent_gps: int = 1
 ) -> SVGP:
+    mean_function = gpflow.mean_functions.Linear(
+        A=0.37 * np.ones((1, 1), dtype=gpflow.default_float()),
+        b=0.19 * np.ones((1,), dtype=gpflow.default_float()),
+    )
     m = SVGP(
         gpflow.kernels.Matern32(),
         gpflow.likelihoods.Gaussian(),
         x[:num_inducing_points],
         num_data=len(x),
         num_latent_gps=num_latent_gps,
-        mean_function=gpflow.mean_functions.Linear(),
+        mean_function=mean_function,
         whiten=whiten,
     )
+    gpflow.set_trainable(mean_function, False)
     gpflow.set_trainable(m.inducing_variable.Z, False)
     return m
 
