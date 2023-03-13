@@ -1601,7 +1601,7 @@ def test_sparse_variational_pairwise_covariance_for_non_whitened(
     y1 = fnc_3x_plus_10(x)
     y2 = y1 * 0.5
 
-    svgp = svgp_model(x, mo_type, whiten)
+    svgp = two_output_svgp_model(x, mo_type, whiten)
     model = SparseVariational(svgp, BatchOptimizer(tf.optimizers.Adam(), max_iter=3, batch_size=10))
     model.model.whiten = whiten
 
