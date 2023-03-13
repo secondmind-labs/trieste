@@ -1655,7 +1655,7 @@ def test_sparse_variational_inducing_updates_preserves_posterior(
 
     old_mu, old_sqrt = model.model.predict_f(xnew, full_cov=True)  # predict old posterior
 
-    model.update(Dataset(x, y1))
+    model.update(Dataset(x, y1))  # this changes inducing points to xnew
 
     npt.assert_raises(
         AssertionError,
