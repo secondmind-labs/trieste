@@ -41,6 +41,7 @@ from trieste.models.gpflow.interface import SupportsCovarianceBetweenPoints
 from trieste.models.interfaces import (
     HasReparamSampler,
     HasTrajectorySampler,
+    SupportsCovarianceWithTopFidelity,
     SupportsGetKernel,
     SupportsGetObservationNoise,
 )
@@ -244,6 +245,71 @@ class QuadraticMeanAndRBFKernelWithSamplers(
     def update(self, dataset: Dataset) -> None:
         self._dataset[0].assign(dataset.query_points)
         self._dataset[1].assign(dataset.observations)
+
+
+class MultiFidelityQuadraticMeanAndRBFKernel(
+    QuadraticMeanAndRBFKernel, SupportsCovarianceWithTopFidelity
+):
+    r"""
+    A Gaussian process with scalar quadratic mean, an RBF kernel and
+    trajectory_sampler and reparam_sampler methods.
+    """
+
+    def __init__(
+        self,
+        *,
+        x_shift: float | SequenceN[float] | TensorType = 0,
+        kernel_amplitude: float | TensorType | None = None,
+        noise_variance: float = 1.0,
+    ):
+        super().__init__(
+            x_shift=x_shift, kernel_amplitude=kernel_amplitude, noise_variance=noise_variance
+        )
+
+    @property
+    def num_fidelities(self) -> int:
+        return 5
+
+    def covariance_with_top_fidelity(self, x: TensorType) -> TensorType:
+        mean, _ = self.predict(x)
+        return tf.ones_like(mean, dtype=mean.dtype)  # dummy covariances of correct shape
+
+    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        fmean, fvar = self.predict(query_points)
+        yvar = fvar + tf.constant(1.0, dtype=fmean.dtype)  # dummy noise variance
+        return fmean, yvar
+
+
+class MultiFidelityQuadraticMeanAndRBFKernelWithSamplers(
+    QuadraticMeanAndRBFKernelWithSamplers, SupportsCovarianceWithTopFidelity
+):
+    r"""
+    A Gaussian process with scalar quadratic mean, an RBF kernel and
+    trajectory_sampler and reparam_sampler methods.
+    """
+
+    def __init__(
+        self,
+        dataset: Dataset,
+        *,
+        x_shift: float | SequenceN[float] | TensorType = 0,
+        kernel_amplitude: float | TensorType | None = None,
+        noise_variance: float = 1.0,
+    ):
+        super().__init__(
+            dataset,
+            x_shift=x_shift,
+            kernel_amplitude=kernel_amplitude,
+            noise_variance=noise_variance,
+        )
+
+    @property
+    def num_fidelities(self) -> int:
+        return 5
+
+    def covariance_with_top_fidelity(self, x: TensorType) -> TensorType:
+        mean, _ = self.predict(x)
+        return tf.ones_like(mean, dtype=mean.dtype)  # dummy covariances of correct shape
 
 
 class QuadraticMeanAndRBFKernelWithBatchSamplers(
