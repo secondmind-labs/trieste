@@ -187,20 +187,30 @@ def test_independent_reparametrization_sampler_reset_sampler(qmc: bool) -> None:
     npt.assert_array_less(1e-9, tf.abs(samples2 - samples1))
 
 
+@pytest.mark.parametrize("qmc", [True, False])
 @pytest.mark.parametrize("sample_size", [0, -2])
-def test_batch_reparametrization_sampler_raises_for_invalid_sample_size(sample_size: int) -> None:
+def test_batch_reparametrization_sampler_raises_for_invalid_sample_size(
+    sample_size: int, qmc: bool
+) -> None:
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        BatchReparametrizationSampler(sample_size, _dim_two_gp())
+        BatchReparametrizationSampler(sample_size, _dim_two_gp(), qmc=qmc)
 
 
 @random_seed
-def test_batch_reparametrization_sampler_samples_approximate_mean_and_covariance() -> None:
+@unittest.mock.patch(
+    "trieste.models.gpflow.sampler.qmc_normal_samples", side_effect=qmc_normal_samples
+)
+@pytest.mark.parametrize("qmc", [True, False])
+def test_batch_reparametrization_sampler_samples_approximate_mean_and_covariance(
+    mocked_qmc: MagicMock, qmc: bool
+) -> None:
     model = _dim_two_gp()
     sample_size = 10_000
     leading_dims = [3]
     batch_size = 4
     xs = tf.random.uniform(leading_dims + [batch_size, 2], maxval=1.0, dtype=tf.float64)
-    samples = BatchReparametrizationSampler(sample_size, model).sample(xs)
+    samples = BatchReparametrizationSampler(sample_size, model, qmc=qmc).sample(xs)
+    assert mocked_qmc.call_count == qmc
 
     assert samples.shape == leading_dims + [sample_size, batch_size, 2]
 
@@ -215,52 +225,63 @@ def test_batch_reparametrization_sampler_samples_approximate_mean_and_covariance
     npt.assert_allclose(samples_covariance, model_cov, rtol=0.04)
 
 
-def test_batch_reparametrization_sampler_samples_are_continuous() -> None:
-    sampler = BatchReparametrizationSampler(100, _dim_two_gp())
+@pytest.mark.parametrize("qmc", [True, False])
+def test_batch_reparametrization_sampler_samples_are_continuous(qmc: bool) -> None:
+    sampler = BatchReparametrizationSampler(100, _dim_two_gp(), qmc=qmc)
     xs = tf.random.uniform([3, 5, 7, 2], dtype=tf.float64)
     npt.assert_array_less(tf.abs(sampler.sample(xs + 1e-20) - sampler.sample(xs)), 1e-20)
 
 
-def test_batch_reparametrization_sampler_samples_are_repeatable() -> None:
-    sampler = BatchReparametrizationSampler(100, _dim_two_gp())
+@pytest.mark.parametrize("qmc", [True, False])
+def test_batch_reparametrization_sampler_samples_are_repeatable(qmc: bool) -> None:
+    sampler = BatchReparametrizationSampler(100, _dim_two_gp(), qmc=qmc)
     xs = tf.random.uniform([3, 5, 7, 2], dtype=tf.float64)
     npt.assert_allclose(sampler.sample(xs), sampler.sample(xs))
 
 
 @random_seed
-def test_batch_reparametrization_sampler_samples_are_distinct_for_new_instances() -> None:
+@pytest.mark.parametrize("qmc", [True, False])
+def test_batch_reparametrization_sampler_samples_are_distinct_for_new_instances(qmc: bool) -> None:
     model = _dim_two_gp()
-    sampler1 = BatchReparametrizationSampler(100, model)
-    sampler2 = BatchReparametrizationSampler(100, model)
+    sampler1 = BatchReparametrizationSampler(100, model, qmc=qmc)
+    sampler2 = BatchReparametrizationSampler(100, model, qmc=qmc)
     xs = tf.random.uniform([3, 5, 7, 2], dtype=tf.float64)
     npt.assert_array_less(1e-9, tf.abs(sampler2.sample(xs) - sampler1.sample(xs)))
 
 
 @pytest.mark.parametrize("at", [tf.constant([0.0]), tf.constant(0.0), tf.ones([0, 1])])
-def test_batch_reparametrization_sampler_sample_raises_for_invalid_at_shape(at: tf.Tensor) -> None:
-    sampler = BatchReparametrizationSampler(100, QuadraticMeanAndRBFKernel())
+@pytest.mark.parametrize("qmc", [True, False])
+def test_batch_reparametrization_sampler_sample_raises_for_invalid_at_shape(
+    at: tf.Tensor, qmc: bool
+) -> None:
+    sampler = BatchReparametrizationSampler(100, QuadraticMeanAndRBFKernel(), qmc=qmc)
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         sampler.sample(at)
 
 
-def test_batch_reparametrization_sampler_sample_raises_for_negative_jitter() -> None:
-    sampler = BatchReparametrizationSampler(100, QuadraticMeanAndRBFKernel())
+@pytest.mark.parametrize("qmc", [True, False])
+def test_batch_reparametrization_sampler_sample_raises_for_negative_jitter(qmc: bool) -> None:
+    sampler = BatchReparametrizationSampler(100, QuadraticMeanAndRBFKernel(), qmc=qmc)
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         sampler.sample(tf.constant([[0.0]]), jitter=-1e-6)
 
 
-def test_batch_reparametrization_sampler_sample_raises_for_inconsistent_batch_size() -> None:
-    sampler = BatchReparametrizationSampler(100, QuadraticMeanAndRBFKernel())
+@pytest.mark.parametrize("qmc", [True, False])
+def test_batch_reparametrization_sampler_sample_raises_for_inconsistent_batch_size(
+    qmc: bool,
+) -> None:
+    sampler = BatchReparametrizationSampler(100, QuadraticMeanAndRBFKernel(), qmc=qmc)
     sampler.sample(tf.constant([[0.0], [1.0], [2.0]]))
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         sampler.sample(tf.constant([[0.0], [1.0]]))
 
 
-def test_batch_reparametrization_sampler_reset_sampler() -> None:
-    sampler = BatchReparametrizationSampler(100, QuadraticMeanAndRBFKernel())
+@pytest.mark.parametrize("qmc", [True, False])
+def test_batch_reparametrization_sampler_reset_sampler(qmc: bool) -> None:
+    sampler = BatchReparametrizationSampler(100, QuadraticMeanAndRBFKernel(), qmc=qmc)
     assert not sampler._initialized
     xs = tf.constant([[0.0], [1.0], [2.0]])
     sampler.sample(xs)
