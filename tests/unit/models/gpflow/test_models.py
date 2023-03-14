@@ -1635,8 +1635,10 @@ class DummyInducingPointSelector(InducingPointSelector[GPflowPredictor]):
 def test_sparse_variational_inducing_updates_preserves_posterior(
     whiten: bool,
 ) -> None:
-    from gpflow.config import as_context, Config
+    from gpflow.config import Config, as_context
+
     from trieste.utils import DEFAULTS
+
     default_jitter = 0.0
     DEFAULTS.JITTER = default_jitter
     with as_context(Config(jitter=default_jitter)):
@@ -1645,7 +1647,8 @@ def test_sparse_variational_inducing_updates_preserves_posterior(
 
         num_inducing_points = 4
         xnew = tf.constant(
-            np.linspace(0.31, 0.77, num_inducing_points).reshape(-1, 1), dtype=gpflow.default_float()
+            np.linspace(0.31, 0.77, num_inducing_points).reshape(-1, 1),
+            dtype=gpflow.default_float(),
         )
 
         svgp = svgp_model_with_mean(x, y1, whiten, num_inducing_points)

@@ -1016,7 +1016,7 @@ class SparseVariational(
             jitter_mat = DEFAULTS.JITTER * tf.eye(
                 tf.shape(new_inducing_points)[0], dtype=new_f_cov.dtype
             )
-            new_q_sqrt = tf.linalg.cholesky(new_f_cov ) # + jitter_mat)
+            new_q_sqrt = tf.linalg.cholesky(new_f_cov + jitter_mat)
 
         self.model.q_mu.assign(new_q_mu)  # [N, L]
         self.model.q_sqrt.assign(new_q_sqrt)  # [L, N, N]
