@@ -35,6 +35,7 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflow.config import Config, as_context
 from gpflow.inducing_variables import (
     SeparateIndependentInducingVariables,
     SharedIndependentInducingVariables,
@@ -85,6 +86,7 @@ from trieste.models.gpflow.sampler import (
 from trieste.models.optimizer import BatchOptimizer, DatasetTransformer, Optimizer
 from trieste.space import Box
 from trieste.types import TensorType
+from trieste.utils import DEFAULTS
 
 
 def _3x_plus_gaussian_noise(x: tf.Tensor) -> tf.Tensor:
@@ -1635,13 +1637,10 @@ class DummyInducingPointSelector(InducingPointSelector[GPflowPredictor]):
 def test_sparse_variational_inducing_updates_preserves_posterior(
     whiten: bool,
 ) -> None:
-    from gpflow.config import Config, as_context
-
-    from trieste.utils import DEFAULTS
-
     default_jitter = 0.0
-    DEFAULTS.JITTER = default_jitter
-    with as_context(Config(jitter=default_jitter)):
+    with as_context(Config(jitter=default_jitter)), unittest.mock.patch.object(
+        DEFAULTS, "JITTER", default_jitter
+    ):
         x = tf.constant(np.linspace(0.0, 1.0, 8).reshape(-1, 1), dtype=gpflow.default_float())
         y1 = fnc_3x_plus_10(x)
 
