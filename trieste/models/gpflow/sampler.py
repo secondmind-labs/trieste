@@ -44,9 +44,7 @@ from ..interfaces import (
 )
 
 
-def idealised_normal_samples(
-    batch_shape: tf.TensorShape, n_sample_dim: int, skip: int = 0
-) -> tf.Tensor:
+def qmc_normal_samples(batch_shape: tf.TensorShape, n_sample_dim: int, skip: int = 0) -> tf.Tensor:
     """
     Generates a batch of shape `batch_shape` sobol samples, skipping the first `skip`, where each
     sample has dimension `n_sample_dim`.
@@ -117,7 +115,7 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
             self._initialized.assign(True)
             skip = IndependentReparametrizationSampler.skip
             IndependentReparametrizationSampler.skip.assign(skip + self._sample_size)
-            normal_samples = idealised_normal_samples(
+            normal_samples = qmc_normal_samples(
                 tf.TensorShape(self._sample_size), mean.shape[-1], skip
             )
             return normal_samples  # [S, L]
