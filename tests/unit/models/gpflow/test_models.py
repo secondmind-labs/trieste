@@ -1635,34 +1635,39 @@ class DummyInducingPointSelector(InducingPointSelector[GPflowPredictor]):
 def test_sparse_variational_inducing_updates_preserves_posterior(
     whiten: bool,
 ) -> None:
-    x = tf.constant(np.linspace(0.0, 1.0, 8).reshape(-1, 1), dtype=gpflow.default_float())
-    y1 = fnc_3x_plus_10(x)
+    from gpflow.config import as_context, Config
+    from trieste.utils import DEFAULTS
+    default_jitter = 0.0
+    DEFAULTS.JITTER = default_jitter
+    with as_context(Config(jitter=default_jitter)):
+        x = tf.constant(np.linspace(0.0, 1.0, 8).reshape(-1, 1), dtype=gpflow.default_float())
+        y1 = fnc_3x_plus_10(x)
 
-    num_inducing_points = 4
-    xnew = tf.constant(
-        np.linspace(0.31, 0.77, num_inducing_points).reshape(-1, 1), dtype=gpflow.default_float()
-    )
+        num_inducing_points = 4
+        xnew = tf.constant(
+            np.linspace(0.31, 0.77, num_inducing_points).reshape(-1, 1), dtype=gpflow.default_float()
+        )
 
-    svgp = svgp_model_with_mean(x, y1, whiten, num_inducing_points)
-    inducing_point_selector = DummyInducingPointSelector(xnew)
-    model = SparseVariational(
-        svgp,
-        BatchOptimizer(tf.optimizers.Adam(), max_iter=3, batch_size=10),
-        inducing_point_selector=inducing_point_selector,
-    )
+        svgp = svgp_model_with_mean(x, y1, whiten, num_inducing_points)
+        inducing_point_selector = DummyInducingPointSelector(xnew)
+        model = SparseVariational(
+            svgp,
+            BatchOptimizer(tf.optimizers.Adam(), max_iter=3, batch_size=10),
+            inducing_point_selector=inducing_point_selector,
+        )
 
-    np.testing.assert_array_equal(model.model.inducing_variable.Z, x[:num_inducing_points])
+        np.testing.assert_array_equal(model.model.inducing_variable.Z, x[:num_inducing_points])
 
-    old_mu, old_sqrt = model.predict_joint(xnew)  # predict old posterior
+        old_mu, old_sqrt = model.predict_joint(xnew)  # predict old posterior
 
-    model.update(Dataset(x, y1))  # this changes inducing points to xnew
+        model.update(Dataset(x, y1))  # this changes inducing points to xnew
 
-    np.testing.assert_array_equal(model.model.inducing_variable.Z, xnew)
+        np.testing.assert_array_equal(model.model.inducing_variable.Z, xnew)
 
-    new_mu, new_sqrt = model.predict_joint(xnew)  # predict new posterior
+        new_mu, new_sqrt = model.predict_joint(xnew)  # predict new posterior
 
-    np.testing.assert_allclose(old_mu, new_mu, atol=1e-4)
-    np.testing.assert_allclose(old_sqrt, new_sqrt, atol=1.1e-4, rtol=1e-4)
+        np.testing.assert_allclose(old_mu, new_mu, atol=1e-9)
+        np.testing.assert_allclose(old_sqrt, new_sqrt, atol=1e-9)
 
 
 def multifidelity_autoregressive_nd_dataset(n_dims: int = 1) -> Dataset:
