@@ -14,7 +14,9 @@
 from __future__ import annotations
 
 import math
+import unittest
 from typing import Any, List, Type
+from unittest.mock import MagicMock
 
 import gpflow
 import numpy as np
@@ -62,25 +64,30 @@ def test_reparametrization_sampler_reprs(
     )
 
 
-def test_independent_reparametrization_sampler_sample_raises_for_negative_jitter() -> None:
-    sampler = IndependentReparametrizationSampler(100, QuadraticMeanAndRBFKernel())
+@pytest.mark.parametrize("qmc", [True, False])
+def test_independent_reparametrization_sampler_sample_raises_for_negative_jitter(qmc: bool) -> None:
+    sampler = IndependentReparametrizationSampler(100, QuadraticMeanAndRBFKernel(), qmc=qmc)
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         sampler.sample(tf.constant([[0.0]]), jitter=-1e-6)
 
 
+@pytest.mark.parametrize("qmc", [True, False])
 @pytest.mark.parametrize("sample_size", [0, -2])
 def test_independent_reparametrization_sampler_raises_for_invalid_sample_size(
     sample_size: int,
+    qmc: bool,
 ) -> None:
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        IndependentReparametrizationSampler(sample_size, QuadraticMeanAndRBFKernel())
+        IndependentReparametrizationSampler(sample_size, QuadraticMeanAndRBFKernel(), qmc=qmc)
 
 
+@pytest.mark.parametrize("qmc", [True, False])
 @pytest.mark.parametrize("shape", [[], [1], [2], [2, 3]])
 def test_independent_reparametrization_sampler_sample_raises_for_invalid_at_shape(
     shape: ShapeLike,
+    qmc: bool,
 ) -> None:
-    sampler = IndependentReparametrizationSampler(1, QuadraticMeanAndRBFKernel())
+    sampler = IndependentReparametrizationSampler(1, QuadraticMeanAndRBFKernel(), qmc=qmc)
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         sampler.sample(tf.zeros(shape))
@@ -115,12 +122,20 @@ def _dim_two_gp(mean_shift: tuple[float, float] = (0.0, 0.0)) -> GaussianProcess
 
 
 @random_seed
-def test_independent_reparametrization_sampler_samples_approximate_expected_distribution() -> None:
+@unittest.mock.patch(
+    "trieste.models.gpflow.sampler.qmc_normal_samples", side_effect=qmc_normal_samples
+)
+@pytest.mark.parametrize("qmc", [True, False])
+def test_independent_reparametrization_sampler_samples_approximate_expected_distribution(
+    mocked_qmc: MagicMock, qmc: bool
+) -> None:
     sample_size = 1000
     x = tf.random.uniform([100, 1, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
 
     model = _dim_two_gp()
-    samples = IndependentReparametrizationSampler(sample_size, model).sample(x)  # [N, S, 1, L]
+    samples = IndependentReparametrizationSampler(sample_size, model, qmc=qmc).sample(
+        x
+    )  # [N, S, 1, L]
 
     assert samples.shape == [len(x), sample_size, 1, 2]
 
@@ -129,31 +144,38 @@ def test_independent_reparametrization_sampler_samples_approximate_expected_dist
         tf.linalg.matrix_transpose(tf.squeeze(samples, -2)),
         tfp.distributions.Normal(mean[..., None], tf.sqrt(var[..., None])),
     )
+    assert mocked_qmc.call_count == qmc
 
 
 @random_seed
-def test_independent_reparametrization_sampler_sample_is_continuous() -> None:
-    sampler = IndependentReparametrizationSampler(100, _dim_two_gp())
+@pytest.mark.parametrize("qmc", [True, False])
+def test_independent_reparametrization_sampler_sample_is_continuous(qmc: bool) -> None:
+    sampler = IndependentReparametrizationSampler(100, _dim_two_gp(), qmc=qmc)
     xs = tf.random.uniform([100, 1, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
     npt.assert_array_less(tf.abs(sampler.sample(xs + 1e-20) - sampler.sample(xs)), 1e-20)
 
 
-def test_independent_reparametrization_sampler_sample_is_repeatable() -> None:
-    sampler = IndependentReparametrizationSampler(100, _dim_two_gp())
+@pytest.mark.parametrize("qmc", [True, False])
+def test_independent_reparametrization_sampler_sample_is_repeatable(qmc: bool) -> None:
+    sampler = IndependentReparametrizationSampler(100, _dim_two_gp(), qmc=qmc)
     xs = tf.random.uniform([100, 1, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
     npt.assert_allclose(sampler.sample(xs), sampler.sample(xs))
 
 
 @random_seed
-def test_independent_reparametrization_sampler_samples_are_distinct_for_new_instances() -> None:
-    sampler1 = IndependentReparametrizationSampler(100, _dim_two_gp())
-    sampler2 = IndependentReparametrizationSampler(100, _dim_two_gp())
+@pytest.mark.parametrize("qmc", [True, False])
+def test_independent_reparametrization_sampler_samples_are_distinct_for_new_instances(
+    qmc: bool,
+) -> None:
+    sampler1 = IndependentReparametrizationSampler(100, _dim_two_gp(), qmc=qmc)
+    sampler2 = IndependentReparametrizationSampler(100, _dim_two_gp(), qmc=qmc)
     xs = tf.random.uniform([100, 1, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
     npt.assert_array_less(1e-9, tf.abs(sampler2.sample(xs) - sampler1.sample(xs)))
 
 
-def test_independent_reparametrization_sampler_reset_sampler() -> None:
-    sampler = IndependentReparametrizationSampler(100, _dim_two_gp())
+@pytest.mark.parametrize("qmc", [True, False])
+def test_independent_reparametrization_sampler_reset_sampler(qmc: bool) -> None:
+    sampler = IndependentReparametrizationSampler(100, _dim_two_gp(), qmc=qmc)
     assert not sampler._initialized
     xs = tf.random.uniform([100, 1, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
     samples1 = sampler.sample(xs)
@@ -741,10 +763,13 @@ def test_qmc_normal_samples__various_shapes(batch_shape: list[int], n_sample_dim
     ]
 
 
-def test_qmc_samples_return_standard_normal_samples() -> None:
+@pytest.mark.parametrize("skip", [0, 10_000])
+def test_qmc_samples_return_standard_normal_samples(skip: int) -> None:
     n_samples = 10_000
 
-    qmc_samples = qmc_normal_samples(batch_shape=tf.TensorShape([n_samples]), n_sample_dim=2)
+    qmc_samples = qmc_normal_samples(
+        batch_shape=tf.TensorShape([n_samples]), n_sample_dim=2, skip=skip
+    )
 
     multivariate_gaussian_dist = MultivariateNormalDiag(scale_diag=[1.0, 1.0])
     random_samples = multivariate_gaussian_dist.sample(sample_shape=n_samples)
@@ -760,3 +785,13 @@ def test_qmc_samples_return_standard_normal_samples() -> None:
 
     kl_div = compute_kl_divergence(qmc_sample_counts / n_samples, random_sample_counts / n_samples)
     assert kl_div < 0.005
+
+
+def test_qmc_samples_skip() -> None:
+    samples_1a = qmc_normal_samples(tf.TensorShape([25]), 100)
+    samples_1b = qmc_normal_samples(tf.TensorShape([25]), 100)
+    npt.assert_allclose(samples_1a, samples_1b)
+    samples_2a = qmc_normal_samples(tf.TensorShape([25]), 100, skip=100)
+    samples_2b = qmc_normal_samples(tf.TensorShape([25]), 100, skip=100)
+    npt.assert_allclose(samples_2a, samples_2b)
+    npt.assert_raises(AssertionError, npt.assert_allclose, samples_1a, samples_2a)

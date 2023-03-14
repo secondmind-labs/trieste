@@ -80,14 +80,17 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
     skip: TensorType = tf.Variable(0)
     """Number of sobol sequence points to skip. This is incremented for each sampler."""
 
-    def __init__(self, sample_size: int, model: ProbabilisticModel):
+    def __init__(self, sample_size: int, model: ProbabilisticModel, qmc: bool = False):
         """
         :param sample_size: The number of samples to take at each point. Must be positive.
         :param model: The model to sample from.
+        :param qmc: Whether to use QMC sobol sampling instead of random normal sampling. QMC
+            sampling more accurately approximates a normal distribution than truly random samples.
         :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
         """
         super().__init__(sample_size, model)
         self._eps: Optional[tf.Variable] = None
+        self._qmc = qmc
 
     def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
         """
@@ -113,11 +116,16 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
 
         def sample_eps() -> tf.Tensor:
             self._initialized.assign(True)
-            skip = IndependentReparametrizationSampler.skip
-            IndependentReparametrizationSampler.skip.assign(skip + self._sample_size)
-            normal_samples = qmc_normal_samples(
-                tf.TensorShape(self._sample_size), mean.shape[-1], skip
-            )
+            if self._qmc:
+                skip = IndependentReparametrizationSampler.skip
+                IndependentReparametrizationSampler.skip.assign(skip + self._sample_size)
+                normal_samples = qmc_normal_samples(
+                    tf.TensorShape(self._sample_size), mean.shape[-1], skip
+                )
+            else:
+                normal_samples = tf.random.normal(
+                    [self._sample_size, tf.shape(mean)[-1]], dtype=tf.float64
+                )
             return normal_samples  # [S, L]
 
         if self._eps is None:
