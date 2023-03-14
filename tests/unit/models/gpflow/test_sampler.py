@@ -15,16 +15,15 @@ from __future__ import annotations
 
 import math
 import unittest
-from typing import Any, List, Type
+from typing import List, Type
 from unittest.mock import MagicMock
 
 import gpflow
-import numpy as np
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
-from tensorflow_probability.python.distributions import MultivariateNormalDiag
+from scipy import stats
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, quadratic, random_seed
 from tests.util.models.gpflow.models import (
@@ -792,20 +791,10 @@ def test_qmc_samples_return_standard_normal_samples(skip: int) -> None:
         batch_shape=tf.TensorShape([n_samples]), n_sample_dim=2, skip=skip
     )
 
-    multivariate_gaussian_dist = MultivariateNormalDiag(scale_diag=[1.0, 1.0])
-    random_samples = multivariate_gaussian_dist.sample(sample_shape=n_samples)
-
-    bins = [np.linspace(-4, 4, 9), np.linspace(-4, 4, 9)]
-    qmc_sample_counts = np.histogram2d(qmc_samples[:, 0], qmc_samples[:, 1], bins=bins)[0]
-    random_sample_counts = np.histogram2d(random_samples[:, 0], random_samples[:, 1], bins=bins)[0]
-
-    def compute_kl_divergence(
-        a: "np.ndarray[Any, Any]", b: "np.ndarray[Any, Any]"
-    ) -> "np.ndarray[Any, Any]":
-        return np.sum(np.where(np.logical_and(a != 0, b != 0), a * np.log(a / b), 0))
-
-    kl_div = compute_kl_divergence(qmc_sample_counts / n_samples, random_sample_counts / n_samples)
-    assert kl_div < 0.005
+    # should be bivariate normal with zero correlation
+    assert stats.kstest(qmc_samples[:, 0], stats.norm.cdf).pvalue > 0.99
+    assert stats.kstest(qmc_samples[:, 1], stats.norm.cdf).pvalue > 0.99
+    assert stats.pearsonr(qmc_samples[:, 0], qmc_samples[:, 1])[0] < 0.005
 
 
 def test_qmc_samples_skip() -> None:
