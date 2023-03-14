@@ -961,7 +961,6 @@ class SparseVariational(
         num_data = dataset.query_points.shape[0]
         assert self.model.num_data is not None
         self.model.num_data.assign(num_data)
-        self.update_posterior_cache()
 
         if self._inducing_point_selector is not None:
             new_inducing_points = self._inducing_point_selector.calculate_inducing_points(
@@ -974,6 +973,7 @@ class SparseVariational(
                 )
             ):  # only bother updating if points actually change
                 self._update_inducing_variables(new_inducing_points)
+                self.update_posterior_cache()
 
     def optimize(self, dataset: Dataset) -> None:
         """
@@ -1013,6 +1013,7 @@ class SparseVariational(
             new_q_mu, new_q_sqrt = _whiten_points(self, new_inducing_points)
         else:
             new_q_mu, new_f_cov = self.predict_joint(new_inducing_points)  # [N, L], [L, N, N]
+            new_q_mu -= self.model.mean_function(new_inducing_points)
             jitter_mat = DEFAULTS.JITTER * tf.eye(
                 tf.shape(new_inducing_points)[0], dtype=new_f_cov.dtype
             )

@@ -17,6 +17,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 
 import gpflow
+import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
@@ -378,6 +379,31 @@ def svgp_model(x: tf.Tensor, y: tf.Tensor, num_latent_gps: int = 1) -> SVGP:
         num_data=len(x),
         num_latent_gps=num_latent_gps,
     )
+
+
+def svgp_model_with_mean(
+    x: tf.Tensor, y: tf.Tensor, whiten: bool, num_inducing_points: int, num_latent_gps: int = 1
+) -> SVGP:
+    mean_function = gpflow.mean_functions.Linear(
+        A=0.37 * np.ones((1, 1), dtype=gpflow.default_float()),
+        b=0.19 * np.ones((1,), dtype=gpflow.default_float()),
+    )
+    q_mu = np.random.randn(num_inducing_points, 1)
+    q_sqrt = np.tril(np.random.randn(1, num_inducing_points, num_inducing_points))
+    m = SVGP(
+        gpflow.kernels.Matern32(variance=0.91),
+        gpflow.likelihoods.Gaussian(variance=0.23),
+        x[:num_inducing_points],
+        num_data=len(x),
+        num_latent_gps=num_latent_gps,
+        mean_function=mean_function,
+        whiten=whiten,
+        q_mu=q_mu,
+        q_sqrt=q_sqrt,
+    )
+    gpflow.set_trainable(mean_function, False)
+    gpflow.set_trainable(m.inducing_variable, False)
+    return m
 
 
 def vgp_model(x: tf.Tensor, y: tf.Tensor, num_latent_gps: int = 1) -> VGP:
