@@ -30,7 +30,7 @@ try:
     from pymoo.algorithms.moo.nsga2 import NSGA2
     from pymoo.core.problem import Problem as PymooProblem
     from pymoo.optimize import minimize
-except ImportError:
+except ImportError:  # pragma: no cover (tested but not by coverage)
     pymoo = None
     PymooProblem = object
 
@@ -1061,7 +1061,6 @@ class TrustRegion(
         def state_func(
             state: TrustRegion.State | None,
         ) -> tuple[TrustRegion.State | None, TensorType]:
-
             if state is None:
                 eps = 0.5 * (global_upper - global_lower) / (5.0 ** (1.0 / global_lower.shape[-1]))
                 is_global = True
@@ -1173,7 +1172,6 @@ class BatchHypervolumeSharpeRatioIndicator(
     def _filter_points(
         self, nd_points: TensorType, nd_mean_std: TensorType
     ) -> tuple[TensorType, TensorType]:
-
         if self._acquisition_function is None:
             raise ValueError("Acquisition function has not been defined yet")
 

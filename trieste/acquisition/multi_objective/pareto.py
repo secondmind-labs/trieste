@@ -16,7 +16,7 @@ from __future__ import annotations
 
 try:
     import cvxpy as cp
-except ImportError:
+except ImportError:  # pragma: no cover (tested but not by coverage)
     cp = None
 import numpy as np
 import tensorflow as tf
@@ -142,7 +142,6 @@ class Pareto:
     def _choose_batch_with_repeats(
         self, x_star: TensorType, sample_size: int
     ) -> tuple[TensorType, TensorType]:
-
         # Calculate number of times each point is sampled
         n_times_sampled = x_star * sample_size
 
@@ -185,7 +184,6 @@ class Pareto:
     def _choose_batch_no_repeats(
         self, x_star: TensorType, sample_size: int
     ) -> tuple[TensorType, TensorType]:
-
         front_size = self.front.shape[0]
 
         # Create id array to keep track of points
@@ -203,7 +201,6 @@ class Pareto:
         return samples, sample_ids
 
     def _find_x_star(self, q: TensorType, p: TensorType) -> TensorType:
-
         front_size = self.front.shape[0]
 
         p_diag = np.expand_dims(np.diagonal(p), axis=1)
@@ -228,7 +225,6 @@ class Pareto:
         return x_star
 
     def _calculate_p_matrix(self, lower_bound: TensorType, upper_bound: TensorType) -> TensorType:
-
         front_size, front_dims = self.front.shape
 
         p = np.zeros([front_size, front_size])
@@ -259,7 +255,6 @@ class Pareto:
     def _get_bounds(
         self, delta_scaling_factor: float, min_delta: float
     ) -> tuple[TensorType, TensorType]:
-
         # Find min and max for each dimension in the front
         dim_mins = np.min(self.front, axis=0)
         dim_maxes = np.max(self.front, axis=0)

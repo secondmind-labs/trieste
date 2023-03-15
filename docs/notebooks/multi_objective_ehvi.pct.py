@@ -279,6 +279,7 @@ plt.show()
 #
 # EHVI can be adapted to the case of constraints, as we show below. We start by defining a problem with the same objectives as above, but with an inequality constraint, and we define the corresponding `Observer`.
 
+
 # %%
 class Sim:
     threshold = 0.75
