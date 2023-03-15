@@ -176,7 +176,6 @@ for _ in range(num_seeds):
 # %%
 
 import matplotlib.pyplot as plt
-from trieste.experimental.plotting import plot_regret
 
 _, ax = plt.subplots(1, 3)
 
@@ -196,8 +195,8 @@ for i in range(num_seeds):
     ax[1].plot(np.minimum.accumulate(suboptimality))
     ax[1].axvline(x=num_initial_points - 0.5, color="tab:blue")
     ax[1].set_yscale("log")
-    ax[1].set_ylabel("Regret")
     ax[1].set_ylim(0.001, 100)
+    ax[1].set_yticks([])
     ax[1].set_xlabel("# evaluations")
     ax[1].set_title("REMBO: d=2")
 
@@ -206,8 +205,8 @@ for i in range(num_seeds):
     ax[2].plot(np.minimum.accumulate(suboptimality))
     ax[2].axvline(x=num_initial_points - 0.5, color="tab:blue")
     ax[2].set_yscale("log")
-    ax[2].set_ylabel("Regret")
     ax[2].set_ylim(0.001, 100)
+    ax[2].set_yticks([])
     ax[2].set_xlabel("# evaluations")
     ax[2].set_title("REMBO: d=5")
 
