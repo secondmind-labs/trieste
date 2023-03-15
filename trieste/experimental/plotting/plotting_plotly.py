@@ -185,7 +185,7 @@ def plot_model_predictions_plotly(
             means.append(Fmean_sample)
             vars.append(Fvar_sample)
         Fmean = tf.reduce_mean(tf.stack(means), axis=0)
-        Fvar = tf.reduce_mean(tf.stack(vars) + tf.stack(means) ** 2, axis=0) - Fmean ** 2
+        Fvar = tf.reduce_mean(tf.stack(vars) + tf.stack(means) ** 2, axis=0) - Fmean**2
 
     n_output = Fmean.shape[1]
 

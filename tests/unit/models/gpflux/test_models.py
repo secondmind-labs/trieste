@@ -339,7 +339,6 @@ def test_deepgp_deep_copyable() -> None:
 
 
 def test_deepgp_deep_copies_optimizer_state() -> None:
-
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model = DeepGaussianProcess(partial(single_layer_dgp_model, x))
     dataset = Dataset(x, fnc_3x_plus_10(x))

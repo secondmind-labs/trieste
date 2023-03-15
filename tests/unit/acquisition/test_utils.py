@@ -27,7 +27,7 @@ from trieste.acquisition.utils import select_nth_output, split_acquisition_funct
 @pytest.mark.parametrize(
     "f",
     [
-        lambda x: x ** 2,
+        lambda x: x**2,
         lambda x: tf.cast(x, tf.float64),
     ],
 )
@@ -46,7 +46,6 @@ from trieste.acquisition.utils import select_nth_output, split_acquisition_funct
 def test_split_acquisition_function(
     f: AcquisitionFunction, x: "np.ndarray[Any, Any]", split_size: int, expected_batches: int
 ) -> None:
-
     mock_f = MagicMock()
     mock_f.side_effect = f
     batch_f = split_acquisition_function(mock_f, split_size=split_size)

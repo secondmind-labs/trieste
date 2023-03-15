@@ -257,7 +257,7 @@ class DeepEnsemble(
             tf.math.reduce_mean(
                 [dist.variance() + dist.mean() ** 2 for dist in ensemble_distributions], axis=0
             )
-            - predicted_means ** 2
+            - predicted_means**2
         )
 
         return predicted_means, predicted_vars
@@ -338,7 +338,7 @@ class DeepEnsemble(
         `TrainableProbabilisticModel` interface, however, requires an update method, so
         here we simply pass the execution.
         """
-        pass
+        return
 
     def optimize(self, dataset: Dataset) -> None:
         """

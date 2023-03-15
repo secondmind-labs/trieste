@@ -22,7 +22,3 @@ jupyterlab
 jupytext
 gym<0.22
 box2d
-
-# pin to version of TF used in prod
-tensorflow ~= 2.8.0
-tensorflow-probability ~= 0.13.0

@@ -55,7 +55,7 @@ def _quadratic_sum(shift: list[float]) -> AcquisitionFunction:
 
 
 def _delta_function(power: float) -> AcquisitionFunction:
-    return lambda x: tf.reduce_sum((1 / (x ** power)), -1)
+    return lambda x: tf.reduce_sum((1 / (x**power)), -1)
 
 
 def test_generate_random_search_optimizer_raises_with_invalid_sample_size() -> None:
@@ -208,7 +208,6 @@ def test_optimize_continuous_raises_with_invalid_vectorized_batch_size(batch_siz
 def test_optimize_continuous_correctly_uses_init_params(
     num_optimization_runs: int, num_initial_samples: int
 ) -> None:
-
     querying_initial_sample = True
 
     def _target_fn(x: TensorType) -> TensorType:
@@ -236,7 +235,6 @@ def test_optimize_continuous_recovery_runs(
     failed_first_optimization: bool,
     num_recovery_runs: int,
 ) -> None:
-
     currently_failing = failed_first_optimization
     num_batch_evals = 0
     num_evals = 0
@@ -268,7 +266,6 @@ def test_optimize_continuous_recovery_runs(
             return _quadratic_sum([0.5, 0.5])(x)  # use function that is easy to optimize
 
     with tensorboard_writer(unittest.mock.MagicMock()):
-
         optimizer = generate_continuous_optimizer(
             num_optimization_runs=1, num_recovery_runs=num_recovery_runs
         )

@@ -1,5 +1,7 @@
 # Building documentation
 
+> **Note: though trieste itself supports any version of Python from 3.7 onwards, the trieste documentation currently only builds using Python 3.7 or 3.8.**
+
 To build the documentation, ensure you have both [tox](https://tox.readthedocs.io) and [pandoc](https://github.com/jgm/pandoc/releases/) installed.
 Then run the following from the repository root directory:
 
