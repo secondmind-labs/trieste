@@ -89,7 +89,9 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
         :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
         """
         super().__init__(sample_size, model)
-        self._eps: Optional[tf.Variable] = None
+        self._eps = tf.Variable(
+            tf.ones([sample_size, 0], dtype=tf.float64), shape=[sample_size, None]
+        )  # [S, 0]
         self._qmc = qmc
 
     def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
@@ -127,9 +129,6 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
                     [self._sample_size, tf.shape(mean)[-1]], dtype=tf.float64
                 )
             return normal_samples  # [S, L]
-
-        if self._eps is None:
-            self._eps = tf.Variable(sample_eps())
 
         tf.cond(
             self._initialized,
@@ -169,7 +168,9 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
                 f"BatchReparametrizationSampler only works with models that support "
                 f"predict_joint; received {model.__repr__()}"
             )
-        self._eps: Optional[tf.Variable] = None
+        self._eps = tf.Variable(
+            tf.ones([0, 0, sample_size], dtype=tf.float64), shape=[None, None, sample_size]
+        )  # [0, 0, S]
         self._qmc = qmc
 
     def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
@@ -225,9 +226,6 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
                     [tf.shape(mean)[-1], batch_size, self._sample_size], dtype=tf.float64
                 )  # [L, B, S]
             return normal_samples
-
-        if self._eps is None:
-            self._eps = tf.Variable(sample_eps())
 
         tf.cond(
             self._initialized,
