@@ -39,7 +39,9 @@ num_seeds = 5
 
 objective = Michalewicz2.objective
 minimum = Michalewicz2.minimum
-search_space = Box([0.0], [math.pi])**D  # manually construct the high-dimensional search space
+search_space = (
+    Box([0.0], [math.pi]) ** D
+)  # manually construct the high-dimensional search space
 
 
 # We simply add dummy dimensions to create the new objective
@@ -52,7 +54,7 @@ def high_dim_objective(x):
 def build_model(data, d):
     # add a bit of noise, since there's a risk the variance could be zero for Michalewicz
     variance = tf.math.reduce_variance(data.observations) + 1e-4
-    kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2]*d)
+    kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=[0.2] * d)
     prior_scale = tf.cast(1.0, dtype=tf.float64)
     kernel.variance.prior = tfp.distributions.LogNormal(
         tf.cast(-2.0, dtype=tf.float64), prior_scale
@@ -64,6 +66,7 @@ def build_model(data, d):
     gpflow.set_trainable(gpr.likelihood, False)
 
     return GaussianProcessRegression(gpr, num_kernel_samples=100)
+
 
 # %% [markdown]
 # ## Run standard Bayesian optimization
@@ -103,20 +106,34 @@ for _ in range(num_seeds):
 def make_REMBO_observer_and_search_space(D, d, objective, search_space):
     assert isinstance(search_space, Box)
 
-    A = tf.random.normal([D, d], dtype=gpflow.default_float())  # sample projection matrix
+    A = tf.random.normal(
+        [D, d], dtype=gpflow.default_float()
+    )  # sample projection matrix
 
-    new_search_space = Box([-math.sqrt(d)]*d, [math.sqrt(d)]*d)  # recommendation from REMBO paper
+    new_search_space = Box(
+        [-math.sqrt(d)] * d, [math.sqrt(d)] * d
+    )  # recommendation from REMBO paper
 
     def new_objective(y):
         tf.debugging.assert_shapes([(y, (..., d))])
 
-        rescaled_search_space = Box([-1.0]*D, [1.0]*D)  # REMBO assumes the original space has bounds [-1, 1]^D
+        rescaled_search_space = Box(
+            [-1.0] * D, [1.0] * D
+        )  # REMBO assumes the original space has bounds [-1, 1]^D
 
-        scaling = (search_space.upper - search_space.lower) / (rescaled_search_space.upper - rescaled_search_space.lower)
+        scaling = (search_space.upper - search_space.lower) / (
+            rescaled_search_space.upper - rescaled_search_space.lower
+        )
 
-        x = tf.clip_by_value(tf.matmul(y, A, transpose_b=True), clip_value_min=-1, clip_value_max=1)  # project into the new box
+        x = tf.clip_by_value(
+            tf.matmul(y, A, transpose_b=True),
+            clip_value_min=-1,
+            clip_value_max=1,
+        )  # project into the new box
 
-        x_rescaled = (x - rescaled_search_space.lower) * scaling + search_space.lower  # rescale to match the original search space
+        x_rescaled = (
+            x - rescaled_search_space.lower
+        ) * scaling + search_space.lower  # rescale to match the original search space
 
         return objective(x_rescaled)
 
@@ -133,14 +150,18 @@ d = 2
 rembo_final_datasets = []
 
 for _ in range(num_seeds):
-    rembo_observer, rembo_search_space = make_REMBO_observer_and_search_space(D, d, high_dim_objective, search_space)
+    rembo_observer, rembo_search_space = make_REMBO_observer_and_search_space(
+        D, d, high_dim_objective, search_space
+    )
 
     initial_query_points = rembo_search_space.sample_sobol(num_initial_points)
     initial_data = rembo_observer(initial_query_points)
 
     model = build_model(initial_data, d=d)
 
-    bo = trieste.bayesian_optimizer.BayesianOptimizer(rembo_observer, rembo_search_space)
+    bo = trieste.bayesian_optimizer.BayesianOptimizer(
+        rembo_observer, rembo_search_space
+    )
 
     result = bo.optimize(num_steps, initial_data, model)
     dataset = result.try_get_final_dataset()
@@ -156,14 +177,18 @@ rembo_5_final_datasets = []
 
 for _ in range(num_seeds):
     d = 5
-    rembo_observer, rembo_search_space = make_REMBO_observer_and_search_space(D, d, high_dim_objective, search_space)
+    rembo_observer, rembo_search_space = make_REMBO_observer_and_search_space(
+        D, d, high_dim_objective, search_space
+    )
 
     initial_query_points = rembo_search_space.sample_sobol(num_initial_points)
     initial_data = rembo_observer(initial_query_points)
 
     model = build_model(initial_data, d=d)
 
-    bo = trieste.bayesian_optimizer.BayesianOptimizer(rembo_observer, rembo_search_space)
+    bo = trieste.bayesian_optimizer.BayesianOptimizer(
+        rembo_observer, rembo_search_space
+    )
 
     result = bo.optimize(num_steps, initial_data, model)
     dataset = result.try_get_final_dataset()
