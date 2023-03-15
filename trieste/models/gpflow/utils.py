@@ -255,7 +255,6 @@ def _compute_kernel_blocks(
 
     if isinstance(kernel, (gpflow.kernels.SharedIndependent, gpflow.kernels.SeparateIndependent)):
         if isinstance(inducing_points, list):
-
             K = tf.concat(
                 [ker(Z)[None, ...] for ker, Z in zip(kernel.kernels, inducing_points)], axis=0
             )
@@ -328,7 +327,9 @@ def _whiten_points(
     :para inducing_points: The new inducing point locations.
     :return: The updated q_mu and q_sqrt with shapes [N, L] and [L, N, N], respectively.
     """
+
     f_mu, f_cov = model.model.predict_f(inducing_points, full_cov=True)  # [N, L], [L, N, N]
+    f_mu -= model.model.mean_function(inducing_points)
     Knn = model.get_kernel()(inducing_points, full_cov=True)  # [N, N]
     jitter_mat = DEFAULTS.JITTER * tf.eye(tf.shape(inducing_points)[0], dtype=Knn.dtype)
     Lnn = tf.linalg.cholesky(Knn + jitter_mat)  # [N, N]

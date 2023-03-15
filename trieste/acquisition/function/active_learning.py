@@ -97,7 +97,6 @@ def predictive_variance(model: SupportsPredictJoint, jitter: float) -> Acquisiti
 
     @tf.function
     def acquisition(x: TensorType) -> TensorType:
-
         try:
             _, covariance = model.predict_joint(x)
         except NotImplementedError:
@@ -167,7 +166,6 @@ class ExpectedFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel]):
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
-
         return function  # no need to update anything
 
 
@@ -214,7 +212,6 @@ def bichon_ranjan_criterion(
 
     @tf.function
     def acquisition(x: TensorType) -> TensorType:
-
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],
             message="This acquisition function only supports batch sizes of one.",
@@ -237,7 +234,7 @@ def bichon_ranjan_criterion(
             criterion = G * stdev
         elif delta == 2:
             G = (
-                (alpha ** 2 - 1 - t ** 2) * (normal.cdf(t_plus) - normal.cdf(t_minus))
+                (alpha**2 - 1 - t**2) * (normal.cdf(t_plus) - normal.cdf(t_minus))
                 - 2 * t * (normal.prob(t_plus) - normal.prob(t_minus))
                 + t_plus * normal.prob(t_plus)
                 - t_minus * normal.prob(t_minus)
@@ -410,7 +407,6 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:
-
         additional_data = Dataset(x, tf.ones_like(x[..., 0:1]))
 
         _, variance = self._model.conditional_predict_f(
@@ -467,7 +463,6 @@ class BayesianActiveLearningByDisagreement(SingleModelAcquisitionBuilder[Probabi
 
 class bayesian_active_learning_by_disagreement(AcquisitionFunctionClass):
     def __init__(self, model: ProbabilisticModel, jitter: float):
-
         r"""
         The Bayesian active learning by disagrement acquisition function computes
         the information gain of the predictive entropy :cite:`houlsby2011bayesian`.
@@ -503,7 +498,6 @@ class bayesian_active_learning_by_disagreement(AcquisitionFunctionClass):
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:
-
         tf.debugging.assert_shapes(
             [(x, [..., 1, None])],
             message="This acquisition function only supports batch sizes of one.",
@@ -515,6 +509,6 @@ class bayesian_active_learning_by_disagreement(AcquisitionFunctionClass):
         p = normal.cdf((mean / tf.sqrt(variance + 1)))
 
         C2 = (math.pi * tf.math.log(tf.cast(2, mean.dtype))) / 2
-        Ef = (tf.sqrt(C2) / tf.sqrt(variance + C2)) * tf.exp(-(mean ** 2) / (2 * (variance + C2)))
+        Ef = (tf.sqrt(C2) / tf.sqrt(variance + C2)) * tf.exp(-(mean**2) / (2 * (variance + C2)))
 
         return -p * tf.math.log(p + self._jitter) - (1 - p) * tf.math.log(1 - p + self._jitter) - Ef

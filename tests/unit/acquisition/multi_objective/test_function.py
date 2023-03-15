@@ -303,7 +303,7 @@ def test_expected_hypervolume_improvement_matches_monte_carlo(
 ) -> None:
     # Note: the test data number grows exponentially with num of obj
     data_num_seg_per_dim = 2  # test data number per input dim
-    N = data_num_seg_per_dim ** input_dim
+    N = data_num_seg_per_dim**input_dim
     xs = tf.convert_to_tensor(
         list(itertools.product(*[list(tf.linspace(-1, 1, data_num_seg_per_dim))] * input_dim))
     )
@@ -461,7 +461,6 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_raises_for_invalid_j
 
 
 def test_batch_monte_carlo_ehvi_raises_for_model_without_reparam_sampler() -> None:
-
     model = _mo_test_model(2, *[1.0] * 2, with_reparam_sampler=False)
 
     training_input = tf.constant([[0.3], [0.22], [0.1], [0.35]])
