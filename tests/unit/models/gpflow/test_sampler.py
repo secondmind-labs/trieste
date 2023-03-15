@@ -783,18 +783,21 @@ def test_qmc_normal_samples__various_shapes(batch_shape: list[int], n_sample_dim
     ]
 
 
+@pytest.mark.parametrize("n_sample_dim", [2, 5])
 @pytest.mark.parametrize("skip", [0, 10_000])
-def test_qmc_samples_return_standard_normal_samples(skip: int) -> None:
+def test_qmc_samples_return_standard_normal_samples(n_sample_dim: int, skip: int) -> None:
     n_samples = 10_000
 
     qmc_samples = qmc_normal_samples(
-        batch_shape=tf.TensorShape([n_samples]), n_sample_dim=2, skip=skip
+        batch_shape=tf.TensorShape([n_samples]), n_sample_dim=n_sample_dim, skip=skip
     )
 
-    # should be bivariate normal with zero correlation
-    assert stats.kstest(qmc_samples[:, 0], stats.norm.cdf).pvalue > 0.99
-    assert stats.kstest(qmc_samples[:, 1], stats.norm.cdf).pvalue > 0.99
-    assert stats.pearsonr(qmc_samples[:, 0], qmc_samples[:, 1])[0] < 0.005
+    # should be multivariate normal with zero correlation
+    for i in range(n_sample_dim):
+        assert stats.kstest(qmc_samples[:, i], stats.norm.cdf).pvalue > 0.99
+        for j in range(n_sample_dim):
+            if i != j:
+                assert stats.pearsonr(qmc_samples[:, i], qmc_samples[:, j])[0] < 0.005
 
 
 def test_qmc_samples_skip() -> None:
