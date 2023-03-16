@@ -767,30 +767,12 @@ def test_rff_and_decoupled_trajectory_give_similar_results(noise_var: float) -> 
     )  # variance across samples should (very) roughly agree for different samplers
 
 
-@pytest.mark.parametrize(
-    ("batch_shape", "n_sample_dim"),
-    [
-        ([5], 1),
-        ([5], 2),
-        ([5, 5], 2),
-        ([1, 2, 3, 4], 5),
-    ],
-)
-def test_qmc_normal_samples__various_shapes(batch_shape: list[int], n_sample_dim: int) -> None:
-    samples = qmc_normal_samples(tf.TensorShape(batch_shape), n_sample_dim)
-    assert samples.shape == batch_shape + [
-        n_sample_dim,
-    ]
-
-
 @pytest.mark.parametrize("n_sample_dim", [2, 5])
 @pytest.mark.parametrize("skip", [0, 10_000])
 def test_qmc_samples_return_standard_normal_samples(n_sample_dim: int, skip: int) -> None:
     n_samples = 10_000
 
-    qmc_samples = qmc_normal_samples(
-        batch_shape=tf.TensorShape([n_samples]), n_sample_dim=n_sample_dim, skip=skip
-    )
+    qmc_samples = qmc_normal_samples(num_samples=n_samples, n_sample_dim=n_sample_dim, skip=skip)
 
     # should be multivariate normal with zero correlation
     for i in range(n_sample_dim):
@@ -801,10 +783,10 @@ def test_qmc_samples_return_standard_normal_samples(n_sample_dim: int, skip: int
 
 
 def test_qmc_samples_skip() -> None:
-    samples_1a = qmc_normal_samples(tf.TensorShape([25]), 100)
-    samples_1b = qmc_normal_samples(tf.TensorShape([25]), 100)
+    samples_1a = qmc_normal_samples(25, 100)
+    samples_1b = qmc_normal_samples(25, 100)
     npt.assert_allclose(samples_1a, samples_1b)
-    samples_2a = qmc_normal_samples(tf.TensorShape([25]), 100, skip=100)
-    samples_2b = qmc_normal_samples(tf.TensorShape([25]), 100, skip=100)
+    samples_2a = qmc_normal_samples(25, 100, skip=100)
+    samples_2b = qmc_normal_samples(25, 100, skip=100)
     npt.assert_allclose(samples_2a, samples_2b)
     npt.assert_raises(AssertionError, npt.assert_allclose, samples_1a, samples_2a)

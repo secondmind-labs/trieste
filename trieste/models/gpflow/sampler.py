@@ -44,14 +44,14 @@ from ..interfaces import (
 )
 
 
-def qmc_normal_samples(batch_shape: tf.TensorShape, n_sample_dim: int, skip: int = 0) -> tf.Tensor:
+def qmc_normal_samples(num_samples: int, n_sample_dim: int, skip: int = 0) -> tf.Tensor:
     """
-    Generates a batch of shape `batch_shape` sobol samples, skipping the first `skip`, where each
+    Generates `num_samples` sobol samples, skipping the first `skip`, where each
     sample has dimension `n_sample_dim`.
     """
     sobol_samples = tf.math.sobol_sample(
         dim=n_sample_dim,
-        num_results=tf.reduce_prod(batch_shape),
+        num_results=num_samples,
         dtype=tf.float64,
         skip=skip,
     )
@@ -60,9 +60,8 @@ def qmc_normal_samples(batch_shape: tf.TensorShape, n_sample_dim: int, skip: int
         loc=tf.constant(0.0, dtype=tf.float64),
         scale=tf.constant(1.0, dtype=tf.float64),
     )
-    samples_shape = batch_shape + (n_sample_dim,)
-    normal_samples = tf.reshape(dist.quantile(sobol_samples), samples_shape)
-    tf.debugging.assert_shapes([(normal_samples, samples_shape)])
+    normal_samples = dist.quantile(sobol_samples)
+    tf.debugging.assert_shapes([(normal_samples, (num_samples, n_sample_dim))])
     return normal_samples
 
 
@@ -121,9 +120,7 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
             if self._qmc:
                 skip = IndependentReparametrizationSampler.skip
                 IndependentReparametrizationSampler.skip.assign(skip + self._sample_size)
-                normal_samples = qmc_normal_samples(
-                    tf.TensorShape(self._sample_size), mean.shape[-1], skip
-                )
+                normal_samples = qmc_normal_samples(self._sample_size, mean.shape[-1], skip)
             else:
                 normal_samples = tf.random.normal(
                     [self._sample_size, tf.shape(mean)[-1]], dtype=tf.float64
@@ -218,7 +215,7 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
                 skip = IndependentReparametrizationSampler.skip
                 IndependentReparametrizationSampler.skip.assign(skip + self._sample_size)
                 normal_samples = qmc_normal_samples(
-                    tf.TensorShape([self._sample_size]), batch_size * mean.shape[-1], skip
+                    self._sample_size, batch_size * mean.shape[-1], skip
                 )  # [S, B*L]
                 normal_samples = tf.transpose(normal_samples)  # [B*L, S]
                 normal_samples = tf.reshape(
