@@ -29,6 +29,10 @@ from ..types import TensorType
 from .single_objectives import ObjectiveTestProblem, branin
 
 
+class NoAnalyticalParetoPointsError(Exception):
+    pass
+
+
 class GenParetoOptimalPoints(Protocol):
     """A Protocol representing a function that generates Pareto optimal points."""
 
@@ -43,7 +47,7 @@ class GenParetoOptimalPoints(Protocol):
         """
 
 
-class Constraint(Protocol):
+class ConstraintTestProblem(Protocol):
     """A Protocol representing function returning constraint values given specified inputs."""
 
     def __call__(self, x: TensorType, threshold: Optional[float] = 0.0) -> TensorType:
@@ -77,7 +81,7 @@ class ConstrainedMultiObjectiveTestProblem(MultiObjectiveTestProblem):
     additionally a constraint function.
     """
 
-    constraint: Constraint
+    constraint: ConstraintTestProblem
     """The synthetic test function's constraints"""
 
 
@@ -275,10 +279,14 @@ def ConstrainedBraninCurrin() -> ConstrainedMultiObjectiveTestProblem:
 
     def gen_pareto_optimal_points(n: int, seed: int | None = None) -> TensorType:
         """
-        return an empty tensor as there is no explicit way of defining
+        raise an `NoAnalyticalParetoPointsError` since there is no explicit way of defining
         this problem's Pareto frontier.
         """
-        return tf.zeros(shape=0, dtype=tf.float64)
+        raise NoAnalyticalParetoPointsError(
+            "No analytical approach to generate Pareto optimal points for this problem, "
+            "an optimization-based approach may be utilized to approximate the Pareto "
+            "optimal points"
+        )
 
     def evaluate_constraint(x: TensorType, threshold: Optional[float] = 0.0) -> TensorType:
         """

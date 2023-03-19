@@ -25,6 +25,7 @@ from trieste.objectives.multi_objectives import (
     ConstrainedBraninCurrin,
     ConstrainedMultiObjectiveTestProblem,
     MultiObjectiveTestProblem,
+    NoAnalyticalParetoPointsError,
 )
 from trieste.types import TensorType
 
@@ -214,7 +215,7 @@ def test_func_raises_specified_input_dim_not_align_with_actual_input_dim(
 @pytest.mark.parametrize("num_obs", [1, 5, 10])
 @pytest.mark.parametrize("dtype", [tf.float32, tf.float64])
 def test_objective_and_constraint_has_correct_shape_and_dtype(
-    problem: Union[MultiObjectiveTestProblem, ConstrainedMultiObjectiveTestProblem],
+    problem: MultiObjectiveTestProblem,
     input_dim: int,
     num_obj: int,
     num_obs: int,
@@ -226,7 +227,6 @@ def test_objective_and_constraint_has_correct_shape_and_dtype(
 
     x = tf.cast(x, dtype)
     y = problem.objective(x)
-    pf = problem.gen_pareto_optimal_points(num_obs * 2)
 
     assert y.dtype == x.dtype
     tf.debugging.assert_shapes([(x, [num_obs, input_dim])])
@@ -237,6 +237,9 @@ def test_objective_and_constraint_has_correct_shape_and_dtype(
         tf.debugging.assert_shapes([(c, [num_obs, num_con])])
         assert x.dtype == c.dtype
 
-    assert pf.dtype == tf.float64  # default dtype
-    if tf.size(pf) != 0:  # the problem has a valid `gen_pareto_optimal_points` method
+    try:  # check if the problem has a valid `gen_pareto_optimal_points` method
+        pf = problem.gen_pareto_optimal_points(num_obs * 2)
+        assert pf.dtype == tf.float64  # default dtype
         tf.debugging.assert_shapes([(pf, [num_obs * 2, num_obj])])
+    except NoAnalyticalParetoPointsError:
+        pass
