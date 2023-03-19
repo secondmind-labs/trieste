@@ -215,12 +215,12 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
                 skip = IndependentReparametrizationSampler.skip
                 IndependentReparametrizationSampler.skip.assign(skip + self._sample_size)
                 normal_samples = qmc_normal_samples(
-                    self._sample_size, batch_size * mean.shape[-1], skip
-                )  # [S, B*L]
-                normal_samples = tf.transpose(normal_samples)  # [B*L, S]
+                    self._sample_size * mean.shape[-1], batch_size, skip
+                )  # [S*L, B]
                 normal_samples = tf.reshape(
-                    normal_samples, (mean.shape[-1], batch_size, self._sample_size)
-                )  # [L, B, S]
+                    normal_samples, (mean.shape[-1], self._sample_size, batch_size)
+                )  # [L, S, B]
+                normal_samples = tf.transpose(normal_samples, perm=[0, 2, 1])  # [L, B, S]
             else:
                 normal_samples = tf.random.normal(
                     [tf.shape(mean)[-1], batch_size, self._sample_size], dtype=tf.float64
