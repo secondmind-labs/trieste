@@ -35,6 +35,7 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflow.config import Config, as_context
 from gpflow.inducing_variables import (
     SeparateIndependentInducingVariables,
     SharedIndependentInducingVariables,
@@ -48,6 +49,7 @@ from tests.util.models.gpflow.models import (
     mock_data,
     sgpr_model,
     svgp_model,
+    svgp_model_with_mean,
     two_output_svgp_model,
     vgp_matern_model,
     vgp_model,
@@ -55,9 +57,10 @@ from tests.util.models.gpflow.models import (
 from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.data import Dataset, add_fidelity_column
 from trieste.logging import step_number, tensorboard_writer
-from trieste.models import TrainableProbabilisticModel
+from trieste.models import ProbabilisticModelType, TrainableProbabilisticModel
 from trieste.models.gpflow import (
     GaussianProcessRegression,
+    GPflowPredictor,
     MultifidelityAutoregressive,
     MultifidelityNonlinearAutoregressive,
     SparseGaussianProcessRegression,
@@ -83,6 +86,7 @@ from trieste.models.gpflow.sampler import (
 from trieste.models.optimizer import BatchOptimizer, DatasetTransformer, Optimizer
 from trieste.space import Box
 from trieste.types import TensorType
+from trieste.utils import DEFAULTS
 
 
 def _3x_plus_gaussian_noise(x: tf.Tensor) -> tf.Tensor:
@@ -1600,7 +1604,6 @@ def test_sparse_variational_pairwise_covariance_for_non_whitened(
     y2 = y1 * 0.5
 
     svgp = two_output_svgp_model(x, mo_type, whiten)
-
     model = SparseVariational(svgp, BatchOptimizer(tf.optimizers.Adam(), max_iter=3, batch_size=10))
     model.model.whiten = whiten
 
@@ -1616,6 +1619,57 @@ def test_sparse_variational_pairwise_covariance_for_non_whitened(
     actual_covariance = model.covariance_between_points(query_points_1, query_points_2)
 
     np.testing.assert_allclose(expected_covariance, actual_covariance, atol=1e-4)
+
+
+class DummyInducingPointSelector(InducingPointSelector[GPflowPredictor]):
+    def __init__(self, new_inducing_points: TensorType, recalc_every_model_update: bool = True):
+        super().__init__(recalc_every_model_update)
+        self._new_inducing_points = new_inducing_points
+
+    def _recalculate_inducing_points(
+        self, M: int, model: ProbabilisticModelType, dataset: Dataset
+    ) -> TensorType:
+        return self._new_inducing_points
+
+
+@random_seed
+@pytest.mark.parametrize("whiten", [False, True])
+def test_sparse_variational_inducing_updates_preserves_posterior(
+    whiten: bool,
+) -> None:
+    default_jitter = 0.0
+    with as_context(Config(jitter=default_jitter)), unittest.mock.patch.object(
+        DEFAULTS, "JITTER", default_jitter
+    ):
+        x = tf.constant(np.linspace(0.0, 1.0, 8).reshape(-1, 1), dtype=gpflow.default_float())
+        y1 = fnc_3x_plus_10(x)
+
+        num_inducing_points = 4
+        xnew = tf.constant(
+            np.linspace(0.31, 0.77, num_inducing_points).reshape(-1, 1),
+            dtype=gpflow.default_float(),
+        )
+
+        svgp = svgp_model_with_mean(x, y1, whiten, num_inducing_points)
+        inducing_point_selector = DummyInducingPointSelector(xnew)
+        model = SparseVariational(
+            svgp,
+            BatchOptimizer(tf.optimizers.Adam(), max_iter=3, batch_size=10),
+            inducing_point_selector=inducing_point_selector,
+        )
+
+        np.testing.assert_array_equal(model.model.inducing_variable.Z, x[:num_inducing_points])
+
+        old_mu, old_sqrt = model.predict_joint(xnew)  # predict old posterior
+
+        model.update(Dataset(x, y1))  # this changes inducing points to xnew
+
+        np.testing.assert_array_equal(model.model.inducing_variable.Z, xnew)
+
+        new_mu, new_sqrt = model.predict_joint(xnew)  # predict new posterior
+
+        np.testing.assert_allclose(old_mu, new_mu, atol=1e-9)
+        np.testing.assert_allclose(old_sqrt, new_sqrt, atol=1e-9)
 
 
 def multifidelity_autoregressive_nd_dataset(n_dims: int = 1) -> Dataset:

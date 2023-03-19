@@ -44,6 +44,27 @@ from ..interfaces import (
 )
 
 
+def qmc_normal_samples(num_samples: int, n_sample_dim: int, skip: int = 0) -> tf.Tensor:
+    """
+    Generates `num_samples` sobol samples, skipping the first `skip`, where each
+    sample has dimension `n_sample_dim`.
+    """
+    sobol_samples = tf.math.sobol_sample(
+        dim=n_sample_dim,
+        num_results=num_samples,
+        dtype=tf.float64,
+        skip=skip,
+    )
+
+    dist = tfp.distributions.Normal(
+        loc=tf.constant(0.0, dtype=tf.float64),
+        scale=tf.constant(1.0, dtype=tf.float64),
+    )
+    normal_samples = dist.quantile(sobol_samples)
+    tf.debugging.assert_shapes([(normal_samples, (num_samples, n_sample_dim))])
+    return normal_samples
+
+
 class IndependentReparametrizationSampler(ReparametrizationSampler[ProbabilisticModel]):
     r"""
     This sampler employs the *reparameterization trick* to approximate samples from a
@@ -55,19 +76,22 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
     samples form a continuous curve.
     """
 
-    def __init__(self, sample_size: int, model: ProbabilisticModel):
+    skip: TensorType = tf.Variable(0)
+    """Number of sobol sequence points to skip. This is incremented for each sampler."""
+
+    def __init__(self, sample_size: int, model: ProbabilisticModel, qmc: bool = False):
         """
         :param sample_size: The number of samples to take at each point. Must be positive.
         :param model: The model to sample from.
+        :param qmc: Whether to use QMC sobol sampling instead of random normal sampling. QMC
+            sampling more accurately approximates a normal distribution than truly random samples.
         :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
         """
         super().__init__(sample_size, model)
-
-        # _eps is essentially a lazy constant. It is declared and assigned an empty tensor here, and
-        # populated on the first call to sample
         self._eps = tf.Variable(
             tf.ones([sample_size, 0], dtype=tf.float64), shape=[sample_size, None]
         )  # [S, 0]
+        self._qmc = qmc
 
     def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
         """
@@ -91,11 +115,23 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
         mean, var = self._model.predict(at[..., None, :, :])  # [..., 1, 1, L], [..., 1, 1, L]
         var = var + jitter
 
-        if not self._initialized:
-            self._eps.assign(
-                tf.random.normal([self._sample_size, tf.shape(mean)[-1]], dtype=tf.float64)
-            )  # [S, L]
+        def sample_eps() -> tf.Tensor:
             self._initialized.assign(True)
+            if self._qmc:
+                skip = IndependentReparametrizationSampler.skip
+                IndependentReparametrizationSampler.skip.assign(skip + self._sample_size)
+                normal_samples = qmc_normal_samples(self._sample_size, mean.shape[-1], skip)
+            else:
+                normal_samples = tf.random.normal(
+                    [self._sample_size, tf.shape(mean)[-1]], dtype=tf.float64
+                )
+            return normal_samples  # [S, L]
+
+        tf.cond(
+            self._initialized,
+            lambda: self._eps,
+            lambda: self._eps.assign(sample_eps()),
+        )
 
         return mean + tf.sqrt(var) * tf.cast(self._eps[:, None, :], var.dtype)  # [..., S, 1, L]
 
@@ -112,10 +148,15 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
     form a continuous curve.
     """
 
-    def __init__(self, sample_size: int, model: SupportsPredictJoint):
+    skip: TensorType = tf.Variable(0)
+    """Number of sobol sequence points to skip. This is incremented for each sampler."""
+
+    def __init__(self, sample_size: int, model: SupportsPredictJoint, qmc: bool = False):
         """
         :param sample_size: The number of samples for each batch of points. Must be positive.
         :param model: The model to sample from.
+        :param qmc: Whether to use QMC sobol sampling instead of random normal sampling. QMC
+            sampling more accurately approximates a normal distribution than truly random samples.
         :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
         """
         super().__init__(sample_size, model)
@@ -124,12 +165,10 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
                 f"BatchReparametrizationSampler only works with models that support "
                 f"predict_joint; received {model.__repr__()}"
             )
-
-        # _eps is essentially a lazy constant. It is declared and assigned an empty tensor here, and
-        # populated on the first call to sample
         self._eps = tf.Variable(
             tf.ones([0, 0, sample_size], dtype=tf.float64), shape=[None, None, sample_size]
         )  # [0, 0, S]
+        self._qmc = qmc
 
     def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
         """
@@ -170,13 +209,29 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
 
         mean, cov = self._model.predict_joint(at)  # [..., B, L], [..., L, B, B]
 
-        if not self._initialized:
-            self._eps.assign(
-                tf.random.normal(
+        def sample_eps() -> tf.Tensor:
+            self._initialized.assign(True)
+            if self._qmc:
+                skip = IndependentReparametrizationSampler.skip
+                IndependentReparametrizationSampler.skip.assign(skip + self._sample_size)
+                normal_samples = qmc_normal_samples(
+                    self._sample_size, batch_size * mean.shape[-1], skip
+                )  # [S, B*L]
+                normal_samples = tf.transpose(normal_samples)  # [B*L, S]
+                normal_samples = tf.reshape(
+                    normal_samples, (mean.shape[-1], batch_size, self._sample_size)
+                )  # [L, B, S]
+            else:
+                normal_samples = tf.random.normal(
                     [tf.shape(mean)[-1], batch_size, self._sample_size], dtype=tf.float64
                 )  # [L, B, S]
-            )
-            self._initialized.assign(True)
+            return normal_samples
+
+        tf.cond(
+            self._initialized,
+            lambda: self._eps,
+            lambda: self._eps.assign(sample_eps()),
+        )
 
         identity = tf.eye(batch_size, dtype=cov.dtype)  # [B, B]
         cov_cholesky = tf.linalg.cholesky(cov + jitter * identity)  # [..., L, B, B]

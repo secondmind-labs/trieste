@@ -42,6 +42,7 @@ from ...utils.misc import flatten_leading_dims
 from ..interfaces import (
     FastUpdateModel,
     HasTrajectorySampler,
+    SupportsCovarianceWithTopFidelity,
     SupportsGetInducingVariables,
     SupportsGetInternalData,
     TrainableProbabilisticModel,
@@ -960,7 +961,6 @@ class SparseVariational(
         num_data = dataset.query_points.shape[0]
         assert self.model.num_data is not None
         self.model.num_data.assign(num_data)
-        self.update_posterior_cache()
 
         if self._inducing_point_selector is not None:
             new_inducing_points = self._inducing_point_selector.calculate_inducing_points(
@@ -973,6 +973,7 @@ class SparseVariational(
                 )
             ):  # only bother updating if points actually change
                 self._update_inducing_variables(new_inducing_points)
+                self.update_posterior_cache()
 
     def optimize(self, dataset: Dataset) -> None:
         """
@@ -1012,6 +1013,7 @@ class SparseVariational(
             new_q_mu, new_q_sqrt = _whiten_points(self, new_inducing_points)
         else:
             new_q_mu, new_f_cov = self.predict_joint(new_inducing_points)  # [N, L], [L, N, N]
+            new_q_mu -= self.model.mean_function(new_inducing_points)
             jitter_mat = DEFAULTS.JITTER * tf.eye(
                 tf.shape(new_inducing_points)[0], dtype=new_f_cov.dtype
             )
@@ -1368,7 +1370,7 @@ class VariationalGaussianProcess(
         )
 
 
-class MultifidelityAutoregressive(TrainableProbabilisticModel):
+class MultifidelityAutoregressive(TrainableProbabilisticModel, SupportsCovarianceWithTopFidelity):
     r"""
     A :class:`TrainableProbabilisticModel` implementation of the model
     from :cite:`Kennedy2000`. This is a multi-fidelity model that works with an
@@ -1394,7 +1396,7 @@ class MultifidelityAutoregressive(TrainableProbabilisticModel):
             for the lowest fidelity and models at higher indices will be used as the residual
             model for each higher fidelity.
         """
-        self.num_fidelities = len(fidelity_models)
+        self._num_fidelities = len(fidelity_models)
 
         self.lowest_fidelity_signal_model = fidelity_models[0]
         # Note: The 0th index in the below is not a residual model, and should not be used.
@@ -1408,6 +1410,10 @@ class MultifidelityAutoregressive(TrainableProbabilisticModel):
             gpflow.Parameter(1.0, trainable=False, name="dummy_variable"),
             *rho,
         ]
+
+    @property
+    def num_fidelities(self) -> int:
+        return self._num_fidelities
 
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
@@ -1649,7 +1655,9 @@ class MultifidelityAutoregressive(TrainableProbabilisticModel):
         return f_var
 
 
-class MultifidelityNonlinearAutoregressive(TrainableProbabilisticModel):
+class MultifidelityNonlinearAutoregressive(
+    TrainableProbabilisticModel, SupportsCovarianceWithTopFidelity
+):
     r"""
     A :class:`TrainableProbabilisticModel` implementation of the model from
     :cite:`perdikaris2017nonlinear`. This is a multifidelity model that works with
@@ -1679,11 +1687,15 @@ class MultifidelityNonlinearAutoregressive(TrainableProbabilisticModel):
             sections of prediction and sampling that require the use of Monte Carlo methods.
         """
 
-        self.num_fidelities = len(fidelity_models)
+        self._num_fidelities = len(fidelity_models)
         self.fidelity_models = fidelity_models
         self.monte_carlo_random_numbers = tf.random.normal(
             [num_monte_carlo_samples, 1], dtype=tf.float64
         )
+
+    @property
+    def num_fidelities(self) -> int:
+        return self._num_fidelities
 
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         """

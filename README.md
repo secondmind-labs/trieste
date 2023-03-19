@@ -4,14 +4,14 @@
 [![License](https://img.shields.io/badge/license-Apache-green.svg)](LICENSE)
 [![Quality checks](https://github.com/secondmind-labs/trieste/actions/workflows/develop-checks.yaml/badge.svg)](https://github.com/secondmind-labs/trieste/actions?query=workflows%3Adevelop-checks)
 [![Docs](https://github.com/secondmind-labs/trieste/actions/workflows/deploy.yaml/badge.svg)](https://github.com/secondmind-labs/trieste/actions/workflows/deploy.yaml)
-[![Codecov](https://img.shields.io/codecov/c/github/secondmind-labs/trieste/coverage.svg?branch=develop)](https://codecov.io/c/github/secondmind-labs/trieste?branch=develop)
+[![Codecov](https://img.shields.io/codecov/c/github/secondmind-labs/trieste/coverage.svg?branch=develop)](https://app.codecov.io/github/secondmind-labs/trieste/tree/develop)
 [![Slack Status](https://img.shields.io/badge/slack-trieste-green.svg?logo=Slack)](https://join.slack.com/t/secondmind-labs/shared_invite/zt-ph07nuie-gMlkle__tjvXBay4FNSLkw)
 
 
 [Documentation (develop)](https://secondmind-labs.github.io/trieste/develop/index.html) |
 [Documentation (release)](https://secondmind-labs.github.io/trieste) |
-[Tutorials](https://secondmind-labs.github.io/trieste/1.0.0/tutorials.html) |
-[API reference](https://secondmind-labs.github.io/trieste/1.0.0/autoapi/trieste/index.html) |
+[Tutorials](https://secondmind-labs.github.io/trieste/tutorials.html) |
+[API reference](https://secondmind-labs.github.io/trieste/autoapi.html) |
 
 
 ## What does Trieste do?
@@ -28,7 +28,7 @@ Trieste (pronounced tree-est) is a Bayesian optimization toolbox built on [Tenso
 
 ## Getting started
 
-Here's a quick overview of the main components of a Bayesian optimization loop. For more details, see our [Documentation](https://secondmind-labs.github.io/trieste) where we have multiple [Tutorials](https://secondmind-labs.github.io/trieste/1.0.0/tutorials.html) covering both the basic functionalities of the toolbox, as well as more advanced usage.
+Here's a quick overview of the main components of a Bayesian optimization loop. For more details, see our [Documentation](https://secondmind-labs.github.io/trieste) where we have multiple [Tutorials](https://secondmind-labs.github.io/trieste/tutorials.html) covering both the basic functionalities of the toolbox, as well as more advanced usage.
 
 Let's set up a synthetic black-box objective function we wish to minimize, for example, a popular Branin optimization function, and generate some initial data
 ```python
@@ -40,7 +40,7 @@ initial_query_points = Branin.search_space.sample(5)
 initial_data = observer(initial_query_points)
 ```
 
-First step is to crate a probabilistic model, for example a Gaussian Process
+First step is to create a probabilistic model of the objective function, for example a Gaussian Process model
 ```python
 from trieste.models import build_gpr, GaussianProcessRegression
 
@@ -126,7 +126,7 @@ All constructive input is very much welcome. For detailed information, see [the 
 
 ## Citing Trieste
 
-To cite Trieste, please reference our [arXiv](https://arxiv.org/) paper where we review the framework and describe the design. Sample Bibtex is given below:
+To cite Trieste, please reference our [arXiv](https://arxiv.org/abs/2302.08436) paper where we review the framework and describe the design. Sample Bibtex is given below:
 
 ```
 @misc{trieste2023,

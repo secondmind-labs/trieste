@@ -17,6 +17,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 
 import gpflow
+import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
@@ -40,6 +41,7 @@ from trieste.models.gpflow.interface import SupportsCovarianceBetweenPoints
 from trieste.models.interfaces import (
     HasReparamSampler,
     HasTrajectorySampler,
+    SupportsCovarianceWithTopFidelity,
     SupportsGetKernel,
     SupportsGetObservationNoise,
 )
@@ -245,6 +247,71 @@ class QuadraticMeanAndRBFKernelWithSamplers(
         self._dataset[1].assign(dataset.observations)
 
 
+class MultiFidelityQuadraticMeanAndRBFKernel(
+    QuadraticMeanAndRBFKernel, SupportsCovarianceWithTopFidelity
+):
+    r"""
+    A Gaussian process with scalar quadratic mean, an RBF kernel and
+    trajectory_sampler and reparam_sampler methods.
+    """
+
+    def __init__(
+        self,
+        *,
+        x_shift: float | SequenceN[float] | TensorType = 0,
+        kernel_amplitude: float | TensorType | None = None,
+        noise_variance: float = 1.0,
+    ):
+        super().__init__(
+            x_shift=x_shift, kernel_amplitude=kernel_amplitude, noise_variance=noise_variance
+        )
+
+    @property
+    def num_fidelities(self) -> int:
+        return 5
+
+    def covariance_with_top_fidelity(self, x: TensorType) -> TensorType:
+        mean, _ = self.predict(x)
+        return tf.ones_like(mean, dtype=mean.dtype)  # dummy covariances of correct shape
+
+    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        fmean, fvar = self.predict(query_points)
+        yvar = fvar + tf.constant(1.0, dtype=fmean.dtype)  # dummy noise variance
+        return fmean, yvar
+
+
+class MultiFidelityQuadraticMeanAndRBFKernelWithSamplers(
+    QuadraticMeanAndRBFKernelWithSamplers, SupportsCovarianceWithTopFidelity
+):
+    r"""
+    A Gaussian process with scalar quadratic mean, an RBF kernel and
+    trajectory_sampler and reparam_sampler methods.
+    """
+
+    def __init__(
+        self,
+        dataset: Dataset,
+        *,
+        x_shift: float | SequenceN[float] | TensorType = 0,
+        kernel_amplitude: float | TensorType | None = None,
+        noise_variance: float = 1.0,
+    ):
+        super().__init__(
+            dataset,
+            x_shift=x_shift,
+            kernel_amplitude=kernel_amplitude,
+            noise_variance=noise_variance,
+        )
+
+    @property
+    def num_fidelities(self) -> int:
+        return 5
+
+    def covariance_with_top_fidelity(self, x: TensorType) -> TensorType:
+        mean, _ = self.predict(x)
+        return tf.ones_like(mean, dtype=mean.dtype)  # dummy covariances of correct shape
+
+
 class QuadraticMeanAndRBFKernelWithBatchSamplers(
     QuadraticMeanAndRBFKernel, HasTrajectorySampler, HasReparamSampler
 ):
@@ -312,6 +379,31 @@ def svgp_model(x: tf.Tensor, y: tf.Tensor, num_latent_gps: int = 1) -> SVGP:
         num_data=len(x),
         num_latent_gps=num_latent_gps,
     )
+
+
+def svgp_model_with_mean(
+    x: tf.Tensor, y: tf.Tensor, whiten: bool, num_inducing_points: int, num_latent_gps: int = 1
+) -> SVGP:
+    mean_function = gpflow.mean_functions.Linear(
+        A=0.37 * np.ones((1, 1), dtype=gpflow.default_float()),
+        b=0.19 * np.ones((1,), dtype=gpflow.default_float()),
+    )
+    q_mu = np.random.randn(num_inducing_points, 1)
+    q_sqrt = np.tril(np.random.randn(1, num_inducing_points, num_inducing_points))
+    m = SVGP(
+        gpflow.kernels.Matern32(variance=0.91),
+        gpflow.likelihoods.Gaussian(variance=0.23),
+        x[:num_inducing_points],
+        num_data=len(x),
+        num_latent_gps=num_latent_gps,
+        mean_function=mean_function,
+        whiten=whiten,
+        q_mu=q_mu,
+        q_sqrt=q_sqrt,
+    )
+    gpflow.set_trainable(mean_function, False)
+    gpflow.set_trainable(m.inducing_variable, False)
+    return m
 
 
 def vgp_model(x: tf.Tensor, y: tf.Tensor, num_latent_gps: int = 1) -> VGP:
