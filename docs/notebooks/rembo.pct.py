@@ -199,7 +199,6 @@ for _ in range(num_seeds):
 # We produce a regret plot below for each method.
 
 # %%
-
 import matplotlib.pyplot as plt
 
 _, ax = plt.subplots(1, 3)
