@@ -210,6 +210,9 @@ def test_batch_reparametrization_sampler_samples_approximate_mean_and_covariance
     xs = tf.random.uniform(leading_dims + [batch_size, 2], maxval=1.0, dtype=tf.float64)
     samples = BatchReparametrizationSampler(sample_size, model, qmc=qmc).sample(xs)
     assert mocked_qmc.call_count == qmc
+    if qmc:
+        assert mocked_qmc.call_args[0][0] == 2 * sample_size  # num_results
+        assert mocked_qmc.call_args[0][1] == batch_size  # dim
 
     assert samples.shape == leading_dims + [sample_size, batch_size, 2]
 

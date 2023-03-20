@@ -76,7 +76,7 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
     samples form a continuous curve.
     """
 
-    skip: TensorType = tf.Variable(0)
+    skip: TensorType = tf.Variable(0, trainable=False)
     """Number of sobol sequence points to skip. This is incremented for each sampler."""
 
     def __init__(self, sample_size: int, model: ProbabilisticModel, qmc: bool = False):
@@ -115,10 +115,9 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
         mean, var = self._model.predict(at[..., None, :, :])  # [..., 1, 1, L], [..., 1, 1, L]
         var = var + jitter
 
-        def sample_eps() -> tf.Tensor:
+        def sample_eps(skip: int) -> tf.Tensor:
             self._initialized.assign(True)
             if self._qmc:
-                skip = IndependentReparametrizationSampler.skip
                 IndependentReparametrizationSampler.skip.assign(skip + self._sample_size)
                 normal_samples = qmc_normal_samples(self._sample_size, mean.shape[-1], skip)
             else:
@@ -127,10 +126,12 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
                 )
             return normal_samples  # [S, L]
 
+        skip = IndependentReparametrizationSampler.skip
+
         tf.cond(
             self._initialized,
             lambda: self._eps,
-            lambda: self._eps.assign(sample_eps()),
+            lambda: self._eps.assign(sample_eps(skip)),
         )
 
         return mean + tf.sqrt(var) * tf.cast(self._eps[:, None, :], var.dtype)  # [..., S, 1, L]
@@ -148,7 +149,7 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
     form a continuous curve.
     """
 
-    skip: TensorType = tf.Variable(0)
+    skip: TensorType = tf.Variable(0, trainable=False)
     """Number of sobol sequence points to skip. This is incremented for each sampler."""
 
     def __init__(self, sample_size: int, model: SupportsPredictJoint, qmc: bool = False):
@@ -209,28 +210,29 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
 
         mean, cov = self._model.predict_joint(at)  # [..., B, L], [..., L, B, B]
 
-        def sample_eps() -> tf.Tensor:
+        def sample_eps(skip: int) -> tf.Tensor:
             self._initialized.assign(True)
             if self._qmc:
-                skip = IndependentReparametrizationSampler.skip
                 IndependentReparametrizationSampler.skip.assign(skip + self._sample_size)
                 normal_samples = qmc_normal_samples(
-                    self._sample_size, batch_size * mean.shape[-1], skip
-                )  # [S, B*L]
-                normal_samples = tf.transpose(normal_samples)  # [B*L, S]
+                    self._sample_size * mean.shape[-1], batch_size, skip
+                )  # [S*L, B]
                 normal_samples = tf.reshape(
-                    normal_samples, (mean.shape[-1], batch_size, self._sample_size)
-                )  # [L, B, S]
+                    normal_samples, (mean.shape[-1], self._sample_size, batch_size)
+                )  # [L, S, B]
+                normal_samples = tf.transpose(normal_samples, perm=[0, 2, 1])  # [L, B, S]
             else:
                 normal_samples = tf.random.normal(
                     [tf.shape(mean)[-1], batch_size, self._sample_size], dtype=tf.float64
                 )  # [L, B, S]
             return normal_samples
 
+        skip = IndependentReparametrizationSampler.skip
+
         tf.cond(
             self._initialized,
             lambda: self._eps,
-            lambda: self._eps.assign(sample_eps()),
+            lambda: self._eps.assign(sample_eps(skip)),
         )
 
         identity = tf.eye(batch_size, dtype=cov.dtype)  # [B, B]
