@@ -237,7 +237,6 @@ for i in range(num_seeds):
 # %% [markdown]
 # We see that REMBO with $d=2$ generally performs the best, whereas both the full-dimensional approach and $d=5$ struggle more.
 
-# %%
 
 # %% [markdown]
 # ## LICENSE
