@@ -18,7 +18,7 @@ tf.random.set_seed(1793)
 #
 # In this example, we augment the standard two-dimensional Michalewicz function with 98 dummy dimensions to obtain a 100-dimensional problem over the hypercube $[0, \pi]^{100}$.
 #
-# We compare three approaches to optimizing this problem. The first uses a standard GP model over all 100 dimensions, using expected improvement as our acquisition function. We compare this to two Random EMbedding Bayesian Optimization (REMBO; see <cite data-cite="wang2013bayesian"/>) approaches.
+# We compare three approaches to optimizing this problem. The first uses a standard GP model over all 100 dimensions, using expected improvement as our acquisition function. As standard Gaussian process models have trouble modeling high dimensional data, we do not expect this approach to perform well. Therefore, we compare this to two Random EMbedding Bayesian Optimization (REMBO; see <cite data-cite="wang2013bayesian"/>) approaches.
 #
 # Instead of training a GP model and optimizing an acquisition function on the high-dimensional space directly, REMBO constructs a low-dimensional search space, performing the modeling and acquisition on this space. In order to transfer to the high-dimensional space, REMBO uses a static random projection matrix $A \in \mathbb{R}^{D \times d}$ to project query points from the lower, $d$-dimensional space to the original higher, $D$-dimensional space.
 #
@@ -102,23 +102,23 @@ for _ in range(num_seeds):
 
 # %%
 
-def make_REMBO_observer_and_search_space(D, d, objective, search_space):
+def make_REMBO_observer_and_search_space(full_dim, low_dim, objective, search_space):
     assert isinstance(search_space, Box)
 
     A = tf.random.normal(
-        [D, d], dtype=gpflow.default_float()
+        [full_dim, low_dim], dtype=gpflow.default_float()
     )  # sample projection matrix
 
     new_search_space = Box(
-        [-math.sqrt(d)] * d, [math.sqrt(d)] * d
+        [-math.sqrt(low_dim)] * low_dim, [math.sqrt(low_dim)] * low_dim
     )  # recommendation from REMBO paper
 
     def new_objective(y):
-        tf.debugging.assert_shapes([(y, (..., d))])
+        tf.debugging.assert_shapes([(y, (..., low_dim))])
 
         rescaled_search_space = Box(
-            [-1.0] * D, [1.0] * D
-        )  # REMBO assumes the original space has bounds [-1, 1]^D
+            [-1.0] * full_dim, [1.0] * full_dim
+        )  # REMBO assumes the original space has bounds [-1, 1]^full_dim
 
         scaling = (search_space.upper - search_space.lower) / (
             rescaled_search_space.upper - rescaled_search_space.lower
@@ -146,7 +146,7 @@ def make_REMBO_observer_and_search_space(D, d, objective, search_space):
 
 # %%
 d = 2
-rembo_final_datasets = []
+rembo_2_final_datasets = []
 
 for _ in range(num_seeds):
     rembo_observer, rembo_search_space = make_REMBO_observer_and_search_space(
@@ -165,7 +165,7 @@ for _ in range(num_seeds):
     result = bo.optimize(num_steps, initial_data, model)
     dataset = result.try_get_final_dataset()
 
-    rembo_final_datasets.append(dataset)
+    rembo_2_final_datasets.append(dataset)
 
 # %% [markdown]
 # We repeat the above but with d=5 - this might help find more suitable projections.
@@ -175,7 +175,6 @@ d = 5
 rembo_5_final_datasets = []
 
 for _ in range(num_seeds):
-    d = 5
     rembo_observer, rembo_search_space = make_REMBO_observer_and_search_space(
         D, d, high_dim_objective, search_space
     )
@@ -213,7 +212,7 @@ for i in range(num_seeds):
     ax[0].set_xlabel("# evaluations")
     ax[0].set_title("Full-D BO")
 
-    rembo_observations = rembo_final_datasets[i].observations.numpy()
+    rembo_observations = rembo_2_final_datasets[i].observations.numpy()
     suboptimality = rembo_observations - minimum.numpy()
     ax[1].plot(np.minimum.accumulate(suboptimality))
     ax[1].axvline(x=num_initial_points - 0.5, color="tab:blue")
