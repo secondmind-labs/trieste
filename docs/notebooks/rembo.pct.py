@@ -31,7 +31,8 @@ from trieste.objectives.single_objectives import Michalewicz2
 from trieste.space import Box
 from trieste.models.gpflow import GaussianProcessRegression
 
-D = 100  # the dimension of the full problem
+# Set the dimension of the full problem
+D = 100
 
 num_initial_points = 2
 num_steps = 48
