@@ -102,7 +102,6 @@ for _ in range(num_seeds):
 
 # %%
 
-
 def make_REMBO_observer_and_search_space(D, d, objective, search_space):
     assert isinstance(search_space, Box)
 
