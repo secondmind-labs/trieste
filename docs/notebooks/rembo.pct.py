@@ -102,7 +102,10 @@ for _ in range(num_seeds):
 
 # %%
 
-def make_REMBO_observer_and_search_space(full_dim, low_dim, objective, search_space):
+
+def make_REMBO_observer_and_search_space(
+    full_dim, low_dim, objective, search_space
+):
     assert isinstance(search_space, Box)
 
     A = tf.random.normal(
