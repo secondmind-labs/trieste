@@ -76,7 +76,7 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
     samples form a continuous curve.
     """
 
-    skip: TensorType = tf.Variable(0)
+    skip: TensorType = tf.Variable(0, trainable=False)
     """Number of sobol sequence points to skip. This is incremented for each sampler."""
 
     def __init__(self, sample_size: int, model: ProbabilisticModel, qmc: bool = False):
@@ -149,7 +149,7 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
     form a continuous curve.
     """
 
-    skip: TensorType = tf.Variable(0)
+    skip: TensorType = tf.Variable(0, trainable=False)
     """Number of sobol sequence points to skip. This is incremented for each sampler."""
 
     def __init__(self, sample_size: int, model: SupportsPredictJoint, qmc: bool = False):
