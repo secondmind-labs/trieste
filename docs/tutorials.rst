@@ -39,6 +39,7 @@ The following tutorials explore various optimization problems using Trieste.
    notebooks/scalable_thompson_sampling_using_sparse_gaussian_processes
    notebooks/qhsri-tutorial
    notebooks/multifidelity_modelling
+   notebooks/rembo
 
 Frequently asked questions
 --------------------------
