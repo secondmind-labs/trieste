@@ -1,5 +1,5 @@
 # %% [markdown]
-# # High-dimensional Bayesian optimization with  Random EMbedding Bayesian Optimization (REMBO).
+# # High-dimensional Bayesian optimization with Random EMbedding Bayesian Optimization (REMBO).
 # This notebook demonstrates a simple method for optimizing a high-dimensional (100-D) problem, where standard BO methods have trouble.
 
 # %%
