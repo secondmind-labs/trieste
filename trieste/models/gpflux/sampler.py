@@ -356,7 +356,6 @@ class DeepGaussianProcessDecoupledLayer(ABC):
             ]
         )
 
-        # TODO: SIMPLIFY SHAPES AND TRANSPOSES
         def weight_sampler(batch_size: int) -> TensorType:
             prior_weights = tf.random.normal([batch_size, P, self._num_features, 1], dtype=tf.float64)  # [B, P, L, 1]
 
@@ -364,24 +363,20 @@ class DeepGaussianProcessDecoupledLayer(ABC):
                 q_sqrt,  # [P, M, M]
                 tf.random.normal([batch_size, P, M, 1], dtype=tf.float64),  # [B, P, M, 1]
             )  # [B, P, M, 1]
-            u_sample = q_mu + tf.linalg.matrix_transpose(u_noise_sample[..., 0])  # [B, M, P]
+            u_sample = tf.linalg.matrix_transpose(q_mu)[..., None] + u_noise_sample  # [B, P, M, 1]
 
             if whiten:
                 Luu = tf.linalg.cholesky(Kmm)  # [M, M] or [P, M, M]
-                u_sample = tf.matmul(Luu, tf.linalg.matrix_transpose(u_sample)[..., None])  # [B, P, M, 1]
-                u_sample = tf.linalg.matrix_transpose(u_sample[..., 0])  # [B, M, P]
+                u_sample = tf.matmul(Luu, u_sample)  # [B, P, M, 1]
 
-            phi_Z = self._feature_functions(inducing_points)[:, : self._num_features]  # [M, L] or [M, L, P]
-            if self._feature_functions.num_latent_gps is not None:
-                phi_Z = tf.transpose(phi_Z, perm=[2, 0, 1])  # [P, M, L]
-            weight_space_prior_Z = tf.transpose((phi_Z @ prior_weights)[..., 0], perm=[0, 2, 1])  # [B, M, P]
+            # TODO: BROKEN
+            phi_Z = self._feature_functions(inducing_points)[:, : self._num_features]  # [M, L] or [P, M, L]
+            weight_space_prior_Z = phi_Z @ prior_weights  # [B, P, M, 1]
 
-            diff = u_sample - weight_space_prior_Z  # [B, M, P]
-            diff = tf.transpose(diff[..., None], perm=[0, 2, 1, 3])  # [B, P, M, 1]
+            diff = u_sample - weight_space_prior_Z  # [B, P, M, 1]
             v = compute_A_inv_b(Kmm, diff)  # [B, P, M, 1]
-            v = tf.transpose(v[..., 0], perm=[0, 2, 1])  # [B, M, P]
 
-            return tf.concat([tf.linalg.matrix_transpose(prior_weights[..., 0]), v], axis=1)  # [B, L + M, P]
+            return tf.transpose(tf.concat([prior_weights, v], axis=2)[..., 0], perm=[0, 2, 1])  # [B, L + M, P]
 
         return weight_sampler
 
@@ -407,10 +402,7 @@ class ResampleableDecoupledDeepGaussianProcessFeatureFunctions(RandomFourierFeat
             )
 
         self._kernel = layer.kernel
-        # if isinstance(layer.kernel, gpflow.kernels.SharedIndependent):
-        #     self._kernel = layer.kernel.kernel
-        # else:
-        #     self._kernel = layer.kernel
+
         self._n_components = n_components
         super().__init__(self._kernel, self._n_components, dtype=tf.float64)
 
@@ -445,17 +437,14 @@ class ResampleableDecoupledDeepGaussianProcessFeatureFunctions(RandomFourierFeat
             self.b.assign(self._bias_init(tf.shape(self.b), dtype=self._dtype))
             self.W.assign(self._weights_init(tf.shape(self.W), dtype=self._dtype))
 
-    def __call__(self, x: TensorType) -> TensorType:  # [N, D] -> [N, L + M]
+    # TODO: revert shapes here
+    def __call__(self, x: TensorType) -> TensorType:  # [N, D] -> [N, L + M] or [N, L + M, P]
         """
         Evaluate and combine prior basis functions and canonical basic functions at the input.
         """
         fourier_feature_eval = super().__call__(x)  # [N, L] or [P, N, L]
         canonical_feature_eval = self._canonical_feature_functions(x)  # [P, N, M] or [N, M]
-        if self.num_latent_gps is not None:
-            # canonical_feature_eval = tf.tile(canonical_feature_eval[None, :, :], [self.num_latent_gps, 1, 1])  # [P, N, M]
-            return tf.transpose(tf.concat([fourier_feature_eval, canonical_feature_eval], axis=-1), perm=[1, 2, 0])  # [N, L + M, P]
-        else:
-            return tf.concat([fourier_feature_eval, canonical_feature_eval], axis=-1)  # [N, L + M]
+        return tf.concat([fourier_feature_eval, canonical_feature_eval], axis=-1)  # [P, N, L + M]
 
 
 class dgp_feature_decomposition_trajectory(TrajectoryFunctionClass):
