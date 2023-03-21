@@ -1,0 +1,4 @@
+replace:
+  - { from: "D = \\d+", to: "D = 6"}
+  - { from: "num_steps = \\d+", to: "num_steps = 1"}
+  - { from: "num_seeds = \\d+", to: "num_seeds = 1"}
