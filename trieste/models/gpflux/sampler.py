@@ -241,17 +241,6 @@ class DeepGaussianProcessDecoupledLayer(ABC):
         self._num_features = num_features
 
         self._kernel = layer.kernel
-        # if isinstance(layer.kernel, gpflow.kernels.MultioutputKernel):
-        #     if not isinstance(layer.kernel, gpflow.kernels.SharedIndependent):
-        #         raise ValueError(
-        #             f"Multioutput kernels other than gpflow.kernels.SharedIndependent are not"
-        #             f"currently supported, received {type(layer.kernel)}"
-        #         )
-        #     self._kernel = layer.kernel.kernel
-        # else:
-        #     # GPLayers are supposed to only use multioutput kernels but we also use them with
-        #     # simple kernels
-        #     self._kernel = layer.kernel  # type: ignore[unreachable]
 
         self._feature_functions = ResampleableDecoupledDeepGaussianProcessFeatureFunctions(
             layer, num_features
@@ -298,8 +287,9 @@ class DeepGaussianProcessDecoupledLayer(ABC):
         )
 
         flat_x, unflatten = flatten_leading_dims(x)
-        flattened_feature_evaluations = self._feature_functions(flat_x)  # [N, L + M, P] or [N, L + M]
+        flattened_feature_evaluations = self._feature_functions(flat_x)  # [P, N, L + M] or [N, L + M]
         if self._feature_functions.num_latent_gps is not None:
+            flattened_feature_evaluations = tf.transpose(flattened_feature_evaluations, perm=[1, 2, 0])
             feature_evaluations = unflatten(flattened_feature_evaluations)  # [N, B, L + M, P]
         else:
             feature_evaluations = unflatten(flattened_feature_evaluations)[..., None]  # [N, B, L + M, 1]
@@ -352,7 +342,6 @@ class DeepGaussianProcessDecoupledLayer(ABC):
                 (inducing_points, ["M", "D"]),
                 (q_mu, ["M", "P"]),
                 (q_sqrt, ["P", "M", "M"]),
-                # (Kmm, ["M", "M"]),
             ]
         )
 
@@ -369,8 +358,7 @@ class DeepGaussianProcessDecoupledLayer(ABC):
                 Luu = tf.linalg.cholesky(Kmm)  # [M, M] or [P, M, M]
                 u_sample = tf.matmul(Luu, u_sample)  # [B, P, M, 1]
 
-            # TODO: BROKEN
-            phi_Z = self._feature_functions(inducing_points)[:, : self._num_features]  # [M, L] or [P, M, L]
+            phi_Z = self._feature_functions(inducing_points)[..., : self._num_features]  # [M, L] or [P, M, L]
             weight_space_prior_Z = phi_Z @ prior_weights  # [B, P, M, 1]
 
             diff = u_sample - weight_space_prior_Z  # [B, P, M, 1]
@@ -437,8 +425,7 @@ class ResampleableDecoupledDeepGaussianProcessFeatureFunctions(RandomFourierFeat
             self.b.assign(self._bias_init(tf.shape(self.b), dtype=self._dtype))
             self.W.assign(self._weights_init(tf.shape(self.W), dtype=self._dtype))
 
-    # TODO: revert shapes here
-    def __call__(self, x: TensorType) -> TensorType:  # [N, D] -> [N, L + M] or [N, L + M, P]
+    def __call__(self, x: TensorType) -> TensorType:  # [N, D] -> [N, L + M] or [P, N, L + M]
         """
         Evaluate and combine prior basis functions and canonical basic functions at the input.
         """
