@@ -237,6 +237,11 @@ class DeepGaussianProcessDecoupledLayer(ABC):
                 f"{type(layer)}"
             )
 
+        if isinstance(layer.inducing_variable, gpflow.inducing_variables.SeparateIndependentInducingVariables):
+            raise ValueError(
+                f"SeparateIndependentInducingVariables are currently not supported for decoupled sampling."
+            )
+
         tf.debugging.assert_positive(num_features)
         self._num_features = num_features
 
@@ -288,7 +293,7 @@ class DeepGaussianProcessDecoupledLayer(ABC):
 
         flat_x, unflatten = flatten_leading_dims(x)
         flattened_feature_evaluations = self._feature_functions(flat_x)  # [P, N, L + M] or [N, L + M]
-        if self._feature_functions.num_latent_gps is not None:
+        if self._feature_functions.is_multioutput:
             flattened_feature_evaluations = tf.transpose(flattened_feature_evaluations, perm=[1, 2, 0])
             feature_evaluations = unflatten(flattened_feature_evaluations)  # [N, B, L + M, P]
         else:
@@ -329,7 +334,7 @@ class DeepGaussianProcessDecoupledLayer(ABC):
 
         q_mu = self._layer.q_mu  # [M, P]
         q_sqrt = self._layer.q_sqrt  # [P, M, M]
-        if self._feature_functions.num_latent_gps is not None:
+        if self._feature_functions.is_multioutput:
             Kmm = self._kernel.K(inducing_points, inducing_points, full_output_cov=False)  # [P, M, M]
         else:
             Kmm = self._kernel.K(inducing_points, inducing_points)
@@ -399,7 +404,7 @@ class ResampleableDecoupledDeepGaussianProcessFeatureFunctions(RandomFourierFeat
         else:
             inducing_points = layer.inducing_variable.inducing_variable.Z
 
-        if self.num_latent_gps is not None:
+        if self.is_multioutput:
             self._canonical_feature_functions = lambda x: tf.linalg.matrix_transpose(
                 self._kernel.K(inducing_points, x, full_output_cov=False)
             )
