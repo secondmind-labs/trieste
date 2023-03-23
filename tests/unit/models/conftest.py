@@ -29,7 +29,11 @@ from tests.util.models.gpflow.models import (
     svgp_model,
     vgp_model,
 )
-from tests.util.models.gpflux.models import simple_two_layer_dgp_model, two_layer_dgp_model
+from tests.util.models.gpflux.models import (
+    simple_two_layer_dgp_model,
+    two_layer_dgp_model,
+    separate_independent_kernel_two_layer_dgp_model,
+)
 from trieste.data import Dataset
 from trieste.models.gpflow import (
     GaussianProcessRegression,
@@ -91,6 +95,13 @@ def _compile_fixture(request: Any) -> bool:
     return request.param
 
 
-@pytest.fixture(name="two_layer_model", params=[two_layer_dgp_model, simple_two_layer_dgp_model])
+@pytest.fixture(
+    name="two_layer_model",
+    params=[
+        two_layer_dgp_model,
+        simple_two_layer_dgp_model,
+        separate_independent_kernel_two_layer_dgp_model,
+    ],
+)
 def _two_layer_model_fixture(request: Any) -> Callable[[TensorType], DeepGP]:
     return request.param

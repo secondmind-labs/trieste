@@ -25,6 +25,7 @@ from gpflow.utilities import set_trainable
 from gpflux.architectures import Config, build_constant_input_dim_deep_gp
 from gpflux.layers import GPLayer
 from gpflux.models import DeepGP
+from gpflux.helpers import construct_basic_kernel
 
 from trieste.data import Dataset, TensorType
 from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp
@@ -69,6 +70,44 @@ def simple_two_layer_dgp_model(x: TensorType) -> DeepGP:
     Z = x.copy()
     kernel_1 = gpflow.kernels.SquaredExponential()
     inducing_variable_1 = gpflow.inducing_variables.InducingPoints(Z.copy())
+    gp_layer_1 = GPLayer(
+        kernel_1,
+        inducing_variable_1,
+        num_data=num_data,
+        num_latent_gps=x_shape,
+    )
+
+    kernel_2 = gpflow.kernels.SquaredExponential()
+    inducing_variable_2 = gpflow.inducing_variables.InducingPoints(Z.copy())
+    gp_layer_2 = GPLayer(
+        kernel_2,
+        inducing_variable_2,
+        num_data=num_data,
+        num_latent_gps=1,
+        mean_function=gpflow.mean_functions.Zero(),
+    )
+
+    return DeepGP([gp_layer_1, gp_layer_2], gpflow.likelihoods.Gaussian(0.01))
+
+
+def separate_independent_kernel_two_layer_dgp_model(x: TensorType) -> DeepGP:
+    if isinstance(x, tf.Tensor):
+        x = x.numpy()
+    x_shape = x.shape[-1]
+    num_data = len(x)
+
+    Z = x.copy()
+    kernel_list = [
+        gpflow.kernels.SquaredExponential(
+            variance=tf.exp(tf.random.normal([], dtype=gpflow.default_float())),
+            lengthscales=tf.exp(tf.random.normal([], dtype=gpflow.default_float())),
+        )
+        for _ in range(x_shape)
+    ]
+    kernel_1 = construct_basic_kernel(kernel_list)
+    inducing_variable_1 = gpflow.inducing_variables.SharedIndependentInducingVariables(
+        gpflow.inducing_variables.InducingPoints(Z.copy())
+    )
     gp_layer_1 = GPLayer(
         kernel_1,
         inducing_variable_1,
