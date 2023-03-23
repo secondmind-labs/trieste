@@ -155,26 +155,40 @@ def test_independent_reparametrization_sampler_sample_is_continuous(qmc: bool) -
 
 
 @pytest.mark.parametrize("qmc", [True, False])
-def test_independent_reparametrization_sampler_sample_is_repeatable(qmc: bool) -> None:
-    sampler = IndependentReparametrizationSampler(100, _dim_two_gp(), qmc=qmc)
+@pytest.mark.parametrize("qmc_skip", [True, False])
+def test_independent_reparametrization_sampler_sample_is_repeatable(
+    qmc: bool, qmc_skip: bool
+) -> None:
+    sampler = IndependentReparametrizationSampler(100, _dim_two_gp(), qmc=qmc, qmc_skip=qmc_skip)
     xs = tf.random.uniform([100, 1, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
     npt.assert_allclose(sampler.sample(xs), sampler.sample(xs))
 
 
 @random_seed
 @pytest.mark.parametrize("qmc", [True, False])
+@pytest.mark.parametrize("qmc_skip", [True, False])
 def test_independent_reparametrization_sampler_samples_are_distinct_for_new_instances(
     qmc: bool,
+    qmc_skip: bool,
 ) -> None:
-    sampler1 = IndependentReparametrizationSampler(100, _dim_two_gp(), qmc=qmc)
-    sampler2 = IndependentReparametrizationSampler(100, _dim_two_gp(), qmc=qmc)
+    sampler1 = IndependentReparametrizationSampler(100, _dim_two_gp(), qmc=qmc, qmc_skip=qmc_skip)
+    sampler2 = IndependentReparametrizationSampler(100, _dim_two_gp(), qmc=qmc, qmc_skip=qmc_skip)
     xs = tf.random.uniform([100, 1, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
-    npt.assert_array_less(1e-9, tf.abs(sampler2.sample(xs) - sampler1.sample(xs)))
+    if qmc and not qmc_skip:
+        npt.assert_raises(
+            AssertionError,
+            npt.assert_array_less,
+            1e-9,
+            tf.abs(sampler2.sample(xs) - sampler1.sample(xs)),
+        )
+    else:
+        npt.assert_array_less(1e-9, tf.abs(sampler2.sample(xs) - sampler1.sample(xs)))
 
 
 @pytest.mark.parametrize("qmc", [True, False])
-def test_independent_reparametrization_sampler_reset_sampler(qmc: bool) -> None:
-    sampler = IndependentReparametrizationSampler(100, _dim_two_gp(), qmc=qmc)
+@pytest.mark.parametrize("qmc_skip", [True, False])
+def test_independent_reparametrization_sampler_reset_sampler(qmc: bool, qmc_skip: bool) -> None:
+    sampler = IndependentReparametrizationSampler(100, _dim_two_gp(), qmc=qmc, qmc_skip=qmc_skip)
     assert not sampler._initialized
     xs = tf.random.uniform([100, 1, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
     samples1 = sampler.sample(xs)
@@ -183,7 +197,10 @@ def test_independent_reparametrization_sampler_reset_sampler(qmc: bool) -> None:
     assert not sampler._initialized
     samples2 = sampler.sample(xs)
     assert sampler._initialized
-    npt.assert_array_less(1e-9, tf.abs(samples2 - samples1))
+    if qmc and not qmc_skip:
+        npt.assert_raises(AssertionError, npt.assert_array_less, 1e-9, tf.abs(samples2 - samples1))
+    else:
+        npt.assert_array_less(1e-9, tf.abs(samples2 - samples1))
 
 
 @pytest.mark.parametrize("qmc", [True, False])
@@ -235,20 +252,32 @@ def test_batch_reparametrization_sampler_samples_are_continuous(qmc: bool) -> No
 
 
 @pytest.mark.parametrize("qmc", [True, False])
-def test_batch_reparametrization_sampler_samples_are_repeatable(qmc: bool) -> None:
-    sampler = BatchReparametrizationSampler(100, _dim_two_gp(), qmc=qmc)
+@pytest.mark.parametrize("qmc_skip", [True, False])
+def test_batch_reparametrization_sampler_samples_are_repeatable(qmc: bool, qmc_skip: bool) -> None:
+    sampler = BatchReparametrizationSampler(100, _dim_two_gp(), qmc=qmc, qmc_skip=qmc_skip)
     xs = tf.random.uniform([3, 5, 7, 2], dtype=tf.float64)
     npt.assert_allclose(sampler.sample(xs), sampler.sample(xs))
 
 
 @random_seed
 @pytest.mark.parametrize("qmc", [True, False])
-def test_batch_reparametrization_sampler_samples_are_distinct_for_new_instances(qmc: bool) -> None:
+@pytest.mark.parametrize("qmc_skip", [True, False])
+def test_batch_reparametrization_sampler_samples_are_distinct_for_new_instances(
+    qmc: bool, qmc_skip: bool
+) -> None:
     model = _dim_two_gp()
-    sampler1 = BatchReparametrizationSampler(100, model, qmc=qmc)
-    sampler2 = BatchReparametrizationSampler(100, model, qmc=qmc)
+    sampler1 = BatchReparametrizationSampler(100, model, qmc=qmc, qmc_skip=qmc_skip)
+    sampler2 = BatchReparametrizationSampler(100, model, qmc=qmc, qmc_skip=qmc_skip)
     xs = tf.random.uniform([3, 5, 7, 2], dtype=tf.float64)
-    npt.assert_array_less(1e-9, tf.abs(sampler2.sample(xs) - sampler1.sample(xs)))
+    if qmc and not qmc_skip:
+        npt.assert_raises(
+            AssertionError,
+            npt.assert_array_less,
+            1e-9,
+            tf.abs(sampler2.sample(xs) - sampler1.sample(xs)),
+        )
+    else:
+        npt.assert_array_less(1e-9, tf.abs(sampler2.sample(xs) - sampler1.sample(xs)))
 
 
 @pytest.mark.parametrize("at", [tf.constant([0.0]), tf.constant(0.0), tf.ones([0, 1])])
@@ -282,16 +311,23 @@ def test_batch_reparametrization_sampler_sample_raises_for_inconsistent_batch_si
 
 
 @pytest.mark.parametrize("qmc", [True, False])
-def test_batch_reparametrization_sampler_reset_sampler(qmc: bool) -> None:
-    sampler = BatchReparametrizationSampler(100, QuadraticMeanAndRBFKernel(), qmc=qmc)
+@pytest.mark.parametrize("qmc_skip", [True, False])
+def test_batch_reparametrization_sampler_reset_sampler(qmc: bool, qmc_skip: bool) -> None:
+    sampler = BatchReparametrizationSampler(
+        100, QuadraticMeanAndRBFKernel(), qmc=qmc, qmc_skip=qmc_skip
+    )
     assert not sampler._initialized
     xs = tf.constant([[0.0], [1.0], [2.0]])
-    sampler.sample(xs)
+    samples1 = sampler.sample(xs)
     assert sampler._initialized
     sampler.reset_sampler()
     assert not sampler._initialized
-    sampler.sample(xs)
+    samples2 = sampler.sample(xs)
     assert sampler._initialized
+    if qmc and not qmc_skip:
+        npt.assert_raises(AssertionError, npt.assert_array_less, 1e-9, tf.abs(samples2 - samples1))
+    else:
+        npt.assert_array_less(1e-9, tf.abs(samples2 - samples1))
 
 
 @pytest.mark.parametrize("num_features", [0, -2])

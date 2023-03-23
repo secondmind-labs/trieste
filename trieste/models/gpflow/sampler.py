@@ -79,12 +79,16 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
     skip: TensorType = tf.Variable(0, trainable=False)
     """Number of sobol sequence points to skip. This is incremented for each sampler."""
 
-    def __init__(self, sample_size: int, model: ProbabilisticModel, qmc: bool = False):
+    def __init__(
+        self, sample_size: int, model: ProbabilisticModel, qmc: bool = False, qmc_skip: bool = True
+    ):
         """
         :param sample_size: The number of samples to take at each point. Must be positive.
         :param model: The model to sample from.
         :param qmc: Whether to use QMC sobol sampling instead of random normal sampling. QMC
             sampling more accurately approximates a normal distribution than truly random samples.
+        :param qmc_skip: Whether to use the skip parameter to ensure the QMC sampler gives different
+            samples whenever it is reset. This is not supported with XLA.
         :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
         """
         super().__init__(sample_size, model)
@@ -92,6 +96,7 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
             tf.ones([sample_size, 0], dtype=tf.float64), shape=[sample_size, None]
         )  # [S, 0]
         self._qmc = qmc
+        self._qmc_skip = qmc_skip
 
     def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
         """
@@ -115,10 +120,14 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
         mean, var = self._model.predict(at[..., None, :, :])  # [..., 1, 1, L], [..., 1, 1, L]
         var = var + jitter
 
-        def sample_eps(skip: int) -> tf.Tensor:
+        def sample_eps() -> tf.Tensor:
             self._initialized.assign(True)
             if self._qmc:
-                IndependentReparametrizationSampler.skip.assign(skip + self._sample_size)
+                if self._qmc_skip:
+                    skip = IndependentReparametrizationSampler.skip
+                    IndependentReparametrizationSampler.skip.assign(skip + self._sample_size)
+                else:
+                    skip = tf.constant(0)
                 normal_samples = qmc_normal_samples(self._sample_size, mean.shape[-1], skip)
             else:
                 normal_samples = tf.random.normal(
@@ -126,12 +135,10 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
                 )
             return normal_samples  # [S, L]
 
-        skip = IndependentReparametrizationSampler.skip
-
         tf.cond(
             self._initialized,
             lambda: self._eps,
-            lambda: self._eps.assign(sample_eps(skip)),
+            lambda: self._eps.assign(sample_eps()),
         )
 
         return mean + tf.sqrt(var) * tf.cast(self._eps[:, None, :], var.dtype)  # [..., S, 1, L]
@@ -152,12 +159,20 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
     skip: TensorType = tf.Variable(0, trainable=False)
     """Number of sobol sequence points to skip. This is incremented for each sampler."""
 
-    def __init__(self, sample_size: int, model: SupportsPredictJoint, qmc: bool = False):
+    def __init__(
+        self,
+        sample_size: int,
+        model: SupportsPredictJoint,
+        qmc: bool = False,
+        qmc_skip: bool = True,
+    ):
         """
         :param sample_size: The number of samples for each batch of points. Must be positive.
         :param model: The model to sample from.
         :param qmc: Whether to use QMC sobol sampling instead of random normal sampling. QMC
             sampling more accurately approximates a normal distribution than truly random samples.
+        :param qmc_skip: Whether to use the skip parameter to ensure the QMC sampler gives different
+            samples whenever it is reset. This is not supported with XLA.
         :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
         """
         super().__init__(sample_size, model)
@@ -170,6 +185,7 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
             tf.ones([0, 0, sample_size], dtype=tf.float64), shape=[None, None, sample_size]
         )  # [0, 0, S]
         self._qmc = qmc
+        self._qmc_skip = qmc_skip
 
     def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
         """
@@ -210,10 +226,14 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
 
         mean, cov = self._model.predict_joint(at)  # [..., B, L], [..., L, B, B]
 
-        def sample_eps(skip: int) -> tf.Tensor:
+        def sample_eps() -> tf.Tensor:
             self._initialized.assign(True)
             if self._qmc:
-                IndependentReparametrizationSampler.skip.assign(skip + self._sample_size)
+                if self._qmc_skip:
+                    skip = IndependentReparametrizationSampler.skip
+                    IndependentReparametrizationSampler.skip.assign(skip + self._sample_size)
+                else:
+                    skip = tf.constant(0)
                 normal_samples = qmc_normal_samples(
                     self._sample_size * mean.shape[-1], batch_size, skip
                 )  # [S*L, B]
@@ -227,12 +247,10 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
                 )  # [L, B, S]
             return normal_samples
 
-        skip = IndependentReparametrizationSampler.skip
-
         tf.cond(
             self._initialized,
             lambda: self._eps,
-            lambda: self._eps.assign(sample_eps(skip)),
+            lambda: self._eps.assign(sample_eps()),
         )
 
         identity = tf.eye(batch_size, dtype=cov.dtype)  # [B, B]
