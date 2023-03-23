@@ -457,7 +457,7 @@ class dgp_feature_decomposition_trajectory(TrajectoryFunctionClass):
             for i in range(len(model.model_gpflux.f_layers))
         ]
 
-    # @tf.function
+    @tf.function
     def __call__(self, x: TensorType) -> TensorType:
         """
         Call trajectory function by looping through layers.
