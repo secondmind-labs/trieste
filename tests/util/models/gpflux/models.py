@@ -23,9 +23,9 @@ import gpflow
 import tensorflow as tf
 from gpflow.utilities import set_trainable
 from gpflux.architectures import Config, build_constant_input_dim_deep_gp
+from gpflux.helpers import construct_basic_kernel
 from gpflux.layers import GPLayer
 from gpflux.models import DeepGP
-from gpflux.helpers import construct_basic_kernel
 
 from trieste.data import Dataset, TensorType
 from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp

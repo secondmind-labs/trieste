@@ -241,7 +241,8 @@ class DeepGaussianProcessDecoupledLayer(ABC):
             layer.inducing_variable, gpflow.inducing_variables.SeparateIndependentInducingVariables
         ):
             raise ValueError(
-                f"SeparateIndependentInducingVariables are not currently supported for decoupled sampling."
+                "SeparateIndependentInducingVariables are not currently supported for decoupled "
+                "sampling."
             )
 
         tf.debugging.assert_positive(num_features)

@@ -30,9 +30,9 @@ from tests.util.models.gpflow.models import (
     vgp_model,
 )
 from tests.util.models.gpflux.models import (
+    separate_independent_kernel_two_layer_dgp_model,
     simple_two_layer_dgp_model,
     two_layer_dgp_model,
-    separate_independent_kernel_two_layer_dgp_model,
 )
 from trieste.data import Dataset
 from trieste.models.gpflow import (
