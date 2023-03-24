@@ -348,7 +348,7 @@ class DeepGaussianProcessDecoupledLayer(ABC):
                 inducing_points, inducing_points, full_output_cov=False
             )  # [P, M, M]
         else:
-            Kmm = self._kernel.K(inducing_points, inducing_points)
+            Kmm = self._kernel.K(inducing_points, inducing_points)  # [M, M]
         Kmm += tf.eye(tf.shape(inducing_points)[0], dtype=Kmm.dtype) * DEFAULTS.JITTER
         whiten = self._layer.whiten
         M, P = tf.shape(q_mu)[0], tf.shape(q_mu)[1]
