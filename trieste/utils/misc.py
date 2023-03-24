@@ -253,7 +253,6 @@ def flatten_leading_dims(x: TensorType) -> Tuple[TensorType, Callable[[TensorTyp
         output_shape = y_flat_shape[1:]
         y_batched_shape = tf.concat([batch_shape, output_shape], axis=0)
         y_batched = tf.reshape(y, y_batched_shape)
-        tf.debugging.assert_shapes([(y, [..., "N", "D"]), (y_batched, [..., "M", "D"])])
         return y_batched
 
     return tf.reshape(x, x_flat_shape), unflatten
