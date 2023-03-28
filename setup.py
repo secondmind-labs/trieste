@@ -41,7 +41,7 @@ setup(
         "absl-py",
         "dill!=0.3.6",
         "gpflow>=2.7.0",
-        "gpflux>=0.3.1",
+        "gpflux>=0.4.0",
         "numpy",
         "tensorflow>=2.5",
         "tensorflow-probability>=0.13",
