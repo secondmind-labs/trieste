@@ -1403,17 +1403,17 @@ def test_batch_monte_carlo_expected_improvement_updates_without_retracing() -> N
     xs = tf.random.uniform([3, 5, 1, 2], dtype=tf.float64)
 
     batch_ei = tf.function(builder.prepare_acquisition_function(model, dataset=data))
-    assert batch_ei._get_tracing_count() == 0  # type: ignore
+    assert batch_ei._get_tracing_count() == 0
     npt.assert_allclose(batch_ei(xs), ei(xs), rtol=0.06)
-    assert batch_ei._get_tracing_count() == 1  # type: ignore
+    assert batch_ei._get_tracing_count() == 1
 
     data = Dataset(known_query_points, quadratic(known_query_points))
     up_batch_ei = builder.update_acquisition_function(batch_ei, model, dataset=data)
     ei = ExpectedImprovement().update_acquisition_function(ei, model, dataset=data)
     assert up_batch_ei == batch_ei
-    assert batch_ei._get_tracing_count() == 1  # type: ignore
+    assert batch_ei._get_tracing_count() == 1
     npt.assert_allclose(batch_ei(xs), ei(xs), rtol=0.06)
-    assert batch_ei._get_tracing_count() == 1  # type: ignore
+    assert batch_ei._get_tracing_count() == 1
 
 
 def test_multiple_optimism_builder_builds_negative_lower_confidence_bound() -> None:
