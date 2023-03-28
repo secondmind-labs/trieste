@@ -31,11 +31,12 @@ from trieste.data import Dataset, TensorType
 from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp
 from trieste.models.optimizer import KerasOptimizer
 from trieste.space import SearchSpace
+from trieste.utils import to_numpy
 
 
 def single_layer_dgp_model(x: TensorType) -> DeepGP:
-    if isinstance(x, tf.Tensor):
-        x = x.numpy()
+
+    x = to_numpy(x)
 
     config = Config(
         num_inducing=len(x),
@@ -48,8 +49,8 @@ def single_layer_dgp_model(x: TensorType) -> DeepGP:
 
 
 def two_layer_dgp_model(x: TensorType) -> DeepGP:
-    if isinstance(x, tf.Tensor):
-        x = x.numpy()
+
+    x = to_numpy(x)
 
     config = Config(
         num_inducing=len(x),
@@ -62,8 +63,8 @@ def two_layer_dgp_model(x: TensorType) -> DeepGP:
 
 
 def simple_two_layer_dgp_model(x: TensorType) -> DeepGP:
-    if isinstance(x, tf.Tensor):
-        x = x.numpy()
+
+    x = to_numpy(x)
     x_shape = x.shape[-1]
     num_data = len(x)
 
@@ -91,8 +92,8 @@ def simple_two_layer_dgp_model(x: TensorType) -> DeepGP:
 
 
 def separate_independent_kernel_two_layer_dgp_model(x: TensorType) -> DeepGP:
-    if isinstance(x, tf.Tensor):
-        x = x.numpy()
+
+    x = to_numpy(x)
     x_shape = x.shape[-1]
     num_data = len(x)
 
