@@ -215,14 +215,6 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
 
         tf.debugging.assert_positive(batch_size)
 
-        if self._initialized:
-            tf.debugging.assert_equal(
-                batch_size,
-                tf.shape(self._eps)[-2],
-                f"{type(self).__name__} requires a fixed batch size. Got batch size {batch_size}"
-                f" but previous batch size was {tf.shape(self._eps)[-2]}.",
-            )
-
         mean, cov = self._model.predict_joint(at)  # [..., B, L], [..., L, B, B]
 
         def sample_eps() -> tf.Tensor:
@@ -254,6 +246,14 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
             lambda: self._eps,
             lambda: self._eps.assign(sample_eps()),
         )
+
+        if self._initialized:
+            tf.debugging.assert_equal(
+                batch_size,
+                tf.shape(self._eps)[-2],
+                f"{type(self).__name__} requires a fixed batch size. Got batch size {batch_size}"
+                f" but previous batch size was {tf.shape(self._eps)[-2]}.",
+            )
 
         identity = tf.eye(batch_size, dtype=cov.dtype)  # [B, B]
         cov_cholesky = tf.linalg.cholesky(cov + jitter * identity)  # [..., L, B, B]

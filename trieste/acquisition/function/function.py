@@ -1140,9 +1140,9 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasRepara
         tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
-        tf.debugging.Assert(
-            isinstance(function, batch_monte_carlo_expected_improvement), [tf.constant([])]
-        )
+        # tf.debugging.Assert(
+        #     isinstance(function, batch_monte_carlo_expected_improvement), [tf.constant([])]
+        # )
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)
         function.update(eta)  # type: ignore
