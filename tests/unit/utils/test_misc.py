@@ -118,3 +118,17 @@ def test_unflatten_raises_for_invalid_shape() -> None:
     flat_x_old, unflatten = flatten_leading_dims(x_old)  # [24, 5]
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         unflatten(x_old)
+
+
+def test_unflatten_returns_correct_shape() -> None:
+    x = tf.random.uniform([2, 3, 4, 5])
+    flat_x, unflatten = flatten_leading_dims(x)  # [24, 5]
+
+    y1 = tf.random.uniform([24, 7])
+    y2 = tf.random.uniform([24, 7, 11])
+
+    unflat_y1 = unflatten(y1)
+    unflat_y2 = unflatten(y2)
+
+    npt.assert_array_equal(tf.shape(unflat_y1), [2, 3, 4, 7])
+    npt.assert_array_equal(tf.shape(unflat_y2), [2, 3, 4, 7, 11])
