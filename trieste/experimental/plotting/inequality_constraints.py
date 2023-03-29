@@ -58,10 +58,10 @@ def plot_objective_and_constraints(
     lower_bound = search_space.lower
     upper_bound = search_space.upper
 
-    grid, xx, yy = create_grid(lower_bound, upper_bound, grid_density=80)
+    grid, xx, yy = create_grid(lower_bound, upper_bound, grid_density=30)
     objective = objective_fn(grid).numpy()
     constraint = constraint_fn(grid).numpy()
-    fig, (axes1, axes2) = plt.subplots(2, 2, sharex="all", sharey="all", figsize=(6, 6))
+    fig, (axes1, axes2) = plt.subplots(2, 2, sharex="all", sharey="all", figsize=(8, 8))
 
     levels = 30
 
@@ -113,10 +113,10 @@ def plot_init_query_points(
     psize = 15
     cw, cb, co = "white", "tab:blue", "tab:orange"
 
-    grid, xx, yy = create_grid(lower_bound, upper_bound, grid_density=80)
+    grid, xx, yy = create_grid(lower_bound, upper_bound, grid_density=30)
     objective = objective_fn(grid).numpy()
     constraint = constraint_fn(grid).numpy()
-    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+    fig, ax = plt.subplots(1, 1, figsize=(8, 6))
     constraint_points = constraint_data[-1].numpy()
     x = objective_data[0].numpy()
 

@@ -116,7 +116,6 @@ _, ax = plot_function_2d(
     ScaledBranin.objective,
     constrained_search_space.lower,
     constrained_search_space.upper,
-    grid_density=30,
     contour=True,
 )
 
@@ -181,8 +180,8 @@ rule = EfficientGlobalOptimization(ei)  # type: ignore
 bo = trieste.bayesian_optimizer.BayesianOptimizer(
     observer, constrained_search_space
 )
-
-result = bo.optimize(15, initial_data, model, acquisition_rule=rule)
+num_steps = 15
+result = bo.optimize(num_steps, initial_data, model, acquisition_rule=rule)
 
 # %% [markdown]
 # We can now get the best point found by the optimizer. Note this isn’t necessarily the point that was last evaluated.
@@ -211,7 +210,6 @@ def plot_bo_results():
         ScaledBranin.objective,
         constrained_search_space.lower,
         constrained_search_space.upper,
-        grid_density=30,
         contour=True,
         figsize=(8, 6),
     )
@@ -278,7 +276,7 @@ bo = trieste.bayesian_optimizer.BayesianOptimizer(
     observer, unconstrained_search_space
 )
 
-result = bo.optimize(15, initial_data, model, acquisition_rule=rule)
+result = bo.optimize(num_steps, initial_data, model, acquisition_rule=rule)
 
 # %% [markdown]
 # We can now get the best point found by the optimizer as before.
