@@ -35,7 +35,6 @@ from trieste.utils import to_numpy
 
 
 def single_layer_dgp_model(x: TensorType) -> DeepGP:
-
     x = to_numpy(x)
 
     config = Config(
@@ -49,7 +48,6 @@ def single_layer_dgp_model(x: TensorType) -> DeepGP:
 
 
 def two_layer_dgp_model(x: TensorType) -> DeepGP:
-
     x = to_numpy(x)
 
     config = Config(
@@ -63,7 +61,6 @@ def two_layer_dgp_model(x: TensorType) -> DeepGP:
 
 
 def simple_two_layer_dgp_model(x: TensorType) -> DeepGP:
-
     x = to_numpy(x)
     x_shape = x.shape[-1]
     num_data = len(x)
@@ -92,7 +89,6 @@ def simple_two_layer_dgp_model(x: TensorType) -> DeepGP:
 
 
 def separate_independent_kernel_two_layer_dgp_model(x: TensorType) -> DeepGP:
-
     x = to_numpy(x)
     x_shape = x.shape[-1]
     num_data = len(x)
