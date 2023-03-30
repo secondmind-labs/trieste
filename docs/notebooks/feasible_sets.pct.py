@@ -54,9 +54,8 @@ def thresholded_branin(x):
 
 # illustrate the thresholded branin function
 fig = plot_function_plotly(
-    thresholded_branin, search_space.lower, search_space.upper, grid_density=700
+    thresholded_branin, search_space.lower, search_space.upper
 )
-fig.update_layout(height=800, width=800)
 fig.show()
 
 
@@ -160,7 +159,6 @@ def plot_excursion_probability(
         objective_function,
         search_space.lower - 0.01,
         search_space.upper + 0.01,
-        grid_density=300,
         contour=True,
         colorbar=True,
         figsize=(10, 6),

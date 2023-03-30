@@ -194,7 +194,6 @@ _, ax = plot_function_2d(
     ScaledBranin.objective,
     search_space.lower,
     search_space.upper,
-    grid_density=30,
     contour=True,
 )
 
