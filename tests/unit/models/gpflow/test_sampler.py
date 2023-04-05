@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import math
 import unittest
-from typing import List, Type, Any
+from typing import Any, List, Type
 from unittest.mock import MagicMock
 
 import gpflow
