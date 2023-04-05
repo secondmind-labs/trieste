@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import math
 import unittest
-from typing import List, Type
+from typing import List, Type, Any
 from unittest.mock import MagicMock
 
 import gpflow
@@ -829,3 +829,51 @@ def test_qmc_samples_skip() -> None:
     samples_2b = qmc_normal_samples(25, 100, skip=100)
     npt.assert_allclose(samples_2a, samples_2b)
     npt.assert_raises(AssertionError, npt.assert_allclose, samples_1a, samples_2a)
+
+
+def test_qmc_samples__num_samples_is_a_tensor() -> None:
+    num_samples = 5
+    n_sample_dim = 100
+    expected_samples = qmc_normal_samples(num_samples, n_sample_dim)
+    npt.assert_allclose(
+        qmc_normal_samples(tf.constant(num_samples), n_sample_dim), expected_samples
+    )
+    npt.assert_allclose(
+        qmc_normal_samples(tf.constant(num_samples), tf.constant(n_sample_dim)), expected_samples
+    )
+    npt.assert_allclose(
+        qmc_normal_samples(tf.constant(num_samples), n_sample_dim), expected_samples
+    )
+
+
+@pytest.mark.parametrize(
+    ("num_samples", "n_sample_dim"),
+    (
+        [1, 1],
+        [0, 1],
+        [1, 0],
+        [3, 5],
+    ),
+)
+def test_qmc_samples_shapes(num_samples: int, n_sample_dim: int) -> None:
+    samples = qmc_normal_samples(num_samples=num_samples, n_sample_dim=n_sample_dim)
+    expected_samples_shape = (num_samples, n_sample_dim)
+    assert samples.shape == expected_samples_shape
+
+
+@pytest.mark.parametrize(
+    ("num_samples", "n_sample_dim", "skip", "expected_error_type"),
+    (
+        [-1, 1, 1, tf.errors.InvalidArgumentError],
+        [1, -1, 1, tf.errors.InvalidArgumentError],
+        [1, 1, -1, tf.errors.InvalidArgumentError],
+        [1.5, 1, 1, TypeError],
+        [1, 1.5, 1, TypeError],
+        [1, 1, 1.5, TypeError],
+    ),
+)
+def test_qmc_samples_shapes__invalid_values(
+    num_samples: int, n_sample_dim: int, skip: int, expected_error_type: Any
+) -> None:
+    with pytest.raises(expected_error_type):
+        qmc_normal_samples(num_samples=num_samples, n_sample_dim=n_sample_dim, skip=skip)
