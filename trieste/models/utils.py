@@ -57,16 +57,16 @@ def write_summary_data_based_metrics(
     z_residuals = diffs / tf.math.sqrt(predict[1])
     logging.histogram(f"{name}/absolute_error", tf.math.abs(diffs))
     logging.histogram(f"{name}/z_residuals", z_residuals)
-    logging.scalar(f"{name}/root_mean_square_error", tf.math.sqrt(tf.reduce_mean(diffs ** 2)))
+    logging.scalar(f"{name}/root_mean_square_error", tf.math.sqrt(tf.reduce_mean(diffs**2)))
     logging.scalar(f"{name}/mean_absolute_error", tf.reduce_mean(tf.math.abs(diffs)))
     logging.scalar(f"{name}/z_residuals_std", tf.math.reduce_std(z_residuals))
 
     # variance metrics
-    variance_error = predict[1] - diffs ** 2
+    variance_error = predict[1] - diffs**2
     logging.histogram(f"{name}/variance_error", variance_error)
     logging.scalar(
         f"{name}/root_mean_variance_error",
-        tf.math.sqrt(tf.reduce_mean(variance_error ** 2)),
+        tf.math.sqrt(tf.reduce_mean(variance_error**2)),
     )
 
 

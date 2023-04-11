@@ -80,7 +80,7 @@ _, ax = plot_function_2d(
     branin,
     search_space.lower,
     search_space.upper,
-    grid_density=30,
+    grid_density=40,
     contour=True,
 )
 

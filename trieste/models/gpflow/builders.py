@@ -376,7 +376,6 @@ def _get_kernel(
     add_prior_to_lengthscale: bool,
     add_prior_to_variance: bool,
 ) -> gpflow.kernels.Kernel:
-
     lengthscales = _get_lengthscales(search_space)
 
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=lengthscales)
@@ -416,7 +415,7 @@ def _set_gaussian_likelihood_variance(
     model: GPModel, variance: TensorType, likelihood_variance: Optional[float]
 ) -> None:
     if likelihood_variance is None:
-        noise_variance = variance / SIGNAL_NOISE_RATIO_LIKELIHOOD ** 2
+        noise_variance = variance / SIGNAL_NOISE_RATIO_LIKELIHOOD**2
     else:
         tf.debugging.assert_positive(likelihood_variance)
         noise_variance = tf.cast(likelihood_variance, dtype=gpflow.default_float())
@@ -498,7 +497,7 @@ def build_multifidelity_nonlinear_autoregressive_models(
     :cite:`perdikaris2017nonlinear` for the higher fidelities, which also have an extra input
     dimension. Note that the initial data that the models with fidelity greater than 0 are
     initialised with contain dummy data in this extra dimension, and so an `update` of the
-    `MultifidelityNonlinearAutoregressive` is required to propogate real data through to these
+    `MultifidelityNonlinearAutoregressive` is required to propagate real data through to these
     models.
 
     :param dataset: The dataset to use to initialise the models
@@ -541,7 +540,6 @@ def build_multifidelity_nonlinear_autoregressive_models(
     ]
 
     for fidelity in range(1, num_fidelities):
-
         # Get query points for this fidelity
         qps = data[fidelity].query_points
         samples_column = tf.random.normal([qps.shape[0], 1], dtype=tf.float64)
@@ -563,7 +561,6 @@ def build_multifidelity_nonlinear_autoregressive_models(
 
 
 def _validate_multifidelity_data_modellable(data: Sequence[Dataset], num_fidelities: int) -> None:
-
     if num_fidelities < 2:
         raise ValueError(
             "Invalid number of fidelities to build Multifidelity model for,"
@@ -586,7 +583,6 @@ def _create_multifidelity_nonlinear_autoregressive_kernels(
     add_prior_to_lengthscale: bool,
     add_prior_to_variance: bool,
 ) -> Sequence[Stationary]:
-
     dims = list(range(n_input_dims + 1))
     lengthscales = _get_lengthscales(search_space)
 

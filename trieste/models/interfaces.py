@@ -86,6 +86,7 @@ class ProbabilisticModel(Protocol):
             ``query_points``. For a predictive distribution with event shape E, the mean and
             variance will both have shape [...] + E.
         """
+        pass  # (required so that mypy doesn't think this method is abstract)
         raise NotImplementedError(
             f"Model {self!r} does not support predicting observations, just the latent function"
         )
@@ -96,7 +97,7 @@ class ProbabilisticModel(Protocol):
 
         :param dataset: Optional data that can be used to log additional data-based model summaries.
         """
-        pass
+        return
 
 
 @runtime_checkable
@@ -540,10 +541,12 @@ class ReparametrizationSampler(ABC, Generic[ProbabilisticModelType]):
     @abstractmethod
     def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
         """
-        :param at: Input points that define the sampler of shape `[N, D]`.
-        :param jitter: The size of the jitter to use when stabilizing the Cholesky
-            decomposition of the covariance matrix.
-        :return: Samples of shape `[sample_size, D]`.
+        :param at: Where to sample the predictive distribution, with shape `[..., 1, D]`, for points
+            of dimension `D`.
+        :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
+            the covariance matrix.
+        :return: The samples, of shape `[..., S, B, L]`, where `S` is the `sample_size`, `B` is
+            the number of points per batch, and `L` is the number of latent model dimensions.
         """
 
         raise NotImplementedError
@@ -659,5 +662,31 @@ class SupportsGetInducingVariables(ProbabilisticModel, Protocol):
             variables); the variational mean q_mu; the Cholesky decomposition of the
             variational covariance q_sqrt; and a bool denoting if we are using whitened
             or not whitened representations.
+        """
+        raise NotImplementedError
+
+
+@runtime_checkable
+class SupportsCovarianceWithTopFidelity(ProbabilisticModel, Protocol):
+    """A probabilistic model is multifidelity and has access to a method to calculate the
+    covariance between a point and the same point at the top fidelity"""
+
+    @property
+    @abstractmethod
+    def num_fidelities(self) -> int:
+        """
+        The number of fidelities
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def covariance_with_top_fidelity(self, query_points: TensorType) -> TensorType:
+        """
+        Calculate the covariance of the output at `query_point` and a given fidelity with the
+        highest fidelity output at the same `query_point`.
+
+        :param query_points: The query points to calculate the covariance for, of shape [N, D+1],
+            where the final column of the final dimension contains the fidelity of the query point
+        :return: The covariance with the top fidelity for the `query_points`, of shape [N, P]
         """
         raise NotImplementedError

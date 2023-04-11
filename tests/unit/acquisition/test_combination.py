@@ -100,11 +100,11 @@ def test_reducer__reduce() -> None:
 
 
 def test_sum() -> None:
-    sum_ = Sum(_Static(lambda x: x), _Static(lambda x: x ** 2), _Static(lambda x: x ** 3))
+    sum_ = Sum(_Static(lambda x: x), _Static(lambda x: x**2), _Static(lambda x: x**3))
     data, models = {TAG: empty_dataset([1], [1])}, {TAG: QuadraticMeanAndRBFKernel()}
     acq = sum_.prepare_acquisition_function(models, datasets=data)
     xs = tf.random.uniform([3, 5, 1], minval=-1.0)
-    npt.assert_allclose(acq(xs), xs + xs ** 2 + xs ** 3)
+    npt.assert_allclose(acq(xs), xs + xs**2 + xs**3)
 
 
 def test_product() -> None:
@@ -127,8 +127,8 @@ def test_reducer_calls_update() -> None:
 @pytest.mark.parametrize("reducer_class", [Sum, Product])
 def test_sum_and_product_for_single_builder(reducer_class: type[Sum | Product]) -> None:
     data, models = {TAG: empty_dataset([1], [1])}, {TAG: QuadraticMeanAndRBFKernel()}
-    acq = reducer_class(_Static(lambda x: x ** 2)).prepare_acquisition_function(
+    acq = reducer_class(_Static(lambda x: x**2)).prepare_acquisition_function(
         models, datasets=data
     )
     xs = tf.random.uniform([3, 5, 1], minval=-1.0)
-    npt.assert_allclose(acq(xs), xs ** 2)
+    npt.assert_allclose(acq(xs), xs**2)

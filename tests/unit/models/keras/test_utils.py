@@ -26,7 +26,6 @@ from trieste.models.keras.utils import (
 
 
 def test_get_tensor_spec_from_data_raises_for_incorrect_dataset() -> None:
-
     dataset = empty_dataset([1], [1])
 
     with pytest.raises(ValueError):
@@ -53,7 +52,6 @@ def test_get_tensor_spec_from_data(
 
 
 def test_sample_with_replacement_raises_for_invalid_dataset() -> None:
-
     dataset = empty_dataset([1], [1])
 
     with pytest.raises(ValueError):
@@ -61,7 +59,6 @@ def test_sample_with_replacement_raises_for_invalid_dataset() -> None:
 
 
 def test_sample_with_replacement_raises_for_empty_dataset() -> None:
-
     dataset = empty_dataset([1], [1])
 
     with pytest.raises(tf.errors.InvalidArgumentError):
@@ -71,7 +68,6 @@ def test_sample_with_replacement_raises_for_empty_dataset() -> None:
 @random_seed
 @pytest.mark.parametrize("rank", [2, 3])
 def test_sample_with_replacement_seems_correct(rank: int) -> None:
-
     n_rows = 100
     if rank == 2:
         x = tf.constant(np.arange(0, n_rows, 1), shape=[n_rows, 1])

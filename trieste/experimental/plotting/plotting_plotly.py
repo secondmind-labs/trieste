@@ -146,7 +146,7 @@ def plot_model_predictions_plotly(
     model: ProbabilisticModel,
     mins: TensorType,
     maxs: TensorType,
-    grid_density: int = 100,
+    grid_density: int = 20,
     num_samples: Optional[int] = None,
     alpha: float = 0.85,
 ) -> go.Figure:
@@ -185,7 +185,7 @@ def plot_model_predictions_plotly(
             means.append(Fmean_sample)
             vars.append(Fvar_sample)
         Fmean = tf.reduce_mean(tf.stack(means), axis=0)
-        Fvar = tf.reduce_mean(tf.stack(vars) + tf.stack(means) ** 2, axis=0) - Fmean ** 2
+        Fvar = tf.reduce_mean(tf.stack(vars) + tf.stack(means) ** 2, axis=0) - Fmean**2
 
     n_output = Fmean.shape[1]
 
@@ -202,6 +202,8 @@ def plot_model_predictions_plotly(
         fig = add_surface_plotly(xx, yy, lcb, fig, alpha=alpha - 0.35, figrow=1, figcol=k + 1)
         fig = add_surface_plotly(xx, yy, ucb, fig, alpha=alpha - 0.35, figrow=1, figcol=k + 1)
 
+    fig.update_layout(height=600, width=600)
+
     return fig
 
 
@@ -209,7 +211,7 @@ def plot_function_plotly(
     obj_func: Callable[[TensorType], TensorType],
     mins: TensorType,
     maxs: TensorType,
-    grid_density: int = 100,
+    grid_density: int = 20,
     title: Optional[str] = None,
     xlabel: Optional[str] = None,
     ylabel: Optional[str] = None,
@@ -252,5 +254,7 @@ def plot_function_plotly(
         fig = add_surface_plotly(xx, yy, f, fig, alpha=alpha, figrow=1, figcol=k + 1)
         fig.update_xaxes(title_text=xlabel, row=1, col=k + 1)
         fig.update_yaxes(title_text=ylabel, row=1, col=k + 1)
+
+    fig.update_layout(height=600, width=600)
 
     return fig

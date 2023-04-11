@@ -143,15 +143,20 @@ def check_and_extract_fidelity_query_points(
         " was not close to an int",
     )
     # Check fidelity column values are non-negative
-    if tf.reduce_min(fidelity_col) < 0:
-        raise ValueError("Fidelity must be non-negative")
+
+    tf.debugging.assert_non_negative(fidelity_col, message="Fidelity must be non-negative")
     if max_fidelity is not None:
         max_input_fid = tf.reduce_max(fidelity_col)
-        if max_input_fid > max_fidelity:
-            raise ValueError(
+        max_fidelity_float = tf.cast(max_fidelity, dtype=query_points.dtype)
+        tf.debugging.assert_less_equal(
+            max_input_fid,
+            max_fidelity_float,
+            message=(
                 f"Model only supports fidelities up to {max_fidelity},"
                 f" but {max_input_fid} was passed"
-            )
+            ),
+        )
+
     return input_points, fidelity_col
 
 

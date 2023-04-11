@@ -24,7 +24,7 @@ generate_for_env () {
   #
   # $1: The base path of the requirements and constraints files
   # $2: If true, installs the library dependencies
-  python3.7 -m venv $VENV_DIR/$1
+  python3 -m venv $VENV_DIR/$1
   source $VENV_DIR/$1/bin/activate
   pip install --upgrade pip
   if [ "$2" = true ]; then
@@ -40,7 +40,7 @@ generate_for_env common_build/format false
 generate_for_env common_build/taskipy false
 generate_for_env common_build/types false
 generate_for_env notebooks true
-generate_for_env tests true
+generate_for_env tests/old true
 generate_for_env tests/latest true
 
 rm -rf $VENV_DIR

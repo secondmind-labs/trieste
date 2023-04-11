@@ -59,6 +59,5 @@ def test_keras_predictor_raises_on_sample_call() -> None:
 
 
 def test_keras_predictor_raises_for_non_tf_optimizer() -> None:
-
     with pytest.raises(ValueError):
         _DummyKerasPredictor(optimizer=KerasOptimizer(gpflow.optimizers.Scipy()))

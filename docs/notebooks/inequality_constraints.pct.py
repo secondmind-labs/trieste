@@ -151,6 +151,7 @@ plt.show()
 #
 # We'll now look at a batch-sequential approach to the same problem. Sometimes it's beneficial to query several points at a time instead of one. The acquisition function we used earlier, built by `ExpectedConstrainedImprovement`, only supports a batch size of 1, so we'll need a new acquisition function builder for larger batch sizes. We can implement this using the reparametrization trick with the Monte-Carlo sampler `BatchReparametrizationSampler`. Note that when we do this, we must initialise the sampler *outside* the acquisition function (here `batch_efi`). This is crucial: a given instance of a sampler produces repeatable, continuous samples, and we can use this to create a repeatable continuous acquisition function. Using a new sampler on each call would not result in a repeatable continuous acquisition function.
 
+
 # %%
 class BatchExpectedConstrainedImprovement(
     trieste.acquisition.AcquisitionFunctionBuilder
@@ -261,6 +262,7 @@ plot_regret(
 #
 # We'll now show how to use a reducer to combine multiple constraints. The new problem `Sim2` inherits from the previous one its objective and first constraint, but also adds a second constraint. We start by adding an output to our observer, and creating a set of three models.
 
+
 # %%
 class Sim2(Sim):
     threshold2 = 0.5
@@ -345,7 +347,6 @@ fig, ax = plot_function_2d(
     masked_objective,
     search_space.lower,
     search_space.upper,
-    grid_density=50,
     contour=True,
 )
 plot_bo_points(

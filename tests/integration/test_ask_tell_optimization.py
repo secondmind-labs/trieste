@@ -161,7 +161,6 @@ def _test_ask_tell_optimization_finds_minima(
     with tempfile.TemporaryDirectory() as tmpdirname:
         summary_writer = tf.summary.create_file_writer(tmpdirname)
         with tensorboard_writer(summary_writer):
-
             set_step_number(0)
             ask_tell = AskTellOptimizer(search_space, initial_data, model, acquisition_rule_fn())
 

@@ -132,7 +132,6 @@ def test_inducing_point_selectors_update_correct_number_of_times(
     selector_name: Callable[[SearchSpace, bool], InducingPointSelector[SparseVariational]],
     recalc_every_model_update: bool,
 ) -> None:
-
     selector = selector_name(recalc_every_model_update)  # type: ignore
     dataset = Dataset(*mock_data())
     svgp = svgp_model(*mock_data())

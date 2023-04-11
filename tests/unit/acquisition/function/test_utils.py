@@ -29,7 +29,6 @@ def test_make_mvn_cdf_raises_exception_for_incorrect_sample_size(
     num_sobol: int,
     dim: int,
 ) -> None:
-
     # Set data type and jitter
     dtype = tf.float64
 
@@ -43,7 +42,6 @@ def test_make_mvn_cdf_raises_exception_for_incorrect_dimension(
     num_sobol: int,
     dim: int,
 ) -> None:
-
     # Set data type and jitter
     dtype = tf.float64
 
@@ -55,7 +53,6 @@ def test_make_mvn_cdf_raises_exception_for_incorrect_batch_size(
     num_sobol: int = 100,
     dim: int = 5,
 ) -> None:
-
     # Set data type and jitter
     dtype = tf.float64
 
@@ -82,7 +79,6 @@ def test_make_genz_cdf_matches_naive_monte_carlo_on_random_tasks(
         cov: TensorType,
         num_samples: int = int(1e6),
     ) -> TensorType:
-
         # Define multivariate normal
         normal = tfd.MultivariateNormalTriL(
             loc=mean,
@@ -116,13 +112,13 @@ def test_make_genz_cdf_matches_naive_monte_carlo_on_random_tasks(
     jitter = 1e-6
 
     # Draw x randomly
-    x = tf.random.normal((batch_size, dim), dtype=dtype) / dim ** 0.5
+    x = tf.random.normal((batch_size, dim), dtype=dtype) / dim**0.5
 
     # Draw mean randomly
-    mean = tf.random.normal((batch_size, dim), dtype=dtype) / dim ** 0.5
+    mean = tf.random.normal((batch_size, dim), dtype=dtype) / dim**0.5
 
     # Draw covariance randomly
-    cov = tf.random.normal((batch_size, dim, dim), dtype=dtype) / dim ** 0.5
+    cov = tf.random.normal((batch_size, dim, dim), dtype=dtype) / dim**0.5
     cov = tf.matmul(cov, cov, transpose_a=True) + jitter * tf.eye(dim, dtype=dtype)[None, :, :]
 
     # Set up Genz approximation and direct Monte Carlo estimate

@@ -32,7 +32,7 @@ class _QuadraticPredictor(GPflowPredictor):
         return _QuadraticGPModel()
 
     def update(self, dataset: Dataset) -> None:
-        pass
+        return
 
 
 class _QuadraticGPModel(GPModel):
@@ -47,7 +47,7 @@ class _QuadraticGPModel(GPModel):
         self, Xnew: tf.Tensor, full_cov: bool = False, full_output_cov: bool = False
     ) -> tuple[tf.Tensor, tf.Tensor]:
         assert not full_output_cov, "Test utility not implemented for full output covariance"
-        mean = tf.reduce_sum(Xnew ** 2, axis=1, keepdims=True)
+        mean = tf.reduce_sum(Xnew**2, axis=1, keepdims=True)
         *leading, x_samples, y_dims = mean.shape
         var_shape = [*leading, y_dims, x_samples, x_samples] if full_cov else mean.shape
         return mean, tf.ones(var_shape, dtype=mean.dtype)

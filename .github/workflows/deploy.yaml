@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+name: Release documentation build
+
 on:
   workflow_dispatch:
   push:
@@ -42,7 +44,9 @@ jobs:
         TMP_DIR=$(mktemp -d -p $(pwd))
         VERSION=$(cat trieste/VERSION)
         mv docs/_build/html $TMP_DIR/$VERSION
-        sed -e "s/\$VERSION/$VERSION/g" redirect.html > $TMP_DIR/index.html 
+        sed -e "s/\$VERSION/$VERSION/g" redirect.html > $TMP_DIR/index.html
+        sed -e "s/\$VERSION/$VERSION/g" redirect_autoapi.html > $TMP_DIR/autoapi.html
+        sed -e "s/\$VERSION/$VERSION/g" redirect_tutorials.html > $TMP_DIR/tutorials.html
         cp versions.json $TMP_DIR/
         cd gh-pages-history
         git rm -r --ignore-unmatch docs/$VERSION

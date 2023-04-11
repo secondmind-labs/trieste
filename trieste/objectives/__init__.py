@@ -18,6 +18,12 @@ This package contains examples of popular objective functions used in (Bayesian)
 
 from . import multi_objectives, utils
 from .multi_objectives import DTLZ1, DTLZ2, VLMOP2, MultiObjectiveTestProblem
+from .multifidelity_objectives import (
+    Linear2Fidelity,
+    Linear3Fidelity,
+    Linear5Fidelity,
+    SingleObjectiveMultifidelityTestProblem,
+)
 from .single_objectives import (
     Ackley5,
     Branin,

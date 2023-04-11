@@ -333,7 +333,6 @@ def test_fantasize_allows_query_points_with_leading_dimensions(model_type: str) 
     samples_fm5_cov = tfp.stats.covariance(samples_fm5[..., 0], sample_axis=-2)
 
     for j in range(3):
-
         samples_m5 = model5.conditional_predict_f_sample(
             query_points[j], additional_data, num_samples
         )

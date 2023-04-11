@@ -16,16 +16,20 @@ This module contains entropy-based acquisition function builders.
 """
 from __future__ import annotations
 
-from typing import Optional, TypeVar, cast, overload
+from typing import List, Optional, TypeVar, cast, overload
 
 import tensorflow as tf
 import tensorflow_probability as tfp
 from typing_extensions import Protocol, runtime_checkable
 
-from ...data import Dataset
+from ...data import Dataset, add_fidelity_column
 from ...models import ProbabilisticModel
 from ...models.gpflow.interface import SupportsCovarianceBetweenPoints
-from ...models.interfaces import HasTrajectorySampler, SupportsGetObservationNoise
+from ...models.interfaces import (
+    HasTrajectorySampler,
+    SupportsCovarianceWithTopFidelity,
+    SupportsGetObservationNoise,
+)
 from ...space import SearchSpace
 from ...types import TensorType
 from ..interface import (
@@ -617,3 +621,228 @@ class gibbon_repulsion_term(UpdatablePenalizationFunction):
             repulsion_weight = 1.0
 
         return repulsion_weight * repulsion
+
+
+MUMBOModelType = TypeVar(
+    "MUMBOModelType", bound=SupportsCovarianceWithTopFidelity, contravariant=True
+)
+""" Type variable bound to :class:`~trieste.models.SupportsCovarianceWithTopFidelity`. """
+
+
+class MUMBO(MinValueEntropySearch[MUMBOModelType]):
+    r"""
+    Builder for the MUlti-task Max-value Bayesian Optimization MUMBO acquisition function modified
+    for objective minimisation. :class:`MinValueEntropySearch` estimates the information in the
+    distribution of the objective minimum that would be gained by evaluating the objective at a
+    given point on a given fidelity level.
+
+    This implementation largely follows :cite:`moss2021mumbo` and samples the objective's minimum
+    :math:`y^*` across a large set of sampled locations via either a Gumbel sampler, an exact
+    Thompson sampler or an approximate random Fourier feature-based Thompson sampler, with the
+    Gumbel sampler being the cheapest but least accurate. Default behavior is to use the
+    exact Thompson sampler.
+    """
+
+    @overload
+    def __init__(
+        self: "MUMBO[SupportsCovarianceWithTopFidelity]",
+        search_space: SearchSpace,
+        num_samples: int = 5,
+        grid_size: int = 1000,
+        min_value_sampler: None = None,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self: "MUMBO[MUMBOModelType]",
+        search_space: SearchSpace,
+        num_samples: int = 5,
+        grid_size: int = 1000,
+        min_value_sampler: Optional[ThompsonSampler[MUMBOModelType]] = None,
+    ):
+        ...
+
+    def __init__(
+        self,
+        search_space: SearchSpace,
+        num_samples: int = 5,
+        grid_size: int = 1000,
+        min_value_sampler: Optional[ThompsonSampler[MUMBOModelType]] = None,
+    ):
+        super().__init__(search_space, num_samples, grid_size, min_value_sampler)
+
+    def prepare_acquisition_function(
+        self,
+        model: MUMBOModelType,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param model: The multifidelity model.
+        :param dataset: The data from the observer.
+        :return: The max-value entropy search acquisition function modified for objective
+            minimisation. This function will raise :exc:`ValueError` or
+            :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
+        :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
+        """
+        tf.debugging.Assert(dataset is not None, [])
+        dataset = cast(Dataset, dataset)
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
+        min_value_samples = self.get_min_value_samples_on_top_fidelity(model, dataset)
+        return mumbo(model, min_value_samples)
+
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        model: MUMBOModelType,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param model: The model.
+        :param dataset: The data from the observer.
+        """
+        tf.debugging.Assert(dataset is not None, [])
+        dataset = cast(Dataset, dataset)
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
+        min_value_samples = self.get_min_value_samples_on_top_fidelity(model, dataset)
+        function.update(min_value_samples)  # type: ignore
+        return function
+
+    def get_min_value_samples_on_top_fidelity(
+        self, model: MUMBOModelType, dataset: Dataset
+    ) -> TensorType:
+        """
+        :param model: The model.
+        :param dataset: The data from the observer.
+        """
+        query_points = self._search_space.sample(num_samples=self._grid_size)
+        tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
+        query_points = tf.concat([dataset.query_points, query_points], 0)
+        query_points_on_top_fidelity = add_fidelity_column(
+            query_points[:, :-1], model.num_fidelities - 1
+        )
+        return self._min_value_sampler.sample(
+            model, self._num_samples, query_points_on_top_fidelity
+        )
+
+
+class mumbo(AcquisitionFunctionClass):
+    def __init__(self, model: MUMBOModelType, samples: TensorType):
+        r"""
+        The MUMBO acquisition function of :cite:`moss2021mumbo`, modified for objective
+        minimisation. This function calculates the information gain (or change in entropy) in the
+        distribution over the objective minimum :math:`y^*`, if we were to evaluate the objective
+        at a given point on a given fidelity level.
+
+        To speed up calculations, we use a trick from :cite:`Moss:2021` and use moment-matching to
+        calculate MUMBO's entropy terms rather than numerical integration.
+
+        :param model: The model of the objective function.
+        :param samples: Samples from the distribution over :math:`y^*`.
+        :return: The MUMBO acquisition function modified for objective
+            minimisation. This function will raise :exc:`ValueError` or
+            :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
+        :raise ValueError or tf.errors.InvalidArgumentError: If ``samples`` has rank less than two,
+            or is empty.
+        """
+        tf.debugging.assert_rank(samples, 2)
+        tf.debugging.assert_positive(len(samples))
+
+        self._model = model
+        self._samples = tf.Variable(samples)
+
+    def update(self, samples: TensorType) -> None:
+        """Update the acquisition function with new samples."""
+        tf.debugging.assert_rank(samples, 2)
+        tf.debugging.assert_positive(len(samples))
+        self._samples.assign(samples)
+
+    @tf.function
+    def __call__(self, x: TensorType) -> TensorType:
+        tf.debugging.assert_shapes(
+            [(x, [..., 1, None])],
+            message="This acquisition function only supports batch sizes of one.",
+        )
+
+        x_squeezed = tf.squeeze(x, -2)
+        x_on_top_fidelity = add_fidelity_column(x_squeezed[:, :-1], self._model.num_fidelities - 1)
+
+        fmean, fvar = self._model.predict(x_on_top_fidelity)
+        fsd = tf.clip_by_value(
+            tf.math.sqrt(fvar), CLAMP_LB, fmean.dtype.max
+        )  # clip below to improve numerical stability
+        ymean, yvar = self._model.predict_y(x_squeezed)
+        cov = self._model.covariance_with_top_fidelity(x_squeezed)
+
+        # calculate squared correlation between observations and high-fidelity latent function
+        rho_squared = (cov**2) / (fvar * yvar)
+        rho_squared = tf.clip_by_value(rho_squared, 0.0, 1.0)
+
+        normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
+        gamma = (tf.squeeze(self._samples) - fmean) / fsd
+        log_minus_cdf = normal.log_cdf(-gamma)
+        ratio = tf.math.exp(normal.log_prob(gamma) - log_minus_cdf)
+
+        inner_log = 1 + rho_squared * ratio * (gamma - ratio)
+
+        return -0.5 * tf.math.reduce_mean(tf.math.log(inner_log), axis=1, keepdims=True)  # [N, 1]
+
+
+class CostWeighting(SingleModelAcquisitionBuilder[ProbabilisticModel]):
+    def __init__(self, fidelity_costs: List[float]):
+        """
+        Builder for a cost-weighted acquisition function which returns the reciprocal of the cost
+        associated with the fidelity of each input.
+
+        Note that the fidelity level is assumed to be contained in the inputs final dimension.
+
+        The primary use of this acquisition function is to be used as a product with
+        multi-fidelity acquisition functions.
+        """
+
+        self._fidelity_costs = fidelity_costs
+        self._num_fidelities = len(self._fidelity_costs)
+
+    def prepare_acquisition_function(
+        self, model: ProbabilisticModel, dataset: Optional[Dataset] = None
+    ) -> AcquisitionFunction:
+        """
+        :param model: The model.
+        :param dataset: The data from the observer. Not actually used here.
+        :return: The reciprocal of the costs corresponding to the fidelity level of each input.
+        """
+
+        @tf.function
+        def acquisition(x: TensorType) -> TensorType:
+            tf.debugging.assert_shapes(
+                [(x, [..., 1, None])],
+                message="This acquisition function only supports batch sizes of one.",
+            )
+            fidelities = x[..., -1]  # [..., 1]
+            tf.debugging.assert_greater(
+                tf.cast(self._num_fidelities, fidelities.dtype),
+                tf.reduce_max(fidelities),
+                message="You are trying to use more fidelity levels than cost levels.",
+            )
+
+            costs = tf.gather(self._fidelity_costs, tf.cast(fidelities, tf.int32))
+
+            return tf.cast(1.0 / costs, x.dtype)  # [N, 1]
+
+        return acquisition
+
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
+    ) -> AcquisitionFunction:
+        """
+        Nothing to do here, so just return previous cost function.
+
+        :param function: The acquisition function to update.
+        :param model: The model.
+        :param dataset: The data from the observer.
+        """
+        return function

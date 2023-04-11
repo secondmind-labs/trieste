@@ -173,7 +173,6 @@ class MultivariateNormalCDF:
         f = tf.tensor_scatter_nd_add(f, idx, e_update)
 
         for i in tf.range(1, self._Q):
-
             # Update y tensor
             y_update = iPhi(1e-6 + (1 - 2e-6) * w[None, :, i - 1] * e[:, :, i - 1])
             y = tf.tensor_scatter_nd_add(y, idx, y_update)

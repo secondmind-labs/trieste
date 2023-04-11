@@ -254,7 +254,6 @@ def _get_feasible_set_test_data(
     threshold: float,
     range_pct: float = 0.01,
 ) -> tuple[TensorType, TensorType]:
-
     boundary_done = False
     global_done = False
     boundary_points = tf.constant(0, dtype=tf.float64, shape=(0, search_space.dimension))
@@ -291,12 +290,8 @@ def _get_feasible_set_test_data(
             global_done = True
 
     return (
-        global_points[
-            :n_global,
-        ],
-        boundary_points[
-            :n_boundary,
-        ],
+        global_points[:n_global,],
+        boundary_points[:n_boundary,],
     )
 
 
@@ -325,7 +320,6 @@ def test_bald_learner_learns_circle_function(
     num_steps: int,
     model_builder: Callable[[Dataset, Box], VariationalGaussianProcess | SparseVariational],
 ) -> None:
-
     search_space = Box([-1, -1], [1, 1])
 
     def circle(x: TensorType) -> TensorType:

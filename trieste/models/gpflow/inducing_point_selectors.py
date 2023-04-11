@@ -428,7 +428,7 @@ def greedy_inference_dpp(
     c = tf.zeros((M - 1, N))  # [M-1,N]
     d_squared = kernel.K_diag(dataset.query_points)  # [N]
 
-    scores = d_squared * quality_scores ** 2  # [N]
+    scores = d_squared * quality_scores**2  # [N]
     chosen_indicies.append(tf.argmax(scores))  # get first element
     for m in range(M - 1):  # get remaining elements
         ix = tf.cast(chosen_indicies[-1], dtype=tf.int32)  # increment Cholesky with newest point
@@ -446,10 +446,10 @@ def greedy_inference_dpp(
             c = tf.concat([c, e], axis=0)  # [m+1, N]
             e = tf.squeeze(e, 0)
 
-        d_squared -= e ** 2
+        d_squared -= e**2
         d_squared = tf.maximum(d_squared, 1e-50)  # numerical stability
 
-        scores = d_squared * quality_scores ** 2  # [N]
+        scores = d_squared * quality_scores**2  # [N]
         chosen_indicies.append(tf.argmax(scores))  # get next element as point with largest score
 
     return tf.gather(dataset.query_points, chosen_indicies)

@@ -331,7 +331,6 @@ def generate_continuous_optimizer(
         summary_writer = logging.get_tensorboard_writer()
         if summary_writer:
             with summary_writer.as_default(step=logging.get_step_number()):
-
                 logging.scalar("spo_af_evaluations", total_nfev)
                 if recovery_run:
                     logging.text(
@@ -599,7 +598,7 @@ def batchify_joint(
         search_space: SearchSpaceType,
         f: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]],
     ) -> TensorType:
-        expanded_search_space = search_space ** batch_size  # points have shape [B * D]
+        expanded_search_space = search_space**batch_size  # points have shape [B * D]
 
         if isinstance(f, tuple):
             raise ValueError(

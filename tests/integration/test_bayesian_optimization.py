@@ -85,7 +85,7 @@ from trieste.types import State, TensorType
 
 try:
     import pymoo
-except ImportError:
+except ImportError:  # pragma: no cover (tested but not by coverage)
     pymoo = None
 
 
@@ -602,7 +602,6 @@ def _test_optimizer_finds_minimum(
     with tempfile.TemporaryDirectory() as tmpdirname:
         summary_writer = tf.summary.create_file_writer(tmpdirname)
         with tensorboard_writer(summary_writer):
-
             result = BayesianOptimizer(observer, search_space).optimize(
                 num_steps or 2,
                 initial_data,

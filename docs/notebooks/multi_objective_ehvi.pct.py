@@ -67,7 +67,6 @@ _, ax = plot_function_2d(
     vlmop2.objective,
     mins,
     maxs,
-    grid_density=100,
     contour=True,
     title=["Obj 1", "Obj 2"],
     figsize=(12, 6),
@@ -146,7 +145,6 @@ _, ax = plot_function_2d(
     vlmop2.objective,
     mins,
     maxs,
-    grid_density=100,
     contour=True,
     figsize=(12, 6),
     title=["Obj 1", "Obj 2"],
@@ -245,7 +243,6 @@ _, ax = plot_function_2d(
     vlmop2.objective,
     mins,
     maxs,
-    grid_density=100,
     contour=True,
     figsize=(12, 6),
     title=["Obj 1", "Obj 2"],
@@ -278,6 +275,7 @@ plt.show()
 # ## Multi-objective optimization with constraints
 #
 # EHVI can be adapted to the case of constraints, as we show below. We start by defining a problem with the same objectives as above, but with an inequality constraint, and we define the corresponding `Observer`.
+
 
 # %%
 class Sim:

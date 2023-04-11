@@ -77,7 +77,6 @@ NA: Tag = ""
 
 
 def test_probability_of_improvement_builder_builds_pi_using_best_from_model() -> None:
-
     dataset = Dataset(
         tf.constant([[-2.0], [-1.0], [0.0], [1.0], [2.0]]),
         tf.constant([[4.1], [0.9], [0.1], [1.1], [3.9]]),
@@ -1029,7 +1028,7 @@ def test_expected_constrained_improvement_is_less_for_constrained_points() -> No
             return lambda x: tf.cast(tf.squeeze(x, -2) >= 0, x.dtype)
 
     def two_global_minima(x: tf.Tensor) -> tf.Tensor:
-        return x ** 4 / 4 - x ** 2 / 2
+        return x**4 / 4 - x**2 / 2
 
     initial_query_points = tf.constant([[-2.0], [0.0], [1.2]])
     data = {FOO: Dataset(initial_query_points, two_global_minima(initial_query_points))}
@@ -1183,7 +1182,6 @@ def test_batch_expected_improvement_can_reproduce_mc_excpected_improvement_handc
     sample_size: int = 200,
     mc_sample_size: int = 100000,
 ) -> None:
-
     xs = tf.random.uniform([num_data, dimension], dtype=tf.float64)
 
     data = Dataset(xs, quadratic(xs))
@@ -1194,9 +1192,9 @@ def test_batch_expected_improvement_can_reproduce_mc_excpected_improvement_handc
     mvn_samples = mvn.sample(10000)
 
     dummy_inputs = [dimension * [0.1]]
-    dummy_outputs = [dimension * [0.1 ** 2.0]]
+    dummy_outputs = [dimension * [0.1**2.0]]
 
-    min_predictive_mean_at_known_points = dimension * 0.1 ** 2.0
+    min_predictive_mean_at_known_points = dimension * 0.1**2.0
 
     # fmt: off
     expected = tf.reduce_mean(tf.reduce_max(tf.maximum(
@@ -1225,7 +1223,6 @@ def test_batch_expected_improvement_can_reproduce_mc_excpected_improvement_rando
     mc_sample_size: int = 100000,
     num_parallel: int = 4,
 ) -> None:
-
     known_query_points = tf.random.uniform([num_data, dimension], dtype=tf.float64)
 
     data = Dataset(known_query_points, quadratic(known_query_points))
@@ -1271,7 +1268,6 @@ def test_batch_expected_improvement_updates_without_retracing(
     jitter: float,
     mc_sample_size: int,
 ) -> None:
-
     known_query_points = tf.random.uniform([num_data, dimension], dtype=tf.float64)
     data = Dataset(
         known_query_points[num_data - 2 :], quadratic(known_query_points[num_data - 2 :])

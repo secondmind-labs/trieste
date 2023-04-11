@@ -37,6 +37,7 @@ env.seed(seed)
 #
 # The original code for the heuristic controller can be found in [OpenAI Gym GitHub repo](https://github.com/openai/gym/blob/master/gym/envs/box2d/lunar_lander.py). Here is the parametrized version, taken from the [repository](https://github.com/uber-research/TuRBO) of the Turbo paper:
 
+
 # %%
 # controller code is copied verbatim from https://github.com/uber-research/TuRBO
 # s is the state of the environment, an array of shape (1, 8)

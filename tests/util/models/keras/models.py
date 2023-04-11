@@ -37,7 +37,6 @@ def trieste_keras_ensemble_model(
     ensemble_size: int,
     independent_normal: bool = False,
 ) -> KerasEnsemble:
-
     input_tensor_spec, output_tensor_spec = get_tensor_spec_from_data(example_data)
 
     networks = [
@@ -63,7 +62,6 @@ def trieste_deep_ensemble_model(
     bootstrap_data: bool = False,
     independent_normal: bool = False,
 ) -> Tuple[DeepEnsemble, KerasEnsemble, KerasOptimizer]:
-
     keras_ensemble = trieste_keras_ensemble_model(example_data, ensemble_size, independent_normal)
 
     optimizer = tf.keras.optimizers.Adam()

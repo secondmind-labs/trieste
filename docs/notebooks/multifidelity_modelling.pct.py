@@ -7,10 +7,12 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.14.1
 #   kernelspec:
-#     display_name: Python 3.7.13 64-bit ('multifidelity')
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
+
+# %%
 import gpflow.kernels
 
 # %% [markdown]
@@ -45,10 +47,10 @@ tf.random.set_seed(1793)
 # 1. The lowest fidelity is noise-free
 # 2. The data is cascading, e.g any point that has an observation at a high fidelity also has one at the lower fidelities.
 
+
 # %%
 # Define the multifidelity simulator
 def linear_simulator(x_input, fidelity, add_noise=False):
-
     f = 0.5 * ((6.0 * x_input - 2.0) ** 2) * tf.math.sin(
         12.0 * x_input - 4.0
     ) + 10.0 * (x_input - 1.0)
@@ -81,14 +83,13 @@ plt.show()
 # %%
 from trieste.data import Dataset, check_and_extract_fidelity_query_points
 
+
 # Create an observer class to deal with multifidelity input query points
 class Observer:
     def __init__(self, simulator):
-
         self.simulator = simulator
 
     def __call__(self, x, add_noise=True):
-
         # Extract raw input and fidelity columns
         x_input, x_fidelity = check_and_extract_fidelity_query_points(x)
 
@@ -292,6 +293,7 @@ plt.show()
 # %% [markdown]
 # ## A more complex model for non-linear problems
 
+
 # %% [markdown]
 # A more complex multifidelity model (NARGP, here `MultifidelityNonlinearAutoregressive`), originally proposed in :cite:`perdikaris2017nonlinear` is also available, to tackle the case where the relation between fidelities is strongly non-linear.
 #
@@ -407,5 +409,3 @@ plt.show()
 
 # %% [markdown]
 # The AR(1) model is incapable of using the lower fidelity data and its prediction for the high fidelity level simply returns to the prior when there is no high-fidelity data. In contrast, the NARGP model clearly captures the non-linear relashionship and is able to predict accurately the high-fideility level everywhere.
-
-# %%

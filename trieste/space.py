@@ -59,7 +59,6 @@ class NonlinearConstraint(spo.NonlinearConstraint):  # type: ignore[misc]
         ub: Sequence[float] | TensorType,
         keep_feasible: bool = False,
     ):
-
         # Implement caching to avoid calling the constraint function multiple times to get value
         # and gradient.
         def _constraint_value_and_gradient(x: TensorType) -> Tuple[TensorType, TensorType]:
@@ -665,7 +664,7 @@ class Box(SearchSpace):
         if num_samples == 0:
             return tf.constant([])
         if skip is None:  # generate random skip
-            skip = tf.random.uniform([1], maxval=2 ** 16, dtype=tf.int32)[0]
+            skip = tf.random.uniform([1], maxval=2**16, dtype=tf.int32)[0]
         dim = tf.shape(self._lower)[-1]
         return (self._upper - self._lower) * tf.math.sobol_sample(
             dim=dim, num_results=num_samples, dtype=self._lower.dtype, skip=skip
@@ -792,7 +791,7 @@ class Box(SearchSpace):
             return self.sample_sobol(num_samples, skip)
 
         if skip is None:  # generate random skip
-            skip = tf.random.uniform([1], maxval=2 ** 16, dtype=tf.int32)[0]
+            skip = tf.random.uniform([1], maxval=2**16, dtype=tf.int32)[0]
         _skip: TensorType = skip  # To keep mypy happy.
 
         def _sampler() -> TensorType:

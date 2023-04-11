@@ -73,6 +73,7 @@ for step in range(n_steps):
 # %% [markdown]
 # Once ask-tell optimization is over, you can extract an optimization result object and perform whatever analysis you need, just like with regular Trieste optimization interface. For instance, here we will plot regret for each optimization step.
 
+
 # %%
 def plot_ask_tell_regret(ask_tell_result):
     observations = ask_tell_result.try_get_final_dataset().observations.numpy()

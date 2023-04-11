@@ -27,7 +27,6 @@ from trieste.types import TensorType
 
 
 def noisy_linear_multifidelity(x: TensorType) -> TensorType:
-
     x_input, x_fidelity = check_and_extract_fidelity_query_points(x)
 
     f = 0.5 * ((6.0 * x_input - 2.0) ** 2) * tf.math.sin(12.0 * x_input - 4.0) + 10.0 * (
@@ -40,7 +39,6 @@ def noisy_linear_multifidelity(x: TensorType) -> TensorType:
 
 
 def noisy_nonlinear_multifidelity(x: TensorType) -> TensorType:
-
     x_input, x_fidelity = check_and_extract_fidelity_query_points(x)
     # Check we only have fidelity = 0 or 1
     # 1 if element is not 0 or 1
@@ -63,7 +61,6 @@ def noisy_nonlinear_multifidelity(x: TensorType) -> TensorType:
 
 
 def test_multifidelity_autoregressive_results_close() -> None:
-
     input_dim = 1
     lb = np.zeros(input_dim)
     ub = np.ones(input_dim)
@@ -106,7 +103,6 @@ def test_multifidelity_autoregressive_results_close() -> None:
 
 
 def test_multifidelity_nonlinear_autoregressive_results_better_than_linear() -> None:
-
     input_dim = 1
     lb = np.zeros(input_dim)
     ub = np.ones(input_dim)
@@ -148,7 +144,6 @@ def test_multifidelity_nonlinear_autoregressive_results_better_than_linear() -> 
 
 
 def test_multifidelity_autoregressive_gets_expected_rhos() -> None:
-
     input_dim = 1
     lb = np.zeros(input_dim)
     ub = np.ones(input_dim)
@@ -179,7 +174,6 @@ def test_multifidelity_autoregressive_gets_expected_rhos() -> None:
 
 
 def test_multifidelity_autoregressive_predict_lf_are_consistent_with_multiple_fidelities() -> None:
-
     xs_low = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
     xs_high = tf.Variable(np.linspace(0, 10, 10), dtype=tf.float64)[:, None]
     lf_obs = tf.sin(xs_low)
@@ -234,7 +228,6 @@ def test_multifidelity_autoregressive_predict_lf_are_consistent_with_multiple_fi
 
 
 def test_multifidelity_autoregressive_predict_hf_is_consistent_when_rho_zero() -> None:
-
     xs_low = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
     xs_high = tf.Variable(np.linspace(0, 10, 10), dtype=tf.float64)[:, None]
     lf_obs = tf.sin(xs_low)
@@ -272,7 +265,6 @@ def test_multifidelity_autoregressive_predict_hf_is_consistent_when_rho_zero() -
 
 
 def test_multifidelity_autoregressive_predict_hf_is_consistent_when_lf_is_flat() -> None:
-
     xs_low = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
     xs_high = tf.Variable(np.linspace(0, 10, 10), dtype=tf.float64)[:, None]
     lf_obs = tf.sin(xs_low)
@@ -323,7 +315,6 @@ def test_multifidelity_autoregressive_predict_hf_is_consistent_when_lf_is_flat()
 
 
 def test_multifidelity_autoregressive_predict_hf_is_consistent_when_hf_residual_is_flat() -> None:
-
     xs_low = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
     xs_high = tf.Variable(np.linspace(0, 10, 10), dtype=tf.float64)[:, None]
     lf_obs = tf.sin(xs_low)
@@ -370,7 +361,6 @@ def test_multifidelity_autoregressive_predict_hf_is_consistent_when_hf_residual_
 
 
 def test_multifidelity_autoregressive_sample_lf_are_consistent_with_multiple_fidelities() -> None:
-
     xs_low = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
     xs_high = tf.Variable(np.linspace(0, 10, 10), dtype=tf.float64)[:, None]
     lf_obs = tf.sin(xs_low)
@@ -424,7 +414,6 @@ def test_multifidelity_autoregressive_sample_lf_are_consistent_with_multiple_fid
 
 
 def test_multifidelity_autoregressive_sample_hf_is_consistent_when_rho_zero() -> None:
-
     xs_low = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
     xs_high = tf.Variable(np.linspace(0, 10, 10), dtype=tf.float64)[:, None]
     lf_obs = tf.sin(xs_low)
@@ -468,7 +457,6 @@ def test_multifidelity_autoregressive_sample_hf_is_consistent_when_rho_zero() ->
 
 
 def test_multifidelity_autoregressive_sample_hf_is_consistent_when_lf_is_flat() -> None:
-
     xs_low = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
     xs_high = tf.Variable(np.linspace(0, 10, 10), dtype=tf.float64)[:, None]
     lf_obs = tf.sin(xs_low)
@@ -525,7 +513,6 @@ def test_multifidelity_autoregressive_sample_hf_is_consistent_when_lf_is_flat() 
 
 
 def test_multifidelity_autoregressive_sample_hf_is_consistent_when_hf_residual_is_flat() -> None:
-
     xs_low = tf.Variable(np.linspace(0, 10, 100), dtype=tf.float64)[:, None]
     xs_high = tf.Variable(np.linspace(0, 10, 10), dtype=tf.float64)[:, None]
     lf_obs = tf.sin(xs_low)

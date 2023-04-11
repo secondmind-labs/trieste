@@ -56,6 +56,7 @@ objective(np.array([[0.1, 0.5]]), sleep=False)
 # %% [markdown]
 # To turn our objective function into a Ray task, we wrap it in a function with appropriate decorator. We are not using anything beyond Ray tasks API in this tutorial, and refer interested readers to [Ray documentation](https://docs.ray.io/en/latest/walkthrough.html) and [Ray crash course](https://github.com/anyscale/academy/blob/main/ray-crash-course/01-Ray-Tasks.ipynb) for more details.
 
+
 # %%
 @ray.remote
 def ray_objective(points, sleep=True):
@@ -131,6 +132,7 @@ ray.init(ignore_reinit_error=True)
 points_observed = 0
 workers = []
 
+
 # a helper function to launch a worker for a numpy array representing a single point
 def launch_worker(x):
     worker = ray_objective.remote(np.atleast_2d(x), enable_sleep_delays)
@@ -192,7 +194,6 @@ _, ax = plot_function_2d(
     ScaledBranin.objective,
     search_space.lower,
     search_space.upper,
-    grid_density=30,
     contour=True,
 )
 
