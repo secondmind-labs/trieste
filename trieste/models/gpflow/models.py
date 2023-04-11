@@ -2004,7 +2004,6 @@ class MultifidelityNonlinearAutoregressive(
         max_fidelity_sample = tf.identity(signal_sample)
 
         for fidelity in range(1, self.num_fidelities):
-
             qp_repeated = tf.broadcast_to(
                 query_points_wo_fidelity[None, :, :],
                 tf.TensorShape(num_samples) + query_points_wo_fidelity.shape,
