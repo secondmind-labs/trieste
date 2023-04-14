@@ -56,7 +56,7 @@ google-auth-oauthlib==0.4.6
 google-pasta==0.2.0
 googleapis-common-protos==1.58.0
 gpflow==2.7.0
-gpflux==0.3.1
+gpflux==0.4.0
 gpustat==1.0.0
 grapheme==0.6.0
 greenlet==2.0.2
