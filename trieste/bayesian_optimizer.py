@@ -941,7 +941,7 @@ def write_summary_query_points(
     if tf.rank(query_points) == 2:
         for i in tf.range(tf.shape(query_points)[1]):
             if len(query_points) == 1:
-                logging.scalar(f"query_points/[{i}]", float(query_points[0, i]))
+                logging.scalar(f"query_point/[{i}]", float(query_points[0, i]))
             else:
                 logging.histogram(f"query_points/[{i}]", query_points[:, i])
         logging.histogram("query_points/euclidean_distances", lambda: pdist(query_points))
