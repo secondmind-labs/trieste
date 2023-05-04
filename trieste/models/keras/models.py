@@ -251,9 +251,8 @@ class DeepEnsemble(
             ``query_points``.
         """
         # handle leading batch dimensions
-        expected_dims = len(self.model.input_shape[0][1:]) + 1
-        flat_x, unflatten = flatten_leading_dims(query_points, output_dims=expected_dims)
-
+        input_dims = len(self.model.input_shape[0])
+        flat_x, unflatten = flatten_leading_dims(query_points, output_dims=input_dims)
         ensemble_distributions = self.ensemble_distributions(flat_x)
         predicted_means = tf.math.reduce_mean(
             [dist.mean() for dist in ensemble_distributions], axis=0
