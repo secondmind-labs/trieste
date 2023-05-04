@@ -17,7 +17,6 @@ from __future__ import annotations
 from typing import Callable, Optional
 
 import numpy as np
-import pandas as pd
 import plotly.graph_objects as go
 import tensorflow as tf
 from plotly.subplots import make_subplots
@@ -88,10 +87,10 @@ def add_surface_plotly(
     :return: updated plotly figure
     """
 
-    d = pd.DataFrame(f.reshape([xx.shape[0], yy.shape[1]]), index=xx, columns=yy)
+    z = f.reshape([xx.shape[0], yy.shape[1]])
 
     fig.add_trace(
-        go.Surface(z=d, x=xx, y=yy, showscale=False, opacity=alpha, colorscale="viridis"),
+        go.Surface(z=z, x=xx, y=yy, showscale=False, opacity=alpha, colorscale="viridis"),
         row=figrow,
         col=figcol,
     )
