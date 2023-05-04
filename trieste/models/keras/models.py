@@ -26,6 +26,7 @@ from tensorflow.python.keras.callbacks import Callback
 from ... import logging
 from ...data import Dataset
 from ...types import TensorType
+from ...utils import flatten_leading_dims
 from ..interfaces import HasTrajectorySampler, TrainableProbabilisticModel, TrajectorySampler
 from ..optimizer import KerasOptimizer
 from ..utils import write_summary_data_based_metrics
@@ -249,7 +250,11 @@ class DeepEnsemble(
         :return: The predicted mean and variance of the observations at the specified
             ``query_points``.
         """
-        ensemble_distributions = self.ensemble_distributions(query_points)
+        # handle leading batch dimensions
+        expected_dims = len(self.model.input_shape[0][1:]) + 1
+        flat_x, unflatten = flatten_leading_dims(query_points, output_dims=expected_dims)
+
+        ensemble_distributions = self.ensemble_distributions(flat_x)
         predicted_means = tf.math.reduce_mean(
             [dist.mean() for dist in ensemble_distributions], axis=0
         )
@@ -260,7 +265,7 @@ class DeepEnsemble(
             - predicted_means**2
         )
 
-        return predicted_means, predicted_vars
+        return unflatten(predicted_means), unflatten(predicted_vars)
 
     def predict_ensemble(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """

@@ -132,3 +132,29 @@ def test_unflatten_returns_correct_shape() -> None:
 
     npt.assert_array_equal(tf.shape(unflat_y1), [2, 3, 4, 7])
     npt.assert_array_equal(tf.shape(unflat_y2), [2, 3, 4, 7, 11])
+
+
+@pytest.mark.parametrize(
+    "output_dims,expected_shape",
+    [
+        (1, [120]),
+        (2, [24, 5]),
+        (3, [6, 4, 5]),
+        (4, [2, 3, 4, 5]),
+    ],
+)
+def test_flatten_leading_dims_output_dims(output_dims: int, expected_shape: list[int]) -> None:
+    x_old = tf.random.uniform([2, 3, 4, 5])  # [2, 3, 4, 5]
+    flat_x_old, unflatten = flatten_leading_dims(x_old, output_dims=output_dims)  # [6, 4, 5]
+
+    npt.assert_array_equal(tf.shape(flat_x_old), expected_shape)
+
+    x_new = unflatten(flat_x_old)  # [2, 3, 4, 5]
+    npt.assert_array_equal(x_old, x_new)
+
+
+@pytest.mark.parametrize("output_dims", [-1, 0, 5, 100])
+def test_flatten_leading_dims_invalid_output_dims(output_dims: int) -> None:
+    x_old = tf.random.uniform([2, 3, 4, 5])  # [2, 3, 4, 5]
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        flatten_leading_dims(x_old, output_dims=output_dims)
