@@ -22,3 +22,4 @@ jupyterlab
 jupytext
 gym<0.22
 box2d
+wheel<0.40
