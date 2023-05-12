@@ -21,7 +21,7 @@ seed = 1793
 
 np.random.seed(seed)
 tf.random.set_seed(seed)
-env.seed(seed)
+env.reset(seed=seed)
 
 
 # %% [markdown]
