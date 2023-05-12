@@ -171,7 +171,7 @@ tensorboard-plugin-wit==1.8.1
 tensorflow==2.10.1
 tensorflow-estimator==2.10.0
 tensorflow-io-gcs-filesystem==0.32.0
-tensorflow-probability==0.19.0
+tensorflow-probability==0.18.0
 termcolor==2.3.0
 terminado==0.17.1
 tinycss2==1.2.1
