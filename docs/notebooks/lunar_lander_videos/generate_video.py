@@ -56,7 +56,7 @@ def demo_heuristic_lander(env, w, seed=None):
     steps = 0
 
     env = wrappers.Monitor(env, "./", force=True)
-    env.seed(seed)
+    env.reset(seed=seed)
     s = env.reset()
 
     while True:
