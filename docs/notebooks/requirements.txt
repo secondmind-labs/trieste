@@ -20,5 +20,6 @@ matplotlib
 ray[default]
 jupyterlab
 jupytext
-gym
+gym[box2d]
 box2d
+tensorflow<2.11.0
