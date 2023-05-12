@@ -144,12 +144,12 @@ def test_unflatten_returns_correct_shape() -> None:
     ],
 )
 def test_flatten_leading_dims_output_dims(output_dims: int, expected_shape: list[int]) -> None:
-    x_old = tf.random.uniform([2, 3, 4, 5])  # [2, 3, 4, 5]
-    flat_x_old, unflatten = flatten_leading_dims(x_old, output_dims=output_dims)  # [6, 4, 5]
+    x_old = tf.random.uniform([2, 3, 4, 5])
+    flat_x_old, unflatten = flatten_leading_dims(x_old, output_dims=output_dims)
 
     npt.assert_array_equal(tf.shape(flat_x_old), expected_shape)
 
-    x_new = unflatten(flat_x_old)  # [2, 3, 4, 5]
+    x_new = unflatten(flat_x_old)
     npt.assert_array_equal(x_old, x_new)
 
 
