@@ -61,8 +61,7 @@ gpustat==1.1
 grapheme==0.6.0
 greenlet==2.0.2
 grpcio==1.51.3
-gym==0.26.2
-gym-notices==0.0.8
+gym==0.21.0
 h5py==3.8.0
 idna==3.4
 importlib-metadata==6.6.0
