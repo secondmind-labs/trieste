@@ -20,5 +20,5 @@ matplotlib
 ray[default]
 jupyterlab
 jupytext
-gym<0.22
+gym[box2d]
 box2d
