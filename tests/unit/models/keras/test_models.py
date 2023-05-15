@@ -258,6 +258,20 @@ def test_deep_ensemble_predict_broadcasts(
     assert predicted_means.shape == query_data.observations.shape
 
 
+def test_deep_ensemble_predict_omit_trailing_dim_one(ensemble_size: int, dataset_size: int) -> None:
+    dummy_data = _get_example_data([dataset_size, 1], [dataset_size, 1])
+    model, _, _ = trieste_deep_ensemble_model(dummy_data, ensemble_size, False, False)
+
+    # Functional has code to "allow (None,) and (None, 1) Tensors to be passed interchangeably"
+    qp = tf.random.uniform(tf.TensorShape([dataset_size]), dtype=tf.float64)
+    predicted_means, predicted_vars = model.predict(qp)
+
+    assert tf.is_tensor(predicted_vars)
+    assert predicted_vars.shape == dummy_data.observations.shape
+    assert tf.is_tensor(predicted_means)
+    assert predicted_means.shape == dummy_data.observations.shape
+
+
 def test_deep_ensemble_predict_call_shape(
     ensemble_size: int, dataset_size: int, num_outputs: int
 ) -> None:

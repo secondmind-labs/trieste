@@ -250,8 +250,9 @@ class DeepEnsemble(
         :return: The predicted mean and variance of the observations at the specified
             ``query_points``.
         """
-        # handle leading batch dimensions
-        input_dims = len(self.model.input_shape[0])
+        # handle leading batch dimensions, while still allowing `Functional` to
+        # "allow (None,) and (None, 1) Tensors to be passed interchangeably"
+        input_dims = min(query_points.ndim, len(self.model.input_shape[0]))
         flat_x, unflatten = flatten_leading_dims(query_points, output_dims=input_dims)
         ensemble_distributions = self.ensemble_distributions(flat_x)
         predicted_means = tf.math.reduce_mean(
