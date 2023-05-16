@@ -30,9 +30,7 @@ fig = plot_function_plotly(
     scaled_branin,
     search_space.lower,
     search_space.upper,
-    grid_density=20,
 )
-fig.update_layout(height=400, width=400)
 fig.show()
 
 # %% [markdown]
@@ -142,7 +140,6 @@ _, ax = plot_function_2d(
     scaled_branin,
     search_space.lower,
     search_space.upper,
-    grid_density=30,
     contour=True,
 )
 plot_bo_points(query_points, ax[0, 0], num_initial_points, arg_min_idx)
@@ -159,10 +156,7 @@ fig = plot_function_plotly(
     scaled_branin,
     search_space.lower,
     search_space.upper,
-    grid_density=20,
 )
-fig.update_layout(height=500, width=500)
-
 fig = add_bo_points_plotly(
     x=query_points[:, 0],
     y=query_points[:, 1],

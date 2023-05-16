@@ -33,7 +33,7 @@ from trieste.utils import to_numpy
 
 
 def create_grid(
-    mins: TensorType, maxs: TensorType, grid_density: int = 20
+    mins: TensorType, maxs: TensorType, grid_density: int = 30
 ) -> tuple[TensorType, TensorType, TensorType]:
     """
     Creates a regular 2D grid of size `grid_density^2` between mins and maxs.
@@ -97,13 +97,13 @@ def plot_function_2d(
     obj_func: Callable[[TensorType], TensorType],
     mins: TensorType,
     maxs: TensorType,
-    grid_density: int = 20,
+    grid_density: int = 100,
     contour: bool = False,
     log: bool = False,
     title: Optional[Sequence[str]] = None,
     xlabel: Optional[str] = None,
     ylabel: Optional[str] = None,
-    figsize: Optional[tuple[float, float]] = None,
+    figsize: Optional[tuple[float, float]] = (8, 6),
     colorbar: bool = False,
     alpha: float = 1.0,
     fill: bool = False,
@@ -175,13 +175,13 @@ def plot_acq_function_2d(
     acq_func: AcquisitionFunction,
     mins: TensorType,
     maxs: TensorType,
-    grid_density: int = 20,
+    grid_density: int = 100,
     contour: bool = False,
     log: bool = False,
     title: Optional[Sequence[str]] = None,
     xlabel: Optional[str] = None,
     ylabel: Optional[str] = None,
-    figsize: Optional[tuple[float, float]] = None,
+    figsize: Optional[tuple[float, float]] = (8, 6),
     colorbar: bool = False,
     alpha: float = 1.0,
     fill: bool = False,
@@ -313,7 +313,7 @@ def plot_mobo_points_in_obj_space(
     obs_values: TensorType,
     num_init: Optional[int] = None,
     mask_fail: Optional[TensorType] = None,
-    figsize: Optional[tuple[float, float]] = None,
+    figsize: Optional[tuple[float, float]] = (8, 6),
     xlabel: str = "Obj 1",
     ylabel: str = "Obj 2",
     zlabel: str = "Obj 3",
@@ -386,7 +386,7 @@ def plot_mobo_history(
     metric_func: Callable[[TensorType], TensorType],
     num_init: int,
     mask_fail: Optional[TensorType] = None,
-    figsize: Optional[tuple[float, float]] = None,
+    figsize: Optional[tuple[float, float]] = (8, 6),
 ) -> tuple[Figure, Axes]:
     """
     Draw the performance measure for multi-objective optimization.
@@ -461,11 +461,11 @@ def plot_gp_2d(
     model: GPModel,
     mins: TensorType,
     maxs: TensorType,
-    grid_density: int = 20,
+    grid_density: int = 100,
     contour: bool = False,
     xlabel: Optional[str] = None,
     ylabel: Optional[str] = None,
-    figsize: Optional[tuple[float, float]] = None,
+    figsize: Optional[tuple[float, float]] = (8, 6),
     predict_y: bool = False,
 ) -> tuple[Figure, Axes]:
     """

@@ -43,12 +43,20 @@ from ..interfaces import (
     TrajectorySampler,
 )
 
+_IntTensorType = Union[tf.Tensor, int]
 
-def qmc_normal_samples(num_samples: int, n_sample_dim: int, skip: int = 0) -> tf.Tensor:
+
+def qmc_normal_samples(
+    num_samples: _IntTensorType, n_sample_dim: _IntTensorType, skip: _IntTensorType = 0
+) -> tf.Tensor:
     """
     Generates `num_samples` sobol samples, skipping the first `skip`, where each
     sample has dimension `n_sample_dim`.
     """
+
+    if num_samples == 0 or n_sample_dim == 0:
+        return tf.zeros(shape=(num_samples, n_sample_dim), dtype=tf.float64)
+
     sobol_samples = tf.math.sobol_sample(
         dim=n_sample_dim,
         num_results=num_samples,
@@ -61,7 +69,6 @@ def qmc_normal_samples(num_samples: int, n_sample_dim: int, skip: int = 0) -> tf
         scale=tf.constant(1.0, dtype=tf.float64),
     )
     normal_samples = dist.quantile(sobol_samples)
-    tf.debugging.assert_shapes([(normal_samples, (num_samples, n_sample_dim))])
     return normal_samples
 
 

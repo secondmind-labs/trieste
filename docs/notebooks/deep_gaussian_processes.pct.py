@@ -29,7 +29,6 @@ F_MINIMIZER = Michalewicz2.minimum
 search_space = Michalewicz2.search_space
 
 fig = plot_function_plotly(function, search_space.lower, search_space.upper)
-fig.update_layout(height=800, width=800)
 fig.show()
 
 # %% [markdown]
@@ -124,7 +123,6 @@ from trieste.experimental.plotting import add_bo_points_plotly
 fig = plot_function_plotly(
     function, search_space.lower, search_space.upper, alpha=0.5
 )
-fig.update_layout(height=800, width=800)
 
 fig = add_bo_points_plotly(
     x=dgp_query_points[:, 0],
@@ -163,7 +161,6 @@ fig = add_bo_points_plotly(
     figrow=1,
     figcol=1,
 )
-fig.update_layout(height=800, width=800)
 fig.show()
 
 # %% [markdown]
@@ -212,7 +209,6 @@ fig = add_bo_points_plotly(
     figrow=1,
     figcol=1,
 )
-fig.update_layout(height=800, width=800)
 fig.show()
 
 # %% [markdown]

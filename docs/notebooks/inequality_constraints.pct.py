@@ -347,7 +347,6 @@ fig, ax = plot_function_2d(
     masked_objective,
     search_space.lower,
     search_space.upper,
-    grid_density=50,
     contour=True,
 )
 plot_bo_points(
