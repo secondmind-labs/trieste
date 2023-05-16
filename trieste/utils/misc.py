@@ -237,15 +237,22 @@ class Timer:
         self.time = self.end - self.start
 
 
-def flatten_leading_dims(x: TensorType) -> Tuple[TensorType, Callable[[TensorType], TensorType]]:
+def flatten_leading_dims(
+    x: TensorType, output_dims: int = 2
+) -> Tuple[TensorType, Callable[[TensorType], TensorType]]:
     """
-    Flattens the leading dimensions of `x` (all but the last two dimensions), and returns a
-    function that can be used to restore them (typically after first manipulating the
+    Flattens the leading dimensions of `x` (all but the last `output_dims` dimensions), and returns
+    a function that can be used to restore them (typically after first manipulating the
     flattened tensor).
     """
+    tf.debugging.assert_positive(output_dims, message="output_dims must be positive")
+    tf.debugging.assert_less_equal(
+        output_dims, tf.rank(x), message="output_dims must no greater than tensor rank"
+    )
+
     x_batched_shape = tf.shape(x)
-    batch_shape = x_batched_shape[:-1]
-    input_shape = x_batched_shape[-1:]
+    batch_shape = x_batched_shape[: -output_dims + 1] if output_dims > 1 else x_batched_shape
+    input_shape = x_batched_shape[-output_dims + 1 :] if output_dims > 1 else []
     x_flat_shape = tf.concat([[-1], input_shape], axis=0)
 
     def unflatten(y: TensorType) -> TensorType:

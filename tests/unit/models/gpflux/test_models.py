@@ -191,6 +191,24 @@ def test_deep_gaussian_process_predict() -> None:
     npt.assert_allclose(f_var, ref_var)
 
 
+def test_deep_gaussian_process_predict_broadcasts() -> None:
+    x = tf.constant(np.arange(6).reshape(3, 2), dtype=gpflow.default_float())
+
+    reference_model = single_layer_dgp_model(x)
+    model = DeepGaussianProcess(single_layer_dgp_model(x))
+
+    test_x = tf.constant(np.arange(12).reshape(1, 2, 3, 2), dtype=gpflow.default_float())
+
+    ref_mean, ref_var = reference_model.predict_f(test_x)
+    f_mean, f_var = model.predict(test_x)
+
+    assert f_mean.shape == (1, 2, 3, 1)
+    assert f_var.shape == (1, 2, 3, 1)
+
+    npt.assert_allclose(f_mean, ref_mean)
+    npt.assert_allclose(f_var, ref_var)
+
+
 @random_seed
 def test_deep_gaussian_process_sample(two_layer_model: Callable[[TensorType], DeepGP]) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())

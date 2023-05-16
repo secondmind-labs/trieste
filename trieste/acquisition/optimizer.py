@@ -350,7 +350,7 @@ def generate_continuous_optimizer(
                 if V == 1:
                     logging.scalar("spo_improvement_on_initial_samples", improvements)
                 else:
-                    logging.histogram("spo_improvement_on_initial_samples", improvements)
+                    logging.histogram("spo_improvements_on_initial_samples", improvements)
 
         best_run_ids = tf.math.argmax(fun_values, axis=0)  # [V]
         chosen_points = tf.gather(

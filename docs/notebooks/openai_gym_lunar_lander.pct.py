@@ -21,7 +21,7 @@ seed = 1793
 
 np.random.seed(seed)
 tf.random.set_seed(seed)
-env.seed(seed)
+env.reset(seed=seed)
 
 
 # %% [markdown]
@@ -79,7 +79,7 @@ timeout_reward = -100
 def demo_heuristic_lander(env, w, print_reward=False):
     total_reward = 0
     steps = 0
-    s = env.reset()
+    s = env.reset()[0]
 
     while True:
         if steps > steps_limit:
@@ -87,7 +87,7 @@ def demo_heuristic_lander(env, w, print_reward=False):
             break
 
         a = heuristic_Controller(s, w)
-        s, r, done, info = env.step(a)
+        s, r, done, info, _ = env.step(a)
         total_reward += r
 
         steps += 1
