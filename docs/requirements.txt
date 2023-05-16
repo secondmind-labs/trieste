@@ -12,11 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pin sphinx to 3.5 for now to work around https://github.com/plotly/plotly.js/issues/4563
-# setting mathjax_path in docs/confg.py to https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML
-# SHOULD fix this, but it doesn't seem to quite
-sphinx~=3.5.4
-importlib-metadata<5.0
+sphinx
 sphinx-autoapi
 pydata-sphinx-theme
 ipython
