@@ -187,7 +187,7 @@ def test_tensorboard_logging(mocked_summary_scalar: unittest.mock.MagicMock) -> 
         "A.observation/best_new_observation",
         "A.observation/best_overall",
         "wallclock/model_fitting",
-        "query_points/[0]",
+        "query_point/[0]",
         "wallclock/query_point_generation",
         "wallclock/step",
     ]
@@ -273,7 +273,7 @@ def test_tensorboard_logging_ask_tell(mocked_summary_scalar: unittest.mock.Magic
 
     ordered_scalar_names = [
         "wallclock/model_fitting",
-        "query_points/[0]",
+        "query_point/[0]",
         "wallclock/query_point_generation",
         "A.observation/best_new_observation",
         "A.observation/best_overall",

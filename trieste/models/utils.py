@@ -45,9 +45,9 @@ def write_summary_data_based_metrics(
 
     # basics
     logging.histogram(f"{name}/predict_mean", predict[0])
-    logging.scalar(f"{name}/predict_mean", tf.reduce_mean(predict[0]))
+    logging.scalar(f"{name}/predict_mean__mean", tf.reduce_mean(predict[0]))
     logging.histogram(f"{name}/predict_variance", predict[1])
-    logging.scalar(f"{name}/predict_variance", tf.reduce_mean(predict[1]))
+    logging.scalar(f"{name}/predict_variance__mean", tf.reduce_mean(predict[1]))
     logging.histogram(f"{name}/observations", dataset.observations)
     logging.scalar(f"{name}/observations_mean", tf.reduce_mean(dataset.observations))
     logging.scalar(f"{name}/observations_variance", tf.math.reduce_variance(dataset.observations))
