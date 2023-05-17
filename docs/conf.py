@@ -66,6 +66,9 @@ autosectionlabel_prefix_document = True
 
 # sphinx-autoapi
 extensions.append("autoapi.extension")
+autodoc_default_options = {
+    'ignore-module-all': True
+}
 autoapi_dirs = ["../trieste"]
 autoapi_add_toctree_entry = False
 autoapi_keep_files = True
