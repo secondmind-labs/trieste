@@ -119,7 +119,6 @@ opencensus-context==0.1.3
 opt-einsum==3.3.0
 osqp==0.6.2.post9
 packaging==23.1
-pandas==0.25.3
 pandocfilters==1.5.0
 parso==0.8.3
 pexpect==4.8.0
