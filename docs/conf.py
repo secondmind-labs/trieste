@@ -66,7 +66,6 @@ autosectionlabel_prefix_document = True
 
 # sphinx-autoapi
 extensions.append("autoapi.extension")
-autodoc_default_options = {"ignore-module-all": True}
 autoapi_dirs = ["../trieste"]
 autoapi_add_toctree_entry = False
 autoapi_keep_files = True
@@ -78,6 +77,9 @@ autoapi_options = [
     "imported-members",
     "show-inheritance",
 ]
+
+# TODO: remove once https://github.com/sphinx-doc/sphinx/issues/4961 is fixed
+suppress_warnings = ["ref.python"]
 
 # intersphinx
 extensions.append("sphinx.ext.intersphinx")
