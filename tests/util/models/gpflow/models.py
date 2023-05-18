@@ -381,6 +381,16 @@ def svgp_model(x: tf.Tensor, y: tf.Tensor, num_latent_gps: int = 1) -> SVGP:
     )
 
 
+def quadratic_mean_rbf_kernel_model(dataset: Dataset) -> QuadraticMeanAndRBFKernelWithSamplers:
+    model = QuadraticMeanAndRBFKernelWithSamplers(
+        noise_variance=tf.constant(1.0, dtype=tf.float64), dataset=dataset
+    )
+    model.kernel = (
+        gpflow.kernels.RBF()
+    )  # need a gpflow kernel object for random feature decompositions
+    return model
+
+
 def svgp_model_with_mean(
     x: tf.Tensor, y: tf.Tensor, whiten: bool, num_inducing_points: int, num_latent_gps: int = 1
 ) -> SVGP:

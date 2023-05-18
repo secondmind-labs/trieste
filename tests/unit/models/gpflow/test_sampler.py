@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import math
 import unittest
-from typing import Any, List, Type
+from typing import Any, Callable, List, Type
 from unittest.mock import MagicMock
 
 import gpflow
@@ -30,7 +30,10 @@ from tests.util.models.gpflow.models import (
     GaussianProcess,
     QuadraticMeanAndRBFKernel,
     QuadraticMeanAndRBFKernelWithSamplers,
+    quadratic_mean_rbf_kernel_model,
     rbf,
+    svgp_model,
+    two_output_svgp_model,
 )
 from trieste.data import Dataset
 from trieste.models.gpflow import (
@@ -38,16 +41,59 @@ from trieste.models.gpflow import (
     DecoupledTrajectorySampler,
     IndependentReparametrizationSampler,
     RandomFourierFeatureTrajectorySampler,
+    SparseVariational,
     feature_decomposition_trajectory,
 )
-from trieste.models.gpflow.sampler import qmc_normal_samples
+from trieste.models.gpflow.sampler import (
+    FeatureDecompositionTrajectorySamplerModel,
+    qmc_normal_samples,
+)
 from trieste.models.interfaces import ReparametrizationSampler, SupportsPredictJoint
 from trieste.objectives import Branin
+from trieste.types import TensorType
 
 REPARAMETRIZATION_SAMPLERS: List[Type[ReparametrizationSampler[SupportsPredictJoint]]] = [
     BatchReparametrizationSampler,
     IndependentReparametrizationSampler,
 ]
+
+
+# FIXME: globally set everything to run eagerly to force eager execution.
+tf.config.run_functions_eagerly(True)
+
+
+@pytest.fixture(name="decomposition_sampling_dataset")
+def _decomposition_sampling_dataset() -> Dataset:
+    x_range = tf.linspace(0.0, 1.0, 5)
+    x_range = tf.cast(x_range, dtype=tf.float64)
+    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
+    ys = quadratic(xs)
+    dataset = Dataset(xs, ys)
+    return dataset
+
+
+@pytest.fixture(
+    name="decomposition_sampling_model",
+    params=[
+        pytest.param(quadratic_mean_rbf_kernel_model, id="quadratic_mean_rbf_kernel"),
+        pytest.param(
+            lambda dataset: SparseVariational(svgp_model(
+                dataset.query_points, dataset.observations
+            )),
+            id="one_op_svgp",
+        ),
+        pytest.param(
+            lambda dataset: SparseVariational(two_output_svgp_model(
+                dataset.query_points, "separate+shared", False
+            )),
+            id="two_op_svgp",
+        ),
+    ],
+)
+def _decomposition_sampling_model_fixture(
+    request: Any, decomposition_sampling_dataset: Dataset
+) -> FeatureDecompositionTrajectorySamplerModel:
+    return request.param(decomposition_sampling_dataset)
 
 
 @pytest.mark.parametrize(
@@ -622,22 +668,15 @@ def test_decoupled_trajectory_sampler_returns_trajectory_function_with_correct_s
 
 @random_seed
 @pytest.mark.parametrize("batch_size", [1, 5])
-def test_decoupled_trajectory_sampler_returns_deterministic_trajectory(batch_size: int) -> None:
-    x_range = tf.linspace(0.0, 1.0, 5)
-    x_range = tf.cast(x_range, dtype=tf.float64)
-    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
-    ys = quadratic(xs)
-    dataset = Dataset(xs, ys)
-    model = QuadraticMeanAndRBFKernelWithSamplers(
-        noise_variance=tf.constant(1.0, dtype=tf.float64), dataset=dataset
-    )
-    model.kernel = (
-        gpflow.kernels.RBF()
-    )  # need a gpflow kernel object for random feature decompositions
-
-    sampler = DecoupledTrajectorySampler(model, num_features=100)
+def test_decoupled_trajectory_sampler_returns_deterministic_trajectory(
+        decomposition_sampling_dataset: Dataset,
+        decomposition_sampling_model: FeatureDecompositionTrajectorySamplerModel,
+        batch_size: int,
+) -> None:
+    sampler = DecoupledTrajectorySampler(decomposition_sampling_model, num_features=100)
     trajectory = sampler.get_trajectory()
 
+    xs = decomposition_sampling_dataset.query_points
     xs = tf.expand_dims(xs, -2)  # [N, 1, D]
     xs = tf.tile(xs, [1, batch_size, 1])  # [N, B, D]
     trajectory_eval_1 = trajectory(xs)
