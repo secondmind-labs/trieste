@@ -32,6 +32,7 @@ from ..space import (
     Box,
     Constraint,
     DiscreteSearchSpace,
+    MultiBoxSearchSpace,
     SearchSpace,
     SearchSpaceType,
     TaggedProductSearchSpace,
@@ -100,9 +101,14 @@ def automatic_optimizer_selector(
     if isinstance(space, DiscreteSearchSpace):
         return optimize_discrete(space, target_func)
 
-    elif isinstance(space, (Box, TaggedProductSearchSpace)):
-        num_samples = tf.maximum(NUM_SAMPLES_MIN, NUM_SAMPLES_DIM * tf.shape(space.lower)[-1])
-        num_runs = NUM_RUNS_DIM * tf.shape(space.lower)[-1]
+    elif isinstance(space, (Box, TaggedProductSearchSpace, MultiBoxSearchSpace)):
+        if isinstance(space, MultiBoxSearchSpace):
+            space_dim = tf.shape(space.get_subspace(space.subspace_tags[0]).lower)[-1]
+        else:
+            space_dim = tf.shape(space.lower)[-1]
+
+        num_samples = tf.maximum(NUM_SAMPLES_MIN, NUM_SAMPLES_DIM * space_dim)
+        num_runs = NUM_RUNS_DIM * space_dim
         return generate_continuous_optimizer(
             num_initial_samples=num_samples,
             num_optimization_runs=num_runs,
@@ -170,7 +176,7 @@ def generate_continuous_optimizer(
     num_optimization_runs: int = 10,
     num_recovery_runs: int = 10,
     optimizer_args: Optional[dict[str, Any]] = None,
-) -> AcquisitionOptimizer[Box | TaggedProductSearchSpace]:
+) -> AcquisitionOptimizer[Box | TaggedProductSearchSpace | MultiBoxSearchSpace]:
     """
     Generate a gradient-based optimizer for :class:'Box' and :class:'TaggedProductSearchSpace'
     spaces and batches of size 1. In the case of a :class:'TaggedProductSearchSpace', We perform
@@ -216,7 +222,7 @@ def generate_continuous_optimizer(
         raise ValueError(f"num_recovery_runs must be zero or greater, got {num_recovery_runs}")
 
     def optimize_continuous(
-        space: Box | TaggedProductSearchSpace,
+        space: Box | TaggedProductSearchSpace | MultiBoxSearchSpace,
         target_func: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]],
     ) -> TensorType:
         """
@@ -246,8 +252,17 @@ def generate_continuous_optimizer(
         if V < 0:
             raise ValueError(f"vectorization must be positive, got {V}")
 
-        candidates = space.sample(num_initial_samples)[:, None, :]  # [num_initial_samples, 1, D]
-        tiled_candidates = tf.tile(candidates, [1, V, 1])  # [num_initial_samples, V, D]
+        if isinstance(space, MultiBoxSearchSpace):
+            candidates = [
+                space.get_subspace(tag).sample(num_initial_samples)[:, None, :]
+                for tag in space.subspace_tags
+            ]  # list of [num_initial_samples, 1, D]
+            tiled_candidates = tf.concat(candidates, axis=1)  # [num_initial_samples, V, D]
+        else:
+            candidates = space.sample(num_initial_samples)[
+                :, None, :
+            ]  # [num_initial_samples, 1, D]
+            tiled_candidates = tf.tile(candidates, [1, V, 1])  # [num_initial_samples, V, D]
 
         target_func_values = target_func(tiled_candidates)  # [num_samples, V]
         tf.debugging.assert_shapes(
@@ -289,12 +304,19 @@ def generate_continuous_optimizer(
         total_nfev = tf.reduce_max(nfev)  # acquisition function is evaluated in parallel
 
         recovery_run = False
-        if (
-            num_recovery_runs and not successful_optimization
-        ):  # if all optimizations failed for a function then try again from random starts
-            random_points = space.sample(num_recovery_runs)[:, None, :]  # [num_recovery_runs, 1, D]
-            tiled_random_points = tf.tile(random_points, [1, V, 1])  # [num_recovery_runs, V, D]
-
+        if num_recovery_runs and not successful_optimization:
+            # if all optimizations failed for a function then try again from random starts
+            if isinstance(space, MultiBoxSearchSpace):
+                candidates = [
+                    space.get_subspace(tag).sample(num_initial_samples)[:, None, :]
+                    for tag in space.subspace_tags
+                ]  # list of [num_initial_samples, 1, D]
+                tiled_random_points = tf.concat(candidates, axis=1)  # [num_initial_samples, V, D]
+            else:
+                random_points = space.sample(num_recovery_runs)[
+                    :, None, :
+                ]  # [num_recovery_runs, 1, D]
+                tiled_random_points = tf.tile(random_points, [1, V, 1])  # [num_recovery_runs, V, D]
             (
                 recovery_successes,
                 recovery_fun_values,
@@ -350,7 +372,9 @@ def generate_continuous_optimizer(
                 if V == 1:
                     logging.scalar("spo_improvement_on_initial_samples", improvements)
                 else:
-                    logging.histogram("spo_improvements_on_initial_samples", improvements)
+                    logging.histogram(
+                        "spo_improvement_on_initial_samples_across_subspaces", improvements
+                    )
 
         best_run_ids = tf.math.argmax(fun_values, axis=0)  # [V]
         chosen_points = tf.gather(
@@ -427,7 +451,14 @@ def _perform_parallel_continuous_optimization(
     def _objective_value_and_gradient(x: TensorType) -> Tuple[TensorType, TensorType]:
         return tfp.math.value_and_gradient(_objective_value, x)  # [len(x), 1], [len(x), D]
 
-    if isinstance(
+    if isinstance(space, MultiBoxSearchSpace):
+        bounds = [
+            spo.Bounds(space.get_subspace(tag).lower, space.get_subspace(tag).upper)
+            for tag in space.subspace_tags
+        ]
+        # TODO: check that this creates the right set of bou
+        bounds = bounds * num_optimization_runs_per_function
+    elif isinstance(
         space, TaggedProductSearchSpace
     ):  # build continuous relaxation of discrete subspaces
         bounds = [

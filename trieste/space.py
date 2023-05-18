@@ -1077,3 +1077,12 @@ class TaggedProductSearchSpace(SearchSpace):
 
     def __deepcopy__(self, memo: dict[int, object]) -> TaggedProductSearchSpace:
         return self
+
+
+class MultiBoxSearchSpace(TaggedProductSearchSpace):
+    def __repr__(self) -> str:
+        """"""
+        return f"""MultiBoxSearchSpace(spaces =
+                {[self.get_subspace(tag) for tag in self.subspace_tags]},
+                tags = {self.subspace_tags})
+                """

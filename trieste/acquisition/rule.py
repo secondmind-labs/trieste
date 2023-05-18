@@ -21,7 +21,7 @@ import copy
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Callable, Generic, Optional, TypeVar, Union, cast, overload
+from typing import Any, Callable, Generic, Optional, Sequence, TypeVar, Union, cast, overload
 
 import numpy as np
 
@@ -41,7 +41,7 @@ from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..models.interfaces import HasReparamSampler, ModelStack, ProbabilisticModelType
 from ..observer import OBJECTIVE
-from ..space import Box, SearchSpace
+from ..space import Box, MultiBoxSearchSpace, SearchSpace
 from ..types import State, Tag, TensorType
 from .function import (
     BatchMonteCarloExpectedImprovement,
@@ -1095,6 +1095,211 @@ class TrustRegion(
             return state_, points
 
         return state_func
+
+
+class MultiTrustRegion(
+    AcquisitionRule[
+        types.State[Optional["MultiTrustRegion.State"], TensorType], Box, ProbabilisticModelType
+    ]
+):
+    """Implements the *trust region* acquisition algorithm."""
+
+    @dataclass(frozen=True)
+    class State:
+        """The acquisition state for the :class:`TrustRegion` acquisition rule."""
+
+        acquisition_space: MultiBoxSearchSpace
+        """ The search space. """
+
+        eps: Sequence[TensorType]
+        """
+        The (maximum) vector from the current best point to each bound of the acquisition space.
+        """
+
+        y_min: Sequence[TensorType]
+        """ The minimum observed value. """
+
+        # is_global: Sequence[bool] | Sequence[TensorType]
+        # """
+        # `True` if the search space was global, else `False` if it was local.
+        # May be a scalar boolean `TensorType` instead of a `bool`.
+        # """
+
+        def __deepcopy__(self, memo: dict[int, object]) -> MultiTrustRegion.State:
+            box_copy = copy.deepcopy(self.acquisition_space, memo)
+            return MultiTrustRegion.State(box_copy, self.eps, self.y_min)  # , self.is_global)
+
+    @overload
+    def __init__(
+        self: "MultiTrustRegion[ProbabilisticModel]",
+        rule: None = None,
+        beta: float = 0.7,
+        kappa: float = 1e-4,
+        number_of_tr: int = 1,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self: "MultiTrustRegion[ProbabilisticModelType]",
+        rule: AcquisitionRule[TensorType, Box, ProbabilisticModelType],
+        beta: float = 0.7,
+        kappa: float = 1e-4,
+        number_of_tr: int = 1,
+    ):
+        ...
+
+    def __init__(
+        self,
+        rule: AcquisitionRule[TensorType, Box, ProbabilisticModelType] | None = None,
+        beta: float = 0.7,
+        kappa: float = 1e-4,
+        number_of_tr: int = 1,
+    ):
+        if rule is None:
+            rule = EfficientGlobalOptimization()
+
+        self._rule = rule
+        self._beta = beta
+        self._kappa = kappa
+        self._min_eps = 1e-2
+        self._tags = [str(index) for index in range(number_of_tr)]
+
+    def __repr__(self) -> str:
+        """"""
+        return f"MultiTrustRegion({self._rule!r}, {self._beta!r}, {self._kappa!r})"
+
+    def acquire(
+        self,
+        search_space: Box,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+    ) -> types.State[State | None, TensorType]:
+        if datasets is None or OBJECTIVE not in datasets.keys():
+            raise ValueError(f"""datasets must be provided and contain the key {OBJECTIVE}""")
+
+        dataset = datasets[OBJECTIVE]
+
+        global_lower = search_space.lower
+        global_upper = search_space.upper
+
+        # global_y_min = tf.reduce_min(dataset.observations, axis=0)
+        def state_func(
+            state: MultiTrustRegion.State | None,
+        ) -> tuple[MultiTrustRegion.State | None, TensorType]:
+            if state is None:
+                eps = {
+                    tag: 0.5
+                    * (global_upper - global_lower)
+                    / (5.0 ** (1.0 / global_lower.shape[-1]))
+                    for tag in self._tags
+                }
+
+                x_min = {tag: search_space.sample(1) for tag in self._tags}
+
+                aspace = [
+                    Box(
+                        tf.reduce_max([global_lower, (x_min[tag] - eps[tag])[0, :]], axis=0),
+                        tf.reduce_min([global_upper, (x_min[tag] + eps[tag])[0, :]], axis=0),
+                    )
+                    for tag in self._tags
+                ]
+
+                acquisition_space = MultiBoxSearchSpace(aspace, self._tags)
+
+                y_min = {
+                    tag: get_local_y_min(dataset, acquisition_space.get_subspace(tag))
+                    for tag in self._tags
+                }
+
+            else:
+                y_min = {
+                    tag: get_local_y_min(dataset, state.acquisition_space.get_subspace(tag))
+                    for tag in state.acquisition_space.subspace_tags
+                }
+
+                x_min = {
+                    tag: get_local_x_min(dataset, state.acquisition_space.get_subspace(tag))
+                    for tag in state.acquisition_space.subspace_tags
+                }
+                eps = {}
+                for tag in state.acquisition_space.subspace_tags:
+                    tr_volume = tf.reduce_prod(
+                        state.acquisition_space.get_subspace(tag).upper
+                        - state.acquisition_space.get_subspace(tag).lower
+                    )
+                    step_is_success = y_min[tag] < state.y_min[tag] - self._kappa * tr_volume
+                    eps[tag] = (
+                        state.eps[tag] / self._beta
+                        if step_is_success
+                        else state.eps[tag] * self._beta
+                    )
+
+                x_min, y_min, eps = reinitialise_useless_trs(
+                    x_min, y_min, eps, search_space, dataset, self._min_eps
+                )
+
+                aspace = [
+                    Box(
+                        tf.reduce_max([global_lower, (x_min[tag] - eps[tag])[0, :]], axis=0),
+                        tf.reduce_min([global_upper, (x_min[tag] + eps[tag])[0, :]], axis=0),
+                    )
+                    for tag in state.acquisition_space.subspace_tags
+                ]
+
+                acquisition_space = MultiBoxSearchSpace(
+                    aspace, state.acquisition_space.subspace_tags
+                )
+
+            points = self._rule.acquire(acquisition_space, models, datasets=datasets)
+            state_ = MultiTrustRegion.State(acquisition_space, eps, y_min)
+
+            return state_, points
+
+        return state_func
+
+
+def get_local_y_min(dataset: Dataset, search_space: SearchSpace):
+    in_tr = search_space.contains(dataset.query_points)
+    ones = tf.ones_like(dataset.observations) * 1e6
+    in_tr_obs = tf.where(in_tr[:, None], dataset.observations, ones)
+    return tf.reduce_min(in_tr_obs, axis=0)
+
+
+def get_local_x_min(dataset: Dataset, search_space: SearchSpace):
+    in_tr = search_space.contains(dataset.query_points)
+    ones = tf.ones_like(dataset.observations) * 1e6
+    in_tr_obs = tf.where(in_tr[:, None], dataset.observations, ones)
+    return dataset.query_points[tf.argmin(in_tr_obs)[0], :][None, :]
+
+
+def reinitialise_useless_trs(
+    x_min: Sequence[TensorType],
+    y_min: Sequence[TensorType],
+    eps: Sequence[TensorType],
+    search_space: Box,
+    dataset: Dataset,
+    min_eps: float,
+) -> tuple[Sequence[TensorType], Sequence[TensorType], Sequence[TensorType]]:
+    xx = tf.zeros([0, dataset.query_points.shape[1]], dtype=dataset.query_points.dtype)
+
+    global_lower = search_space.lower
+    global_upper = search_space.upper
+
+    for tag, x in x_min.items():
+        duplicated = tf.less_equal(tf.reduce_min(tf.reduce_sum(tf.abs(x - xx), axis=1)), 1e-6)
+
+        if duplicated or (np.min(eps[tag].numpy()) < min_eps):
+            eps[tag] = 0.1 * (global_upper - global_lower) / (5.0 ** (1.0 / global_lower.shape[-1]))
+            x_min[tag] = search_space.sample(1)
+            temp_space = Box(
+                tf.reduce_max([global_lower, (x_min[tag] - eps[tag])[0, :]], axis=0),
+                tf.reduce_min([global_upper, (x_min[tag] + eps[tag])[0, :]], axis=0),
+            )
+            y_min[tag] = get_local_y_min(dataset, temp_space)
+        xx = tf.concat([xx, x_min[tag]], axis=0)
+
+    return x_min, y_min, eps
 
 
 class BatchHypervolumeSharpeRatioIndicator(
