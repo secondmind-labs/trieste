@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import math
 import unittest
-from typing import Any, Callable, List, Type
+from typing import Any, Callable, List, Tuple, Type
 from unittest.mock import MagicMock
 
 import gpflow
@@ -58,12 +58,11 @@ REPARAMETRIZATION_SAMPLERS: List[Type[ReparametrizationSampler[SupportsPredictJo
 ]
 
 
-# FIXME: globally set everything to run eagerly to force eager execution.
-tf.config.run_functions_eagerly(True)
+DecoupledSamplingModel = Callable[[Dataset], Tuple[int, FeatureDecompositionTrajectorySamplerModel]]
 
 
-@pytest.fixture(name="decomposition_sampling_dataset")
-def _decomposition_sampling_dataset() -> Dataset:
+@pytest.fixture(name="decoupled_sampling_dataset")
+def _decoupled_sampling_dataset() -> Dataset:
     x_range = tf.linspace(0.0, 1.0, 5)
     x_range = tf.cast(x_range, dtype=tf.float64)
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
@@ -73,27 +72,27 @@ def _decomposition_sampling_dataset() -> Dataset:
 
 
 @pytest.fixture(
-    name="decomposition_sampling_model",
+    name="decoupled_sampling_model",
     params=[
-        pytest.param(quadratic_mean_rbf_kernel_model, id="quadratic_mean_rbf_kernel"),
         pytest.param(
-            lambda dataset: SparseVariational(svgp_model(
-                dataset.query_points, dataset.observations
-            )),
+            lambda dataset: (1, quadratic_mean_rbf_kernel_model(dataset)), id="one_op_custom"
+        ),
+        pytest.param(
+            lambda dataset: (1, SparseVariational(svgp_model(
+                dataset.query_points, dataset.observations, whiten=False
+            ))),
             id="one_op_svgp",
         ),
         pytest.param(
-            lambda dataset: SparseVariational(two_output_svgp_model(
-                dataset.query_points, "separate+shared", False
-            )),
+            lambda dataset: (2, SparseVariational(two_output_svgp_model(
+                dataset.query_points, "separate+shared", whiten=False
+            ))),
             id="two_op_svgp",
         ),
     ],
 )
-def _decomposition_sampling_model_fixture(
-    request: Any, decomposition_sampling_dataset: Dataset
-) -> FeatureDecompositionTrajectorySamplerModel:
-    return request.param(decomposition_sampling_dataset)
+def _decoupled_sampling_model_fixture(request: Any) -> DecoupledSamplingModel:
+    return request.param
 
 
 @pytest.mark.parametrize(
@@ -640,17 +639,13 @@ def test_decoupled_trajectory_sampler_returns_trajectory_function_with_correct_s
     num_evals: int,
     num_features: int,
     batch_size: int,
+    decoupled_sampling_model: DecoupledSamplingModel,
 ) -> None:
     dataset = Dataset(
         tf.constant([[-2.0]], dtype=tf.float64), tf.constant([[4.1]], dtype=tf.float64)
     )
     N = len(dataset.query_points)
-    model = QuadraticMeanAndRBFKernelWithSamplers(
-        noise_variance=tf.constant(1.0, dtype=tf.float64), dataset=dataset
-    )
-    model.kernel = (
-        gpflow.kernels.RBF()
-    )  # need a gpflow kernel object for random feature decompositions
+    P, model = decoupled_sampling_model(dataset)
     sampler = DecoupledTrajectorySampler(model, num_features=num_features)
 
     trajectory = sampler.get_trajectory()
@@ -659,24 +654,30 @@ def test_decoupled_trajectory_sampler_returns_trajectory_function_with_correct_s
     xs_with_dummy_batch_dim = tf.expand_dims(xs, -2)  # [N, 1, D]
     xs_with_full_batch_dim = tf.tile(xs_with_dummy_batch_dim, [1, batch_size, 1])  # [N, B, D]
 
-    tf.debugging.assert_shapes([(trajectory(xs_with_full_batch_dim), [num_evals, batch_size, 1])])
-    tf.debugging.assert_shapes(
-        [(trajectory._feature_functions(xs), [num_evals, num_features + N])]  # type: ignore
-    )
+    tf.debugging.assert_shapes([(trajectory(xs_with_full_batch_dim), [num_evals, batch_size, P])])
+    if P > 1:
+        tf.debugging.assert_shapes(
+            [(trajectory._feature_functions(xs), [P, num_evals, num_features + N])]  # type: ignore
+        )
+    else:
+        tf.debugging.assert_shapes(
+            [(trajectory._feature_functions(xs), [num_evals, num_features + N])]  # type: ignore
+        )
     assert isinstance(trajectory, feature_decomposition_trajectory)
 
 
 @random_seed
 @pytest.mark.parametrize("batch_size", [1, 5])
 def test_decoupled_trajectory_sampler_returns_deterministic_trajectory(
-        decomposition_sampling_dataset: Dataset,
-        decomposition_sampling_model: FeatureDecompositionTrajectorySamplerModel,
-        batch_size: int,
+    batch_size: int,
+    decoupled_sampling_dataset: Dataset,
+    decoupled_sampling_model: DecoupledSamplingModel,
 ) -> None:
-    sampler = DecoupledTrajectorySampler(decomposition_sampling_model, num_features=100)
+    _, model = decoupled_sampling_model(decoupled_sampling_dataset)
+    sampler = DecoupledTrajectorySampler(model, num_features=100)
     trajectory = sampler.get_trajectory()
 
-    xs = decomposition_sampling_dataset.query_points
+    xs = decoupled_sampling_dataset.query_points
     xs = tf.expand_dims(xs, -2)  # [N, 1, D]
     xs = tf.tile(xs, [1, batch_size, 1])  # [N, B, D]
     trajectory_eval_1 = trajectory(xs)
@@ -722,18 +723,11 @@ def test_decoupled_trajectory_sampler_samples_are_distinct_for_new_instances() -
 @pytest.mark.parametrize("batch_size", [1, 5])
 def test_decoupled_trajectory_resample_trajectory_provides_new_samples_without_retracing(
     batch_size: int,
+    decoupled_sampling_dataset: Dataset,
+    decoupled_sampling_model: DecoupledSamplingModel,
 ) -> None:
-    x_range = tf.linspace(0.0, 1.0, 5)
-    x_range = tf.cast(x_range, dtype=tf.float64)
-    xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
-    ys = quadratic(xs)
-    dataset = Dataset(xs, ys)
-    model = QuadraticMeanAndRBFKernelWithSamplers(
-        noise_variance=tf.constant(1.0, dtype=tf.float64), dataset=dataset
-    )
-    model.kernel = (
-        gpflow.kernels.RBF()
-    )  # need a gpflow kernel object for random feature decompositions
+    _, model = decoupled_sampling_model(decoupled_sampling_dataset)
+    xs = decoupled_sampling_dataset.query_points
     xs = tf.expand_dims(xs, -2)  # [N, 1, d]
     xs = tf.tile(xs, [1, batch_size, 1])  # [N, B, D]
 
@@ -750,18 +744,17 @@ def test_decoupled_trajectory_resample_trajectory_provides_new_samples_without_r
 
 @random_seed
 @pytest.mark.parametrize("batch_size", [1, 5])
-def test_decoupled_trajectory_update_trajectory_updates_and_doesnt_retrace(batch_size: int) -> None:
-    x_range = tf.linspace(1.0, 2.0, 5)
-    x_range = tf.cast(x_range, dtype=tf.float64)
-    x_train = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
-    dataset = Dataset(x_train, quadratic(x_train))
+def test_decoupled_trajectory_update_trajectory_updates_and_doesnt_retrace(
+    batch_size: int,
+    decoupled_sampling_dataset: Dataset,
+    decoupled_sampling_model: DecoupledSamplingModel,
+) -> None:
+    P, model = decoupled_sampling_model(decoupled_sampling_dataset)
 
-    model = QuadraticMeanAndRBFKernelWithSamplers(
-        noise_variance=tf.constant(1e-10, dtype=tf.float64), dataset=dataset
-    )
-    model.kernel = (
-        gpflow.kernels.RBF()
-    )  # need a gpflow kernel object for random feature decompositions
+    if P > 1:
+        _lengthscales = model.get_kernel().kernels[0].lengthscales
+    else:
+        _lengthscales = model.get_kernel().lengthscales
 
     x_range = tf.random.uniform([5])  # sample test locations
     x_range = tf.cast(x_range, dtype=tf.float64)
@@ -774,6 +767,7 @@ def test_decoupled_trajectory_update_trajectory_updates_and_doesnt_retrace(batch
     trajectory_sampler = DecoupledTrajectorySampler(model)
     trajectory = trajectory_sampler.get_trajectory()
     eval_before = trajectory(xs_predict_with_batching)
+    trace_count_before = trajectory.__call__._get_tracing_count()
 
     for _ in range(3):  # do three updates on new data and see if samples are new
         x_range = tf.random.uniform([5])
@@ -783,9 +777,9 @@ def test_decoupled_trajectory_update_trajectory_updates_and_doesnt_retrace(batch
         )
 
         new_dataset = Dataset(x_train, quadratic(x_train))
-        new_lengthscales = 0.5 * model.kernel.lengthscales
+        new_lengthscales = 0.5 * _lengthscales
         model.update(new_dataset)
-        model.kernel.lengthscales.assign(new_lengthscales)  # change params to mimic optimization
+        _lengthscales.assign(new_lengthscales)  # change params to mimic optimization
 
         trajectory_updated = trajectory_sampler.update_trajectory(trajectory)
         eval_after = trajectory(xs_predict_with_batching)
@@ -802,7 +796,7 @@ def test_decoupled_trajectory_update_trajectory_updates_and_doesnt_retrace(batch
             0.1, tf.reduce_max(tf.abs(eval_before - eval_after))
         )  # two samples should be different
 
-    assert trajectory.__call__._get_tracing_count() == 1  # type: ignore
+    assert trajectory.__call__._get_tracing_count() == trace_count_before
 
 
 @random_seed

@@ -371,13 +371,14 @@ def sgpr_model(x: tf.Tensor, y: tf.Tensor, num_latent_gps: int = 1) -> SGPR:
     return SGPR((x, y), gpflow.kernels.Matern32(), x[:2], num_latent_gps=num_latent_gps)
 
 
-def svgp_model(x: tf.Tensor, y: tf.Tensor, num_latent_gps: int = 1) -> SVGP:
+def svgp_model(x: tf.Tensor, y: tf.Tensor, whiten: bool, num_latent_gps: int = 1) -> SVGP:
     return SVGP(
         gpflow.kernels.Matern32(),
         gpflow.likelihoods.Gaussian(),
         x[:2],
         num_data=len(x),
         num_latent_gps=num_latent_gps,
+        whiten=whiten,
     )
 
 
