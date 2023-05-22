@@ -23,6 +23,7 @@ from typing import Callable, Optional, Tuple, TypeVar, Union, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflow.kernels import MultioutputKernel
 from gpflux.layers.basis_functions.fourier_features import RandomFourierFeaturesCosine
 from gpflux.math import compute_A_inv_b
 from typing_extensions import Protocol, runtime_checkable
@@ -644,14 +645,16 @@ class DecoupledTrajectorySampler(
         the `L`  RFF features and `M` canonical features for `P` outputs.
         """
 
-        if self._feature_functions.is_multioutput:
-            _kernel_K = lambda inducing_points: self._model.get_kernel().K(
-                inducing_points, inducing_points, full_output_cov=False
-            )  # [P, M, M]
+        kernel = self._model.get_kernel()
+        if isinstance(kernel, MultioutputKernel):
+
+            def kernel_K(iv: TensorType) -> TensorType:
+                return kernel.K(iv, iv, full_output_cov=False)  # [P, M, M]
+
         else:
-            _kernel_K = lambda inducing_points: tf.expand_dims(self._model.get_kernel().K(
-                inducing_points, inducing_points
-            ), axis=0)  # [1, M, M]
+
+            def kernel_K(iv: TensorType) -> TensorType:
+                return tf.expand_dims(kernel.K(iv, iv), axis=0)  # [1, M, M]
 
         if isinstance(self._model, FeatureDecompositionInducingPointModel):
             (  # extract variational parameters
@@ -660,7 +663,7 @@ class DecoupledTrajectorySampler(
                 q_sqrt,
                 whiten,
             ) = self._model.get_inducing_variables()  # [M, D], [M, P], [P, M, M], []
-            Kmm = _kernel_K(inducing_points)  # [P, M, M]
+            Kmm = kernel_K(inducing_points)  # [P, M, M]
             Kmm += tf.eye(tf.shape(inducing_points)[0], dtype=Kmm.dtype) * DEFAULTS.JITTER
         else:  # massage quantities from GP to look like variational parameters
             internal_data = self._model.get_internal_data()
@@ -673,7 +676,7 @@ class DecoupledTrajectorySampler(
             q_sqrt = tf.expand_dims(q_sqrt, axis=0)  # [1, M, M]
             q_sqrt = tf.math.sqrt(self._model.get_observation_noise()) * q_sqrt
             whiten = False
-            Kmm = _kernel_K(inducing_points) + q_sqrt**2  # [P, M, M]
+            Kmm = kernel_K(inducing_points) + q_sqrt**2  # [P, M, M]
 
         M, P = tf.shape(q_mu)
         tf.debugging.assert_shapes(
@@ -702,7 +705,7 @@ class DecoupledTrajectorySampler(
                 u_sample = tf.matmul(Luu, u_sample)  # [P, M, B]
 
             phi_Z = self._feature_functions(inducing_points)[
-                ..., :self._num_features
+                ..., : self._num_features
             ]  # [M, L] or [P, M, L]
             weight_space_prior_Z = phi_Z @ prior_weights  # [P, M, B]
 
@@ -798,18 +801,18 @@ class ResampleableDecoupledFeatureFunctions(ResampleableRandomFourierFeatureFunc
         super().__init__(model, n_components)
 
         if isinstance(model, SupportsGetInducingVariables):
-            inducing_points = model.get_inducing_variables()[0]  # [M, D]
+            self._inducing_points = model.get_inducing_variables()[0]  # [M, D]
         else:
-            inducing_points = model.get_internal_data().query_points  # [M, D]
+            self._inducing_points = model.get_internal_data().query_points  # [M, D]
 
         kernel = model.get_kernel()
-        if self.is_multioutput:
+        if isinstance(kernel, MultioutputKernel):
             self._canonical_feature_functions = lambda x: tf.linalg.matrix_transpose(
-                kernel.K(inducing_points, x, full_output_cov=False)
+                kernel.K(self._inducing_points, x, full_output_cov=False)
             )
         else:
             self._canonical_feature_functions = lambda x: tf.linalg.matrix_transpose(
-                kernel.K(inducing_points, x)
+                kernel.K(self._inducing_points, x)
             )
 
     def call(self, x: TensorType) -> TensorType:  # [N, D] -> [N, L + M] or [P, N, L + M]
@@ -884,19 +887,16 @@ class feature_decomposition_trajectory(TrajectoryFunctionClass):
         flattened_feature_evaluations = self._feature_functions(
             flat_x
         )  # [N*B, L + M] or [P, N*B, L + M]
-        if not self._feature_functions.is_multioutput:
-            flattened_feature_evaluations = tf.expand_dims(
-                flattened_feature_evaluations, axis=0
-            )  # [P, N*B, L + M]
+        # ensure tensor is always rank 3
+        rank3_shape = tf.concat([[1], tf.shape(flattened_feature_evaluations)], axis=0)[-3:]
+        flattened_feature_evaluations = tf.reshape(flattened_feature_evaluations, rank3_shape)
         flattened_feature_evaluations = tf.transpose(
             flattened_feature_evaluations, perm=[1, 2, 0]
         )  # [N*B, L + M, P]
         feature_evaluations = unflatten(flattened_feature_evaluations)  # [N, B, L + M, P]
 
         mean = self._mean_function(x)  # account for the model's mean function
-        return (
-            tf.reduce_sum(feature_evaluations * self._weights_sample, -2) + mean
-        )  # [N, B, P]
+        return tf.reduce_sum(feature_evaluations * self._weights_sample, -2) + mean  # [N, B, P]
 
     def resample(self) -> None:
         """
