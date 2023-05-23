@@ -580,8 +580,7 @@ class DecoupledTrajectorySampler(
 
     This class builds functions that approximate a trajectory sampled from an underlying Gaussian
     process model using decoupled sampling. See :cite:`wilson2020efficiently` for an introduction
-    to decoupled sampling. Currently we do not support models with multiple latent Gaussian
-    processes.
+    to decoupled sampling.
 
     Unlike our :class:`RandomFourierFeatureTrajectorySampler` which uses a RFF decomposition to
     aprroximate the Gaussian process posterior, a :class:`DecoupledTrajectorySampler` only
