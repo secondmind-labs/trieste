@@ -683,7 +683,7 @@ def test_decoupled_trajectory_resample_trajectory_provides_new_samples_without_r
     sampler = DecoupledTrajectorySampler(model, num_features=100)
     trajectory = sampler.get_trajectory()
     evals_1 = trajectory(xs)
-    trace_count_before = trajectory.__call__._get_tracing_count()
+    trace_count_before = trajectory.__call__._get_tracing_count()  # type: ignore
     for _ in range(5):
         trajectory = sampler.resample_trajectory(trajectory)
         evals_new = trajectory(xs)
@@ -691,7 +691,7 @@ def test_decoupled_trajectory_resample_trajectory_provides_new_samples_without_r
             1e-1, tf.reduce_max(tf.abs(evals_1 - evals_new))
         )  # check all samples are different
 
-    assert trajectory.__call__._get_tracing_count() == trace_count_before
+    assert trajectory.__call__._get_tracing_count() == trace_count_before  # type: ignore
 
 
 @random_seed
@@ -714,7 +714,7 @@ def test_decoupled_trajectory_update_trajectory_updates_and_doesnt_retrace(
     trajectory_sampler = DecoupledTrajectorySampler(model)
     trajectory = trajectory_sampler.get_trajectory()
     eval_before = trajectory(xs_predict_with_batching)
-    trace_count_before = trajectory.__call__._get_tracing_count()
+    trace_count_before = trajectory.__call__._get_tracing_count()  # type: ignore
 
     if P > 1:
         # pick the first kernel to check
@@ -722,11 +722,13 @@ def test_decoupled_trajectory_update_trajectory_updates_and_doesnt_retrace(
         _trajectory_sampler_lengthscales = trajectory_sampler._feature_functions.kernel.kernels[
             0
         ].lengthscales
-        _trajectory_lengthscales = trajectory._feature_functions.kernel.kernels[0].lengthscales
+        _trajectory_lengthscales = trajectory._feature_functions.kernel.kernels[  # type: ignore
+            0
+        ].lengthscales
     else:
         _model_lengthscales = model.get_kernel().lengthscales
         _trajectory_sampler_lengthscales = trajectory_sampler._feature_functions.kernel.lengthscales
-        _trajectory_lengthscales = trajectory._feature_functions.kernel.lengthscales
+        _trajectory_lengthscales = trajectory._feature_functions.kernel.lengthscales  # type: ignore
 
     for _ in range(3):  # do three updates on new data and see if samples are new
         x_range = tf.random.uniform([5], 1.0, 2.0)
@@ -737,7 +739,7 @@ def test_decoupled_trajectory_update_trajectory_updates_and_doesnt_retrace(
 
         new_dataset = Dataset(x_train, tf.tile(quadratic(x_train), [1, P]))
         new_lengthscales = 0.5 * _model_lengthscales
-        model.update(new_dataset)
+        model.update(new_dataset)  # type: ignore
         _model_lengthscales.assign(new_lengthscales)  # change params to mimic optimization
 
         trajectory_updated = trajectory_sampler.update_trajectory(trajectory)
@@ -746,7 +748,7 @@ def test_decoupled_trajectory_update_trajectory_updates_and_doesnt_retrace(
         assert trajectory_updated is trajectory  # check update was in place
 
         npt.assert_allclose(_trajectory_sampler_lengthscales, new_lengthscales)
-        npt.assert_allclose(_trajectory_lengthscales, new_lengthscales)  # type: ignore
+        npt.assert_allclose(_trajectory_lengthscales, new_lengthscales)
         npt.assert_array_less(
             0.1, tf.reduce_max(tf.abs(eval_before - eval_after))
         )  # two samples should be different
@@ -757,9 +759,9 @@ def test_decoupled_trajectory_update_trajectory_updates_and_doesnt_retrace(
         else:
             iv = x_train
         npt.assert_array_equal(trajectory_sampler._feature_functions._inducing_points, iv)
-        npt.assert_array_equal(trajectory._feature_functions._inducing_points, iv)
+        npt.assert_array_equal(trajectory._feature_functions._inducing_points, iv)  # type: ignore
 
-    assert trajectory.__call__._get_tracing_count() == trace_count_before
+    assert trajectory.__call__._get_tracing_count() == trace_count_before  # type: ignore
 
 
 @random_seed

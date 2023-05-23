@@ -646,10 +646,11 @@ class DecoupledTrajectorySampler(
         """
 
         kernel = self._model.get_kernel()
-        if isinstance(kernel, MultioutputKernel):
+        if self._feature_functions.is_multioutput:
 
             def kernel_K(iv: TensorType) -> TensorType:
-                return kernel.K(iv, iv, full_output_cov=False)  # [P, M, M]
+                # mypy is confused and doesn't see that kernel can be of two types
+                return cast(MultioutputKernel, kernel).K(iv, iv, full_output_cov=False)  # [P, M, M]
 
         else:
 
@@ -805,12 +806,14 @@ class ResampleableDecoupledFeatureFunctions(ResampleableRandomFourierFeatureFunc
         else:
             self._inducing_points = model.get_internal_data().query_points  # [M, D]
 
-        kernel = model.get_kernel()
-        if isinstance(kernel, MultioutputKernel):
+        if self.is_multioutput:
+            # mypy is confused and doesn't see that kernel can be of two types
+            kernel: MultioutputKernel = model.get_kernel()  # help mypy
             self._canonical_feature_functions = lambda x: tf.linalg.matrix_transpose(
                 kernel.K(self._inducing_points, x, full_output_cov=False)
             )
         else:
+            kernel = model.get_kernel()
             self._canonical_feature_functions = lambda x: tf.linalg.matrix_transpose(
                 kernel.K(self._inducing_points, x)
             )
