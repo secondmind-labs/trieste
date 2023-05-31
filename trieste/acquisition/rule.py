@@ -1137,38 +1137,9 @@ class TURBO(
             box_copy = copy.deepcopy(self.acquisition_space, memo)
             return TURBO.State(box_copy, self.L, self.failure_counter, self.success_counter, self.y_min, self.is_global)
 
-    @overload
-    def __init__(
-        self: "TURBO[ProbabilisticModel]",
-        search_space: SearchSpace,
-        rule: None = None,
-        num_query_points: int = 1,
-        L_min: float = 0.5**7,
-        L_init: float = 0.8,
-        L_max: float = 1.6,
-        success_tolerance: int = 3,
-        failure_tolerance: Optional[int] = None,
-    ):
-        ...
-
-    @overload
-    def __init__(
-        self: "TURBO[ProbabilisticModelType]",
-        search_space: SearchSpace,
-        rule: AcquisitionRule[TensorType, Box, ProbabilisticModelType],
-        num_query_points: int = 1,
-        L_min: float = 0.5**7,
-        L_init: float = 0.8,
-        L_max: float = 1.6,
-        success_tolerance: int = 3,
-        failure_tolerance: Optional[int] = None,
-    ):
-        ...
-
     def __init__(
         self,
         search_space: SearchSpace,
-        rule: AcquisitionRule[TensorType, Box, ProbabilisticModelType] | None = None,
         num_query_points: int = 1,
         L_min: float = 0.5**7,
         L_init: float = 0.8,
@@ -1178,9 +1149,6 @@ class TURBO(
     ):
         """
         :param search_space: todo
-        :param rule: The acquisition rule that defines how to search for a new query point in a
-            given search space. Defaults to :class:`EfficientGlobalOptimization` with default
-            arguments.
         :param num_query_points: The number of points in a batch. Defaults to 5.
         :param L_min: todo
         :param L_init: todo
@@ -1189,8 +1157,6 @@ class TURBO(
         :param failure tolerance: todo (this will be set futher down using heuristic if not given)
 
         """
-        if rule is None:
-            rule = EfficientGlobalOptimization()
 
         if not num_query_points > 0:
             raise ValueError(f"Num query points must be greater than 0, got {num_query_points}")
@@ -1200,7 +1166,6 @@ class TURBO(
         if failure_tolerance is None:
             failure_tolerance = math.ceil(search_space.dimension / num_query_points)
 
-        self._rule = rule
         self._num_query_points = num_query_points
         self._L_min = L_min
         self._L_init = L_init
@@ -1210,7 +1175,7 @@ class TURBO(
 
     def __repr__(self) -> str:
         """"""
-        return f"TURBO({self._rule!r}, {self._num_query_points!r})"
+        return f"TURBO({self._num_query_points!r})"
 
     def acquire(
         self,
@@ -1253,8 +1218,17 @@ class TURBO(
             points from the previous acquisition state.
         :raise KeyError: If ``datasets`` does not contain the key `OBJECTIVE`.
         """
-        if datasets is None or OBJECTIVE not in datasets.keys():
-            raise ValueError(f"""datasets must be provided and contain the key {OBJECTIVE}""")
+
+        if models.keys() != {OBJECTIVE}:
+            raise ValueError(
+                f"dict of models must contain the single key {OBJECTIVE}, got keys {models.keys()}"
+            )
+
+        if datasets is None or datasets.keys() != {OBJECTIVE}:
+            raise ValueError(
+                f"""datasets must be provided and contain the single key {OBJECTIVE}"""
+            )
+
 
         dataset = datasets[OBJECTIVE]
 
@@ -1262,9 +1236,6 @@ class TURBO(
         global_upper = search_space.upper
 
         y_min = tf.reduce_min(dataset.observations, axis=0)
-
-
-
 
         def state_func(
             state: TURBO.State | None,
@@ -1309,12 +1280,34 @@ class TURBO(
                 )
 
 
-            points = self._rule.acquire(acquisition_space, models, datasets=datasets) # could do specific TS here for speed
-            state_ = TURBO.State(acquisition_space, eps, y_min, is_global)
+
+
+            candidates = acquisition_space.sample_sobol(tf.minimum(100 * global_lower.shape[-1], 5000)) 
+
+
+
+            NEED TO DO random REPLACE THING
+
+
+            thompson_sampler = ExactThompsonSampler(sample_min_value=False) 
+
+            NEED TO MAKE DECOUPLED SAMPLER HERE
+            points = thompson_sampler.sample(models[OBJECTIVE],self._num_query_points,candidates) # get TS from region
+
+
+            state_ = TURBO.State(acquisition_space, L, failure_counter, success_counter, y_min, is_global)
+
 
             return state_, points
 
         return state_func
+
+
+
+
+
+
+
 
 
 
