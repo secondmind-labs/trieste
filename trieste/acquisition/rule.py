@@ -1097,6 +1097,268 @@ class TrustRegion(
         return state_func
 
 
+
+
+
+
+class TURBO(
+    AcquisitionRule[
+        types.State[Optional["TURBO.State"], TensorType], Box, ProbabilisticModelType
+    ]
+):
+    """Implements the TURBO algorithm."""
+
+    @dataclass(frozen=True)
+    class State:
+        """The acquisition state for the :class:`TURBO` acquisition rule."""
+
+        acquisition_space: Box
+        """ The search space. """
+
+        L: float
+        """ Length todo """
+
+        failure_counter: int
+        """ todo """
+
+        success_counter: int 
+        """ todo  """
+
+        y_min: TensorType
+        """ The minimum observed value. """
+
+        is_global: bool | TensorType
+        """
+        `True` if the search space was global, else `False` if it was local. May be a scalar boolean
+        `TensorType` instead of a `bool`.
+        """
+
+        def __deepcopy__(self, memo: dict[int, object]) -> TURBO.State:
+            box_copy = copy.deepcopy(self.acquisition_space, memo)
+            return TURBO.State(box_copy, self.L, self.failure_counter, self.success_counter, self.y_min, self.is_global)
+
+    @overload
+    def __init__(
+        self: "TURBO[ProbabilisticModel]",
+        search_space: SearchSpace,
+        rule: None = None,
+        num_query_points: int = 1,
+        L_min: float = 0.5**7,
+        L_init: float = 0.8,
+        L_max: float = 1.6,
+        success_tolerance: int = 3,
+        failure_tolerance: Optional[int] = None,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self: "TURBO[ProbabilisticModelType]",
+        search_space: SearchSpace,
+        rule: AcquisitionRule[TensorType, Box, ProbabilisticModelType],
+        num_query_points: int = 1,
+        L_min: float = 0.5**7,
+        L_init: float = 0.8,
+        L_max: float = 1.6,
+        success_tolerance: int = 3,
+        failure_tolerance: Optional[int] = None,
+    ):
+        ...
+
+    def __init__(
+        self,
+        search_space: SearchSpace,
+        rule: AcquisitionRule[TensorType, Box, ProbabilisticModelType] | None = None,
+        num_query_points: int = 1,
+        L_min: float = 0.5**7,
+        L_init: float = 0.8,
+        L_max: float = 1.6,
+        success_tolerance: int = 3,
+        failure_tolerance: Optional[int] = None,
+    ):
+        """
+        :param search_space: todo
+        :param rule: The acquisition rule that defines how to search for a new query point in a
+            given search space. Defaults to :class:`EfficientGlobalOptimization` with default
+            arguments.
+        :param num_query_points: The number of points in a batch. Defaults to 5.
+        :param L_min: todo
+        :param L_init: todo
+        :param L_max: todo
+        :param success_tolerance: todo
+        :param failure tolerance: todo (this will be set futher down using heuristic if not given)
+
+        """
+        if rule is None:
+            rule = EfficientGlobalOptimization()
+
+        if not num_query_points > 0:
+            raise ValueError(f"Num query points must be greater than 0, got {num_query_points}")
+
+        assert num_query_points==1 # for now
+
+        if failure_tolerance is None:
+            failure_tolerance = math.ceil(search_space.dimension / num_query_points)
+
+        self._rule = rule
+        self._num_query_points = num_query_points
+        self._L_min = L_min
+        self._L_init = L_init
+        self._L_max= L_max
+        self._success_tolerance = success_tolerance
+        self._failure_tolerance = failure_tolerance
+
+    def __repr__(self) -> str:
+        """"""
+        return f"TURBO({self._rule!r}, {self._num_query_points!r})"
+
+    def acquire(
+        self,
+        search_space: Box,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+    ) -> types.State[State | None, TensorType]:
+        """
+        todo
+        Construct a local search space from ``search_space`` according the TURBO algorithm,
+        and use that with the ``rule`` specified at :meth:`~TURBO.__init__` to find new
+        query points. Return a function that constructs these points given a previous trust region
+        state.
+
+        If no ``state`` is specified (it is `None`), ``search_space`` is used as the search space
+        for this step.
+
+        If a ``state`` is specified, and the new optimum improves over the previous optimum
+        by some threshold (that scales linearly with ``kappa``), the previous acquisition is
+        considered successful.
+
+        If the previous acquisition was successful, ``search_space`` is used as the new
+        search space. If the previous step was unsuccessful, the search space is changed to the
+        trust region if it was global, and vice versa.
+
+        If the previous acquisition was over the trust region, the size of the trust region is
+        modified. If the previous acquisition was successful, the size is increased by a factor
+        ``1 / beta``. Conversely, if it was unsuccessful, the size is reduced by the factor
+        ``beta``.
+
+        **Note:** The acquisition search space will never extend beyond the boundary of the
+        ``search_space``. For a local search, the actual search space will be the
+        intersection of the trust region and ``search_space``.
+
+        :param search_space: The local acquisition search space for *this step*.
+        :param models: The model for each tag.
+        :param datasets: The known observer query points and observations. Uses the data for key
+            `OBJECTIVE` to calculate the new trust region.
+        :return: A function that constructs the next acquisition state and the recommended query
+            points from the previous acquisition state.
+        :raise KeyError: If ``datasets`` does not contain the key `OBJECTIVE`.
+        """
+        if datasets is None or OBJECTIVE not in datasets.keys():
+            raise ValueError(f"""datasets must be provided and contain the key {OBJECTIVE}""")
+
+        dataset = datasets[OBJECTIVE]
+
+        global_lower = search_space.lower
+        global_upper = search_space.upper
+
+        y_min = tf.reduce_min(dataset.observations, axis=0)
+
+
+
+
+        def state_func(
+            state: TURBO.State | None,
+        ) -> tuple[TURBO.State | None, TensorType]:
+            
+
+            if state is None: # why???
+                eps = 0.5 * (global_upper - global_lower) / (5.0 ** (1.0 / global_lower.shape[-1]))
+                is_global = True
+            
+
+            else:
+                step_is_success = y_min < state.y_min # maybe make this stronger?  
+                failure_counter = state.failure_counter if step_is_success else state.failure_counter +1 
+                success_counter = state.success_counter +1 if step_is_success else state.success_counter
+
+                
+                if success_counter == self._success_tolerance:
+                    L = 2.0 * state.L # make region bigger
+                    success_counter = 0
+                elif failure_counter == self._failure_tolerance:
+                    L = state.L / 2.0 # make region smaller
+                    failure_counter = 0
+
+                L = tf.clip_by_value(L, self._L_min, self._L_max) 
+                is_global = (L == self._L_min) # if gets too small then start again with whole search space
+
+
+            if is_global:
+                acquisition_space = search_space
+            else:
+                xmin = dataset.query_points[tf.argmin(dataset.observations)[0], :]
+                
+
+                lengthscales = ?
+                standardisation = tf.reduce_prod(lengthscales) ** (1.0 / global_lower.shape[-1]) # keep relative lengths
+                tr_width  = lengthscales * L / standardisation 
+
+                acquisition_space = Box(
+                    tf.reduce_max([global_lower, xmin - tr_width / 2.0], axis=0),
+                    tf.reduce_min([global_upper, xmin + tr_width / 2.0], axis=0),
+                )
+
+
+            points = self._rule.acquire(acquisition_space, models, datasets=datasets) # could do specific TS here for speed
+            state_ = TURBO.State(acquisition_space, eps, y_min, is_global)
+
+            return state_, points
+
+        return state_func
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class BatchHypervolumeSharpeRatioIndicator(
     AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel]
 ):
