@@ -11,14 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Callable
+from typing import Callable, Union
 
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES
-from trieste.objectives.multi_objectives import DTLZ1, DTLZ2, VLMOP2, MultiObjectiveTestProblem
+from trieste.objectives.multi_objectives import (
+    DTLZ1,
+    DTLZ2,
+    VLMOP2,
+    ConstrainedBraninCurrin,
+    ConstrainedMultiObjectiveTestProblem,
+    MultiObjectiveTestProblem,
+    NoAnalyticalParetoPointsError,
+)
 from trieste.types import TensorType
 
 
@@ -108,6 +116,47 @@ def test_dtlz2_has_expected_output(
 
 
 @pytest.mark.parametrize(
+    "test_x, expected_obj, expected_con, threshold",
+    [
+        (
+            tf.constant([[0.0, 0.0]]),
+            tf.constant([[308.12909601160663, 3.0]]),
+            tf.constant([[62.5]]),
+            0.0,
+        ),
+        (
+            tf.constant([[0.5, 1.0]]),
+            tf.constant([[150.45202034083485, 4.609388478538837]]),
+            tf.constant([[-3.75]]),
+            10.0,
+        ),
+        (
+            tf.constant([[[0.5, 1.0]], [[0.0, 0.0]]]),
+            tf.constant([[[150.45202034083485, 4.609388478538837]], [[308.12909601160663, 3.0]]]),
+            tf.constant([[[6.25]], [[62.5]]]),
+            0.0,
+        ),
+        (
+            tf.constant([[0.5, 1.0], [0.0, 0.0]]),
+            tf.constant([[150.45202034083485, 4.609388478538837], [308.12909601160663, 3.0]]),
+            tf.constant([[11.25], [67.5]]),
+            -5.0,
+        ),
+    ],
+)
+def test_constrainedbranincurrin_has_expected_output(
+    test_x: TensorType,
+    expected_obj: TensorType,
+    expected_con: TensorType,
+    threshold: Union[TensorType, float],
+) -> None:
+    f = ConstrainedBraninCurrin().objective
+    c = ConstrainedBraninCurrin().constraint
+    npt.assert_allclose(f(test_x), expected_obj, rtol=1e-5)
+    npt.assert_allclose(c(test_x, threshold), expected_con, rtol=1e-5)
+
+
+@pytest.mark.parametrize(
     "obj_type, input_dim, num_obj, gen_pf_num",
     [
         (DTLZ1, 3, 2, 1000),
@@ -137,33 +186,40 @@ def test_gen_pareto_front_is_equal_to_math_defined(
         (VLMOP2(2), tf.constant([[0.4, 0.2, 0.5]])),
         (DTLZ1(3, 2), tf.constant([[0.3, 0.1]])),
         (DTLZ2(5, 2), tf.constant([[0.3, 0.1]])),
+        (ConstrainedBraninCurrin(), tf.constant([[0.3, 0.2, 0.1]])),
     ],
 )
 def test_func_raises_specified_input_dim_not_align_with_actual_input_dim(
-    obj_inst: MultiObjectiveTestProblem, actual_x: TensorType
+    obj_inst: Union[MultiObjectiveTestProblem, ConstrainedMultiObjectiveTestProblem],
+    actual_x: TensorType,
 ) -> None:
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         obj_inst.objective(actual_x)
+    if isinstance(obj_inst, ConstrainedMultiObjectiveTestProblem):
+        with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+            obj_inst.constraint(actual_x)
 
 
 @pytest.mark.parametrize(
-    "problem, input_dim, num_obj",
+    "problem, input_dim, num_obj, num_con",
     [
-        (VLMOP2(2), 2, 2),
-        (VLMOP2(10), 10, 2),
-        (DTLZ1(3, 2), 3, 2),
-        (DTLZ1(10, 5), 10, 5),
-        (DTLZ2(3, 2), 3, 2),
-        (DTLZ2(10, 5), 10, 5),
+        (VLMOP2(2), 2, 2, 0),
+        (VLMOP2(10), 10, 2, 0),
+        (DTLZ1(3, 2), 3, 2, 0),
+        (DTLZ1(10, 5), 10, 5, 0),
+        (DTLZ2(3, 2), 3, 2, 0),
+        (DTLZ2(10, 5), 10, 5, 0),
+        (ConstrainedBraninCurrin(), 2, 2, 1),
     ],
 )
 @pytest.mark.parametrize("num_obs", [1, 5, 10])
 @pytest.mark.parametrize("dtype", [tf.float32, tf.float64])
-def test_objective_has_correct_shape_and_dtype(
+def test_objective_and_constraint_has_correct_shape_and_dtype(
     problem: MultiObjectiveTestProblem,
     input_dim: int,
     num_obj: int,
     num_obs: int,
+    num_con: int,
     dtype: tf.DType,
 ) -> None:
     x = problem.search_space.sample(num_obs)
@@ -171,11 +227,19 @@ def test_objective_has_correct_shape_and_dtype(
 
     x = tf.cast(x, dtype)
     y = problem.objective(x)
-    pf = problem.gen_pareto_optimal_points(num_obs * 2)
 
     assert y.dtype == x.dtype
     tf.debugging.assert_shapes([(x, [num_obs, input_dim])])
     tf.debugging.assert_shapes([(y, [num_obs, num_obj])])
 
-    assert pf.dtype == tf.float64  # default dtype
-    tf.debugging.assert_shapes([(pf, [num_obs * 2, num_obj])])
+    if isinstance(problem, ConstrainedMultiObjectiveTestProblem):
+        c = problem.constraint(x)
+        tf.debugging.assert_shapes([(c, [num_obs, num_con])])
+        assert x.dtype == c.dtype
+
+    try:  # check if the problem has a valid `gen_pareto_optimal_points` method
+        pf = problem.gen_pareto_optimal_points(num_obs * 2)
+        assert pf.dtype == tf.float64  # default dtype
+        tf.debugging.assert_shapes([(pf, [num_obs * 2, num_obj])])
+    except NoAnalyticalParetoPointsError:
+        pass

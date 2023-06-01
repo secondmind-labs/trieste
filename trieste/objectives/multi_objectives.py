@@ -19,13 +19,18 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from functools import partial
+from typing import Optional
 
 import tensorflow as tf
 from typing_extensions import Protocol
 
 from ..space import Box
 from ..types import TensorType
-from .single_objectives import ObjectiveTestProblem
+from .single_objectives import ObjectiveTestProblem, branin
+
+
+class NoAnalyticalParetoPointsError(Exception):
+    pass
 
 
 class GenParetoOptimalPoints(Protocol):
@@ -38,7 +43,21 @@ class GenParetoOptimalPoints(Protocol):
         :param n: The number of pareto optimal points to be generated.
         :param seed: An integer used to create a random seed for distributions that
          used to generate pareto optimal points.
-        :return: The Pareto optimal points
+        :return: The Pareto optimal points.
+        """
+
+
+class ConstraintTestProblem(Protocol):
+    """A Protocol representing function returning constraint values given specified inputs."""
+
+    def __call__(self, x: TensorType, threshold: Optional[float] = 0.0) -> TensorType:
+        """
+        return the constraint value given specified inputs `x` and `threshold`
+
+        :param x: The points at which to evaluate the function, with shape [..., d].
+        :param threshold: a feasibility threshold used to determine the constraint, by default 0 is
+            used as in the original problem.
+        :return: The constraint values.
         """
 
 
@@ -53,6 +72,17 @@ class MultiObjectiveTestProblem(ObjectiveTestProblem):
     gen_pareto_optimal_points: GenParetoOptimalPoints
     """Function to generate Pareto optimal points, given the number of points and an optional
     random number seed."""
+
+
+@dataclass(frozen=True)
+class ConstrainedMultiObjectiveTestProblem(MultiObjectiveTestProblem):
+    """
+    Convenience container class for synthetic constrained multi-objective test functions, containing
+    additionally a constraint function.
+    """
+
+    constraint: ConstraintTestProblem
+    """The synthetic test function's constraints"""
 
 
 def vlmop2(x: TensorType, d: int) -> TensorType:
@@ -236,3 +266,74 @@ def DTLZ2(input_dim: int, num_objective: int) -> MultiObjectiveTestProblem:
         search_space=Box([0.0], [1.0]) ** d,
         gen_pareto_optimal_points=gen_pareto_optimal_points,
     )
+
+
+def ConstrainedBraninCurrin() -> ConstrainedMultiObjectiveTestProblem:
+    """
+    The ConstrainedBraninCurrin problem, typically evaluated over :math:`[0, 1]^2`.
+    See :cite:`belakaria2019max` and :cite:`daulton2020differentiable`
+    (the latter for adding the constraint) for details.
+
+    :return: The problem specification.
+    """
+
+    def gen_pareto_optimal_points(n: int, seed: int | None = None) -> TensorType:
+        """
+        raise an `NoAnalyticalParetoPointsError` since there is no explicit way of defining
+        this problem's Pareto frontier.
+        """
+        raise NoAnalyticalParetoPointsError(
+            "No analytical approach to generate Pareto optimal points for this problem, "
+            "an optimization-based approach may be utilized to approximate the Pareto "
+            "optimal points"
+        )
+
+    def evaluate_constraint(x: TensorType, threshold: Optional[float] = 0.0) -> TensorType:
+        """
+        The constraint of branincurrin problem, < ``threshold`` is feasible.
+
+        :param x: The points at which to evaluate the function, with shape [..., d].
+        :param threshold: a feasibility threshold used to determine the constraint, by default 0 is
+            used as in the original problem.
+        :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+        """
+        x = x * (
+            tf.constant([10.0, 15.0], dtype=x.dtype) - tf.constant([-5.0, 0.0], dtype=x.dtype)
+        ) + tf.constant([-5.0, 0.0], dtype=x.dtype)
+        return (x[..., :1] - 2.5) ** 2 + (x[..., 1:] - 7.5) ** 2 - 50 - threshold
+
+    return ConstrainedMultiObjectiveTestProblem(
+        name="ConstrainedBraninCurrin",
+        objective=branin_currin,
+        constraint=evaluate_constraint,
+        search_space=Box([0.0], [1.0]) ** 2,
+        gen_pareto_optimal_points=gen_pareto_optimal_points,
+    )
+
+
+def branin_currin(x: TensorType) -> TensorType:
+    """
+    The branincurrin synthetic function.
+
+    :param x: The points at which to evaluate the function, with shape [..., d].
+    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+    """
+    tf.debugging.assert_shapes([(x, (..., 2))])
+    return tf.concat([branin(x), currin(x)], axis=-1)
+
+
+def currin(x: TensorType) -> TensorType:
+    """
+    The currin synthetic function
+
+    :param x: The points at which to evaluate the function, with shape [..., d].
+    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+    """
+    tf.debugging.assert_shapes([(x, (..., 2))])
+    return (
+        (1 - tf.math.exp(-0.5 * (1 / (x[..., 1] + 1e-100))))  # 1e-100 used for avoid zero division
+        * (
+            (2300 * x[..., 0] ** 3 + 1900 * x[..., 0] ** 2 + 2092 * x[..., 0] + 60)
+            / (100 * x[..., 0] ** 3 + 500 * x[..., 0] ** 2 + 4 * x[..., 0] + 20)
+        )
+    )[..., tf.newaxis]
