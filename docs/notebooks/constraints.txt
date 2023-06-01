@@ -20,6 +20,7 @@ beautifulsoup4==4.12.2
 bleach==6.0.0
 blessed==1.20.0
 Box2D==2.3.2
+Box2D-kengz==2.3.3
 box2d-py==2.3.5
 cachetools==5.3.1
 certifi==2023.5.7
