@@ -96,7 +96,7 @@ model = GaussianProcessRegression(gpflow_model)
 # %%
 # Number of worker processes to run simultaneously
 # Setting this to 1 will reduce our optimization to non-batch sequential
-num_workers = 6
+num_workers = 4
 # Number of observations to collect
 num_observations = 30
 # Batch size of the acquisition function. We will wait for that many workers to return before launching a new batch
