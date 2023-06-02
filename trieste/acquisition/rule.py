@@ -1107,7 +1107,7 @@ class TrustRegion(
 class TURBO(
     AcquisitionRule[types.State[Optional["TURBO.State"], TensorType], Box, SupportsGetKernel]
 ):
-    """Implements the TURBO algorithm."""
+    """Implements the TURBO algorithm as detailed in :cite:`eriksson2019scalable,`."""
 
     @dataclass(frozen=True)
     class State:
@@ -1117,13 +1117,13 @@ class TURBO(
         """ The search space. """
 
         L: float
-        """ Length todo """
+        """ Length of the trust region (before standardizing by model lengthscales) """
 
         failure_counter: int
-        """ todo """
+        """ Number of consecutive failures (reset if we see a success). """
 
         success_counter: int
-        """ todo  """
+        """ Number of consecutive successes (reset if we see a failure).  """
 
         y_min: TensorType
         """ The minimum observed value. """
@@ -1143,17 +1143,19 @@ class TURBO(
         L_max: Optional[float] = None,
         success_tolerance: int = 3,
         failure_tolerance: Optional[int] = None,
-        num_candidates: Optional[int] = None,
+        num_samples: Optional[int] = None,
     ):
         """
-        :param search_space: todo
-        :param num_query_points: The number of points in a batch. Defaults to 5.
-        :param L_min: todo (this will be set futher down using heuristic if not given)
-        :param L_init: todo (this will be set futher down using heuristic if not given)
-        :param L_max: todo (this will be set futher down using heuristic if not given)
-        :param success_tolerance: todo
-        :param failure tolerance: todo (this will be set futher down using heuristic if not given)
-        :param num_candidates: todo (this will be set futher down using heuristic if not given)
+        Note that the optional parameters are set by a heuristic if not given by the user.
+
+        :param search_space: The search space.
+        :param num_query_points: The number of points in a batch.
+        :param L_min: Minimum allowed length of the trust region.
+        :param L_init: Initial length of the trust region.
+        :param L_max: Maximum allowed length of the trust region.
+        :param success_tolerance: Number of consecutive successes before changing region size.
+        :param failure tolerance: Number of consecutive failures before changing region size.
+        :param num_samples: Size of sample used for Thompson sampling.
         """
 
         if not num_query_points > 0:
@@ -1161,7 +1163,7 @@ class TURBO(
 
         if num_query_points > 1:
             raise NotImplementedError(
-                f"TURBO does not yet support num_query_points greater than 1, got {num_query_points}"
+                f"TURBO does not yet support batches greater than 1, got {num_query_points}"
             )
 
         # implement heuristic defaults for trust region params if not specified by user
@@ -1174,8 +1176,8 @@ class TURBO(
             L_init = 0.8 * search_space_max_width
         if L_max is None:
             L_max = 1.6 * search_space_max_width
-        if num_candidates is None:
-            num_candidates = tf.clip_by_value(100 * search_space.dimension, 5_000, 1_000_000)
+        if num_samples is None:
+            num_samples = tf.clip_by_value(100 * search_space.dimension, 5_000, 1_000_000)
 
         if not success_tolerance > 0:
             raise ValueError(
@@ -1185,9 +1187,12 @@ class TURBO(
             raise ValueError(
                 f"success tolerance must be an integer greater than 0, got {failure_tolerance}"
             )
-        if not num_candidates > 0:
+        if not num_samples > 0:
             raise ValueError(
-                f"number of candidates for Thompson sampling must be an integer greater than 0, got {num_candidates}"
+                f"""
+                number of samples for Thompson sampling must be an integer greater than
+                0, got {num_samples}
+                """
             )
 
         if L_min <= 0:
@@ -1203,7 +1208,7 @@ class TURBO(
         self._L_max = L_max
         self._success_tolerance = success_tolerance
         self._failure_tolerance = failure_tolerance
-        self._num_candidates = num_candidates
+        self._num_samples = num_samples
         self._thompson_sampler = ThompsonSamplerFromTrajectory(sample_min_value=False)
 
     def __repr__(self) -> str:
@@ -1217,28 +1222,20 @@ class TURBO(
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> types.State[State | None, TensorType]:
         """
-        todo
         Construct a local search space from ``search_space`` according the TURBO algorithm,
         and use that with the ``rule`` specified at :meth:`~TURBO.__init__` to find new
         query points. Return a function that constructs these points given a previous trust region
         state.
 
-        If no ``state`` is specified (it is `None`), ``search_space`` is used as the search space
-        for this step.
+        If no ``state`` is specified (it is `None`), then we build the initial trust region.
 
-        If a ``state`` is specified, and the new optimum improves over the previous optimum
+        If a ``state`` is specified, and the new optimum improves over the previous optimum,
+        the previous acquisition is considered successful.
 
-        by some threshold (that scales linearly with ``kappa``), the previous acquisition is
-        considered successful.
-
-        If the previous acquisition was successful, ``search_space`` is used as the new
-        search space. If the previous step was unsuccessful, the search space is changed to the
-        trust region if it was global, and vice versa.
-
-        If the previous acquisition was over the trust region, the size of the trust region is
-        modified. If the previous acquisition was successful, the size is increased by a factor
-        ``1 / beta``. Conversely, if it was unsuccessful, the size is reduced by the factor
-        ``beta``.
+        If ``success_tolerance`` previous consecutive acquisitions were successful then the search
+        space is made larger. If  ``failure_tolerance`` consecutive acquisitions were unsuccessful
+        then the search space is shrunk. If neither condition is triggered then the search space
+        remains the same.
 
         **Note:** The acquisition search space will never extend beyond the boundary of the
         ``search_space``. For a local search, the actual search space will be the
@@ -1310,8 +1307,9 @@ class TURBO(
             )
 
             # Generate candidate locations for TS with sobol sample
-            # Avoid peturbing all dimensions at once by randomly replacing some candidates' dimensions with those of the TR centre
-            candidates = acquisition_space.sample_sobol(self._num_candidates)  # [N d]
+            # Avoid peturbing all dimensions at once by randomly replacing some candidates'
+            # dimensions with those of the TR centre
+            candidates = acquisition_space.sample_sobol(self._num_samples)  # [N d]
             swapping_prob = tf.minimum(1.0, 20.0 / global_lower.shape[-1])
             candidates = randomly_mix_x_with_other_x(
                 x=candidates, other_x=xmin[None, :], prob=swapping_prob

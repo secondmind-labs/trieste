@@ -767,7 +767,7 @@ def test_turbo_rasise_for_invalid_num_query_points(num_query_points: int) -> Non
 
 
 @pytest.mark.parametrize(
-    "L_init, L_max, L_min, failure_tolerance, success_tolerance, num_candidates",
+    "L_init, L_max, L_min, failure_tolerance, success_tolerance, num_samples",
     [
         (-1.0, 0.1, 1.0, 1, 1, 10),
         (10.0, 0.0, 2.0, 1, 1, 10),
@@ -783,7 +783,7 @@ def test_turbo_rasise_for_invalid_trust_region_params(
     L_min: float,
     failure_tolerance: int,
     success_tolerance: int,
-    num_candidates: int,
+    num_samples: int,
 ) -> None:
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
@@ -797,7 +797,7 @@ def test_turbo_rasise_for_invalid_trust_region_params(
             L_min,
             failure_tolerance,
             success_tolerance,
-            num_candidates,
+            num_samples,
         )
 
 
@@ -811,7 +811,7 @@ def test_turbo_heuristics_for_param_init_work() -> None:
     assert rule._L_min == (0.5**7) * 3.0
     assert rule._L_max == 1.6 * 3.0
     assert rule._failure_tolerance == 20
-    assert rule._num_candidates == 5_000
+    assert rule._num_samples == 5_000
 
 
 @random_seed
@@ -822,7 +822,7 @@ def test_turbo_for_default_state() -> None:
     lower_bound = tf.constant([0.0, 0.0], dtype=tf.float64)
     upper_bound = tf.constant([1.0, 1.0], dtype=tf.float64)
     search_space = Box(lower_bound, upper_bound)
-    tr = TURBO(search_space, num_candidates=1_000)
+    tr = TURBO(search_space, num_samples=1_000)
     model = QuadraticMeanAndRBFKernelWithSamplers(
         dataset, noise_variance=tf.constant(1e-5, dtype=tf.float64)
     )
