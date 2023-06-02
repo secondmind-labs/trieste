@@ -57,6 +57,7 @@ from trieste.acquisition.sampler import (
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
+from trieste.models.interfaces import SupportsGetKernel
 from trieste.observer import OBJECTIVE
 from trieste.space import Box
 from trieste.types import State, Tag, TensorType
@@ -794,7 +795,7 @@ def test_trust_region_state_deepcopy() -> None:
     "models", [{}, {"foo": QuadraticMeanAndRBFKernel()}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}]
 )
 def test_turbo_raises_for_missing_datasets_key(
-    datasets: dict[Tag, Dataset], models: dict[Tag, ProbabilisticModel]
+    datasets: dict[Tag, Dataset], models: dict[Tag, SupportsGetKernel]
 ) -> None:
     search_space = Box([-1], [1])
     rule = TURBO(search_space)
@@ -807,7 +808,7 @@ def test_turbo_raises_for_missing_datasets_key(
 
 
 @pytest.mark.parametrize("num_query_points", [-1,0,10])
-def test_turbo_rasise_for_invalid_num_query_points(num_query_points: int):
+def test_turbo_rasise_for_invalid_num_query_points(num_query_points: int) -> None:
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
     search_space = Box(lower_bound, upper_bound)
@@ -833,10 +834,10 @@ def test_turbo_rasise_for_invalid_trust_region_params(
     L_init: float,
     L_max: float,
     L_min: float,
-    failure_tolerance: float,
-    success_tolerance: float,
-    num_candidates: float,
-):
+    failure_tolerance: int,
+    success_tolerance: int,
+    num_candidates: int,
+) -> None:
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
     search_space = Box(lower_bound, upper_bound)
@@ -844,7 +845,7 @@ def test_turbo_rasise_for_invalid_trust_region_params(
         rule = TURBO(search_space,1,L_init, L_max, L_min, failure_tolerance, success_tolerance, num_candidates)
 
 
-def test_turbo_heuristics_for_param_init_work():
+def test_turbo_heuristics_for_param_init_work() -> None:
     lower_bound = tf.constant([-2.0]*20)
     upper_bound = tf.constant([1.0]*20)
     search_space = Box(lower_bound, upper_bound)
@@ -993,8 +994,8 @@ def test_turbo_restarts_tr_when_to_small() -> None:
 
     # first check what happens if L is too small from the start
     previous_y_min = dataset.observations[0]
-    failure_counter = 1.0
-    success_counter = 1.0
+    failure_counter = 1
+    success_counter = 1
     L=tf.constant(1e-10, dtype=tf.float64)
     previous_search_space = Box(lower_bound / 2.0, upper_bound / 5.0)
     previous_state = TURBO.State(previous_search_space, L, failure_counter, success_counter, previous_y_min)

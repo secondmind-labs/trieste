@@ -44,7 +44,7 @@ import tensorflow_probability as tfp
 from .. import logging, types
 from ..data import Dataset
 from ..models import ProbabilisticModel
-from ..models.interfaces import HasReparamSampler, ModelStack, ProbabilisticModelType
+from ..models.interfaces import HasReparamSampler, ModelStack, ProbabilisticModelType, SupportsGetKernel
 from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace
 from ..types import State, Tag, TensorType
@@ -1105,7 +1105,7 @@ class TrustRegion(
 
 class TURBO(
     AcquisitionRule[
-        types.State[Optional["TURBO.State"], TensorType], Box, ProbabilisticModelType
+        types.State[Optional["TURBO.State"], TensorType], Box, SupportsGetKernel
     ]
 ):
     """Implements the TURBO algorithm."""
@@ -1205,7 +1205,7 @@ class TURBO(
     def acquire(
         self,
         search_space: Box,
-        models: Mapping[Tag, ProbabilisticModelType],
+        models: Mapping[Tag, SupportsGetKernel],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> types.State[State | None, TensorType]:
         """
@@ -1267,7 +1267,6 @@ class TURBO(
             state: TURBO.State | None,
         ) -> tuple[TURBO.State | None, TensorType]:
             
-
             if state is None: # initialise first TR
                 L, failure_counter, success_counter = self._L_init, 0, 0
             else: # update TR
@@ -1308,8 +1307,6 @@ class TURBO(
             return state_, points
 
         return state_func
-
-
 
 
 
