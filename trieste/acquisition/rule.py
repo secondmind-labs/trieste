@@ -18,16 +18,13 @@ the Bayesian optimization process.
 from __future__ import annotations
 
 import copy
+import math
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Callable, Generic, Optional, TypeVar, Union, cast, overload
 
 import numpy as np
-
-import math
-
-
 
 try:
     import pymoo
@@ -39,12 +36,16 @@ except ImportError:  # pragma: no cover (tested but not by coverage)
     PymooProblem = object
 
 import tensorflow as tf
-import tensorflow_probability as tfp
 
 from .. import logging, types
 from ..data import Dataset
 from ..models import ProbabilisticModel
-from ..models.interfaces import HasReparamSampler, ModelStack, ProbabilisticModelType, SupportsGetKernel
+from ..models.interfaces import (
+    HasReparamSampler,
+    ModelStack,
+    ProbabilisticModelType,
+    SupportsGetKernel,
+)
 from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace
 from ..types import State, Tag, TensorType
@@ -69,8 +70,8 @@ from .optimizer import (
     batchify_joint,
     batchify_vectorize,
 )
-from .sampler import ExactThompsonSampler, ThompsonSampler,ThompsonSamplerFromTrajectory
-from .utils import select_nth_output, randomly_mix_x_with_other_x
+from .sampler import ExactThompsonSampler, ThompsonSampler, ThompsonSamplerFromTrajectory
+from .utils import randomly_mix_x_with_other_x, select_nth_output
 
 ResultType = TypeVar("ResultType", covariant=True)
 """ Unbound covariant type variable. """
@@ -1104,9 +1105,7 @@ class TrustRegion(
 
 
 class TURBO(
-    AcquisitionRule[
-        types.State[Optional["TURBO.State"], TensorType], Box, SupportsGetKernel
-    ]
+    AcquisitionRule[types.State[Optional["TURBO.State"], TensorType], Box, SupportsGetKernel]
 ):
     """Implements the TURBO algorithm."""
 
@@ -1123,7 +1122,7 @@ class TURBO(
         failure_counter: int
         """ todo """
 
-        success_counter: int 
+        success_counter: int
         """ todo  """
 
         y_min: TensorType
@@ -1131,7 +1130,9 @@ class TURBO(
 
         def __deepcopy__(self, memo: dict[int, object]) -> TURBO.State:
             box_copy = copy.deepcopy(self.acquisition_space, memo)
-            return TURBO.State(box_copy, self.L, self.failure_counter, self.success_counter, self.y_min)
+            return TURBO.State(
+                box_copy, self.L, self.failure_counter, self.success_counter, self.y_min
+            )
 
     def __init__(
         self,
@@ -1159,44 +1160,51 @@ class TURBO(
             raise ValueError(f"Num query points must be greater than 0, got {num_query_points}")
 
         if num_query_points > 1:
-            raise NotImplementedError(f"TURBO does not yet support num_query_points greater than 1, got {num_query_points}")
-        
+            raise NotImplementedError(
+                f"TURBO does not yet support num_query_points greater than 1, got {num_query_points}"
+            )
+
         # implement heuristic defaults for trust region params if not specified by user
         if failure_tolerance is None:
             failure_tolerance = math.ceil(search_space.dimension / num_query_points)
         search_space_max_width = tf.reduce_max(search_space.upper - search_space.lower)
         if L_min is None:
-            L_min = (0.5 ** 7) * search_space_max_width 
+            L_min = (0.5**7) * search_space_max_width
         if L_init is None:
-            L_init = 0.8 * search_space_max_width 
+            L_init = 0.8 * search_space_max_width
         if L_max is None:
-            L_max = 1.6 * search_space_max_width 
+            L_max = 1.6 * search_space_max_width
         if num_candidates is None:
-            num_candidates = tf.clip_by_value(100*search_space.dimension, 5_000, 1_000_000)
+            num_candidates = tf.clip_by_value(100 * search_space.dimension, 5_000, 1_000_000)
 
         if not success_tolerance > 0:
-            raise ValueError(f"success tolerance must be an integer greater than 0, got {success_tolerance}")
+            raise ValueError(
+                f"success tolerance must be an integer greater than 0, got {success_tolerance}"
+            )
         if not failure_tolerance > 0:
-            raise ValueError(f"success tolerance must be an integer greater than 0, got {failure_tolerance}")
+            raise ValueError(
+                f"success tolerance must be an integer greater than 0, got {failure_tolerance}"
+            )
         if not num_candidates > 0:
-            raise ValueError(f"number of candidates for Thompson sampling must be an integer greater than 0, got {num_candidates}")
-        
-        if L_min <=0:
-            raise ValueError(f"L_min must be postive, got {L_min}")
-        if  L_init<=0:
-            raise ValueError(f"L_min must be postive, got {L_init}")
-        if L_max<=0:
-            raise ValueError(f"L_min must be postive, got {L_max}")
+            raise ValueError(
+                f"number of candidates for Thompson sampling must be an integer greater than 0, got {num_candidates}"
+            )
 
+        if L_min <= 0:
+            raise ValueError(f"L_min must be postive, got {L_min}")
+        if L_init <= 0:
+            raise ValueError(f"L_min must be postive, got {L_init}")
+        if L_max <= 0:
+            raise ValueError(f"L_min must be postive, got {L_max}")
 
         self._num_query_points = num_query_points
         self._L_min = L_min
         self._L_init = L_init
-        self._L_max= L_max
+        self._L_max = L_max
         self._success_tolerance = success_tolerance
         self._failure_tolerance = failure_tolerance
         self._num_candidates = num_candidates
-        self._thompson_sampler =  ThompsonSamplerFromTrajectory(sample_min_value=False)
+        self._thompson_sampler = ThompsonSamplerFromTrajectory(sample_min_value=False)
 
     def __repr__(self) -> str:
         """"""
@@ -1266,30 +1274,36 @@ class TURBO(
         def state_func(
             state: TURBO.State | None,
         ) -> tuple[TURBO.State | None, TensorType]:
-            
-            if state is None: # initialise first TR
+            if state is None:  # initialise first TR
                 L, failure_counter, success_counter = self._L_init, 0, 0
-            else: # update TR
-                step_is_success = y_min < state.y_min - 1e-10 # maybe make this stronger?  
-                failure_counter = 0 if step_is_success else state.failure_counter +1 # update or reset counter
-                success_counter = state.success_counter +1 if step_is_success else 0 # update or reset counter
+            else:  # update TR
+                step_is_success = y_min < state.y_min - 1e-10  # maybe make this stronger?
+                failure_counter = (
+                    0 if step_is_success else state.failure_counter + 1
+                )  # update or reset counter
+                success_counter = (
+                    state.success_counter + 1 if step_is_success else 0
+                )  # update or reset counter
                 L = state.L
                 if success_counter == self._success_tolerance:
                     L *= 2.0  # make region bigger
                     success_counter = 0
                 elif failure_counter == self._failure_tolerance:
-                    L *= 0.5 # make region smaller
+                    L *= 0.5  # make region smaller
                     failure_counter = 0
 
                 L = tf.minimum(L, self._L_max)
-                if L < self._L_min: # if gets too small then start again
+                if L < self._L_min:  # if gets too small then start again
                     L, failure_counter, success_counter = self._L_init, 0, 0
-
 
             # build region with volume according to length L but stretched according to lengthscales
             xmin = dataset.query_points[tf.argmin(dataset.observations)[0], :]  # centre of region
-            lengthscales = model.get_kernel().lengthscales # stretch region according to model lengthscales
-            tr_width  = lengthscales * L / tf.reduce_prod(lengthscales) ** (1.0 / global_lower.shape[-1])  # keep volume fixed
+            lengthscales = (
+                model.get_kernel().lengthscales
+            )  # stretch region according to model lengthscales
+            tr_width = (
+                lengthscales * L / tf.reduce_prod(lengthscales) ** (1.0 / global_lower.shape[-1])
+            )  # keep volume fixed
             acquisition_space = Box(
                 tf.reduce_max([global_lower, xmin - tr_width / 2.0], axis=0),
                 tf.reduce_min([global_upper, xmin + tr_width / 2.0], axis=0),
@@ -1297,11 +1311,13 @@ class TURBO(
 
             # Generate candidate locations for TS with sobol sample
             # Avoid peturbing all dimensions at once by randomly replacing some candidates' dimensions with those of the TR centre
-            candidates = acquisition_space.sample_sobol(self._num_candidates) # [N d] 
+            candidates = acquisition_space.sample_sobol(self._num_candidates)  # [N d]
             swapping_prob = tf.minimum(1.0, 20.0 / global_lower.shape[-1])
-            candidates = randomly_mix_x_with_other_x(x = candidates, other_x= xmin[None, :], prob=swapping_prob)
+            candidates = randomly_mix_x_with_other_x(
+                x=candidates, other_x=xmin[None, :], prob=swapping_prob
+            )
 
-            points = self._thompson_sampler.sample(model,self._num_query_points,candidates)
+            points = self._thompson_sampler.sample(model, self._num_query_points, candidates)
             state_ = TURBO.State(acquisition_space, L, failure_counter, success_counter, y_min)
 
             return state_, points
@@ -1309,11 +1325,7 @@ class TURBO(
         return state_func
 
 
-
-
-
 class BatchHypervolumeSharpeRatioIndicator(
-
     AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel]
 ):
     """Implements the Batch Hypervolume Sharpe-ratio indicator acquisition

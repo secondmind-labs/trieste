@@ -20,11 +20,16 @@ import numpy as np
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
-from tests.util.misc import random_seed
 
+from tests.util.misc import random_seed
 from trieste.acquisition import AcquisitionFunction
-from trieste.acquisition.utils import select_nth_output, split_acquisition_function, randomly_mix_x_with_other_x
+from trieste.acquisition.utils import (
+    randomly_mix_x_with_other_x,
+    select_nth_output,
+    split_acquisition_function,
+)
 from trieste.types import TensorType
+
 
 @pytest.mark.parametrize(
     "f",
@@ -68,11 +73,11 @@ def test_select_nth_output() -> None:
     assert np.all(select_nth_output(a, 3) == a[..., 3])
 
 
-
-@pytest.mark.parametrize("x, other_x", 
+@pytest.mark.parametrize(
+    "x, other_x",
     [
-        (tf.constant([[[1],[2]]]), tf.constant([[1], [2]])), 
-        (tf.constant([[1],[2]]), tf.constant([[[1], [2]]])),
+        (tf.constant([[[1], [2]]]), tf.constant([[1], [2]])),
+        (tf.constant([[1], [2]]), tf.constant([[[1], [2]]])),
         (tf.constant([[1, 2], [2, 3]]), tf.constant([[1], [2]])),
     ],
 )
@@ -80,11 +85,11 @@ def test_random_mixing_raises_for_invalid_input(x: TensorType, other_x: TensorTy
     with pytest.raises(ValueError):
         randomly_mix_x_with_other_x(x, other_x, 0.5)
 
+
 @random_seed
 def test_random_mixing_raises_works() -> None:
     x = tf.random.normal([10_000, 6])
     x_other = tf.random.normal([1, 6])
     x_mixed = randomly_mix_x_with_other_x(x, x_other, 0.5)
     prop_kept = tf.reduce_sum(tf.cast(tf.equal(x, x_mixed), tf.float64)) / (10_000 * 6)
-    npt.assert_array_almost_equal(prop_kept, 0.5, 2) 
-
+    npt.assert_array_almost_equal(prop_kept, 0.5, 2)

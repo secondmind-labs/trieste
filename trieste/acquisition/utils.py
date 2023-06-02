@@ -117,8 +117,7 @@ def select_nth_output(x: TensorType, output_dim: int = 0) -> TensorType:
     return x[..., output_dim]
 
 
-
-def randomly_mix_x_with_other_x(x: TensorType, other_x: TensorType,  prob: float) -> TensorType:
+def randomly_mix_x_with_other_x(x: TensorType, other_x: TensorType, prob: float) -> TensorType:
     """
     A utility function that takes a tensor of x and returns a new tensor with some
     of its entries replaced by that of other_x according to a given probability.
@@ -127,13 +126,12 @@ def randomly_mix_x_with_other_x(x: TensorType, other_x: TensorType,  prob: float
     :param other_x: The other point to be mixed into x with shape [1, d].
     :return: TensorType of shape [N, d] representing the mixing of x and other_x.
     """
-    if tf.rank(x)!=2 or tf.rank(other_x)!=2:
+    if tf.rank(x) != 2 or tf.rank(other_x) != 2:
         raise ValueError("x and other_x must be of rank 2")
-    if tf.shape(x)[1]!=tf.shape(other_x)[1]:
+    if tf.shape(x)[1] != tf.shape(other_x)[1]:
         raise ValueError("x and other_x must have same trailing dim")
 
     bernoulli_dist = tfp.distributions.Bernoulli(probs=prob)
-    flag_to_peturb = bernoulli_dist.sample(sample_shape=tf.shape(x)) == 1 # [N, d]
-    x_mixed = tf.where(flag_to_peturb, x, tf.tile(other_x,(tf.shape(x)[0], 1))) # [N, d]
+    flag_to_peturb = bernoulli_dist.sample(sample_shape=tf.shape(x)) == 1  # [N, d]
+    x_mixed = tf.where(flag_to_peturb, x, tf.tile(other_x, (tf.shape(x)[0], 1)))  # [N, d]
     return x_mixed
-
