@@ -22,7 +22,19 @@ import math
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Callable, Generic, Optional, Sequence, TypeVar, Union, cast, overload
+from typing import (
+    Any,
+    Callable,
+    Generic,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+    overload,
+)
 
 import numpy as np
 
@@ -47,7 +59,7 @@ from ..models.interfaces import (
     TrainableSupportsGetKernel,
 )
 from ..observer import OBJECTIVE
-from ..space import Box, MultiBoxSearchSpace, SearchSpace
+from ..space import Box, SearchSpace, TaggedMultiSearchSpace
 from ..types import State, Tag, TensorType
 from .function import (
     BatchMonteCarloExpectedImprovement,
@@ -975,7 +987,9 @@ class TrustRegion(
 
         def __deepcopy__(self, memo: dict[int, object]) -> TrustRegion.State:
             box_copy = copy.deepcopy(self.acquisition_space, memo)
-            return TrustRegion.State(box_copy, self.eps, self.y_min, self.is_global, self.num_local_steps)
+            return TrustRegion.State(
+                box_copy, self.eps, self.y_min, self.is_global, self.num_local_steps
+            )
 
     @overload
     def __init__(
@@ -1099,7 +1113,7 @@ class TrustRegion(
                 if state.is_global:
                     is_global = step_is_success
                 else:
-                    is_global = (state.num_local_steps >= self._max_num_local_steps)
+                    is_global = state.num_local_steps >= self._max_num_local_steps
 
             if is_global:
                 acquisition_space = search_space
@@ -1110,6 +1124,7 @@ class TrustRegion(
                     tf.reduce_max([global_lower, xmin - eps], axis=0),
                     tf.reduce_min([global_upper, xmin + eps], axis=0),
                 )
+                assert state is not None
                 num_local_steps = state.num_local_steps + 1
 
             points = self._rule.acquire(acquisition_space, models, datasets=datasets)
@@ -1120,209 +1135,378 @@ class TrustRegion(
         return state_func
 
 
+class UpdateableSearchSpace(SearchSpace):
+    """A search space that can be updated."""
+
+    @abstractmethod
+    def reinitialise(
+        self,
+        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+    ) -> None:
+        """Reinitialise the search space using the given models and datasets."""
+        ...
+
+    @abstractmethod
+    def update(
+        self,
+        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+    ) -> None:
+        """Update the search space using the given models and datasets."""
+        ...
+
+    def get_single_model_and_dataset(
+        self,
+        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+    ) -> Tuple[Optional[ProbabilisticModelType], Optional[Dataset]]:
+        """Get a single model and dataset from the given arguments."""
+        if models is None:
+            model = None
+        elif OBJECTIVE in models.keys():
+            model = models[OBJECTIVE]
+        else:
+            raise ValueError(f"""if models is provided, it must contain the key {OBJECTIVE}""")
+
+        if datasets is None:
+            dataset = None
+        elif OBJECTIVE in datasets.keys():
+            dataset = datasets[OBJECTIVE]
+        else:
+            raise ValueError(f"""if datasets is provided, it must contain the key {OBJECTIVE}""")
+
+        return model, dataset
+
+
+UpdateableSearchSpaceType = TypeVar("UpdateableSearchSpaceType", bound=UpdateableSearchSpace)
+""" A type variable bound to :class:`UpdateableSearchSpace`. """
+
+
 class MultiTrustRegion(
     AcquisitionRule[
-        types.State[Optional["MultiTrustRegion.State"], TensorType], Box, ProbabilisticModelType
-    ]
+        types.State[Optional["MultiTrustRegion.State"], TensorType],
+        SearchSpace,
+        ProbabilisticModelType,
+    ],
+    Generic[ProbabilisticModelType, UpdateableSearchSpaceType],
 ):
-    """Implements the *trust region* acquisition algorithm."""
+    """Abstrct class for multi trust region acquisition rules."""
 
     @dataclass(frozen=True)
     class State:
-        """The acquisition state for the :class:`TrustRegion` acquisition rule."""
+        """The acquisition state for the :class:`MultiTrustRegion` acquisition rule."""
 
-        acquisition_space: MultiBoxSearchSpace
+        acquisition_space: TaggedMultiSearchSpace
         """ The search space. """
 
-        eps: Sequence[TensorType]
-        """
-        The (maximum) vector from the current best point to each bound of the acquisition space.
-        """
-
-        y_min: Sequence[TensorType]
-        """ The minimum observed value. """
-
-        # is_global: Sequence[bool] | Sequence[TensorType]
-        # """
-        # `True` if the search space was global, else `False` if it was local.
-        # May be a scalar boolean `TensorType` instead of a `bool`.
-        # """
-
         def __deepcopy__(self, memo: dict[int, object]) -> MultiTrustRegion.State:
-            box_copy = copy.deepcopy(self.acquisition_space, memo)
-            return MultiTrustRegion.State(box_copy, self.eps, self.y_min)  # , self.is_global)
-
-    @overload
-    def __init__(
-        self: "MultiTrustRegion[ProbabilisticModel]",
-        rule: None = None,
-        beta: float = 0.7,
-        kappa: float = 1e-4,
-        number_of_tr: int = 1,
-    ):
-        ...
-
-    @overload
-    def __init__(
-        self: "MultiTrustRegion[ProbabilisticModelType]",
-        rule: AcquisitionRule[TensorType, Box, ProbabilisticModelType],
-        beta: float = 0.7,
-        kappa: float = 1e-4,
-        number_of_tr: int = 1,
-    ):
-        ...
+            acquisition_space_copy = copy.deepcopy(self.acquisition_space, memo)
+            return MultiTrustRegion.State(acquisition_space_copy)
 
     def __init__(
-        self,
-        rule: AcquisitionRule[TensorType, Box, ProbabilisticModelType] | None = None,
-        beta: float = 0.7,
-        kappa: float = 1e-4,
+        self: "MultiTrustRegion[ProbabilisticModelType, UpdateableSearchSpaceType]",
+        subspace_type: Type[UpdateableSearchSpaceType],
+        rule: AcquisitionRule[TensorType, SearchSpace, ProbabilisticModelType] | None = None,
         number_of_tr: int = 1,
     ):
+        """
+        :param subspace_type: The type of the subspace to use.
+        :param rule: The acquisition rule that defines how to search for a new query point in a
+            given search space. Defaults to :class:`EfficientGlobalOptimization` with default
+            arguments.
+        :param number_of_tr: The number of trust regions.
+        """
         if rule is None:
             rule = EfficientGlobalOptimization()
 
+        self._subspace_type = subspace_type
         self._rule = rule
-        self._beta = beta
-        self._kappa = kappa
-        self._min_eps = 1e-2
-        self._tags = [str(index) for index in range(number_of_tr)]
+        self._number_of_tr = number_of_tr
+        self._tags = tuple([str(index) for index in range(number_of_tr)])
 
     def __repr__(self) -> str:
         """"""
-        return f"MultiTrustRegion({self._rule!r}, {self._beta!r}, {self._kappa!r})"
+        return f"""MultiTrustRegion(
+            {self._subspace_type!r},
+            {self._rule!r},
+            {self._number_of_tr!r})"""
 
     def acquire(
         self,
-        search_space: Box,
+        search_space: SearchSpace,
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> types.State[State | None, TensorType]:
-        if datasets is None or OBJECTIVE not in datasets.keys():
-            raise ValueError(f"""datasets must be provided and contain the key {OBJECTIVE}""")
-
-        dataset = datasets[OBJECTIVE]
-
-        global_lower = search_space.lower
-        global_upper = search_space.upper
-
-        # global_y_min = tf.reduce_min(dataset.observations, axis=0)
         def state_func(
             state: MultiTrustRegion.State | None,
-        ) -> tuple[MultiTrustRegion.State | None, TensorType]:
+        ) -> Tuple[MultiTrustRegion.State | None, TensorType]:
+            """If state is None, initialise the subspaces by picking new locations. Otherwise,
+            update the existing subspaces.
+            Reinitialise the subspaces if necessary, potentially looking at the entire group.
+            Use the rule to acquire points from the acquisition space.
+            """
+            # If state is set, the tags should be the same as the tags of the acquisition space
+            # in the state.
+            if state is not None:
+                assert (
+                    self._tags == state.acquisition_space.subspace_tags
+                ), f"""The tags of the state acquisition space
+                    {state.acquisition_space.subspace_tags} should be the same as the tags of the
+                    MultiTrustRegion acquisition rule {self._tags}"""
+
+            subspaces = []
+            for tag in self._tags:
+                if state is None:
+                    subspace = self.create_subspace(search_space)
+                    subspace.reinitialise(models, datasets)
+                else:
+                    _subspace = state.acquisition_space.get_subspace(tag)
+                    assert isinstance(_subspace, self._subspace_type)
+                    subspace = _subspace
+                    subspace.update(models, datasets)
+
+                subspaces.append(subspace)
+
+            self.maybe_reinitialise_subspaces(subspaces, models, datasets)
+
             if state is None:
-                eps = {
-                    tag: 0.5
-                    * (global_upper - global_lower)
-                    / (5.0 ** (1.0 / global_lower.shape[-1]))
-                    for tag in self._tags
-                }
-
-                x_min = {tag: search_space.sample(1) for tag in self._tags}
-
-                aspace = [
-                    Box(
-                        tf.reduce_max([global_lower, (x_min[tag] - eps[tag])[0, :]], axis=0),
-                        tf.reduce_min([global_upper, (x_min[tag] + eps[tag])[0, :]], axis=0),
-                    )
-                    for tag in self._tags
-                ]
-
-                acquisition_space = MultiBoxSearchSpace(aspace, self._tags)
-
-                y_min = {
-                    tag: get_local_y_min(dataset, acquisition_space.get_subspace(tag))
-                    for tag in self._tags
-                }
-
+                acquisition_space = TaggedMultiSearchSpace(subspaces, self._tags)
             else:
-                y_min = {
-                    tag: get_local_y_min(dataset, state.acquisition_space.get_subspace(tag))
-                    for tag in state.acquisition_space.subspace_tags
-                }
+                acquisition_space = state.acquisition_space
 
-                x_min = {
-                    tag: get_local_x_min(dataset, state.acquisition_space.get_subspace(tag))
-                    for tag in state.acquisition_space.subspace_tags
-                }
-                eps = {}
-                for tag in state.acquisition_space.subspace_tags:
-                    tr_volume = tf.reduce_prod(
-                        state.acquisition_space.get_subspace(tag).upper
-                        - state.acquisition_space.get_subspace(tag).lower
-                    )
-                    step_is_success = y_min[tag] < state.y_min[tag] - self._kappa * tr_volume
-                    eps[tag] = (
-                        state.eps[tag] / self._beta
-                        if step_is_success
-                        else state.eps[tag] * self._beta
-                    )
-
-                x_min, y_min, eps = reinitialise_useless_trs(
-                    x_min, y_min, eps, search_space, dataset, self._min_eps
-                )
-
-                aspace = [
-                    Box(
-                        tf.reduce_max([global_lower, (x_min[tag] - eps[tag])[0, :]], axis=0),
-                        tf.reduce_min([global_upper, (x_min[tag] + eps[tag])[0, :]], axis=0),
-                    )
-                    for tag in state.acquisition_space.subspace_tags
-                ]
-
-                acquisition_space = MultiBoxSearchSpace(
-                    aspace, state.acquisition_space.subspace_tags
-                )
-
+            state_ = MultiTrustRegion.State(acquisition_space)
             points = self._rule.acquire(acquisition_space, models, datasets=datasets)
-            state_ = MultiTrustRegion.State(acquisition_space, eps, y_min)
 
             return state_, points
 
         return state_func
 
+    def create_subspace(
+        self,
+        search_space: SearchSpace,
+    ) -> UpdateableSearchSpaceType:
+        """Create a subspace from the given search space.
+        This is the default implementation. Can be overridden by subclasses."""
+        return self._subspace_type()
 
-def get_local_y_min(dataset: Dataset, search_space: SearchSpace):
-    in_tr = search_space.contains(dataset.query_points)
-    ones = tf.ones_like(dataset.observations) * 1e6
-    in_tr_obs = tf.where(in_tr[:, None], dataset.observations, ones)
-    return tf.reduce_min(in_tr_obs, axis=0)
+    def maybe_reinitialise_subspaces(
+        self,
+        subspaces: Sequence[UpdateableSearchSpaceType],
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+    ) -> None:
+        """Reinitialise subspaces if necessary.
+        Get a mask of subspaces that need to be reinitialised using an abstract method.
+        Reinitialise individual subpaces by calling the method of the UpdateableSearchSpace class.
+        """
+        mask = self.get_reinitialise_subspaces_mask(subspaces, models, datasets)
+        for ix, subspace in enumerate(subspaces):
+            if mask[ix]:
+                subspace.reinitialise(models, datasets)
+
+    @abstractmethod
+    def get_reinitialise_subspaces_mask(
+        self,
+        subspaces: Sequence[UpdateableSearchSpaceType],
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+    ) -> TensorType:
+        """Get mask for subspaces that need to be reinitialised."""
+        ...
 
 
-def get_local_x_min(dataset: Dataset, search_space: SearchSpace):
-    in_tr = search_space.contains(dataset.query_points)
-    ones = tf.ones_like(dataset.observations) * 1e6
-    in_tr_obs = tf.where(in_tr[:, None], dataset.observations, ones)
-    return dataset.query_points[tf.argmin(in_tr_obs)[0], :][None, :]
+class TrustRegionBox(Box, UpdateableSearchSpace):
+    """An updateable box search space for use with trust region acquisition rules."""
+
+    def __init__(
+        self,
+        global_search_space: SearchSpace,
+        beta: float = 0.7,
+        kappa: float = 1e-4,
+        min_eps: float = 1e-2,
+    ):
+        """
+        Calculates the bounds of the box from the location/centre and global bounds.
+
+        :param global_search_space: The global search space this search space lives in.
+        """
+
+        self._global_search_space = global_search_space
+        self._beta = beta
+        self._kappa = kappa
+        self._min_eps = min_eps
+        self._initialised = False
+
+        super().__init__(global_search_space.lower, global_search_space.upper)
+
+    @property
+    def global_search_space(self) -> SearchSpace:
+        """The global search space this search space lives in."""
+        return self._global_search_space
+
+    @property
+    def location(self) -> TensorType:
+        """The location of the search space."""
+        return self._location
+
+    @location.setter
+    def location(self, location: TensorType) -> None:
+        """Set the location of the search space."""
+        self._location = location
+
+    def reinitialise(
+        self,
+        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+    ) -> None:
+        """Reinitialise the box."""
+        _, dataset = self.get_single_model_and_dataset(models, datasets)
+
+        self.location = tf.squeeze(self.global_search_space.sample(1), axis=0)
+
+        global_lower = self.global_search_space.lower
+        global_upper = self.global_search_space.upper
+
+        if self._initialised:
+            scale = 0.1
+        else:
+            scale = 0.5
+            self._initialised = True
+
+        self._eps = scale * (global_upper - global_lower) / (5.0 ** (1.0 / global_lower.shape[-1]))
+        self._lower = tf.reduce_max([global_lower, self.location - self._eps], axis=0)
+        self._upper = tf.reduce_min([global_upper, self.location + self._eps], axis=0)
+
+        _, self.y_min = self.get_local_min(dataset)
+
+    def update(
+        self,
+        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+    ) -> None:
+        """Update this box, including centre/location, using the given dataset. If the size of the
+        box is less than the minimum size, reinitialise the box."""
+        _, dataset = self.get_single_model_and_dataset(models, datasets)
+
+        if tf.reduce_any(self._eps < self._min_eps):
+            self.reinitialise(models, datasets)
+            return
+
+        _, y_min = self.get_local_min(dataset)
+
+        tr_volume = tf.reduce_prod(self.upper - self.lower)
+        step_is_success = y_min < self.y_min - self._kappa * tr_volume
+        self._eps = self._eps / self._beta if step_is_success else self._eps * self._beta
+
+        self._lower = tf.reduce_max(
+            [self.global_search_space.lower, self.location - self._eps], axis=0
+        )
+        self._upper = tf.reduce_min(
+            [self.global_search_space.upper, self.location + self._eps], axis=0
+        )
+
+        _, self.y_min = self.get_local_min(dataset)
+
+    def get_local_min(self, dataset: Optional[Dataset]) -> Tuple[TensorType, TensorType]:
+        """Calculate the local minimum of the box using the given dataset."""
+        if dataset is None:
+            raise ValueError("""dataset must be provided""")
+
+        in_tr = self.contains(dataset.query_points)
+        in_tr_obs = tf.where(
+            tf.expand_dims(in_tr, axis=-1),
+            dataset.observations,
+            tf.constant(np.inf, dtype=dataset.observations.dtype),
+        )
+        ix = tf.argmin(in_tr_obs)
+        x_min = tf.gather(dataset.query_points, ix)
+        y_min = tf.gather(in_tr_obs, ix)
+
+        return tf.squeeze(x_min, axis=0), tf.squeeze(y_min)
 
 
-def reinitialise_useless_trs(
-    x_min: Sequence[TensorType],
-    y_min: Sequence[TensorType],
-    eps: Sequence[TensorType],
-    search_space: Box,
-    dataset: Dataset,
-    min_eps: float,
-) -> tuple[Sequence[TensorType], Sequence[TensorType], Sequence[TensorType]]:
-    xx = tf.zeros([0, dataset.query_points.shape[1]], dtype=dataset.query_points.dtype)
+def get_unique_points_mask(points: TensorType, tolerance: float = 1e-6) -> TensorType:
+    """Find unique points in a list, within a given tolerance."""
 
-    global_lower = search_space.lower
-    global_upper = search_space.upper
+    # Calculate the pairwise distances between points.
+    distances = tf.norm(tf.expand_dims(points, 1) - tf.expand_dims(points, 0), axis=-1)
 
-    for tag, x in x_min.items():
-        duplicated = tf.less_equal(tf.reduce_min(tf.reduce_sum(tf.abs(x - xx), axis=1)), 1e-6)
+    # Create a mask that is True for the lower triangle of the distance matrix, not including
+    # the diagonal.
+    mask_tri = tf.linalg.band_part(tf.ones_like(distances, dtype=tf.bool), -1, 0)
 
-        if duplicated or (np.min(eps[tag].numpy()) < min_eps):
-            eps[tag] = 0.1 * (global_upper - global_lower) / (5.0 ** (1.0 / global_lower.shape[-1]))
-            x_min[tag] = search_space.sample(1)
-            temp_space = Box(
-                tf.reduce_max([global_lower, (x_min[tag] - eps[tag])[0, :]], axis=0),
-                tf.reduce_min([global_upper, (x_min[tag] + eps[tag])[0, :]], axis=0),
-            )
-            y_min[tag] = get_local_y_min(dataset, temp_space)
-        xx = tf.concat([xx, x_min[tag]], axis=0)
+    # Use the mask to ignore the upper triangle and diagonal of the distance matrix.
+    distances_masked = tf.where(mask_tri, distances, tf.constant(np.inf, dtype=distances.dtype))
 
-    return x_min, y_min, eps
+    tolerance = tf.constant(tolerance, dtype=distances.dtype)
+
+    # Create a boolean mask for each point.
+    mask = tf.reduce_all(
+        tf.logical_or(
+            distances_masked > tolerance, tf.eye(distances_masked.shape[0], dtype=tf.bool)
+        ),
+        axis=1,
+    )
+
+    # Return the mask of unique points; can get the actual points with:
+    #   tf.boolean_mask(points, mask)
+    return mask
+
+
+class MultiTrustRegionBox(MultiTrustRegion[ProbabilisticModelType, TrustRegionBox]):
+    """Implements the *trust region* acquisition algorithm for a box."""
+
+    def __init__(
+        self,
+        rule: AcquisitionRule[TensorType, SearchSpace, ProbabilisticModelType] | None = None,
+        number_of_tr: int = 1,
+        beta: float = 0.7,
+        kappa: float = 1e-4,
+        min_eps: float = 1e-2,
+    ):
+        """Concrete implementation of :class:`MultiTrustRegion` for a box.
+
+        :param rule: The acquisition rule that defines how to search for a new query point in a
+            given search space. Defaults to :class:`EfficientGlobalOptimization` with default
+            arguments.
+        :param number_of_tr: The number of trust regions.
+        :param beta: The inverse of the trust region contraction factor.
+        :param kappa: The trust region volume scaling factor.
+        :param min_eps: The minimum size of the trust region.
+        """
+        super().__init__(TrustRegionBox, rule, number_of_tr)
+        self._beta = beta
+        self._kappa = kappa
+        self._min_eps = min_eps
+
+    def __repr__(self) -> str:
+        """"""
+        return f"""MultiTrustRegionBox(
+            {self._rule!r},
+            {self._number_of_tr!r},
+            {self._beta!r},
+            {self._kappa!r},
+            {self._min_eps!r})"""
+
+    def create_subspace(
+        self,
+        search_space: SearchSpace,
+    ) -> TrustRegionBox:
+        """Create a subspace from the given global search space."""
+        return TrustRegionBox(search_space, self._beta, self._kappa, self._min_eps)
+
+    def get_reinitialise_subspaces_mask(
+        self,
+        subspaces: Sequence[TrustRegionBox],
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+    ) -> TensorType:
+        """Get mask for subspaces that need to be reinitialised.
+        # Reinitalise the subspaces that have non-unique locations.
+        """
+        centres = tf.stack([subspace.location for subspace in subspaces])
+        return tf.logical_not(get_unique_points_mask(centres, tolerance=1e-6))
 
 
 class TURBO(
@@ -1447,7 +1631,6 @@ class TURBO(
     def __repr__(self) -> str:
         """"""
         return f"TURBO({self._num_trust_regions!r}, {self._rule})"
-
 
     def acquire(
         self,

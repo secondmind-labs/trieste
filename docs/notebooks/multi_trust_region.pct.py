@@ -1,7 +1,8 @@
+# %%
 import numpy as np
 import tensorflow as tf
 from trieste.acquisition.rule import EfficientGlobalOptimization
-from trieste.acquisition.rule import MultiTrustRegion, get_local_x_min
+from trieste.acquisition.rule import MultiTrustRegionBox
 from trieste.acquisition import ParallelContinuousThompsonSampling
 from trieste.acquisition.optimizer import automatic_optimizer_selector
 from trieste.acquisition.utils import split_acquisition_function_calls
@@ -27,6 +28,7 @@ from trieste.experimental.plotting.plotting import create_grid
 from matplotlib.patches import Rectangle
 
 
+# %%
 np.random.seed(179)
 tf.random.set_seed(179)
 
@@ -36,6 +38,7 @@ tensorboard_dir_1 = f'./results/{datetime.now()}/tensorboard'
 summary_writer = tf.summary.create_file_writer(tensorboard_dir_1)
 trieste.logging.set_tensorboard_writer(summary_writer)
 
+# %%
 obj = ScaledBranin.objective
 search_space = ScaledBranin.search_space
 
@@ -50,6 +53,7 @@ num_initial_data_points = 6
 num_query_points = 3
 num_steps = 10
 
+# %% [markdown]
 # aim_repo_dir = './results'
 #
 # run_1 = Run(
@@ -73,6 +77,7 @@ num_steps = 10
 #     'num_steps': num_steps,
 # }
 
+# %%
 initial_query_points = search_space.sample(num_initial_data_points)
 observer = trieste.objectives.utils.mk_observer(obj_fun)
 initial_data = observer(initial_query_points)
@@ -102,10 +107,11 @@ base_rule = EfficientGlobalOptimization(
         automatic_optimizer_selector, split_size=100_000),
 )
 
-acq_rule = MultiTrustRegion(base_rule, number_of_tr=num_query_points)
+acq_rule = MultiTrustRegionBox(base_rule, number_of_tr=num_query_points)
 
 ask_tell = AskTellOptimizer(search_space, initial_data, model, fit_model=True, acquisition_rule=acq_rule)
 
+# %%
 color = cm.rainbow(np.linspace(0, 1, num_query_points))
 
 Xplot, xx, yy = create_grid(mins=search_space.lower, maxs=search_space.upper, grid_density=90)
@@ -134,14 +140,14 @@ for step in range(num_steps):
 
             state = ask_tell.acquisition_state
 
-            xmin = {tag: get_local_x_min(ask_tell.dataset, state.acquisition_space.get_subspace(tag)) for tag in
+            xmin = {tag: state.acquisition_space.get_subspace(tag).get_local_min(ask_tell.dataset)[0] for tag in
                     state.acquisition_space.subspace_tags}
             i = 0
 
             ax[0, 1].contour(xx, yy, ff.reshape(*xx.shape), 80, alpha=0.5)
 
             for tag in state.acquisition_space.subspace_tags:
-                ax[0, 1].scatter(xmin[tag].numpy()[0, 0], xmin[tag].numpy()[0, 1], color=color[i], marker="x", alpha=0.5)
+                ax[0, 1].scatter(xmin[tag].numpy()[0], xmin[tag].numpy()[1], color=color[i], marker="x", alpha=0.5)
                 lb = state.acquisition_space.get_subspace(tag).lower
                 ub = state.acquisition_space.get_subspace(tag).upper
                 ax[0, 1].add_patch(Rectangle((lb[0], lb[1]), ub[0] - lb[0], ub[1] - lb[1],
@@ -158,6 +164,7 @@ for step in range(num_steps):
 
     ask_tell.tell(new_data)
 
+# %%
 dataset = ask_tell.dataset
 
 ground_truth_regret = obj(dataset.query_points) - Hartmann6.minimum
@@ -172,6 +179,7 @@ ax.set_yscale("log")
 ax.set_ylabel("Regret")
 ax.set_xlabel("# evaluations")
 
+# %%
 fig, ax = plt.subplots()
 ax.scatter(dataset.query_points[:, 0], dataset.query_points[:, 1])
 

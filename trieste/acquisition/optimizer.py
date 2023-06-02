@@ -30,11 +30,12 @@ import tensorflow_probability as tfp
 from .. import logging
 from ..space import (
     Box,
+    CollectionSearchSpace,
     Constraint,
     DiscreteSearchSpace,
-    MultiBoxSearchSpace,
     SearchSpace,
     SearchSpaceType,
+    TaggedMultiSearchSpace,
     TaggedProductSearchSpace,
 )
 from ..types import TensorType
@@ -101,12 +102,8 @@ def automatic_optimizer_selector(
     if isinstance(space, DiscreteSearchSpace):
         return optimize_discrete(space, target_func)
 
-    elif isinstance(space, (Box, TaggedProductSearchSpace, MultiBoxSearchSpace)):
-        if isinstance(space, MultiBoxSearchSpace):
-            space_dim = tf.shape(space.get_subspace(space.subspace_tags[0]).lower)[-1]
-        else:
-            space_dim = tf.shape(space.lower)[-1]
-
+    elif isinstance(space, (Box, CollectionSearchSpace)):
+        space_dim = space.dimension
         num_samples = tf.maximum(NUM_SAMPLES_MIN, NUM_SAMPLES_DIM * space_dim)
         num_runs = NUM_RUNS_DIM * space_dim
         return generate_continuous_optimizer(
@@ -176,10 +173,10 @@ def generate_continuous_optimizer(
     num_optimization_runs: int = 10,
     num_recovery_runs: int = 10,
     optimizer_args: Optional[dict[str, Any]] = None,
-) -> AcquisitionOptimizer[Box | TaggedProductSearchSpace | MultiBoxSearchSpace]:
+) -> AcquisitionOptimizer[Box | CollectionSearchSpace]:
     """
-    Generate a gradient-based optimizer for :class:'Box' and :class:'TaggedProductSearchSpace'
-    spaces and batches of size 1. In the case of a :class:'TaggedProductSearchSpace', We perform
+    Generate a gradient-based optimizer for :class:'Box' and :class:'CollectionSearchSpace'
+    spaces and batches of size 1. In the case of a :class:'CollectionSearchSpace', We perform
     gradient-based optimization across all :class:'Box' subspaces, starting from the best location
     found across a sample of `num_initial_samples` random points.
 
@@ -222,14 +219,14 @@ def generate_continuous_optimizer(
         raise ValueError(f"num_recovery_runs must be zero or greater, got {num_recovery_runs}")
 
     def optimize_continuous(
-        space: Box | TaggedProductSearchSpace | MultiBoxSearchSpace,
+        space: Box | CollectionSearchSpace,
         target_func: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]],
     ) -> TensorType:
         """
         A gradient-based :const:`AcquisitionOptimizer` for :class:'Box'
-        and :class:`TaggedProductSearchSpace' spaces.
+        and :class:`CollectionSearchSpace' spaces.
 
-        For :class:'TaggedProductSearchSpace' we only apply gradient updates to
+        For :class:'CollectionSearchSpace' we only apply gradient updates to
         its class:'Box' subspaces.
 
         When this functions receives an acquisition-integer tuple as its `target_func`,it
@@ -252,17 +249,26 @@ def generate_continuous_optimizer(
         if V < 0:
             raise ValueError(f"vectorization must be positive, got {V}")
 
-        if isinstance(space, MultiBoxSearchSpace):
-            candidates = [
-                space.get_subspace(tag).sample(num_initial_samples)[:, None, :]
-                for tag in space.subspace_tags
-            ]  # list of [num_initial_samples, 1, D]
-            tiled_candidates = tf.concat(candidates, axis=1)  # [num_initial_samples, V, D]
+        candidates = space.sample(num_initial_samples)
+        if tf.rank(candidates) == 3:
+            # If samples is a tensor of rank 3, then it is a batch of samples. In this case
+            # the length of the second dimension must be equal to the vectorization of the target
+            # function.
+            tf.debugging.assert_equal(
+                tf.shape(candidates)[1],
+                V,
+                message=(
+                    f"""
+                    The batch shape of initial samples {tf.shape(candidates)[1]} must be equal to
+                    the vectorization of the target function {V}.
+                    """
+                ),
+            )
+            tiled_candidates = candidates  # [num_initial_samples, V, D]
         else:
-            candidates = space.sample(num_initial_samples)[
-                :, None, :
-            ]  # [num_initial_samples, 1, D]
-            tiled_candidates = tf.tile(candidates, [1, V, 1])  # [num_initial_samples, V, D]
+            tiled_candidates = tf.tile(
+                candidates[:None, :], [1, V, 1]
+            )  # [num_initial_samples, V, D]
 
         target_func_values = target_func(tiled_candidates)  # [num_samples, V]
         tf.debugging.assert_shapes(
@@ -306,17 +312,27 @@ def generate_continuous_optimizer(
         recovery_run = False
         if num_recovery_runs and not successful_optimization:
             # if all optimizations failed for a function then try again from random starts
-            if isinstance(space, MultiBoxSearchSpace):
-                candidates = [
-                    space.get_subspace(tag).sample(num_initial_samples)[:, None, :]
-                    for tag in space.subspace_tags
-                ]  # list of [num_initial_samples, 1, D]
-                tiled_random_points = tf.concat(candidates, axis=1)  # [num_initial_samples, V, D]
+            random_points = space.sample(num_recovery_runs)
+            if tf.rank(random_points) == 3:
+                # If samples is a tensor of rank 3, then it is a batch of samples. In this case
+                # the length of the second dimension must be equal to the vectorization of the
+                # target function.
+                tf.debugging.assert_equal(
+                    tf.shape(random_points)[1],
+                    V,
+                    message=(
+                        f"""
+                        The batch shape of random samples {tf.shape(random_points)[1]} must be
+                        equal to the vectorization of the target function {V}.
+                        """
+                    ),
+                )
+                tiled_random_points = random_points  # [num_recovery_runs, V, D]
             else:
-                random_points = space.sample(num_recovery_runs)[
-                    :, None, :
-                ]  # [num_recovery_runs, 1, D]
-                tiled_random_points = tf.tile(random_points, [1, V, 1])  # [num_recovery_runs, V, D]
+                tiled_random_points = tf.tile(
+                    random_points[:, None, :], [1, V, 1]
+                )  # [num_recovery_runs, V, D]
+
             (
                 recovery_successes,
                 recovery_fun_values,
@@ -407,7 +423,7 @@ def _perform_parallel_continuous_optimization(
     of our acquisition function (and its gradients) is calculated in parallel
     (for each optimization step) using Tensorflow.
 
-    For :class:'TaggedProductSearchSpace' we only apply gradient updates to
+    For :class:'CollectionSearchSpace' we only apply gradient updates to
     its :class:'Box' subspaces, fixing the discrete elements to the best values
     found across the initial random search. To fix these discrete elements, we
     optimize over a continuous :class:'Box' relaxation of the discrete subspaces
@@ -451,20 +467,31 @@ def _perform_parallel_continuous_optimization(
     def _objective_value_and_gradient(x: TensorType) -> Tuple[TensorType, TensorType]:
         return tfp.math.value_and_gradient(_objective_value, x)  # [len(x), 1], [len(x), D]
 
-    if isinstance(space, MultiBoxSearchSpace):
-        bounds = [
-            spo.Bounds(space.get_subspace(tag).lower, space.get_subspace(tag).upper)
-            for tag in space.subspace_tags
-        ]
-        # TODO: check that this creates the right set of bou
-        bounds = bounds * num_optimization_runs_per_function
-    elif isinstance(
+    if isinstance(
         space, TaggedProductSearchSpace
     ):  # build continuous relaxation of discrete subspaces
         bounds = [
             get_bounds_of_box_relaxation_around_point(space, vectorized_starting_points[i : i + 1])
             for i in tf.range(num_optimization_runs)
         ]
+    elif isinstance(space, TaggedMultiSearchSpace):
+        bounds = [
+            spo.Bounds(lower, upper)
+            for lower, upper in zip(space.subspace_lower, space.subspace_upper)
+        ]
+        # If bounds is a sequence of tensors, stack them into a single tensor. In this case
+        # the length of the sequence must be equal to the vectorization of the target function.
+        tf.debugging.assert_equal(
+            len(bounds),
+            V,
+            message=(
+                f"""
+                The length of bounds sequence {len(bounds)} must be equal to the
+                vectorization of the target function {V}.
+                """
+            ),
+        )
+        bounds = bounds * num_optimization_runs_per_function
     else:
         bounds = [spo.Bounds(space.lower, space.upper)] * num_optimization_runs
 
