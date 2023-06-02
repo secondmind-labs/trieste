@@ -25,6 +25,10 @@ from typing import Any, Callable, Generic, Optional, TypeVar, Union, cast, overl
 
 import numpy as np
 
+import math
+
+
+
 try:
     import pymoo
     from pymoo.algorithms.moo.nsga2 import NSGA2
@@ -35,6 +39,7 @@ except ImportError:  # pragma: no cover (tested but not by coverage)
     PymooProblem = object
 
 import tensorflow as tf
+import tensorflow_probability as tfp
 
 from .. import logging, types
 from ..data import Dataset
@@ -64,8 +69,8 @@ from .optimizer import (
     batchify_joint,
     batchify_vectorize,
 )
-from .sampler import ExactThompsonSampler, ThompsonSampler
-from .utils import select_nth_output
+from .sampler import ExactThompsonSampler, ThompsonSampler,ThompsonSamplerFromTrajectory
+from .utils import select_nth_output, randomly_mix_x_with_other_x
 
 ResultType = TypeVar("ResultType", covariant=True)
 """ Unbound covariant type variable. """
@@ -1044,7 +1049,8 @@ class TrustRegion(
         :param models: The model for each tag.
         :param datasets: The known observer query points and observations. Uses the data for key
             `OBJECTIVE` to calculate the new trust region.
-        :return: A function that constructs the next acquisition state and the recommended query
+        :return: A function that constructs the next ac
+        quisition state and the recommended query
             points from the previous acquisition state.
         :raise KeyError: If ``datasets`` does not contain the key `OBJECTIVE`.
         """
@@ -1097,10 +1103,6 @@ class TrustRegion(
         return state_func
 
 
-
-
-
-
 class TURBO(
     AcquisitionRule[
         types.State[Optional["TURBO.State"], TensorType], Box, ProbabilisticModelType
@@ -1127,44 +1129,65 @@ class TURBO(
         y_min: TensorType
         """ The minimum observed value. """
 
-        is_global: bool | TensorType
-        """
-        `True` if the search space was global, else `False` if it was local. May be a scalar boolean
-        `TensorType` instead of a `bool`.
-        """
-
         def __deepcopy__(self, memo: dict[int, object]) -> TURBO.State:
             box_copy = copy.deepcopy(self.acquisition_space, memo)
-            return TURBO.State(box_copy, self.L, self.failure_counter, self.success_counter, self.y_min, self.is_global)
+            return TURBO.State(box_copy, self.L, self.failure_counter, self.success_counter, self.y_min)
 
     def __init__(
         self,
         search_space: SearchSpace,
         num_query_points: int = 1,
-        L_min: float = 0.5**7,
-        L_init: float = 0.8,
-        L_max: float = 1.6,
+        L_min: Optional[float] = None,
+        L_init: Optional[float] = None,
+        L_max: Optional[float] = None,
         success_tolerance: int = 3,
         failure_tolerance: Optional[int] = None,
+        num_candidates: Optional[int] = None,
     ):
         """
         :param search_space: todo
         :param num_query_points: The number of points in a batch. Defaults to 5.
-        :param L_min: todo
-        :param L_init: todo
-        :param L_max: todo
+        :param L_min: todo (this will be set futher down using heuristic if not given)
+        :param L_init: todo (this will be set futher down using heuristic if not given)
+        :param L_max: todo (this will be set futher down using heuristic if not given)
         :param success_tolerance: todo
         :param failure tolerance: todo (this will be set futher down using heuristic if not given)
-
+        :param num_candidates: todo (this will be set futher down using heuristic if not given)
         """
 
         if not num_query_points > 0:
             raise ValueError(f"Num query points must be greater than 0, got {num_query_points}")
 
-        assert num_query_points==1 # for now
-
+        if num_query_points > 1:
+            raise NotImplementedError(f"TURBO does not yet support num_query_points greater than 1, got {num_query_points}")
+        
+        # implement heuristic defaults for trust region params if not specified by user
         if failure_tolerance is None:
             failure_tolerance = math.ceil(search_space.dimension / num_query_points)
+        search_space_max_width = tf.reduce_max(search_space.upper - search_space.lower)
+        if L_min is None:
+            L_min = (0.5 ** 7) * search_space_max_width 
+        if L_init is None:
+            L_init = 0.8 * search_space_max_width 
+        if L_max is None:
+            L_max = 1.6 * search_space_max_width 
+        if num_candidates is None:
+            num_candidates = tf.clip_by_value(100*search_space.dimension, 5_000, 1_000_000)
+
+        if not success_tolerance > 0:
+            raise ValueError(f"success tolerance must be an integer greater than 0, got {success_tolerance}")
+        if not failure_tolerance > 0:
+            raise ValueError(f"success tolerance must be an integer greater than 0, got {failure_tolerance}")
+        if not num_candidates > 0:
+            raise ValueError(f"number of candidates for Thompson sampling must be an integer greater than 0, got {num_candidates}")
+        
+        if L_min <=0:
+            raise ValueError(f"L_min must be postive, got {L_min}")
+        if  L_init<=0:
+            raise ValueError(f"L_min must be postive, got {L_init}")
+        if L_max<=0:
+            raise ValueError(f"L_min must be postive, got {L_max}")
+
 
         self._num_query_points = num_query_points
         self._L_min = L_min
@@ -1172,6 +1195,8 @@ class TURBO(
         self._L_max= L_max
         self._success_tolerance = success_tolerance
         self._failure_tolerance = failure_tolerance
+        self._num_candidates = num_candidates
+        self._thompson_sampler =  ThompsonSamplerFromTrajectory(sample_min_value=False)
 
     def __repr__(self) -> str:
         """"""
@@ -1194,6 +1219,7 @@ class TURBO(
         for this step.
 
         If a ``state`` is specified, and the new optimum improves over the previous optimum
+
         by some threshold (that scales linearly with ``kappa``), the previous acquisition is
         considered successful.
 
@@ -1229,8 +1255,8 @@ class TURBO(
                 f"""datasets must be provided and contain the single key {OBJECTIVE}"""
             )
 
-
         dataset = datasets[OBJECTIVE]
+        model = models[OBJECTIVE]
 
         global_lower = search_space.lower
         global_upper = search_space.upper
@@ -1242,61 +1268,42 @@ class TURBO(
         ) -> tuple[TURBO.State | None, TensorType]:
             
 
-            if state is None: # why???
-                eps = 0.5 * (global_upper - global_lower) / (5.0 ** (1.0 / global_lower.shape[-1]))
-                is_global = True
-            
-
-            else:
-                step_is_success = y_min < state.y_min # maybe make this stronger?  
-                failure_counter = state.failure_counter if step_is_success else state.failure_counter +1 
-                success_counter = state.success_counter +1 if step_is_success else state.success_counter
-
-                
+            if state is None: # initialise first TR
+                L, failure_counter, success_counter = self._L_init, 0, 0
+            else: # update TR
+                step_is_success = y_min < state.y_min - 1e-10 # maybe make this stronger?  
+                failure_counter = 0 if step_is_success else state.failure_counter +1 # update or reset counter
+                success_counter = state.success_counter +1 if step_is_success else 0 # update or reset counter
+                L = state.L
                 if success_counter == self._success_tolerance:
-                    L = 2.0 * state.L # make region bigger
+                    L *= 2.0  # make region bigger
                     success_counter = 0
                 elif failure_counter == self._failure_tolerance:
-                    L = state.L / 2.0 # make region smaller
+                    L *= 0.5 # make region smaller
                     failure_counter = 0
 
-                L = tf.clip_by_value(L, self._L_min, self._L_max) 
-                is_global = (L == self._L_min) # if gets too small then start again with whole search space
+                L = tf.minimum(L, self._L_max)
+                if L < self._L_min: # if gets too small then start again
+                    L, failure_counter, success_counter = self._L_init, 0, 0
 
 
-            if is_global:
-                acquisition_space = search_space
-            else:
-                xmin = dataset.query_points[tf.argmin(dataset.observations)[0], :]
-                
+            # build region with volume according to length L but stretched according to lengthscales
+            xmin = dataset.query_points[tf.argmin(dataset.observations)[0], :]  # centre of region
+            lengthscales = model.get_kernel().lengthscales # stretch region according to model lengthscales
+            tr_width  = lengthscales * L / tf.reduce_prod(lengthscales) ** (1.0 / global_lower.shape[-1])  # keep volume fixed
+            acquisition_space = Box(
+                tf.reduce_max([global_lower, xmin - tr_width / 2.0], axis=0),
+                tf.reduce_min([global_upper, xmin + tr_width / 2.0], axis=0),
+            )
 
-                lengthscales = ?
-                standardisation = tf.reduce_prod(lengthscales) ** (1.0 / global_lower.shape[-1]) # keep relative lengths
-                tr_width  = lengthscales * L / standardisation 
+            # Generate candidate locations for TS with sobol sample
+            # Avoid peturbing all dimensions at once by randomly replacing some candidates' dimensions with those of the TR centre
+            candidates = acquisition_space.sample_sobol(self._num_candidates) # [N d] 
+            swapping_prob = tf.minimum(1.0, 20.0 / global_lower.shape[-1])
+            candidates = randomly_mix_x_with_other_x(x = candidates, other_x= xmin[None, :], prob=swapping_prob)
 
-                acquisition_space = Box(
-                    tf.reduce_max([global_lower, xmin - tr_width / 2.0], axis=0),
-                    tf.reduce_min([global_upper, xmin + tr_width / 2.0], axis=0),
-                )
-
-
-
-
-            candidates = acquisition_space.sample_sobol(tf.minimum(100 * global_lower.shape[-1], 5000)) 
-
-
-
-            NEED TO DO random REPLACE THING
-
-
-            thompson_sampler = ExactThompsonSampler(sample_min_value=False) 
-
-            NEED TO MAKE DECOUPLED SAMPLER HERE
-            points = thompson_sampler.sample(models[OBJECTIVE],self._num_query_points,candidates) # get TS from region
-
-
-            state_ = TURBO.State(acquisition_space, L, failure_counter, success_counter, y_min, is_global)
-
+            points = self._thompson_sampler.sample(model,self._num_query_points,candidates)
+            state_ = TURBO.State(acquisition_space, L, failure_counter, success_counter, y_min)
 
             return state_, points
 
@@ -1308,51 +1315,8 @@ class TURBO(
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 class BatchHypervolumeSharpeRatioIndicator(
+
     AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel]
 ):
     """Implements the Batch Hypervolume Sharpe-ratio indicator acquisition
