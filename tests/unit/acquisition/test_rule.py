@@ -752,32 +752,34 @@ def test_turbo_raises_for_missing_datasets_key(
         rule.acquire(search_space, models, datasets=datasets)
 
 
-@pytest.mark.parametrize("num_query_points", [-1, 0, 10])
-def test_turbo_rasise_for_invalid_num_query_points(num_query_points: int) -> None:
+@pytest.mark.parametrize("num_trust_regions", [-1, 0, 10])
+def test_turbo_rasise_for_invalid_num_trust_regions(num_trust_regions: int) -> None:
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
     search_space = Box(lower_bound, upper_bound)
 
-    if num_query_points == 10:  # to be removed once we enable batch TURBO
+    if num_trust_regions == 10:  # to be removed once we enable multiple trust regions
         with pytest.raises(NotImplementedError):
-            TURBO(search_space, num_query_points=num_query_points)
+            TURBO(search_space, num_trust_regions=num_trust_regions)
     else:
         with pytest.raises(ValueError):
-            TURBO(search_space, num_query_points=num_query_points)
+            TURBO(search_space, num_trust_regions=num_trust_regions)
 
 
 @pytest.mark.parametrize(
-    "L_init, L_max, L_min, failure_tolerance, success_tolerance, num_samples",
+    "batch_size, L_init, L_max, L_min, failure_tolerance, success_tolerance, num_samples",
     [
-        (-1.0, 0.1, 1.0, 1, 1, 10),
-        (10.0, 0.0, 2.0, 1, 1, 10),
-        (10.0, 1.0, -4.0, 1, 1, 10),
-        (10.0, 1.0, 4.0, -1, 2, 10),
-        (10.0, 1.0, 4.0, 1, -1, 10),
-        (10.0, 1.0, 4.0, 1, 1, -1),
+        (-1.0 ,1.0, 0.1, 1.0, 1, 1, 10),
+        (2.0, -1.0, 0.1, 1.0, 1, 1, 10),
+        (2.0, 10.0, 0.0, 2.0, 1, 1, 10),
+        (2.0, 10.0, 1.0, -4.0, 1, 1, 10),
+        (2.0, 10.0, 1.0, 4.0, -1, 2, 10),
+        (2.0, 10.0, 1.0, 4.0, 1, -1, 10),
+        (2.0, 10.0, 1.0, 4.0, 1, 1, -1),
     ],
 )
 def test_turbo_rasise_for_invalid_trust_region_params(
+    batch_size: int, 
     L_init: float,
     L_max: float,
     L_min: float,
@@ -791,6 +793,7 @@ def test_turbo_rasise_for_invalid_trust_region_params(
     with pytest.raises(ValueError):
         TURBO(
             search_space,
+            batch_size,
             1,
             L_init,
             L_max,
@@ -805,13 +808,75 @@ def test_turbo_heuristics_for_param_init_work() -> None:
     lower_bound = tf.constant([-2.0] * 20)
     upper_bound = tf.constant([1.0] * 20)
     search_space = Box(lower_bound, upper_bound)
-    rule = TURBO(search_space, num_query_points=1)
+    rule = TURBO(search_space)
 
     assert rule._L_init == 0.8 * 3.0
     assert rule._L_min == (0.5**7) * 3.0
     assert rule._L_max == 1.6 * 3.0
     assert rule._failure_tolerance == 20
     assert rule._num_samples == 5_000
+    assert rule._local_models is None
+
+
+
+
+def test_turbo_acquire_uses_and_updates_correct_local_model() -> None:
+    dataset_1 = Dataset(
+        tf.constant([[0.0, 0.0]], dtype=tf.float64), tf.constant([[0.012]], dtype=tf.float64)
+    )
+    dataset_2 = Dataset(
+        tf.constant([[10.0, 10.0]], dtype=tf.float64), tf.constant([[1.012]], dtype=tf.float64)
+    )
+    lower_bound = tf.constant([0.0, 0.0], dtype=tf.float64)
+    upper_bound = tf.constant([20.0, 20.0], dtype=tf.float64)
+    search_space = Box(lower_bound, upper_bound)
+    global_model = QuadraticMeanAndRBFKernelWithSamplers(
+        dataset_1, noise_variance=tf.constant(1e-5, dtype=tf.float64)
+    )
+    global_model.kernel = gpflow.kernels.RBF(
+        lengthscales=tf.constant([4.0, 1.0], dtype=tf.float64), variance=1e-5
+    )  # need a gpflow kernel for TURBO
+    
+    # if user doesnt give a local model, then we refit the global model
+    tr = TURBO(search_space)
+    assert tr._local_models is None
+    _, _= tr.acquire_single(search_space, global_model, dataset=dataset_2)(None)
+    assert isinstance(tr._local_models[OBJECTIVE].kernel, gpflow.kernels.RBF)
+    npt.assert_array_equal(tr._local_models[OBJECTIVE]._dataset[0], dataset_2.query_points)
+    
+    # if user gives a local model, then we use that one
+    local_model = QuadraticMeanAndRBFKernelWithSamplers(
+        dataset_1, noise_variance=tf.constant(1e-5, dtype=tf.float64)
+    )
+    local_model.kernel = gpflow.kernels.Matern52(
+        lengthscales=tf.constant([4.0, 1.0], dtype=tf.float64), variance=1e-5
+    )  # need a gpflow kernel for TURBO
+    tr = TURBO(search_space, local_models= {OBJECTIVE: local_model})
+    assert isinstance(tr._local_models[OBJECTIVE].kernel, gpflow.kernels.Matern52)
+    _, _= tr.acquire_single(search_space, global_model, dataset=dataset_2)(None)
+    # check updated correct model
+    assert isinstance(tr._local_models[OBJECTIVE].kernel, gpflow.kernels.Matern52)
+    npt.assert_array_equal(tr._local_models[OBJECTIVE]._dataset[0], dataset_2.query_points)
+    
+
+
+@pytest.mark.parametrize("num_query_points", [1, 2])
+def test_turbo_acquire_returns_correct_shape(num_query_points: int) -> None:
+    dataset = Dataset(
+        tf.constant([[0.0, 0.0]], dtype=tf.float64), tf.constant([[0.012]], dtype=tf.float64)
+    )
+    lower_bound = tf.constant([0.0, 0.0], dtype=tf.float64)
+    upper_bound = tf.constant([1.0, 1.0], dtype=tf.float64)
+    search_space = Box(lower_bound, upper_bound)
+    tr = TURBO(search_space, num_query_points=num_query_points)
+    model = QuadraticMeanAndRBFKernelWithSamplers(
+        dataset, noise_variance=tf.constant(1e-5, dtype=tf.float64)
+    )
+    model.kernel = gpflow.kernels.RBF(
+        lengthscales=tf.constant([4.0, 1.0], dtype=tf.float64), variance=1e-5
+    )  # need a gpflow kernel for TURBO
+    _, query_points = tr.acquire_single(search_space, model, dataset=dataset)(None)
+    npt.assert_array_equal(tf.shape(query_points), [num_query_points,2])
 
 
 @random_seed
