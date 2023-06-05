@@ -328,6 +328,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
+        fit_global_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModel, object]
         ] = None,
@@ -347,6 +348,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
+        fit_global_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, object]
         ] = None,
@@ -369,6 +371,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
+        fit_global_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, object]
         ] = None,
@@ -389,6 +392,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
+        fit_global_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
@@ -409,6 +413,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
+        fit_global_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
@@ -425,6 +430,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
+        fit_global_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModel, object]
         ] = None,
@@ -444,6 +450,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
+        fit_global_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, object]
         ] = None,
@@ -463,6 +470,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
+        fit_global_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, object]
         ] = None,
@@ -483,6 +491,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
+        fit_global_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
@@ -503,6 +512,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
+        fit_global_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,

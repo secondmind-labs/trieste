@@ -153,6 +153,13 @@ class SupportsGetKernel(ProbabilisticModel, Protocol):
 
 
 @runtime_checkable
+class TrainableSupportsGetKernel(TrainableProbabilisticModel, SupportsGetKernel, Protocol):
+    """A trainable probabilistic model that supports get_kernel."""
+
+    pass
+
+
+@runtime_checkable
 class SupportsGetObservationNoise(ProbabilisticModel, Protocol):
     """A probabilistic model that supports get_observation_noise."""
 

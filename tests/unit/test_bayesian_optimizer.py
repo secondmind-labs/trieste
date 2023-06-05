@@ -596,7 +596,7 @@ def test_bayesian_optimizer_optimize_tracked_state(save_to_disk: bool) -> None:
 
 @pytest.mark.parametrize("fit_global_model", [False, True])
 def test_bayesian_optimizer_doesnt_optimize_global_model_if_TURBO_rule(
-    fit_global_model: str,
+    fit_global_model: bool,
 ) -> None:
     class _CountingOptimizerModel(_PseudoTrainableQuadraticWithSamplers):
         _optimize_count = 0

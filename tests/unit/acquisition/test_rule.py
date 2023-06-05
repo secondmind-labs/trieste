@@ -57,7 +57,7 @@ from trieste.acquisition.sampler import (
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
-from trieste.models.interfaces import SupportsGetKernel
+from trieste.models.interfaces import TrainableSupportsGetKernel
 from trieste.observer import OBJECTIVE
 from trieste.space import Box
 from trieste.types import State, Tag, TensorType
@@ -741,10 +741,15 @@ def test_trust_region_state_deepcopy() -> None:
 
 @pytest.mark.parametrize("datasets", [{}, {"foo": empty_dataset([1], [1])}])
 @pytest.mark.parametrize(
-    "models", [{}, {"foo": QuadraticMeanAndRBFKernel()}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}]
+    "models",
+    [
+        {},
+        {"foo": QuadraticMeanAndRBFKernelWithSamplers(empty_dataset([1], [1]))},
+        {OBJECTIVE: QuadraticMeanAndRBFKernelWithSamplers(empty_dataset([1], [1]))},
+    ],
 )
 def test_turbo_raises_for_missing_datasets_key(
-    datasets: dict[Tag, Dataset], models: dict[Tag, SupportsGetKernel]
+    datasets: Mapping[Tag, Dataset], models: Mapping[Tag, TrainableSupportsGetKernel]
 ) -> None:
     search_space = Box([-1], [1])
     rule = TURBO(search_space)
@@ -847,10 +852,10 @@ def test_turbo_acquire_uses_and_updates_correct_local_model() -> None:
         lengthscales=tf.constant([4.0, 1.0], dtype=tf.float64), variance=1e-5
     )  # need a gpflow kernel for TURBO
     tr = TURBO(search_space, local_models={OBJECTIVE: local_model})
-    assert isinstance(tr._local_models[OBJECTIVE].kernel, gpflow.kernels.Matern52)
+    assert isinstance(tr._local_models[OBJECTIVE].get_kernel(), gpflow.kernels.Matern52)
     _, _ = tr.acquire_single(search_space, global_model, dataset=dataset_2)(None)
     # check updated correct model
-    assert isinstance(tr._local_models[OBJECTIVE].kernel, gpflow.kernels.Matern52)
+    assert isinstance(tr._local_models[OBJECTIVE].get_kernel(), gpflow.kernels.Matern52)
     npt.assert_array_equal(tr._local_models[OBJECTIVE]._dataset[0], dataset_2.query_points)
 
 

@@ -46,7 +46,7 @@ from ..models.interfaces import (
     HasReparamSampler,
     ModelStack,
     ProbabilisticModelType,
-    SupportsGetKernel,
+    TrainableSupportsGetKernel,
 )
 from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace
@@ -1107,7 +1107,9 @@ class TrustRegion(
 
 
 class TURBO(
-    AcquisitionRule[types.State[Optional["TURBO.State"], TensorType], Box, SupportsGetKernel]
+    AcquisitionRule[
+        types.State[Optional["TURBO.State"], TensorType], Box, TrainableSupportsGetKernel
+    ]
 ):
     """Implements the TURBO algorithm as detailed in :cite:`eriksson2019scalable,`."""
 
@@ -1140,13 +1142,13 @@ class TURBO(
         self,
         search_space: SearchSpace,
         num_trust_regions: int = 1,
-        rule: Optional[AcquisitionRule] = None,
+        rule: Optional[AcquisitionRule[ResultType, Box, TrainableSupportsGetKernel]] = None,
         L_min: Optional[float] = None,
         L_init: Optional[float] = None,
         L_max: Optional[float] = None,
         success_tolerance: int = 3,
         failure_tolerance: Optional[int] = None,
-        local_models: Optional[Mapping[Tag, ProbabilisticModel]] = None,
+        local_models: Optional[Mapping[Tag, TrainableSupportsGetKernel]] = None,
     ):
         """
         Note that the optional parameters are set by a heuristic if not given by the user.
@@ -1218,7 +1220,7 @@ class TURBO(
     def acquire(
         self,
         search_space: Box,
-        models: Mapping[Tag, SupportsGetKernel],
+        models: Mapping[Tag, TrainableSupportsGetKernel],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> types.State[State | None, TensorType]:
         """
@@ -1252,6 +1254,7 @@ class TURBO(
         if self._local_models is None:  # if user doesnt specifiy a local model
             self._local_models = deepcopy(models)  # copy global model (will be fit locally later)
 
+        self._local_models: Mapping[Tag, TrainableSupportsGetKernel]
         if self._local_models.keys() != {OBJECTIVE}:
             raise ValueError(
                 f"dict of models must contain the single key {OBJECTIVE}, got keys {models.keys()}"
