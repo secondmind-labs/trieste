@@ -1052,8 +1052,7 @@ class TrustRegion(
         :param models: The model for each tag.
         :param datasets: The known observer query points and observations. Uses the data for key
             `OBJECTIVE` to calculate the new trust region.
-        :return: A function that constructs the next ac
-        quisition state and the recommended query
+        :return: A function that constructs the next acquisition state and the recommended query
             points from the previous acquisition state.
         :raise KeyError: If ``datasets`` does not contain the key `OBJECTIVE`.
         """

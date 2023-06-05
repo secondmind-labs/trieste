@@ -1031,7 +1031,7 @@ def test_turbo_does_change_size_correctly_when_needed() -> None:
         assert current_state.failure_counter == 0
 
 
-def test_turbo_restarts_tr_when_to_small() -> None:
+def test_turbo_restarts_tr_when_too_small() -> None:
     dataset = Dataset(
         tf.constant([[0.0, 0.0]], dtype=tf.float64), tf.constant([[0.012]], dtype=tf.float64)
     )

@@ -17,7 +17,6 @@ from typing import Tuple, Union
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from ..data import Dataset
 from ..space import SearchSpaceType
 from ..types import TensorType
 from .interface import AcquisitionFunction
@@ -136,23 +135,3 @@ def randomly_mix_x_with_other_x(x: TensorType, other_x: TensorType, prob: float)
     flag_to_peturb = bernoulli_dist.sample(sample_shape=tf.shape(x)) == 1  # [N, d]
     x_mixed = tf.where(flag_to_peturb, x, tf.tile(other_x, (tf.shape(x)[0], 1)))  # [N, d]
     return x_mixed
-
-
-def get_local_dataset(local_space: SearchSpaceType, dataset: Dataset) -> Dataset:
-    """
-    A utility function that takes in a dataset and returns the entries lying
-    within a given search space.
-
-    :param local_space: A search space.
-    :param dataset: A Dataset.
-    :return: A Dataset containing entries only in the local_space.
-    """
-    if tf.shape(dataset.query_points)[1] != local_space.dimension:
-        raise ValueError("Dataset and search space must have equal dimensions")
-
-    is_in_region_mask = local_space.contains(dataset.query_points)
-    local_dataset = Dataset(
-        query_points=tf.boolean_mask(dataset.query_points, is_in_region_mask),
-        observations=tf.boolean_mask(dataset.observations, is_in_region_mask),
-    )
-    return local_dataset
