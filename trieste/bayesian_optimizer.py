@@ -41,7 +41,7 @@ import dill
 import numpy as np
 import tensorflow as tf
 from scipy.spatial.distance import pdist
-
+import warnings
 from .acquisition.multi_objective import non_dominated
 
 try:
@@ -52,7 +52,7 @@ except ModuleNotFoundError:
     sns = None
 
 from . import logging
-from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
+from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization, TURBO
 from .data import Dataset
 from .models import SupportsCovarianceWithTopFidelity, TrainableProbabilisticModel
 from .observer import OBJECTIVE, Observer
@@ -524,6 +524,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
         fit_initial_model: bool = True,
+        fit_global_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
@@ -571,6 +572,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         :param fit_initial_model: If `False`, this method assumes that the initial models have
             already been optimized on the datasets and so do not require optimization before the
             first optimization step.
+        :param fit_global_model:If `False`, then do not ever update the provided model.
         :param early_stop_callback: An optional callback that is evaluated with the current
             datasets, models and optimization state before every optimization step. If this
             returns `True` then the optimization loop is terminated early.
@@ -606,6 +608,24 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
         if not datasets:
             raise ValueError("dicts of datasets and models must be populated.")
+
+
+        if fit_initial_model and not fit_global_model:
+            raise ValueError(
+                """
+                If global model training is turned off, then we cannot fit initial model. Set
+                fit_initial_model to be False.
+                """
+            )
+        
+        if (fit_global_model) and isinstance(acquisition_rule, TURBO):
+            warnings.warn(
+                """
+                Are you sure you want to keep fitting the global model even though you 
+                are using TURBO which uses local models? This is a waste of computation.
+                """
+            )
+
 
         if acquisition_rule is None:
             if datasets.keys() != {OBJECTIVE}:
@@ -699,13 +719,13 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         else {OBJECTIVE: observer_output}
                     )
 
-                    datasets = {tag: datasets[tag] + tagged_output[tag] for tag in tagged_output}
-
+                    datasets = {tag: datasets[tag] + tagged_output[tag] for tag in tagged_output}    
                     with Timer() as model_fitting_timer:
-                        for tag, model in models.items():
-                            dataset = datasets[tag]
-                            model.update(dataset)
-                            model.optimize(dataset)
+                        if fit_global_model:
+                            for tag, model in models.items():
+                                dataset = datasets[tag]
+                                model.update(dataset)
+                                model.optimize(dataset)
 
                 if summary_writer:
                     with summary_writer.as_default(step=step):

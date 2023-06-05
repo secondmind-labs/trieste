@@ -52,6 +52,7 @@ from trieste.acquisition.rule import (
     DiscreteThompsonSampling,
     EfficientGlobalOptimization,
     TrustRegion,
+    TURBO,
 )
 from trieste.acquisition.sampler import ThompsonSamplerFromTrajectory
 from trieste.bayesian_optimizer import (
@@ -191,6 +192,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                 ),
                 id="TrustRegion/MinValueEntropySearch",
             ),
+            pytest.param(15, TURBO(ScaledBranin.search_space, rule=DiscreteThompsonSampling(500, 5)), id="Turbo"),
             pytest.param(15, DiscreteThompsonSampling(500, 5), id="DiscreteThompsonSampling"),
             pytest.param(
                 15,
@@ -602,6 +604,10 @@ def _test_optimizer_finds_minimum(
     with tempfile.TemporaryDirectory() as tmpdirname:
         summary_writer = tf.summary.create_file_writer(tmpdirname)
         with tensorboard_writer(summary_writer):
+            if isinstance(acquisition_rule, TURBO): # if rule with local models
+                fit_initial_model, fit_global_model = False, False # avoid updating global model
+            else:
+                fit_initial_model, fit_global_model = True, True
             result = BayesianOptimizer(observer, search_space).optimize(
                 num_steps or 2,
                 initial_data,
@@ -610,6 +616,8 @@ def _test_optimizer_finds_minimum(
                 track_state=True,
                 track_path=Path(tmpdirname) / "history",
                 early_stop_callback=stop_at_minimum(minima, minimizers, minimum_rtol=rtol_level),
+                fit_initial_model = fit_initial_model,
+                fit_global_model = fit_global_model,
             )
 
             # check history saved ok

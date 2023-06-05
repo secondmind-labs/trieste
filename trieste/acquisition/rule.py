@@ -36,7 +36,7 @@ except ImportError:  # pragma: no cover (tested but not by coverage)
     PymooProblem = object
 
 import tensorflow as tf
-
+from copy import deepcopy
 from .. import logging, types
 from ..data import Dataset
 from ..models import ProbabilisticModel
@@ -71,7 +71,7 @@ from .optimizer import (
     batchify_vectorize,
 )
 from .sampler import ExactThompsonSampler, ThompsonSampler, ThompsonSamplerFromTrajectory
-from .utils import randomly_mix_x_with_other_x, select_nth_output
+from .utils import randomly_mix_x_with_other_x, select_nth_output, get_local_dataset
 
 ResultType = TypeVar("ResultType", covariant=True)
 """ Unbound covariant type variable. """
@@ -1104,6 +1104,7 @@ class TrustRegion(
         return state_func
 
 
+
 class TURBO(
     AcquisitionRule[types.State[Optional["TURBO.State"], TensorType], Box, SupportsGetKernel]
 ):
@@ -1137,38 +1138,45 @@ class TURBO(
     def __init__(
         self,
         search_space: SearchSpace,
-        num_query_points: int = 1,
+        num_trust_regions: int = 1,
+        rule: Optional[AcquisitionRule] = None,
         L_min: Optional[float] = None,
         L_init: Optional[float] = None,
         L_max: Optional[float] = None,
         success_tolerance: int = 3,
         failure_tolerance: Optional[int] = None,
-        num_samples: Optional[int] = None,
+        local_models:Optional[Mapping[Tag, ProbabilisticModel]] = None,
     ):
         """
         Note that the optional parameters are set by a heuristic if not given by the user.
 
         :param search_space: The search space.
-        :param num_query_points: The number of points in a batch.
+        :param num_trust_regions: Number of trust regions controlled by TURBO
+        :param rule: rule used to select points from within the trust region, using the local model.
         :param L_min: Minimum allowed length of the trust region.
         :param L_init: Initial length of the trust region.
         :param L_max: Maximum allowed length of the trust region.
         :param success_tolerance: Number of consecutive successes before changing region size.
         :param failure tolerance: Number of consecutive failures before changing region size.
-        :param num_samples: Size of sample used for Thompson sampling.
+        :param local_models: Optional model to act as the local model. This will be refit using the
+            data from each trust region. If no local_models are provided then we just copy the global
+            model.
         """
 
-        if not num_query_points > 0:
-            raise ValueError(f"Num query points must be greater than 0, got {num_query_points}")
+        if not num_trust_regions > 0:
+            raise ValueError(f"Num trust regions must be greater than 0, got {num_trust_regions}")
 
-        if num_query_points > 1:
+        if num_trust_regions > 1:
             raise NotImplementedError(
-                f"TURBO does not yet support batches greater than 1, got {num_query_points}"
+                f"TURBO does not yet support multiple trust regions, but got {num_trust_regions}"
             )
 
-        # implement heuristic defaults for trust region params if not specified by user
+        # implement heuristic defaults for TURBO if not specified by user
+        if rule is None: # default to Thompson sampling with batches of size 1
+            rule = DiscreteThompsonSampling(tf.minimum(100 * search_space.dimension, 5_000), 1) 
+        
         if failure_tolerance is None:
-            failure_tolerance = math.ceil(search_space.dimension / num_query_points)
+            failure_tolerance = math.ceil(search_space.dimension / rule._num_query_points)
         search_space_max_width = tf.reduce_max(search_space.upper - search_space.lower)
         if L_min is None:
             L_min = (0.5**7) * search_space_max_width
@@ -1176,8 +1184,6 @@ class TURBO(
             L_init = 0.8 * search_space_max_width
         if L_max is None:
             L_max = 1.6 * search_space_max_width
-        if num_samples is None:
-            num_samples = tf.clip_by_value(100 * search_space.dimension, 5_000, 1_000_000)
 
         if not success_tolerance > 0:
             raise ValueError(
@@ -1187,13 +1193,6 @@ class TURBO(
             raise ValueError(
                 f"success tolerance must be an integer greater than 0, got {failure_tolerance}"
             )
-        if not num_samples > 0:
-            raise ValueError(
-                f"""
-                number of samples for Thompson sampling must be an integer greater than
-                0, got {num_samples}
-                """
-            )
 
         if L_min <= 0:
             raise ValueError(f"L_min must be postive, got {L_min}")
@@ -1202,18 +1201,18 @@ class TURBO(
         if L_max <= 0:
             raise ValueError(f"L_min must be postive, got {L_max}")
 
-        self._num_query_points = num_query_points
+        self._num_trust_regions = num_trust_regions
         self._L_min = L_min
         self._L_init = L_init
         self._L_max = L_max
         self._success_tolerance = success_tolerance
         self._failure_tolerance = failure_tolerance
-        self._num_samples = num_samples
-        self._thompson_sampler = ThompsonSamplerFromTrajectory(sample_min_value=False)
-
+        self._rule = rule
+        self._local_models = local_models
+        
     def __repr__(self) -> str:
         """"""
-        return f"TURBO({self._num_query_points!r})"
+        return f"TURBO({self._num_trust_regions!r}, {self._rule})"
 
     def acquire(
         self,
@@ -1249,19 +1248,21 @@ class TURBO(
             points from the previous acquisition state.
         :raise KeyError: If ``datasets`` does not contain the key `OBJECTIVE`.
         """
+        if self._local_models is None: # if user doesnt specifiy a local model
+            self._local_models = deepcopy(models) # copy global model (will be fit locally later)
 
-        if models.keys() != {OBJECTIVE}:
+        if self._local_models.keys() != {OBJECTIVE}:
             raise ValueError(
                 f"dict of models must contain the single key {OBJECTIVE}, got keys {models.keys()}"
             )
-
+        
         if datasets is None or datasets.keys() != {OBJECTIVE}:
             raise ValueError(
                 f"""datasets must be provided and contain the single key {OBJECTIVE}"""
             )
 
         dataset = datasets[OBJECTIVE]
-        model = models[OBJECTIVE]
+        local_model = self._local_models[OBJECTIVE]
 
         global_lower = search_space.lower
         global_upper = search_space.upper
@@ -1296,7 +1297,7 @@ class TURBO(
             # build region with volume according to length L but stretched according to lengthscales
             xmin = dataset.query_points[tf.argmin(dataset.observations)[0], :]  # centre of region
             lengthscales = (
-                model.get_kernel().lengthscales
+                local_model.get_kernel().lengthscales
             )  # stretch region according to model lengthscales
             tr_width = (
                 lengthscales * L / tf.reduce_prod(lengthscales) ** (1.0 / global_lower.shape[-1])
@@ -1306,16 +1307,13 @@ class TURBO(
                 tf.reduce_min([global_upper, xmin + tr_width / 2.0], axis=0),
             )
 
-            # Generate candidate locations for TS with sobol sample
-            # Avoid peturbing all dimensions at once by randomly replacing some candidates'
-            # dimensions with those of the TR centre
-            candidates = acquisition_space.sample_sobol(self._num_samples)  # [N d]
-            swapping_prob = tf.minimum(1.0, 20.0 / global_lower.shape[-1])
-            candidates = randomly_mix_x_with_other_x(
-                x=candidates, other_x=xmin[None, :], prob=swapping_prob
-            )
+            # fit the local model using just data from the trust region
+            local_dataset = get_local_dataset(acquisition_space, dataset)
+            local_model.update(local_dataset)
+            local_model.optimize(local_dataset)
 
-            points = self._thompson_sampler.sample(model, self._num_query_points, candidates)
+            # use local model and local dataset to choose next query point(s)
+            points = self._rule.acquire_single(acquisition_space, local_model, local_dataset)
             state_ = TURBO.State(acquisition_space, L, failure_counter, success_counter, y_min)
 
             return state_, points

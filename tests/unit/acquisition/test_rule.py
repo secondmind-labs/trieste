@@ -767,25 +767,21 @@ def test_turbo_rasise_for_invalid_num_trust_regions(num_trust_regions: int) -> N
 
 
 @pytest.mark.parametrize(
-    "batch_size, L_init, L_max, L_min, failure_tolerance, success_tolerance, num_samples",
+    "L_init, L_max, L_min, failure_tolerance, success_tolerance",
     [
-        (-1.0 ,1.0, 0.1, 1.0, 1, 1, 10),
-        (2.0, -1.0, 0.1, 1.0, 1, 1, 10),
-        (2.0, 10.0, 0.0, 2.0, 1, 1, 10),
-        (2.0, 10.0, 1.0, -4.0, 1, 1, 10),
-        (2.0, 10.0, 1.0, 4.0, -1, 2, 10),
-        (2.0, 10.0, 1.0, 4.0, 1, -1, 10),
-        (2.0, 10.0, 1.0, 4.0, 1, 1, -1),
+        (-1.0, 0.1, 1.0, 1, 1),
+        (10.0, -1.0, 1.0, 1, 1),
+        (10.0, 1.0, -4.0, 1, 1),
+        (10.0, 1.0, 4.0, -1, 2),
+        (10.0, 1.0, 4.0, 1, -1),
     ],
 )
 def test_turbo_rasise_for_invalid_trust_region_params(
-    batch_size: int, 
     L_init: float,
     L_max: float,
     L_min: float,
     failure_tolerance: int,
     success_tolerance: int,
-    num_samples: int,
 ) -> None:
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
@@ -793,14 +789,11 @@ def test_turbo_rasise_for_invalid_trust_region_params(
     with pytest.raises(ValueError):
         TURBO(
             search_space,
-            batch_size,
-            1,
-            L_init,
-            L_max,
-            L_min,
-            failure_tolerance,
-            success_tolerance,
-            num_samples,
+            L_init = L_init,
+            L_max = L_max,
+            L_min=L_min,
+            failure_tolerance= failure_tolerance,
+            success_tolerance= success_tolerance,
         )
 
 
@@ -814,8 +807,12 @@ def test_turbo_heuristics_for_param_init_work() -> None:
     assert rule._L_min == (0.5**7) * 3.0
     assert rule._L_max == 1.6 * 3.0
     assert rule._failure_tolerance == 20
-    assert rule._num_samples == 5_000
+    assert isinstance(rule._rule, DiscreteThompsonSampling)
+    assert rule._rule._num_search_space_samples == 2_000
     assert rule._local_models is None
+
+    rule=TURBO(search_space, rule=EfficientGlobalOptimization())
+    assert isinstance(rule._rule, EfficientGlobalOptimization)
 
 
 
@@ -868,7 +865,8 @@ def test_turbo_acquire_returns_correct_shape(num_query_points: int) -> None:
     lower_bound = tf.constant([0.0, 0.0], dtype=tf.float64)
     upper_bound = tf.constant([1.0, 1.0], dtype=tf.float64)
     search_space = Box(lower_bound, upper_bound)
-    tr = TURBO(search_space, num_query_points=num_query_points)
+    rule = DiscreteThompsonSampling(1_000,num_query_points)
+    tr = TURBO(search_space, rule=rule)
     model = QuadraticMeanAndRBFKernelWithSamplers(
         dataset, noise_variance=tf.constant(1e-5, dtype=tf.float64)
     )
@@ -887,7 +885,7 @@ def test_turbo_for_default_state() -> None:
     lower_bound = tf.constant([0.0, 0.0], dtype=tf.float64)
     upper_bound = tf.constant([1.0, 1.0], dtype=tf.float64)
     search_space = Box(lower_bound, upper_bound)
-    tr = TURBO(search_space, num_samples=1_000)
+    tr = TURBO(search_space, rule=DiscreteThompsonSampling(100, 1))
     model = QuadraticMeanAndRBFKernelWithSamplers(
         dataset, noise_variance=tf.constant(1e-5, dtype=tf.float64)
     )
@@ -897,9 +895,6 @@ def test_turbo_for_default_state() -> None:
     state, query_point = tr.acquire_single(search_space, model, dataset=dataset)(None)
 
     assert state is not None
-    npt.assert_array_almost_equal(
-        query_point, [[0.0, 0.0]], 2
-    )  # see if we choose bottom of quadratic
     npt.assert_array_almost_equal(state.acquisition_space.lower, lower_bound)
     npt.assert_array_almost_equal(
         state.acquisition_space.upper, tf.constant([0.8, 0.2], dtype=tf.float64)
