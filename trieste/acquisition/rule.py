@@ -35,8 +35,10 @@ except ImportError:  # pragma: no cover (tested but not by coverage)
     pymoo = None
     PymooProblem = object
 
-import tensorflow as tf
 from copy import deepcopy
+
+import tensorflow as tf
+
 from .. import logging, types
 from ..data import Dataset
 from ..models import ProbabilisticModel
@@ -70,8 +72,8 @@ from .optimizer import (
     batchify_joint,
     batchify_vectorize,
 )
-from .sampler import ExactThompsonSampler, ThompsonSampler, ThompsonSamplerFromTrajectory
-from .utils import randomly_mix_x_with_other_x, select_nth_output, get_local_dataset
+from .sampler import ExactThompsonSampler, ThompsonSampler
+from .utils import get_local_dataset, select_nth_output
 
 ResultType = TypeVar("ResultType", covariant=True)
 """ Unbound covariant type variable. """
@@ -1104,7 +1106,6 @@ class TrustRegion(
         return state_func
 
 
-
 class TURBO(
     AcquisitionRule[types.State[Optional["TURBO.State"], TensorType], Box, SupportsGetKernel]
 ):
@@ -1145,7 +1146,7 @@ class TURBO(
         L_max: Optional[float] = None,
         success_tolerance: int = 3,
         failure_tolerance: Optional[int] = None,
-        local_models:Optional[Mapping[Tag, ProbabilisticModel]] = None,
+        local_models: Optional[Mapping[Tag, ProbabilisticModel]] = None,
     ):
         """
         Note that the optional parameters are set by a heuristic if not given by the user.
@@ -1158,9 +1159,9 @@ class TURBO(
         :param L_max: Maximum allowed length of the trust region.
         :param success_tolerance: Number of consecutive successes before changing region size.
         :param failure tolerance: Number of consecutive failures before changing region size.
-        :param local_models: Optional model to act as the local model. This will be refit using the
-            data from each trust region. If no local_models are provided then we just copy the global
-            model.
+        :param local_models: Optional model to act as the local model. This will be refit using
+            the data from each trust region. If no local_models are provided then we just
+            copy the global model.
         """
 
         if not num_trust_regions > 0:
@@ -1172,9 +1173,9 @@ class TURBO(
             )
 
         # implement heuristic defaults for TURBO if not specified by user
-        if rule is None: # default to Thompson sampling with batches of size 1
-            rule = DiscreteThompsonSampling(tf.minimum(100 * search_space.dimension, 5_000), 1) 
-        
+        if rule is None:  # default to Thompson sampling with batches of size 1
+            rule = DiscreteThompsonSampling(tf.minimum(100 * search_space.dimension, 5_000), 1)
+
         if failure_tolerance is None:
             failure_tolerance = math.ceil(search_space.dimension / rule._num_query_points)
         search_space_max_width = tf.reduce_max(search_space.upper - search_space.lower)
@@ -1209,7 +1210,7 @@ class TURBO(
         self._failure_tolerance = failure_tolerance
         self._rule = rule
         self._local_models = local_models
-        
+
     def __repr__(self) -> str:
         """"""
         return f"TURBO({self._num_trust_regions!r}, {self._rule})"
@@ -1248,14 +1249,14 @@ class TURBO(
             points from the previous acquisition state.
         :raise KeyError: If ``datasets`` does not contain the key `OBJECTIVE`.
         """
-        if self._local_models is None: # if user doesnt specifiy a local model
-            self._local_models = deepcopy(models) # copy global model (will be fit locally later)
+        if self._local_models is None:  # if user doesnt specifiy a local model
+            self._local_models = deepcopy(models)  # copy global model (will be fit locally later)
 
         if self._local_models.keys() != {OBJECTIVE}:
             raise ValueError(
                 f"dict of models must contain the single key {OBJECTIVE}, got keys {models.keys()}"
             )
-        
+
         if datasets is None or datasets.keys() != {OBJECTIVE}:
             raise ValueError(
                 f"""datasets must be provided and contain the single key {OBJECTIVE}"""

@@ -250,7 +250,6 @@ class QuadraticMeanAndRBFKernelWithSamplers(
         pass
 
 
-
 class MultiFidelityQuadraticMeanAndRBFKernel(
     QuadraticMeanAndRBFKernel, SupportsCovarianceWithTopFidelity
 ):

@@ -37,7 +37,7 @@ from tests.util.models.gpflow.models import (
     QuadraticMeanAndRBFKernelWithSamplers,
     rbf,
 )
-from trieste.acquisition.rule import AcquisitionRule
+from trieste.acquisition.rule import TURBO, AcquisitionRule
 from trieste.bayesian_optimizer import BayesianOptimizer, FrozenRecord, OptimizationResult, Record
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel, TrainableProbabilisticModel
@@ -45,7 +45,7 @@ from trieste.observer import OBJECTIVE, Observer
 from trieste.space import Box, SearchSpace
 from trieste.types import State, Tag, TensorType
 from trieste.utils import Err, Ok
-from trieste.acquisition.rule import TURBO
+
 # tags
 FOO: Tag = "foo"
 BAR: Tag = "bar"
@@ -60,8 +60,9 @@ class _PseudoTrainableQuadratic(QuadraticMeanAndRBFKernel, PseudoTrainableProbMo
     pass
 
 
-
-class _PseudoTrainableQuadraticWithSamplers(QuadraticMeanAndRBFKernelWithSamplers, PseudoTrainableProbModel):
+class _PseudoTrainableQuadraticWithSamplers(
+    QuadraticMeanAndRBFKernelWithSamplers, PseudoTrainableProbModel
+):
     pass
 
 
@@ -196,10 +197,11 @@ def test_optimization_result_from_path_partial_result() -> None:
 
 def test_bayesian_optimizer_optimize_raises_if_invalid_model_training_args() -> None:
     data, models = {NA: empty_dataset([1], [1])}, {NA: _PseudoTrainableQuadratic()}
-    bo = BayesianOptimizer(lambda x: x[:1], Box([-1], [1])) 
+    bo = BayesianOptimizer(lambda x: x[:1], Box([-1], [1]))
 
-    with pytest.raises(ValueError): # turning off global model training means we do not train 
+    with pytest.raises(ValueError):  # turning off global model training means we do not train
         bo.optimize(1, data, models, fit_initial_model=True, fit_global_model=False)
+
 
 @pytest.mark.parametrize("steps", [0, 1, 2, 5])
 def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> None:
@@ -593,36 +595,36 @@ def test_bayesian_optimizer_optimize_tracked_state(save_to_disk: bool) -> None:
 
 
 @pytest.mark.parametrize("fit_global_model", [False, True])
-def test_bayesian_optimizer_doesnt_optimize_global_model_if_TURBO_rule(fit_global_model: str) -> None:
-
+def test_bayesian_optimizer_doesnt_optimize_global_model_if_TURBO_rule(
+    fit_global_model: str,
+) -> None:
     class _CountingOptimizerModel(_PseudoTrainableQuadraticWithSamplers):
         _optimize_count = 0
 
         def optimize(self, dataset: Dataset) -> None:
             self._optimize_count += 1
-    
+
     dataset = Dataset(
         tf.constant([[0.0, 0.0]], dtype=tf.float64), tf.constant([[0.012]], dtype=tf.float64)
     )
     lower_bound = tf.constant([0.0, 0.0], dtype=tf.float64)
     upper_bound = tf.constant([1.0, 1.0], dtype=tf.float64)
-    search_space = Box(lower_bound, upper_bound)    
+    search_space = Box(lower_bound, upper_bound)
     rule = TURBO(search_space)
     model = _CountingOptimizerModel(dataset, noise_variance=tf.constant(1e-5, dtype=tf.float64))
     model.kernel = gpflow.kernels.RBF(
-        lengthscales=tf.constant([4.0], dtype=tf.float64), variance=tf.constant(1e-5, dtype=tf.float64)
+        lengthscales=tf.constant([4.0], dtype=tf.float64),
+        variance=tf.constant(1e-5, dtype=tf.float64),
     )  # need a gpflow kernel for TURBO
     final_opt_state, _ = (
-        BayesianOptimizer(
-            lambda x: {OBJECTIVE: Dataset(x, quadratic(x))},
-            search_space)
+        BayesianOptimizer(lambda x: {OBJECTIVE: Dataset(x, quadratic(x))}, search_space)
         .optimize(
             1,
             {OBJECTIVE: dataset},
             {OBJECTIVE: model},
             rule,
             fit_global_model=fit_global_model,
-            fit_initial_model= fit_global_model
+            fit_initial_model=fit_global_model,
         )
         .astuple()
     )

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import copy
 import traceback
+import warnings
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
@@ -41,7 +42,7 @@ import dill
 import numpy as np
 import tensorflow as tf
 from scipy.spatial.distance import pdist
-import warnings
+
 from .acquisition.multi_objective import non_dominated
 
 try:
@@ -52,7 +53,7 @@ except ModuleNotFoundError:
     sns = None
 
 from . import logging
-from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization, TURBO
+from .acquisition.rule import TURBO, AcquisitionRule, EfficientGlobalOptimization
 from .data import Dataset
 from .models import SupportsCovarianceWithTopFidelity, TrainableProbabilisticModel
 from .observer import OBJECTIVE, Observer
@@ -609,7 +610,6 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         if not datasets:
             raise ValueError("dicts of datasets and models must be populated.")
 
-
         if fit_initial_model and not fit_global_model:
             raise ValueError(
                 """
@@ -617,15 +617,14 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                 fit_initial_model to be False.
                 """
             )
-        
+
         if (fit_global_model) and isinstance(acquisition_rule, TURBO):
             warnings.warn(
                 """
-                Are you sure you want to keep fitting the global model even though you 
+                Are you sure you want to keep fitting the global model even though you
                 are using TURBO which uses local models? This is a waste of computation.
                 """
             )
-
 
         if acquisition_rule is None:
             if datasets.keys() != {OBJECTIVE}:
@@ -719,7 +718,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         else {OBJECTIVE: observer_output}
                     )
 
-                    datasets = {tag: datasets[tag] + tagged_output[tag] for tag in tagged_output}    
+                    datasets = {tag: datasets[tag] + tagged_output[tag] for tag in tagged_output}
                     with Timer() as model_fitting_timer:
                         if fit_global_model:
                             for tag, model in models.items():
