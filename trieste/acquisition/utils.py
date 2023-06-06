@@ -17,6 +17,7 @@ from typing import Tuple, Union
 import tensorflow as tf
 import tensorflow_probability as tfp
 
+from ..data import Dataset
 from ..space import SearchSpaceType
 from ..types import TensorType
 from .interface import AcquisitionFunction
@@ -117,21 +118,21 @@ def select_nth_output(x: TensorType, output_dim: int = 0) -> TensorType:
     return x[..., output_dim]
 
 
-def randomly_mix_x_with_other_x(x: TensorType, other_x: TensorType, prob: float) -> TensorType:
+def get_local_dataset(local_space: SearchSpaceType, dataset: Dataset) -> Dataset:
     """
-    A utility function that takes a tensor of x and returns a new tensor with some
-    of its entries replaced by that of other_x according to a given probability.
+    A utility function that takes in a dataset and returns the entries lying
+    within a given search space.
 
-    :param x: Input with shape [N, d].
-    :param other_x: The other point to be mixed into x with shape [1, d].
-    :return: TensorType of shape [N, d] representing the mixing of x and other_x.
+    :param local_space: A search space.
+    :param dataset: A Dataset.
+    :return: A Dataset containing entries only in the local_space.
     """
-    if tf.rank(x) != 2 or tf.rank(other_x) != 2:
-        raise ValueError("x and other_x must be of rank 2")
-    if tf.shape(x)[1] != tf.shape(other_x)[1]:
-        raise ValueError("x and other_x must have same trailing dim")
+    if tf.shape(dataset.query_points)[1] != local_space.dimension:
+        raise ValueError("Dataset and search space must have equal dimensions")
 
-    bernoulli_dist = tfp.distributions.Bernoulli(probs=prob)
-    flag_to_peturb = bernoulli_dist.sample(sample_shape=tf.shape(x)) == 1  # [N, d]
-    x_mixed = tf.where(flag_to_peturb, x, tf.tile(other_x, (tf.shape(x)[0], 1)))  # [N, d]
-    return x_mixed
+    is_in_region_mask = local_space.contains(dataset.query_points)
+    local_dataset = Dataset(
+        query_points=tf.boolean_mask(dataset.query_points, is_in_region_mask),
+        observations=tf.boolean_mask(dataset.observations, is_in_region_mask),
+    )
+    return local_dataset
