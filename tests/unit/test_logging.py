@@ -200,10 +200,10 @@ def test_tensorboard_logging(mocked_summary_scalar: unittest.mock.MagicMock) -> 
 
 
 @unittest.mock.patch("trieste.models.gpflow.interface.tf.summary.scalar")
-@pytest.mark.parametrize("fit_initial_model", [True, False])
+@pytest.mark.parametrize("fit_model", ["all", "all_but_init", "never"])
 def test_wallclock_time_logging(
     mocked_summary_scalar: unittest.mock.MagicMock,
-    fit_initial_model: bool,
+    fit_model: str,
 ) -> None:
     model_fit_time = 0.2
     acq_time = 0.1
@@ -231,7 +231,7 @@ def test_wallclock_time_logging(
         steps = 3
         rule = _FixedAcquisitionRuleWithWaiting([[0.0]])
         BayesianOptimizer(lambda x: {tag: Dataset(x, x**2)}, Box([-1], [1])).optimize(
-            steps, data, models, rule, fit_initial_model=fit_initial_model
+            steps, data, models, rule, fit_model=fit_model
         )
 
     other_scalars = 0
@@ -239,22 +239,24 @@ def test_wallclock_time_logging(
     for i, call_arg in enumerate(mocked_summary_scalar.call_args_list):
         name = call_arg[0][0]
         value = call_arg[0][1]
-        if fit_initial_model and i == 0:
+        if fit_model == "all" and i == 0:
             assert name == "wallclock/model_fitting"
         if name.startswith("wallclock"):
             assert value > 0  # want positive wallclock times
-        if name == "wallclock/step":
-            npt.assert_allclose(value, model_fit_time + acq_time, rtol=0.1)
-        elif name == "wallclock/query_point_generation":
+        if name == "wallclock/query_point_generation":
             npt.assert_allclose(value, acq_time, rtol=0.01)
+        elif name == "wallclock/step":
+            total_time = acq_time if fit_model == "never" else model_fit_time + acq_time
+            npt.assert_allclose(value, total_time, rtol=0.1)
         elif name == "wallclock/model_fitting":
-            npt.assert_allclose(value, model_fit_time, rtol=0.1)
+            model_time = 0.0 if fit_model == "never" else model_fit_time
+            npt.assert_allclose(value, model_time, atol=0.01)
         else:
             other_scalars += 1
 
     # check that we processed all the wallclocks we were expecting
     total_wallclocks = other_scalars + 3 * steps
-    if fit_initial_model:
+    if fit_model == "all":
         total_wallclocks += 1
     assert len(mocked_summary_scalar.call_args_list) == total_wallclocks
 

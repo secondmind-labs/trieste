@@ -15,7 +15,6 @@ import functools
 from typing import Tuple, Union
 
 import tensorflow as tf
-import tensorflow_probability as tfp
 
 from ..data import Dataset
 from ..space import SearchSpaceType

@@ -1178,7 +1178,19 @@ class TURBO(
             rule = DiscreteThompsonSampling(tf.minimum(100 * search_space.dimension, 5_000), 1)
 
         if failure_tolerance is None:
-            failure_tolerance = math.ceil(search_space.dimension / rule._num_query_points)
+            if isinstance(
+                rule,
+                (
+                    EfficientGlobalOptimization,
+                    DiscreteThompsonSampling,
+                    RandomSampling,
+                    AsynchronousOptimization,
+                ),
+            ):
+                failure_tolerance = math.ceil(search_space.dimension / rule._num_query_points)
+            else:
+                failure_tolerance == search_space.dimension
+            assert isinstance(failure_tolerance, int)
         search_space_max_width = tf.reduce_max(search_space.upper - search_space.lower)
         if L_min is None:
             L_min = (0.5**7) * search_space_max_width
@@ -1253,7 +1265,6 @@ class TURBO(
         if self._local_models is None:  # if user doesnt specifiy a local model
             self._local_models = deepcopy(models)  # copy global model (will be fit locally later)
 
-        self._local_models: Mapping[Tag, TrainableSupportsGetKernel]
         if self._local_models.keys() != {OBJECTIVE}:
             raise ValueError(
                 f"dict of models must contain the single key {OBJECTIVE}, got keys {models.keys()}"
@@ -1266,7 +1277,6 @@ class TURBO(
 
         dataset = datasets[OBJECTIVE]
         local_model = self._local_models[OBJECTIVE]
-
         global_lower = search_space.lower
         global_upper = search_space.upper
 
