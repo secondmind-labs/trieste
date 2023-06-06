@@ -35,7 +35,7 @@ except ImportError:  # pragma: no cover (tested but not by coverage)
     pymoo = None
     PymooProblem = object
 
-from copy import deepcopy
+import copy
 
 import tensorflow as tf
 
@@ -1263,7 +1263,7 @@ class TURBO(
         :raise KeyError: If ``datasets`` does not contain the key `OBJECTIVE`.
         """
         if self._local_models is None:  # if user doesnt specifiy a local model
-            self._local_models = deepcopy(models)  # copy global model (will be fit locally later)
+            self._local_models = copy.copy(models)  # copy global model (will be fit locally later)
 
         if self._local_models.keys() != {OBJECTIVE}:
             raise ValueError(

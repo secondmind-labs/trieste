@@ -612,14 +612,15 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
         if fit_model not in ["all", "all_but_init", "never"]:
             raise ValueError(
-                f"Expecting fit_model to be all, all_but_init or never but recieved, {fit_model}"
+                f"Expecting fit_model to be `all`, `all_but_init` or `never` but recieved, {fit_model}"
             )
 
         if (fit_model in ["all", "all_but_init"]) and isinstance(acquisition_rule, TURBO):
             warnings.warn(
                 """
                 Are you sure you want to keep fitting the global model even though you
-                are using TURBO which uses local models? This is a waste of computation.
+                are using TURBO which has only local models? This is a waste of computation.
+                Consider setting 'fit_model'='never'.
                 """
             )
 
