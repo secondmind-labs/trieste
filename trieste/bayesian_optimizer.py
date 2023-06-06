@@ -569,9 +569,11 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             step. Models and acquisition state are copied using `copy.deepcopy`.
         :param track_path: If set, the optimization state is saved to disk at this path,
             rather than being copied in memory.
-        :param fit_model: If `False`, this method assumes that the initial models have
-            already been optimized on the datasets and so do not require optimization before the
-            first optimization step. todo
+        :param fit_model: If `all` the we fit the models before the first BO step and after all
+            subsequent steps. If `all_but_init` then we assume that the initial models have
+            already been optimized on the datasets and so do not require optimization before
+            the first optimization step. If `never` then never fit the models (i.e. if we
+            are using a rule that doesnt rely on the models and dont want to waste computation).
         :param early_stop_callback: An optional callback that is evaluated with the current
             datasets, models and optimization state before every optimization step. If this
             returns `True` then the optimization loop is terminated early.
