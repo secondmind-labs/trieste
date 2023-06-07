@@ -23,7 +23,7 @@ from typing import Callable, Optional, Tuple, TypeVar, Union, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-from gpflow.kernels import MultioutputKernel
+from gpflow.kernels import Kernel, MultioutputKernel
 from gpflux.layers.basis_functions.fourier_features import RandomFourierFeaturesCosine
 from gpflux.math import compute_A_inv_b
 from typing_extensions import Protocol, runtime_checkable
@@ -311,6 +311,25 @@ FeatureDecompositionTrajectorySamplerModelType = TypeVar(
     bound=FeatureDecompositionTrajectorySamplerModel,
     contravariant=True,
 )
+
+
+def _get_kernel_function(kernel: Kernel) -> Callable[[TensorType, TensorType], tf.Tensor]:
+    # Select between a multioutput kernel and a single-output kernel.
+    # Mypy is confused and doesn't see that kernel can be of two types, hence need cast and type
+    # ignore.
+    if isinstance(kernel, MultioutputKernel):
+
+        def K(X: TensorType, X2: Optional[TensorType] = None) -> tf.Tensor:
+            return cast(MultioutputKernel, kernel).K(X, X2, full_output_cov=False)  # [L, M, M]
+
+    else:
+
+        def K(  # type: ignore[unreachable]
+            X: TensorType, X2: Optional[TensorType] = None
+        ) -> tf.Tensor:
+            return tf.expand_dims(kernel.K(X, X2), axis=0)  # [1, M, M]
+
+    return K
 
 
 class FeatureDecompositionTrajectorySampler(
@@ -640,18 +659,7 @@ class DecoupledTrajectorySampler(
         the `F`  RFF features and `M` canonical features for `L` outputs.
         """
 
-        kernel = self._model.get_kernel()
-        if self._feature_functions.is_multioutput:
-
-            def kernel_K(iv: TensorType) -> TensorType:
-                # mypy is confused and doesn't see that kernel can be of two types
-                return cast(MultioutputKernel, kernel).K(iv, iv, full_output_cov=False)  # [L, M, M]
-
-        else:
-
-            def kernel_K(iv: TensorType) -> TensorType:
-                return tf.expand_dims(kernel.K(iv, iv), axis=0)  # [1, M, M]
-
+        kernel_K = _get_kernel_function(self._model.get_kernel())
         if isinstance(self._model, FeatureDecompositionInducingPointModel):
             (  # extract variational parameters
                 inducing_points,
@@ -659,7 +667,7 @@ class DecoupledTrajectorySampler(
                 q_sqrt,
                 whiten,
             ) = self._model.get_inducing_variables()  # [M, D], [M, L], [L, M, M], []
-            Kmm = kernel_K(inducing_points)  # [L, M, M]
+            Kmm = kernel_K(inducing_points, inducing_points)  # [L, M, M]
             Kmm += tf.eye(tf.shape(inducing_points)[0], dtype=Kmm.dtype) * DEFAULTS.JITTER
         else:  # massage quantities from GP to look like variational parameters
             internal_data = self._model.get_internal_data()
@@ -672,7 +680,7 @@ class DecoupledTrajectorySampler(
             q_sqrt = tf.expand_dims(q_sqrt, axis=0)  # [1, M, M]
             q_sqrt = tf.math.sqrt(self._model.get_observation_noise()) * q_sqrt
             whiten = False
-            Kmm = kernel_K(inducing_points) + q_sqrt**2  # [L, M, M]
+            Kmm = kernel_K(inducing_points, inducing_points) + q_sqrt**2  # [L, M, M]
 
         M, L = tf.shape(q_mu)
         tf.debugging.assert_shapes(
@@ -801,25 +809,21 @@ class ResampleableDecoupledFeatureFunctions(ResampleableRandomFourierFeatureFunc
         else:
             self._inducing_points = model.get_internal_data().query_points  # [M, D]
 
-        if self.is_multioutput:
-            # mypy is confused and doesn't see that kernel can be of two types
-            kernel: MultioutputKernel = model.get_kernel()  # help mypy
-            self._canonical_feature_functions = lambda x: tf.linalg.matrix_transpose(
-                kernel.K(self._inducing_points, x, full_output_cov=False)
-            )
-        else:
-            kernel = model.get_kernel()
-            self._canonical_feature_functions = lambda x: tf.linalg.matrix_transpose(
-                kernel.K(self._inducing_points, x)
-            )
+        kernel_K = _get_kernel_function(self.kernel)
+        self._canonical_feature_functions = lambda x: tf.linalg.matrix_transpose(
+            kernel_K(self._inducing_points, x)
+        )
 
     def call(self, x: TensorType) -> TensorType:  # [N, D] -> [N, F + M] or [L, N, F + M]
         """
         combine prior basis functions with canonical basis functions
         """
         fourier_feature_eval = super().call(x)  # [N, F] or [L, N, F]
-        cannonical_feature_eval = self._canonical_feature_functions(x)  # [N, M] or [L, N, M]
-        return tf.concat([fourier_feature_eval, cannonical_feature_eval], axis=-1)
+        canonical_feature_eval = self._canonical_feature_functions(x)  # [1, N, M] or [L, N, M]
+        # ensure matching rank between features, i.e. drop the leading 1 dimension
+        matched_shape = tf.shape(canonical_feature_eval)[-tf.rank(fourier_feature_eval) :]
+        canonical_feature_eval = tf.reshape(canonical_feature_eval, matched_shape)
+        return tf.concat([fourier_feature_eval, canonical_feature_eval], axis=-1)
 
 
 class feature_decomposition_trajectory(TrajectoryFunctionClass):
