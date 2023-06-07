@@ -19,7 +19,7 @@ GPflow wrappers.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Callable, Optional, Tuple, TypeVar, Union, cast
+from typing import Callable, Optional, Tuple, TypeGuard, TypeVar, Union, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -313,20 +313,16 @@ FeatureDecompositionTrajectorySamplerModelType = TypeVar(
 )
 
 
+def _is_multioutput_kernel(kernel: Kernel) -> TypeGuard[MultioutputKernel]:
+    return isinstance(kernel, MultioutputKernel)
+
+
 def _get_kernel_function(kernel: Kernel) -> Callable[[TensorType, TensorType], tf.Tensor]:
     # Select between a multioutput kernel and a single-output kernel.
-    # Mypy is confused and doesn't see that kernel can be of two types, hence need cast and type
-    # ignore.
-    if isinstance(kernel, MultioutputKernel):
-
-        def K(X: TensorType, X2: Optional[TensorType] = None) -> tf.Tensor:
-            return cast(MultioutputKernel, kernel).K(X, X2, full_output_cov=False)  # [L, M, M]
-
-    else:
-
-        def K(  # type: ignore[unreachable]
-            X: TensorType, X2: Optional[TensorType] = None
-        ) -> tf.Tensor:
+    def K(X: TensorType, X2: Optional[TensorType] = None) -> tf.Tensor:
+        if _is_multioutput_kernel(kernel):
+            return kernel.K(X, X2, full_output_cov=False)  # [L, M, M]
+        else:
             return tf.expand_dims(kernel.K(X, X2), axis=0)  # [1, M, M]
 
     return K
