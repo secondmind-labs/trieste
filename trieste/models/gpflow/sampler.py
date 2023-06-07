@@ -19,14 +19,14 @@ GPflow wrappers.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Callable, Optional, Tuple, TypeGuard, TypeVar, Union, cast
+from typing import Callable, Optional, Tuple, TypeVar, Union, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
 from gpflow.kernels import Kernel, MultioutputKernel
 from gpflux.layers.basis_functions.fourier_features import RandomFourierFeaturesCosine
 from gpflux.math import compute_A_inv_b
-from typing_extensions import Protocol, runtime_checkable
+from typing_extensions import Protocol, TypeGuard, runtime_checkable
 
 from ...types import TensorType
 from ...utils import DEFAULTS, flatten_leading_dims
