@@ -1525,7 +1525,7 @@ def test_sparse_variational_trajectory_sampler_has_correct_samples(
 
     svgp = svgp_model_by_type(x, kernel_type + "+shared", whiten, len(x), noise_var, mean)
     optimizer = BatchOptimizer(tf.optimizers.Adam(1.0), max_iter=10)
-    model = SparseVariational(svgp, optimizer=optimizer)
+    model = SparseVariational(svgp, optimizer=optimizer, num_rff_features=2000)
     model.update(Dataset(x, y))
     model.optimize(Dataset(x, y))
 
