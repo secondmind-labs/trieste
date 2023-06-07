@@ -229,7 +229,7 @@ def test_deep_ensemble_with_lr_scheduler() -> None:
     }
 
     lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-        initial_learning_rate=0.01, decay_steps=1, decay_rate=0.5
+        initial_learning_rate=init_lr, decay_steps=1, decay_rate=0.5
     )
     optimizer = KerasOptimizer(tf.optimizers.Adam(lr_schedule), fit_args)
     model = DeepEnsemble(keras_ensemble, optimizer)

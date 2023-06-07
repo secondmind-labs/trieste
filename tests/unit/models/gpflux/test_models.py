@@ -291,7 +291,7 @@ def test_deep_gaussian_process_with_lr_scheduler(
     }
 
     lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-        initial_learning_rate=0.01, decay_steps=1, decay_rate=0.5
+        initial_learning_rate=init_lr, decay_steps=1, decay_rate=0.5
     )
     optimizer = KerasOptimizer(tf.optimizers.Adam(lr_schedule), fit_args)
     model = DeepGaussianProcess(two_layer_model(x), optimizer)
