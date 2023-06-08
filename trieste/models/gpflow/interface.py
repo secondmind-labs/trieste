@@ -79,8 +79,8 @@ class GPflowPredictor(
     def __setstate__(self, state: dict[str, Any]) -> None:
         # when unpickling we may need to regenerate the posterior cache
         self.__dict__.update(state)
+        self._ensure_variable_model_data()
         if self._posterior is not None:
-            self._ensure_variable_model_data()
             self.create_posterior_cache()
 
     def update_posterior_cache(self) -> None:
