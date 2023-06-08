@@ -296,7 +296,7 @@ def test_deep_gaussian_process_with_lr_scheduler(
 
     model.optimize(Dataset(x, y))
 
-    assert len(model.model.history.history["loss"]) == epochs
+    assert len(model.model_keras.history.history["loss"]) == epochs
 
 
 def test_deep_gaussian_process_default_optimizer_is_correct(
