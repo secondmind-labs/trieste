@@ -1529,7 +1529,7 @@ def test_sparse_variational_trajectory_sampler_has_correct_samples(
     model.update(Dataset(x, y))
     model.optimize(Dataset(x, y))
 
-    num_samples = 3000
+    num_samples = 6000
     trajectory_sampler = model.trajectory_sampler()
 
     assert isinstance(trajectory_sampler, DecoupledTrajectorySampler)
