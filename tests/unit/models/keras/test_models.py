@@ -236,7 +236,7 @@ def test_deep_ensemble_with_lr_scheduler() -> None:
 
     model.optimize(example_data)
 
-    assert not np.any(np.isnan(model.model.history.history["loss"]))
+    assert len(model.model.history.history["loss"]) == epochs
 
 
 def test_deep_ensemble_ensemble_distributions(ensemble_size: int, dataset_size: int) -> None:
@@ -244,7 +244,7 @@ def test_deep_ensemble_ensemble_distributions(ensemble_size: int, dataset_size: 
     model, _, _ = trieste_deep_ensemble_model(example_data, ensemble_size, False, False)
 
     distributions = model.ensemble_distributions(example_data.query_points)
-    # breakpoint()
+
     assert len(distributions) == ensemble_size
     for dist in distributions:
         assert isinstance(dist, tfp.distributions.Distribution)
