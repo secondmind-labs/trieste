@@ -34,6 +34,7 @@ jobs:
     - run: |
         pip install --upgrade pip
         pip install .[qhsri] -r notebooks/requirements.txt -c notebooks/constraints.txt
+        pip install -I box2d-kengz -c notebooks/constraints.txt
         pip install -r docs/requirements.txt -c docs/constraints.txt
         TEMP_DEB="$(mktemp)" &&
         wget -O "$TEMP_DEB" 'https://github.com/jgm/pandoc/releases/download/2.10.1/pandoc-2.10.1-1-amd64.deb' &&
