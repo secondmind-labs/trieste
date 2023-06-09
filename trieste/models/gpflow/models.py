@@ -1216,6 +1216,10 @@ class VariationalGaussianProcess(
                 ),
             )
 
+            # reinitialise the model so that the underlying Parameters have the right shape
+            # and then reassign the original values
+            old_q_mu = model.q_mu
+            old_q_sqrt = model.q_sqrt
             model.__init__(  # type: ignore[misc]
                 variable_data,
                 model.kernel,
@@ -1223,6 +1227,8 @@ class VariationalGaussianProcess(
                 model.mean_function,
                 model.num_latent_gps,
             )
+            model.q_mu.assign(old_q_mu)
+            model.q_sqrt.assign(old_q_sqrt)
 
     def __repr__(self) -> str:
         """"""
