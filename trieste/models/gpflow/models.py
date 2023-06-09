@@ -1087,20 +1087,8 @@ class SparseVariational(
         Return a trajectory sampler. For :class:`SparseVariational`, we build
         trajectories using a decoupled random Fourier feature approximation.
 
-        At the moment only models with single latent GP are supported.
-
         :return: The trajectory sampler.
-        :raise NotImplementedError: If we try to use the
-            sampler with a model that has more than one latent GP.
         """
-        if self.model.num_latent_gps > 1:
-            raise NotImplementedError(
-                f"""
-                Trajectory sampler does not currently support models with multiple latent
-                GPs, however received a model with {self.model.num_latent_gps} latent GPs.
-                """
-            )
-
         return DecoupledTrajectorySampler(self, self._num_rff_features)
 
 
