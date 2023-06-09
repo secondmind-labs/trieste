@@ -23,9 +23,10 @@ from typing import Callable, Optional, Tuple, TypeVar, Union, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflow.kernels import Kernel, MultioutputKernel
 from gpflux.layers.basis_functions.fourier_features import RandomFourierFeaturesCosine
 from gpflux.math import compute_A_inv_b
-from typing_extensions import Protocol, runtime_checkable
+from typing_extensions import Protocol, TypeGuard, runtime_checkable
 
 from ...types import TensorType
 from ...utils import DEFAULTS, flatten_leading_dims
@@ -312,6 +313,21 @@ FeatureDecompositionTrajectorySamplerModelType = TypeVar(
 )
 
 
+def _is_multioutput_kernel(kernel: Kernel) -> TypeGuard[MultioutputKernel]:
+    return isinstance(kernel, MultioutputKernel)
+
+
+def _get_kernel_function(kernel: Kernel) -> Callable[[TensorType, TensorType], tf.Tensor]:
+    # Select between a multioutput kernel and a single-output kernel.
+    def K(X: TensorType, X2: Optional[TensorType] = None) -> tf.Tensor:
+        if _is_multioutput_kernel(kernel):
+            return kernel.K(X, X2, full_output_cov=False)  # [L, M, M]
+        else:
+            return tf.expand_dims(kernel.K(X, X2), axis=0)  # [1, M, M]
+
+    return K
+
+
 class FeatureDecompositionTrajectorySampler(
     TrajectorySampler[FeatureDecompositionTrajectorySamplerModelType],
     ABC,
@@ -363,7 +379,8 @@ class FeatureDecompositionTrajectorySampler(
         and evaluating the feature functions.
 
         :return: A trajectory function representing an approximate trajectory from the Gaussian
-            process, taking an input of shape `[N, D]` and returning shape `[N, 1]`
+            process, taking an input of shape `[N, B, D]` and returning shape `[N, B, L]`
+            where `L` is the number of outputs of the model.
         """
 
         weight_sampler = self._prepare_weight_sampler()  # prep feature weight distribution
@@ -412,11 +429,11 @@ class FeatureDecompositionTrajectorySampler(
         return trajectory  # return trajectory with resampled weights
 
     @abstractmethod
-    def _prepare_weight_sampler(self) -> Callable[[int], TensorType]:  # [B] -> [L, B]
+    def _prepare_weight_sampler(self) -> Callable[[int], TensorType]:  # [B] -> [B, F, L]
         """
         Calculate the posterior of the feature weights for the specified feature functions,
         returning a function that takes in a batch size `B` and returns `B` samples for
-        the weights of each of the `L` features.
+        the weights of each of the `F` features for `L` outputs.
         """
         raise NotImplementedError
 
@@ -477,17 +494,14 @@ class RandomFourierFeatureTrajectorySampler(
 
         tf.debugging.assert_positive(num_features)
         self._num_features = num_features
-        self._model = model
-        feature_functions = ResampleableRandomFourierFeatureFunctions(
-            self._model, self._num_features
-        )
-        super().__init__(self._model, feature_functions)
+        feature_functions = ResampleableRandomFourierFeatureFunctions(model, self._num_features)
+        super().__init__(model, feature_functions)
 
-    def _prepare_weight_sampler(self) -> Callable[[int], TensorType]:  # [B] -> [L, B]
+    def _prepare_weight_sampler(self) -> Callable[[int], TensorType]:  # [B] -> [B, F, 1]
         """
         Calculate the posterior of theta (the feature weights) for the RFFs, returning
         a function that takes in a batch size `B` and returns `B` samples for
-        the weights of each of the RFF `L` features.
+        the weights of each of the RFF `F` features for one output.
         """
 
         dataset = self._model.get_internal_data()
@@ -499,7 +513,7 @@ class RandomFourierFeatureTrajectorySampler(
         else:  # if n <= m  then calculate posterior in gram space (an n*n matrix inversion)
             theta_posterior = self._prepare_theta_posterior_in_gram_space()
 
-        return lambda b: theta_posterior.sample(b)
+        return lambda b: tf.expand_dims(theta_posterior.sample(b), axis=-1)
 
     def _prepare_theta_posterior_in_design_space(self) -> tfp.distributions.MultivariateNormalTriL:
         r"""
@@ -578,13 +592,12 @@ class DecoupledTrajectorySampler(
 
     This class builds functions that approximate a trajectory sampled from an underlying Gaussian
     process model using decoupled sampling. See :cite:`wilson2020efficiently` for an introduction
-    to decoupled sampling. Currently we do not support models with multiple latent Gaussian
-    processes.
+    to decoupled sampling.
 
     Unlike our :class:`RandomFourierFeatureTrajectorySampler` which uses a RFF decomposition to
     aprroximate the Gaussian process posterior, a :class:`DecoupledTrajectorySampler` only
     uses an RFF decomposition to approximate the Gausian process prior and instead using
-    a cannonical decomposition to discretize the effect of updating the prior on the given data.
+    a canonical decomposition to discretize the effect of updating the prior on the given data.
 
     In particular, we approximate the Gaussian processes' posterior samples as the finite feature
     approximation
@@ -592,7 +605,7 @@ class DecoupledTrajectorySampler(
     .. math:: \hat{f}(.) = \sum_{i=1}^L w_i\phi_i(.) + \sum_{j=1}^m v_jk(.,z_j)
 
     where :math:`\phi_i(.)` and :math:`w_i` are the Fourier features and their weights that
-    discretize the prior. In contrast, `k(.,z_j)` and :math:`v_i` are the cannonical features and
+    discretize the prior. In contrast, `k(.,z_j)` and :math:`v_i` are the canonical features and
     their weights that discretize the data update.
 
     The expression for :math:`v_i` depends on if we are using an exact Gaussian process or a sparse
@@ -630,80 +643,81 @@ class DecoupledTrajectorySampler(
 
         tf.debugging.assert_positive(num_features)
         self._num_features = num_features
-        self._model = model
-        feature_functions = ResampleableDecoupledFeatureFunctions(self._model, self._num_features)
+        feature_functions = ResampleableDecoupledFeatureFunctions(model, self._num_features)
 
-        super().__init__(self._model, feature_functions)
+        super().__init__(model, feature_functions)
 
-    def _prepare_weight_sampler(self) -> Callable[[int], TensorType]:
+    def _prepare_weight_sampler(self) -> Callable[[int], TensorType]:  # [B] -> [B, F + M, L]
         """
         Prepare the sampler function that provides samples of the feature weights
-        for both the RFF and cannonical feature functions, i.e. we return a function
+        for both the RFF and canonical feature functions, i.e. we return a function
         that takes in a batch size `B` and returns `B` samples for the weights of each of
-        the `L`  RFF features and `N` cannonical features.
+        the `F`  RFF features and `M` canonical features for `L` outputs.
         """
 
+        kernel_K = _get_kernel_function(self._model.get_kernel())
         if isinstance(self._model, FeatureDecompositionInducingPointModel):
             (  # extract variational parameters
                 inducing_points,
                 q_mu,
                 q_sqrt,
                 whiten,
-            ) = self._model.get_inducing_variables()  # [M, d], [M, 1], [1, M, 1]
-            q_sqrt = q_sqrt[0, :, :]  # [M, M]
-            Kmm = self._model.get_kernel().K(inducing_points, inducing_points)  # [M, M]
+            ) = self._model.get_inducing_variables()  # [M, D], [M, L], [L, M, M], []
+            Kmm = kernel_K(inducing_points, inducing_points)  # [L, M, M]
             Kmm += tf.eye(tf.shape(inducing_points)[0], dtype=Kmm.dtype) * DEFAULTS.JITTER
         else:  # massage quantities from GP to look like variational parameters
             internal_data = self._model.get_internal_data()
-            inducing_points = internal_data.query_points  # [M, d]
-            q_mu = self._model.get_internal_data().observations  # [M, 1]
+            inducing_points = internal_data.query_points  # [M, D]
+            q_mu = self._model.get_internal_data().observations  # [M, L]
             q_mu = q_mu - self._model.get_mean_function()(
                 inducing_points
             )  # account for mean function
             q_sqrt = tf.eye(tf.shape(inducing_points)[0], dtype=tf.float64)  # [M, M]
+            q_sqrt = tf.expand_dims(q_sqrt, axis=0)  # [1, M, M]
             q_sqrt = tf.math.sqrt(self._model.get_observation_noise()) * q_sqrt
             whiten = False
-            Kmm = (
-                self._model.get_kernel().K(inducing_points, inducing_points) + q_sqrt**2
-            )  # [M, M]
+            Kmm = kernel_K(inducing_points, inducing_points) + q_sqrt**2  # [L, M, M]
 
+        M, L = tf.shape(q_mu)
         tf.debugging.assert_shapes(
             [
-                (inducing_points, ["M", "d"]),
-                (q_mu, ["M", "1"]),
-                (q_sqrt, ["M", "M"]),
-                (Kmm, ["M", "M"]),
+                (inducing_points, ["M", "D"]),
+                (q_mu, ["M", "L"]),
+                (q_sqrt, ["L", "M", "M"]),
+                (Kmm, ["L", "M", "M"]),
             ]
         )
 
         def weight_sampler(batch_size: int) -> Tuple[TensorType, TensorType]:
             prior_weights = tf.random.normal(  # Non-RFF features will require scaling here
-                [self._num_features, batch_size], dtype=tf.float64
-            )  # [L, B]
+                [L, self._num_features, batch_size], dtype=tf.float64
+            )  # [L, F, B]
 
             u_noise_sample = tf.matmul(
-                q_sqrt,  # [M, M]
-                tf.random.normal(
-                    (tf.shape(inducing_points)[0], batch_size), dtype=tf.float64
-                ),  # [ M, B]
-            )  # [M, B]
+                q_sqrt,  # [L, M, M]
+                tf.random.normal((L, M, batch_size), dtype=tf.float64),  # [L, M, B]
+            )  # [L, M, B]
 
-            u_sample = q_mu + u_noise_sample  # [M, B]
+            u_sample = tf.linalg.matrix_transpose(q_mu)[..., None] + u_noise_sample  # [L, M, B]
 
             if whiten:
-                Luu = tf.linalg.cholesky(Kmm)  # [M, M]
-                u_sample = tf.matmul(Luu, u_sample)  # [M, B]
+                Luu = tf.linalg.cholesky(Kmm)  # [L, M, M]
+                u_sample = tf.matmul(Luu, u_sample)  # [L, M, B]
 
-            phi_Z = self._feature_functions(inducing_points)[:, : self._num_features]  # [M, B]
-            weight_space_prior_Z = phi_Z @ prior_weights  # [M, B]
+            phi_Z = self._feature_functions(inducing_points)[
+                ..., : self._num_features
+            ]  # [M, F] or [L, M, F]
+            weight_space_prior_Z = phi_Z @ prior_weights  # [L, M, B]
 
-            diff = u_sample - weight_space_prior_Z  # [M, B]
+            diff = u_sample - weight_space_prior_Z  # [L, M, B]
 
-            v = compute_A_inv_b(Kmm, diff)  # [M, B]
+            v = compute_A_inv_b(Kmm, diff)  # [L, M, B]
 
-            tf.debugging.assert_shapes([(v, ["M", "B"]), (prior_weights, ["L", "B"])])
+            tf.debugging.assert_shapes([(v, ["L", "M", "B"]), (prior_weights, ["L", "F", "B"])])
 
-            return tf.transpose(tf.concat([prior_weights, v], axis=0))  # [B, L + M]
+            return tf.transpose(
+                tf.concat([prior_weights, v], axis=1), perm=[2, 1, 0]
+            )  # [B, F + M, L]
 
         return weight_sampler
 
@@ -713,8 +727,8 @@ class ResampleableRandomFourierFeatureFunctions(RandomFourierFeaturesCosine):
     A wrapper around GPFlux's random Fourier feature function that allows for
     efficient in-place updating when generating new decompositions.
 
-    In particular, we store the bias and weights as variables, which can then be
-    updated without triggering expensive graph retracing.
+    In particular, the bias and weights are stored as variables, which can then be
+    updated by calling :meth:`resample` without triggering expensive graph retracing.
 
     Note that if a model is both of :class:`FeatureDecompositionInducingPointModel` type and
     :class:`FeatureDecompositionInternalDataModel` type,
@@ -749,18 +763,7 @@ class ResampleableRandomFourierFeatureFunctions(RandomFourierFeaturesCosine):
                 f"but received {model.__repr__()}."
             )
 
-        self._kernel = model.get_kernel()
-        self._n_components = n_components
-        super().__init__(self._kernel, self._n_components, dtype=tf.float64)
-
-        if isinstance(model, SupportsGetInducingVariables):
-            dummy_X = model.get_inducing_variables()[0][0:1, :]
-        else:
-            dummy_X = model.get_internal_data().query_points[0:1, :]
-
-        self.__call__(dummy_X)  # dummy call to force init of weights
-        self.b: TensorType = tf.Variable(self.b)
-        self.W: TensorType = tf.Variable(self.W)  # allow updateable weights
+        super().__init__(model.get_kernel(), n_components, dtype=tf.float64)
 
     def resample(self) -> None:
         """
@@ -773,8 +776,8 @@ class ResampleableRandomFourierFeatureFunctions(RandomFourierFeaturesCosine):
 class ResampleableDecoupledFeatureFunctions(ResampleableRandomFourierFeatureFunctions):
     """
     A wrapper around our :class:`ResampleableRandomFourierFeatureFunctions` which rather
-    than evaluates just `L` RFF functions instead evaluates the concatenation of
-    `L` RFF functions with evaluations of the cannonical basis functions.
+    than evaluates just `F` RFF functions instead evaluates the concatenation of
+    `F` RFF functions with evaluations of the canonical basis functions.
 
     Note that if a model is both of :class:`FeatureDecompositionInducingPointModel` type and
     :class:`FeatureDecompositionInternalDataModel` type,
@@ -795,24 +798,28 @@ class ResampleableDecoupledFeatureFunctions(ResampleableRandomFourierFeatureFunc
         :param n_components: The desired number of features.
         """
 
-        if isinstance(model, SupportsGetInducingVariables):
-            inducing_points = model.get_inducing_variables()[0]  # [M, D]
-        else:
-            inducing_points = model.get_internal_data().query_points  # [M, D]
-
-        self._cannonical_feature_functions = lambda x: tf.linalg.matrix_transpose(
-            model.get_kernel().K(inducing_points, x)
-        )
-
         super().__init__(model, n_components)
 
-    def __call__(self, x: TensorType) -> TensorType:  # [N,D] -> [N, L + M]
+        if isinstance(model, SupportsGetInducingVariables):
+            self._inducing_points = model.get_inducing_variables()[0]  # [M, D]
+        else:
+            self._inducing_points = model.get_internal_data().query_points  # [M, D]
+
+        kernel_K = _get_kernel_function(self.kernel)
+        self._canonical_feature_functions = lambda x: tf.linalg.matrix_transpose(
+            kernel_K(self._inducing_points, x)
+        )
+
+    def call(self, x: TensorType) -> TensorType:  # [N, D] -> [N, F + M] or [L, N, F + M]
         """
-        combine prior basis functions with cannonical basis functions
+        combine prior basis functions with canonical basis functions
         """
-        fourier_feature_eval = super().__call__(x)  # [N, L]
-        cannonical_feature_eval = self._cannonical_feature_functions(x)  # [N, M]
-        return tf.concat([fourier_feature_eval, cannonical_feature_eval], axis=-1)  # [N, L + M]
+        fourier_feature_eval = super().call(x)  # [N, F] or [L, N, F]
+        canonical_feature_eval = self._canonical_feature_functions(x)  # [1, N, M] or [L, N, M]
+        # ensure matching rank between features, i.e. drop the leading 1 dimension
+        matched_shape = tf.shape(canonical_feature_eval)[-tf.rank(fourier_feature_eval) :]
+        canonical_feature_eval = tf.reshape(canonical_feature_eval, matched_shape)
+        return tf.concat([fourier_feature_eval, canonical_feature_eval], axis=-1)
 
 
 class feature_decomposition_trajectory(TrajectoryFunctionClass):
@@ -848,7 +855,7 @@ class feature_decomposition_trajectory(TrajectoryFunctionClass):
         self._initialized = tf.Variable(False)
 
         self._weights_sample = tf.Variable(  # dummy init to be updated before trajectory evaluation
-            tf.ones([0, 0], dtype=tf.float64), shape=[None, None]
+            tf.ones([0, 0, 0], dtype=tf.float64), shape=[None, None, None]
         )
 
         self._batch_size = tf.Variable(
@@ -856,7 +863,7 @@ class feature_decomposition_trajectory(TrajectoryFunctionClass):
         )  # dummy init to be updated before trajectory evaluation
 
     @tf.function
-    def __call__(self, x: TensorType) -> TensorType:  # [N, B, d] -> [N, B, 1]
+    def __call__(self, x: TensorType) -> TensorType:  # [N, B, D] -> [N, B, L]
         """Call trajectory function."""
 
         if not self._initialized:  # work out desired batch size from input
@@ -874,19 +881,26 @@ class feature_decomposition_trajectory(TrajectoryFunctionClass):
             """,
         )
 
-        flat_x, unflatten = flatten_leading_dims(x)  # [N*B, d]
-        flattened_feature_evaluations = self._feature_functions(flat_x)  # [N*B, m]
-        feature_evaluations = unflatten(flattened_feature_evaluations)  # [N, B, m]
+        flat_x, unflatten = flatten_leading_dims(x)  # [N*B, D]
+        flattened_feature_evaluations = self._feature_functions(
+            flat_x
+        )  # [N*B, F + M] or [L, N*B, F + M]
+        # ensure tensor is always rank 3
+        rank3_shape = tf.concat([[1], tf.shape(flattened_feature_evaluations)], axis=0)[-3:]
+        flattened_feature_evaluations = tf.reshape(flattened_feature_evaluations, rank3_shape)
+        flattened_feature_evaluations = tf.transpose(
+            flattened_feature_evaluations, perm=[1, 2, 0]
+        )  # [N*B, F + M, L]
+        feature_evaluations = unflatten(flattened_feature_evaluations)  # [N, B, F + M, L]
+
         mean = self._mean_function(x)  # account for the model's mean function
-        return (
-            tf.reduce_sum(feature_evaluations * self._weights_sample, -1, keepdims=True) + mean
-        )  # [N, B, 1]
+        return tf.reduce_sum(feature_evaluations * self._weights_sample, -2) + mean  # [N, B, L]
 
     def resample(self) -> None:
         """
         Efficiently resample in-place without retracing.
         """
-        self._weights_sample.assign(  # [B, m]
+        self._weights_sample.assign(  # [B, F + M, L]
             self._weight_sampler(self._batch_size)
         )  # resample weights
 
