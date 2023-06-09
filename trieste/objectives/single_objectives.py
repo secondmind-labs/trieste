@@ -335,7 +335,7 @@ def levy(x: TensorType, d: int) -> TensorType:
     The Levy test function over :math:`[0, 1]^d`. This function has many local
     minima and a single global minimum. See https://www.sfu.ca/~ssurjano/levy.html for details.
     Note that we rescale the original problem, which is typically defined
-    over `[-10, 10]^d`, to be defined over a unit hypercube :math:`[0, 1]^d.
+    over `[-10, 10]^d`, to be defined over a unit hypercube :math:`[0, 1]^d`.
 
     :param x: The points at which to evaluate the function, with shape [..., d].
     :param d: The dimension of the function.
@@ -357,12 +357,13 @@ def levy(x: TensorType, d: int) -> TensorType:
 
 def levy_8(x: TensorType) -> TensorType:
     """
-    Convenience function for the 8-dimensional :func:`levy` function.
+    Convenience function for the 8-dimensional :func:`levy` function, with output
+    normalised to unit interval
 
     :param x: The points at which to evaluate the function, with shape [..., 8].
     :return: The function values at ``x``, with shape [..., 1].
     """
-    return levy(x, d=8)
+    return levy(x, d=8) / 450.0
 
 
 Levy8 = SingleObjectiveTestProblem(
@@ -382,7 +383,7 @@ def rosenbrock(x: TensorType, d: int) -> TensorType:
     however the minima lies in a narrow valley. Even though this valley is
     easy to find, convergence to the minimum is difficult. See
     https://www.sfu.ca/~ssurjano/rosen.html for details. Inputs are rescaled to
-    be defined over a unit hypercube :math:`[0, 1]^d.
+    be defined over a unit hypercube :math:`[0, 1]^d`.
 
     :param x: The points at which to evaluate the function, with shape [..., d].
     :param d: The dimension of the function.

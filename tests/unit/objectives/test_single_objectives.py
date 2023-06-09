@@ -79,7 +79,7 @@ def test_no_function_values_are_less_than_global_minimum(
     objective = problem.objective
     space = problem.search_space
     minimum = problem.minimum
-    samples = space.sample_sobol(10_000 * len(space.lower), skip=0)
+    samples = space.sample_sobol(100_000 * len(space.lower), skip=0)
     npt.assert_array_less(tf.squeeze(minimum) - 1e-6, objective(samples))
 
 
