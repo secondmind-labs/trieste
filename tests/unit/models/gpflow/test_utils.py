@@ -31,6 +31,7 @@ from tests.util.models.models import fnc_2sin_x_over_3
 from trieste.data import Dataset
 from trieste.models import TrainableProbabilisticModel
 from trieste.models.gpflow import (
+    SparseVariational,
     check_optimizer,
     randomize_hyperparameters,
     squeeze_hyperparameters,
@@ -62,6 +63,19 @@ def test_gaussian_process_deep_copyable(gpflow_interface_factory: ModelFactoryTy
     npt.assert_equal(variance_f_copy_updated, variance_f_copy)
     npt.assert_array_compare(operator.__ne__, mean_f_updated, mean_f)
     npt.assert_array_compare(operator.__ne__, variance_f_updated, variance_f)
+
+    # check that updating the copy works too
+    x_new2 = tf.constant([[20.0], [30.0]], dtype=gpflow.default_float())
+    new_data2 = Dataset(x_new2, fnc_2sin_x_over_3(x_new2))
+    cast(TrainableProbabilisticModel, model_copy).update(new_data2)
+    model_copy.optimize(new_data2)
+
+    if not isinstance(model, SparseVariational):
+        assert model_copy._posterior is not None
+        npt.assert_array_equal(model_copy._posterior.X_data, x_new2)
+    mean_f_copy_updated2, variance_f_copy_updated2 = model_copy.predict(x_predict)
+    npt.assert_array_compare(operator.__ne__, mean_f_copy_updated, mean_f_copy_updated2)
+    npt.assert_array_compare(operator.__ne__, variance_f_copy_updated, variance_f_copy_updated2)
 
 
 @random_seed
