@@ -527,7 +527,7 @@ class RandomFourierFeatureTrajectorySampler(
         and observation noise variance :math:`\sigma^2`.
         """
         dataset = self._model.get_internal_data()
-        phi = self._feature_functions(dataset.query_points)  # [n, m]
+        phi = self._feature_functions(tf.convert_to_tensor(dataset.query_points))  # [n, m]
         D = tf.matmul(phi, phi, transpose_a=True)  # [m, m]
         s = self._model.get_observation_noise() * tf.eye(self._num_features, dtype=phi.dtype)
         L = tf.linalg.cholesky(D + s)
@@ -557,7 +557,7 @@ class RandomFourierFeatureTrajectorySampler(
         """
         dataset = self._model.get_internal_data()
         num_data = tf.shape(dataset.query_points)[0]  # n
-        phi = self._feature_functions(dataset.query_points)  # [n, m]
+        phi = self._feature_functions(tf.convert_to_tensor(dataset.query_points))  # [n, m]
         G = tf.matmul(phi, phi, transpose_b=True)  # [n, n]
         s = self._model.get_observation_noise() * tf.eye(num_data, dtype=phi.dtype)
         L = tf.linalg.cholesky(G + s)
@@ -704,7 +704,12 @@ class DecoupledTrajectorySampler(
                 Luu = tf.linalg.cholesky(Kmm)  # [L, M, M]
                 u_sample = tf.matmul(Luu, u_sample)  # [L, M, B]
 
-            phi_Z = self._feature_functions(inducing_points)[
+            # It is important that the feature-function is called with a tensor, instead of a
+            # parameter (which inducing points can be). This is to ensure pickling works correctly.
+            # First time a Keras layer (i.e. feature-functions) is built, the shape of the input is
+            # used to set the input-spec. If the input is a parameter, the input-spec will not be
+            # for an ordinary tensor and pickling will fail.
+            phi_Z = self._feature_functions(tf.convert_to_tensor(inducing_points))[
                 ..., : self._num_features
             ]  # [M, F] or [L, M, F]
             weight_space_prior_Z = phi_Z @ prior_weights  # [L, M, B]
