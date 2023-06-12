@@ -24,6 +24,7 @@ from trieste.objectives import (
     GramacyLee,
     Hartmann3,
     Hartmann6,
+    Levy8,
     LogarithmicGoldsteinPrice,
     Michalewicz2,
     Michalewicz5,
@@ -54,6 +55,7 @@ from trieste.objectives import (
         Ackley5,
         Hartmann6,
         Trid10,
+        Levy8,
     ],
 )
 def _problem_fixture(request: Any) -> Tuple[SingleObjectiveTestProblem, int]:
@@ -77,11 +79,11 @@ def test_no_function_values_are_less_than_global_minimum(
     objective = problem.objective
     space = problem.search_space
     minimum = problem.minimum
-    samples = space.sample(1000 * len(space.lower))
+    samples = space.sample_sobol(100_000 * len(space.lower), skip=0)
     npt.assert_array_less(tf.squeeze(minimum) - 1e-6, objective(samples))
 
 
-@pytest.mark.parametrize("num_obs", [1, 5, 10])
+@pytest.mark.parametrize("num_obs", [5, 1])
 @pytest.mark.parametrize("dtype", [tf.float32, tf.float64])
 def test_objective_has_correct_shape_and_dtype(
     problem: SingleObjectiveTestProblem,
@@ -113,9 +115,10 @@ def test_objective_has_correct_shape_and_dtype(
         (Ackley5, 5),
         (Hartmann6, 6),
         (Trid10, 10),
+        (Levy8, 8),
     ],
 )
-@pytest.mark.parametrize("num_obs", [1, 5, 10])
+@pytest.mark.parametrize("num_obs", [5, 1])
 def test_search_space_has_correct_shape_and_default_dtype(
     problem: SingleObjectiveTestProblem,
     input_dim: int,

@@ -31,6 +31,7 @@ from .single_objectives import (
     GramacyLee,
     Hartmann3,
     Hartmann6,
+    Levy8,
     LogarithmicGoldsteinPrice,
     Michalewicz2,
     Michalewicz5,
