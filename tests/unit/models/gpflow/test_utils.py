@@ -200,7 +200,7 @@ def test_squeeze_sigmoid_hyperparameters() -> None:
 def test_squeeze_softplus_hyperparameters() -> None:
     lik = gpflow.likelihoods.Gaussian(variance=1.01e-6)
     squeeze_hyperparameters(lik, epsilon=0.2)
-    npt.assert_array_almost_equal(lik.variance, 0.2 + 1e-6)
+    npt.assert_array_almost_equal(tf.constant(lik.variance), 0.2 + 1e-6)
 
 
 @random_seed

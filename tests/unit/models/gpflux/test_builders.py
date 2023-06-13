@@ -66,7 +66,9 @@ def test_build_vanilla_deep_gp_returns_correct_defaults() -> None:
 
     # check likelihood
     assert isinstance(vanilla_deep_gp.likelihood_layer.likelihood, gpflow.likelihoods.Gaussian)
-    npt.assert_allclose(vanilla_deep_gp.likelihood_layer.likelihood.variance, LIKELIHOOD_VARIANCE)
+    npt.assert_allclose(
+        tf.constant(vanilla_deep_gp.likelihood_layer.likelihood.variance), LIKELIHOOD_VARIANCE
+    )
     assert isinstance(vanilla_deep_gp.likelihood_layer.likelihood.variance, gpflow.Parameter)
     assert vanilla_deep_gp.likelihood_layer.likelihood.variance.trainable
 
@@ -87,7 +89,7 @@ def test_build_vanilla_deep_gp_returns_correct_model(
 ) -> None:
     num_data = 10
     x = np.arange(num_data).reshape(-1, 1).astype(np.double)
-    data = mk_dataset(x, quadratic(x))
+    data = mk_dataset(x.tolist(), quadratic(x))
     search_space = Box([0.0], [10.0])
 
     num_inducing = num_data
@@ -129,7 +131,7 @@ def test_build_vanilla_deep_gp_returns_correct_model(
 
 def test_build_vanilla_deep_gp_raises_for_incorrect_args() -> None:
     x = np.arange(10).reshape(-1, 1).astype(np.double)
-    data = mk_dataset(x, quadratic(x))
+    data = mk_dataset(x.tolist(), quadratic(x))
     search_space = Box([0.0], [10.0])
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
@@ -151,7 +153,7 @@ def test_build_vanilla_deep_gp_gives_correct_num_inducing_points_and_num_data(
 ) -> None:
     num_data = 5
     x = np.arange(num_data).reshape(-1, 1).astype(np.double)
-    data = mk_dataset(x, quadratic(x))
+    data = mk_dataset(x.tolist(), quadratic(x))
     search_space = Box([0.0], [10.0])
 
     num_inducing_points = num_data * multiplier

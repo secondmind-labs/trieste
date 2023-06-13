@@ -417,7 +417,7 @@ def test_deep_ensemble_loss(bootstrap_data: bool) -> None:
     loss = model.model.evaluate(tranformed_x, tranformed_y)[: _ENSEMBLE_SIZE + 1]
     reference_loss = reference_model.model.evaluate(tranformed_x, tranformed_y)
 
-    npt.assert_allclose(loss, reference_loss, rtol=1e-6)
+    npt.assert_allclose(tf.constant(loss), reference_loss, rtol=1e-6)
 
 
 @random_seed

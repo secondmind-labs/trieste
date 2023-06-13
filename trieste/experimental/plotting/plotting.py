@@ -229,7 +229,7 @@ def plot_acq_function_2d(
 def format_point_markers(
     num_pts: int,
     num_init: Optional[int] = None,
-    idx_best: Optional[int] = None,
+    idx_best: Optional[TensorType] = None,
     mask_fail: Optional[TensorType] = None,
     m_init: str = "x",
     m_add: str = "o",
@@ -242,7 +242,7 @@ def format_point_markers(
 
     :param num_pts: total number of BO points
     :param num_init: initial number of BO points
-    :param idx_best: index of the best BO point
+    :param idx_best: index of the best BO point(s)
     :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)
     :param m_init: marker for the initial BO points
     :param m_add: marker for the other BO points

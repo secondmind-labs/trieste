@@ -423,10 +423,12 @@ def _check_likelihood(
     else:
         assert isinstance(model.likelihood, gpflow.likelihoods.Gaussian)
         if likelihood_variance is not None:
-            npt.assert_allclose(model.likelihood.variance, likelihood_variance, rtol=1e-6)
+            npt.assert_allclose(
+                tf.constant(model.likelihood.variance), likelihood_variance, rtol=1e-6
+            )
         else:
             npt.assert_allclose(
-                model.likelihood.variance,
+                tf.constant(model.likelihood.variance),
                 empirical_variance / SIGNAL_NOISE_RATIO_LIKELIHOOD**2,
                 rtol=1e-6,
             )
@@ -441,6 +443,7 @@ def _check_mean_function(
     if classification:
         npt.assert_allclose(model.mean_function.parameters[0], 0.0, rtol=1e-6)
     else:
+        assert empirical_mean is not None
         npt.assert_allclose(model.mean_function.parameters[0], empirical_mean, rtol=1e-6)
 
 
