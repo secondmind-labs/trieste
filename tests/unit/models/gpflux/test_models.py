@@ -42,6 +42,7 @@ from tensorflow.python.keras.callbacks import Callback
 
 from tests.util.misc import random_seed
 from tests.util.models.gpflux.models import single_layer_dgp_model
+from tests.util.models.keras.models import keras_optimizer_weights
 from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.data import Dataset
 from trieste.logging import step_number, tensorboard_writer
@@ -385,9 +386,9 @@ def test_deepgp_deep_copies_optimizer_state() -> None:
     model = DeepGaussianProcess(partial(single_layer_dgp_model, x))
     dataset = Dataset(x, fnc_3x_plus_10(x))
     model.update(dataset)
-    assert not model.optimizer.optimizer.variables[0]
+    assert not keras_optimizer_weights(model.optimizer.optimizer)
     model.optimize(dataset)
-    assert model.optimizer.optimizer.variables[0]
+    assert keras_optimizer_weights(model.optimizer.optimizer)
     npt.assert_allclose(model.optimizer.optimizer.iterations, 400)
     assert model.optimizer.fit_args["callbacks"][0].model is model.model_keras
 
@@ -395,7 +396,8 @@ def test_deepgp_deep_copies_optimizer_state() -> None:
     assert model.optimizer.optimizer is not model_copy.optimizer.optimizer
     npt.assert_allclose(model_copy.optimizer.optimizer.iterations, 400)
     npt.assert_equal(
-        model.optimizer.optimizer.variables[0], model_copy.optimizer.optimizer.variables[0]
+        keras_optimizer_weights(model.optimizer.optimizer),
+        keras_optimizer_weights(model_copy.optimizer.optimizer),
     )
     assert model_copy.optimizer.fit_args["callbacks"][0].model is model_copy.model_keras
 

@@ -26,7 +26,11 @@ import tensorflow_probability as tfp
 from tensorflow.python.keras.callbacks import Callback
 
 from tests.util.misc import ShapeLike, empty_dataset, random_seed
-from tests.util.models.keras.models import trieste_deep_ensemble_model, trieste_keras_ensemble_model
+from tests.util.models.keras.models import (
+    keras_optimizer_weights,
+    trieste_deep_ensemble_model,
+    trieste_keras_ensemble_model,
+)
 from trieste.data import Dataset
 from trieste.logging import step_number, tensorboard_writer
 from trieste.models.keras import (
@@ -554,14 +558,17 @@ def test_deep_ensemble_deep_copies_optimizer_state() -> None:
     model, _, _ = trieste_deep_ensemble_model(example_data, 2, False, False)
     new_example_data = _get_example_data([20, 3], [20, 3])
     model.update(new_example_data)
-    assert not model.model.optimizer.variables[0]
+    assert not keras_optimizer_weights(model.model.optimizer)
     model.optimize(new_example_data)
-    assert model.model.optimizer.variables[0]
+    assert keras_optimizer_weights(model.model.optimizer)
 
     model_copy = copy.deepcopy(model)
     assert model.model.optimizer is not model_copy.model.optimizer
     npt.assert_allclose(model_copy.model.optimizer.iterations, 1)
-    npt.assert_equal(model.model.optimizer.variables[0], model_copy.model.optimizer.variables[0])
+    npt.assert_equal(
+        keras_optimizer_weights(model.model.optimizer),
+        keras_optimizer_weights(model_copy.model.optimizer),
+    )
 
 
 @pytest.mark.parametrize(
