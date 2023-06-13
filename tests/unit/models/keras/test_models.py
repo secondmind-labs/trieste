@@ -554,14 +554,14 @@ def test_deep_ensemble_deep_copies_optimizer_state() -> None:
     model, _, _ = trieste_deep_ensemble_model(example_data, 2, False, False)
     new_example_data = _get_example_data([20, 3], [20, 3])
     model.update(new_example_data)
-    assert not model.model.optimizer.get_weights()
+    assert not model.model.optimizer.variables[0]
     model.optimize(new_example_data)
-    assert model.model.optimizer.get_weights()
+    assert model.model.optimizer.variables[0]
 
     model_copy = copy.deepcopy(model)
     assert model.model.optimizer is not model_copy.model.optimizer
     npt.assert_allclose(model_copy.model.optimizer.iterations, 1)
-    npt.assert_equal(model.model.optimizer.get_weights(), model_copy.model.optimizer.get_weights())
+    npt.assert_equal(model.model.optimizer.variables[0], model_copy.model.optimizer.variables[0])
 
 
 @pytest.mark.parametrize(

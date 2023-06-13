@@ -385,9 +385,9 @@ def test_deepgp_deep_copies_optimizer_state() -> None:
     model = DeepGaussianProcess(partial(single_layer_dgp_model, x))
     dataset = Dataset(x, fnc_3x_plus_10(x))
     model.update(dataset)
-    assert not model.optimizer.optimizer.get_weights()
+    assert not model.optimizer.optimizer.variables[0]
     model.optimize(dataset)
-    assert model.optimizer.optimizer.get_weights()
+    assert model.optimizer.optimizer.variables[0]
     npt.assert_allclose(model.optimizer.optimizer.iterations, 400)
     assert model.optimizer.fit_args["callbacks"][0].model is model.model_keras
 
@@ -395,7 +395,7 @@ def test_deepgp_deep_copies_optimizer_state() -> None:
     assert model.optimizer.optimizer is not model_copy.optimizer.optimizer
     npt.assert_allclose(model_copy.optimizer.optimizer.iterations, 400)
     npt.assert_equal(
-        model.optimizer.optimizer.get_weights(), model_copy.optimizer.optimizer.get_weights()
+        model.optimizer.optimizer.variables[0], model_copy.optimizer.optimizer.variables[0]
     )
     assert model_copy.optimizer.fit_args["callbacks"][0].model is model_copy.model_keras
 
