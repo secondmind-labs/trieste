@@ -199,11 +199,22 @@ def test_independent_reparametrization_sampler_samples_approximate_expected_dist
 
 
 @random_seed
+@pytest.mark.parametrize(
+    "compiler",
+    [
+        pytest.param(lambda x: x, id="uncompiled"),
+        pytest.param(tf.function, id="tf_function"),
+        pytest.param(tf.function(jit_compile=True), id="jit_compile"),
+    ],
+)
 @pytest.mark.parametrize("qmc", [True, False])
-def test_independent_reparametrization_sampler_sample_is_continuous(qmc: bool) -> None:
-    sampler = IndependentReparametrizationSampler(100, _dim_two_gp(), qmc=qmc)
+def test_independent_reparametrization_sampler_sample_is_continuous(
+    compiler: Callable[..., Any], qmc: bool
+) -> None:
+    sampler = IndependentReparametrizationSampler(100, _dim_two_gp(), qmc=qmc, qmc_skip=False)
+    sample = compiler(sampler.sample)
     xs = tf.random.uniform([100, 1, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
-    npt.assert_array_less(tf.abs(sampler.sample(xs + 1e-20) - sampler.sample(xs)), 1e-20)
+    npt.assert_array_less(tf.abs(sample(xs + 1e-20) - sample(xs)), 1e-20)
 
 
 @pytest.mark.parametrize("qmc", [True, False])
