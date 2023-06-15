@@ -309,6 +309,14 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_simple_quadratic() -> None
         EfficientGlobalOptimization[SearchSpace, SparseVariational](),
         model_args={"optimizer": Optimizer(gpflow.optimizers.Scipy(), compile=True)},
     )
+    _test_optimizer_finds_minimum(
+        SparseVariational,
+        5,
+        EfficientGlobalOptimization[SearchSpace, SparseVariational](
+            builder=ParallelContinuousThompsonSampling(), num_query_points=5
+        ),
+        model_args={"optimizer": Optimizer(gpflow.optimizers.Scipy(), compile=True)},
+    )
 
 
 @random_seed
