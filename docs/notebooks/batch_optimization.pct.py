@@ -134,7 +134,10 @@ from trieste.acquisition.function import ExpectedImprovement
 ei = ExpectedImprovement()
 ei_acq_function = ei.prepare_acquisition_function(model, dataset=initial_data)
 plot_acq_function_2d(
-    ei_acq_function, [0, 0], [1, 1], contour=True, grid_density=100
+    ei_acq_function,
+    [0, 0],
+    [1, 1],
+    contour=True,
 )
 
 plt.scatter(
@@ -265,7 +268,7 @@ gibbon_observations = (
 gibbon_min_idx = tf.squeeze(tf.argmin(gibbon_observations, axis=0))
 
 
-fig, ax = plt.subplots(1, 4)
+fig, ax = plt.subplots(4, 1)
 plot_regret(qei_observations.numpy(), ax[0], num_init=5, idx_best=qei_min_idx)
 ax[0].set_yscale("log")
 ax[0].set_ylabel("Regret")

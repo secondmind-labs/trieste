@@ -302,7 +302,7 @@ class EfficientGlobalOptimization(
                     )
                 else:  # vectorized acquisition function
                     logging.histogram(
-                        "EGO.acquisition_function/maximum_found" + "[0]" * greedy, values
+                        "EGO.acquisition_function/maximums_found" + "[0]" * greedy, values
                     )
 
         if isinstance(self._builder, GreedyAcquisitionFunctionBuilder):
@@ -330,7 +330,7 @@ class EfficientGlobalOptimization(
                             )
                         else:  # vectorized acquisition function
                             logging.histogram(
-                                f"EGO.acquisition_function/maximum_found[{i+1}]", values
+                                f"EGO.acquisition_function/maximums_found[{i+1}]", values
                             )
 
         return points

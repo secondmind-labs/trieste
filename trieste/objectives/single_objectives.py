@@ -330,31 +330,93 @@ Note that we rescale the original problem, which is typically defined
 over `[0, 10]^4`."""
 
 
-def rosenbrock_4(x: TensorType) -> TensorType:
+def levy(x: TensorType, d: int) -> TensorType:
     """
-    The Rosenbrock function, rescaled to have zero mean and unit variance over :math:`[0, 1]^4. See
-    :cite:`Picheny2013` for details.
-    This function (also known as the Banana function) is unimodal, however the minima
-    lies in a narrow valley.
+    The Levy test function over :math:`[0, 1]^d`. This function has many local
+    minima and a single global minimum. See https://www.sfu.ca/~ssurjano/levy.html for details.
+    Note that we rescale the original problem, which is typically defined
+    over `[-10, 10]^d`, to be defined over a unit hypercube :math:`[0, 1]^d`.
 
-    :param x: The points at which to evaluate the function, with shape [..., 4].
+    :param x: The points at which to evaluate the function, with shape [..., d].
+    :param d: The dimension of the function.
     :return: The function values at ``x``, with shape [..., 1].
     :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
     """
-    tf.debugging.assert_shapes([(x, (..., 4))])
+    tf.debugging.assert_greater_equal(d, 1)
+    tf.debugging.assert_shapes([(x, (..., d))])
+
+    w: TensorType = 1 + ((x * 20.0 - 10) - 1) / 4
+    term1 = tf.pow(tf.sin(pi * w[..., 0:1]), 2)
+    term3 = (w[..., -1:] - 1) ** 2 * (1 + tf.pow(tf.sin(2 * pi * w[..., -1:]), 2))
+    wi = w[..., 0:-1]
+    wi_sum = tf.reduce_sum(
+        (wi - 1) ** 2 * (1 + 10 * tf.pow(tf.sin(pi * wi + 1), 2)), axis=-1, keepdims=True
+    )
+    return term1 + wi_sum + term3
+
+
+def levy_8(x: TensorType) -> TensorType:
+    """
+    Convenience function for the 8-dimensional :func:`levy` function, with output
+    normalised to unit interval
+
+    :param x: The points at which to evaluate the function, with shape [..., 8].
+    :return: The function values at ``x``, with shape [..., 1].
+    """
+    return levy(x, d=8) / 450.0
+
+
+Levy8 = SingleObjectiveTestProblem(
+    name="Levy 8",
+    objective=levy_8,
+    search_space=Box([0.0], [1.0]) ** 8,
+    minimizers=tf.constant([[11 / 20] * 8], tf.float64),
+    minimum=tf.constant([0], tf.float64),
+)
+"""Convenience function for the 8-dimensional :func:`levy` function.
+Taken from https://www.sfu.ca/~ssurjano/levy.html"""
+
+
+def rosenbrock(x: TensorType, d: int) -> TensorType:
+    """
+    The Rosenbrock function, also known as the Banana function, is a unimodal function,
+    however the minima lies in a narrow valley. Even though this valley is
+    easy to find, convergence to the minimum is difficult. See
+    https://www.sfu.ca/~ssurjano/rosen.html for details. Inputs are rescaled to
+    be defined over a unit hypercube :math:`[0, 1]^d`.
+
+    :param x: The points at which to evaluate the function, with shape [..., d].
+    :param d: The dimension of the function.
+    :return: The function values at ``x``, with shape [..., 1].
+    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+    """
+    tf.debugging.assert_greater_equal(d, 1)
+    tf.debugging.assert_shapes([(x, (..., d))])
 
     y: TensorType = x * 15.0 - 5
     unscaled_function = tf.reduce_sum(
         (100.0 * (y[..., 1:] - y[..., :-1]) ** 2 + (1 - y[..., :-1]) ** 2), axis=-1, keepdims=True
     )
-    return (unscaled_function - 3.827 * 1e5) / (3.755 * 1e5)
+    return unscaled_function
+
+
+def rosenbrock_4(x: TensorType) -> TensorType:
+    """
+    Convenience function for the 4-dimensional :func:`rosenbrock` function with steepness 10.
+    It is rescaled to have zero mean and unit variance over :math:`[0, 1]^4. See
+    :cite:`Picheny2013` for details.
+
+    :param x: The points at which to evaluate the function, with shape [..., 4].
+    :return: The function values at ``x``, with shape [..., 1].
+    """
+    return (rosenbrock(x, d=4) - 3.827 * 1e5) / (3.755 * 1e5)
 
 
 Rosenbrock4 = SingleObjectiveTestProblem(
     name="Rosenbrock 4",
     objective=rosenbrock_4,
     search_space=Box([0.0], [1.0]) ** 4,
-    minimizers=tf.constant([[0.4, 0.4, 0.4, 0.4]], tf.float64),
+    minimizers=tf.constant([[0.4] * 4], tf.float64),
     minimum=tf.constant([-1.01917], tf.float64),
 )
 """The Rosenbrock function, rescaled to have zero mean and unit variance over :math:`[0, 1]^4. See
@@ -455,6 +517,7 @@ def michalewicz(x: TensorType, d: int = 2, m: int = 10) -> TensorType:
     and it is multimodal. The parameter ``m`` defines the steepness of they valleys and ridges; a
     larger ``m`` leads to a more difficult search. The recommended value of ``m`` is 10. See
     https://www.sfu.ca/~ssurjano/egg.html for details.
+
     :param x: The points at which to evaluate the function, with shape [..., d].
     :param d: The dimension of the function.
     :param m: The steepness of the valleys/ridges.

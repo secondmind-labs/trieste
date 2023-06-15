@@ -17,7 +17,6 @@ from __future__ import annotations
 from typing import Callable, Optional
 
 import numpy as np
-import pandas as pd
 import plotly.graph_objects as go
 import tensorflow as tf
 from plotly.subplots import make_subplots
@@ -88,10 +87,10 @@ def add_surface_plotly(
     :return: updated plotly figure
     """
 
-    d = pd.DataFrame(f.reshape([xx.shape[0], yy.shape[1]]), index=xx, columns=yy)
+    z = f.reshape([xx.shape[0], yy.shape[1]])
 
     fig.add_trace(
-        go.Surface(z=d, x=xx, y=yy, showscale=False, opacity=alpha, colorscale="viridis"),
+        go.Surface(z=z, x=xx, y=yy, showscale=False, opacity=alpha, colorscale="viridis"),
         row=figrow,
         col=figcol,
     )
@@ -146,7 +145,7 @@ def plot_model_predictions_plotly(
     model: ProbabilisticModel,
     mins: TensorType,
     maxs: TensorType,
-    grid_density: int = 100,
+    grid_density: int = 20,
     num_samples: Optional[int] = None,
     alpha: float = 0.85,
 ) -> go.Figure:
@@ -202,6 +201,8 @@ def plot_model_predictions_plotly(
         fig = add_surface_plotly(xx, yy, lcb, fig, alpha=alpha - 0.35, figrow=1, figcol=k + 1)
         fig = add_surface_plotly(xx, yy, ucb, fig, alpha=alpha - 0.35, figrow=1, figcol=k + 1)
 
+    fig.update_layout(height=600, width=600)
+
     return fig
 
 
@@ -209,7 +210,7 @@ def plot_function_plotly(
     obj_func: Callable[[TensorType], TensorType],
     mins: TensorType,
     maxs: TensorType,
-    grid_density: int = 100,
+    grid_density: int = 20,
     title: Optional[str] = None,
     xlabel: Optional[str] = None,
     ylabel: Optional[str] = None,
@@ -252,5 +253,7 @@ def plot_function_plotly(
         fig = add_surface_plotly(xx, yy, f, fig, alpha=alpha, figrow=1, figcol=k + 1)
         fig.update_xaxes(title_text=xlabel, row=1, col=k + 1)
         fig.update_yaxes(title_text=ylabel, row=1, col=k + 1)
+
+    fig.update_layout(height=600, width=600)
 
     return fig

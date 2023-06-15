@@ -175,8 +175,8 @@ def test_write_summary_data_based_metrics(
     write_summary_data_based_metrics(dataset=dataset, model=mock_model, prefix=prefix)
 
     scalar_names_values = [
-        (f"{prefix}accuracy/predict_mean", tf.reduce_mean(y)),
-        (f"{prefix}accuracy/predict_variance", tf.reduce_mean(tf.math.abs(y))),
+        (f"{prefix}accuracy/predict_mean__mean", tf.reduce_mean(y)),
+        (f"{prefix}accuracy/predict_variance__mean", tf.reduce_mean(tf.math.abs(y))),
         (f"{prefix}accuracy/observations_mean", tf.reduce_mean(y)),
         (f"{prefix}accuracy/observations_variance", tf.math.reduce_variance(y)),
         (f"{prefix}accuracy/root_mean_square_error", 0.0),

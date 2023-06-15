@@ -44,9 +44,8 @@ search_space = Box([0, 0], [1, 1])
 from trieste.experimental.plotting import plot_function_plotly
 
 fig = plot_function_plotly(
-    masked_branin, search_space.lower, search_space.upper, grid_density=70
+    masked_branin, search_space.lower, search_space.upper
 )
-fig.update_layout(height=400, width=400)
 fig.show()
 
 # %% [markdown]
@@ -192,7 +191,7 @@ fig, ax = plot_function_2d(
     masked_branin,
     search_space.lower,
     search_space.upper,
-    grid_density=50,
+    grid_density=20,
     contour=True,
 )
 plot_bo_points(
@@ -242,7 +241,7 @@ fig, ax = plot_gp_2d(
     result.models[FAILURE].model,  # type: ignore
     search_space.lower,
     search_space.upper,
-    grid_density=50,
+    grid_density=20,
     contour=True,
     figsize=(12, 5),
     predict_y=True,

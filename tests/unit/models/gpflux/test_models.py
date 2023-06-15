@@ -191,6 +191,24 @@ def test_deep_gaussian_process_predict() -> None:
     npt.assert_allclose(f_var, ref_var)
 
 
+def test_deep_gaussian_process_predict_broadcasts() -> None:
+    x = tf.constant(np.arange(6).reshape(3, 2), dtype=gpflow.default_float())
+
+    reference_model = single_layer_dgp_model(x)
+    model = DeepGaussianProcess(single_layer_dgp_model(x))
+
+    test_x = tf.constant(np.arange(12).reshape(1, 2, 3, 2), dtype=gpflow.default_float())
+
+    ref_mean, ref_var = reference_model.predict_f(test_x)
+    f_mean, f_var = model.predict(test_x)
+
+    assert f_mean.shape == (1, 2, 3, 1)
+    assert f_var.shape == (1, 2, 3, 1)
+
+    npt.assert_allclose(f_mean, ref_mean)
+    npt.assert_allclose(f_var, ref_var)
+
+
 @random_seed
 def test_deep_gaussian_process_sample(two_layer_model: Callable[[TensorType], DeepGP]) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
@@ -229,7 +247,7 @@ def test_deep_gaussian_process_resets_lr_with_lr_schedule(
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     y = fnc_3x_plus_10(x)
 
-    epochs = 10
+    epochs = 2
     init_lr = 0.01
 
     def scheduler(epoch: int, lr: float) -> float:
@@ -250,11 +268,35 @@ def test_deep_gaussian_process_resets_lr_with_lr_schedule(
 
     npt.assert_allclose(model.model_keras.optimizer.lr.numpy(), init_lr, rtol=1e-6)
 
-    dataset = Dataset(x, y)
-
-    model.optimize(dataset)
+    model.optimize(Dataset(x, y))
 
     npt.assert_allclose(model.model_keras.optimizer.lr.numpy(), init_lr, rtol=1e-6)
+
+
+def test_deep_gaussian_process_with_lr_scheduler(
+    two_layer_model: Callable[[TensorType], DeepGP]
+) -> None:
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    y = fnc_3x_plus_10(x)
+
+    epochs = 2
+    init_lr = 1.0
+
+    fit_args = {
+        "epochs": epochs,
+        "batch_size": 20,
+        "verbose": 0,
+    }
+
+    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+        initial_learning_rate=init_lr, decay_steps=1, decay_rate=0.5
+    )
+    optimizer = KerasOptimizer(tf.optimizers.Adam(lr_schedule), fit_args)
+    model = DeepGaussianProcess(two_layer_model(x), optimizer)
+
+    model.optimize(Dataset(x, y))
+
+    assert len(model.model_keras.history.history["loss"]) == epochs
 
 
 def test_deep_gaussian_process_default_optimizer_is_correct(

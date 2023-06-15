@@ -157,9 +157,8 @@ MINIMIZER = Michalewicz2.minimum
 
 # we illustrate the 2-dimensional Michalewicz function
 fig = plot_function_plotly(
-    function, search_space.lower, search_space.upper, grid_density=100
+    function, search_space.lower, search_space.upper, grid_density=20
 )
-fig.update_layout(height=800, width=800)
 fig.show()
 
 
@@ -284,10 +283,8 @@ fig = plot_function_plotly(
     function,
     search_space.lower,
     search_space.upper,
-    grid_density=100,
     alpha=0.7,
 )
-fig.update_layout(height=800, width=800)
 
 fig = add_bo_points_plotly(
     x=query_points[:, 0],
@@ -323,7 +320,6 @@ fig = add_bo_points_plotly(
     figrow=1,
     figcol=1,
 )
-fig.update_layout(height=800, width=800)
 fig.show()
 
 
