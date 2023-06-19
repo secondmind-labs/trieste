@@ -247,7 +247,8 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
             return normal_samples
 
         if self._eps is None:
-            self._eps = tf.Variable(sample_eps())
+            # dynamically shaped as the same sampler may be called with different sized batches
+            self._eps = tf.Variable(sample_eps(), shape=[None, None, self._sample_size])
 
         tf.cond(
             self._initialized,
