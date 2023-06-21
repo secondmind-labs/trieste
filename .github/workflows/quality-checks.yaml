@@ -52,23 +52,31 @@ jobs:
 
   tests:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        part: [ "1", "2", "3" ]
+    name: tests-part${{ matrix.part }}
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-python@v2
       with:
         python-version: "3.10"
     - run: pip install tox
-    - run: tox -e tests
+    - run: tox -e tests_${{ matrix.part }}
 
   tests_old:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        part: [ "1", "2", "3" ]
+    name: tests_old-part${{ matrix.part }}
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-python@v2
       with:
         python-version: "3.7"
     - run: pip install tox
-    - run: tox -e tests_old
+    - run: tox -e tests_old_${{ matrix.part }}
 
   docs:
     runs-on: ubuntu-latest
