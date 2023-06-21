@@ -14,10 +14,10 @@
 
 numpy
 plotly
-Jinja2<3.1
 matplotlib
 ray[default]
 jupyterlab
 jupytext
 gym[box2d]
 box2d
+box2d-kengz

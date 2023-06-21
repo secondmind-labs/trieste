@@ -69,3 +69,9 @@ Getting help
    :hidden:
 
    Tutorials <tutorials>
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+
+   Bibliography <bibliography>

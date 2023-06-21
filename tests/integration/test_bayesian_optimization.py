@@ -309,6 +309,14 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_simple_quadratic() -> None
         EfficientGlobalOptimization[SearchSpace, SparseVariational](),
         model_args={"optimizer": Optimizer(gpflow.optimizers.Scipy(), compile=True)},
     )
+    _test_optimizer_finds_minimum(
+        SparseVariational,
+        5,
+        EfficientGlobalOptimization[SearchSpace, SparseVariational](
+            builder=ParallelContinuousThompsonSampling(), num_query_points=5
+        ),
+        model_args={"optimizer": Optimizer(gpflow.optimizers.Scipy(), compile=True)},
+    )
 
 
 @random_seed
@@ -653,9 +661,10 @@ def _test_optimizer_finds_minimum(
                 assert acq_function is not None
 
                 # check that acquisition functions defined as classes aren't retraced unnecessarily
-                # they should be retraced for the optimzier's starting grid, L-BFGS, and logging
+                # they should be retraced for the optimizer's starting grid, L-BFGS, and logging
+                # (and possibly once more due to variable creation)
                 if isinstance(acq_function, (AcquisitionFunctionClass, TrajectoryFunctionClass)):
-                    assert acq_function.__call__._get_tracing_count() == 3  # type: ignore
+                    assert acq_function.__call__._get_tracing_count() in {3, 4}  # type: ignore
 
                 # update trajectory function if necessary, so we can test it
                 if isinstance(acq_function, TrajectoryFunctionClass):

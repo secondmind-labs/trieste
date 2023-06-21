@@ -1087,20 +1087,8 @@ class SparseVariational(
         Return a trajectory sampler. For :class:`SparseVariational`, we build
         trajectories using a decoupled random Fourier feature approximation.
 
-        At the moment only models with single latent GP are supported.
-
         :return: The trajectory sampler.
-        :raise NotImplementedError: If we try to use the
-            sampler with a model that has more than one latent GP.
         """
-        if self.model.num_latent_gps > 1:
-            raise NotImplementedError(
-                f"""
-                Trajectory sampler does not currently support models with multiple latent
-                GPs, however received a model with {self.model.num_latent_gps} latent GPs.
-                """
-            )
-
         return DecoupledTrajectorySampler(self, self._num_rff_features)
 
 
@@ -1228,6 +1216,10 @@ class VariationalGaussianProcess(
                 ),
             )
 
+            # reinitialise the model so that the underlying Parameters have the right shape
+            # and then reassign the original values
+            old_q_mu = model.q_mu
+            old_q_sqrt = model.q_sqrt
             model.__init__(  # type: ignore[misc]
                 variable_data,
                 model.kernel,
@@ -1235,6 +1227,8 @@ class VariationalGaussianProcess(
                 model.mean_function,
                 model.num_latent_gps,
             )
+            model.q_mu.assign(old_q_mu)
+            model.q_sqrt.assign(old_q_sqrt)
 
     def __repr__(self) -> str:
         """"""

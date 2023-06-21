@@ -49,8 +49,8 @@ from tests.util.models.gpflow.models import (
     mock_data,
     sgpr_model,
     svgp_model,
+    svgp_model_by_type,
     svgp_model_with_mean,
-    two_output_svgp_model,
     vgp_matern_model,
     vgp_model,
 )
@@ -1376,7 +1376,7 @@ def test_sparse_variational_chooses_new_inducing_points_correct_number_of_times(
 )
 def test_sparse_variational_update_updates_num_data(mo_type: str) -> None:
     x = tf.constant(np.arange(1, 7).reshape(-1, 1), dtype=gpflow.default_float())  # shape: [6, 1]
-    svgp = two_output_svgp_model(x, mo_type, True)
+    svgp = svgp_model_by_type(x, mo_type, True)
     model = SparseVariational(svgp)
     model.update(Dataset(tf.zeros([5, 1]), tf.zeros([5, 2])))
     assert model.model.num_data == 5
@@ -1407,7 +1407,7 @@ def test_sparse_variational_correctly_returns_inducing_points_for_multi_output(
     whiten: bool, mo_type: str
 ) -> None:
     x = tf.constant(np.arange(6).reshape(-1, 1), dtype=gpflow.default_float())
-    svgp = two_output_svgp_model(x, mo_type, whiten)
+    svgp = svgp_model_by_type(x, mo_type, whiten)
     model = SparseVariational(svgp)
     model.model.whiten = whiten
     model.update(Dataset(tf.zeros([5, 1]), tf.zeros([5, 2])))
@@ -1502,43 +1502,34 @@ def test_sparse_variational_optimize(batcher: DatasetTransformer, compile: bool)
     assert model.model.training_loss(data) < loss
 
 
-def test_sparse_variational_gaussian_process_trajectory_sampler_raises_multi_latent_gp() -> None:
-    data = mock_data()
-    model = SparseVariational(svgp_model(*data, num_latent_gps=2))
-
-    with pytest.raises(NotImplementedError):
-        model.trajectory_sampler()
-
-
 @random_seed
 @pytest.mark.parametrize("use_mean_function", [True, False])
 @pytest.mark.parametrize("noise_var", [1e-5, 1e-2])
 @pytest.mark.parametrize("whiten", [True, False])
+@pytest.mark.parametrize("kernel_type", ["single", "shared", "separate"])
 def test_sparse_variational_trajectory_sampler_has_correct_samples(
     use_mean_function: bool,
     noise_var: float,
     whiten: bool,
+    kernel_type: str,
 ) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     y = _3x_plus_gaussian_noise(x)
+    if kernel_type != "single":
+        y = tf.tile(y, [1, 2])
+
     if use_mean_function:
         mean = gpflow.mean_functions.Linear()
     else:
         mean = gpflow.mean_functions.Zero()
-    svgp = SVGP(
-        gpflow.kernels.Matern32(),
-        gpflow.likelihoods.Gaussian(noise_var),
-        x,
-        num_data=len(x),
-        whiten=whiten,
-        mean_function=mean,
-    )
+
+    svgp = svgp_model_by_type(x, kernel_type + "+shared", whiten, len(x), noise_var, mean)
     optimizer = BatchOptimizer(tf.optimizers.Adam(1.0), max_iter=10)
     model = SparseVariational(svgp, optimizer=optimizer)
     model.update(Dataset(x, y))
     model.optimize(Dataset(x, y))
 
-    num_samples = 100
+    num_samples = 6000
     trajectory_sampler = model.trajectory_sampler()
 
     assert isinstance(trajectory_sampler, DecoupledTrajectorySampler)
@@ -1547,19 +1538,19 @@ def test_sparse_variational_trajectory_sampler_has_correct_samples(
     x_predict = tf.constant([[1.0], [2.0], [3.0], [1.5], [2.5], [3.5]], gpflow.default_float())
     x_predict_parallel = tf.expand_dims(x_predict, -2)  # [N, 1, D]
     x_predict_parallel = tf.tile(x_predict_parallel, [1, num_samples, 1])  # [N, B, D]
-    samples = trajectory(x_predict_parallel)  # [N, B, 1]
-    sample_mean = tf.reduce_mean(samples, axis=1)  # [N, 1]
-    sample_variance = tf.math.reduce_variance(samples, axis=1)  # [N, 1]
+    samples = trajectory(x_predict_parallel)  # [N, B, L]
+    sample_mean = tf.reduce_mean(samples, axis=1)  # [N, L]
+    sample_variance = tf.math.reduce_variance(samples, axis=1)  # [N, L]
 
     true_mean, true_variance = model.predict(x_predict)
 
     # test predictions approx correct away from data
-    npt.assert_allclose(sample_mean[3:] + 1.0, true_mean[3:] + 1.0, rtol=0.1)
-    npt.assert_allclose(sample_variance[3:], true_variance[3:], rtol=0.25)
+    npt.assert_allclose(sample_mean[3:] + 1.0, true_mean[3:] + 1.0, rtol=0.04)
+    npt.assert_allclose(sample_variance[3:], true_variance[3:], rtol=0.1)
 
     # test predictions almost correct at data
-    npt.assert_allclose(sample_mean[:3] + 1.0, true_mean[:3] + 1.0, rtol=0.1)
-    npt.assert_allclose(sample_variance[:3], true_variance[:3], rtol=0.25)
+    npt.assert_allclose(sample_mean[:3] + 1.0, true_mean[:3] + 1.0, rtol=0.04)
+    npt.assert_allclose(sample_variance[:3], true_variance[:3], rtol=0.1)
 
 
 def test_sparse_variational_default_optimizer_is_correct() -> None:
@@ -1603,7 +1594,7 @@ def test_sparse_variational_pairwise_covariance_for_non_whitened(
     y1 = fnc_3x_plus_10(x)
     y2 = y1 * 0.5
 
-    svgp = two_output_svgp_model(x, mo_type, whiten)
+    svgp = svgp_model_by_type(x, mo_type, whiten)
     model = SparseVariational(svgp, BatchOptimizer(tf.optimizers.Adam(), max_iter=3, batch_size=10))
     model.model.whiten = whiten
 
