@@ -47,7 +47,7 @@ class GPflowPredictor(
     SupportsGetKernel,
     SupportsGetObservationNoise,
     HasReparamSampler,
-    tf.Module,
+    tf.Module,  # type: ignore[misc]
     ABC,
 ):
     """A trainable wrapper for a GPflow Gaussian process model."""
