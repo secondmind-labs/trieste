@@ -84,15 +84,16 @@ def test_gaussian_process_tf_saved_model(gpflow_interface_factory: ModelFactoryT
     model, _ = gpflow_interface_factory(x, fnc_2sin_x_over_3(x))
 
     with tempfile.TemporaryDirectory() as path:
-        model.predict_compiled = tf.function(
+        module = model.get_module_with_variables()
+        module.predict = tf.function(
             model.predict, input_signature=[tf.TensorSpec(shape=[None, 1], dtype=tf.float64)]
         )
-        tf.saved_model.save(model, str(path))
+        tf.saved_model.save(module, str(path))
         client_model = tf.saved_model.load(str(path))
 
     x_predict = tf.constant([[50.5]], gpflow.default_float())
     mean_f, variance_f = model.predict(x_predict)
-    mean_f_copy, variance_f_copy = client_model.predict_compiled(x_predict)
+    mean_f_copy, variance_f_copy = client_model.predict(x_predict)
     npt.assert_equal(mean_f, mean_f_copy)
     npt.assert_equal(variance_f, variance_f_copy)
 

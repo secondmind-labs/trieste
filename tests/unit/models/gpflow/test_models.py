@@ -290,7 +290,9 @@ def test_gpflow_models_pairwise_covariance(gpflow_interface_factory: ModelFactor
     _, predictive_covariance = model.predict_joint(all_query_points)
     expected_covariance = predictive_covariance[0, :8, 8:]
 
-    actual_covariance = model.covariance_between_points(query_points_1, query_points_2)
+    actual_covariance = model.covariance_between_points(  # type: ignore
+        query_points_1, query_points_2
+    )
 
     np.testing.assert_allclose(expected_covariance, actual_covariance[0], atol=1e-4)
 
@@ -303,7 +305,7 @@ def test_gpflow_models_raise_for_pairwise_covariance_for_invalid_query_points(
     model, _ = gpflow_interface_factory(*data)
 
     with pytest.raises(ValueError):
-        model.covariance_between_points(data[0], tf.expand_dims(data[0], axis=0))
+        model.covariance_between_points(data[0], tf.expand_dims(data[0], axis=0))  # type: ignore
 
 
 @random_seed

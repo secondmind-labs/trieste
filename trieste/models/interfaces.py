@@ -15,10 +15,11 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Callable, Generic, Optional, TypeVar
+from typing import Any, Callable, Generic, Optional, Sequence, TypeVar
 
 import gpflow
 import tensorflow as tf
+from tensorflow.python.util import nest
 from typing_extensions import Protocol, runtime_checkable
 
 from ..data import Dataset
@@ -98,6 +99,32 @@ class ProbabilisticModel(Protocol):
         :param dataset: Optional data that can be used to log additional data-based model summaries.
         """
         return
+
+    def variables(self) -> Sequence[tf.Variable]:
+        """
+        Return the sequence of variables of the model.
+
+        This is essentially a reimplementation of the `variables` property of tf.Module
+        but doesn't require that we, or any of our substructures, inherit from that.
+
+        :return: A sequence of variables of the model (sorted by attribute
+          name) followed by variables from all submodules recursively (breadth
+          first).
+        """
+
+        def _is_variable(obj: Any) -> bool:
+            return isinstance(obj, tf.Variable)
+
+        return tuple(_flatten(self, predicate=_is_variable, expand_composites=True))
+
+    def get_module_with_variables(self) -> tf.Module:
+        """
+        Return a fresh module with the model's variables attached, which can then be extended
+        with methods and saved using tf.saved_model.
+        """
+        module = tf.Module()
+        module.saved_variables = self.variables()
+        return module
 
 
 @runtime_checkable
@@ -690,3 +717,116 @@ class SupportsCovarianceWithTopFidelity(ProbabilisticModel, Protocol):
         :return: The covariance with the top fidelity for the `query_points`, of shape [N, P]
         """
         raise NotImplementedError
+
+
+# implementation of ProbabilisticModel.variables
+
+_TF_MODULE_IGNORED_PROPERTIES = frozenset(
+    ("_self_unconditional_checkpoint_dependencies", "_self_unconditional_dependency_names")
+)
+
+
+def _flatten(  # type: ignore[no-untyped-def]
+    model,
+    recursive=True,
+    predicate=None,
+    attribute_traversal_key=None,
+    with_path=False,
+    expand_composites=False,
+):
+    """
+    Flattened attribute values in sorted order by attribute name.
+
+    This is taken verbatim from tensorflow core but uses a modified _flatten_module.
+    """
+    if predicate is None:
+        predicate = lambda _: True  # noqa: E731
+
+    return _flatten_module(
+        model,
+        recursive=recursive,
+        predicate=predicate,
+        attributes_to_ignore=_TF_MODULE_IGNORED_PROPERTIES,
+        attribute_traversal_key=attribute_traversal_key,
+        with_path=with_path,
+        expand_composites=expand_composites,
+    )
+
+
+def _flatten_module(  # type: ignore[no-untyped-def]
+    module,
+    recursive,
+    predicate,
+    attribute_traversal_key,
+    attributes_to_ignore,
+    with_path,
+    expand_composites,
+    module_path=(),
+    seen=None,
+):
+    """
+    Implementation of `flatten`.
+
+    This is a reimplementation of the equivalent function in tf.Module so
+    that we can extract the list of variables from a Trieste model wrapper
+    without the need to inherit from it.
+    """
+    if seen is None:
+        seen = {id(module)}
+
+    # [CHANGED] Differently from the original version, here we catch an exception
+    # as some of the components of the wrapper do not implement __dict__
+    try:
+        module_dict = vars(module)
+    except TypeError:
+        module_dict = {}
+
+    submodules = []
+
+    for key in sorted(module_dict, key=attribute_traversal_key):
+        if key in attributes_to_ignore:
+            continue
+
+        prop = module_dict[key]
+        try:
+            leaves = nest.flatten_with_tuple_paths(prop, expand_composites=expand_composites)
+        except Exception:  # pylint: disable=broad-except
+            leaves = []
+
+        for leaf_path, leaf in leaves:
+            leaf_path = (key,) + leaf_path
+
+            if not with_path:
+                leaf_id = id(leaf)
+                if leaf_id in seen:
+                    continue
+                seen.add(leaf_id)
+
+            if predicate(leaf):
+                if with_path:
+                    yield module_path + leaf_path, leaf
+                else:
+                    yield leaf
+
+            # [CHANGED] Differently from the original, here we skip checking whether the leaf
+            # is a module, since the trieste models do NOT inherit from tf.Module
+            if recursive:  # and _is_module(leaf):
+                # Walk direct properties first then recurse.
+                submodules.append((module_path + leaf_path, leaf))
+
+    for submodule_path, submodule in submodules:
+        subvalues = _flatten_module(
+            submodule,
+            recursive=recursive,
+            predicate=predicate,
+            attribute_traversal_key=attribute_traversal_key,
+            attributes_to_ignore=_TF_MODULE_IGNORED_PROPERTIES,
+            with_path=with_path,
+            expand_composites=expand_composites,
+            module_path=submodule_path,
+            seen=seen,
+        )
+
+        for subvalue in subvalues:
+            # Predicate is already tested for these values.
+            yield subvalue

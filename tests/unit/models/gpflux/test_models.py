@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import copy
 import operator
+import tempfile
 import unittest.mock
 from functools import partial
 from typing import Callable
@@ -378,6 +379,25 @@ def test_deepgp_deep_copyable() -> None:
     npt.assert_allclose(variance_f_updated_2, variance_f_updated)
     npt.assert_array_compare(operator.__ne__, mean_f_copy_updated_2, mean_f_copy_updated)
     npt.assert_array_compare(operator.__ne__, variance_f_copy_updated_2, variance_f_copy_updated)
+
+
+@pytest.mark.skip(reason="Saving DeepGPs not working yet")
+def test_deepgp_tf_saved_model() -> None:
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    model = DeepGaussianProcess(partial(single_layer_dgp_model, x))
+    with tempfile.TemporaryDirectory() as path:
+        module = model.get_module_with_variables()
+        module.predict = tf.function(
+            model.predict, input_signature=[tf.TensorSpec(shape=[None, 1], dtype=tf.float64)]
+        )
+        tf.saved_model.save(model, str(path))
+        client_model = tf.saved_model.load(str(path))
+
+    test_x = tf.constant([[2.5]], dtype=gpflow.default_float())
+    mean_f, variance_f = model.predict(test_x)
+    mean_f_copy, variance_f_copy = client_model.predict(test_x)
+    npt.assert_allclose(mean_f, mean_f_copy)
+    npt.assert_allclose(variance_f, variance_f_copy)
 
 
 def test_deepgp_deep_copies_optimizer_state() -> None:
