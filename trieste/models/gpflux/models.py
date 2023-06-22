@@ -111,7 +111,10 @@ class DeepGaussianProcess(
                 f"received {type(self.optimizer.optimizer)} instead."
             )
 
-        self.original_lr = self.optimizer.optimizer.lr.numpy()
+        if not isinstance(
+            self.optimizer.optimizer.lr, tf.keras.optimizers.schedules.LearningRateSchedule
+        ):
+            self.original_lr = self.optimizer.optimizer.lr.numpy()
 
         epochs = 400
 
@@ -358,10 +361,14 @@ class DeepGaussianProcess(
         if self._continuous_optimisation:
             self._absolute_epochs = self._absolute_epochs + len(hist.history["loss"])
 
-        # Reset lr in case there was an lr schedule: a schedule will have change the learning rate,
-        # so that the next time we call `optimize` the starting learning rate would be different.
-        # Therefore we make sure the learning rate is set back to its initial value.
-        self.optimizer.optimizer.lr.assign(self.original_lr)
+        # Reset lr in case there was an lr schedule: a schedule will have changed the learning
+        # rate, so that the next time we call `optimize` the starting learning rate would be
+        # different. Therefore, we make sure the learning rate is set back to its initial value.
+        # However, this is not needed for `LearningRateSchedule` instances.
+        if not isinstance(
+            self.optimizer.optimizer.lr, tf.keras.optimizers.schedules.LearningRateSchedule
+        ):
+            self.optimizer.optimizer.lr.assign(self.original_lr)
 
     def log(self, dataset: Optional[Dataset] = None) -> None:
         """

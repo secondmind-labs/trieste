@@ -191,14 +191,11 @@ def test_deep_ensemble_resets_lr_with_lr_schedule() -> None:
 
     keras_ensemble = trieste_keras_ensemble_model(example_data, _ENSEMBLE_SIZE)
 
-    epochs = 10
-    init_lr = 0.01
+    epochs = 2
+    init_lr = 1.0
 
     def scheduler(epoch: int, lr: float) -> float:
-        if epoch == epoch // 2:
-            return lr * 0.1
-        else:
-            return lr
+        return lr * 0.5
 
     fit_args = {
         "epochs": epochs,
@@ -213,7 +210,33 @@ def test_deep_ensemble_resets_lr_with_lr_schedule() -> None:
 
     model.optimize(example_data)
 
+    npt.assert_allclose(model.model.history.history["lr"], [0.5, 0.25])
     npt.assert_allclose(model.model.optimizer.lr.numpy(), init_lr, rtol=1e-6)
+
+
+def test_deep_ensemble_with_lr_scheduler() -> None:
+    example_data = _get_example_data([100, 1])
+
+    keras_ensemble = trieste_keras_ensemble_model(example_data, _ENSEMBLE_SIZE)
+
+    epochs = 2
+    init_lr = 1.0
+
+    fit_args = {
+        "epochs": epochs,
+        "batch_size": 20,
+        "verbose": 0,
+    }
+
+    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+        initial_learning_rate=init_lr, decay_steps=1, decay_rate=0.5
+    )
+    optimizer = KerasOptimizer(tf.optimizers.Adam(lr_schedule), fit_args)
+    model = DeepEnsemble(keras_ensemble, optimizer)
+
+    model.optimize(example_data)
+
+    assert len(model.model.history.history["loss"]) == epochs
 
 
 def test_deep_ensemble_ensemble_distributions(ensemble_size: int, dataset_size: int) -> None:
@@ -221,7 +244,7 @@ def test_deep_ensemble_ensemble_distributions(ensemble_size: int, dataset_size: 
     model, _, _ = trieste_deep_ensemble_model(example_data, ensemble_size, False, False)
 
     distributions = model.ensemble_distributions(example_data.query_points)
-    # breakpoint()
+
     assert len(distributions) == ensemble_size
     for dist in distributions:
         assert isinstance(dist, tfp.distributions.Distribution)

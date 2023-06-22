@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+from typing import Optional
 
 import gpflow
 import numpy as np
@@ -384,6 +385,16 @@ def svgp_model(x: tf.Tensor, y: tf.Tensor, num_latent_gps: int = 1) -> SVGP:
     )
 
 
+def quadratic_mean_rbf_kernel_model(dataset: Dataset) -> QuadraticMeanAndRBFKernelWithSamplers:
+    model = QuadraticMeanAndRBFKernelWithSamplers(
+        noise_variance=tf.constant(0.9, dtype=tf.float64), dataset=dataset
+    )
+    model.kernel = (
+        gpflow.kernels.RBF()
+    )  # need a gpflow kernel object for random feature decompositions
+    return model
+
+
 def svgp_model_with_mean(
     x: tf.Tensor, y: tf.Tensor, whiten: bool, num_inducing_points: int, num_latent_gps: int = 1
 ) -> SVGP:
@@ -423,31 +434,50 @@ def vgp_matern_model(x: tf.Tensor, y: tf.Tensor) -> VGP:
     return m
 
 
-def two_output_svgp_model(x: tf.Tensor, type: str, whiten: bool) -> SVGP:
-    ker1 = gpflow.kernels.Matern32()
-    ker2 = gpflow.kernels.Matern52()
+def svgp_model_by_type(
+    x: tf.Tensor,
+    type: str,
+    whiten: bool,
+    num_inducing_points: int = 3,
+    noise_var: Optional[float] = None,
+    mean_function: Optional[gpflow.mean_functions.MeanFunction] = None,
+) -> SVGP:
+    num_latent_gps = 2
+    ker1 = gpflow.kernels.Matern32(variance=0.8, lengthscales=0.2)
+    ker2 = gpflow.kernels.Matern52(variance=0.3, lengthscales=0.7)
 
     if type == "shared+shared":
         kernel = gpflow.kernels.SharedIndependent(ker1, output_dim=2)
         iv = gpflow.inducing_variables.SharedIndependentInducingVariables(
-            gpflow.inducing_variables.InducingPoints(x[:3])
+            gpflow.inducing_variables.InducingPoints(x[:num_inducing_points])
         )
     elif type == "separate+shared":
         kernel = gpflow.kernels.SeparateIndependent([ker1, ker2])
         iv = gpflow.inducing_variables.SharedIndependentInducingVariables(
-            gpflow.inducing_variables.InducingPoints(x[:3])
+            gpflow.inducing_variables.InducingPoints(x[:num_inducing_points])
         )
     elif type == "separate+separate":
         kernel = gpflow.kernels.SeparateIndependent([ker1, ker2])
-        Zs = [x[(3 * i) : (3 * i + 3)] for i in range(2)]
+        Zs = [
+            x[(num_inducing_points * i) : (num_inducing_points * i + num_inducing_points)]
+            for i in range(2)
+        ]
         iv_list = [gpflow.inducing_variables.InducingPoints(Z) for Z in Zs]
         iv = gpflow.inducing_variables.SeparateIndependentInducingVariables(iv_list)
     else:
+        if "single" in type:
+            num_latent_gps = 1
         kernel = ker1
-        iv = x[:3]
+        iv = x[:num_inducing_points]
 
     return SVGP(
-        kernel, gpflow.likelihoods.Gaussian(), iv, num_data=len(x), num_latent_gps=2, whiten=whiten
+        kernel,
+        gpflow.likelihoods.Gaussian(noise_var),
+        iv,
+        num_data=len(x),
+        num_latent_gps=num_latent_gps,
+        whiten=whiten,
+        mean_function=mean_function,
     )
 
 
