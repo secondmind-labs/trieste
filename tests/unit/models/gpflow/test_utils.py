@@ -37,7 +37,9 @@ from trieste.models.gpflow import (
     randomize_hyperparameters,
     squeeze_hyperparameters,
 )
+from trieste.models.interfaces import HasTrajectorySampler
 from trieste.models.optimizer import BatchOptimizer, Optimizer
+from trieste.types import TensorType
 
 
 def test_gaussian_process_deep_copyable(gpflow_interface_factory: ModelFactoryType) -> None:
@@ -84,10 +86,32 @@ def test_gaussian_process_tf_saved_model(gpflow_interface_factory: ModelFactoryT
     model, _ = gpflow_interface_factory(x, fnc_2sin_x_over_3(x))
 
     with tempfile.TemporaryDirectory() as path:
-        module = model.get_module_with_variables()
+        # generate client model with predict and sample methods (using default trajectory sampler)
+        assert isinstance(model, HasTrajectorySampler)
+        trajectory_sampler = model.trajectory_sampler()
+        trajectory = trajectory_sampler.get_trajectory()
+
+        module = model.get_module_with_variables(trajectory_sampler, trajectory)
         module.predict = tf.function(
             model.predict, input_signature=[tf.TensorSpec(shape=[None, 1], dtype=tf.float64)]
         )
+
+        def _sample(query_points: TensorType, num_samples: int) -> TensorType:
+            trajectory_updated = trajectory_sampler.resample_trajectory(trajectory)
+            expanded_query_points = tf.expand_dims(query_points, -2)  # [N, 1, D]
+            tiled_query_points = tf.tile(expanded_query_points, [1, num_samples, 1])  # [N, S, D]
+            return tf.transpose(trajectory_updated(tiled_query_points), [1, 0, 2])[
+                :, :, :1
+            ]  # [S, N, L]
+
+        module.sample = tf.function(
+            _sample,
+            input_signature=[
+                tf.TensorSpec(shape=[None, 1], dtype=tf.float64),  # query_points
+                tf.TensorSpec(shape=(), dtype=tf.int32),  # num_samples
+            ],
+        )
+
         tf.saved_model.save(module, str(path))
         client_model = tf.saved_model.load(str(path))
 
@@ -96,6 +120,8 @@ def test_gaussian_process_tf_saved_model(gpflow_interface_factory: ModelFactoryT
     mean_f_copy, variance_f_copy = client_model.predict(x_predict)
     npt.assert_equal(mean_f, mean_f_copy)
     npt.assert_equal(variance_f, variance_f_copy)
+
+    # TODO: check sample
 
 
 @random_seed
