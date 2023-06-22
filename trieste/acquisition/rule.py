@@ -35,8 +35,6 @@ except ImportError:  # pragma: no cover (tested but not by coverage)
     pymoo = None
     PymooProblem = object
 
-import copy
-
 import tensorflow as tf
 
 from .. import logging, types

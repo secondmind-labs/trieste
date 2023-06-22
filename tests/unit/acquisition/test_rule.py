@@ -842,7 +842,9 @@ def test_turbo_acquire_uses_and_updates_correct_local_model() -> None:
     assert tr._local_models is None
     _, _ = tr.acquire_single(search_space, global_model, dataset=dataset_2)(None)
     assert tr._local_models is not None
-    assert isinstance(tr._local_models[OBJECTIVE].kernel, gpflow.kernels.RBF)
+    assert isinstance(  # type: ignore[unreachable]
+        tr._local_models[OBJECTIVE].kernel, gpflow.kernels.RBF
+    )
     npt.assert_array_equal(tr._local_models[OBJECTIVE]._dataset[0], dataset_2.query_points)
 
     # if user gives a local model, then we use that one
