@@ -43,7 +43,12 @@ from .sampler import BatchReparametrizationSampler
 
 
 class GPflowPredictor(
-    SupportsPredictJoint, SupportsGetKernel, SupportsGetObservationNoise, HasReparamSampler, ABC
+    SupportsPredictJoint,
+    SupportsGetKernel,
+    SupportsGetObservationNoise,
+    HasReparamSampler,
+    tf.Module,
+    ABC,
 ):
     """A trainable wrapper for a GPflow Gaussian process model."""
 
