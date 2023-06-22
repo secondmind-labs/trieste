@@ -24,7 +24,7 @@ from ..interfaces import SupportsGetObservationNoise
 from ..optimizer import KerasOptimizer
 
 
-class GPfluxPredictor(SupportsGetObservationNoise, tf.Module, ABC):  # type: ignore[misc]
+class GPfluxPredictor(SupportsGetObservationNoise, ABC):
     """
     A trainable wrapper for a GPflux deep Gaussian process model. The code assumes subclasses
     will use the Keras `fit` method for training, and so they should provide access to both a
