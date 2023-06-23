@@ -86,11 +86,14 @@ def test_gaussian_process_tf_saved_model(gpflow_interface_factory: ModelFactoryT
     model, _ = gpflow_interface_factory(x, fnc_2sin_x_over_3(x))
 
     with tempfile.TemporaryDirectory() as path:
-        # generate client model with predict and sample methods (using default trajectory sampler)
+        # create a trajectory sampler and initialize it with dummy data
         assert isinstance(model, HasTrajectorySampler)
         trajectory_sampler = model.trajectory_sampler()
         trajectory = trajectory_sampler.get_trajectory()
+        batch_size = 10
+        trajectory(tf.tile(tf.expand_dims(x, -2), [1, batch_size, 1]))
 
+        # generate client model with predict and sample methods
         module = model.get_module_with_variables(trajectory_sampler, trajectory)
         module.predict = tf.function(
             model.predict, input_signature=[tf.TensorSpec(shape=[None, 1], dtype=tf.float64)]
@@ -115,13 +118,14 @@ def test_gaussian_process_tf_saved_model(gpflow_interface_factory: ModelFactoryT
         tf.saved_model.save(module, str(path))
         client_model = tf.saved_model.load(str(path))
 
+    # test exported methods
     x_predict = tf.constant([[50.5]], gpflow.default_float())
     mean_f, variance_f = model.predict(x_predict)
     mean_f_copy, variance_f_copy = client_model.predict(x_predict)
     npt.assert_equal(mean_f, mean_f_copy)
     npt.assert_equal(variance_f, variance_f_copy)
 
-    # TODO: check sample
+    client_model.sample(x, batch_size)
 
 
 @random_seed
