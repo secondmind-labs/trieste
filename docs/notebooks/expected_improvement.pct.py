@@ -280,6 +280,38 @@ ax[0, 0].set_xlabel(r"$x_1$")
 ax[0, 0].set_xlabel(r"$x_2$")
 
 # %% [markdown]
+# ## Save the results
+#
+# Trieste provides two ways to save and restore optimization results. The first uses pickling to save the results (including the datasets and models), allowing them to be easily reloaded. **Note however that is not portable and not secure**. You should only try to load optimization results that you generated yourself on the same system (or a system with the same version libraries).
+
+# %%
+# save the results to a given path
+result.save("results_path")
+
+# load the results
+saved_result = trieste.bayesian_optimizer.OptimizationResult.from_path(
+    "results_path"
+)
+saved_result.try_get_final_model().model
+
+# %% [markdown]
+# The second approach is to save the model using the tensorflow SavedModel format. This requires explicitly exporting the methods to be saved and results in a portable model than can be safely loaded and evaluated, but which can no longer be used in subsequent BO steps.
+
+# %%
+# save the model to a given path, exporting just the predict method
+module = result.try_get_final_model().get_module_with_variables()
+module.predict = tf.function(
+    model.predict,
+    input_signature=[tf.TensorSpec(shape=[None, 2], dtype=tf.float64)],
+)
+tf.saved_model.save(module, "model_path")
+
+# load the model
+saved_model = tf.saved_model.load("model_path")
+saved_model.predict(initial_query_points)
+
+
+# %% [markdown]
 # ## LICENSE
 #
 # [Apache License 2.0](https://github.com/secondmind-labs/trieste/blob/develop/LICENSE)
