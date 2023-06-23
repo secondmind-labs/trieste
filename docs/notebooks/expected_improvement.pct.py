@@ -289,10 +289,10 @@ ax[0, 0].set_xlabel(r"$x_2$")
 result.save("results_path")
 
 # load the results
-saved_result = trieste.bayesian_optimizer.OptimizationResult.from_path(
+saved_result = trieste.bayesian_optimizer.OptimizationResult.from_path(  # type: ignore
     "results_path"
 )
-saved_result.try_get_final_model().model
+saved_result.try_get_final_model().model  # type: ignore
 
 # %% [markdown]
 # The second approach is to save the model using the tensorflow SavedModel format. This requires explicitly exporting the methods to be saved and results in a portable model than can be safely loaded and evaluated, but which can no longer be used in subsequent BO steps.
