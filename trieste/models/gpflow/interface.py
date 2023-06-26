@@ -71,7 +71,6 @@ class GPflowPredictor(
         """
         self._posterior = self.model.posterior(PrecomputeCacheType.VARIABLE)
 
-    @abstractmethod
     def _ensure_variable_model_data(self) -> None:
         """Ensure GPflow data, which is normally stored in Tensors, is instead stored in
         dynamically shaped Variables."""
