@@ -773,6 +773,15 @@ class ResampleableRandomFourierFeatureFunctions(RandomFourierFeaturesCosine):
 
         super().__init__(model.get_kernel(), n_components, dtype=tf.float64)
 
+        if isinstance(model, SupportsGetInducingVariables):
+            dummy_X = model.get_inducing_variables()[0][0:1, :]
+        else:
+            dummy_X = model.get_internal_data().query_points[0:1, :]
+
+        # Always build the weights and biases. This is important for saving the trajectory (using
+        # tf.saved_model.save) before it has been used.
+        self.build(dummy_X.shape)
+
     def resample(self) -> None:
         """
         Resample weights and biases
