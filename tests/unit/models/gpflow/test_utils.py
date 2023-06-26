@@ -91,7 +91,6 @@ def test_gaussian_process_tf_saved_model(gpflow_interface_factory: ModelFactoryT
         trajectory_sampler = model.trajectory_sampler()
         trajectory = trajectory_sampler.get_trajectory()
         batch_size = 10
-        trajectory(tf.tile(tf.expand_dims(x, -2), [1, batch_size, 1]))
 
         # generate client model with predict and sample methods
         module = model.get_module_with_variables(trajectory_sampler, trajectory)
