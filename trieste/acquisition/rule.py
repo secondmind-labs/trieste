@@ -1108,7 +1108,7 @@ class TURBO(
         types.State[Optional["TURBO.State"], TensorType], Box, TrainableSupportsGetKernel
     ]
 ):
-    """Implements the TURBO algorithm as detailed in :cite:`eriksson2019scalable,`."""
+    """Implements the TURBO algorithm as detailed in :cite:`eriksson2019scalable`."""
 
     @dataclass(frozen=True)
     class State:
