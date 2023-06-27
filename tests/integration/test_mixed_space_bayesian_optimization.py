@@ -99,4 +99,4 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
     if isinstance(acquisition_rule, EfficientGlobalOptimization):
         acquisition_function = acquisition_rule._acquisition_function
         if isinstance(acquisition_function, AcquisitionFunctionClass):
-            assert acquisition_function.__call__._get_tracing_count() <= 3  # type: ignore
+            assert acquisition_function.__call__._get_tracing_count() <= 4  # type: ignore

@@ -100,9 +100,7 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
         :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
         """
         super().__init__(sample_size, model)
-        self._eps = tf.Variable(
-            tf.ones([sample_size, 0], dtype=tf.float64), shape=[sample_size, None]
-        )  # [S, 0]
+        self._eps: Optional[tf.Variable] = None
         self._qmc = qmc
         self._qmc_skip = qmc_skip
 
@@ -142,6 +140,9 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
                     [self._sample_size, tf.shape(mean)[-1]], dtype=tf.float64
                 )
             return normal_samples  # [S, L]
+
+        if self._eps is None:
+            self._eps = tf.Variable(sample_eps())
 
         tf.cond(
             self._initialized,
@@ -189,9 +190,7 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
                 f"BatchReparametrizationSampler only works with models that support "
                 f"predict_joint; received {model.__repr__()}"
             )
-        self._eps = tf.Variable(
-            tf.ones([0, 0, sample_size], dtype=tf.float64), shape=[None, None, sample_size]
-        )  # [0, 0, S]
+        self._eps: Optional[tf.Variable] = None
         self._qmc = qmc
         self._qmc_skip = qmc_skip
 
@@ -224,14 +223,6 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
 
         tf.debugging.assert_positive(batch_size)
 
-        if self._initialized:
-            tf.debugging.assert_equal(
-                batch_size,
-                tf.shape(self._eps)[-2],
-                f"{type(self).__name__} requires a fixed batch size. Got batch size {batch_size}"
-                f" but previous batch size was {tf.shape(self._eps)[-2]}.",
-            )
-
         mean, cov = self._model.predict_joint(at)  # [..., B, L], [..., L, B, B]
 
         def sample_eps() -> tf.Tensor:
@@ -255,11 +246,23 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
                 )  # [L, B, S]
             return normal_samples
 
+        if self._eps is None:
+            # dynamically shaped as the same sampler may be called with different sized batches
+            self._eps = tf.Variable(sample_eps(), shape=[None, None, self._sample_size])
+
         tf.cond(
             self._initialized,
             lambda: self._eps,
             lambda: self._eps.assign(sample_eps()),
         )
+
+        if self._initialized:
+            tf.debugging.assert_equal(
+                batch_size,
+                tf.shape(self._eps)[-2],
+                f"{type(self).__name__} requires a fixed batch size. Got batch size {batch_size}"
+                f" but previous batch size was {tf.shape(self._eps)[-2]}.",
+            )
 
         identity = tf.eye(batch_size, dtype=cov.dtype)  # [B, B]
         cov_cholesky = tf.linalg.cholesky(cov + jitter * identity)  # [..., L, B, B]
@@ -769,6 +772,15 @@ class ResampleableRandomFourierFeatureFunctions(RandomFourierFeaturesCosine):
             )
 
         super().__init__(model.get_kernel(), n_components, dtype=tf.float64)
+
+        if isinstance(model, SupportsGetInducingVariables):
+            dummy_X = model.get_inducing_variables()[0][0:1, :]
+        else:
+            dummy_X = model.get_internal_data().query_points[0:1, :]
+
+        # Always build the weights and biases. This is important for saving the trajectory (using
+        # tf.saved_model.save) before it has been used.
+        self.build(dummy_X.shape)
 
     def resample(self) -> None:
         """

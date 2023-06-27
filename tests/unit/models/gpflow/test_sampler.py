@@ -199,11 +199,22 @@ def test_independent_reparametrization_sampler_samples_approximate_expected_dist
 
 
 @random_seed
+@pytest.mark.parametrize(
+    "compiler",
+    [
+        pytest.param(lambda x: x, id="uncompiled"),
+        pytest.param(tf.function, id="tf_function"),
+        pytest.param(tf.function(jit_compile=True), id="jit_compile"),
+    ],
+)
 @pytest.mark.parametrize("qmc", [True, False])
-def test_independent_reparametrization_sampler_sample_is_continuous(qmc: bool) -> None:
-    sampler = IndependentReparametrizationSampler(100, _dim_two_gp(), qmc=qmc)
+def test_independent_reparametrization_sampler_sample_is_continuous(
+    compiler: Callable[..., Any], qmc: bool
+) -> None:
+    sampler = IndependentReparametrizationSampler(100, _dim_two_gp(), qmc=qmc, qmc_skip=False)
+    sample = compiler(sampler.sample)
     xs = tf.random.uniform([100, 1, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
-    npt.assert_array_less(tf.abs(sampler.sample(xs + 1e-20) - sampler.sample(xs)), 1e-20)
+    npt.assert_array_less(tf.abs(sample(xs + 1e-20) - sample(xs)), 1e-20)
 
 
 @pytest.mark.parametrize("qmc", [True, False])
@@ -296,11 +307,22 @@ def test_batch_reparametrization_sampler_samples_approximate_mean_and_covariance
     npt.assert_allclose(samples_covariance, model_cov, rtol=0.04)
 
 
+@pytest.mark.parametrize(
+    "compiler",
+    [
+        pytest.param(lambda x: x, id="uncompiled"),
+        pytest.param(tf.function, id="tf_function"),
+        pytest.param(tf.function(jit_compile=True), id="jit_compile"),
+    ],
+)
 @pytest.mark.parametrize("qmc", [True, False])
-def test_batch_reparametrization_sampler_samples_are_continuous(qmc: bool) -> None:
-    sampler = BatchReparametrizationSampler(100, _dim_two_gp(), qmc=qmc)
+def test_batch_reparametrization_sampler_samples_are_continuous(
+    compiler: Callable[..., Any], qmc: bool
+) -> None:
+    sampler = BatchReparametrizationSampler(100, _dim_two_gp(), qmc=qmc, qmc_skip=False)
+    sample = compiler(sampler.sample)
     xs = tf.random.uniform([3, 5, 7, 2], dtype=tf.float64)
-    npt.assert_array_less(tf.abs(sampler.sample(xs + 1e-20) - sampler.sample(xs)), 1e-20)
+    npt.assert_array_less(tf.abs(sample(xs + 1e-20) - sample(xs)), 1e-20)
 
 
 @pytest.mark.parametrize("qmc", [True, False])
@@ -308,6 +330,17 @@ def test_batch_reparametrization_sampler_samples_are_continuous(qmc: bool) -> No
 def test_batch_reparametrization_sampler_samples_are_repeatable(qmc: bool, qmc_skip: bool) -> None:
     sampler = BatchReparametrizationSampler(100, _dim_two_gp(), qmc=qmc, qmc_skip=qmc_skip)
     xs = tf.random.uniform([3, 5, 7, 2], dtype=tf.float64)
+    npt.assert_allclose(sampler.sample(xs), sampler.sample(xs))
+
+
+@pytest.mark.parametrize("qmc", [True, False])
+@pytest.mark.parametrize("qmc_skip", [True, False])
+def test_batch_reparametrization_sampler_different_batch_sizes(qmc: bool, qmc_skip: bool) -> None:
+    sampler = BatchReparametrizationSampler(100, _dim_two_gp(), qmc=qmc, qmc_skip=qmc_skip)
+    xs = tf.random.uniform([3, 5, 7, 2], dtype=tf.float64)
+    npt.assert_allclose(sampler.sample(xs), sampler.sample(xs))
+    sampler.reset_sampler()
+    xs = tf.random.uniform([3, 5, 10, 2], dtype=tf.float64)
     npt.assert_allclose(sampler.sample(xs), sampler.sample(xs))
 
 
