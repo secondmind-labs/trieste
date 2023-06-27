@@ -34,9 +34,6 @@ class _QuadraticPredictor(GPflowPredictor):
     def update(self, dataset: Dataset) -> None:
         return
 
-    def _ensure_variable_model_data(self) -> None:
-        pass
-
 
 class _QuadraticGPModel(GPModel):
     def __init__(self) -> None:
