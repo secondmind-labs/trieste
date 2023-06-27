@@ -40,8 +40,8 @@ setup(
     install_requires=[
         "absl-py",
         "dill!=0.3.6",
-        "gpflow>=2.7.0",
-        "gpflux>=0.4.0",
+        "gpflow>=2.8.1",
+        "gpflux>=0.4.2",
         "numpy",
         "tensorflow>=2.5; platform_system!='Darwin' or platform_machine!='arm64'",
         "tensorflow-macos>=2.5; platform_system=='Darwin' and platform_machine=='arm64'",
