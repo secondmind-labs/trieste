@@ -30,6 +30,7 @@ from tests.util.misc import ShapeLike, empty_dataset, random_seed
 from tests.util.models.keras.models import trieste_deep_ensemble_model, trieste_keras_ensemble_model
 from trieste.data import Dataset
 from trieste.logging import step_number, tensorboard_writer
+from trieste.models.interfaces import HasTrajectorySampler
 from trieste.models.keras import (
     DeepEnsemble,
     KerasEnsemble,
@@ -37,6 +38,7 @@ from trieste.models.keras import (
     sample_with_replacement,
 )
 from trieste.models.optimizer import KerasOptimizer, TrainingData
+from trieste.types import TensorType
 
 _ENSEMBLE_SIZE = 3
 
@@ -555,17 +557,42 @@ def test_deep_ensemble_tf_saved_model() -> None:
     model, _, _ = trieste_deep_ensemble_model(example_data, 2, False, False)
 
     with tempfile.TemporaryDirectory() as path:
-        module = model.get_module_with_variables()
+        # create a trajectory sampler (used for sample method)
+        assert isinstance(model, HasTrajectorySampler)
+        trajectory_sampler = model.trajectory_sampler()
+        trajectory = trajectory_sampler.get_trajectory()
+
+        # generate client model with predict and sample methods
+        module = model.get_module_with_variables(trajectory_sampler, trajectory)
         module.predict = tf.function(
             model.predict, input_signature=[tf.TensorSpec(shape=[None, 3], dtype=tf.float64)]
         )
+
+        def _sample(query_points: TensorType, num_samples: int) -> TensorType:
+            trajectory_updated = trajectory_sampler.resample_trajectory(trajectory)
+            expanded_query_points = tf.expand_dims(query_points, -2)  # [N, 1, D]
+            tiled_query_points = tf.tile(expanded_query_points, [1, num_samples, 1])  # [N, S, D]
+            return tf.transpose(trajectory_updated(tiled_query_points), [1, 0, 2])[
+                :, :, :1
+            ]  # [S, N, L]
+
+        module.sample = tf.function(
+            _sample,
+            input_signature=[
+                tf.TensorSpec(shape=[None, 3], dtype=tf.float64),  # query_points
+                tf.TensorSpec(shape=(), dtype=tf.int32),  # num_samples
+            ],
+        )
+
         tf.saved_model.save(module, str(path))
         client_model = tf.saved_model.load(str(path))
 
+    # test exported methods
     mean_f, variance_f = model.predict(example_data.query_points)
     mean_f_copy, variance_f_copy = client_model.predict(example_data.query_points)
     npt.assert_allclose(mean_f, mean_f_copy)
     npt.assert_allclose(variance_f, variance_f_copy)
+    client_model.sample(example_data.query_points, 10)
 
 
 def test_deep_ensemble_deep_copies_optimizer_state() -> None:

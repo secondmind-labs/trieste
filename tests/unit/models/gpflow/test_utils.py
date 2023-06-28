@@ -86,7 +86,7 @@ def test_gaussian_process_tf_saved_model(gpflow_interface_factory: ModelFactoryT
     model, _ = gpflow_interface_factory(x, fnc_2sin_x_over_3(x))
 
     with tempfile.TemporaryDirectory() as path:
-        # create a trajectory sampler (used for smple method)
+        # create a trajectory sampler (used for sample method)
         assert isinstance(model, HasTrajectorySampler)
         trajectory_sampler = model.trajectory_sampler()
         trajectory = trajectory_sampler.get_trajectory()
@@ -122,7 +122,6 @@ def test_gaussian_process_tf_saved_model(gpflow_interface_factory: ModelFactoryT
     mean_f_copy, variance_f_copy = client_model.predict(x_predict)
     npt.assert_equal(mean_f, mean_f_copy)
     npt.assert_equal(variance_f, variance_f_copy)
-
     client_model.sample(x, 10)
 
 
