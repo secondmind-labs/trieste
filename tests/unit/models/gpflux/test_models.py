@@ -381,7 +381,6 @@ def test_deepgp_deep_copyable() -> None:
     npt.assert_array_compare(operator.__ne__, variance_f_copy_updated_2, variance_f_copy_updated)
 
 
-@pytest.mark.skip(reason="Saving DeepGPs not working yet")
 def test_deepgp_tf_saved_model() -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model = DeepGaussianProcess(partial(single_layer_dgp_model, x))
@@ -390,7 +389,7 @@ def test_deepgp_tf_saved_model() -> None:
         module.predict = tf.function(
             model.predict, input_signature=[tf.TensorSpec(shape=[None, 1], dtype=tf.float64)]
         )
-        tf.saved_model.save(model, str(path))
+        tf.saved_model.save(module, str(path))
         client_model = tf.saved_model.load(str(path))
 
     test_x = tf.constant([[2.5]], dtype=gpflow.default_float())
