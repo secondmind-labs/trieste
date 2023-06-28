@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import copy
 import operator
+import tempfile
 import unittest.mock
 from functools import partial
 from typing import Callable
@@ -46,6 +47,7 @@ from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.data import Dataset
 from trieste.logging import step_number, tensorboard_writer
 from trieste.models.gpflux import DeepGaussianProcess
+from trieste.models.interfaces import HasTrajectorySampler
 from trieste.models.optimizer import KerasOptimizer
 from trieste.types import TensorType
 
@@ -378,6 +380,50 @@ def test_deepgp_deep_copyable() -> None:
     npt.assert_allclose(variance_f_updated_2, variance_f_updated)
     npt.assert_array_compare(operator.__ne__, mean_f_copy_updated_2, mean_f_copy_updated)
     npt.assert_array_compare(operator.__ne__, variance_f_copy_updated_2, variance_f_copy_updated)
+
+
+def test_deepgp_tf_saved_model() -> None:
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    model = DeepGaussianProcess(partial(single_layer_dgp_model, x))
+
+    with tempfile.TemporaryDirectory() as path:
+        # create a trajectory sampler (used for sample method)
+        assert isinstance(model, HasTrajectorySampler)
+        trajectory_sampler = model.trajectory_sampler()
+        trajectory = trajectory_sampler.get_trajectory()
+
+        # generate client model with predict and sample methods
+        module = model.get_module_with_variables(trajectory_sampler, trajectory)
+        module.predict = tf.function(
+            model.predict, input_signature=[tf.TensorSpec(shape=[None, 1], dtype=tf.float64)]
+        )
+
+        def _sample(query_points: TensorType, num_samples: int) -> TensorType:
+            trajectory_updated = trajectory_sampler.resample_trajectory(trajectory)
+            expanded_query_points = tf.expand_dims(query_points, -2)  # [N, 1, D]
+            tiled_query_points = tf.tile(expanded_query_points, [1, num_samples, 1])  # [N, S, D]
+            return tf.transpose(trajectory_updated(tiled_query_points), [1, 0, 2])[
+                :, :, :1
+            ]  # [S, N, L]
+
+        module.sample = tf.function(
+            _sample,
+            input_signature=[
+                tf.TensorSpec(shape=[None, 1], dtype=tf.float64),  # query_points
+                tf.TensorSpec(shape=(), dtype=tf.int32),  # num_samples
+            ],
+        )
+
+        tf.saved_model.save(module, str(path))
+        client_model = tf.saved_model.load(str(path))
+
+    # test exported methods
+    test_x = tf.constant([[2.5]], dtype=gpflow.default_float())
+    mean_f, variance_f = model.predict(test_x)
+    mean_f_copy, variance_f_copy = client_model.predict(test_x)
+    npt.assert_allclose(mean_f, mean_f_copy)
+    npt.assert_allclose(variance_f, variance_f_copy)
+    client_model.sample(x, 10)
 
 
 def test_deepgp_deep_copies_optimizer_state() -> None:

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import copy
 import operator
+import tempfile
 from typing import cast
 
 import gpflow
@@ -36,7 +37,9 @@ from trieste.models.gpflow import (
     randomize_hyperparameters,
     squeeze_hyperparameters,
 )
+from trieste.models.interfaces import HasTrajectorySampler
 from trieste.models.optimizer import BatchOptimizer, Optimizer
+from trieste.types import TensorType
 
 
 def test_gaussian_process_deep_copyable(gpflow_interface_factory: ModelFactoryType) -> None:
@@ -76,6 +79,50 @@ def test_gaussian_process_deep_copyable(gpflow_interface_factory: ModelFactoryTy
     mean_f_copy_updated2, variance_f_copy_updated2 = model_copy.predict(x_predict)
     npt.assert_array_compare(operator.__ne__, mean_f_copy_updated, mean_f_copy_updated2)
     npt.assert_array_compare(operator.__ne__, variance_f_copy_updated, variance_f_copy_updated2)
+
+
+def test_gaussian_process_tf_saved_model(gpflow_interface_factory: ModelFactoryType) -> None:
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    model, _ = gpflow_interface_factory(x, fnc_2sin_x_over_3(x))
+
+    with tempfile.TemporaryDirectory() as path:
+        # create a trajectory sampler (used for sample method)
+        assert isinstance(model, HasTrajectorySampler)
+        trajectory_sampler = model.trajectory_sampler()
+        trajectory = trajectory_sampler.get_trajectory()
+
+        # generate client model with predict and sample methods
+        module = model.get_module_with_variables(trajectory_sampler, trajectory)
+        module.predict = tf.function(
+            model.predict, input_signature=[tf.TensorSpec(shape=[None, 1], dtype=tf.float64)]
+        )
+
+        def _sample(query_points: TensorType, num_samples: int) -> TensorType:
+            trajectory_updated = trajectory_sampler.resample_trajectory(trajectory)
+            expanded_query_points = tf.expand_dims(query_points, -2)  # [N, 1, D]
+            tiled_query_points = tf.tile(expanded_query_points, [1, num_samples, 1])  # [N, S, D]
+            return tf.transpose(trajectory_updated(tiled_query_points), [1, 0, 2])[
+                :, :, :1
+            ]  # [S, N, L]
+
+        module.sample = tf.function(
+            _sample,
+            input_signature=[
+                tf.TensorSpec(shape=[None, 1], dtype=tf.float64),  # query_points
+                tf.TensorSpec(shape=(), dtype=tf.int32),  # num_samples
+            ],
+        )
+
+        tf.saved_model.save(module, str(path))
+        client_model = tf.saved_model.load(str(path))
+
+    # test exported methods
+    x_predict = tf.constant([[50.5]], gpflow.default_float())
+    mean_f, variance_f = model.predict(x_predict)
+    mean_f_copy, variance_f_copy = client_model.predict(x_predict)
+    npt.assert_equal(mean_f, mean_f_copy)
+    npt.assert_equal(variance_f, variance_f_copy)
+    client_model.sample(x, 10)
 
 
 @random_seed
