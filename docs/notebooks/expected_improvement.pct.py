@@ -310,6 +310,11 @@ tf.saved_model.save(module, "model_path")
 saved_model = tf.saved_model.load("model_path")
 saved_model.predict(initial_query_points)
 
+# compare prediction results
+query_points = search_space.sample_sobol(1)
+print("Original model prediction: ", model.predict(query_points))
+print("Saved model prediction: ", saved_model.predict(query_points))
+
 
 # %% [markdown]
 # ## LICENSE
