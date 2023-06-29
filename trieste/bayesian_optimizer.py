@@ -341,6 +341,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModel, object]
         ] = None,
+        start_step: int = 0,
     ) -> OptimizationResult[None]:
         ...
 
@@ -360,6 +361,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, object]
         ] = None,
+        start_step: int = 0,
         # this should really be OptimizationResult[None], but tf.Tensor is untyped so the type
         # checker can't differentiate between TensorType and State[S | None, TensorType], and
         # the return types clash. object is close enough to None that object will do.
@@ -382,6 +384,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, object]
         ] = None,
+        start_step: int = 0,
     ) -> OptimizationResult[object]:
         ...
 
@@ -402,6 +405,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
+        start_step: int = 0,
     ) -> OptimizationResult[StateType]:
         ...
 
@@ -422,6 +426,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
+        start_step: int = 0,
     ) -> OptimizationResult[StateType]:
         ...
 
@@ -438,6 +443,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModel, object]
         ] = None,
+        start_step: int = 0,
     ) -> OptimizationResult[None]:
         ...
 
@@ -457,6 +463,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, object]
         ] = None,
+        start_step: int = 0,
     ) -> OptimizationResult[object]:
         ...
 
@@ -476,6 +483,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, object]
         ] = None,
+        start_step: int = 0,
     ) -> OptimizationResult[object]:
         ...
 
@@ -496,6 +504,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
+        start_step: int = 0,
     ) -> OptimizationResult[StateType]:
         ...
 
@@ -516,6 +525,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
+        start_step: int = 0,
     ) -> OptimizationResult[StateType]:
         ...
 
@@ -538,6 +548,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
+        start_step: int = 0,
     ) -> OptimizationResult[StateType] | OptimizationResult[None]:
         """
         Attempt to find the minimizer of the ``observer`` in the ``search_space`` (both specified at
@@ -585,6 +596,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         :param early_stop_callback: An optional callback that is evaluated with the current
             datasets, models and optimization state before every optimization step. If this
             returns `True` then the optimization loop is terminated early.
+        :param start_step: The step number to start with. This number is removed from the
+            number of optimization steps run and is useful for restarting previous computations.
         :return: An :class:`OptimizationResult`. The :attr:`final_result` element contains either
             the final optimization data, models and acquisition state, or, if an exception was
             raised while executing the optimization loop, it contains the exception raised. In
@@ -645,7 +658,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     num_steps,
                 )
 
-        for step in range(1, num_steps + 1):
+        for step in range(start_step + 1, num_steps + 1):
             logging.set_step_number(step)
 
             if early_stop_callback and early_stop_callback(datasets, models, acquisition_state):
@@ -794,17 +807,20 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         history.extend(optimization_result.history)
         if optimization_result.final_result.is_ok:
             history.append(optimization_result.final_result.unwrap())
-        # TODO: use start_step for proper logging
-        remaining_steps = num_steps - len(history)
+        if not history:
+            raise ValueError("Cannot continue from empty optimization result")
 
-        return self.optimize(  # type: ignore[call-overload]
-            remaining_steps,
+        result = self.optimize(  # type: ignore[call-overload]
+            num_steps,
             history[-1].datasets,
             history[-1].models,
             *args,
             acquisition_state=history[-1].acquisition_state,
             **kwargs,
+            start_step=len(history) - 1,
         )
+        result.history[:1] = history
+        return result
 
 
 def write_summary_init(
