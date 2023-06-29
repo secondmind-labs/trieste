@@ -77,5 +77,5 @@ tomli==2.0.1
 typing_extensions==4.6.3
 urllib3==1.26.16
 Werkzeug==2.2.3
-wrapt==1.15.0
+wrapt==1.14.1
 zipp==3.15.0
