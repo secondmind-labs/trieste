@@ -80,6 +80,15 @@ def test_optimization_result_try_get_final_datasets_for_successful_optimization(
     assert result.try_get_final_dataset() is data[FOO]
 
 
+def test_optimization_result_status_for_successful_optimization() -> None:
+    data = {FOO: empty_dataset([1], [1])}
+    result: OptimizationResult[None] = OptimizationResult(
+        Ok(Record(data, {FOO: _PseudoTrainableQuadratic()}, None)), []
+    )
+    assert result.is_ok
+    assert not result.is_err
+
+
 def test_optimization_result_try_get_final_datasets_for_multiple_datasets() -> None:
     data = {FOO: empty_dataset([1], [1]), BAR: empty_dataset([2], [2])}
     models = {FOO: _PseudoTrainableQuadratic(), BAR: _PseudoTrainableQuadratic()}
@@ -93,6 +102,12 @@ def test_optimization_result_try_get_final_datasets_for_failed_optimization() ->
     result: OptimizationResult[object] = OptimizationResult(Err(_Whoops()), [])
     with pytest.raises(_Whoops):
         result.try_get_final_datasets()
+
+
+def test_optimization_result_status_for_failed_optimization() -> None:
+    result: OptimizationResult[object] = OptimizationResult(Err(_Whoops()), [])
+    assert result.is_err
+    assert not result.is_ok
 
 
 def test_optimization_result_try_get_final_models_for_successful_optimization() -> None:

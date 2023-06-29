@@ -24,6 +24,7 @@ from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import (
+    Any,
     Callable,
     ClassVar,
     Dict,
@@ -195,6 +196,16 @@ class OptimizationResult(Generic[StateType]):
         :return: The :attr:`final_result` and :attr:`history` as a 2-tuple.
         """
         return self.final_result, self.history
+
+    @property
+    def is_ok(self) -> bool:
+        """`True` if the final result contains a :class:`Record`."""
+        return self.final_result.is_ok
+
+    @property
+    def is_err(self) -> bool:
+        """`True` if the final result contains an exception."""
+        return self.final_result.is_err
 
     def try_get_final_datasets(self) -> Mapping[Tag, Dataset]:
         """
@@ -755,6 +766,45 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         if track_state and track_path is not None:
             result.save_result(Path(track_path) / OptimizationResult.RESULTS_FILENAME)
         return result
+
+    def continue_optimization(
+        self,
+        num_steps: int,
+        optimization_result: OptimizationResult[StateType],
+        *args: Any,
+        **kwargs: Any,
+    ) -> OptimizationResult[StateType]:
+        """
+        Continue a previous optimization that either failed, was terminated early, or which
+        you simply wish to run for more steps.
+
+        :param num_steps: The total number of optimization steps, including any that have already
+            been run.
+        :param optimization_result: The optimization result from which to extract the datasets,
+            models and acquisition state. If the result was successful then the final result is
+            used; otherwise the last record in the history is used. The size of the history
+            is used to determine how many more steps are required.
+        :param *args: Any more positional arguments to pass on to optimize.
+        :param **kwargs: Any more keyword arguments to pass on to optimize.
+        :return: An :class:`OptimizationResult`. The history will contain both the history from
+            `optimization_result` (including the `final_result` if that was successful) and
+            any new records.
+        """
+        history: list[Record[StateType] | FrozenRecord[StateType]] = []
+        history.extend(optimization_result.history)
+        if optimization_result.final_result.is_ok:
+            history.append(optimization_result.final_result.unwrap())
+        # TODO: use start_step for proper logging
+        remaining_steps = num_steps - len(history)
+
+        return self.optimize(  # type: ignore[call-overload]
+            remaining_steps,
+            history[-1].datasets,
+            history[-1].models,
+            *args,
+            acquisition_state=history[-1].acquisition_state,
+            **kwargs,
+        )
 
 
 def write_summary_init(
