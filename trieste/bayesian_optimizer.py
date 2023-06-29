@@ -797,8 +797,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             models and acquisition state. If the result was successful then the final result is
             used; otherwise the last record in the history is used. The size of the history
             is used to determine how many more steps are required.
-        :param *args: Any more positional arguments to pass on to optimize.
-        :param **kwargs: Any more keyword arguments to pass on to optimize.
+        :param args: Any more positional arguments to pass on to optimize.
+        :param kwargs: Any more keyword arguments to pass on to optimize.
         :return: An :class:`OptimizationResult`. The history will contain both the history from
             `optimization_result` (including the `final_result` if that was successful) and
             any new records.
