@@ -296,8 +296,6 @@ def test_bayesian_optimizer_continue_optimization_raises_for_empty_result() -> N
         optimizer.continue_optimization(10, opt_result, rule)
 
 
-@pytest.mark.parametrize("fit_initial_model", [True, False])
-def test_bayesian_optimizer_optimizes_initial_model(fit_initial_model: bool) -> None:
 @pytest.mark.parametrize("fit_model", ["all", "all_but_init", "never"])
 def test_bayesian_optimizer_optimizes_initial_model(fit_model: str) -> None:
     class _CountingOptimizerModel(_PseudoTrainableQuadratic):
