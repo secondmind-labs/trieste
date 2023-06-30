@@ -16,6 +16,7 @@ from typing import Tuple, Union
 
 import tensorflow as tf
 
+from ..data import Dataset
 from ..space import SearchSpaceType
 from ..types import TensorType
 from .interface import AcquisitionFunction
@@ -114,3 +115,23 @@ def select_nth_output(x: TensorType, output_dim: int = 0) -> TensorType:
         reduce the input.
     """
     return x[..., output_dim]
+
+
+def get_local_dataset(local_space: SearchSpaceType, dataset: Dataset) -> Dataset:
+    """
+    A utility function that takes in a dataset and returns the entries lying
+    within a given search space.
+
+    :param local_space: A search space.
+    :param dataset: A Dataset.
+    :return: A Dataset containing entries only in the local_space.
+    """
+    if tf.shape(dataset.query_points)[1] != local_space.dimension:
+        raise ValueError("Dataset and search space must have equal dimensions")
+
+    is_in_region_mask = local_space.contains(dataset.query_points)
+    local_dataset = Dataset(
+        query_points=tf.boolean_mask(dataset.query_points, is_in_region_mask),
+        observations=tf.boolean_mask(dataset.observations, is_in_region_mask),
+    )
+    return local_dataset

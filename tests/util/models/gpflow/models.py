@@ -247,6 +247,9 @@ class QuadraticMeanAndRBFKernelWithSamplers(
         self._dataset[0].assign(dataset.query_points)
         self._dataset[1].assign(dataset.observations)
 
+    def optimize(self, dataset: Dataset) -> None:
+        pass
+
 
 class MultiFidelityQuadraticMeanAndRBFKernel(
     QuadraticMeanAndRBFKernel, SupportsCovarianceWithTopFidelity

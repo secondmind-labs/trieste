@@ -33,6 +33,7 @@ from tests.util.models.gpflow.models import (
     GaussianProcess,
     PseudoTrainableProbModel,
     QuadraticMeanAndRBFKernel,
+    QuadraticMeanAndRBFKernelWithSamplers,
     rbf,
 )
 from trieste.acquisition.rule import AcquisitionRule
@@ -55,6 +56,12 @@ def _quadratic_observer(x: tf.Tensor) -> Mapping[Tag, Dataset]:
 
 
 class _PseudoTrainableQuadratic(QuadraticMeanAndRBFKernel, PseudoTrainableProbModel):
+    pass
+
+
+class _PseudoTrainableQuadraticWithSamplers(
+    QuadraticMeanAndRBFKernelWithSamplers, PseudoTrainableProbModel
+):
     pass
 
 
@@ -187,6 +194,25 @@ def test_optimization_result_from_path_partial_result() -> None:
         )
 
 
+def test_bayesian_optimizer_optimize_raises_if_invalid_fit_model_arg() -> None:
+    data, models = {OBJECTIVE: empty_dataset([1], [1])}, {OBJECTIVE: _PseudoTrainableQuadratic()}
+    # first check that doesnt raise if correct fit_model given
+    bo = BayesianOptimizer(lambda x: x[:1], Box([-1], [1]))
+    bo.optimize(1, data, models, fit_model="all")
+    bo.optimize(1, data, models, fit_model="all_but_init")
+    bo.optimize(1, data, models, fit_model="never")
+    with pytest.raises(ValueError):  # now check that raises for bad value
+        bo.optimize(1, data, models, fit_model="blah")
+
+
+def test_bayesian_optimizer_optimize_raises_if_invalid_model_training_args() -> None:
+    data, models = {NA: empty_dataset([1], [1])}, {NA: _PseudoTrainableQuadratic()}
+    bo = BayesianOptimizer(lambda x: x[:1], Box([-1], [1]))
+
+    with pytest.raises(ValueError):  # turning off global model training means we do not train
+        bo.optimize(1, data, models, fit_model="never")
+
+
 @pytest.mark.parametrize("steps", [0, 1, 2, 5])
 def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> None:
     class _CountingObserver:
@@ -205,8 +231,8 @@ def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> Non
     assert observer.call_count == steps
 
 
-@pytest.mark.parametrize("fit_initial_model", [True, False])
-def test_bayesian_optimizer_optimizes_initial_model(fit_initial_model: bool) -> None:
+@pytest.mark.parametrize("fit_model", ["all", "all_but_init", "never"])
+def test_bayesian_optimizer_optimizes_initial_model(fit_model: str) -> None:
     class _CountingOptimizerModel(_PseudoTrainableQuadratic):
         _optimize_count = 0
 
@@ -223,16 +249,18 @@ def test_bayesian_optimizer_optimizes_initial_model(fit_initial_model: bool) -> 
             {NA: mk_dataset([[0.0]], [[0.0]])},
             {NA: model},
             rule,
-            fit_initial_model=fit_initial_model,
+            fit_model=fit_model,
         )
         .astuple()
     )
     final_model = final_opt_state.unwrap().model
 
-    if fit_initial_model:  # optimized at start and end of first BO step
+    if fit_model == "all":  # optimized at start and end of first BO step
         assert final_model._optimize_count == 2  # type: ignore
-    else:  # optimized just at end of first BO step
+    elif fit_model == "all_but_init":  # optimized just at end of first BO step
         assert final_model._optimize_count == 1  # type: ignore
+    else:  # never optimized
+        assert final_model._optimize_count == 0  # type: ignore
 
 
 @pytest.mark.parametrize(
@@ -328,7 +356,7 @@ def test_bayesian_optimizer_optimize_for_uncopyable_model() -> None:
             {NA: mk_dataset([[0.0]], [[0.0]])},
             {NA: _UncopyableModel()},
             rule,
-            fit_initial_model=False,
+            fit_model="all_but_init",
         )
         .astuple()
     )
