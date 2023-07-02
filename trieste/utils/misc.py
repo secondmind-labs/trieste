@@ -397,7 +397,7 @@ def _flatten_module(  # type: ignore[no-untyped-def]
 
 
 def tf_argmin_with_tie_breaks(
-    input: TensorType, axis: int, output_type: DType = tf.int64
+    input: TensorType, axis: int = 0, output_type: DType = tf.int64
 ) -> TensorType:
     """
     Returns the index with the smallest value across axes of a tensor.
@@ -413,7 +413,7 @@ def tf_argmin_with_tie_breaks(
 
 
 def tf_argmax_with_tie_breaks(
-    input: TensorType, axis: int, output_type: DType = tf.int64
+    input: TensorType, axis: int = 0, output_type: DType = tf.int64
 ) -> TensorType:
     """
     Returns the index with the largest value across axes of a tensor.
@@ -429,7 +429,7 @@ def tf_argmax_with_tie_breaks(
 
 
 def _tf_argminmax_with_tie_breaks(
-    argmin: bool, input: TensorType, axis: int, output_type: DType = tf.int64
+    argmin: bool, input: TensorType, axis: int, output_type: DType
 ) -> TensorType:
     # transpose axis to end and flatten
     shape = tf.shape(input)
