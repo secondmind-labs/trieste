@@ -23,7 +23,17 @@ import tensorflow as tf
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, various_shapes
 from trieste.types import TensorType
-from trieste.utils.misc import Err, Ok, Timer, flatten_leading_dims, jit, shapes_equal, to_numpy
+from trieste.utils.misc import (
+    Err,
+    Ok,
+    Timer,
+    flatten_leading_dims,
+    jit,
+    shapes_equal,
+    tf_argmax_with_tie_breaks,
+    tf_argmin_with_tie_breaks,
+    to_numpy,
+)
 
 
 @pytest.mark.parametrize("apply", [True, False])
@@ -158,3 +168,38 @@ def test_flatten_leading_dims_invalid_output_dims(output_dims: int) -> None:
     x_old = tf.random.uniform([2, 3, 4, 5])  # [2, 3, 4, 5]
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         flatten_leading_dims(x_old, output_dims=output_dims)
+
+
+def _np_totuple(a: "np.ndarray[Any, Any]") -> tuple[Any]:
+    """Convert numpy array to nested tuple"""
+    return a.item() if a.shape == () else tuple(map(_np_totuple, a))
+
+
+@pytest.mark.parametrize(
+    "input, axis, argmins",
+    [
+        ([1.0, 2.0, 3.0, 1.0, 5.0], 0, {0, 3}),
+        ([[1, 0], [1, 3], [4, 4]], 0, {(0, 0), (1, 0)}),
+        ([[1, 0], [1, 3], [4, 4]], 1, {(1, 0, 0), (1, 0, 1)}),
+        ([[[0, 0], [0, 1]], [[1, 2], [1, 1]]], 0, {((0, 0), (0, 0)), ((0, 0), (0, 1))}),
+        (
+            [[[0, 0], [0, 1]], [[1, 2], [1, 1]]],
+            2,
+            {((0, 0), (0, 0)), ((1, 0), (0, 0)), ((0, 0), (0, 1)), ((1, 0), (0, 1))},
+        ),
+    ],
+)
+def test_tf_argmin_with_tie_breaks(input: list[Any], axis: int, argmins: set[Any]) -> None:
+    tensor = tf.constant(input)
+    actual_argmins = set()
+    for i in range(20):
+        argmin = tf_argmin_with_tie_breaks(tensor, axis=axis)
+        actual_argmins.add(_np_totuple(argmin.numpy()))
+    assert actual_argmins == argmins
+    # also test argmax against negated input
+    negative_input = -tensor
+    actual_argmaxes = set()
+    for i in range(20):
+        argmin = tf_argmax_with_tie_breaks(negative_input, axis=axis)
+        actual_argmaxes.add(_np_totuple(argmin.numpy()))
+    assert actual_argmaxes == argmins

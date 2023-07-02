@@ -20,6 +20,7 @@ from typing import Any, Callable, Generic, Mapping, NoReturn, Optional, Tuple, T
 
 import numpy as np
 import tensorflow as tf
+from tensorflow import DType
 from tensorflow.python.util import nest
 from typing_extensions import Final, final
 
@@ -393,3 +394,66 @@ def _flatten_module(  # type: ignore[no-untyped-def]
         for subvalue in subvalues:
             # Predicate is already tested for these values.
             yield subvalue
+
+
+def tf_argmin_with_tie_breaks(
+    input: TensorType, axis: int, output_type: DType = tf.int64
+) -> TensorType:
+    """
+    Returns the index with the smallest value across axes of a tensor.
+
+    Identical to tf.math.argmin, except ties are resolved randomly.
+
+    :param input: Input tensor.
+    :param axis: Axis.
+    :param output_type: Optional `tf.Dtype` from: `tf.int32, tf.int64`.
+    :return: A tensor of type `output_type`.
+    """
+    return _tf_argminmax_with_tie_breaks(True, input, axis, output_type)
+
+
+def tf_argmax_with_tie_breaks(
+    input: TensorType, axis: int, output_type: DType = tf.int64
+) -> TensorType:
+    """
+    Returns the index with the largest value across axes of a tensor.
+
+    Identical to tf.math.argmax, except ties are resolved randomly.
+
+    :param input: Input tensor.
+    :param axis: Axis.
+    :param output_type: Optional `tf.Dtype` from: `tf.int32, tf.int64`.
+    :return: A tensor of type `output_type`.
+    """
+    return _tf_argminmax_with_tie_breaks(False, input, axis, output_type)
+
+
+def _tf_argminmax_with_tie_breaks(
+    argmin: bool, input: TensorType, axis: int, output_type: DType = tf.int64
+) -> TensorType:
+    # transpose axis to end and flatten
+    shape = tf.shape(input)
+    range = tf.range(tf.rank(input), dtype=output_type)
+    transpose_perm = tf.concat([range[:axis], range[axis + 1 :], range[axis : axis + 1]], 0)
+    transposed = tf.transpose(input, transpose_perm)
+    flattened = tf.reshape(transposed, [-1, shape[axis]])
+
+    # shuffle along last axis and call argmin/argmax
+    shuffle_perm = tf.map_fn(
+        lambda x: tf.random.shuffle(tf.range(shape[axis], dtype=output_type)),
+        flattened,
+        fn_output_signature=output_type,
+    )
+    shuffled = tf.map_fn(
+        lambda x: tf.gather(x[0], x[1]), (flattened, shuffle_perm), fn_output_signature=input.dtype
+    )
+    tf_argminmax = tf.math.argmin if argmin else tf.math.argmax
+    argminmax = tf_argminmax(shuffled, axis=-1, output_type=output_type)
+
+    # unshuffle returned indices and unflatten back to the correct shape
+    unshuffled = tf.map_fn(
+        lambda x: tf.gather(x[1], x[0]), (argminmax, shuffle_perm), fn_output_signature=output_type
+    )
+    unflat_shape = tf.concat([shape[:axis], shape[axis + 1 :]], 0)
+    unflattened = tf.reshape(unshuffled, unflat_shape)
+    return unflattened
