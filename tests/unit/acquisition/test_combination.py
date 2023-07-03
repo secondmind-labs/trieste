@@ -23,7 +23,7 @@ import tensorflow as tf
 from tests.util.misc import empty_dataset, raise_exc
 from tests.util.models.gpflow.models import QuadraticMeanAndRBFKernel
 from trieste.acquisition import AcquisitionFunction
-from trieste.acquisition.combination import Product, Reducer, Sum
+from trieste.acquisition.combination import Map, Product, Reducer, Sum
 from trieste.acquisition.rule import AcquisitionFunctionBuilder
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
@@ -34,7 +34,7 @@ TAG: Tag = ""
 
 
 def test_reducer_raises_for_no_builders() -> None:
-    class UseFirst(Reducer):
+    class UseFirst(Reducer[ProbabilisticModel]):
         def _reduce(self, inputs: Sequence[tf.Tensor]) -> tf.Tensor:
             return inputs[0]
 
@@ -43,10 +43,7 @@ def test_reducer_raises_for_no_builders() -> None:
 
 
 def test_reducer__repr_builders() -> None:
-    class Dummy(Reducer):
-        def __repr__(self) -> str:
-            return f"Dummy({self._repr_builders()})"
-
+    class Dummy(Reducer[ProbabilisticModel]):
         _reduce = raise_exc
 
     class Builder(AcquisitionFunctionBuilder[ProbabilisticModel]):
@@ -88,7 +85,7 @@ class _Static(AcquisitionFunctionBuilder[ProbabilisticModel]):
 
 
 def test_reducer__reduce() -> None:
-    class Mean(Reducer):
+    class Mean(Reducer[ProbabilisticModel]):
         def _reduce(self, inputs: Sequence[tf.Tensor]) -> tf.Tensor:
             return tf.reduce_mean(inputs, axis=0)
 
@@ -125,10 +122,20 @@ def test_reducer_calls_update() -> None:
 
 
 @pytest.mark.parametrize("reducer_class", [Sum, Product])
-def test_sum_and_product_for_single_builder(reducer_class: type[Sum | Product]) -> None:
+def test_sum_and_product_for_single_builder(
+    reducer_class: type[Sum[ProbabilisticModel] | Product[ProbabilisticModel]],
+) -> None:
     data, models = {TAG: empty_dataset([1], [1])}, {TAG: QuadraticMeanAndRBFKernel()}
     acq = reducer_class(_Static(lambda x: x**2)).prepare_acquisition_function(
         models, datasets=data
     )
     xs = tf.random.uniform([3, 5, 1], minval=-1.0)
     npt.assert_allclose(acq(xs), xs**2)
+
+
+def test_map() -> None:
+    prod = Map(lambda x: x + 1, _Static(lambda x: x + 2))
+    data, models = {TAG: empty_dataset([1], [1])}, {TAG: QuadraticMeanAndRBFKernel()}
+    acq = prod.prepare_acquisition_function(models, datasets=data)
+    xs = tf.random.uniform([3, 5, 1], minval=-1.0, dtype=tf.float64)
+    npt.assert_allclose(acq(xs), (xs + 3))
