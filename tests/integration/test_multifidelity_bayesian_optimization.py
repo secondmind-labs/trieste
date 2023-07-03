@@ -108,7 +108,7 @@ def test_multifidelity_bo_finds_minima_of_linear_problem(
     )
     acq_builder = Product(
         # (Reducer doesn't support model type generics)
-        MUMBO(search_space).using("OBJECTIVE"),  # type: ignore
+        MUMBO(search_space).using("OBJECTIVE"),
         CostWeighting(costs).using("OBJECTIVE"),
     )
     optimizer = generate_continuous_optimizer(num_initial_samples=10_000, num_optimization_runs=10)
