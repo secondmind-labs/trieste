@@ -168,4 +168,23 @@ plot_ask_tell_regret(ask_tell.to_result())
 
 
 # %% [markdown]
-# A word of warning. This serialization technique is not guaranteed to work smoothly with every Tensorflow-based model, so apply to your own problems with caution.
+# In some more complicated scenarios we may also wish to serialise the acquisition function, rather than creating a new one from the models and data, as it may contain stochastic internal data. This is not an issue here (where we used the default `EfficientGlobalOptimization` rule and `ExpectedImprovement` function) but we can demonstrate it neverthless:
+
+# %%
+from trieste.acquisition.rule import EfficientGlobalOptimization
+
+# (recreate acquisition function and extract default rule)
+ask_tell.ask()
+rule: EfficientGlobalOptimization = ask_tell._acquisition_rule  # type: ignore
+
+# save acquisition function
+acq_fn = rule.acquisition_function
+saved_acq_fn = pickle.dumps(acq_fn)
+
+# regenerate asktell with loaded acquisition function
+loaded_acq_fn = pickle.loads(saved_acq_fn)
+rule = EfficientGlobalOptimization(initial_acquisition_function=loaded_acq_fn)
+ask_tell = AskTellOptimizer.from_record(loaded_state, search_space, rule)
+
+# %% [markdown]
+# A word of warning. These serialization techniques are not guaranteed to work smoothly with every Tensorflow-based model, so apply to your own problems with caution.
