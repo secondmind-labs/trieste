@@ -23,7 +23,7 @@ import tensorflow as tf
 from tests.util.misc import empty_dataset, raise_exc
 from tests.util.models.gpflow.models import QuadraticMeanAndRBFKernel
 from trieste.acquisition import AcquisitionFunction
-from trieste.acquisition.combination import Product, Reducer, Sum
+from trieste.acquisition.combination import Map, Product, Reducer, Sum
 from trieste.acquisition.rule import AcquisitionFunctionBuilder
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
@@ -44,7 +44,6 @@ def test_reducer_raises_for_no_builders() -> None:
 
 def test_reducer__repr_builders() -> None:
     class Dummy(Reducer[ProbabilisticModel]):
-
         _reduce = raise_exc
 
     class Builder(AcquisitionFunctionBuilder[ProbabilisticModel]):
@@ -132,3 +131,11 @@ def test_sum_and_product_for_single_builder(
     )
     xs = tf.random.uniform([3, 5, 1], minval=-1.0)
     npt.assert_allclose(acq(xs), xs**2)
+
+
+def test_map() -> None:
+    prod = Map(lambda x: x + 1, _Static(lambda x: x + 2))
+    data, models = {TAG: empty_dataset([1], [1])}, {TAG: QuadraticMeanAndRBFKernel()}
+    acq = prod.prepare_acquisition_function(models, datasets=data)
+    xs = tf.random.uniform([3, 5, 1], minval=-1.0, dtype=tf.float64)
+    npt.assert_allclose(acq(xs), (xs + 3))

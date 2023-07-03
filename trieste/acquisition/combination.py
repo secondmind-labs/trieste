@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections.abc import Mapping, Sequence
-from typing import Optional
+from typing import Callable, Optional
 
 import tensorflow as tf
 
@@ -139,3 +139,30 @@ class Product(Reducer[ProbabilisticModelType]):
         :return: The element-wise product of the ``inputs``.
         """
         return tf.reduce_prod(inputs, axis=0)
+
+
+class Map(Reducer[ProbabilisticModelType]):
+    """
+    :class:`Reducer` that accepts just one acquisition function builder and applies a
+    given function to its output.
+    """
+
+    def __init__(
+        self,
+        map_fn: Callable[[TensorType], TensorType],
+        builder: AcquisitionFunctionBuilder[ProbabilisticModelType],
+    ):
+        """
+        :param map_fn: Function to apply.
+        :param builder: Acquisition function builder.
+        """
+        super().__init__(builder)
+        self._map_fn = map_fn
+
+    def _reduce(self, inputs: Sequence[TensorType]) -> TensorType:
+        """
+        :param inputs: The outputs of the acquisition function.
+        :return: The result of applying the map function to ``inputs``.
+        """
+        tf.debugging.assert_equal(len(inputs), 1)
+        return self._map_fn(inputs[0])
