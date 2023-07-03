@@ -28,7 +28,6 @@ from scipy.optimize import bisect
 from ..models import ProbabilisticModel
 from ..models.interfaces import HasTrajectorySampler, ProbabilisticModelType
 from ..types import TensorType
-from ..utils.misc import tf_argmin_with_tie_breaks
 from .utils import select_nth_output
 
 
@@ -116,7 +115,7 @@ class ExactThompsonSampler(ThompsonSampler[ProbabilisticModel]):
             thompson_samples = tf.reduce_min(samples, axis=1)  # [S, 1]
         else:
             samples_2d = tf.squeeze(samples, -1)  # [S, N]
-            indices = tf_argmin_with_tie_breaks(samples_2d, axis=1)
+            indices = tf.math.argmin(samples_2d, axis=1)
             thompson_samples = tf.gather(at, indices)  # [S, D]
 
         return thompson_samples
@@ -263,7 +262,7 @@ class ThompsonSamplerFromTrajectory(ThompsonSampler[HasTrajectorySampler]):
             if self._sample_min_value:
                 sample = tf.reduce_min(evaluated_trajectory, keepdims=True)  # [1, 1]
             else:
-                sample = tf.gather(at, tf_argmin_with_tie_breaks(evaluated_trajectory))  # [1, D]
+                sample = tf.gather(at, tf.math.argmin(evaluated_trajectory))  # [1, D]
 
             thompson_samples = tf.concat([thompson_samples, sample], axis=0)
 
