@@ -44,8 +44,9 @@ class Reducer(AcquisitionFunctionBuilder[ProbabilisticModelType]):
 
         self._acquisitions = builders
 
-    def _repr_builders(self) -> str:
-        return ", ".join(map(repr, self._acquisitions))
+    def __repr__(self) -> str:
+        """"""
+        return "{}({})".format(self.__class__.__name__, ", ".join(map(repr, self._acquisitions)))
 
     def prepare_acquisition_function(
         self,
@@ -118,10 +119,6 @@ class Sum(Reducer[ProbabilisticModelType]):
     outputs of constituent acquisition functions.
     """
 
-    def __repr__(self) -> str:
-        """"""
-        return f"Sum({self._repr_builders()})"
-
     def _reduce(self, inputs: Sequence[TensorType]) -> TensorType:
         """
         :param inputs: The outputs of each acquisition function.
@@ -135,10 +132,6 @@ class Product(Reducer[ProbabilisticModelType]):
     :class:`Reducer` whose resulting acquisition function returns the element-wise product of the
     outputs of constituent acquisition functions.
     """
-
-    def __repr__(self) -> str:
-        """"""
-        return f"Product({self._repr_builders()})"
 
     def _reduce(self, inputs: Sequence[TensorType]) -> TensorType:
         """
