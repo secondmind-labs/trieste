@@ -87,6 +87,15 @@ def test_optimization_result_try_get_final_datasets_for_successful_optimization(
     assert result.try_get_final_dataset() is data[FOO]
 
 
+def test_optimization_result_status_for_successful_optimization() -> None:
+    data = {FOO: empty_dataset([1], [1])}
+    result: OptimizationResult[None] = OptimizationResult(
+        Ok(Record(data, {FOO: _PseudoTrainableQuadratic()}, None)), []
+    )
+    assert result.is_ok
+    assert not result.is_err
+
+
 def test_optimization_result_try_get_final_datasets_for_multiple_datasets() -> None:
     data = {FOO: empty_dataset([1], [1]), BAR: empty_dataset([2], [2])}
     models = {FOO: _PseudoTrainableQuadratic(), BAR: _PseudoTrainableQuadratic()}
@@ -100,6 +109,12 @@ def test_optimization_result_try_get_final_datasets_for_failed_optimization() ->
     result: OptimizationResult[object] = OptimizationResult(Err(_Whoops()), [])
     with pytest.raises(_Whoops):
         result.try_get_final_datasets()
+
+
+def test_optimization_result_status_for_failed_optimization() -> None:
+    result: OptimizationResult[object] = OptimizationResult(Err(_Whoops()), [])
+    assert result.is_err
+    assert not result.is_ok
 
 
 def test_optimization_result_try_get_final_models_for_successful_optimization() -> None:
@@ -229,6 +244,56 @@ def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> Non
     optimizer.optimize(steps, data, _PseudoTrainableQuadratic()).final_result.unwrap()
 
     assert observer.call_count == steps
+
+
+@pytest.mark.parametrize("mode", ["early", "fail", "full"])
+def test_bayesian_optimizer_continue_optimization(mode: str) -> None:
+    class _CountingObserver:
+        call_count = 0
+
+        def __call__(self, x: tf.Tensor) -> Dataset:
+            self.call_count += 1
+            if self.call_count == 2 and mode == "fail":
+                raise ValueError
+            return Dataset(x, tf.reduce_sum(x**2, axis=-1, keepdims=True))
+
+    observer = _CountingObserver()
+    optimizer = BayesianOptimizer(observer, Box([-1], [1]))
+    data = mk_dataset([[0.5]], [[0.25]])
+
+    def early_stop_callback(
+        _datasets: Mapping[Tag, Dataset],
+        _models: Mapping[Tag, TrainableProbabilisticModel],
+        _acquisition_state: object,
+    ) -> bool:
+        return mode == "early" and observer.call_count == 2
+
+    # perform a BO, stopping after 2 steps (for one of three reasons)
+    num_steps = 5
+    result = optimizer.optimize(
+        2 if "full" else num_steps,
+        data,
+        _PseudoTrainableQuadratic(),
+        early_stop_callback=early_stop_callback,
+    )
+    assert result.is_err if mode == "fail" else result.is_ok
+    assert len(result.history) == 2
+    assert observer.call_count == 2
+
+    # continue BO
+    new_result = optimizer.continue_optimization(num_steps, result)
+    assert new_result.is_ok
+    assert len(new_result.history) == num_steps
+    assert observer.call_count == num_steps + 1 if mode == "fail" else num_steps
+
+
+def test_bayesian_optimizer_continue_optimization_raises_for_empty_result() -> None:
+    search_space = Box([-1], [1])
+    optimizer = BayesianOptimizer(lambda x: {FOO: Dataset(x, x)}, search_space)
+    rule = FixedAcquisitionRule([[0.0]])
+    opt_result: OptimizationResult[None] = OptimizationResult(Err(_Whoops()), [])
+    with pytest.raises(ValueError):
+        optimizer.continue_optimization(10, opt_result, rule)
 
 
 @pytest.mark.parametrize("fit_model", ["all", "all_but_init", "never"])
