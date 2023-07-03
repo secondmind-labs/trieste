@@ -144,7 +144,8 @@ class Product(Reducer[ProbabilisticModelType]):
 class Map(Reducer[ProbabilisticModelType]):
     """
     :class:`Reducer` that accepts just one acquisition function builder and applies a
-    given function to its output.
+    given function to its output. For example ``Map(lambda x: -x, builder)`` would generate
+    an acquisition function that returns the negative of the output of ``builder``.
     """
 
     def __init__(
