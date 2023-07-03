@@ -599,8 +599,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         :param early_stop_callback: An optional callback that is evaluated with the current
             datasets, models and optimization state before every optimization step. If this
             returns `True` then the optimization loop is terminated early.
-        :param start_step: The step number to start with. This number is removed from the
-            number of optimization steps run and is useful for restarting previous computations.
+        :param start_step: The step number to start with. This number is removed from ``num_steps``
+            and is useful for restarting previous computations.
         :return: An :class:`OptimizationResult`. The :attr:`final_result` element contains either
             the final optimization data, models and acquisition state, or, if an exception was
             raised while executing the optimization loop, it contains the exception raised. In
