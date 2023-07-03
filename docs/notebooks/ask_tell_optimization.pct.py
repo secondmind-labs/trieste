@@ -168,7 +168,7 @@ plot_ask_tell_regret(ask_tell.to_result())
 
 
 # %% [markdown]
-# In some more complicated scenarios we may also wish to serialise the acquisition function, rather than creating a new one from the models and data, as it may contain stochastic internal data. This is not an issue here (where we used the default `EfficientGlobalOptimization` rule and `ExpectedImprovement` function) but we can demonstrate it neverthless:
+# In some more complicated scenarios we may also wish to serialise the acquisition function, rather than creating a new one from the models and data, as it may contain stochastic internal data (for example with continuous Thompson sampling, which uses trajectory samplers). This is not an issue here (where we used the default `EfficientGlobalOptimization` rule and `ExpectedImprovement` function) but we can demonstrate it neverthless:
 
 # %%
 from trieste.acquisition.rule import EfficientGlobalOptimization
