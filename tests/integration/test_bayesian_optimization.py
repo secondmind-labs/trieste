@@ -625,7 +625,10 @@ def _test_optimizer_finds_minimum(
                 track_path=Path(tmpdirname) / "history",
                 early_stop_callback=stop_at_minimum(
                     # stop as soon as we find the minimum (but always run at least one step)
-                    minima, minimizers, minimum_rtol=rtol_level, minimum_step_number=2
+                    minima,
+                    minimizers,
+                    minimum_rtol=rtol_level,
+                    minimum_step_number=2,
                 ),
                 fit_model=not isinstance(acquisition_rule, TURBO),
                 fit_initial_model=False,
