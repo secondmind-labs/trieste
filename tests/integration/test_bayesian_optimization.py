@@ -326,7 +326,7 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_simple_quadratic() -> None
 
 
 @random_seed
-# @pytest.mark.slow
+@pytest.mark.slow
 def test_bayesian_optimizer_with_sgpr_finds_minima_of_scaled_branin() -> None:
     _test_optimizer_finds_minimum(
         SparseGaussianProcessRegression,
