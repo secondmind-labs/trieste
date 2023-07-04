@@ -309,8 +309,13 @@ def test_gpflow_models_raise_for_pairwise_covariance_for_invalid_query_points(
 
 
 @random_seed
-@pytest.mark.parametrize("after_model_optimize", [True, False])
-@pytest.mark.parametrize("after_model_update", [True, False])
+@pytest.mark.parametrize(
+    "after_model_optimize",
+    [pytest.param(True, id="optimize"), pytest.param(False, id="no-optimize")],
+)
+@pytest.mark.parametrize(
+    "after_model_update", [pytest.param(True, id="update"), pytest.param(False, id="no-update")]
+)
 def test_gpflow_models_cached_predictions_correct(
     after_model_optimize: bool,
     after_model_update: bool,
@@ -323,7 +328,7 @@ def test_gpflow_models_cached_predictions_correct(
     model, _ = gpflow_interface_factory(x, y)
 
     if after_model_optimize:
-        model._optimizer = BatchOptimizer(tf.optimizers.SGD(), max_iter=1)
+        model._optimizer = BatchOptimizer(gpflow.optimizers.Scipy(), max_iter=1)
         model.optimize(dataset)
 
     if after_model_update:
