@@ -1071,6 +1071,7 @@ def stop_at_minimum(
     minimizers_atol: float = 0,
     minimizers_rtol: float = 0.05,
     objective_tag: Tag = OBJECTIVE,
+    minimum_step_number: Optional[int] = None,
 ) -> EarlyStopCallback[TrainableProbabilisticModel, object]:
     """
     Generate an early stop function that terminates a BO loop when it gets close enough to the
@@ -1083,6 +1084,7 @@ def stop_at_minimum(
     :param minimizers_atol: Absolute tolerance for minimizer point.
     :param minimizers_rtol: Relative tolerance for minimizer point.
     :param objective_tag: The tag for the objective data.
+    :param minimum_step_number: Minimum step number to stop at.
     :return: An early stop function that terminates if we get close enough to both the minimum
         and any of the minimizer points.
     """
@@ -1092,6 +1094,8 @@ def stop_at_minimum(
         _models: Mapping[Tag, TrainableProbabilisticModel],
         _acquisition_state: object,
     ) -> bool:
+        if minimum_step_number is not None and logging.get_step_number() < minimum_step_number:
+            return False
         dataset = datasets[objective_tag]
         arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
         if minimum is not None:

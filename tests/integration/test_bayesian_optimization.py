@@ -326,7 +326,7 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_simple_quadratic() -> None
 
 
 @random_seed
-@pytest.mark.slow
+# @pytest.mark.slow
 def test_bayesian_optimizer_with_sgpr_finds_minima_of_scaled_branin() -> None:
     _test_optimizer_finds_minimum(
         SparseGaussianProcessRegression,
@@ -626,7 +626,9 @@ def _test_optimizer_finds_minimum(
                 acquisition_rule,
                 track_state=True,
                 track_path=Path(tmpdirname) / "history",
-                early_stop_callback=stop_at_minimum(minima, minimizers, minimum_rtol=rtol_level),
+                early_stop_callback=stop_at_minimum(
+                    minima, minimizers, minimum_rtol=rtol_level, minimum_step_number=2
+                ),
                 fit_model=fit_model,
             )
 
