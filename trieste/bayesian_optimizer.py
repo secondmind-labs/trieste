@@ -338,7 +338,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
-        fit_model: str = "all",
+        fit_model: bool = True,
+        fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModel, object]
         ] = None,
@@ -358,7 +359,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
-        fit_model: str = "all",
+        fit_model: bool = True,
+        fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, object]
         ] = None,
@@ -381,7 +383,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
-        fit_model: str = "all",
+        fit_model: bool = True,
+        fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, object]
         ] = None,
@@ -402,7 +405,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
-        fit_model: str = "all",
+        fit_model: bool = True,
+        fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
@@ -423,7 +427,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
-        fit_model: str = "all",
+        fit_model: bool = True,
+        fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
@@ -440,7 +445,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
-        fit_model: str = "all",
+        fit_model: bool = True,
+        fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModel, object]
         ] = None,
@@ -460,7 +466,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
-        fit_model: str = "all",
+        fit_model: bool = True,
+        fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, object]
         ] = None,
@@ -480,7 +487,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
-        fit_model: str = "all",
+        fit_model: bool = True,
+        fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, object]
         ] = None,
@@ -501,7 +509,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
-        fit_model: str = "all",
+        fit_model: bool = True,
+        fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
@@ -522,7 +531,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
-        fit_model: str = "all",
+        fit_model: bool = True,
+        fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
@@ -545,7 +555,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
-        fit_model: str = "all",
+        fit_model: bool = True,
+        fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
@@ -591,11 +602,11 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             step. Models and acquisition state are copied using `copy.deepcopy`.
         :param track_path: If set, the optimization state is saved to disk at this path,
             rather than being copied in memory.
-        :param fit_model: If `all` the we fit the models before the first BO step and after all
-            subsequent steps. If `all_but_init` then we assume that the initial models have
+        :param fit_model: If `False` then we never fit the model during BO (e.g. if we
+            are using a rule that doesn't rely on the models and don't want to waste computation).
+        :param fit_initial_model: If `False` then we assume that the initial models have
             already been optimized on the datasets and so do not require optimization before
-            the first optimization step. If `never` then never fit the models (i.e. if we
-            are using a rule that doesnt rely on the models and dont want to waste computation).
+            the first optimization step.
         :param early_stop_callback: An optional callback that is evaluated with the current
             datasets, models and optimization state before every optimization step. If this
             returns `True` then the optimization loop is terminated early.
@@ -634,18 +645,12 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         if not datasets:
             raise ValueError("dicts of datasets and models must be populated.")
 
-        if fit_model not in ["all", "all_but_init", "never"]:
-            raise ValueError(
-                f"Expecting fit_model to be 'all', 'all_but_init' or 'never', "
-                f"but received {fit_model!r}"
-            )
-
-        if (fit_model in ["all", "all_but_init"]) and isinstance(acquisition_rule, TURBO):
+        if fit_model and isinstance(acquisition_rule, TURBO):
             warnings.warn(
                 """
                 Are you sure you want to keep fitting the global model even though you
                 are using TURBO which has only local models? This is a waste of computation.
-                Consider setting 'fit_model'='never'.
+                Consider setting 'fit_model'='False'.
                 """
             )
 
@@ -709,7 +714,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                             "will be available."
                         ) from e
 
-                if step == 1 and fit_model == "all":
+                if step == 1 and fit_model and fit_initial_model:
                     with Timer() as initial_model_fitting_timer:
                         for tag, model in models.items():
                             dataset = datasets[tag]
@@ -743,7 +748,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
                     datasets = {tag: datasets[tag] + tagged_output[tag] for tag in tagged_output}
                     with Timer() as model_fitting_timer:
-                        if fit_model in ["all", "all_but_init"]:
+                        if fit_model:
                             for tag, model in models.items():
                                 dataset = datasets[tag]
                                 model.update(dataset)

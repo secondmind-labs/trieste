@@ -616,9 +616,6 @@ def _test_optimizer_finds_minimum(
     with tempfile.TemporaryDirectory() as tmpdirname:
         summary_writer = tf.summary.create_file_writer(tmpdirname)
         with tensorboard_writer(summary_writer):
-            fit_model = (
-                "never" if isinstance(acquisition_rule, TURBO) else "all_but_init"
-            )  # avoid updating global model
             result = BayesianOptimizer(observer, search_space).optimize(
                 num_steps or 2,
                 initial_data,
@@ -629,7 +626,8 @@ def _test_optimizer_finds_minimum(
                 early_stop_callback=stop_at_minimum(
                     minima, minimizers, minimum_rtol=rtol_level, minimum_step_number=2
                 ),
-                fit_model=fit_model,
+                fit_model=not isinstance(acquisition_rule, TURBO),
+                fit_initial_model=False,
             )
 
             # check history saved ok

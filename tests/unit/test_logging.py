@@ -231,7 +231,12 @@ def test_wallclock_time_logging(
         steps = 3
         rule = _FixedAcquisitionRuleWithWaiting([[0.0]])
         BayesianOptimizer(lambda x: {tag: Dataset(x, x**2)}, Box([-1], [1])).optimize(
-            steps, data, models, rule, fit_model=fit_model
+            steps,
+            data,
+            models,
+            rule,
+            fit_model=fit_model in ["all", "all_but_init"],
+            fit_initial_model=fit_model in ["all"],
         )
 
     other_scalars = 0
