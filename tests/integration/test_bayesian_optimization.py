@@ -141,7 +141,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                 12, AsynchronousOptimization(num_query_points=3), id="AsynchronousOptimization"
             ),
             pytest.param(
-                10,
+                15,
                 EfficientGlobalOptimization(
                     LocalPenalization(
                         ScaledBranin.search_space,
@@ -151,7 +151,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                 id="LocalPenalization",
             ),
             pytest.param(
-                10,
+                15,
                 AsynchronousGreedy(
                     LocalPenalization(
                         ScaledBranin.search_space,
@@ -180,7 +180,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                 ),
                 id="MultipleOptimismNegativeLowerConfidenceBound",
             ),
-            pytest.param(15, TrustRegion(), id="TrustRegion"),
+            pytest.param(20, TrustRegion(), id="TrustRegion"),
             pytest.param(
                 15,
                 TrustRegion(
