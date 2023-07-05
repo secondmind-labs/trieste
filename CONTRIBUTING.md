@@ -2,13 +2,14 @@
 
 ### Who are we?
 
-*Administrators* (Artem Artemev, Uri Granta, Henry Moss, Hrvoje Stojic) look after the GitHub repository itself.
+*Administrators* (Uri Granta, Sebastian Ober, Hrvoje Stojic) look after the GitHub repository itself.
 
-*Maintainers* (Artem Artemev, Uri Granta, Henry Moss, Victor Picheny, Hrvoje Stojic) steer the project, keep the community thriving, and manage contributions.
+*Maintainers* (Uri Granta, Henry Moss, Sebastian Ober, Victor Picheny, Hrvoje Stojic) steer the project, keep the community thriving, and manage contributions.
 
 *Contributors* (you?) submit issues, make pull requests, answer questions on Slack, and more.
 
 Community is important to us, and we want everyone to feel welcome and be able to contribute to their fullest. Our [code of conduct](CODE_OF_CONDUCT.md) gives an overview of what that means.
+
 
 ### Reporting a bug
 
@@ -18,6 +19,7 @@ We use GitHub issues for bug reports. You can use the [issue template](https://g
 
 If you'd like to submit a bug fix, the [pull request templates](https://github.com/secondmind-labs/trieste/compare) are a good place to start. We recommend you discuss your changes with the community before you begin working on them, so that questions and suggestions can be made early on.
 
+
 ### Requesting a feature
 
 Trieste is built on features added and improved by the community. You can submit a feature request either as an issue or, if you can implement the change yourself, as a pull request. We gladly welcome either, but a pull request is likely to be released sooner, simply because others may not have time to quickly implement it themselves. If you're interested in implementing it, but would like help in doing so, ask in Trieste channels of Secondmind Labs' [community Slack workspace](https://join.slack.com/t/secondmind-labs/shared_invite/zt-ph07nuie-gMlkle__tjvXBay4FNSLkw).
@@ -25,6 +27,7 @@ Trieste is built on features added and improved by the community. You can submit
 We use GitHub issues for feature requests. You can use the [issue template](https://github.com/secondmind-labs/trieste/issues/new?assignees=&labels=&template=feature_request.md&title=) to start writing yours. Once you've submitted it, the maintainers will take a look as soon as possible, ideally within the week, and get back to you about how to proceed. If it's a small easy feature that is backwards compatible, they may implement it then and there. For features that are more involved, they will discuss with you about a timeline for implementing it. Features that are not backwards compatible are likely to take longer to reach a release. It may become apparent during discussions that a feature doesn't lie within the scope of Trieste, in which case we will discuss alternative options with you, such as adding it as a notebook or an external extension to Trieste.
 
 If you'd like to submit a pull request, the [pull request templates](https://github.com/secondmind-labs/trieste/compare) are a good place to start. We recommend you discuss your changes with the community before you begin working on them, so that questions and suggestions can be made early on.
+
 
 ### Pull request guidelines
 
@@ -42,11 +45,13 @@ If you'd like to submit a pull request, the [pull request templates](https://git
   import all modules (or their contents) in their parent package \_\_init\_\_.py file.
 - In commit messages, be descriptive but to the point. Comments such as "further fixes" obscure the more useful information.
 
+
 ### Documentation
 
 Trieste has two primary sources of documentation: the notebooks and the API reference.
 
 For the API reference, we document Python code inline, using [reST markup](https://www.sphinx-doc.org/en/master/usage/restructuredtext/basics.html). See [here](docs/README.md) for details on the documentation build. All parts of the public API need docstrings (indeed anything without docstrings won't appear in the built documentation). Similarly, don't add docstrings to private functionality, else it will appear in the documentation website. Use code comments sparingly, as they incur a maintenance cost and tend to drift out of sync with the corresponding code.
+
 
 ### Quality checks
 
@@ -106,6 +111,7 @@ You can then use `task` to run various common tasks:
 
 [GitHub actions](https://docs.github.com/en/actions) will automatically run the quality checks against pull requests to the develop branch, by calling into tox. The GitHub repository is set up such that these need to pass in order to merge.
 
+
 ### Updating dependencies
 
 To update the Python dependencies used in any part of the project, update setup.py and/or any relevant requirements.txt files. Then, in the repository root, and with all virtual environments deactivated, run
@@ -113,6 +119,7 @@ To update the Python dependencies used in any part of the project, update setup.
 $ ./generate_constraints.sh
 ```
 This will update the constraints.txt files (but not your virtual environment).
+
 
 # License
 

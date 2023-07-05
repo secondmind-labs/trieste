@@ -35,9 +35,11 @@ from .entropy import (
 )
 from .function import (
     AugmentedExpectedImprovement,
+    BatchExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
     ExpectedConstrainedImprovement,
     ExpectedImprovement,
+    FastConstraintsFeasibility,
     MakePositive,
     MonteCarloAugmentedExpectedImprovement,
     MonteCarloExpectedImprovement,
@@ -45,11 +47,14 @@ from .function import (
     NegativeLowerConfidenceBound,
     NegativePredictiveMean,
     ProbabilityOfFeasibility,
+    ProbabilityOfImprovement,
     augmented_expected_improvement,
+    batch_expected_improvement,
     expected_improvement,
+    fast_constraints_feasibility,
     lower_confidence_bound,
     multiple_optimism_lower_confidence_bound,
-    probability_of_feasibility,
+    probability_below_threshold,
 )
 from .greedy_batch import Fantasizer, LocalPenalization, hard_local_penalizer, soft_local_penalizer
 from .multi_objective import (
@@ -60,3 +65,4 @@ from .multi_objective import (
     batch_ehvi,
     expected_hv_improvement,
 )
+from .utils import MultivariateNormalCDF

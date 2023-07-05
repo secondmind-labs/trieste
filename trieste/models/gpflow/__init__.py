@@ -18,8 +18,17 @@ number of :class:`TrainableProbabilisticModel` wrappers for GPflow-based models.
 """
 
 from . import optimizer
-from .builders import build_gpr, build_sgpr, build_svgp, build_vgp_classifier
+from .builders import (
+    build_gpr,
+    build_multifidelity_autoregressive_models,
+    build_multifidelity_nonlinear_autoregressive_models,
+    build_sgpr,
+    build_svgp,
+    build_vgp_classifier,
+)
 from .inducing_point_selectors import (
+    ConditionalImprovementReduction,
+    ConditionalVarianceReduction,
     InducingPointSelector,
     KMeansInducingPointSelector,
     RandomSubSampleInducingPointSelector,
@@ -28,6 +37,8 @@ from .inducing_point_selectors import (
 from .interface import GPflowPredictor
 from .models import (
     GaussianProcessRegression,
+    MultifidelityAutoregressive,
+    MultifidelityNonlinearAutoregressive,
     SparseGaussianProcessRegression,
     SparseVariational,
     VariationalGaussianProcess,

@@ -33,7 +33,7 @@ from trieste.utils import to_numpy
 
 
 def create_grid(
-    mins: TensorType, maxs: TensorType, grid_density: int = 20
+    mins: TensorType, maxs: TensorType, grid_density: int = 30
 ) -> tuple[TensorType, TensorType, TensorType]:
     """
     Creates a regular 2D grid of size `grid_density^2` between mins and maxs.
@@ -97,13 +97,13 @@ def plot_function_2d(
     obj_func: Callable[[TensorType], TensorType],
     mins: TensorType,
     maxs: TensorType,
-    grid_density: int = 20,
+    grid_density: int = 100,
     contour: bool = False,
     log: bool = False,
     title: Optional[Sequence[str]] = None,
     xlabel: Optional[str] = None,
     ylabel: Optional[str] = None,
-    figsize: Optional[tuple[float, float]] = None,
+    figsize: Optional[tuple[float, float]] = (8, 6),
     colorbar: bool = False,
     alpha: float = 1.0,
     fill: bool = False,
@@ -175,13 +175,13 @@ def plot_acq_function_2d(
     acq_func: AcquisitionFunction,
     mins: TensorType,
     maxs: TensorType,
-    grid_density: int = 20,
+    grid_density: int = 100,
     contour: bool = False,
     log: bool = False,
     title: Optional[Sequence[str]] = None,
     xlabel: Optional[str] = None,
     ylabel: Optional[str] = None,
-    figsize: Optional[tuple[float, float]] = None,
+    figsize: Optional[tuple[float, float]] = (8, 6),
     colorbar: bool = False,
     alpha: float = 1.0,
     fill: bool = False,
@@ -229,7 +229,7 @@ def plot_acq_function_2d(
 def format_point_markers(
     num_pts: int,
     num_init: Optional[int] = None,
-    idx_best: Optional[int] = None,
+    idx_best: Optional[TensorType] = None,
     mask_fail: Optional[TensorType] = None,
     m_init: str = "x",
     m_add: str = "o",
@@ -242,7 +242,7 @@ def format_point_markers(
 
     :param num_pts: total number of BO points
     :param num_init: initial number of BO points
-    :param idx_best: index of the best BO point
+    :param idx_best: index of the best BO point(s)
     :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)
     :param m_init: marker for the initial BO points
     :param m_add: marker for the other BO points
@@ -313,7 +313,7 @@ def plot_mobo_points_in_obj_space(
     obs_values: TensorType,
     num_init: Optional[int] = None,
     mask_fail: Optional[TensorType] = None,
-    figsize: Optional[tuple[float, float]] = None,
+    figsize: Optional[tuple[float, float]] = (8, 6),
     xlabel: str = "Obj 1",
     ylabel: str = "Obj 2",
     zlabel: str = "Obj 3",
@@ -352,9 +352,7 @@ def plot_mobo_points_in_obj_space(
     )
 
     _, dom = non_dominated(obs_values)
-    idx_pareto = (
-        np.where(dom == 0) if mask_fail is None else np.where(np.logical_and(dom == 0, ~mask_fail))
-    )
+    idx_pareto = np.where(dom) if mask_fail is None else np.where(np.logical_and(dom, ~mask_fail))
 
     pts = obs_values.numpy() if tf.is_tensor(obs_values) else obs_values
     num_pts = pts.shape[0]
@@ -388,7 +386,7 @@ def plot_mobo_history(
     metric_func: Callable[[TensorType], TensorType],
     num_init: int,
     mask_fail: Optional[TensorType] = None,
-    figsize: Optional[tuple[float, float]] = None,
+    figsize: Optional[tuple[float, float]] = (8, 6),
 ) -> tuple[Figure, Axes]:
     """
     Draw the performance measure for multi-objective optimization.
@@ -463,11 +461,11 @@ def plot_gp_2d(
     model: GPModel,
     mins: TensorType,
     maxs: TensorType,
-    grid_density: int = 20,
+    grid_density: int = 100,
     contour: bool = False,
     xlabel: Optional[str] = None,
     ylabel: Optional[str] = None,
-    figsize: Optional[tuple[float, float]] = None,
+    figsize: Optional[tuple[float, float]] = (8, 6),
     predict_y: bool = False,
 ) -> tuple[Figure, Axes]:
     """

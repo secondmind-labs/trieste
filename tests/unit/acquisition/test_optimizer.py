@@ -14,12 +14,14 @@
 from __future__ import annotations
 
 import unittest
+import unittest.mock
 from math import ceil
-from typing import Callable, Tuple, TypeVar, Union
+from typing import Any, Callable, Optional, Tuple, TypeVar, Union
 from unittest.mock import MagicMock
 
 import numpy.testing as npt
 import pytest
+import scipy.optimize as spo
 import tensorflow as tf
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, quadratic, random_seed
@@ -37,25 +39,14 @@ from trieste.acquisition.optimizer import (
 )
 from trieste.acquisition.utils import split_acquisition_function_calls
 from trieste.logging import tensorboard_writer
-from trieste.objectives import (
-    ACKLEY_5_MINIMIZER,
-    ACKLEY_5_SEARCH_SPACE,
-    BRANIN_MINIMUM,
-    BRANIN_SEARCH_SPACE,
-    HARTMANN_3_MINIMIZER,
-    HARTMANN_3_SEARCH_SPACE,
-    HARTMANN_6_MINIMIZER,
-    HARTMANN_6_SEARCH_SPACE,
-    SCALED_BRANIN_MINIMUM,
-    SIMPLE_QUADRATIC_MINIMUM,
-    ackley_5,
-    branin,
-    hartmann_3,
-    hartmann_6,
-    scaled_branin,
-    simple_quadratic,
+from trieste.objectives import Ackley5, Branin, Hartmann3, Hartmann6, ScaledBranin, SimpleQuadratic
+from trieste.space import (
+    Box,
+    DiscreteSearchSpace,
+    LinearConstraint,
+    SearchSpace,
+    TaggedProductSearchSpace,
 )
-from trieste.space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSpace
 from trieste.types import TensorType
 
 
@@ -64,7 +55,7 @@ def _quadratic_sum(shift: list[float]) -> AcquisitionFunction:
 
 
 def _delta_function(power: float) -> AcquisitionFunction:
-    return lambda x: tf.reduce_sum((1 / (x ** power)), -1)
+    return lambda x: tf.reduce_sum((1 / (x**power)), -1)
 
 
 def test_generate_random_search_optimizer_raises_with_invalid_sample_size() -> None:
@@ -155,9 +146,9 @@ def test_discrete_and_random_optimizer_on_quadratic(
 @pytest.mark.parametrize(
     "neg_function, expected_maximizer, search_space",
     [
-        (ackley_5, ACKLEY_5_MINIMIZER, ACKLEY_5_SEARCH_SPACE),
-        (hartmann_3, HARTMANN_3_MINIMIZER, HARTMANN_3_SEARCH_SPACE),
-        (hartmann_6, HARTMANN_6_MINIMIZER, HARTMANN_6_SEARCH_SPACE),
+        (Ackley5.objective, Ackley5.minimizers, Ackley5.search_space),
+        (Hartmann3.objective, Hartmann3.minimizers, Hartmann3.search_space),
+        (Hartmann6.objective, Hartmann6.minimizers, Hartmann6.search_space),
     ],
 )
 def test_random_search_optimizer_on_toy_problems(
@@ -217,7 +208,6 @@ def test_optimize_continuous_raises_with_invalid_vectorized_batch_size(batch_siz
 def test_optimize_continuous_correctly_uses_init_params(
     num_optimization_runs: int, num_initial_samples: int
 ) -> None:
-
     querying_initial_sample = True
 
     def _target_fn(x: TensorType) -> TensorType:
@@ -245,7 +235,6 @@ def test_optimize_continuous_recovery_runs(
     failed_first_optimization: bool,
     num_recovery_runs: int,
 ) -> None:
-
     currently_failing = failed_first_optimization
     num_batch_evals = 0
     num_evals = 0
@@ -277,7 +266,6 @@ def test_optimize_continuous_recovery_runs(
             return _quadratic_sum([0.5, 0.5])(x)  # use function that is easy to optimize
 
     with tensorboard_writer(unittest.mock.MagicMock()):
-
         optimizer = generate_continuous_optimizer(
             num_optimization_runs=1, num_recovery_runs=num_recovery_runs
         )
@@ -313,14 +301,26 @@ def test_optimize_continuous_when_target_raises_exception() -> None:
         nonlocal num_queries
 
         if num_queries > 1:  # after initial sample return inf
-            return -1 * hartmann_3(tf.squeeze(x, 1)) / 0.0
+            return -1 * Hartmann3.objective(tf.squeeze(x, 1)) / 0.0
 
         num_queries += 1
-        return -1 * hartmann_3(tf.squeeze(x, 1))
+        return -1 * Hartmann3.objective(tf.squeeze(x, 1))
 
     optimizer = generate_continuous_optimizer(optimizer_args={"options": {"maxiter": 10}})
     with pytest.raises(FailedOptimizationError):
-        optimizer(HARTMANN_3_SEARCH_SPACE, _target_fn)
+        optimizer(Hartmann3.search_space, _target_fn)
+
+
+def test_continuous_optimizer_returns_raise_on_infeasible_points() -> None:
+    def target_function(x: TensorType) -> TensorType:
+        return -1 * ScaledBranin.objective(tf.squeeze(x, 1))
+
+    search_space = Box([0.0, 0.0], [1.0, 1.0], [LinearConstraint(A=tf.eye(2), lb=0.5, ub=0.5)])
+    optimizer = generate_continuous_optimizer(
+        num_initial_samples=1_000, num_optimization_runs=10, optimizer_args=dict(method="l-bfgs-b")
+    )
+    with pytest.raises(FailedOptimizationError):
+        optimizer(search_space, target_function)
 
 
 @random_seed
@@ -430,9 +430,9 @@ def test_continuous_optimizer_on_quadratic(
 @pytest.mark.parametrize(
     "neg_function, expected_maximizer, search_space",
     [
-        (ackley_5, ACKLEY_5_MINIMIZER, ACKLEY_5_SEARCH_SPACE),
-        (hartmann_3, HARTMANN_3_MINIMIZER, HARTMANN_3_SEARCH_SPACE),
-        (hartmann_6, HARTMANN_6_MINIMIZER, HARTMANN_6_SEARCH_SPACE),
+        (Ackley5.objective, Ackley5.minimizers, Ackley5.search_space),
+        (Hartmann3.objective, Hartmann3.minimizers, Hartmann3.search_space),
+        (Hartmann6.objective, Hartmann6.minimizers, Hartmann6.search_space),
     ],
 )
 def test_continuous_optimizer_on_toy_problems(
@@ -630,9 +630,9 @@ def test_batchify_vectorized_for_discrete_optimizer_on_vectorized_quadratic() ->
 @pytest.mark.parametrize(
     "neg_function, expected_maximizer, search_space",
     [
-        (ackley_5, ACKLEY_5_MINIMIZER, ACKLEY_5_SEARCH_SPACE),
-        (hartmann_3, HARTMANN_3_MINIMIZER, HARTMANN_3_SEARCH_SPACE),
-        (hartmann_6, HARTMANN_6_MINIMIZER, HARTMANN_6_SEARCH_SPACE),
+        (Ackley5.objective, Ackley5.minimizers, Ackley5.search_space),
+        (Hartmann3.objective, Hartmann3.minimizers, Hartmann3.search_space),
+        (Hartmann6.objective, Hartmann6.minimizers, Hartmann6.search_space),
     ],
 )
 def test_batchify_vectorized_for_continuous_optimizer_on_duplicated_toy_problems(
@@ -655,9 +655,9 @@ def test_batchify_vectorized_for_continuous_optimizer_on_duplicated_toy_problems
 
 @random_seed
 def test_batchify_vectorized_for_continuous_optimizer_on_vectorized_toy_problems() -> None:
-    search_space = BRANIN_SEARCH_SPACE
-    functions = [branin, scaled_branin, simple_quadratic]
-    expected_maximimums = [-BRANIN_MINIMUM, -SCALED_BRANIN_MINIMUM, -SIMPLE_QUADRATIC_MINIMUM]
+    search_space = Branin.search_space
+    functions = [Branin.objective, ScaledBranin.objective, SimpleQuadratic.objective]
+    expected_maximimums = [-Branin.minimum, -ScaledBranin.minimum, -SimpleQuadratic.minimum]
     vectorized_batch_size = 3
 
     def target_function(x: TensorType) -> TensorType:  # [N,V,D] -> [N, V]
@@ -734,3 +734,55 @@ def test_split_acquisition_function(batch_size: int) -> None:
         tf.size(call[0][0]) <= expected_batch_size for call in acquisition_function.call_args_list
     )
     assert acquisition_function.call_count == ceil(20 / expected_batch_size)
+
+
+@unittest.mock.patch("scipy.optimize.minimize")
+@pytest.mark.parametrize(
+    "search_space, optimizer_args, expected_method, expected_constraints",
+    [
+        (Branin.search_space, None, "l-bfgs-b", []),
+        (Branin.search_space, dict(method="trust-constr"), "trust-constr", []),
+        (Branin.search_space, dict(constraints="dummy"), "l-bfgs-b", "dummy"),
+        (
+            Branin.search_space,
+            dict(method="trust-constr", constraints="dummy"),
+            "trust-constr",
+            "dummy",
+        ),
+        (
+            Box([0, 0], [1, 1], [LinearConstraint(A=tf.eye(2), lb=0, ub=1)]),
+            None,
+            "trust-constr",
+            [LinearConstraint(A=tf.eye(2), lb=0, ub=1)],
+        ),
+    ],
+)
+def test_optimizer_scipy_method_select(
+    mocked_minimize: MagicMock,
+    search_space: Box,
+    optimizer_args: Optional[dict[str, Any]],
+    expected_method: str,
+    expected_constraints: Optional[str],
+) -> None:
+    def target_function(x: TensorType) -> TensorType:
+        return -1 * Branin.objective(tf.squeeze(x, 1))
+
+    def side_effect(*args: Any, **kwargs: Any) -> spo.OptimizeResult:
+        return spo.OptimizeResult(fun=0.0, nfev=0, x=Branin.minimizers[0].numpy(), success=True)
+
+    mocked_minimize.side_effect = side_effect
+    optimizer = generate_continuous_optimizer(
+        num_initial_samples=2, num_optimization_runs=2, optimizer_args=optimizer_args
+    )
+    optimizer(search_space, target_function)
+
+    received_method = mocked_minimize.call_args[1]["method"]
+    assert received_method == expected_method
+
+    if "constraints" in mocked_minimize.call_args[1]:
+        received_constraints = mocked_minimize.call_args[1]["constraints"]
+    elif search_space.has_constraints:
+        received_constraints = search_space.constraints
+    else:
+        received_constraints = None
+    assert received_constraints == expected_constraints

@@ -46,7 +46,7 @@ from trieste.models.gpflow import (
 )
 from trieste.models.gpflow.builders import build_svgp, build_vgp_classifier
 from trieste.models.interfaces import FastUpdateModel, SupportsPredictJoint
-from trieste.objectives import BRANIN_SEARCH_SPACE, branin, scaled_branin
+from trieste.objectives import Branin, ScaledBranin
 from trieste.objectives.utils import mk_observer
 from trieste.observer import Observer
 from trieste.space import Box, SearchSpace
@@ -62,7 +62,7 @@ from trieste.types import TensorType
         (
             70,
             EfficientGlobalOptimization(
-                IntegratedVarianceReduction(BRANIN_SEARCH_SPACE.sample_sobol(1000))
+                IntegratedVarianceReduction(ScaledBranin.search_space.sample_sobol(1000))
             ),
         ),
     ],
@@ -75,10 +75,10 @@ def test_optimizer_learns_scaled_branin_function(
     Ensure that the objective function is effectively learned, such that the final model
     fits well and predictions are close to actual objective values.
     """
-    search_space = BRANIN_SEARCH_SPACE
+    search_space = ScaledBranin.search_space
     num_initial_points = 6
     initial_query_points = search_space.sample_halton(num_initial_points)
-    observer = mk_observer(scaled_branin)
+    observer = mk_observer(ScaledBranin.objective)
     initial_data = observer(initial_query_points)
 
     # we set a performance criterion at 1% of the range
@@ -140,7 +140,7 @@ def test_optimizer_learns_scaled_branin_function(
         pytest.param(
             25,
             EfficientGlobalOptimization(
-                IntegratedVarianceReduction(BRANIN_SEARCH_SPACE.sample_sobol(2000), 80.0),
+                IntegratedVarianceReduction(Branin.search_space.sample_sobol(2000), 80.0),
                 num_query_points=3,
             ),
             80.0,
@@ -149,7 +149,7 @@ def test_optimizer_learns_scaled_branin_function(
         pytest.param(
             25,
             EfficientGlobalOptimization(
-                IntegratedVarianceReduction(BRANIN_SEARCH_SPACE.sample_sobol(2000), [78.0, 82.0]),
+                IntegratedVarianceReduction(Branin.search_space.sample_sobol(2000), [78.0, 82.0]),
                 num_query_points=3,
             ),
             80.0,
@@ -159,7 +159,7 @@ def test_optimizer_learns_scaled_branin_function(
             25,
             EfficientGlobalOptimization(
                 LocalPenalization(
-                    BRANIN_SEARCH_SPACE,
+                    Branin.search_space,
                     base_acquisition_function_builder=MakePositive(
                         ExpectedFeasibility(80, delta=1)
                     ),
@@ -181,11 +181,11 @@ def test_optimizer_learns_feasibility_set_of_thresholded_branin_function(
     classifies with great degree of certainty whether points in the search space are in
     in the feasible set or not.
     """
-    search_space = BRANIN_SEARCH_SPACE
+    search_space = Branin.search_space
 
     num_initial_points = 6
     initial_query_points = search_space.sample_halton(num_initial_points)
-    observer = mk_observer(branin)
+    observer = mk_observer(Branin.objective)
     initial_data = observer(initial_query_points)
 
     # we set a performance criterion at 0.001 probability of required precision per point
@@ -254,7 +254,6 @@ def _get_feasible_set_test_data(
     threshold: float,
     range_pct: float = 0.01,
 ) -> tuple[TensorType, TensorType]:
-
     boundary_done = False
     global_done = False
     boundary_points = tf.constant(0, dtype=tf.float64, shape=(0, search_space.dimension))
@@ -291,12 +290,8 @@ def _get_feasible_set_test_data(
             global_done = True
 
     return (
-        global_points[
-            :n_global,
-        ],
-        boundary_points[
-            :n_boundary,
-        ],
+        global_points[:n_global,],
+        boundary_points[:n_boundary,],
     )
 
 
@@ -325,7 +320,6 @@ def test_bald_learner_learns_circle_function(
     num_steps: int,
     model_builder: Callable[[Dataset, Box], VariationalGaussianProcess | SparseVariational],
 ) -> None:
-
     search_space = Box([-1, -1], [1, 1])
 
     def circle(x: TensorType) -> TensorType:

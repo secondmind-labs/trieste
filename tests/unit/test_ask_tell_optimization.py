@@ -27,7 +27,11 @@ from trieste.data import Dataset
 from trieste.models.interfaces import ProbabilisticModel, TrainableProbabilisticModel
 from trieste.observer import OBJECTIVE
 from trieste.space import Box
-from trieste.types import State, TensorType
+from trieste.types import State, Tag, TensorType
+
+# tags
+TAG1: Tag = "1"
+TAG2: Tag = "2"
 
 
 class LinearWithUnitVariance(GaussianProcess, PseudoTrainableProbModel):
@@ -320,8 +324,8 @@ def test_ask_tell_optimizer_uses_specified_acquisition_state(
         def acquire(
             self,
             search_space: Box,
-            models: Mapping[str, ProbabilisticModel],
-            datasets: Optional[Mapping[str, Dataset]] = None,
+            models: Mapping[Tag, ProbabilisticModel],
+            datasets: Optional[Mapping[Tag, Dataset]] = None,
         ) -> State[int | None, TensorType]:
             def go(state: int | None) -> tuple[int | None, TensorType]:
                 self.states_received.append(state)
@@ -365,8 +369,8 @@ def test_ask_tell_optimizer_validates_keys(
     model: TrainableProbabilisticModel,
     acquisition_rule: AcquisitionRule[TensorType, Box, TrainableProbabilisticModel],
 ) -> None:
-    dataset_with_key_1 = {"1": init_dataset}
-    model_with_key_2 = {"2": model}
+    dataset_with_key_1 = {TAG1: init_dataset}
+    model_with_key_2 = {TAG2: model}
 
     with pytest.raises(ValueError):
         AskTellOptimizer(search_space, dataset_with_key_1, model_with_key_2, acquisition_rule)
@@ -378,9 +382,9 @@ def test_ask_tell_optimizer_tell_validates_keys(
     model: TrainableProbabilisticModel,
     acquisition_rule: AcquisitionRule[TensorType, Box, TrainableProbabilisticModel],
 ) -> None:
-    dataset_with_key_1 = {"1": init_dataset}
-    model_with_key_1 = {"1": model}
-    new_data_with_key_2 = {"2": mk_dataset([[1.0]], [[1.0]])}
+    dataset_with_key_1 = {TAG1: init_dataset}
+    model_with_key_1 = {TAG1: model}
+    new_data_with_key_2 = {TAG2: mk_dataset([[1.0]], [[1.0]])}
 
     ask_tell = AskTellOptimizer(
         search_space, dataset_with_key_1, model_with_key_1, acquisition_rule
@@ -394,7 +398,7 @@ def test_ask_tell_optimizer_default_acquisition_requires_objective_tag(
     init_dataset: Dataset,
     model: TrainableProbabilisticModel,
 ) -> None:
-    wrong_tag = OBJECTIVE + "_WRONG"
+    wrong_tag: Tag = f"{OBJECTIVE}_WRONG"
     wrong_datasets = {wrong_tag: init_dataset}
     wrong_models = {wrong_tag: model}
 

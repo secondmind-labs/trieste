@@ -17,7 +17,7 @@ random.seed(3)
 
 # %%
 import trieste
-from trieste.objectives import branin
+from trieste.objectives import Branin
 
 
 class FaultyBranin:
@@ -34,7 +34,7 @@ class FaultyBranin:
         if self._is_broken:
             raise Exception("Observer is broken")
 
-        return trieste.data.Dataset(x, branin(x))
+        return trieste.data.Dataset(x, Branin.objective(x))
 
 
 observer = FaultyBranin()
@@ -61,18 +61,14 @@ acquisition_rule = trieste.acquisition.rule.TrustRegion()
 #
 # In this tutorial we'll try to complete fifteen optimization loops, which, with the broken observer, may take more than one attempt. The optimizer returns an `OptimizationResult`, which is simply a container for both:
 #
-#   * the final result, which uses a `Result` type (not to be confused with `OptimizationResult`) to safely encapsulate the final data, models and acquisition state if the process completed successfully, or an error if one occurred
-#   * the history of the successful optimization steps.
-#
-# We can access these with the `astuple` method.
+#   * the `final_result`, which uses a `Result` type (not to be confused with `OptimizationResult`) to safely encapsulate the final data, models and acquisition state if the process completed successfully, or an error if one occurred
+#   * the `history` of the successful optimization steps.
 
 # %%
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 num_steps = 15
-result, history = bo.optimize(
-    num_steps, initial_data, model, acquisition_rule, None
-).astuple()
+result = bo.optimize(num_steps, initial_data, model, acquisition_rule, None)
 
 # %% [markdown]
 # We can see from the logs that the optimization loop failed, and this can be sufficient to know what to do next if we're working in a notebook. However, sometimes our setup means we don't have access to the logs. We'll pretend from here that's the case.
@@ -80,35 +76,27 @@ result, history = bo.optimize(
 # %% [markdown]
 # ## Handling success
 #
-# We don't know if the optimization completed successfully or not, so we'll only try to access and plot the data if it was successful. We can find out if this was the case with `result`'s `is_ok` attribute. If it was successful, we know there is data in the `result`, which we can `unwrap` and view.
+# We don't know if the optimization completed successfully or not, so we'll only try to access and plot the data if it was successful. We can find out if this was the case with `result`'s `is_ok` attribute. If it was successful, we know there is data in the `result`, which we can get using `try_get_final_dataset` and view.
 
 # %%
 if result.is_ok:
-    data = result.unwrap().dataset
+    data = result.try_get_final_dataset()
     print("best observation: ", tf.reduce_min(data.observations))
 
 # %% [markdown]
 # ## Handling failure
 #
-# If on the other hand, the optimization didn't complete successfully, we can fix our observer, and try again. We can try again by using the data, model and acquisition state from the last successful step, which is the last element of the `history`. Recall that we only need to account for the acquisition state because we're using the stateful `TrustRegion` rule. For most rules, we don't need to account for this state.
+# If on the other hand, the optimization didn't complete successfully, we can fix our observer, and try again. We can try again by calling the `continue_optimization` method: this is just like `optimize` except it is passed the `OptimizationResult` of a previous run, from which it extracts the last successful data, model and acquisition state. It also automatically calculates the number of remaining optimization steps.
 #
-# Note can view any `Result` by printing it. We'll do that here to see what exception was caught.
+# Note that we can view the `final_result` by printing it. We'll do that here to see what exception was caught.
 
 # %%
 if result.is_err:
-    print("result: ", result)
+    print("result: ", result.final_result)
 
     observer.manual_fix()
 
-    result, new_history = bo.optimize(
-        15 - len(history),
-        history[-1].dataset,
-        history[-1].model,
-        acquisition_rule,
-        history[-1].acquisition_state,
-    ).astuple()
-
-    history.extend(new_history)
+    result = bo.continue_optimization(num_steps, result, acquisition_rule)
 
 # %% [markdown]
 # We can repeat this until we've spent our optimization budget, using a loop if appropriate. But here, we'll just plot the data if it exists, safely by using `result`'s `is_ok` attribute.
@@ -117,10 +105,14 @@ if result.is_err:
 from trieste.experimental.plotting import plot_bo_points, plot_function_2d
 
 if result.is_ok:
-    data = result.unwrap().dataset
+    data = result.try_get_final_dataset()
     arg_min_idx = tf.squeeze(tf.argmin(data.observations, axis=0))
     _, ax = plot_function_2d(
-        branin, search_space.lower, search_space.upper, 30, contour=True
+        Branin.objective,
+        search_space.lower,
+        search_space.upper,
+        30,
+        contour=True,
     )
     plot_bo_points(data.query_points.numpy(), ax[0, 0], 5, arg_min_idx)
 
@@ -132,16 +124,16 @@ if result.is_ok:
 # **Note that trieste currently saves models using pickling, which is not portable and not secure. You should only try to load optimization results that you generated yourself on the same system (or a system with the same version libraries).**
 
 # %%
-result, history = bo.optimize(
+result = bo.optimize(
     num_steps, initial_data, model, acquisition_rule, None, track_path="history"
-).astuple()
+)
 
 # %% [markdown]
 # The returned `history` records are now stored in files rather than in memory. Their constituents can be accessed just as before, which loads the content into memory only when required. The `result` is automatically loaded into memory, but is also saved to disk with the rest of the history.
 
 # %%
-print(history[-1])
-print(history[-1].model)
+print(result.history[-1])
+print(result.history[-1].model)
 
 # %% [markdown]
 # It is also possible to reload the `OptimizationResult` in a new Python process:

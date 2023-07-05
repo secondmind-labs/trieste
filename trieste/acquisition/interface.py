@@ -22,7 +22,7 @@ from typing import Callable, Generic, Mapping, Optional
 
 from ..data import Dataset
 from ..models.interfaces import ProbabilisticModelType
-from ..types import TensorType
+from ..types import Tag, TensorType
 
 AcquisitionFunction = Callable[[TensorType], TensorType]
 """
@@ -55,8 +55,8 @@ class AcquisitionFunctionBuilder(Generic[ProbabilisticModelType], ABC):
     @abstractmethod
     def prepare_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModelType],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> AcquisitionFunction:
         """
         Prepare an acquisition function. We assume that this requires at least models, but
@@ -70,8 +70,8 @@ class AcquisitionFunctionBuilder(Generic[ProbabilisticModelType], ABC):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        models: Mapping[str, ProbabilisticModelType],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> AcquisitionFunction:
         """
         Update an acquisition function. By default this generates a new acquisition function each
@@ -93,7 +93,7 @@ class SingleModelAcquisitionBuilder(Generic[ProbabilisticModelType], ABC):
     composite acquisition function) that requires only one model, dataset pair.
     """
 
-    def using(self, tag: str) -> AcquisitionFunctionBuilder[ProbabilisticModelType]:
+    def using(self, tag: Tag) -> AcquisitionFunctionBuilder[ProbabilisticModelType]:
         """
         :param tag: The tag for the model, dataset pair to use to build this acquisition function.
         :return: An acquisition function builder that selects the model and dataset specified by
@@ -108,8 +108,8 @@ class SingleModelAcquisitionBuilder(Generic[ProbabilisticModelType], ABC):
 
             def prepare_acquisition_function(
                 self,
-                models: Mapping[str, ProbabilisticModelType],
-                datasets: Optional[Mapping[str, Dataset]] = None,
+                models: Mapping[Tag, ProbabilisticModelType],
+                datasets: Optional[Mapping[Tag, Dataset]] = None,
             ) -> AcquisitionFunction:
                 return self.single_builder.prepare_acquisition_function(
                     models[tag], dataset=None if datasets is None else datasets[tag]
@@ -118,8 +118,8 @@ class SingleModelAcquisitionBuilder(Generic[ProbabilisticModelType], ABC):
             def update_acquisition_function(
                 self,
                 function: AcquisitionFunction,
-                models: Mapping[str, ProbabilisticModelType],
-                datasets: Optional[Mapping[str, Dataset]] = None,
+                models: Mapping[Tag, ProbabilisticModelType],
+                datasets: Optional[Mapping[Tag, Dataset]] = None,
             ) -> AcquisitionFunction:
                 return self.single_builder.update_acquisition_function(
                     function, models[tag], dataset=None if datasets is None else datasets[tag]
@@ -171,8 +171,8 @@ class GreedyAcquisitionFunctionBuilder(Generic[ProbabilisticModelType], ABC):
     @abstractmethod
     def prepare_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModelType],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
         """
@@ -190,8 +190,8 @@ class GreedyAcquisitionFunctionBuilder(Generic[ProbabilisticModelType], ABC):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        models: Mapping[str, ProbabilisticModelType],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
     ) -> AcquisitionFunction:
@@ -222,7 +222,7 @@ class SingleModelGreedyAcquisitionBuilder(Generic[ProbabilisticModelType], ABC):
     composite greedy acquisition function) that requires only one model, dataset pair.
     """
 
-    def using(self, tag: str) -> GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]:
+    def using(self, tag: Tag) -> GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]:
         """
         :param tag: The tag for the model, dataset pair to use to build this acquisition function.
         :return: An acquisition function builder that selects the model and dataset specified by
@@ -237,8 +237,8 @@ class SingleModelGreedyAcquisitionBuilder(Generic[ProbabilisticModelType], ABC):
 
             def prepare_acquisition_function(
                 self,
-                models: Mapping[str, ProbabilisticModelType],
-                datasets: Optional[Mapping[str, Dataset]] = None,
+                models: Mapping[Tag, ProbabilisticModelType],
+                datasets: Optional[Mapping[Tag, Dataset]] = None,
                 pending_points: Optional[TensorType] = None,
             ) -> AcquisitionFunction:
                 return self.single_builder.prepare_acquisition_function(
@@ -250,8 +250,8 @@ class SingleModelGreedyAcquisitionBuilder(Generic[ProbabilisticModelType], ABC):
             def update_acquisition_function(
                 self,
                 function: AcquisitionFunction,
-                models: Mapping[str, ProbabilisticModelType],
-                datasets: Optional[Mapping[str, Dataset]] = None,
+                models: Mapping[Tag, ProbabilisticModelType],
+                datasets: Optional[Mapping[Tag, Dataset]] = None,
                 pending_points: Optional[TensorType] = None,
                 new_optimization_step: bool = True,
             ) -> AcquisitionFunction:
@@ -326,7 +326,7 @@ class SingleModelVectorizedAcquisitionBuilder(
     of a composite vectorized acquisition function) that requires only one model, dataset pair.
     """
 
-    def using(self, tag: str) -> AcquisitionFunctionBuilder[ProbabilisticModelType]:
+    def using(self, tag: Tag) -> AcquisitionFunctionBuilder[ProbabilisticModelType]:
         """
         :param tag: The tag for the model, dataset pair to use to build this acquisition function.
         :return: An acquisition function builder that selects the model and dataset specified by
@@ -342,8 +342,8 @@ class SingleModelVectorizedAcquisitionBuilder(
 
             def prepare_acquisition_function(
                 self,
-                models: Mapping[str, ProbabilisticModelType],
-                datasets: Optional[Mapping[str, Dataset]] = None,
+                models: Mapping[Tag, ProbabilisticModelType],
+                datasets: Optional[Mapping[Tag, Dataset]] = None,
             ) -> AcquisitionFunction:
                 return self.single_builder.prepare_acquisition_function(
                     models[tag], dataset=None if datasets is None else datasets[tag]
@@ -352,8 +352,8 @@ class SingleModelVectorizedAcquisitionBuilder(
             def update_acquisition_function(
                 self,
                 function: AcquisitionFunction,
-                models: Mapping[str, ProbabilisticModelType],
-                datasets: Optional[Mapping[str, Dataset]] = None,
+                models: Mapping[Tag, ProbabilisticModelType],
+                datasets: Optional[Mapping[Tag, Dataset]] = None,
             ) -> AcquisitionFunction:
                 return self.single_builder.update_acquisition_function(
                     function, models[tag], dataset=None if datasets is None else datasets[tag]

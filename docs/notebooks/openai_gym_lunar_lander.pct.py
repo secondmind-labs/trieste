@@ -21,7 +21,7 @@ seed = 1793
 
 np.random.seed(seed)
 tf.random.set_seed(seed)
-env.seed(seed)
+env.reset(seed=seed)
 
 
 # %% [markdown]
@@ -36,6 +36,7 @@ env.seed(seed)
 # Now let's see how this task can be formulated as an optimization problem. We will be following an approach used by Turbo <cite data-cite="eriksson2019scalable"/> and BOSH <cite data-cite="Moss2020BOSHBO"/> papers. The environment comes with a heuristic controller that makes decisions based on the current position and velocity of the module. This controller can be tuned by modifying 12 of its internal numerical parameters. These parameters form our optimization search space. The objective is the same as in the original RL setup: maximize the reward. Therefore we will be using Trieste to learn how to land the module safely on the designated pad, without taking too much time and wasting too much fuel.
 #
 # The original code for the heuristic controller can be found in [OpenAI Gym GitHub repo](https://github.com/openai/gym/blob/master/gym/envs/box2d/lunar_lander.py). Here is the parametrized version, taken from the [repository](https://github.com/uber-research/TuRBO) of the Turbo paper:
+
 
 # %%
 # controller code is copied verbatim from https://github.com/uber-research/TuRBO
@@ -78,7 +79,7 @@ timeout_reward = -100
 def demo_heuristic_lander(env, w, print_reward=False):
     total_reward = 0
     steps = 0
-    s = env.reset()
+    s = env.reset()[0]
 
     while True:
         if steps > steps_limit:
@@ -86,7 +87,7 @@ def demo_heuristic_lander(env, w, print_reward=False):
             break
 
         a = heuristic_Controller(s, w)
-        s, r, done, info = env.step(a)
+        s, r, done, info, _ = env.step(a)
         total_reward += r
 
         steps += 1

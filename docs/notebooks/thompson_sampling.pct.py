@@ -17,9 +17,10 @@ tf.random.set_seed(1793)
 
 # %%
 import trieste
-from trieste.objectives import branin, BRANIN_MINIMUM, BRANIN_SEARCH_SPACE
+from trieste.objectives import Branin
 
-search_space = BRANIN_SEARCH_SPACE
+branin = Branin.objective
+search_space = Branin.search_space
 
 num_initial_data_points = 10
 initial_query_points = search_space.sample(num_initial_data_points)
@@ -79,7 +80,7 @@ _, ax = plot_function_2d(
     branin,
     search_space.lower,
     search_space.upper,
-    grid_density=30,
+    grid_density=40,
     contour=True,
 )
 

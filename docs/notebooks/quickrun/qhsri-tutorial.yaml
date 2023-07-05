@@ -1,0 +1,2 @@
+replace:
+  - { from: "num_steps=8,", to: "num_steps=1," }

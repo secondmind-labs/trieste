@@ -23,7 +23,7 @@ import trieste
 
 def masked_branin(x):
     mask_nan = np.sqrt((x[:, 0] - 0.5) ** 2 + (x[:, 1] - 0.4) ** 2) < 0.3
-    y = np.array(trieste.objectives.branin(x))
+    y = np.array(trieste.objectives.Branin.objective(x))
     y[mask_nan] = np.nan
     return tf.convert_to_tensor(y.reshape(-1, 1), x.dtype)
 
@@ -44,9 +44,8 @@ search_space = Box([0, 0], [1, 1])
 from trieste.experimental.plotting import plot_function_plotly
 
 fig = plot_function_plotly(
-    masked_branin, search_space.lower, search_space.upper, grid_density=70
+    masked_branin, search_space.lower, search_space.upper
 )
-fig.update_layout(height=400, width=400)
 fig.show()
 
 # %% [markdown]
@@ -116,9 +115,10 @@ from trieste.models.gpflow.models import (
     VariationalGaussianProcess,
 )
 from trieste.models.optimizer import BatchOptimizer
+from trieste.types import Tag
 
 
-models: dict[str, TrainableProbabilisticModel] = {
+models: dict[Tag, TrainableProbabilisticModel] = {
     OBJECTIVE: GaussianProcessRegression(regression_model),
     FAILURE: VariationalGaussianProcess(
         classification_model,
@@ -191,7 +191,7 @@ fig, ax = plot_function_2d(
     masked_branin,
     search_space.lower,
     search_space.upper,
-    grid_density=50,
+    grid_density=20,
     contour=True,
 )
 plot_bo_points(
@@ -241,7 +241,7 @@ fig, ax = plot_gp_2d(
     result.models[FAILURE].model,  # type: ignore
     search_space.lower,
     search_space.upper,
-    grid_density=50,
+    grid_density=20,
     contour=True,
     figsize=(12, 5),
     predict_y=True,

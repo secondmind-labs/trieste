@@ -20,6 +20,7 @@ import numpy as np
 import gym
 from gym import wrappers
 
+
 # copied verbatim from https://github.com/uber-research/TuRBO
 def heuristic_Controller(s, w):
     angle_targ = s[0] * w[0] + s[2] * w[1]
@@ -55,7 +56,7 @@ def demo_heuristic_lander(env, w, seed=None):
     steps = 0
 
     env = wrappers.Monitor(env, "./", force=True)
-    env.seed(seed)
+    env.reset(seed=seed)
     s = env.reset()
 
     while True:

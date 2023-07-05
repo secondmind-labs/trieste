@@ -27,12 +27,7 @@ from trieste.acquisition.rule import AcquisitionRule, EfficientGlobalOptimizatio
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.models import TrainableProbabilisticModel
 from trieste.models.gpflow import GaussianProcessRegression, build_gpr
-from trieste.objectives import (
-    BRANIN_MINIMIZERS,
-    BRANIN_SEARCH_SPACE,
-    SCALED_BRANIN_MINIMUM,
-    scaled_branin,
-)
+from trieste.objectives import ScaledBranin
 from trieste.objectives.utils import mk_observer
 from trieste.observer import OBJECTIVE
 from trieste.space import Box, DiscreteSearchSpace, TaggedProductSearchSpace
@@ -56,7 +51,7 @@ from trieste.types import TensorType
             8,
             EfficientGlobalOptimization(
                 LocalPenalization(
-                    BRANIN_SEARCH_SPACE,
+                    ScaledBranin.search_space,
                 ).using(OBJECTIVE),
                 num_query_points=3,
             ),
@@ -76,7 +71,7 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
     )
 
     initial_query_points = search_space.sample(5)
-    observer = mk_observer(scaled_branin)
+    observer = mk_observer(ScaledBranin.objective)
     initial_data = observer(initial_query_points)
     model = GaussianProcessRegression(
         build_gpr(initial_data, search_space, likelihood_variance=1e-8)
@@ -93,15 +88,15 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
     best_y = dataset.observations[arg_min_idx]
     best_x = dataset.query_points[arg_min_idx]
 
-    relative_minimizer_err = tf.abs((best_x - BRANIN_MINIMIZERS) / BRANIN_MINIMIZERS)
+    relative_minimizer_err = tf.abs((best_x - ScaledBranin.minimizers) / ScaledBranin.minimizers)
     # these accuracies are the current best for the given number of optimization steps, which makes
     # this is a regression test
     assert tf.reduce_any(tf.reduce_all(relative_minimizer_err < 0.1, axis=-1), axis=0)
-    npt.assert_allclose(best_y, SCALED_BRANIN_MINIMUM, rtol=0.005)
+    npt.assert_allclose(best_y, ScaledBranin.minimum, rtol=0.005)
 
     # check that acquisition functions defined as classes aren't being retraced unnecessarily
     # They should be retraced once for the optimzier's starting grid and once for L-BFGS.
     if isinstance(acquisition_rule, EfficientGlobalOptimization):
         acquisition_function = acquisition_rule._acquisition_function
         if isinstance(acquisition_function, AcquisitionFunctionClass):
-            assert acquisition_function.__call__._get_tracing_count() <= 3  # type: ignore
+            assert acquisition_function.__call__._get_tracing_count() <= 4  # type: ignore

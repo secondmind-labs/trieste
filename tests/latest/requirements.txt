@@ -15,8 +15,3 @@
 packaging
 pytest
 PyYAML
-
-# pin to TF 2.8 until we make that the default
-gpflux ~= 0.3.0
-tensorflow ~= 2.8.0
-tensorflow-probability ~= 0.13.0

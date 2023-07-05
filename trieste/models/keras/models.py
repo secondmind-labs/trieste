@@ -26,8 +26,10 @@ from tensorflow.python.keras.callbacks import Callback
 from ... import logging
 from ...data import Dataset
 from ...types import TensorType
+from ...utils import flatten_leading_dims
 from ..interfaces import HasTrajectorySampler, TrainableProbabilisticModel, TrajectorySampler
 from ..optimizer import KerasOptimizer
+from ..utils import write_summary_data_based_metrics
 from .architectures import KerasEnsemble, MultivariateNormalTriL
 from .interface import DeepEnsembleModel, KerasPredictor
 from .sampler import DeepEnsembleTrajectorySampler
@@ -94,11 +96,10 @@ class DeepEnsemble(
             arguments.
         :param bootstrap: Sample with replacement data for training each network in the ensemble.
             By default set to `False`.
-        :param diversify: Whether to use quantiles from final probabilistic layer as trajectories
-            instead of mean predictions when calling :meth:`trajectory_sampler`. Quantiles are
-            sampled uniformly from a unit interval. This mode can be used to increase the diversity
-            in case of optimizing very large batches of trajectories. When batch size is larger
-            than the ensemble size, multiple quantiles will be used with the same network. By
+        :param diversify: Whether to use quantiles from the approximate Gaussian distribution of
+            the ensemble as trajectories instead of mean predictions when calling
+            :meth:`trajectory_sampler`. This mode can be used to increase the diversity
+            in case of optimizing very large batches of trajectories. By
             default set to `False`.
         :param continuous_optimisation: If True (default), the optimizer will keep track of the
             number of epochs across BO iterations and use this number as initial_epoch. This is
@@ -135,7 +136,11 @@ class DeepEnsemble(
             loss=[self.optimizer.loss] * model.ensemble_size,
             metrics=[self.optimizer.metrics] * model.ensemble_size,
         )
-        self.original_lr = self.optimizer.optimizer.lr.numpy()
+
+        if not isinstance(
+            self.optimizer.optimizer.lr, tf.keras.optimizers.schedules.LearningRateSchedule
+        ):
+            self.original_lr = self.optimizer.optimizer.lr.numpy()
         self._absolute_epochs = 0
         self._continuous_optimisation = continuous_optimisation
 
@@ -249,7 +254,11 @@ class DeepEnsemble(
         :return: The predicted mean and variance of the observations at the specified
             ``query_points``.
         """
-        ensemble_distributions = self.ensemble_distributions(query_points)
+        # handle leading batch dimensions, while still allowing `Functional` to
+        # "allow (None,) and (None, 1) Tensors to be passed interchangeably"
+        input_dims = min(len(query_points.shape), len(self.model.input_shape[0]))
+        flat_x, unflatten = flatten_leading_dims(query_points, output_dims=input_dims)
+        ensemble_distributions = self.ensemble_distributions(flat_x)
         predicted_means = tf.math.reduce_mean(
             [dist.mean() for dist in ensemble_distributions], axis=0
         )
@@ -257,10 +266,10 @@ class DeepEnsemble(
             tf.math.reduce_mean(
                 [dist.variance() + dist.mean() ** 2 for dist in ensemble_distributions], axis=0
             )
-            - predicted_means ** 2
+            - predicted_means**2
         )
 
-        return predicted_means, predicted_vars
+        return unflatten(predicted_means), unflatten(predicted_vars)
 
     def predict_ensemble(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
@@ -327,7 +336,6 @@ class DeepEnsemble(
         Return a trajectory sampler. For :class:`DeepEnsemble`, we use an ensemble
         sampler that randomly picks a network from the ensemble and uses its predicted means
         for generating a trajectory, or optionally randomly sampled quantiles rather than means.
-        Only models with single output are supported with diversify option.
 
         :return: The trajectory sampler.
         """
@@ -339,7 +347,7 @@ class DeepEnsemble(
         `TrainableProbabilisticModel` interface, however, requires an update method, so
         here we simply pass the execution.
         """
-        pass
+        return
 
     def optimize(self, dataset: Dataset) -> None:
         """
@@ -376,10 +384,14 @@ class DeepEnsemble(
         if self._continuous_optimisation:
             self._absolute_epochs = self._absolute_epochs + len(history.history["loss"])
 
-        # Reset lr in case there was an lr schedule: a schedule will have change the learning rate,
-        # so that the next time we call `optimize` the starting learning rate would be different.
-        # Therefore, we make sure the learning rate is set back to its initial value.
-        self.optimizer.optimizer.lr.assign(self.original_lr)
+        # Reset lr in case there was an lr schedule: a schedule will have changed the learning
+        # rate, so that the next time we call `optimize` the starting learning rate would be
+        # different. Therefore, we make sure the learning rate is set back to its initial value.
+        # However, this is not needed for `LearningRateSchedule` instances.
+        if not isinstance(
+            self.optimizer.optimizer.lr, tf.keras.optimizers.schedules.LearningRateSchedule
+        ):
+            self.optimizer.optimizer.lr.assign(self.original_lr)
 
     def log(self, dataset: Optional[Dataset] = None) -> None:
         """
@@ -430,27 +442,8 @@ class DeepEnsemble(
                         logging.scalar(f"{pre}/min{post}", lambda: tf.reduce_min(v))
                         logging.scalar(f"{pre}/max{post}", lambda: tf.reduce_max(v))
                 if dataset:
-                    predict = self.predict(dataset.query_points)
-                    # training accuracy
-                    diffs = tf.cast(dataset.observations, predict[0].dtype) - predict[0]
-                    z_residuals = diffs / tf.math.sqrt(predict[1])
-                    logging.histogram("accuracy/absolute_errors", tf.math.abs(diffs))
-                    logging.histogram("accuracy/z_residuals", z_residuals)
-                    logging.scalar(
-                        "accuracy/root_mean_square_error", tf.math.sqrt(tf.reduce_mean(diffs ** 2))
-                    )
-                    logging.scalar(
-                        "accuracy/mean_absolute_error", tf.reduce_mean(tf.math.abs(diffs))
-                    )
-                    logging.scalar("accuracy/z_residuals_std", tf.math.reduce_std(z_residuals))
-                    # training variance
-                    variance_error = predict[1] - diffs ** 2
-                    logging.histogram("variance/predict_variance", predict[1])
-                    logging.histogram("variance/variance_error", variance_error)
-                    logging.scalar("variance/predict_variance_mean", tf.reduce_mean(predict[1]))
-                    logging.scalar(
-                        "variance/root_mean_variance_error",
-                        tf.math.sqrt(tf.reduce_mean(variance_error ** 2)),
+                    write_summary_data_based_metrics(
+                        dataset=dataset, model=self, prefix="training_"
                     )
                     if logging.include_summary("_ensemble"):
                         predict_ensemble_variance = self.predict_ensemble(dataset.query_points)[1]
@@ -463,9 +456,6 @@ class DeepEnsemble(
                                 f"variance/_ensemble/predict_variance_mean_model_{i}",
                                 tf.reduce_mean(predict_ensemble_variance[i, ...]),
                             )
-                    # data stats
-                    empirical_variance = tf.math.reduce_variance(dataset.observations)
-                    logging.scalar("variance/empirical", empirical_variance)
 
     def __getstate__(self) -> dict[str, Any]:
         # use to_json and get_weights to save any optimizer fit_arg callback models

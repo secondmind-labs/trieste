@@ -35,13 +35,15 @@ tf.random.set_seed(1793)
 # We illustrate the thresholded Branin function below, you can note that above the threshold of 80 there are no more values observed.
 
 # %%
-from trieste.objectives import branin, BRANIN_SEARCH_SPACE
+from trieste.objectives import Branin
 from trieste.experimental.plotting import plot_function_plotly
 
-search_space = BRANIN_SEARCH_SPACE
+branin = Branin.objective
+search_space = Branin.search_space
 
 # threshold is arbitrary, but has to be within the range of the function
 threshold = 80.0
+
 
 # define a modified branin function
 def thresholded_branin(x):
@@ -52,9 +54,8 @@ def thresholded_branin(x):
 
 # illustrate the thresholded branin function
 fig = plot_function_plotly(
-    thresholded_branin, search_space.lower, search_space.upper, grid_density=700
+    thresholded_branin, search_space.lower, search_space.upper
 )
-fig.update_layout(height=800, width=800)
 fig.show()
 
 
@@ -147,7 +148,6 @@ def excursion_probability(x, model, threshold=80):
 def plot_excursion_probability(
     title, model=None, query_points=None, threshold=80.0
 ):
-
     if model is None:
         objective_function = thresholded_branin
     else:
@@ -159,7 +159,6 @@ def plot_excursion_probability(
         objective_function,
         search_space.lower - 0.01,
         search_space.upper + 0.01,
-        grid_density=300,
         contour=True,
         colorbar=True,
         figsize=(10, 6),
@@ -192,9 +191,7 @@ initial_model.optimize(initial_data)
 plot_excursion_probability(
     "Probability of excursion, initial data",
     initial_model,
-    query_points[
-        :num_initial_points,
-    ],
+    query_points[:num_initial_points,],
 )
 
 

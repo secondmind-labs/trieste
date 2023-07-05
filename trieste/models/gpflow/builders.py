@@ -21,16 +21,18 @@ universally good solutions.
 from __future__ import annotations
 
 import math
-from typing import Optional
+from typing import Optional, Sequence, Type
 
 import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflow.kernels import Stationary
 from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
 
-from ...data import Dataset
+from ...data import Dataset, split_dataset_by_fidelity
 from ...space import Box, SearchSpace
 from ...types import TensorType
+from ..gpflow.models import GaussianProcessRegression
 
 KERNEL_LENGTHSCALE = tf.cast(0.2, dtype=gpflow.default_float())
 """
@@ -78,16 +80,17 @@ determined by this default value. Signal variance in the kernel is set to the em
 
 def build_gpr(
     data: Dataset,
-    search_space: SearchSpace,
+    search_space: Optional[SearchSpace] = None,
     kernel_priors: bool = True,
     likelihood_variance: Optional[float] = None,
     trainable_likelihood: bool = False,
+    kernel: Optional[gpflow.kernels.Kernel] = None,
 ) -> GPR:
     """
     Build a :class:`~gpflow.models.GPR` model with sensible initial parameters and
-    priors. We use :class:`~gpflow.kernels.Matern52` kernel and
+    priors. By default, we use :class:`~gpflow.kernels.Matern52` kernel and
     :class:`~gpflow.mean_functions.Constant` mean function in the model. We found the default
-    configuration used here to work well in most situation, but it should not be taken as a
+    configuration used here to work well in most situations, but it should not be taken as a
     universally good solution.
 
     We set priors for kernel hyperparameters by default in order to stabilize model fitting. We
@@ -101,7 +104,7 @@ def build_gpr(
 
     :param data: Dataset from the initial design, used for estimating the variance of observations.
     :param search_space: Search space for performing Bayesian optimization, used for scaling the
-        parameters.
+        parameters. Required unless a kernel is passed.
     :param kernel_priors: If set to `True` (default) priors are set for kernel parameters (variance
         and lengthscale).
     :param likelihood_variance: Likelihood (noise) variance parameter can be optionally set to a
@@ -110,13 +113,22 @@ def build_gpr(
         variance in the kernel is set to the empirical variance.
     :param trainable_likelihood: If set to `True` Gaussian likelihood parameter is set to
         non-trainable. By default set to `False`.
+    :param kernel: The kernel to use in the model, defaults to letting the function set up a
+        :class:`~gpflow.kernels.Matern52` kernel.
     :return: A :class:`~gpflow.models.GPR` model.
     """
     empirical_mean, empirical_variance, _ = _get_data_stats(data)
 
-    kernel = _get_kernel(empirical_variance, search_space, kernel_priors, kernel_priors)
+    if kernel is None and search_space is None:
+        raise ValueError(
+            "'build_gpr' function requires one of 'search_space' or 'kernel' arguments,"
+            " but got neither"
+        )
+    elif kernel is None and search_space is not None:
+        kernel = _get_kernel(empirical_variance, search_space, kernel_priors, kernel_priors)
     mean = _get_mean_function(empirical_mean)
 
+    assert isinstance(kernel, gpflow.kernels.Kernel)
     model = gpflow.models.GPR(data.astuple(), kernel, mean)
 
     _set_gaussian_likelihood_variance(model, empirical_variance, likelihood_variance)
@@ -364,15 +376,7 @@ def _get_kernel(
     add_prior_to_lengthscale: bool,
     add_prior_to_variance: bool,
 ) -> gpflow.kernels.Kernel:
-    lengthscales = (
-        KERNEL_LENGTHSCALE
-        * (search_space.upper - search_space.lower)
-        * math.sqrt(search_space.dimension)
-    )
-    search_space_collapsed = tf.equal(search_space.upper, search_space.lower)
-    lengthscales = tf.where(
-        search_space_collapsed, tf.cast(1.0, dtype=gpflow.default_float()), lengthscales
-    )
+    lengthscales = _get_lengthscales(search_space)
 
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=lengthscales)
 
@@ -388,6 +392,19 @@ def _get_kernel(
     return kernel
 
 
+def _get_lengthscales(search_space: SearchSpace) -> TensorType:
+    lengthscales = (
+        KERNEL_LENGTHSCALE
+        * (search_space.upper - search_space.lower)
+        * math.sqrt(search_space.dimension)
+    )
+    search_space_collapsed = tf.equal(search_space.upper, search_space.lower)
+    lengthscales = tf.where(
+        search_space_collapsed, tf.cast(1.0, dtype=gpflow.default_float()), lengthscales
+    )
+    return lengthscales
+
+
 def _get_mean_function(mean: TensorType) -> gpflow.mean_functions.MeanFunction:
     mean_function = gpflow.mean_functions.Constant(mean)
 
@@ -398,7 +415,7 @@ def _set_gaussian_likelihood_variance(
     model: GPModel, variance: TensorType, likelihood_variance: Optional[float]
 ) -> None:
     if likelihood_variance is None:
-        noise_variance = variance / SIGNAL_NOISE_RATIO_LIKELIHOOD ** 2
+        noise_variance = variance / SIGNAL_NOISE_RATIO_LIKELIHOOD**2
     else:
         tf.debugging.assert_positive(likelihood_variance)
         noise_variance = tf.cast(likelihood_variance, dtype=gpflow.default_float())
@@ -423,3 +440,181 @@ def _get_inducing_points(
         inducing_points = search_space.sample(num_inducing_points)
 
     return inducing_points
+
+
+def build_multifidelity_autoregressive_models(
+    dataset: Dataset,
+    num_fidelities: int,
+    input_search_space: SearchSpace,
+    likelihood_variance: float = 1e-6,
+    kernel_priors: bool = False,
+    trainable_likelihood: bool = False,
+) -> Sequence[GaussianProcessRegression]:
+    """
+    Build the individual GPR models required for constructing an MultifidelityAutoregressive model
+    with `num_fidelities` fidelities.
+
+    :param dataset: Dataset of points with which to initialise the individual models,
+        where the final column of the final dimension of the query points contains the fidelity
+    :param num_fidelities: Number of fidelities desired for the MultifidelityAutoregressive model
+    :param input_search_space: The input search space of the models
+    :return: List of initialised GPR models
+    """
+
+    # Split data into fidelities
+    data = split_dataset_by_fidelity(dataset=dataset, num_fidelities=num_fidelities)
+
+    _validate_multifidelity_data_modellable(data, num_fidelities)
+
+    gprs = [
+        GaussianProcessRegression(
+            build_gpr(
+                data[fidelity],
+                input_search_space,
+                likelihood_variance=likelihood_variance,
+                kernel_priors=kernel_priors,
+                trainable_likelihood=trainable_likelihood,
+            )
+        )
+        for fidelity in range(num_fidelities)
+    ]
+
+    return gprs
+
+
+def build_multifidelity_nonlinear_autoregressive_models(
+    dataset: Dataset,
+    num_fidelities: int,
+    input_search_space: SearchSpace,
+    kernel_base_class: Type[Stationary] = gpflow.kernels.Matern32,
+    kernel_priors: bool = True,
+    trainable_likelihood: bool = False,
+) -> Sequence[GaussianProcessRegression]:
+    """
+    Build models for training the trieste.models.gpflow.MultifidelityNonlinearAutoregressive` model
+
+    Builds a basic Matern32 kernel for the lowest fidelity, and the custom kernel described in
+    :cite:`perdikaris2017nonlinear` for the higher fidelities, which also have an extra input
+    dimension. Note that the initial data that the models with fidelity greater than 0 are
+    initialised with contain dummy data in this extra dimension, and so an `update` of the
+    `MultifidelityNonlinearAutoregressive` is required to propagate real data through to these
+    models.
+
+    :param dataset: The dataset to use to initialise the models
+    :param num_fidelities: The number of fidelities to model
+    :param input_search_space: the search space, used to initialise the kernel parameters
+    :param kernel_base_class: a stationary kernel type
+    :param kernel_priors: If set to `True` (default) priors are set for kernel parameters (variance
+        and lengthscale).
+    :return: gprs: A list containing gprs that can be used for the multifidelity model
+    """
+    # Split data into fidelities
+    data = split_dataset_by_fidelity(dataset=dataset, num_fidelities=num_fidelities)
+
+    _validate_multifidelity_data_modellable(data, num_fidelities)
+
+    # Input dim requires excluding fidelity row
+    input_dim = dataset.query_points.shape[1] - 1
+
+    # Create kernels
+    kernels = _create_multifidelity_nonlinear_autoregressive_kernels(
+        kernel_base_class,
+        num_fidelities,
+        input_dim,
+        input_search_space,
+        kernel_priors,
+        kernel_priors,
+    )
+
+    # Initialise low fidelity GP
+    gprs = [
+        GaussianProcessRegression(
+            build_gpr(
+                data[0],
+                search_space=input_search_space,  # This isn't actually used when we pass a kernel
+                kernel=kernels[0],
+                likelihood_variance=1e-6,
+                trainable_likelihood=trainable_likelihood,
+            )
+        )
+    ]
+
+    for fidelity in range(1, num_fidelities):
+        # Get query points for this fidelity
+        qps = data[fidelity].query_points
+        samples_column = tf.random.normal([qps.shape[0], 1], dtype=tf.float64)
+
+        augmented_qps = tf.concat([qps, samples_column], axis=1)
+        augmented_dataset = Dataset(augmented_qps, data[fidelity].observations)
+        gprs.append(
+            GaussianProcessRegression(
+                build_gpr(
+                    augmented_dataset,
+                    input_search_space,  # This isn't actually used when we pass a kernel
+                    kernel=kernels[fidelity],
+                    likelihood_variance=1e-6,
+                )
+            )
+        )
+
+    return gprs
+
+
+def _validate_multifidelity_data_modellable(data: Sequence[Dataset], num_fidelities: int) -> None:
+    if num_fidelities < 2:
+        raise ValueError(
+            "Invalid number of fidelities to build Multifidelity model for,"
+            f" need at least 2 fidelities, got {num_fidelities}"
+        )
+
+    for i, fidelity_data in enumerate(data):
+        if len(fidelity_data) < 2:
+            raise ValueError(
+                f"Not enough data to create model for fidelity {i},"
+                f" need at least 2 datapoints, got {len(fidelity_data)}"
+            )
+
+
+def _create_multifidelity_nonlinear_autoregressive_kernels(
+    kernel_base_class: Type[Stationary],
+    n_fidelities: int,
+    n_input_dims: int,
+    search_space: SearchSpace,
+    add_prior_to_lengthscale: bool,
+    add_prior_to_variance: bool,
+) -> Sequence[Stationary]:
+    dims = list(range(n_input_dims + 1))
+    lengthscales = _get_lengthscales(search_space)
+
+    scale_lengthscale = 1.0
+    kernels = [kernel_base_class(lengthscales=lengthscales)]
+
+    for i in range(1, n_fidelities):
+        interaction_kernel = kernel_base_class(lengthscales=lengthscales, active_dims=dims[:-1])
+        scale_kernel = kernel_base_class(lengthscales=scale_lengthscale, active_dims=[dims[-1]])
+        bias_kernel = kernel_base_class(lengthscales=lengthscales, active_dims=dims[:-1])
+        gpflow.set_trainable(scale_kernel.variance, False)
+
+        if add_prior_to_lengthscale:
+            interaction_kernel.lengthscales.prior = tfp.distributions.LogNormal(
+                tf.math.log(lengthscales), KERNEL_PRIOR_SCALE
+            )
+            bias_kernel.lengthscales.prior = tfp.distributions.LogNormal(
+                tf.math.log(lengthscales), KERNEL_PRIOR_SCALE
+            )
+            scale_kernel.lengthscales.prior = tfp.distributions.LogNormal(
+                tf.math.log(tf.cast(scale_lengthscale, dtype=gpflow.default_float())),
+                KERNEL_PRIOR_SCALE,
+            )
+
+        if add_prior_to_variance:
+            interaction_kernel.variance.prior = tfp.distributions.LogNormal(
+                tf.cast(0.0, dtype=gpflow.default_float()), KERNEL_PRIOR_SCALE
+            )
+            bias_kernel.variance.prior = tfp.distributions.LogNormal(
+                tf.cast(0.0, dtype=gpflow.default_float()), KERNEL_PRIOR_SCALE
+            )
+
+        kernels.append(interaction_kernel * scale_kernel + bias_kernel)
+
+    return kernels

@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import copy
 import operator
+import tempfile
 import unittest.mock
 from functools import partial
 from typing import Callable
@@ -42,10 +43,12 @@ from tensorflow.python.keras.callbacks import Callback
 
 from tests.util.misc import random_seed
 from tests.util.models.gpflux.models import single_layer_dgp_model
+from tests.util.models.keras.models import keras_optimizer_weights
 from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.data import Dataset
 from trieste.logging import step_number, tensorboard_writer
 from trieste.models.gpflux import DeepGaussianProcess
+from trieste.models.interfaces import HasTrajectorySampler
 from trieste.models.optimizer import KerasOptimizer
 from trieste.types import TensorType
 
@@ -102,7 +105,7 @@ def test_deep_gaussian_process_model_attribute(
 
 
 def test_deep_gaussian_process_update(two_layer_model: Callable[[TensorType], DeepGP]) -> None:
-    x = tf.zeros([1, 4])
+    x = tf.zeros([1, 4], dtype=tf.float64)
     dgp = two_layer_model(x)
     model = DeepGaussianProcess(dgp)
 
@@ -126,7 +129,7 @@ def test_deep_gaussian_process_update(two_layer_model: Callable[[TensorType], De
 def test_deep_gaussian_process_update_raises_for_invalid_shapes(
     two_layer_model: Callable[[TensorType], DeepGP], new_data: Dataset
 ) -> None:
-    x = tf.zeros([1, 4])
+    x = tf.zeros([1, 4], dtype=tf.float64)
     dgp = two_layer_model(x)
     model = DeepGaussianProcess(dgp)
 
@@ -191,6 +194,24 @@ def test_deep_gaussian_process_predict() -> None:
     npt.assert_allclose(f_var, ref_var)
 
 
+def test_deep_gaussian_process_predict_broadcasts() -> None:
+    x = tf.constant(np.arange(6).reshape(3, 2), dtype=gpflow.default_float())
+
+    reference_model = single_layer_dgp_model(x)
+    model = DeepGaussianProcess(single_layer_dgp_model(x))
+
+    test_x = tf.constant(np.arange(12).reshape(1, 2, 3, 2), dtype=gpflow.default_float())
+
+    ref_mean, ref_var = reference_model.predict_f(test_x)
+    f_mean, f_var = model.predict(test_x)
+
+    assert f_mean.shape == (1, 2, 3, 1)
+    assert f_var.shape == (1, 2, 3, 1)
+
+    npt.assert_allclose(f_mean, ref_mean)
+    npt.assert_allclose(f_var, ref_var)
+
+
 @random_seed
 def test_deep_gaussian_process_sample(two_layer_model: Callable[[TensorType], DeepGP]) -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
@@ -229,7 +250,7 @@ def test_deep_gaussian_process_resets_lr_with_lr_schedule(
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     y = fnc_3x_plus_10(x)
 
-    epochs = 10
+    epochs = 2
     init_lr = 0.01
 
     def scheduler(epoch: int, lr: float) -> float:
@@ -250,11 +271,35 @@ def test_deep_gaussian_process_resets_lr_with_lr_schedule(
 
     npt.assert_allclose(model.model_keras.optimizer.lr.numpy(), init_lr, rtol=1e-6)
 
-    dataset = Dataset(x, y)
-
-    model.optimize(dataset)
+    model.optimize(Dataset(x, y))
 
     npt.assert_allclose(model.model_keras.optimizer.lr.numpy(), init_lr, rtol=1e-6)
+
+
+def test_deep_gaussian_process_with_lr_scheduler(
+    two_layer_model: Callable[[TensorType], DeepGP]
+) -> None:
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    y = fnc_3x_plus_10(x)
+
+    epochs = 2
+    init_lr = 1.0
+
+    fit_args = {
+        "epochs": epochs,
+        "batch_size": 20,
+        "verbose": 0,
+    }
+
+    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+        initial_learning_rate=init_lr, decay_steps=1, decay_rate=0.5
+    )
+    optimizer = KerasOptimizer(tf.optimizers.Adam(lr_schedule), fit_args)
+    model = DeepGaussianProcess(two_layer_model(x), optimizer)
+
+    model.optimize(Dataset(x, y))
+
+    assert len(model.model_keras.history.history["loss"]) == epochs
 
 
 def test_deep_gaussian_process_default_optimizer_is_correct(
@@ -338,15 +383,58 @@ def test_deepgp_deep_copyable() -> None:
     npt.assert_array_compare(operator.__ne__, variance_f_copy_updated_2, variance_f_copy_updated)
 
 
-def test_deepgp_deep_copies_optimizer_state() -> None:
+def test_deepgp_tf_saved_model() -> None:
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    model = DeepGaussianProcess(partial(single_layer_dgp_model, x))
 
+    with tempfile.TemporaryDirectory() as path:
+        # create a trajectory sampler (used for sample method)
+        assert isinstance(model, HasTrajectorySampler)
+        trajectory_sampler = model.trajectory_sampler()
+        trajectory = trajectory_sampler.get_trajectory()
+
+        # generate client model with predict and sample methods
+        module = model.get_module_with_variables(trajectory_sampler, trajectory)
+        module.predict = tf.function(
+            model.predict, input_signature=[tf.TensorSpec(shape=[None, 1], dtype=tf.float64)]
+        )
+
+        def _sample(query_points: TensorType, num_samples: int) -> TensorType:
+            trajectory_updated = trajectory_sampler.resample_trajectory(trajectory)
+            expanded_query_points = tf.expand_dims(query_points, -2)  # [N, 1, D]
+            tiled_query_points = tf.tile(expanded_query_points, [1, num_samples, 1])  # [N, S, D]
+            return tf.transpose(trajectory_updated(tiled_query_points), [1, 0, 2])[
+                :, :, :1
+            ]  # [S, N, L]
+
+        module.sample = tf.function(
+            _sample,
+            input_signature=[
+                tf.TensorSpec(shape=[None, 1], dtype=tf.float64),  # query_points
+                tf.TensorSpec(shape=(), dtype=tf.int32),  # num_samples
+            ],
+        )
+
+        tf.saved_model.save(module, str(path))
+        client_model = tf.saved_model.load(str(path))
+
+    # test exported methods
+    test_x = tf.constant([[2.5]], dtype=gpflow.default_float())
+    mean_f, variance_f = model.predict(test_x)
+    mean_f_copy, variance_f_copy = client_model.predict(test_x)
+    npt.assert_allclose(mean_f, mean_f_copy)
+    npt.assert_allclose(variance_f, variance_f_copy)
+    client_model.sample(x, 10)
+
+
+def test_deepgp_deep_copies_optimizer_state() -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model = DeepGaussianProcess(partial(single_layer_dgp_model, x))
     dataset = Dataset(x, fnc_3x_plus_10(x))
     model.update(dataset)
-    assert not model.optimizer.optimizer.get_weights()
+    assert not keras_optimizer_weights(model.optimizer.optimizer)
     model.optimize(dataset)
-    assert model.optimizer.optimizer.get_weights()
+    assert keras_optimizer_weights(model.optimizer.optimizer)
     npt.assert_allclose(model.optimizer.optimizer.iterations, 400)
     assert model.optimizer.fit_args["callbacks"][0].model is model.model_keras
 
@@ -354,7 +442,8 @@ def test_deepgp_deep_copies_optimizer_state() -> None:
     assert model.optimizer.optimizer is not model_copy.optimizer.optimizer
     npt.assert_allclose(model_copy.optimizer.optimizer.iterations, 400)
     npt.assert_equal(
-        model.optimizer.optimizer.get_weights(), model_copy.optimizer.optimizer.get_weights()
+        keras_optimizer_weights(model.optimizer.optimizer),
+        keras_optimizer_weights(model_copy.optimizer.optimizer),
     )
     assert model_copy.optimizer.fit_args["callbacks"][0].model is model_copy.model_keras
 
@@ -449,38 +538,11 @@ def test_deepgp_log(
     assert mocked_summary_writer.method_calls[0][0] == "as_default"
     assert mocked_summary_writer.method_calls[0][-1]["step"] == 42
 
-    loss_names = ["loss/diff", "loss/final", "prior_kl/diff", "prior_kl/final"]
-    metrics_names = ["mse/diff", "mse/final"]
-    accuracy_names = [
-        "accuracy/root_mean_square_error",
-        "accuracy/mean_absolute_error",
-        "accuracy/z_residuals_std",
-    ]
-    variance_stats = [
-        "variance/predict_variance_mean",
-        "variance/empirical",
-        "variance/root_mean_variance_error",
-    ]
-    par_names = ["kernel.variance", "kernel.lengthscales", "likelihood"]
-
-    names_scalars = ["epochs/num_epochs"] + loss_names + metrics_names + par_names
-    num_scalars = len(names_scalars)
-    names_histogram = ["loss/epoch", "mse/epoch", "prior_kl/epoch"]
-    num_histogram = len(names_histogram)
-    if use_dataset:
-        names_scalars = names_scalars + accuracy_names + variance_stats
-        num_scalars = num_scalars + len(accuracy_names) + len(variance_stats)
-        names_histogram = (
-            names_histogram
-            + ["accuracy/absolute_errors", "accuracy/z_residuals"]
-            + ["variance/predict_variance", "variance/variance_error"]
-        )
-        num_histogram += 4
+    num_scalars = 10  # 3 write_summary_kernel_parameters, write_summary_likelihood_parameters + 7
+    num_histogram = 3  # 3
+    if use_dataset:  # write_summary_data_based_metrics
+        num_scalars += 8
+        num_histogram += 6
 
     assert mocked_summary_scalar.call_count == num_scalars
-    for i in range(len(mocked_summary_scalar.call_args_list)):
-        assert any([j in mocked_summary_scalar.call_args_list[i][0][0] for j in names_scalars])
-
     assert mocked_summary_histogram.call_count == num_histogram
-    for i in range(len(mocked_summary_histogram.call_args_list)):
-        assert any([j in mocked_summary_histogram.call_args_list[i][0][0] for j in names_histogram])

@@ -147,23 +147,18 @@ plt.show()
 
 
 # %%
-from trieste.objectives import (
-    michalewicz_2,
-    MICHALEWICZ_2_MINIMUM,
-    MICHALEWICZ_2_SEARCH_SPACE,
-)
+from trieste.objectives import Michalewicz2
 from trieste.experimental.plotting import plot_function_plotly
 
-search_space = MICHALEWICZ_2_SEARCH_SPACE
-function = michalewicz_2
-MINIMUM = MICHALEWICZ_2_MINIMUM
-MINIMIZER = MICHALEWICZ_2_MINIMUM
+search_space = Michalewicz2.search_space
+function = Michalewicz2.objective
+MINIMUM = Michalewicz2.minimum
+MINIMIZER = Michalewicz2.minimum
 
 # we illustrate the 2-dimensional Michalewicz function
 fig = plot_function_plotly(
-    function, search_space.lower, search_space.upper, grid_density=100
+    function, search_space.lower, search_space.upper, grid_density=20
 )
-fig.update_layout(height=800, width=800)
 fig.show()
 
 
@@ -194,6 +189,7 @@ initial_data = observer(initial_query_points)
 # Interesting alternative to a manual architecture search is to use a separate Bayesian optimization process to optimize the architecture and model optimizer parameters (see recent work by <cite data-cite="kadra2021well"/>). This optimization is much faster as it optimizes model performance. It would slow down the original optimization, so its worthwhile only if optimizing the objective function is much more costly.
 #
 # Below we change the `build_model` function to adapt the model slightly for the Michalewicz function. Since it's a more complex function we increase the number of hidden layers but keep the number of nodes per layer on the lower side. Note the large number of epochs
+
 
 # %%
 def build_model(data: Dataset) -> DeepEnsemble:
@@ -287,10 +283,8 @@ fig = plot_function_plotly(
     function,
     search_space.lower,
     search_space.upper,
-    grid_density=100,
     alpha=0.7,
 )
-fig.update_layout(height=800, width=800)
 
 fig = add_bo_points_plotly(
     x=query_points[:, 0],
@@ -326,7 +320,6 @@ fig = add_bo_points_plotly(
     figrow=1,
     figcol=1,
 )
-fig.update_layout(height=800, width=800)
 fig.show()
 
 

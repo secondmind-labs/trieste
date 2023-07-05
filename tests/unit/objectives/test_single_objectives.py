@@ -12,126 +12,119 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Callable
+from typing import Any, Tuple
 
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
 from trieste.objectives import (
-    ACKLEY_5_MINIMIZER,
-    ACKLEY_5_MINIMUM,
-    ACKLEY_5_SEARCH_SPACE,
-    BRANIN_MINIMIZERS,
-    BRANIN_MINIMUM,
-    BRANIN_SEARCH_SPACE,
-    GRAMACY_LEE_MINIMIZER,
-    GRAMACY_LEE_MINIMUM,
-    GRAMACY_LEE_SEARCH_SPACE,
-    HARTMANN_3_MINIMIZER,
-    HARTMANN_3_MINIMUM,
-    HARTMANN_3_SEARCH_SPACE,
-    HARTMANN_6_MINIMIZER,
-    HARTMANN_6_MINIMUM,
-    HARTMANN_6_SEARCH_SPACE,
-    LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZER,
-    LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM,
-    LOGARITHMIC_GOLDSTEIN_PRICE_SEARCH_SPACE,
-    MICHALEWICZ_2_MINIMIZER,
-    MICHALEWICZ_2_MINIMUM,
-    MICHALEWICZ_2_SEARCH_SPACE,
-    MICHALEWICZ_5_MINIMIZER,
-    MICHALEWICZ_5_MINIMUM,
-    MICHALEWICZ_5_SEARCH_SPACE,
-    MICHALEWICZ_10_MINIMIZER,
-    MICHALEWICZ_10_MINIMUM,
-    MICHALEWICZ_10_SEARCH_SPACE,
-    ROSENBROCK_4_MINIMIZER,
-    ROSENBROCK_4_MINIMUM,
-    ROSENBROCK_4_SEARCH_SPACE,
-    SCALED_BRANIN_MINIMUM,
-    SHEKEL_4_MINIMIZER,
-    SHEKEL_4_MINIMUM,
-    SHEKEL_4_SEARCH_SPACE,
-    SIMPLE_QUADRATIC_MINIMIZER,
-    SIMPLE_QUADRATIC_MINIMUM,
-    TRID_10_MINIMIZER,
-    TRID_10_MINIMUM,
-    TRID_10_SEARCH_SPACE,
-    ackley_5,
-    branin,
-    gramacy_lee,
-    hartmann_3,
-    hartmann_6,
-    logarithmic_goldstein_price,
-    michalewicz_2,
-    michalewicz_5,
-    michalewicz_10,
-    rosenbrock_4,
-    scaled_branin,
-    shekel_4,
-    simple_quadratic,
-    trid_10,
+    Ackley5,
+    Branin,
+    GramacyLee,
+    Hartmann3,
+    Hartmann6,
+    Levy8,
+    LogarithmicGoldsteinPrice,
+    Michalewicz2,
+    Michalewicz5,
+    Michalewicz10,
+    Rosenbrock4,
+    ScaledBranin,
+    Shekel4,
+    SimpleQuadratic,
+    SingleObjectiveTestProblem,
+    Trid10,
 )
-from trieste.space import Box
-from trieste.types import TensorType
 
 
-@pytest.mark.parametrize(
-    "objective, minimizers, minimum",
-    [
-        (branin, BRANIN_MINIMIZERS, BRANIN_MINIMUM),
-        (scaled_branin, BRANIN_MINIMIZERS, SCALED_BRANIN_MINIMUM),
-        (simple_quadratic, SIMPLE_QUADRATIC_MINIMIZER, SIMPLE_QUADRATIC_MINIMUM),
-        (gramacy_lee, GRAMACY_LEE_MINIMIZER, GRAMACY_LEE_MINIMUM),
-        (michalewicz_2, MICHALEWICZ_2_MINIMIZER, MICHALEWICZ_2_MINIMUM),
-        (michalewicz_5, MICHALEWICZ_5_MINIMIZER, MICHALEWICZ_5_MINIMUM),
-        (michalewicz_10, MICHALEWICZ_10_MINIMIZER, MICHALEWICZ_10_MINIMUM),
-        (
-            logarithmic_goldstein_price,
-            LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZER,
-            LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM,
-        ),
-        (hartmann_3, HARTMANN_3_MINIMIZER, HARTMANN_3_MINIMUM),
-        (rosenbrock_4, ROSENBROCK_4_MINIMIZER, ROSENBROCK_4_MINIMUM),
-        (shekel_4, SHEKEL_4_MINIMIZER, SHEKEL_4_MINIMUM),
-        (ackley_5, ACKLEY_5_MINIMIZER, ACKLEY_5_MINIMUM),
-        (hartmann_6, HARTMANN_6_MINIMIZER, HARTMANN_6_MINIMUM),
-        (trid_10, TRID_10_MINIMIZER, TRID_10_MINIMUM),
+@pytest.fixture(
+    name="problem",
+    params=[
+        Branin,
+        ScaledBranin,
+        SimpleQuadratic,
+        GramacyLee,
+        Michalewicz2,
+        Michalewicz5,
+        Michalewicz10,
+        LogarithmicGoldsteinPrice,
+        Hartmann3,
+        Rosenbrock4,
+        Shekel4,
+        Ackley5,
+        Hartmann6,
+        Trid10,
+        Levy8,
     ],
 )
+def _problem_fixture(request: Any) -> Tuple[SingleObjectiveTestProblem, int]:
+    return request.param
+
+
 def test_objective_maps_minimizers_to_minimum(
-    objective: Callable[[TensorType], TensorType], minimizers: TensorType, minimum: TensorType
+    problem: SingleObjectiveTestProblem,
 ) -> None:
+    objective = problem.objective
+    minimizers = problem.minimizers
+    minimum = problem.minimum
     objective_values_at_minimizers = objective(minimizers)
     tf.debugging.assert_shapes([(objective_values_at_minimizers, [len(minimizers), 1])])
     npt.assert_allclose(objective_values_at_minimizers, tf.squeeze(minimum), atol=1e-4)
 
 
+def test_no_function_values_are_less_than_global_minimum(
+    problem: SingleObjectiveTestProblem,
+) -> None:
+    objective = problem.objective
+    space = problem.search_space
+    minimum = problem.minimum
+    samples = space.sample_sobol(100_000 * len(space.lower), skip=0)
+    npt.assert_array_less(tf.squeeze(minimum) - 1e-6, objective(samples))
+
+
+@pytest.mark.parametrize("num_obs", [5, 1])
+@pytest.mark.parametrize("dtype", [tf.float32, tf.float64])
+def test_objective_has_correct_shape_and_dtype(
+    problem: SingleObjectiveTestProblem,
+    num_obs: int,
+    dtype: tf.DType,
+) -> None:
+    x = problem.search_space.sample(num_obs)
+    x = tf.cast(x, dtype)
+    y = problem.objective(x)
+
+    assert y.dtype == x.dtype
+    tf.debugging.assert_shapes([(y, [num_obs, 1])])
+
+
 @pytest.mark.parametrize(
-    "objective, space, minimum",
+    "problem, input_dim",
     [
-        (branin, BRANIN_SEARCH_SPACE, BRANIN_MINIMUM),
-        (scaled_branin, BRANIN_SEARCH_SPACE, SCALED_BRANIN_MINIMUM),
-        (gramacy_lee, GRAMACY_LEE_SEARCH_SPACE, GRAMACY_LEE_MINIMUM),
-        (michalewicz_2, MICHALEWICZ_2_SEARCH_SPACE, MICHALEWICZ_2_MINIMUM),
-        (michalewicz_5, MICHALEWICZ_5_SEARCH_SPACE, MICHALEWICZ_5_MINIMUM),
-        (michalewicz_10, MICHALEWICZ_10_SEARCH_SPACE, MICHALEWICZ_10_MINIMUM),
-        (
-            logarithmic_goldstein_price,
-            LOGARITHMIC_GOLDSTEIN_PRICE_SEARCH_SPACE,
-            LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM,
-        ),
-        (hartmann_3, HARTMANN_3_SEARCH_SPACE, HARTMANN_3_MINIMUM),
-        (rosenbrock_4, ROSENBROCK_4_SEARCH_SPACE, ROSENBROCK_4_MINIMUM),
-        (shekel_4, SHEKEL_4_SEARCH_SPACE, SHEKEL_4_MINIMUM),
-        (ackley_5, ACKLEY_5_SEARCH_SPACE, ACKLEY_5_MINIMUM),
-        (hartmann_6, HARTMANN_6_SEARCH_SPACE, HARTMANN_6_MINIMUM),
-        (trid_10, TRID_10_SEARCH_SPACE, TRID_10_MINIMUM),
+        (Branin, 2),
+        (ScaledBranin, 2),
+        (SimpleQuadratic, 2),
+        (GramacyLee, 1),
+        (Michalewicz2, 2),
+        (Michalewicz5, 5),
+        (Michalewicz10, 10),
+        (LogarithmicGoldsteinPrice, 2),
+        (Hartmann3, 3),
+        (Rosenbrock4, 4),
+        (Shekel4, 4),
+        (Ackley5, 5),
+        (Hartmann6, 6),
+        (Trid10, 10),
+        (Levy8, 8),
     ],
 )
-def test_no_function_values_are_less_than_global_minimum(
-    objective: Callable[[TensorType], TensorType], space: Box, minimum: TensorType
+@pytest.mark.parametrize("num_obs", [5, 1])
+def test_search_space_has_correct_shape_and_default_dtype(
+    problem: SingleObjectiveTestProblem,
+    input_dim: int,
+    num_obs: int,
 ) -> None:
-    samples = space.sample(1000 * len(space.lower))
-    npt.assert_array_less(tf.squeeze(minimum) - 1e-6, objective(samples))
+    x = problem.search_space.sample(num_obs)
+
+    assert x.dtype == tf.float64
+    tf.debugging.assert_shapes([(x, [num_obs, input_dim])])

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+name: Release documentation build
+
 on:
   workflow_dispatch:
   push:
@@ -28,11 +30,11 @@ jobs:
         path: gh-pages-history
     - uses: actions/setup-python@v2
       with:
-        python-version: 3.7
+        python-version: "3.10"
     - run: |
         pip install --upgrade pip
-        pip install .
-        pip install -r notebooks/requirements.txt -c notebooks/constraints.txt
+        pip install .[qhsri] -r notebooks/requirements.txt -c notebooks/constraints.txt
+        pip install -I box2d-kengz -c notebooks/constraints.txt
         pip install -r docs/requirements.txt -c docs/constraints.txt
         TEMP_DEB="$(mktemp)" &&
         wget -O "$TEMP_DEB" 'https://github.com/jgm/pandoc/releases/download/2.10.1/pandoc-2.10.1-1-amd64.deb' &&
@@ -41,9 +43,11 @@ jobs:
     - run: |
         (cd docs ; make html ; make html)
         TMP_DIR=$(mktemp -d -p $(pwd))
-        VERSION=$(cat VERSION)
+        VERSION=$(cat trieste/VERSION)
         mv docs/_build/html $TMP_DIR/$VERSION
-        sed -e "s/\$VERSION/$VERSION/g" redirect.html > $TMP_DIR/index.html 
+        sed -e "s/\$VERSION/$VERSION/g" redirect.html > $TMP_DIR/index.html
+        sed -e "s/\$VERSION/$VERSION/g" redirect_autoapi.html > $TMP_DIR/autoapi.html
+        sed -e "s/\$VERSION/$VERSION/g" redirect_tutorials.html > $TMP_DIR/tutorials.html
         cp versions.json $TMP_DIR/
         cd gh-pages-history
         git rm -r --ignore-unmatch docs/$VERSION

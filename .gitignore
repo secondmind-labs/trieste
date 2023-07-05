@@ -19,6 +19,8 @@
 cover_html/
 mypy.log
 reports/
+history/
+logs/
 
 ### GitHub default ignores ###
 
@@ -130,3 +132,6 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# pytest-monitor
+.pymon

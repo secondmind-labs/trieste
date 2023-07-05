@@ -27,10 +27,24 @@ def pytest_addoption(parser: Parser) -> None:
         choices=("yes", "no", "only"),
         help="whether to run slow tests",
     )
+    parser.addoption(
+        "--qhsri",
+        action="store",
+        default="no",
+        choices=("yes", "no", "only"),
+        help="whether to run qhsri tests",
+    )
+    parser.addoption(
+        "--eager",
+        action="store_true",
+        default=False,
+        help="whether to run all functions eagerly",
+    )
 
 
 def pytest_configure(config: Config) -> None:
     config.addinivalue_line("markers", "slow: mark test as slow to run")
+    config.addinivalue_line("markers", "qhsri: mark test as requiring qhsri dependencies")
 
 
 def pytest_collection_modifyitems(config: Config, items: list[pytest.Item]) -> None:
@@ -44,3 +58,19 @@ def pytest_collection_modifyitems(config: Config, items: list[pytest.Item]) -> N
         for item in items:
             if "slow" not in item.keywords:
                 item.add_marker(skip_fast)
+
+    if config.getoption("--qhsri") == "no":
+        skip_qhsri = pytest.mark.skip(reason="need --qhsri option to run")
+        for item in items:
+            if "qhsri" in item.keywords:
+                item.add_marker(skip_qhsri)
+    if config.getoption("--qhsri") == "only":
+        skip_non_qhsri = pytest.mark.skip(reason="--qhsri only option set")
+        for item in items:
+            if "qhsri" not in item.keywords:
+                item.add_marker(skip_non_qhsri)
+
+    if config.getoption("--eager"):
+        import tensorflow as tf
+
+        tf.config.experimental_run_functions_eagerly(True)

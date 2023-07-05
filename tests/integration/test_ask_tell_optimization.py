@@ -36,15 +36,7 @@ from trieste.bayesian_optimizer import OptimizationResult, Record
 from trieste.logging import set_step_number, tensorboard_writer
 from trieste.models import TrainableProbabilisticModel
 from trieste.models.gpflow import GaussianProcessRegression, build_gpr
-from trieste.objectives import (
-    BRANIN_MINIMIZERS,
-    BRANIN_SEARCH_SPACE,
-    SCALED_BRANIN_MINIMUM,
-    SIMPLE_QUADRATIC_MINIMIZER,
-    SIMPLE_QUADRATIC_MINIMUM,
-    scaled_branin,
-    simple_quadratic,
-)
+from trieste.objectives import ScaledBranin, SimpleQuadratic
 from trieste.objectives.utils import mk_observer
 from trieste.observer import OBJECTIVE
 from trieste.space import Box, SearchSpace
@@ -72,7 +64,7 @@ OPTIMIZER_PARAMS = (
             False,
             lambda: EfficientGlobalOptimization(
                 LocalPenalization(
-                    BRANIN_SEARCH_SPACE,
+                    ScaledBranin.search_space,
                 ).using(OBJECTIVE),
                 num_query_points=3,
             ),
@@ -83,7 +75,7 @@ OPTIMIZER_PARAMS = (
             False,
             lambda: AsynchronousGreedy(
                 LocalPenalization(
-                    BRANIN_SEARCH_SPACE,
+                    ScaledBranin.search_space,
                 ).using(OBJECTIVE),
             ),
             id="LocalPenalization/AsynchronousGreedy",
@@ -157,9 +149,9 @@ def _test_ask_tell_optimization_finds_minima(
     # we need to use new acquisition function object to imitate real life usage
     # hence acquisition rule factory method is passed in, instead of a rule object itself
     # it is then called to create a new rule whenever needed in the test
-    search_space = BRANIN_SEARCH_SPACE
+    search_space = ScaledBranin.search_space
     initial_query_points = search_space.sample(5)
-    observer = mk_observer(scaled_branin if optimize_branin else simple_quadratic)
+    observer = mk_observer(ScaledBranin.objective if optimize_branin else SimpleQuadratic.objective)
     initial_data = observer(initial_query_points)
 
     model = GaussianProcessRegression(
@@ -169,7 +161,6 @@ def _test_ask_tell_optimization_finds_minima(
     with tempfile.TemporaryDirectory() as tmpdirname:
         summary_writer = tf.summary.create_file_writer(tmpdirname)
         with tensorboard_writer(summary_writer):
-
             set_step_number(0)
             ask_tell = AskTellOptimizer(search_space, initial_data, model, acquisition_rule_fn())
 
@@ -207,12 +198,14 @@ def _test_ask_tell_optimization_finds_minima(
     best_x = dataset.query_points[arg_min_idx]
 
     if optimize_branin:
-        relative_minimizer_err = tf.abs((best_x - BRANIN_MINIMIZERS) / BRANIN_MINIMIZERS)
+        relative_minimizer_err = tf.abs(
+            (best_x - ScaledBranin.minimizers) / ScaledBranin.minimizers
+        )
         # these accuracies are the current best for the given number of optimization steps,
         # which makes this is a regression test
         assert tf.reduce_any(tf.reduce_all(relative_minimizer_err < 0.05, axis=-1), axis=0)
-        npt.assert_allclose(best_y, SCALED_BRANIN_MINIMUM, rtol=0.005)
+        npt.assert_allclose(best_y, ScaledBranin.minimum, rtol=0.005)
     else:
-        absolute_minimizer_err = tf.abs(best_x - SIMPLE_QUADRATIC_MINIMIZER)
+        absolute_minimizer_err = tf.abs(best_x - SimpleQuadratic.minimizers)
         assert tf.reduce_any(tf.reduce_all(absolute_minimizer_err < 0.05, axis=-1), axis=0)
-        npt.assert_allclose(best_y, SIMPLE_QUADRATIC_MINIMUM, rtol=0.05)
+        npt.assert_allclose(best_y, SimpleQuadratic.minimum, rtol=0.05)

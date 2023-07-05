@@ -33,6 +33,7 @@ from tests.util.models.gpflow.models import (
     GaussianProcess,
     PseudoTrainableProbModel,
     QuadraticMeanAndRBFKernel,
+    QuadraticMeanAndRBFKernelWithSamplers,
     rbf,
 )
 from trieste.acquisition.rule import AcquisitionRule
@@ -41,15 +42,26 @@ from trieste.data import Dataset
 from trieste.models import ProbabilisticModel, TrainableProbabilisticModel
 from trieste.observer import OBJECTIVE, Observer
 from trieste.space import Box, SearchSpace
-from trieste.types import State, TensorType
+from trieste.types import State, Tag, TensorType
 from trieste.utils import Err, Ok
 
+# tags
+FOO: Tag = "foo"
+BAR: Tag = "bar"
+NA: Tag = ""
 
-def _quadratic_observer(x: tf.Tensor) -> Mapping[str, Dataset]:
-    return {"": Dataset(x, quadratic(x))}
+
+def _quadratic_observer(x: tf.Tensor) -> Mapping[Tag, Dataset]:
+    return {NA: Dataset(x, quadratic(x))}
 
 
 class _PseudoTrainableQuadratic(QuadraticMeanAndRBFKernel, PseudoTrainableProbModel):
+    pass
+
+
+class _PseudoTrainableQuadraticWithSamplers(
+    QuadraticMeanAndRBFKernelWithSamplers, PseudoTrainableProbModel
+):
     pass
 
 
@@ -67,17 +79,26 @@ def test_optimization_result_astuple() -> None:
 
 
 def test_optimization_result_try_get_final_datasets_for_successful_optimization() -> None:
-    data = {"foo": empty_dataset([1], [1])}
+    data = {FOO: empty_dataset([1], [1])}
     result: OptimizationResult[None] = OptimizationResult(
-        Ok(Record(data, {"foo": _PseudoTrainableQuadratic()}, None)), []
+        Ok(Record(data, {FOO: _PseudoTrainableQuadratic()}, None)), []
     )
     assert result.try_get_final_datasets() is data
-    assert result.try_get_final_dataset() is data["foo"]
+    assert result.try_get_final_dataset() is data[FOO]
+
+
+def test_optimization_result_status_for_successful_optimization() -> None:
+    data = {FOO: empty_dataset([1], [1])}
+    result: OptimizationResult[None] = OptimizationResult(
+        Ok(Record(data, {FOO: _PseudoTrainableQuadratic()}, None)), []
+    )
+    assert result.is_ok
+    assert not result.is_err
 
 
 def test_optimization_result_try_get_final_datasets_for_multiple_datasets() -> None:
-    data = {"foo": empty_dataset([1], [1]), "bar": empty_dataset([2], [2])}
-    models = {"foo": _PseudoTrainableQuadratic(), "bar": _PseudoTrainableQuadratic()}
+    data = {FOO: empty_dataset([1], [1]), BAR: empty_dataset([2], [2])}
+    models = {FOO: _PseudoTrainableQuadratic(), BAR: _PseudoTrainableQuadratic()}
     result: OptimizationResult[None] = OptimizationResult(Ok(Record(data, models, None)), [])
     assert result.try_get_final_datasets() is data
     with pytest.raises(ValueError):
@@ -90,18 +111,24 @@ def test_optimization_result_try_get_final_datasets_for_failed_optimization() ->
         result.try_get_final_datasets()
 
 
+def test_optimization_result_status_for_failed_optimization() -> None:
+    result: OptimizationResult[object] = OptimizationResult(Err(_Whoops()), [])
+    assert result.is_err
+    assert not result.is_ok
+
+
 def test_optimization_result_try_get_final_models_for_successful_optimization() -> None:
-    models = {"foo": _PseudoTrainableQuadratic()}
+    models = {FOO: _PseudoTrainableQuadratic()}
     result: OptimizationResult[None] = OptimizationResult(
-        Ok(Record({"foo": empty_dataset([1], [1])}, models, None)), []
+        Ok(Record({FOO: empty_dataset([1], [1])}, models, None)), []
     )
     assert result.try_get_final_models() is models
-    assert result.try_get_final_model() is models["foo"]
+    assert result.try_get_final_model() is models[FOO]
 
 
 def test_optimization_result_try_get_final_models_for_multiple_models() -> None:
-    data = {"foo": empty_dataset([1], [1]), "bar": empty_dataset([2], [2])}
-    models = {"foo": _PseudoTrainableQuadratic(), "bar": _PseudoTrainableQuadratic()}
+    data = {FOO: empty_dataset([1], [1]), BAR: empty_dataset([2], [2])}
+    models = {FOO: _PseudoTrainableQuadratic(), BAR: _PseudoTrainableQuadratic()}
     result: OptimizationResult[None] = OptimizationResult(Ok(Record(data, models, None)), [])
     assert result.try_get_final_models() is models
     with pytest.raises(ValueError):
@@ -115,9 +142,9 @@ def test_optimization_result_try_get_final_models_for_failed_optimization() -> N
 
 
 def test_optimization_result_try_get_optimal_point_for_successful_optimization() -> None:
-    data = {"foo": mk_dataset([[0.25, 0.25], [0.5, 0.4]], [[0.8], [0.7]])}
+    data = {FOO: mk_dataset([[0.25, 0.25], [0.5, 0.4]], [[0.8], [0.7]])}
     result: OptimizationResult[None] = OptimizationResult(
-        Ok(Record(data, {"foo": _PseudoTrainableQuadratic()}, None)), []
+        Ok(Record(data, {FOO: _PseudoTrainableQuadratic()}, None)), []
     )
     x, y, idx = result.try_get_optimal_point()
     npt.assert_allclose(x, [0.5, 0.4])
@@ -126,9 +153,9 @@ def test_optimization_result_try_get_optimal_point_for_successful_optimization()
 
 
 def test_optimization_result_try_get_optimal_point_for_multiple_objectives() -> None:
-    data = {"foo": mk_dataset([[0.25], [0.5]], [[0.8, 0.5], [0.7, 0.4]])}
+    data = {FOO: mk_dataset([[0.25], [0.5]], [[0.8, 0.5], [0.7, 0.4]])}
     result: OptimizationResult[None] = OptimizationResult(
-        Ok(Record(data, {"foo": _PseudoTrainableQuadratic()}, None)), []
+        Ok(Record(data, {FOO: _PseudoTrainableQuadratic()}, None)), []
     )
     with pytest.raises(ValueError):
         result.try_get_optimal_point()
@@ -182,6 +209,14 @@ def test_optimization_result_from_path_partial_result() -> None:
         )
 
 
+def test_bayesian_optimizer_optimize_raises_if_invalid_model_training_args() -> None:
+    data, models = {NA: empty_dataset([1], [1])}, {NA: _PseudoTrainableQuadratic()}
+    bo = BayesianOptimizer(lambda x: x[:1], Box([-1], [1]))
+
+    with pytest.raises(ValueError):  # turning off global model training means we do not train
+        bo.optimize(1, data, models, fit_model=False)
+
+
 @pytest.mark.parametrize("steps", [0, 1, 2, 5])
 def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> None:
     class _CountingObserver:
@@ -189,7 +224,7 @@ def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> Non
 
         def __call__(self, x: tf.Tensor) -> Dataset:
             self.call_count += 1
-            return Dataset(x, tf.reduce_sum(x ** 2, axis=-1, keepdims=True))
+            return Dataset(x, tf.reduce_sum(x**2, axis=-1, keepdims=True))
 
     observer = _CountingObserver()
     optimizer = BayesianOptimizer(observer, Box([-1], [1]))
@@ -200,8 +235,58 @@ def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> Non
     assert observer.call_count == steps
 
 
-@pytest.mark.parametrize("fit_initial_model", [True, False])
-def test_bayesian_optimizer_optimizes_initial_model(fit_initial_model: bool) -> None:
+@pytest.mark.parametrize("mode", ["early", "fail", "full"])
+def test_bayesian_optimizer_continue_optimization(mode: str) -> None:
+    class _CountingObserver:
+        call_count = 0
+
+        def __call__(self, x: tf.Tensor) -> Dataset:
+            self.call_count += 1
+            if self.call_count == 2 and mode == "fail":
+                raise ValueError
+            return Dataset(x, tf.reduce_sum(x**2, axis=-1, keepdims=True))
+
+    observer = _CountingObserver()
+    optimizer = BayesianOptimizer(observer, Box([-1], [1]))
+    data = mk_dataset([[0.5]], [[0.25]])
+
+    def early_stop_callback(
+        _datasets: Mapping[Tag, Dataset],
+        _models: Mapping[Tag, TrainableProbabilisticModel],
+        _acquisition_state: object,
+    ) -> bool:
+        return mode == "early" and observer.call_count == 2
+
+    # perform a BO, stopping after 2 steps (for one of three reasons)
+    num_steps = 5
+    result = optimizer.optimize(
+        2 if "full" else num_steps,
+        data,
+        _PseudoTrainableQuadratic(),
+        early_stop_callback=early_stop_callback,
+    )
+    assert result.is_err if mode == "fail" else result.is_ok
+    assert len(result.history) == 2
+    assert observer.call_count == 2
+
+    # continue BO
+    new_result = optimizer.continue_optimization(num_steps, result)
+    assert new_result.is_ok
+    assert len(new_result.history) == num_steps
+    assert observer.call_count == num_steps + 1 if mode == "fail" else num_steps
+
+
+def test_bayesian_optimizer_continue_optimization_raises_for_empty_result() -> None:
+    search_space = Box([-1], [1])
+    optimizer = BayesianOptimizer(lambda x: {FOO: Dataset(x, x)}, search_space)
+    rule = FixedAcquisitionRule([[0.0]])
+    opt_result: OptimizationResult[None] = OptimizationResult(Err(_Whoops()), [])
+    with pytest.raises(ValueError):
+        optimizer.continue_optimization(10, opt_result, rule)
+
+
+@pytest.mark.parametrize("fit_model", ["all", "all_but_init", "never"])
+def test_bayesian_optimizer_optimizes_initial_model(fit_model: str) -> None:
     class _CountingOptimizerModel(_PseudoTrainableQuadratic):
         _optimize_count = 0
 
@@ -215,38 +300,41 @@ def test_bayesian_optimizer_optimizes_initial_model(fit_initial_model: bool) -> 
         BayesianOptimizer(_quadratic_observer, Box([0], [1]))
         .optimize(
             1,
-            {"": mk_dataset([[0.0]], [[0.0]])},
-            {"": model},
+            {NA: mk_dataset([[0.0]], [[0.0]])},
+            {NA: model},
             rule,
-            fit_initial_model=fit_initial_model,
+            fit_model=(fit_model in ["all", "all_but_init"]),
+            fit_initial_model=(fit_model in ["all"]),
         )
         .astuple()
     )
     final_model = final_opt_state.unwrap().model
 
-    if fit_initial_model:  # optimized at start and end of first BO step
+    if fit_model == "all":  # optimized at start and end of first BO step
         assert final_model._optimize_count == 2  # type: ignore
-    else:  # optimized just at end of first BO step
+    elif fit_model == "all_but_init":  # optimized just at end of first BO step
         assert final_model._optimize_count == 1  # type: ignore
+    else:  # never optimized
+        assert final_model._optimize_count == 0  # type: ignore
 
 
 @pytest.mark.parametrize(
     "datasets, models",
     [
         ({}, {}),
-        ({"foo": empty_dataset([1], [1])}, {}),
-        ({"foo": empty_dataset([1], [1])}, {"bar": _PseudoTrainableQuadratic()}),
+        ({FOO: empty_dataset([1], [1])}, {}),
+        ({FOO: empty_dataset([1], [1])}, {BAR: _PseudoTrainableQuadratic()}),
         (
-            {"foo": empty_dataset([1], [1])},
-            {"foo": _PseudoTrainableQuadratic(), "bar": _PseudoTrainableQuadratic()},
+            {FOO: empty_dataset([1], [1])},
+            {FOO: _PseudoTrainableQuadratic(), BAR: _PseudoTrainableQuadratic()},
         ),
     ],
 )
 def test_bayesian_optimizer_optimize_raises_for_invalid_keys(
-    datasets: dict[str, Dataset], models: dict[str, TrainableProbabilisticModel]
+    datasets: dict[Tag, Dataset], models: dict[Tag, TrainableProbabilisticModel]
 ) -> None:
     search_space = Box([-1], [1])
-    optimizer = BayesianOptimizer(lambda x: {"foo": Dataset(x, x)}, search_space)
+    optimizer = BayesianOptimizer(lambda x: {FOO: Dataset(x, x)}, search_space)
     rule = FixedAcquisitionRule([[0.0]])
     with pytest.raises(ValueError):
         optimizer.optimize(10, datasets, models, rule)
@@ -254,7 +342,7 @@ def test_bayesian_optimizer_optimize_raises_for_invalid_keys(
 
 def test_bayesian_optimizer_optimize_raises_for_invalid_rule_keys_and_default_acquisition() -> None:
     optimizer = BayesianOptimizer(lambda x: x[:1], Box([-1], [1]))
-    data, models = {"foo": empty_dataset([1], [1])}, {"foo": _PseudoTrainableQuadratic()}
+    data, models = {FOO: empty_dataset([1], [1])}, {FOO: _PseudoTrainableQuadratic()}
     with pytest.raises(ValueError):
         optimizer.optimize(3, data, models)
 
@@ -275,8 +363,8 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
         def acquire(
             self,
             search_space: Box,
-            models: Mapping[str, ProbabilisticModel],
-            datasets: Optional[Mapping[str, Dataset]] = None,
+            models: Mapping[Tag, ProbabilisticModel],
+            datasets: Optional[Mapping[Tag, Dataset]] = None,
         ) -> State[int | None, TensorType]:
             def go(state: int | None) -> tuple[int | None, TensorType]:
                 self.states_received.append(state)
@@ -290,9 +378,9 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
 
     rule = Rule()
 
-    data, models = {"": mk_dataset([[0.0]], [[0.0]])}, {"": _PseudoTrainableQuadratic()}
+    data, models = {NA: mk_dataset([[0.0]], [[0.0]])}, {NA: _PseudoTrainableQuadratic()}
     final_state, history = (
-        BayesianOptimizer(lambda x: {"": Dataset(x, x ** 2)}, Box([-1], [1]))
+        BayesianOptimizer(lambda x: {NA: Dataset(x, x**2)}, Box([-1], [1]))
         .optimize(3, data, models, rule, starting_state)
         .astuple()
     )
@@ -320,8 +408,8 @@ def test_bayesian_optimizer_optimize_for_uncopyable_model() -> None:
         BayesianOptimizer(_quadratic_observer, Box([0], [1]))
         .optimize(
             10,
-            {"": mk_dataset([[0.0]], [[0.0]])},
-            {"": _UncopyableModel()},
+            {NA: mk_dataset([[0.0]], [[0.0]])},
+            {NA: _UncopyableModel()},
             rule,
             fit_initial_model=False,
         )
@@ -347,8 +435,8 @@ class _BrokenRule(AcquisitionRule[NoReturn, SearchSpace, ProbabilisticModel]):
     def acquire(
         self,
         search_space: SearchSpace,
-        models: Mapping[str, ProbabilisticModel],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModel],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> NoReturn:
         raise _Whoops
 
@@ -367,7 +455,7 @@ def test_bayesian_optimizer_optimize_for_failed_step(
     rule: AcquisitionRule[None, Box, ProbabilisticModel],
 ) -> None:
     optimizer = BayesianOptimizer(observer, Box([0], [1]))
-    data, models = {"": mk_dataset([[0.0]], [[0.0]])}, {"": model}
+    data, models = {NA: mk_dataset([[0.0]], [[0.0]])}, {NA: model}
     result, history = optimizer.optimize(3, data, models, rule).astuple()
 
     with pytest.raises(_Whoops):
@@ -380,7 +468,7 @@ def test_bayesian_optimizer_optimize_for_failed_step(
 def test_bayesian_optimizer_optimize_raises_for_negative_steps(num_steps: int) -> None:
     optimizer = BayesianOptimizer(_quadratic_observer, Box([-1], [1]))
 
-    data, models = {"": empty_dataset([1], [1])}, {"": _PseudoTrainableQuadratic()}
+    data, models = {NA: empty_dataset([1], [1])}, {NA: _PseudoTrainableQuadratic()}
     with pytest.raises(ValueError, match="num_steps"):
         optimizer.optimize(num_steps, data, models)
 
@@ -406,24 +494,24 @@ def test_bayesian_optimizer_optimize_is_noop_for_zero_steps() -> None:
         def acquire(
             self,
             search_space: Box,
-            models: Mapping[str, ProbabilisticModel],
-            datasets: Optional[Mapping[str, Dataset]] = None,
+            models: Mapping[Tag, ProbabilisticModel],
+            datasets: Optional[Mapping[Tag, Dataset]] = None,
         ) -> NoReturn:
             assert False
 
     def _unusable_observer(x: tf.Tensor) -> NoReturn:
         assert False
 
-    data = {"": mk_dataset([[0.0]], [[0.0]])}
+    data = {NA: mk_dataset([[0.0]], [[0.0]])}
     result, history = (
         BayesianOptimizer(_unusable_observer, Box([-1], [1]))
-        .optimize(0, data, {"": _UnusableModel()}, _UnusableRule())
+        .optimize(0, data, {NA: _UnusableModel()}, _UnusableRule())
         .astuple()
     )
     assert history == []
     final_data = result.unwrap().datasets
     assert len(final_data) == 1
-    assert_datasets_allclose(final_data[""], data[""])
+    assert_datasets_allclose(final_data[NA], data[NA])
 
 
 def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimensions() -> None:
@@ -442,8 +530,8 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
         def acquire(
             self,
             search_space: Box,
-            models: Mapping[str, ProbabilisticModel],
-            datasets: Optional[Mapping[str, Dataset]] = None,
+            models: Mapping[Tag, ProbabilisticModel],
+            datasets: Optional[Mapping[Tag, Dataset]] = None,
         ) -> State[int | None, TensorType]:
             def go(previous_state: int | None) -> tuple[int | None, TensorType]:
                 if previous_state is None:
@@ -462,18 +550,18 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
 
             return go
 
-    def linear_and_exponential(query_points: tf.Tensor) -> dict[str, Dataset]:
+    def linear_and_exponential(query_points: tf.Tensor) -> dict[Tag, Dataset]:
         return {
             LINEAR: Dataset(query_points, 2 * query_points),
             EXPONENTIAL: Dataset(query_points, tf.exp(-query_points)),
         }
 
-    data: Mapping[str, Dataset] = {
+    data: Mapping[Tag, Dataset] = {
         LINEAR: Dataset(tf.constant([[0.0]]), tf.constant([[0.0]])),
         EXPONENTIAL: Dataset(tf.constant([[0.0]]), tf.constant([[1.0]])),
     }
 
-    models: Mapping[str, TrainableProbabilisticModel] = {
+    models: Mapping[Tag, TrainableProbabilisticModel] = {
         LINEAR: LinearWithUnitVariance(),
         EXPONENTIAL: ExponentialWithUnitVariance(),
     }
@@ -525,8 +613,8 @@ def test_bayesian_optimizer_optimize_tracked_state(save_to_disk: bool) -> None:
         def acquire(
             self,
             search_space: Box,
-            models: Mapping[str, ProbabilisticModel],
-            datasets: Optional[Mapping[str, Dataset]] = None,
+            models: Mapping[Tag, ProbabilisticModel],
+            datasets: Optional[Mapping[Tag, Dataset]] = None,
         ) -> State[int | None, TensorType]:
             def go(state: int | None) -> tuple[int | None, TensorType]:
                 new_state = 0 if state is None else state + 1
@@ -541,8 +629,8 @@ def test_bayesian_optimizer_optimize_tracked_state(save_to_disk: bool) -> None:
             BayesianOptimizer(_quadratic_observer, Box([0], [1]))
             .optimize(
                 3,
-                {"": initial_data},
-                {"": model},
+                {NA: initial_data},
+                {NA: model},
                 _CountingRule(),
                 track_path=Path(tmpdirname) if save_to_disk else None,
             )
@@ -554,20 +642,20 @@ def test_bayesian_optimizer_optimize_tracked_state(save_to_disk: bool) -> None:
         )
         assert [record.acquisition_state for record in history] == [None, 0, 1]
 
-        assert_datasets_allclose(history[0].datasets[""], initial_data)
+        assert_datasets_allclose(history[0].datasets[NA], initial_data)
         assert_datasets_allclose(
-            history[1].datasets[""], mk_dataset([[0.0], [10.0]], [[0.0], [100.0]])
+            history[1].datasets[NA], mk_dataset([[0.0], [10.0]], [[0.0], [100.0]])
         )
         assert_datasets_allclose(
-            history[2].datasets[""], mk_dataset([[0.0], [10.0], [11.0]], [[0.0], [100.0], [121.0]])
+            history[2].datasets[NA], mk_dataset([[0.0], [10.0], [11.0]], [[0.0], [100.0], [121.0]])
         )
 
         for step in range(3):
             record = history[step].load() if save_to_disk else history[step]  # type: ignore
-            assert record.model == record.models[""]
-            assert record.dataset == record.datasets[""]
+            assert record.model == record.models[NA]
+            assert record.dataset == record.datasets[NA]
 
             _, variance_from_saved_model = (
-                history[step].models[""].predict(tf.constant([[0.0]], tf.float64))
+                history[step].models[NA].predict(tf.constant([[0.0]], tf.float64))
             )
             npt.assert_allclose(variance_from_saved_model, 1.0 / (step + 1))

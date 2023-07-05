@@ -66,7 +66,7 @@ class _QuadraticPredictor(GPfluxPredictor):
         return samples
 
     def update(self, dataset: Dataset) -> None:
-        pass
+        return
 
 
 class _QuadraticGPModel(DeepGP):
@@ -94,7 +94,7 @@ class _QuadraticGPModel(DeepGP):
         self, Xnew: tf.Tensor, full_cov: bool = False, full_output_cov: bool = False
     ) -> tuple[tf.Tensor, tf.Tensor]:
         assert not full_output_cov, "Test utility not implemented for full output covariance"
-        mean = tf.reduce_sum(Xnew ** 2, axis=1, keepdims=True)
+        mean = tf.reduce_sum(Xnew**2, axis=1, keepdims=True)
         *leading, x_samples, y_dims = mean.shape
         var_shape = [*leading, y_dims, x_samples, x_samples] if full_cov else mean.shape
         return mean, tf.ones(var_shape, dtype=mean.dtype)
@@ -139,7 +139,7 @@ def test_gpflux_predictor_get_observation_noise() -> None:
 
 
 def test_gpflux_predictor_get_observation_noise_raises_for_non_gaussian_likelihood() -> None:
-    likelihood = gpflow.likelihoods.Softmax(1)
+    likelihood = gpflow.likelihoods.StudentT()
     model = _QuadraticPredictor(likelihood=likelihood)
 
     with pytest.raises(NotImplementedError):

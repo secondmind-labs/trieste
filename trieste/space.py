@@ -17,19 +17,184 @@ from __future__ import annotations
 import operator
 from abc import ABC, abstractmethod
 from functools import reduce
-from typing import Optional, Sequence, TypeVar, overload
+from typing import Callable, Optional, Sequence, Tuple, TypeVar, Union, overload
 
+import numpy as np
+import scipy.optimize as spo
 import tensorflow as tf
 import tensorflow_probability as tfp
 
 from .types import TensorType
-from .utils import shapes_equal
 
 SearchSpaceType = TypeVar("SearchSpaceType", bound="SearchSpace")
 """ A type variable bound to :class:`SearchSpace`. """
 
 DEFAULT_DTYPE: tf.DType = tf.float64
 """ Default dtype to use when none is provided. """
+
+
+class SampleTimeoutError(Exception):
+    """Raised when sampling from a search space has timed out."""
+
+
+class NonlinearConstraint(spo.NonlinearConstraint):  # type: ignore[misc]
+    """
+    A wrapper class for nonlinear constraints on variables. The constraints expression is of the
+    form::
+
+        lb <= fun(x) <= ub
+
+    :param fun: The function defining the nonlinear constraints; with input shape [..., D] and
+        output shape [..., 1], returning a scalar value for each input point.
+    :param lb: The lower bound of the constraint. Should be a scalar or of shape [1].
+    :param ub: The upper bound of the constraint. Should be a scalar or of shape [1].
+    :param keep_feasible: Keep the constraints feasible throughout optimization iterations if this
+        is `True`.
+    """
+
+    def __init__(
+        self,
+        fun: Callable[[TensorType], TensorType],
+        lb: Sequence[float] | TensorType,
+        ub: Sequence[float] | TensorType,
+        keep_feasible: bool = False,
+    ):
+        # Implement caching to avoid calling the constraint function multiple times to get value
+        # and gradient.
+        def _constraint_value_and_gradient(x: TensorType) -> Tuple[TensorType, TensorType]:
+            val, grad = tfp.math.value_and_gradient(fun, x)
+
+            tf.debugging.assert_shapes(
+                [(val, [..., 1])],
+                message="Nonlinear constraint only supports single output function.",
+            )
+
+            return tf.cast(val, dtype=x.dtype), tf.cast(grad, dtype=x.dtype)
+
+        cache_x: TensorType = tf.constant([])
+        cache_f: TensorType = tf.constant([])
+        cache_df_dx: TensorType = tf.constant([])
+
+        def val_fun(x: TensorType) -> TensorType:
+            nonlocal cache_x, cache_f, cache_df_dx
+            if not np.array_equal(x, cache_x):
+                cache_f, cache_df_dx = _constraint_value_and_gradient(x)
+                cache_x = x
+            return cache_f
+
+        def jac_fun(x: TensorType) -> TensorType:
+            nonlocal cache_x, cache_f, cache_df_dx
+            if not np.array_equal(x, cache_x):
+                cache_f, cache_df_dx = _constraint_value_and_gradient(x)
+                cache_x = x
+            return cache_df_dx
+
+        self._orig_fun = fun  # Used for constraints equality check.
+        super().__init__(val_fun, lb, ub, jac=jac_fun, keep_feasible=keep_feasible)
+
+    def residual(self, points: TensorType) -> TensorType:
+        """
+        Calculate the residuals between the constraint function and its lower/upper limits.
+
+        :param points: The points to calculate the residuals for, with shape [..., D].
+        :return: A tensor containing the lower and upper residual values with shape [..., 2].
+        """
+        tf.debugging.assert_rank_at_least(points, 2)
+        non_d_axes = np.ones_like(points.shape)[:-1]  # Avoid adding axes shape to static graph.
+        lb = tf.cast(tf.reshape(self.lb, (*non_d_axes, -1)), dtype=points.dtype)
+        ub = tf.cast(tf.reshape(self.ub, (*non_d_axes, -1)), dtype=points.dtype)
+        fval = self.fun(points)
+        fval = tf.reshape(fval, (*points.shape[:-1], -1))  # Atleast 2D.
+        fval = tf.cast(fval, dtype=points.dtype)
+        values = [fval - lb, ub - fval]
+        values = tf.concat(values, axis=-1)
+        return values
+
+    def __repr__(self) -> str:
+        """"""
+        return f"""
+            NonlinearConstraint({self.fun!r}, {self.lb!r}, {self.ub!r}, {self.keep_feasible!r})"
+        """
+
+    def __eq__(self, other: object) -> bool:
+        """
+        :param other: A constraint.
+        :return: Whether the constraint is identical to this one.
+        """
+        if not isinstance(other, NonlinearConstraint):
+            return False
+        return bool(
+            self._orig_fun == other._orig_fun
+            and tf.reduce_all(self.lb == other.lb)
+            and tf.reduce_all(self.ub == other.ub)
+            and self.keep_feasible == other.keep_feasible
+        )
+
+
+class LinearConstraint(spo.LinearConstraint):  # type: ignore[misc]
+    """
+    A wrapper class for linear constraints on variables. The constraints expression is of the form::
+
+        lb <= A @ x <= ub
+
+    :param A: The matrix defining the linear constraints with shape [M, D], where M is the
+        number of constraints.
+    :param lb: The lower bound of the constraint. Should be a scalar or of shape [M].
+    :param ub: The upper bound of the constraint. Should be a scalar or of shape [M].
+    :param keep_feasible: Keep the constraints feasible throughout optimization iterations if this
+        is `True`.
+    """
+
+    def __init__(
+        self,
+        A: TensorType,
+        lb: Sequence[float] | TensorType,
+        ub: Sequence[float] | TensorType,
+        keep_feasible: bool = False,
+    ):
+        super().__init__(A, lb, ub, keep_feasible=keep_feasible)
+
+    def residual(self, points: TensorType) -> TensorType:
+        """
+        Calculate the residuals between the constraint function and its lower/upper limits.
+
+        :param points: The points to calculate the residuals for, with shape [..., D].
+        :return: A tensor containing the lower and upper residual values with shape [..., M*2].
+        """
+        tf.debugging.assert_rank_at_least(points, 2)
+        non_d_axes = np.ones_like(points.shape)[:-1]  # Avoid adding axes shape to static graph.
+        lb = tf.cast(tf.reshape(self.lb, (*non_d_axes, -1)), dtype=points.dtype)
+        ub = tf.cast(tf.reshape(self.ub, (*non_d_axes, -1)), dtype=points.dtype)
+        A = tf.cast(self.A, dtype=points.dtype)
+        fval = tf.linalg.matmul(points, A, transpose_b=True)
+        fval = tf.reshape(fval, (*points.shape[:-1], -1))  # Atleast 2D.
+        values = [fval - lb, ub - fval]
+        values = tf.concat(values, axis=-1)
+        return values
+
+    def __repr__(self) -> str:
+        """"""
+        return f"""
+            LinearConstraint({self.A!r}, {self.lb!r}, {self.ub!r}, {self.keep_feasible!r})"
+        """
+
+    def __eq__(self, other: object) -> bool:
+        """
+        :param other: A constraint.
+        :return: Whether the constraint is identical to this one.
+        """
+        if not isinstance(other, LinearConstraint):
+            return False
+        return bool(
+            tf.reduce_all(self.A == other.A)
+            and tf.reduce_all(self.lb == other.lb)
+            and tf.reduce_all(self.ub == other.ub)
+            and tf.reduce_all(self.keep_feasible == other.keep_feasible)
+        )
+
+
+Constraint = Union[LinearConstraint, NonlinearConstraint]
+""" Type alias for constraints. """
 
 
 class SearchSpace(ABC):
@@ -45,15 +210,50 @@ class SearchSpace(ABC):
         :return: ``num_samples`` i.i.d. random points, sampled uniformly from this search space.
         """
 
-    @abstractmethod
-    def __contains__(self, value: TensorType) -> bool | TensorType:
+    def contains(self, value: TensorType) -> TensorType:
+        """Method for checking membership.
+
+        :param value: A point or points to check for membership of this :class:`SearchSpace`.
+        :return: A boolean array showing membership for each point in value.
+        :raise ValueError (or tf.errors.InvalidArgumentError): If ``value`` has a different
+            dimensionality points from this :class:`SearchSpace`.
         """
-        :param value: A point to check for membership of this :class:`SearchSpace`.
-        :return: `True` if ``value`` is a member of this search space, else `False`. May return a
-            scalar boolean `TensorType` instead of the `bool` itself.
+        tf.debugging.assert_equal(
+            tf.rank(value) > 0 and tf.shape(value)[-1] == self.dimension,
+            True,
+            message=f"""
+                Dimensionality mismatch: space is {self.dimension}, value is {tf.shape(value)[-1]}
+                """,
+        )
+        return self._contains(value)
+
+    @abstractmethod
+    def _contains(self, value: TensorType) -> TensorType:
+        """Space-specific implementation of membership. Can assume valid input shape.
+
+        :param value: A point or points to check for membership of this :class:`SearchSpace`.
+        :return: A boolean array showing membership for each point in value.
+        """
+
+    def __contains__(self, value: TensorType) -> bool:
+        """Method called by `in` operator. Doesn't support broadcasting as Python insists
+        on converting the result to a boolean.
+
+        :param value: A single point to check for membership of this :class:`SearchSpace`.
+        :return: `True` if ``value`` is a member of this search space, else `False`.
         :raise ValueError (or tf.errors.InvalidArgumentError): If ``value`` has a different
             dimensionality from this :class:`SearchSpace`.
         """
+        tf.debugging.assert_equal(
+            tf.rank(value) == 1,
+            True,
+            message=f"""
+                Rank mismatch: expected 1, got {tf.rank(value)}. To get a tensor of boolean
+                membership values from a tensor of points, use `space.contains(value)`
+                rather than `value in space`.
+                """,
+        )
+        return self.contains(value)
 
     @property
     @abstractmethod
@@ -94,7 +294,8 @@ class SearchSpace(ABC):
             If both spaces are of the same type then this calls the :meth:`product` method.
             Otherwise, it generates a :class:`TaggedProductSearchSpace`.
         """
-        if isinstance(other, type(self)):
+        # If the search space has any constraints, always return a tagged product search space.
+        if not self.has_constraints and not other.has_constraints and isinstance(other, type(self)):
             return self.product(other)
         return TaggedProductSearchSpace((self, other))
 
@@ -117,7 +318,12 @@ class SearchSpace(ABC):
         :param num_samples: The number of points in the :class:`DiscreteSearchSpace`.
         :return: A discrete search space consisting of ``num_samples`` points sampled uniformly from
             this search space.
+        :raise NotImplementedError: If this :class:`SearchSpace` has constraints.
         """
+        if self.has_constraints:  # Constraints are not supported.
+            raise NotImplementedError(
+                "Discretization is currently not supported in the presence of constraints."
+            )
         return DiscreteSearchSpace(points=self.sample(num_samples))
 
     @abstractmethod
@@ -126,6 +332,44 @@ class SearchSpace(ABC):
         :param other: A search space.
         :return: Whether the search space is identical to this one.
         """
+
+    @property
+    def constraints(self) -> Sequence[Constraint]:
+        """The sequence of explicit constraints specified in this search space."""
+        return []
+
+    def constraints_residuals(self, points: TensorType) -> TensorType:
+        """
+        Return residuals for all the constraints in this :class:`SearchSpace`.
+
+        :param points: The points to get the residuals for, with shape [..., D].
+        :return: A tensor of all the residuals with shape [..., C], where C is the total number of
+            constraints.
+        :raise NotImplementedError: If this :class:`SearchSpace` does not support constraints.
+        """
+        raise NotImplementedError("Constraints are currently not supported for this search space.")
+
+    def is_feasible(self, points: TensorType) -> TensorType:
+        """
+        Checks if points satisfy the explicit constraints of this :class:`SearchSpace`.
+        Note membership of the search space is not checked.
+
+        :param points: The points to check constraints feasibility for, with shape [..., D].
+        :return: A tensor of booleans. Returns `True` for each point if it is feasible in this
+            search space, else `False`.
+        :raise NotImplementedError: If this :class:`SearchSpace` has constraints.
+        """
+        # Everything is feasible in the absence of constraints. Must be overriden if there are
+        # constraints.
+        if self.has_constraints:
+            raise NotImplementedError("Feasibility check is not implemented for this search space.")
+        return tf.cast(tf.ones(points.shape[:-1]), dtype=bool)
+
+    @property
+    def has_constraints(self) -> bool:
+        """Returns `True` if this search space has any explicit constraints specified."""
+        # By default assume there are no constraints; can be overridden by a subclass.
+        return False
 
 
 class DiscreteSearchSpace(SearchSpace):
@@ -176,9 +420,9 @@ class DiscreteSearchSpace(SearchSpace):
         """The number of inputs in this search space."""
         return self._dimension
 
-    def __contains__(self, value: TensorType) -> bool | TensorType:
-        tf.debugging.assert_shapes([(value, self.points.shape[1:])])
-        return tf.reduce_any(tf.reduce_all(value == self._points, axis=1))
+    def _contains(self, value: TensorType) -> TensorType:
+        comparison = tf.math.equal(self._points, tf.expand_dims(value, -2))  # [..., N, D]
+        return tf.reduce_any(tf.reduce_all(comparison, axis=-1), axis=-1)  # [...]
 
     def sample(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
         """
@@ -246,17 +490,31 @@ class Box(SearchSpace):
     """
 
     @overload
-    def __init__(self, lower: Sequence[float], upper: Sequence[float]):
+    def __init__(
+        self,
+        lower: Sequence[float],
+        upper: Sequence[float],
+        constraints: Optional[Sequence[Constraint]] = None,
+        ctol: float | TensorType = 1e-7,
+    ):
         ...
 
     @overload
-    def __init__(self, lower: TensorType, upper: TensorType):
+    def __init__(
+        self,
+        lower: TensorType,
+        upper: TensorType,
+        constraints: Optional[Sequence[Constraint]] = None,
+        ctol: float | TensorType = 1e-7,
+    ):
         ...
 
     def __init__(
         self,
         lower: Sequence[float] | TensorType,
         upper: Sequence[float] | TensorType,
+        constraints: Optional[Sequence[Constraint]] = None,
+        ctol: float | TensorType = 1e-7,
     ):
         r"""
         If ``lower`` and ``upper`` are `Sequence`\ s of floats (such as lists or tuples),
@@ -266,6 +524,8 @@ class Box(SearchSpace):
             and if a tensor, must have float type.
         :param upper: The upper (inclusive) bounds of the box. Must have shape [D] for positive D,
             and if a tensor, must have float type.
+        :param constraints: Sequence of explicit input constraints for this search space.
+        :param ctol: Tolerance to use to check constraints satisfaction.
         :raise ValueError (or tf.errors.InvalidArgumentError): If any of the following are true:
 
             - ``lower`` and ``upper`` have invalid shapes.
@@ -276,6 +536,7 @@ class Box(SearchSpace):
         tf.debugging.assert_shapes([(lower, ["D"]), (upper, ["D"])])
         tf.assert_rank(lower, 1)
         tf.assert_rank(upper, 1)
+        tf.debugging.assert_non_negative(ctol, message="Tolerance must be non-negative")
 
         if isinstance(lower, Sequence):
             self._lower = tf.constant(lower, dtype=DEFAULT_DTYPE)
@@ -290,9 +551,15 @@ class Box(SearchSpace):
 
         self._dimension = tf.shape(self._upper)[-1]
 
+        if constraints is None:
+            self._constraints: Sequence[Constraint] = []
+        else:
+            self._constraints = constraints
+        self._ctol = ctol
+
     def __repr__(self) -> str:
         """"""
-        return f"Box({self._lower!r}, {self._upper!r})"
+        return f"Box({self._lower!r}, {self._upper!r}, {self._constraints!r}, {self._ctol!r})"
 
     @property
     def lower(self) -> tf.Tensor:
@@ -309,28 +576,34 @@ class Box(SearchSpace):
         """The number of inputs in this search space."""
         return self._dimension
 
-    def __contains__(self, value: TensorType) -> bool | TensorType:
-        """
-        Return `True` if ``value`` is a member of this search space, else `False`. A point is a
-        member if all of its coordinates lie in the closed intervals bounded by the lower and upper
-        bounds.
+    @property
+    def constraints(self) -> Sequence[Constraint]:
+        """The sequence of explicit constraints specified in this search space."""
+        return self._constraints
 
-        :param value: A point to check for membership of this :class:`SearchSpace`.
-        :return: `True` if ``value`` is a member of this search space, else `False`. May return a
-            scalar boolean `TensorType` instead of the `bool` itself.
-        :raise ValueError (or tf.errors.InvalidArgumentError): If ``value`` has a different
-            dimensionality from the search space.
+    def _contains(self, value: TensorType) -> TensorType:
         """
+        For each point in ``value``, return `True` if the point is a member of this search space,
+        else `False`. A point is a member if all of its coordinates lie in the closed intervals
+        bounded by the lower and upper bounds.
 
-        tf.debugging.assert_equal(
-            shapes_equal(value, self._lower),
-            True,
-            message=f"""
-                Dimensionality mismatch: space is {self._lower}, value is {tf.shape(value)}
-                """,
+        :param value: A point or points to check for membership of this :class:`SearchSpace`.
+        :return: A boolean array showing membership for each point in value.
+        """
+        return tf.reduce_all(value >= self._lower, axis=-1) & tf.reduce_all(
+            value <= self._upper, axis=-1
         )
 
-        return tf.reduce_all(value >= self._lower) and tf.reduce_all(value <= self._upper)
+    def _sample(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
+        # Internal common method to sample randomly from the space.
+        dim = tf.shape(self._lower)[-1]
+        return tf.random.uniform(
+            (num_samples, dim),
+            minval=self._lower,
+            maxval=self._upper,
+            dtype=self._lower.dtype,
+            seed=seed,
+        )
 
     def sample(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
         """
@@ -345,14 +618,25 @@ class Box(SearchSpace):
         tf.debugging.assert_non_negative(num_samples)
         if seed is not None:  # ensure reproducibility
             tf.random.set_seed(seed)
+        return self._sample(num_samples, seed)
+
+    def _sample_halton(
+        self,
+        start: int,
+        num_samples: int,
+        seed: Optional[int] = None,
+    ) -> TensorType:
+        # Internal common method to sample from the space using a Halton sequence.
+        tf.debugging.assert_non_negative(num_samples)
+        if num_samples == 0:
+            return tf.constant([])
+        if seed is not None:  # ensure reproducibility
+            tf.random.set_seed(seed)
         dim = tf.shape(self._lower)[-1]
-        return tf.random.uniform(
-            (num_samples, dim),
-            minval=self._lower,
-            maxval=self._upper,
-            dtype=self._lower.dtype,
-            seed=seed,
-        )
+        sequence_indices = tf.range(start=start, limit=start + num_samples, dtype=tf.int32)
+        return (self._upper - self._lower) * tfp.mcmc.sample_halton_sequence(
+            dim=dim, sequence_indices=sequence_indices, dtype=self._lower.dtype, seed=seed
+        ) + self._lower
 
     def sample_halton(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
         """
@@ -364,16 +648,7 @@ class Box(SearchSpace):
         :return: ``num_samples`` of points, using halton sequence with shape '[num_samples, D]' ,
             where D is the search space dimension.
         """
-
-        tf.debugging.assert_non_negative(num_samples)
-        if num_samples == 0:
-            return tf.constant([])
-        if seed is not None:  # ensure reproducibility
-            tf.random.set_seed(seed)
-        dim = tf.shape(self._lower)[-1]
-        return (self._upper - self._lower) * tfp.mcmc.sample_halton_sequence(
-            dim=dim, num_results=num_samples, dtype=self._lower.dtype, seed=seed
-        ) + self._lower
+        return self._sample_halton(0, num_samples, seed)
 
     def sample_sobol(self, num_samples: int, skip: Optional[int] = None) -> TensorType:
         """
@@ -389,11 +664,144 @@ class Box(SearchSpace):
         if num_samples == 0:
             return tf.constant([])
         if skip is None:  # generate random skip
-            skip = tf.random.uniform([1], maxval=2 ** 16, dtype=tf.int32)[0]
+            skip = tf.random.uniform([1], maxval=2**16, dtype=tf.int32)[0]
         dim = tf.shape(self._lower)[-1]
         return (self._upper - self._lower) * tf.math.sobol_sample(
             dim=dim, num_results=num_samples, dtype=self._lower.dtype, skip=skip
         ) + self._lower
+
+    def _sample_feasible_loop(
+        self,
+        num_samples: int,
+        sampler: Callable[[], TensorType],
+        max_tries: int = 100,
+    ) -> TensorType:
+        """
+        Rejection sampling using provided callable. Try ``max_tries`` number of times to find
+        ``num_samples`` feasible points.
+
+        :param num_samples: The number of feasible points to sample from this search space.
+        :param sampler: Callable to return samples. Called potentially multiple times.
+        :param max_tries: Maximum attempts to sample the requested number of points.
+        :return: ``num_samples`` feasible points sampled using ``sampler``.
+        :raise SampleTimeoutError: If ``max_tries`` are exhausted before ``num_samples`` are
+            sampled.
+        """
+        xs = []
+        count = 0
+        tries = 0
+        while count < num_samples and tries < max_tries:
+            tries += 1
+            xi = sampler()
+            mask = self.is_feasible(xi)
+            xo = tf.boolean_mask(xi, mask)
+            xs.append(xo)
+            count += xo.shape[0]
+
+        if count < num_samples:
+            raise SampleTimeoutError(
+                f"""Failed to sample {num_samples} feasible point(s), even after {tries} attempts.
+                    Sampled only {count} feasible point(s)."""
+            )
+
+        xs = tf.concat(xs, axis=0)[:num_samples]
+        return xs
+
+    def sample_feasible(
+        self, num_samples: int, seed: Optional[int] = None, max_tries: int = 100
+    ) -> TensorType:
+        """
+        Sample feasible points randomly from the space.
+
+        :param num_samples: The number of feasible points to sample from this search space.
+        :param seed: Random seed for reproducibility.
+        :param max_tries: Maximum attempts to sample the requested number of points.
+        :return: ``num_samples`` i.i.d. random points, sampled uniformly,
+            from this search space with shape '[num_samples, D]' , where D is the search space
+            dimension.
+        :raise SampleTimeoutError: If ``max_tries`` are exhausted before ``num_samples`` are
+            sampled.
+        """
+        tf.debugging.assert_non_negative(num_samples)
+
+        # Without constraints or zero-num-samples use the normal sample method directly.
+        if not self.has_constraints or num_samples == 0:
+            return self.sample(num_samples, seed)
+
+        if seed is not None:  # ensure reproducibility
+            tf.random.set_seed(seed)
+
+        def _sampler() -> TensorType:
+            return self._sample(num_samples, seed)
+
+        return self._sample_feasible_loop(num_samples, _sampler, max_tries)
+
+    def sample_halton_feasible(
+        self, num_samples: int, seed: Optional[int] = None, max_tries: int = 100
+    ) -> TensorType:
+        """
+        Sample feasible points from the space using a Halton sequence. The resulting samples are
+        guaranteed to be diverse and are reproducible by using the same choice of ``seed``.
+
+        :param num_samples: The number of feasible points to sample from this search space.
+        :param seed: Random seed for the halton sequence
+        :param max_tries: Maximum attempts to sample the requested number of points.
+        :return: ``num_samples`` of points, using halton sequence with shape '[num_samples, D]' ,
+            where D is the search space dimension.
+        :raise SampleTimeoutError: If ``max_tries`` are exhausted before ``num_samples`` are
+            sampled.
+        """
+        tf.debugging.assert_non_negative(num_samples)
+
+        # Without constraints or zero-num-samples use the normal sample method directly.
+        if not self.has_constraints or num_samples == 0:
+            return self.sample_halton(num_samples, seed)
+
+        start = 0
+
+        def _sampler() -> TensorType:
+            nonlocal start
+            # Global seed is set on every call in _sample_halton() so that we always sample from
+            # the same (randomised) sequence, and skip the relevant number of beginning samples.
+            samples = self._sample_halton(start, num_samples, seed)
+            start += num_samples
+            return samples
+
+        return self._sample_feasible_loop(num_samples, _sampler, max_tries)
+
+    def sample_sobol_feasible(
+        self, num_samples: int, skip: Optional[int] = None, max_tries: int = 100
+    ) -> TensorType:
+        """
+        Sample a diverse set of feasible points from the space using a Sobol sequence.
+        If ``skip`` is specified, then the resulting samples are reproducible.
+
+        :param num_samples: The number of feasible points to sample from this search space.
+        :param skip: The number of initial points of the Sobol sequence to skip
+        :param max_tries: Maximum attempts to sample the requested number of points.
+        :return: ``num_samples`` of points, using sobol sequence with shape '[num_samples, D]' ,
+            where D is the search space dimension.
+        :raise SampleTimeoutError: If ``max_tries`` are exhausted before ``num_samples`` are
+            sampled.
+        """
+        tf.debugging.assert_non_negative(num_samples)
+
+        # Without constraints or zero-num-samples use the normal sample method directly.
+        if not self.has_constraints or num_samples == 0:
+            return self.sample_sobol(num_samples, skip)
+
+        if skip is None:  # generate random skip
+            skip = tf.random.uniform([1], maxval=2**16, dtype=tf.int32)[0]
+        _skip: TensorType = skip  # To keep mypy happy.
+
+        def _sampler() -> TensorType:
+            nonlocal _skip
+            samples = self.sample_sobol(num_samples, skip=_skip)
+            # Skip the relevant number of beginning samples from previous iterations.
+            _skip += num_samples
+            return samples
+
+        return self._sample_feasible_loop(num_samples, _sampler, max_tries)
 
     def product(self, other: Box) -> Box:
         r"""
@@ -429,11 +837,42 @@ class Box(SearchSpace):
         if not isinstance(other, Box):
             return NotImplemented
         return bool(
-            tf.reduce_all(self.lower == other.lower) and tf.reduce_all(self.upper == other.upper)
+            tf.reduce_all(self.lower == other.lower)
+            and tf.reduce_all(self.upper == other.upper)
+            # Constraints match only if they are exactly the same (in the same order).
+            and self._constraints == other._constraints
         )
 
     def __deepcopy__(self, memo: dict[int, object]) -> Box:
         return self
+
+    def constraints_residuals(self, points: TensorType) -> TensorType:
+        """
+        Return residuals for all the constraints in this :class:`SearchSpace`.
+
+        :param points: The points to get the residuals for, with shape [..., D].
+        :return: A tensor of all the residuals with shape [..., C], where C is the total number of
+            constraints.
+        """
+        residuals = [constraint.residual(points) for constraint in self._constraints]
+        residuals = tf.concat(residuals, axis=-1)
+        return residuals
+
+    def is_feasible(self, points: TensorType) -> TensorType:
+        """
+        Checks if points satisfy the explicit constraints of this :class:`SearchSpace`.
+        Note membership of the search space is not checked.
+
+        :param points: The points to check constraints feasibility for, with shape [..., D].
+        :return: A tensor of booleans. Returns `True` for each point if it is feasible in this
+            search space, else `False`.
+        """
+        return tf.math.reduce_all(self.constraints_residuals(points) >= -self._ctol, axis=-1)
+
+    @property
+    def has_constraints(self) -> bool:
+        """Returns `True` if this search space has any explicit constraints specified."""
+        return len(self._constraints) > 0
 
 
 class TaggedProductSearchSpace(SearchSpace):
@@ -578,9 +1017,9 @@ class TaggedProductSearchSpace(SearchSpace):
 
         starting_index_of_subspace = self._subspace_starting_indices[tag]
         ending_index_of_subspace = starting_index_of_subspace + self._subspace_sizes_by_tag[tag]
-        return values[:, starting_index_of_subspace:ending_index_of_subspace]
+        return values[..., starting_index_of_subspace:ending_index_of_subspace]
 
-    def __contains__(self, value: TensorType) -> bool | TensorType:
+    def _contains(self, value: TensorType) -> TensorType:
         """
         Return `True` if ``value`` is a member of this search space, else `False`. A point is a
         member if each of its subspace components lie in each subspace.
@@ -594,20 +1033,11 @@ class TaggedProductSearchSpace(SearchSpace):
         :raise ValueError (or tf.errors.InvalidArgumentError): If ``value`` has a different
             dimensionality from the search space.
         """
-
-        tf.debugging.assert_equal(
-            tf.shape(value),
-            self.dimension,
-            message=f"""
-                Dimensionality mismatch: space is {self.dimension}, value is {tf.shape(value)}
-                """,
-        )
-        value = value[tf.newaxis, ...]
         in_each_subspace = [
-            self._spaces[tag].__contains__(self.get_subspace_component(tag, value)[0, :])
+            self._spaces[tag].contains(self.get_subspace_component(tag, value))
             for tag in self._tags
         ]
-        return tf.reduce_all(in_each_subspace)
+        return tf.reduce_all(in_each_subspace, axis=0)
 
     def sample(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
         """

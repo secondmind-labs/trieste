@@ -18,21 +18,42 @@ the Bayesian optimization process.
 from __future__ import annotations
 
 import copy
+import math
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Callable, Generic, Optional, TypeVar, Union, cast, overload
+from typing import Any, Callable, Generic, Optional, TypeVar, Union, cast, overload
+
+import numpy as np
+
+try:
+    import pymoo
+    from pymoo.algorithms.moo.nsga2 import NSGA2
+    from pymoo.core.problem import Problem as PymooProblem
+    from pymoo.optimize import minimize
+except ImportError:  # pragma: no cover (tested but not by coverage)
+    pymoo = None
+    PymooProblem = object
 
 import tensorflow as tf
 
 from .. import logging, types
 from ..data import Dataset
 from ..models import ProbabilisticModel
-from ..models.interfaces import HasReparamSampler, ProbabilisticModelType
+from ..models.interfaces import (
+    HasReparamSampler,
+    ModelStack,
+    ProbabilisticModelType,
+    TrainableSupportsGetKernel,
+)
 from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace
-from ..types import State, TensorType
-from .function import BatchMonteCarloExpectedImprovement, ExpectedImprovement
+from ..types import State, Tag, TensorType
+from .function import (
+    BatchMonteCarloExpectedImprovement,
+    ExpectedImprovement,
+    ProbabilityOfImprovement,
+)
 from .interface import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
@@ -42,6 +63,7 @@ from .interface import (
     SingleModelVectorizedAcquisitionBuilder,
     VectorizedAcquisitionFunctionBuilder,
 )
+from .multi_objective import Pareto
 from .optimizer import (
     AcquisitionOptimizer,
     automatic_optimizer_selector,
@@ -49,7 +71,7 @@ from .optimizer import (
     batchify_vectorize,
 )
 from .sampler import ExactThompsonSampler, ThompsonSampler
-from .utils import select_nth_output
+from .utils import get_local_dataset, select_nth_output
 
 ResultType = TypeVar("ResultType", covariant=True)
 """ Unbound covariant type variable. """
@@ -79,8 +101,8 @@ class AcquisitionRule(ABC, Generic[ResultType, SearchSpaceType, ProbabilisticMod
     def acquire(
         self,
         search_space: SearchSpaceType,
-        models: Mapping[str, ProbabilisticModelType],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> ResultType:
         """
         Return a value of type `T_co`. Typically this will be a set of query points, either on its
@@ -244,8 +266,8 @@ class EfficientGlobalOptimization(
     def acquire(
         self,
         search_space: SearchSpaceType,
-        models: Mapping[str, ProbabilisticModelType],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> TensorType:
         """
         Return the query point(s) that optimizes the acquisition function produced by ``builder``
@@ -286,7 +308,7 @@ class EfficientGlobalOptimization(
                     )
                 else:  # vectorized acquisition function
                     logging.histogram(
-                        "EGO.acquisition_function/maximum_found" + "[0]" * greedy, values
+                        "EGO.acquisition_function/maximums_found" + "[0]" * greedy, values
                     )
 
         if isinstance(self._builder, GreedyAcquisitionFunctionBuilder):
@@ -314,7 +336,7 @@ class EfficientGlobalOptimization(
                             )
                         else:  # vectorized acquisition function
                             logging.histogram(
-                                f"EGO.acquisition_function/maximum_found[{i+1}]", values
+                                f"EGO.acquisition_function/maximums_found[{i+1}]", values
                             )
 
         return points
@@ -379,7 +401,8 @@ class AsynchronousRuleState:
 
         tf.debugging.assert_shapes(
             [(self.pending_points, [None, "D"]), (points_to_remove, [None, "D"])],
-            message=f"""Point to remove shall be 1xD where D is the last dimension of pending points.
+            message=f"""Point to remove shall be 1xD where D is
+                        the last dimension of pending points.
                         Got {tf.shape(self.pending_points)} for pending points
                         and {tf.shape(points_to_remove)} for other points.""",
         )
@@ -512,8 +535,8 @@ class AsynchronousOptimization(
     def acquire(
         self,
         search_space: SearchSpaceType,
-        models: Mapping[str, ProbabilisticModelType],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> types.State[AsynchronousRuleState | None, TensorType]:
         """
         Constructs a function that, given ``AsynchronousRuleState``,
@@ -668,8 +691,8 @@ class AsynchronousGreedy(
     def acquire(
         self,
         search_space: SearchSpaceType,
-        models: Mapping[str, ProbabilisticModelType],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> types.State[AsynchronousRuleState | None, TensorType]:
         """
         Constructs a function that, given ``AsynchronousRuleState``,
@@ -779,8 +802,8 @@ class RandomSampling(AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel
     def acquire(
         self,
         search_space: SearchSpace,
-        models: Mapping[str, ProbabilisticModel],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModel],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> TensorType:
         """
         Sample ``num_query_points`` (see :meth:`__init__`) points from the
@@ -880,8 +903,8 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
     def acquire(
         self,
         search_space: SearchSpace,
-        models: Mapping[str, ProbabilisticModelType],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> TensorType:
         """
         Sample `num_search_space_samples` (see :meth:`__init__`) points from the
@@ -994,8 +1017,8 @@ class TrustRegion(
     def acquire(
         self,
         search_space: Box,
-        models: Mapping[str, ProbabilisticModelType],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> types.State[State | None, TensorType]:
         """
         Construct a local search space from ``search_space`` according the trust region algorithm,
@@ -1044,7 +1067,6 @@ class TrustRegion(
         def state_func(
             state: TrustRegion.State | None,
         ) -> tuple[TrustRegion.State | None, TensorType]:
-
             if state is None:
                 eps = 0.5 * (global_upper - global_lower) / (5.0 ** (1.0 / global_lower.shape[-1]))
                 is_global = True
@@ -1079,3 +1101,417 @@ class TrustRegion(
             return state_, points
 
         return state_func
+
+
+class TURBO(
+    AcquisitionRule[
+        types.State[Optional["TURBO.State"], TensorType], Box, TrainableSupportsGetKernel
+    ]
+):
+    """Implements the TURBO algorithm as detailed in :cite:`eriksson2019scalable`."""
+
+    @dataclass(frozen=True)
+    class State:
+        """The acquisition state for the :class:`TURBO` acquisition rule."""
+
+        acquisition_space: Box
+        """ The search space. """
+
+        L: float
+        """ Length of the trust region (before standardizing by model lengthscales) """
+
+        failure_counter: int
+        """ Number of consecutive failures (reset if we see a success). """
+
+        success_counter: int
+        """ Number of consecutive successes (reset if we see a failure).  """
+
+        y_min: TensorType
+        """ The minimum observed value. """
+
+        def __deepcopy__(self, memo: dict[int, object]) -> TURBO.State:
+            box_copy = copy.deepcopy(self.acquisition_space, memo)
+            return TURBO.State(
+                box_copy, self.L, self.failure_counter, self.success_counter, self.y_min
+            )
+
+    def __init__(
+        self,
+        search_space: SearchSpace,
+        num_trust_regions: int = 1,
+        rule: Optional[AcquisitionRule[ResultType, Box, TrainableSupportsGetKernel]] = None,
+        L_min: Optional[float] = None,
+        L_init: Optional[float] = None,
+        L_max: Optional[float] = None,
+        success_tolerance: int = 3,
+        failure_tolerance: Optional[int] = None,
+        local_models: Optional[Mapping[Tag, TrainableSupportsGetKernel]] = None,
+    ):
+        """
+        Note that the optional parameters are set by a heuristic if not given by the user.
+
+        :param search_space: The search space.
+        :param num_trust_regions: Number of trust regions controlled by TURBO
+        :param rule: rule used to select points from within the trust region, using the local model.
+        :param L_min: Minimum allowed length of the trust region.
+        :param L_init: Initial length of the trust region.
+        :param L_max: Maximum allowed length of the trust region.
+        :param success_tolerance: Number of consecutive successes before changing region size.
+        :param failure tolerance: Number of consecutive failures before changing region size.
+        :param local_models: Optional model to act as the local model. This will be refit using
+            the data from each trust region. If no local_models are provided then we just
+            copy the global model.
+        """
+
+        if not num_trust_regions > 0:
+            raise ValueError(f"Num trust regions must be greater than 0, got {num_trust_regions}")
+
+        if num_trust_regions > 1:
+            raise NotImplementedError(
+                f"TURBO does not yet support multiple trust regions, but got {num_trust_regions}"
+            )
+
+        # implement heuristic defaults for TURBO if not specified by user
+        if rule is None:  # default to Thompson sampling with batches of size 1
+            rule = DiscreteThompsonSampling(tf.minimum(100 * search_space.dimension, 5_000), 1)
+
+        if failure_tolerance is None:
+            if isinstance(
+                rule,
+                (
+                    EfficientGlobalOptimization,
+                    DiscreteThompsonSampling,
+                    RandomSampling,
+                    AsynchronousOptimization,
+                ),
+            ):
+                failure_tolerance = math.ceil(search_space.dimension / rule._num_query_points)
+            else:
+                failure_tolerance == search_space.dimension
+            assert isinstance(failure_tolerance, int)
+        search_space_max_width = tf.reduce_max(search_space.upper - search_space.lower)
+        if L_min is None:
+            L_min = (0.5**7) * search_space_max_width
+        if L_init is None:
+            L_init = 0.8 * search_space_max_width
+        if L_max is None:
+            L_max = 1.6 * search_space_max_width
+
+        if not success_tolerance > 0:
+            raise ValueError(
+                f"success tolerance must be an integer greater than 0, got {success_tolerance}"
+            )
+        if not failure_tolerance > 0:
+            raise ValueError(
+                f"success tolerance must be an integer greater than 0, got {failure_tolerance}"
+            )
+
+        if L_min <= 0:
+            raise ValueError(f"L_min must be postive, got {L_min}")
+        if L_init <= 0:
+            raise ValueError(f"L_min must be postive, got {L_init}")
+        if L_max <= 0:
+            raise ValueError(f"L_min must be postive, got {L_max}")
+
+        self._num_trust_regions = num_trust_regions
+        self._L_min = L_min
+        self._L_init = L_init
+        self._L_max = L_max
+        self._success_tolerance = success_tolerance
+        self._failure_tolerance = failure_tolerance
+        self._rule = rule
+        self._local_models = local_models
+
+    def __repr__(self) -> str:
+        """"""
+        return f"TURBO({self._num_trust_regions!r}, {self._rule})"
+
+    def acquire(
+        self,
+        search_space: Box,
+        models: Mapping[Tag, TrainableSupportsGetKernel],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+    ) -> types.State[State | None, TensorType]:
+        """
+        Construct a local search space from ``search_space`` according the TURBO algorithm,
+        and use that with the ``rule`` specified at :meth:`~TURBO.__init__` to find new
+        query points. Return a function that constructs these points given a previous trust region
+        state.
+
+        If no ``state`` is specified (it is `None`), then we build the initial trust region.
+
+        If a ``state`` is specified, and the new optimum improves over the previous optimum,
+        the previous acquisition is considered successful.
+
+        If ``success_tolerance`` previous consecutive acquisitions were successful then the search
+        space is made larger. If  ``failure_tolerance`` consecutive acquisitions were unsuccessful
+        then the search space is shrunk. If neither condition is triggered then the search space
+        remains the same.
+
+        **Note:** The acquisition search space will never extend beyond the boundary of the
+        ``search_space``. For a local search, the actual search space will be the
+        intersection of the trust region and ``search_space``.
+
+        :param search_space: The local acquisition search space for *this step*.
+        :param models: The model for each tag.
+        :param datasets: The known observer query points and observations. Uses the data for key
+            `OBJECTIVE` to calculate the new trust region.
+        :return: A function that constructs the next acquisition state and the recommended query
+            points from the previous acquisition state.
+        :raise KeyError: If ``datasets`` does not contain the key `OBJECTIVE`.
+        """
+        if self._local_models is None:  # if user doesnt specifiy a local model
+            self._local_models = copy.copy(models)  # copy global model (will be fit locally later)
+
+        if self._local_models.keys() != {OBJECTIVE}:
+            raise ValueError(
+                f"dict of models must contain the single key {OBJECTIVE}, got keys {models.keys()}"
+            )
+
+        if datasets is None or datasets.keys() != {OBJECTIVE}:
+            raise ValueError(
+                f"""datasets must be provided and contain the single key {OBJECTIVE}"""
+            )
+
+        dataset = datasets[OBJECTIVE]
+        local_model = self._local_models[OBJECTIVE]
+        global_lower = search_space.lower
+        global_upper = search_space.upper
+
+        y_min = tf.reduce_min(dataset.observations, axis=0)
+
+        def state_func(
+            state: TURBO.State | None,
+        ) -> tuple[TURBO.State | None, TensorType]:
+            if state is None:  # initialise first TR
+                L, failure_counter, success_counter = self._L_init, 0, 0
+            else:  # update TR
+                step_is_success = y_min < state.y_min - 1e-10  # maybe make this stronger?
+                failure_counter = (
+                    0 if step_is_success else state.failure_counter + 1
+                )  # update or reset counter
+                success_counter = (
+                    state.success_counter + 1 if step_is_success else 0
+                )  # update or reset counter
+                L = state.L
+                if success_counter == self._success_tolerance:
+                    L *= 2.0  # make region bigger
+                    success_counter = 0
+                elif failure_counter == self._failure_tolerance:
+                    L *= 0.5  # make region smaller
+                    failure_counter = 0
+
+                L = tf.minimum(L, self._L_max)
+                if L < self._L_min:  # if gets too small then start again
+                    L, failure_counter, success_counter = self._L_init, 0, 0
+
+            # build region with volume according to length L but stretched according to lengthscales
+            xmin = dataset.query_points[tf.argmin(dataset.observations)[0], :]  # centre of region
+            lengthscales = (
+                local_model.get_kernel().lengthscales
+            )  # stretch region according to model lengthscales
+            tr_width = (
+                lengthscales * L / tf.reduce_prod(lengthscales) ** (1.0 / global_lower.shape[-1])
+            )  # keep volume fixed
+            acquisition_space = Box(
+                tf.reduce_max([global_lower, xmin - tr_width / 2.0], axis=0),
+                tf.reduce_min([global_upper, xmin + tr_width / 2.0], axis=0),
+            )
+
+            # fit the local model using just data from the trust region
+            local_dataset = get_local_dataset(acquisition_space, dataset)
+            local_model.update(local_dataset)
+            local_model.optimize(local_dataset)
+
+            # use local model and local dataset to choose next query point(s)
+            points = self._rule.acquire_single(acquisition_space, local_model, local_dataset)
+            state_ = TURBO.State(acquisition_space, L, failure_counter, success_counter, y_min)
+
+            return state_, points
+
+        return state_func
+
+
+class BatchHypervolumeSharpeRatioIndicator(
+    AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel]
+):
+    """Implements the Batch Hypervolume Sharpe-ratio indicator acquisition
+    rule, designed for large batches, introduced by Binois et al, 2021.
+    See :cite:`binois2021portfolio` for details.
+    """
+
+    def __init__(
+        self,
+        num_query_points: int = 1,
+        ga_population_size: int = 500,
+        ga_n_generations: int = 200,
+        filter_threshold: float = 0.1,
+        noisy_observations: bool = True,
+    ):
+        """
+        :param num_query_points: The number of points in a batch. Defaults to 5.
+        :param ga_population_size: The population size used in the genetic algorithm
+             that finds points on the Pareto front. Defaults to 500.
+        :param ga_n_generations: The number of genenrations to run in the genetic
+             algorithm. Defaults to 200.
+        :param filter_threshold: The probability of improvement below which to exlude
+             points from the Sharpe ratio optimisation. Defaults to 0.1.
+        :param noisy_observations: Whether the observations have noise. Defaults to True.
+        """
+        if not num_query_points > 0:
+            raise ValueError(f"Num query points must be greater than 0, got {num_query_points}")
+        if not ga_population_size >= num_query_points:
+            raise ValueError(
+                "Population size must be greater or equal to num query points size, got num"
+                f" query points as {num_query_points} and population size as {ga_population_size}"
+            )
+        if not ga_n_generations > 0:
+            raise ValueError(f"Number of generation must be greater than 0, got {ga_n_generations}")
+        if not 0.0 <= filter_threshold < 1.0:
+            raise ValueError(f"Filter threshold must be in range [0.0,1.0), got {filter_threshold}")
+        if pymoo is None:
+            raise ImportError(
+                "BatchHypervolumeSharpeRatioIndicator requires pymoo, "
+                "which can be installed via `pip install trieste[qhsri]`"
+            )
+        builder = ProbabilityOfImprovement().using(OBJECTIVE)
+
+        self._builder: AcquisitionFunctionBuilder[ProbabilisticModel] = builder
+        self._num_query_points: int = num_query_points
+        self._population_size: int = ga_population_size
+        self._n_generations: int = ga_n_generations
+        self._filter_threshold: float = filter_threshold
+        self._noisy_observations: bool = noisy_observations
+        self._acquisition_function: Optional[AcquisitionFunction] = None
+
+    def __repr__(self) -> str:
+        """"""
+        return f"""BatchHypervolumeSharpeRatioIndicator(
+        num_query_points={self._num_query_points}, ga_population_size={self._population_size},
+        ga_n_generations={self._n_generations}, filter_threshold={self._filter_threshold},
+        noisy_observations={self._noisy_observations}
+        )
+        """
+
+    def _find_non_dominated_points(
+        self, model: ProbabilisticModel, search_space: SearchSpaceType
+    ) -> tuple[TensorType, TensorType]:
+        """Uses NSGA-II to find high-quality non-dominated points"""
+
+        problem = _MeanStdTradeoff(model, search_space)
+        algorithm = NSGA2(pop_size=self._population_size)
+        res = minimize(problem, algorithm, ("n_gen", self._n_generations), seed=1, verbose=False)
+
+        return res.X, res.F
+
+    def _filter_points(
+        self, nd_points: TensorType, nd_mean_std: TensorType
+    ) -> tuple[TensorType, TensorType]:
+        if self._acquisition_function is None:
+            raise ValueError("Acquisition function has not been defined yet")
+
+        probs_of_improvement = np.array(
+            self._acquisition_function(np.expand_dims(nd_points, axis=-2))
+        )
+
+        above_threshold = probs_of_improvement > self._filter_threshold
+
+        if np.sum(above_threshold) >= self._num_query_points and nd_mean_std.shape[1] == 2:
+            # There are enough points above the threshold to get a batch
+            out_points, out_mean_std = (
+                nd_points[above_threshold.squeeze(), :],
+                nd_mean_std[above_threshold.squeeze(), :],
+            )
+        else:
+            # We don't filter
+            out_points, out_mean_std = nd_points, nd_mean_std
+
+        return out_points, out_mean_std
+
+    def acquire(
+        self,
+        search_space: SearchSpace,
+        models: Mapping[Tag, ProbabilisticModel],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+    ) -> TensorType:
+        """Acquire a batch of points to observe based on the batch hypervolume
+        Sharpe ratio indicator method.
+        This method uses NSGA-II to create a Pareto set of the mean and standard
+        deviation of the posterior of the probabilistic model, and then selects
+        points to observe based on maximising the Sharpe ratio.
+
+        :param search_space: The local acquisition search space for *this step*.
+        :param models: The model for each tag.
+        :param datasets: The known observer query points and observations.
+        :return: The batch of points to query.
+        """
+        if models.keys() != {OBJECTIVE}:
+            raise ValueError(
+                f"dict of models must contain the single key {OBJECTIVE}, got keys {models.keys()}"
+            )
+
+        if datasets is None or datasets.keys() != {OBJECTIVE}:
+            raise ValueError(
+                f"""datasets must be provided and contain the single key {OBJECTIVE}"""
+            )
+
+        if self._acquisition_function is None:
+            self._acquisition_function = self._builder.prepare_acquisition_function(
+                models, datasets=datasets
+            )
+        else:
+            self._acquisition_function = self._builder.update_acquisition_function(
+                self._acquisition_function,
+                models,
+                datasets=datasets,
+            )
+
+        # Find non-dominated points
+        nd_points, nd_mean_std = self._find_non_dominated_points(models[OBJECTIVE], search_space)
+
+        # Filter out points below a threshold probability of improvement
+        filtered_points, filtered_mean_std = self._filter_points(nd_points, nd_mean_std)
+
+        # Set up a Pareto set of the filtered points
+        pareto_set = Pareto(filtered_mean_std, already_non_dominated=True)
+
+        # Sample points from set using qHSRI
+        _, batch_ids = pareto_set.sample_diverse_subset(
+            self._num_query_points, allow_repeats=self._noisy_observations
+        )
+
+        batch = filtered_points[batch_ids]
+
+        return batch
+
+
+class _MeanStdTradeoff(PymooProblem):  # type: ignore[misc]
+    """Inner class that formulates the mean/std optimisation problem as a
+    pymoo problem"""
+
+    def __init__(self, probabilistic_model: ProbabilisticModel, search_space: SearchSpaceType):
+        """
+        :param probabilistic_model: The probabilistic model to find optimal mean/stds from
+        :param search_space: The search space for the optimisation
+        """
+        # If we have a stack of models we have mean and std for each
+        if isinstance(probabilistic_model, ModelStack):
+            n_obj = 2 * len(probabilistic_model._models)
+        else:
+            n_obj = 2
+        super().__init__(
+            n_var=int(search_space.dimension),
+            n_obj=n_obj,
+            n_constr=0,
+            xl=np.array(search_space.lower),
+            xu=np.array(search_space.upper),
+        )
+        self.probabilistic_model = probabilistic_model
+
+    def _evaluate(
+        self, x: TensorType, out: dict[str, TensorType], *args: Any, **kwargs: Any
+    ) -> None:
+        mean, var = self.probabilistic_model.predict(x)
+        # Flip sign on std so that minimising is increasing std
+        std = -1 * np.sqrt(np.array(var))
+        out["F"] = np.concatenate([np.array(mean), std], axis=1)

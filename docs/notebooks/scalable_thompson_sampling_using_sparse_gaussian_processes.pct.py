@@ -24,14 +24,11 @@ tf.random.set_seed(1793)
 
 # %%
 import trieste
-from trieste.objectives import (
-    hartmann_6,
-    HARTMANN_6_MINIMUM,
-    HARTMANN_6_SEARCH_SPACE,
-)
+from trieste.objectives import Hartmann6
 from trieste.types import TensorType
 
-search_space = HARTMANN_6_SEARCH_SPACE
+hartmann_6 = Hartmann6.objective
+search_space = Hartmann6.search_space
 
 
 def noisy_hartmann_6(
@@ -60,7 +57,7 @@ gpflow_model = build_svgp(
     initial_data, search_space, likelihood_variance=0.01, num_inducing_points=50
 )
 
-inducing_point_selector = KMeansInducingPointSelector(search_space)
+inducing_point_selector = KMeansInducingPointSelector()
 
 model = SparseVariational(
     gpflow_model,
@@ -121,7 +118,7 @@ dataset = result.try_get_final_dataset()
 from trieste.experimental.plotting import plot_regret
 from matplotlib import pyplot as plt
 
-ground_truth_regret = hartmann_6(dataset.query_points) - HARTMANN_6_MINIMUM
+ground_truth_regret = hartmann_6(dataset.query_points) - Hartmann6.minimum
 best_found_truth_idx = tf.squeeze(tf.argmin(ground_truth_regret, axis=0))
 
 fig, ax = plt.subplots()

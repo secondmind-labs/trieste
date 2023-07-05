@@ -16,10 +16,8 @@ from __future__ import annotations
 import copy
 import itertools
 import operator
-from collections import Sequence
-from collections.abc import Container
 from functools import reduce
-from typing import Optional
+from typing import Container, Optional, Sequence
 
 import numpy.testing as npt
 import pytest
@@ -27,7 +25,15 @@ import tensorflow as tf
 from typing_extensions import Final
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, various_shapes
-from trieste.space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSpace
+from trieste.space import (
+    Box,
+    Constraint,
+    DiscreteSearchSpace,
+    LinearConstraint,
+    NonlinearConstraint,
+    SearchSpace,
+    TaggedProductSearchSpace,
+)
 from trieste.types import TensorType
 
 
@@ -47,7 +53,7 @@ class Integers(SearchSpace):
     def sample(self, num_samples: int, seed: Optional[int] = None) -> tf.Tensor:
         return tf.random.shuffle(tf.range(self.limit), seed=seed)[:num_samples]
 
-    def __contains__(self, point: tf.Tensor) -> bool | TensorType:
+    def _contains(self, point: tf.Tensor) -> bool | TensorType:
         tf.debugging.assert_integer(point)
         return 0 <= point < self.limit
 
@@ -68,11 +74,11 @@ class Integers(SearchSpace):
 def test_search_space___pow___raises_for_non_positive_exponent(exponent: int) -> None:
     space = Integers(3)
     with pytest.raises(tf.errors.InvalidArgumentError):
-        space ** exponent
+        space**exponent
 
 
 def test_search_space___pow___multiplies_correct_number_of_search_spaces() -> None:
-    assert (Integers(5) ** 7).limit == 5 ** 7
+    assert (Integers(5) ** 7).limit == 5**7
 
 
 def _points_in_2D_search_space() -> tf.Tensor:
@@ -92,7 +98,17 @@ def test_discrete_search_space_points() -> None:
 
 @pytest.mark.parametrize("point", list(_points_in_2D_search_space()))
 def test_discrete_search_space_contains_all_its_points(point: tf.Tensor) -> None:
-    assert point in DiscreteSearchSpace(_points_in_2D_search_space())
+    space = DiscreteSearchSpace(_points_in_2D_search_space())
+    assert point in space
+    assert space.contains(point)
+
+
+def test_discrete_search_space_contains_all_its_points_at_once() -> None:
+    points = _points_in_2D_search_space()
+    space = DiscreteSearchSpace(points)
+    contains = space.contains(points)
+    assert len(contains) == len(points)
+    assert tf.reduce_all(contains)
 
 
 @pytest.mark.parametrize(
@@ -105,7 +121,33 @@ def test_discrete_search_space_contains_all_its_points(point: tf.Tensor) -> None
     ],
 )
 def test_discrete_search_space_does_not_contain_other_points(point: tf.Tensor) -> None:
-    assert point not in DiscreteSearchSpace(_points_in_2D_search_space())
+    space = DiscreteSearchSpace(_points_in_2D_search_space())
+    assert point not in space
+    assert not space.contains(point)
+
+
+def test_discrete_search_space_contains_some_points_but_not_others() -> None:
+    points = tf.constant([[-1.0, -0.4], [-1.0, 0.4], [-1.0, 0.5]])
+    space = DiscreteSearchSpace(_points_in_2D_search_space())
+    contains = space.contains(points)
+    assert list(contains) == [False, True, False]
+
+
+@pytest.mark.parametrize(
+    "test_points, contains",
+    [
+        (tf.constant([[0.0, 0.0], [1.0, 1.0]]), tf.constant([True, False])),
+        (tf.constant([[[0.0, 0.0]]]), tf.constant([[True]])),
+    ],
+)
+def test_discrete_search_space_contains_handles_broadcast(
+    test_points: tf.Tensor, contains: tf.Tensor
+) -> None:
+    space = DiscreteSearchSpace(tf.constant([[0.0, 0.0]]))
+    tf.assert_equal(contains, space.contains(test_points))
+    # point in space raises (because python insists on a bool)
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        _ = test_points in space
 
 
 @pytest.mark.parametrize(
@@ -158,6 +200,8 @@ def test_discrete_search_space_contains_raises_for_invalid_shapes(
     space = DiscreteSearchSpace(points)
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         _ = test_point in space
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        _ = space.contains(test_point)
 
 
 @pytest.mark.parametrize("num_samples", [0, 1, 3, 5, 6, 10, 20])
@@ -349,7 +393,9 @@ def test_box_bounds_attributes() -> None:
     ],
 )
 def test_box_contains_point(point: tf.Tensor) -> None:
-    assert point in Box(tf.constant([-1.0, 0.0, -2.0]), tf.constant([2.0, 1.0, -0.5]))
+    box = Box(tf.constant([-1.0, 0.0, -2.0]), tf.constant([2.0, 1.0, -0.5]))
+    assert point in box
+    assert box.contains(point)
 
 
 @pytest.mark.parametrize(
@@ -361,12 +407,33 @@ def test_box_contains_point(point: tf.Tensor) -> None:
     ],
 )
 def test_box_does_not_contain_point(point: tf.Tensor) -> None:
-    assert point not in Box(tf.constant([-1.0, 0.0, -2.0]), tf.constant([2.0, 1.0, -0.5]))
+    box = Box(tf.constant([-1.0, 0.0, -2.0]), tf.constant([2.0, 1.0, -0.5]))
+    assert point not in box
+    assert not box.contains(point)
+
+
+@pytest.mark.parametrize(
+    "points, contains",
+    [
+        (tf.constant([[-1.0, 0.0, -2.0], [-1.1, 0.0, -2.0]]), tf.constant([True, False])),
+        (tf.constant([[[0.5, 0.5, -1.5]]]), tf.constant([[True]])),
+    ],
+)
+def test_box_contains_broadcasts(points: tf.Tensor, contains: tf.Tensor) -> None:
+    box = Box(tf.constant([-1.0, 0.0, -2.0]), tf.constant([2.0, 1.0, -0.5]))
+    npt.assert_array_equal(contains, box.contains(points))
+    # point in space raises (because python insists on a bool)
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        _ = points in box
 
 
 @pytest.mark.parametrize(
     "bound_shape, point_shape",
-    ((bs, ps) for bs, ps in _pairs_of_shapes() if bs != ps and len(bs) == 1 and bs != (0,)),
+    (
+        (bs, ps)
+        for bs, ps in _pairs_of_shapes()
+        if bs[-1:] != ps[-1:] and len(bs) == 1 and bs != (0,)
+    ),
 )
 def test_box_contains_raises_on_point_of_different_shape(
     bound_shape: ShapeLike,
@@ -377,6 +444,8 @@ def test_box_contains_raises_on_point_of_different_shape(
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         _ = point in box
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        _ = box.contains(point)
 
 
 def _assert_correct_number_of_unique_constrained_samples(
@@ -390,91 +459,158 @@ def _assert_correct_number_of_unique_constrained_samples(
     assert len(unique_samples) == len(samples)
 
 
+def _box_sampling_constraints() -> Sequence[LinearConstraint]:
+    return [LinearConstraint(A=tf.eye(3), lb=tf.zeros((3)) + 0.3, ub=tf.ones((3)) - 0.3)]
+
+
 @pytest.mark.parametrize("num_samples", [0, 1, 10])
-def test_box_sampling_returns_correct_shape(num_samples: int) -> None:
-    box = Box(tf.zeros((3,)), tf.ones((3,)))
-    samples = box.sample(num_samples)
+@pytest.mark.parametrize("constraints", [None, _box_sampling_constraints()])
+def test_box_sampling_returns_correct_shape(
+    num_samples: int,
+    constraints: Sequence[LinearConstraint],
+) -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)), constraints)
+    samples = box.sample_feasible(num_samples)
     _assert_correct_number_of_unique_constrained_samples(num_samples, box, samples)
 
 
 @pytest.mark.parametrize("num_samples", [0, 1, 10])
-def test_box_sobol_sampling_returns_correct_shape(num_samples: int) -> None:
-    box = Box(tf.zeros((3,)), tf.ones((3,)))
-    sobol_samples = box.sample_sobol(num_samples)
+@pytest.mark.parametrize("constraints", [None, _box_sampling_constraints()])
+def test_box_sobol_sampling_returns_correct_shape(
+    num_samples: int,
+    constraints: Sequence[LinearConstraint],
+) -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)), constraints)
+    sobol_samples = box.sample_sobol_feasible(num_samples)
     _assert_correct_number_of_unique_constrained_samples(num_samples, box, sobol_samples)
 
 
 @pytest.mark.parametrize("num_samples", [0, 1, 10])
-def test_box_halton_sampling_returns_correct_shape(num_samples: int) -> None:
-    box = Box(tf.zeros((3,)), tf.ones((3,)))
-    halton_samples = box.sample_halton(num_samples)
+@pytest.mark.parametrize("constraints", [None, _box_sampling_constraints()])
+def test_box_halton_sampling_returns_correct_shape(
+    num_samples: int,
+    constraints: Sequence[LinearConstraint],
+) -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)), constraints)
+    halton_samples = box.sample_halton_feasible(num_samples)
     _assert_correct_number_of_unique_constrained_samples(num_samples, box, halton_samples)
 
 
 @pytest.mark.parametrize("num_samples", [-1, -10])
-def test_box_sampling_raises_for_invalid_sample_size(num_samples: int) -> None:
+@pytest.mark.parametrize("constraints", [None, _box_sampling_constraints()])
+def test_box_sampling_raises_for_invalid_sample_size(
+    num_samples: int,
+    constraints: Sequence[LinearConstraint],
+) -> None:
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        box = Box(tf.zeros((3,)), tf.ones((3,)))
-        box.sample(num_samples)
+        box = Box(tf.zeros((3,)), tf.ones((3,)), constraints)
+        box.sample_feasible(num_samples)
 
 
 @pytest.mark.parametrize("num_samples", [-1, -10])
-def test_box_sobol_sampling_raises_for_invalid_sample_size(num_samples: int) -> None:
+@pytest.mark.parametrize("constraints", [None, _box_sampling_constraints()])
+def test_box_sobol_sampling_raises_for_invalid_sample_size(
+    num_samples: int,
+    constraints: Sequence[LinearConstraint],
+) -> None:
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        box = Box(tf.zeros((3,)), tf.ones((3,)))
-        box.sample_sobol(num_samples)
+        box = Box(tf.zeros((3,)), tf.ones((3,)), constraints)
+        box.sample_sobol_feasible(num_samples)
 
 
 @pytest.mark.parametrize("num_samples", [-1, -10])
-def test_box_halton_sampling_raises_for_invalid_sample_size(num_samples: int) -> None:
+@pytest.mark.parametrize("constraints", [None, _box_sampling_constraints()])
+def test_box_halton_sampling_raises_for_invalid_sample_size(
+    num_samples: int,
+    constraints: Sequence[LinearConstraint],
+) -> None:
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        box = Box(tf.zeros((3,)), tf.ones((3,)))
-        box.sample_halton(num_samples)
+        box = Box(tf.zeros((3,)), tf.ones((3,)), constraints)
+        box.sample_halton_feasible(num_samples)
 
 
 @pytest.mark.parametrize("seed", [1, 42, 123])
-def test_box_sampling_returns_same_points_for_same_seed(seed: int) -> None:
-    box = Box(tf.zeros((3,)), tf.ones((3,)))
-    random_samples_1 = box.sample(num_samples=100, seed=seed)
-    random_samples_2 = box.sample(num_samples=100, seed=seed)
+@pytest.mark.parametrize("constraints", [None, _box_sampling_constraints()])
+def test_box_sampling_returns_same_points_for_same_seed(
+    seed: int,
+    constraints: Sequence[LinearConstraint],
+) -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)), constraints)
+    random_samples_1 = box.sample_feasible(num_samples=100, seed=seed)
+    random_samples_2 = box.sample_feasible(num_samples=100, seed=seed)
     npt.assert_allclose(random_samples_1, random_samples_2)
 
 
 @pytest.mark.parametrize("skip", [1, 10, 100])
-def test_box_sobol_sampling_returns_same_points_for_same_skip(skip: int) -> None:
-    box = Box(tf.zeros((3,)), tf.ones((3,)))
-    sobol_samples_1 = box.sample_sobol(num_samples=100, skip=skip)
-    sobol_samples_2 = box.sample_sobol(num_samples=100, skip=skip)
+@pytest.mark.parametrize("constraints", [None, _box_sampling_constraints()])
+def test_box_sobol_sampling_returns_same_points_for_same_skip(
+    skip: int,
+    constraints: Sequence[LinearConstraint],
+) -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)), constraints)
+    sobol_samples_1 = box.sample_sobol_feasible(num_samples=100, skip=skip)
+    sobol_samples_2 = box.sample_sobol_feasible(num_samples=100, skip=skip)
     npt.assert_allclose(sobol_samples_1, sobol_samples_2)
 
 
 @pytest.mark.parametrize("seed", [1, 42, 123])
-def test_box_halton_sampling_returns_same_points_for_same_seed(seed: int) -> None:
-    box = Box(tf.zeros((3,)), tf.ones((3,)))
-    halton_samples_1 = box.sample_halton(num_samples=100, seed=seed)
-    halton_samples_2 = box.sample_halton(num_samples=100, seed=seed)
+@pytest.mark.parametrize("constraints", [None, _box_sampling_constraints()])
+def test_box_halton_sampling_returns_same_points_for_same_seed(
+    seed: int,
+    constraints: Sequence[LinearConstraint],
+) -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)), constraints)
+    halton_samples_1 = box.sample_halton_feasible(num_samples=100, seed=seed)
+    halton_samples_2 = box.sample_halton_feasible(num_samples=100, seed=seed)
     npt.assert_allclose(halton_samples_1, halton_samples_2)
 
 
-def test_box_sampling_returns_different_points_for_different_call() -> None:
-    box = Box(tf.zeros((3,)), tf.ones((3,)))
-    random_samples_1 = box.sample(num_samples=100)
-    random_samples_2 = box.sample(num_samples=100)
+@pytest.mark.parametrize("constraints", [None, _box_sampling_constraints()])
+def test_box_sampling_returns_different_points_for_different_call(
+    constraints: Sequence[LinearConstraint],
+) -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)), constraints)
+    random_samples_1 = box.sample_feasible(num_samples=100)
+    random_samples_2 = box.sample_feasible(num_samples=100)
     npt.assert_raises(AssertionError, npt.assert_allclose, random_samples_1, random_samples_2)
 
 
-def test_box_sobol_sampling_returns_different_points_for_different_call() -> None:
-    box = Box(tf.zeros((3,)), tf.ones((3,)))
-    sobol_samples_1 = box.sample_sobol(num_samples=100)
-    sobol_samples_2 = box.sample_sobol(num_samples=100)
+@pytest.mark.parametrize("constraints", [None, _box_sampling_constraints()])
+def test_box_sobol_sampling_returns_different_points_for_different_call(
+    constraints: Sequence[LinearConstraint],
+) -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)), constraints)
+    sobol_samples_1 = box.sample_sobol_feasible(num_samples=100)
+    sobol_samples_2 = box.sample_sobol_feasible(num_samples=100)
     npt.assert_raises(AssertionError, npt.assert_allclose, sobol_samples_1, sobol_samples_2)
 
 
-def test_box_halton_sampling_returns_different_points_for_different_call() -> None:
-    box = Box(tf.zeros((3,)), tf.ones((3,)))
-    halton_samples_1 = box.sample_halton(num_samples=100)
-    halton_samples_2 = box.sample_halton(num_samples=100)
+@pytest.mark.parametrize("constraints", [None, _box_sampling_constraints()])
+def test_box_halton_sampling_returns_different_points_for_different_call(
+    constraints: Sequence[LinearConstraint],
+) -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)), constraints)
+    halton_samples_1 = box.sample_halton_feasible(num_samples=100)
+    halton_samples_2 = box.sample_halton_feasible(num_samples=100)
     npt.assert_raises(AssertionError, npt.assert_allclose, halton_samples_1, halton_samples_2)
+
+
+def test_box_sampling_with_constraints_returns_feasible_points() -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)), _box_sampling_constraints())
+    samples = box.sample_feasible(num_samples=100)
+    assert all(box.is_feasible(samples))
+
+
+def test_box_sobol_sampling_with_constraints_returns_feasible_points() -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)), _box_sampling_constraints())
+    samples = box.sample_sobol_feasible(num_samples=100)
+    assert all(box.is_feasible(samples))
+
+
+def test_box_halton_sampling_with_constraints_returns_feasible_points() -> None:
+    box = Box(tf.zeros((3,)), tf.ones((3,)), _box_sampling_constraints())
+    samples = box.sample_halton_feasible(num_samples=100)
+    assert all(box.is_feasible(samples))
 
 
 @pytest.mark.parametrize("num_samples", [0, 1, 10])
@@ -736,6 +872,7 @@ def test_product_space_contains_point(point: tf.Tensor) -> None:
     space_B = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]], dtype=tf.float64))
     product_space = TaggedProductSearchSpace(spaces=[space_A, space_B])
     assert point in product_space
+    assert product_space.contains(point)
 
 
 @pytest.mark.parametrize(
@@ -753,6 +890,18 @@ def test_product_space_does_not_contain_point(point: tf.Tensor) -> None:
     space_B = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]], dtype=tf.float64))
     product_space = TaggedProductSearchSpace(spaces=[space_A, space_B])
     assert point not in product_space
+    assert not product_space.contains(point)
+
+
+def test_product_space_contains_broadcasts() -> None:
+    space_A = Box([-1.0, -2.0], [2.0, 3.0])
+    space_B = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]], dtype=tf.float64))
+    product_space = TaggedProductSearchSpace(spaces=[space_A, space_B])
+    points = tf.constant([[-1.1, 0.0, -0.5, 0.5], [-1.0, 0.0, -0.5, 0.5]], dtype=tf.float64)
+    tf.assert_equal(product_space.contains(points), [False, True])
+    # point in space raises (because python insists on a bool)
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        _ = points in product_space
 
 
 @pytest.mark.parametrize(
@@ -779,6 +928,8 @@ def test_product_space_contains_raises_on_point_of_different_shape(
         point = tf.zeros([wrong_input_shape])
         with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
             _ = point in space
+        with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+            _ = space.contains(point)
 
 
 @pytest.mark.parametrize("num_samples", [0, 1, 10])
@@ -899,6 +1050,12 @@ def test_product_space_handles_empty_spaces() -> None:
     npt.assert_array_equal(tag_C.subspace_tags, ["AA", "BB"])
 
 
+def _nlc_func(x: TensorType) -> TensorType:
+    c0 = x[..., 0] - tf.sin(x[..., 1])
+    c0 = tf.expand_dims(c0, axis=-1)
+    return c0
+
+
 @pytest.mark.parametrize(
     "a, b, equal",
     [
@@ -940,9 +1097,180 @@ def test_product_space_handles_empty_spaces() -> None:
             TaggedProductSearchSpace([Box([1], [2]), Box([-1], [1])], tags=["B", "A"]),
             False,
         ),
+        (
+            Box(
+                [-1],
+                [2],
+                [
+                    NonlinearConstraint(_nlc_func, -1.0, 0.0),
+                    LinearConstraint(A=tf.eye(2), lb=tf.zeros((2)), ub=tf.ones((2))),
+                ],
+            ),
+            Box(
+                [-1],
+                [2],
+                [
+                    NonlinearConstraint(_nlc_func, -1.0, 0.0),
+                    LinearConstraint(A=tf.eye(2), lb=tf.zeros((2)), ub=tf.ones((2))),
+                ],
+            ),
+            True,
+        ),
+        (
+            Box(
+                [-1],
+                [2],
+                [
+                    NonlinearConstraint(_nlc_func, -1.0, 0.0),
+                    LinearConstraint(A=tf.eye(2), lb=tf.zeros((2)), ub=tf.ones((2))),
+                ],
+            ),
+            Box(
+                [-1],
+                [2],
+                [
+                    NonlinearConstraint(_nlc_func, -1.0, 0.1),
+                    LinearConstraint(A=tf.eye(2), lb=tf.zeros((2)), ub=tf.ones((2))),
+                ],
+            ),
+            False,
+        ),
     ],
 )
 def test___eq___search_spaces(a: SearchSpace, b: SearchSpace, equal: bool) -> None:
     assert (a == b) is equal
     assert (a != b) is (not equal)
     assert (a == a) and (b == b)
+
+
+def test_linear_constraints_residual() -> None:
+    points = tf.constant([[-1.0, 0.4], [-1.0, 0.6], [0.0, 0.4]])
+    lc = LinearConstraint(
+        A=tf.constant([[-1.0, 1.0], [1.0, 0.0]]),
+        lb=tf.constant([-0.4, 0.5]),
+        ub=tf.constant([-0.2, 0.9]),
+    )
+    got = lc.residual(points)
+    expected = tf.constant([[1.8, -1.5, -1.6, 1.9], [2.0, -1.5, -1.8, 1.9], [0.8, -0.5, -0.6, 0.9]])
+    npt.assert_allclose(expected, got)
+
+
+def test_nonlinear_constraints_residual() -> None:
+    points = tf.constant([[-1.0, 0.4], [-1.0, 0.6], [0.0, 0.4]])
+    nlc = NonlinearConstraint(
+        lambda x: tf.expand_dims(x[..., 0] - tf.math.sin(x[..., 1]), -1), -1.4, 1.9
+    )
+    got = nlc.residual(points)
+    expected = tf.constant(
+        [[0.01058163, 3.28941832], [-0.1646425, 3.46464245], [1.01058163, 2.28941832]]
+    )
+    npt.assert_allclose(expected, got, atol=1e-7)
+
+
+@pytest.mark.parametrize(
+    "constraints, points",
+    [
+        (
+            [
+                LinearConstraint(
+                    A=tf.constant([[-1.0, 1.0], [1.0, 0.0], [0.0, 1.0]]),
+                    lb=tf.constant([-0.4, 0.15, 0.2]),
+                    ub=tf.constant([0.6, 0.9, 0.9]),
+                ),
+                NonlinearConstraint(_nlc_func, tf.constant(-1.0), tf.constant(0.0)),
+                LinearConstraint(A=tf.eye(2), lb=tf.zeros((2)), ub=tf.ones((2))),
+            ],
+            tf.constant([[0.820, 0.057], [0.3, 0.4], [0.582, 0.447], [0.15, 0.75]]),
+        ),
+    ],
+)
+def test_box_constraints_residuals_and_feasibility(
+    constraints: Sequence[Constraint], points: tf.Tensor
+) -> None:
+    space = Box(tf.constant([0.0, 0.0]), tf.constant([1.0, 1.0]), constraints)
+    got = space.constraints_residuals(points)
+    expected = tf.constant(
+        [
+            [
+                -0.363,
+                0.66999996,
+                -0.143,
+                1.363,
+                0.07999998,
+                0.843,
+                1.7630308,
+                -0.7630308,
+                0.82,
+                0.057,
+                0.18,
+                0.943,
+            ],
+            [
+                0.5,
+                0.15,
+                0.2,
+                0.5,
+                0.59999996,
+                0.49999997,
+                0.9105817,
+                0.08941832,
+                0.3,
+                0.4,
+                0.7,
+                0.6,
+            ],
+            [
+                0.265,
+                0.432,
+                0.247,
+                0.735,
+                0.31799996,
+                0.45299998,
+                1.1497378,
+                -0.14973778,
+                0.582,
+                0.447,
+                0.41799998,
+                0.553,
+            ],
+            [
+                1.0,
+                0.0,
+                0.55,
+                0.0,
+                0.75,
+                0.14999998,
+                0.46836126,
+                0.53163874,
+                0.15,
+                0.75,
+                0.85,
+                0.25,
+            ],
+        ]
+    )
+    print(got)
+
+    npt.assert_array_equal(expected, got)
+    npt.assert_array_equal(tf.constant([False, True, False, True]), space.is_feasible(points))
+
+
+def test_discrete_search_space_raises_if_has_constraints() -> None:
+    space = Box(
+        tf.zeros((2)),
+        tf.ones((2)),
+        [LinearConstraint(A=tf.eye(2), lb=tf.zeros((2)), ub=tf.ones((2)))],
+    )
+    with pytest.raises(NotImplementedError):
+        _ = space.discretize(2)
+
+
+def test_nonlinear_constraints_multioutput_raises() -> None:
+    points = tf.constant([[-1.0, 0.4], [-1.0, 0.6], [0.0, 0.4]])
+    nlc = NonlinearConstraint(
+        lambda x: tf.broadcast_to(tf.expand_dims(x[..., 0] - x[..., 1], -1), (x.shape[0], 2)),
+        -1.4,
+        1.9,
+    )
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        nlc.residual(points)

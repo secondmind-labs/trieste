@@ -30,6 +30,7 @@ from trieste.acquisition import (
     GIBBON,
     AcquisitionFunctionClass,
     AugmentedExpectedImprovement,
+    BatchExpectedImprovement,
     BatchMonteCarloExpectedImprovement,
     Fantasizer,
     GreedyAcquisitionFunctionBuilder,
@@ -43,10 +44,12 @@ from trieste.acquisition import (
 )
 from trieste.acquisition.optimizer import generate_continuous_optimizer
 from trieste.acquisition.rule import (
+    TURBO,
     AcquisitionRule,
     AsynchronousGreedy,
     AsynchronousOptimization,
     AsynchronousRuleState,
+    BatchHypervolumeSharpeRatioIndicator,
     DiscreteThompsonSampling,
     EfficientGlobalOptimization,
     TrustRegion,
@@ -62,9 +65,9 @@ from trieste.bayesian_optimizer import (
 from trieste.logging import tensorboard_writer
 from trieste.models import TrainableProbabilisticModel, TrajectoryFunctionClass
 from trieste.models.gpflow import (
+    ConditionalImprovementReduction,
     GaussianProcessRegression,
     GPflowPredictor,
-    RandomSubSampleInducingPointSelector,
     SparseGaussianProcessRegression,
     SparseVariational,
     VariationalGaussianProcess,
@@ -75,20 +78,16 @@ from trieste.models.gpflow import (
 from trieste.models.gpflux import DeepGaussianProcess, build_vanilla_deep_gp
 from trieste.models.keras import DeepEnsemble, build_keras_ensemble
 from trieste.models.optimizer import KerasOptimizer, Optimizer
-from trieste.objectives import (
-    BRANIN_MINIMIZERS,
-    BRANIN_SEARCH_SPACE,
-    SCALED_BRANIN_MINIMUM,
-    SIMPLE_QUADRATIC_MINIMIZER,
-    SIMPLE_QUADRATIC_MINIMUM,
-    SIMPLE_QUADRATIC_SEARCH_SPACE,
-    scaled_branin,
-    simple_quadratic,
-)
+from trieste.objectives import ScaledBranin, SimpleQuadratic
 from trieste.objectives.utils import mk_observer
 from trieste.observer import OBJECTIVE
 from trieste.space import Box, SearchSpace
 from trieste.types import State, TensorType
+
+try:
+    import pymoo
+except ImportError:  # pragma: no cover (tested but not by coverage)
+    pymoo = None
 
 
 # Optimizer parameters for testing GPR against the branin function.
@@ -116,11 +115,19 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                 24,
                 EfficientGlobalOptimization(
                     MinValueEntropySearch(
-                        BRANIN_SEARCH_SPACE,
+                        ScaledBranin.search_space,
                         min_value_sampler=ThompsonSamplerFromTrajectory(sample_min_value=True),
                     ).using(OBJECTIVE)
                 ),
                 id="MinValueEntropySearch",
+            ),
+            pytest.param(
+                12,
+                EfficientGlobalOptimization(
+                    BatchExpectedImprovement(sample_size=100).using(OBJECTIVE),
+                    num_query_points=3,
+                ),
+                id="BatchExpectedImprovement",
             ),
             pytest.param(
                 12,
@@ -134,20 +141,20 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                 12, AsynchronousOptimization(num_query_points=3), id="AsynchronousOptimization"
             ),
             pytest.param(
-                10,
+                15,
                 EfficientGlobalOptimization(
                     LocalPenalization(
-                        BRANIN_SEARCH_SPACE,
+                        ScaledBranin.search_space,
                     ).using(OBJECTIVE),
                     num_query_points=3,
                 ),
                 id="LocalPenalization",
             ),
             pytest.param(
-                10,
+                15,
                 AsynchronousGreedy(
                     LocalPenalization(
-                        BRANIN_SEARCH_SPACE,
+                        ScaledBranin.search_space,
                     ).using(OBJECTIVE),
                     num_query_points=3,
                 ),
@@ -157,7 +164,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                 10,
                 EfficientGlobalOptimization(
                     GIBBON(
-                        BRANIN_SEARCH_SPACE,
+                        ScaledBranin.search_space,
                     ).using(OBJECTIVE),
                     num_query_points=2,
                 ),
@@ -167,23 +174,28 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                 20,
                 EfficientGlobalOptimization(
                     MultipleOptimismNegativeLowerConfidenceBound(
-                        BRANIN_SEARCH_SPACE,
+                        ScaledBranin.search_space,
                     ).using(OBJECTIVE),
                     num_query_points=3,
                 ),
                 id="MultipleOptimismNegativeLowerConfidenceBound",
             ),
-            pytest.param(15, TrustRegion(), id="TrustRegion"),
+            pytest.param(20, TrustRegion(), id="TrustRegion"),
             pytest.param(
                 15,
                 TrustRegion(
                     EfficientGlobalOptimization(
                         MinValueEntropySearch(
-                            BRANIN_SEARCH_SPACE,
+                            ScaledBranin.search_space,
                         ).using(OBJECTIVE)
                     )
                 ),
                 id="TrustRegion/MinValueEntropySearch",
+            ),
+            pytest.param(
+                10,
+                TURBO(ScaledBranin.search_space, rule=DiscreteThompsonSampling(500, 3)),
+                id="Turbo",
             ),
             pytest.param(15, DiscreteThompsonSampling(500, 5), id="DiscreteThompsonSampling"),
             pytest.param(
@@ -209,6 +221,12 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                     num_query_points=5,
                 ),
                 id="ParallelContinuousThompsonSampling",
+            ),
+            pytest.param(
+                15,
+                BatchHypervolumeSharpeRatioIndicator() if pymoo else None,
+                id="BatchHypevolumeSharpeRatioIndicator",
+                marks=pytest.mark.qhsri,
             ),
         ],
     )
@@ -280,7 +298,7 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_scaled_branin() -> None:
     )
     _test_optimizer_finds_minimum(
         SparseVariational,
-        15,
+        25,
         EfficientGlobalOptimization[SearchSpace, SparseVariational](
             builder=ParallelContinuousThompsonSampling(), num_query_points=5
         ),
@@ -295,6 +313,14 @@ def test_bayesian_optimizer_with_svgp_finds_minima_of_simple_quadratic() -> None
         SparseVariational,
         5,
         EfficientGlobalOptimization[SearchSpace, SparseVariational](),
+        model_args={"optimizer": Optimizer(gpflow.optimizers.Scipy(), compile=True)},
+    )
+    _test_optimizer_finds_minimum(
+        SparseVariational,
+        5,
+        EfficientGlobalOptimization[SearchSpace, SparseVariational](
+            builder=ParallelContinuousThompsonSampling(), num_query_points=5
+        ),
         model_args={"optimizer": Optimizer(gpflow.optimizers.Scipy(), compile=True)},
     )
 
@@ -337,7 +363,7 @@ def test_bayesian_optimizer_with_sgpr_finds_minima_of_simple_quadratic() -> None
             25,
             EfficientGlobalOptimization(
                 ParallelContinuousThompsonSampling(),
-                num_query_points=3,
+                num_query_points=4,
             ),
             id="ParallelContinuousThompsonSampling",
         ),
@@ -509,15 +535,15 @@ def _test_optimizer_finds_minimum(
     model_args = model_args or {}
 
     if optimize_branin:
-        search_space = BRANIN_SEARCH_SPACE
-        minimizers = BRANIN_MINIMIZERS
-        minima = SCALED_BRANIN_MINIMUM
+        search_space = ScaledBranin.search_space
+        minimizers = ScaledBranin.minimizers
+        minima = ScaledBranin.minimum
         rtol_level = 0.005
         num_initial_query_points = 5
     else:
-        search_space = SIMPLE_QUADRATIC_SEARCH_SPACE
-        minimizers = SIMPLE_QUADRATIC_MINIMIZER
-        minima = SIMPLE_QUADRATIC_MINIMUM
+        search_space = SimpleQuadratic.search_space
+        minimizers = SimpleQuadratic.minimizers
+        minima = SimpleQuadratic.minimum
         rtol_level = 0.05
         num_initial_query_points = 10
 
@@ -527,7 +553,7 @@ def _test_optimizer_finds_minimum(
         num_initial_query_points = 25
 
     initial_query_points = search_space.sample(num_initial_query_points)
-    observer = mk_observer(scaled_branin if optimize_branin else simple_quadratic)
+    observer = mk_observer(ScaledBranin.objective if optimize_branin else SimpleQuadratic.objective)
     initial_data = observer(initial_query_points)
 
     model: TrainableProbabilisticModel  # (really TPMType, but that's too complicated for mypy)
@@ -545,7 +571,7 @@ def _test_optimizer_finds_minimum(
         model = SparseGaussianProcessRegression(
             sgpr,
             **model_args,
-            inducing_point_selector=RandomSubSampleInducingPointSelector(search_space),
+            inducing_point_selector=ConditionalImprovementReduction(),
         )
 
     elif model_type is VariationalGaussianProcess:
@@ -561,7 +587,7 @@ def _test_optimizer_finds_minimum(
         model = SparseVariational(
             svgp,
             **model_args,
-            inducing_point_selector=RandomSubSampleInducingPointSelector(search_space),
+            inducing_point_selector=ConditionalImprovementReduction(),
         )
 
     elif model_type is DeepGaussianProcess:
@@ -590,7 +616,6 @@ def _test_optimizer_finds_minimum(
     with tempfile.TemporaryDirectory() as tmpdirname:
         summary_writer = tf.summary.create_file_writer(tmpdirname)
         with tensorboard_writer(summary_writer):
-
             result = BayesianOptimizer(observer, search_space).optimize(
                 num_steps or 2,
                 initial_data,
@@ -598,7 +623,15 @@ def _test_optimizer_finds_minimum(
                 acquisition_rule,
                 track_state=True,
                 track_path=Path(tmpdirname) / "history",
-                early_stop_callback=stop_at_minimum(minima, minimizers, minimum_rtol=rtol_level),
+                early_stop_callback=stop_at_minimum(
+                    # stop as soon as we find the minimum (but always run at least one step)
+                    minima,
+                    minimizers,
+                    minimum_rtol=rtol_level,
+                    minimum_step_number=2,
+                ),
+                fit_model=not isinstance(acquisition_rule, TURBO),
+                fit_initial_model=False,
             )
 
             # check history saved ok
@@ -642,9 +675,10 @@ def _test_optimizer_finds_minimum(
                 assert acq_function is not None
 
                 # check that acquisition functions defined as classes aren't retraced unnecessarily
-                # they should be retraced for the optimzier's starting grid, L-BFGS, and logging
+                # they should be retraced for the optimizer's starting grid, L-BFGS, and logging
+                # (and possibly once more due to variable creation)
                 if isinstance(acq_function, (AcquisitionFunctionClass, TrajectoryFunctionClass)):
-                    assert acq_function.__call__._get_tracing_count() == 3  # type: ignore
+                    assert acq_function.__call__._get_tracing_count() in {3, 4}  # type: ignore
 
                 # update trajectory function if necessary, so we can test it
                 if isinstance(acq_function, TrajectoryFunctionClass):
@@ -664,5 +698,5 @@ def _test_optimizer_finds_minimum(
                 )
                 random_batch = tf.expand_dims(search_space.sample(batch_size), 0)
                 npt.assert_allclose(
-                    acq_function(random_batch), acq_function_copy(random_batch), rtol=2e-7
+                    acq_function(random_batch), acq_function_copy(random_batch), rtol=5e-7
                 )

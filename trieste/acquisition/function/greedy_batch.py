@@ -33,7 +33,7 @@ from ...models.interfaces import (
 )
 from ...observer import OBJECTIVE
 from ...space import SearchSpace
-from ...types import TensorType
+from ...types import Tag, TensorType
 from ..interface import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
@@ -73,9 +73,11 @@ class LocalPenalization(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel])
         self,
         search_space: SearchSpace,
         num_samples: int = 500,
-        penalizer: Callable[
-            [ProbabilisticModel, TensorType, TensorType, TensorType],
-            Union[PenalizationFunction, UpdatablePenalizationFunction],
+        penalizer: Optional[
+            Callable[
+                [ProbabilisticModel, TensorType, TensorType, TensorType],
+                Union[PenalizationFunction, UpdatablePenalizationFunction],
+            ]
         ] = None,
         base_acquisition_function_builder: ExpectedImprovement
         | MinValueEntropySearch[ProbabilisticModel]
@@ -305,7 +307,6 @@ class local_penalizer(UpdatablePenalizationFunction):
 
 
 class soft_local_penalizer(local_penalizer):
-
     r"""
     Return the soft local penalization function used for single-objective greedy batch Bayesian
     optimization in :cite:`Gonzalez:2016`.
@@ -451,15 +452,14 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
         self._base_acquisition_function: Optional[AcquisitionFunction] = None
         self._fantasized_acquisition: Optional[AcquisitionFunction] = None
         self._fantasized_models: Mapping[
-            str, _fantasized_model | ModelStack[SupportsPredictJoint]
+            Tag, _fantasized_model | ModelStack[SupportsPredictJoint]
         ] = {}
 
     def _update_base_acquisition_function(
         self,
-        models: Mapping[str, FantasizerModelOrStack],
-        datasets: Optional[Mapping[str, Dataset]],
+        models: Mapping[Tag, FantasizerModelOrStack],
+        datasets: Optional[Mapping[Tag, Dataset]],
     ) -> AcquisitionFunction:
-
         if self._base_acquisition_function is not None:
             self._base_acquisition_function = self._builder.update_acquisition_function(
                 self._base_acquisition_function, models, datasets
@@ -472,11 +472,10 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
 
     def _update_fantasized_acquisition_function(
         self,
-        models: Mapping[str, FantasizerModelOrStack],
-        datasets: Optional[Mapping[str, Dataset]],
+        models: Mapping[Tag, FantasizerModelOrStack],
+        datasets: Optional[Mapping[Tag, Dataset]],
         pending_points: TensorType,
     ) -> AcquisitionFunction:
-
         tf.debugging.assert_rank(pending_points, 2)
 
         fantasized_data = {
@@ -499,7 +498,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
                 for tag, model in models.items()
             }
             self._fantasized_acquisition = self._builder.prepare_acquisition_function(
-                cast(Dict[str, SupportsPredictJoint], self._fantasized_models), datasets
+                cast(Dict[Tag, SupportsPredictJoint], self._fantasized_models), datasets
             )
         else:
             for tag, model in self._fantasized_models.items():
@@ -516,7 +515,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
                     model.update_fantasized_data(fantasized_data[tag])
             self._builder.update_acquisition_function(
                 self._fantasized_acquisition,
-                cast(Dict[str, SupportsPredictJoint], self._fantasized_models),
+                cast(Dict[Tag, SupportsPredictJoint], self._fantasized_models),
                 datasets,
             )
 
@@ -524,8 +523,8 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
 
     def prepare_acquisition_function(
         self,
-        models: Mapping[str, FantasizerModelOrStack],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, FantasizerModelOrStack],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
         """
@@ -555,8 +554,8 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        models: Mapping[str, FantasizerModelOrStack],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, FantasizerModelOrStack],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
     ) -> AcquisitionFunction:
@@ -664,7 +663,7 @@ class _fantasized_model(SupportsPredictJoint, SupportsGetKernel, SupportsGetObse
             where ... are the leading dimensions of fantasized_data
         """
 
-        def fun(qp: TensorType) -> tuple[TensorType, TensorType]:
+        def fun(qp: TensorType) -> tuple[TensorType, TensorType]:  # pragma: no cover (tf.map_fn)
             fantasized_data = Dataset(
                 self._fantasized_query_points.value(), self._fantasized_observations.value()
             )
@@ -683,7 +682,7 @@ class _fantasized_model(SupportsPredictJoint, SupportsGetKernel, SupportsGetObse
             where ... are the leading dimensions of fantasized_data
         """
 
-        def fun(qp: TensorType) -> tuple[TensorType, TensorType]:
+        def fun(qp: TensorType) -> tuple[TensorType, TensorType]:  # pragma: no cover (tf.map_fn)
             fantasized_data = Dataset(
                 self._fantasized_query_points.value(), self._fantasized_observations.value()
             )
@@ -728,7 +727,7 @@ class _fantasized_model(SupportsPredictJoint, SupportsGetKernel, SupportsGetObse
             where ... are the leading dimensions of fantasized_data
         """
 
-        def fun(qp: TensorType) -> tuple[TensorType, TensorType]:
+        def fun(qp: TensorType) -> tuple[TensorType, TensorType]:  # pragma: no cover (tf.map_fn)
             fantasized_data = Dataset(
                 self._fantasized_query_points.value(), self._fantasized_observations.value()
             )

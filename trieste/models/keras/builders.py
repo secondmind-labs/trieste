@@ -37,7 +37,6 @@ def build_keras_ensemble(
     activation: Union[str, tf.keras.layers.Activation] = "relu",
     independent_normal: bool = False,
 ) -> KerasEnsemble:
-
     """
     Builds a simple ensemble of neural networks in Keras where each network has the same
     architecture: number of hidden layers, nodes in hidden layers and activation function.

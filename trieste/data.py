@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Optional, Sequence
 
 import tensorflow as tf
 
@@ -108,3 +109,95 @@ class Dataset:
         :return: A 2-tuple of the :attr:`query_points` and :attr:`observations`.
         """
         return self.query_points, self.observations
+
+
+def check_and_extract_fidelity_query_points(
+    query_points: TensorType, max_fidelity: Optional[int] = None
+) -> tuple[TensorType, TensorType]:
+    """Check whether the final column of a tensor is close enough to ints
+    to be reasonably considered to represent fidelities.
+
+    The final input column of multi-fidelity data should be a reference to
+    the fidelity of the query point. We cannot have mixed type tensors, but
+    we can check that thhe final column values are suitably close to integers.
+
+    :param query_points: Data to check final column of.
+    :raise: ValueError: If there are not enough columns to be multifidelity data
+    :raise InvalidArgumentError: If any value in the final column is far from an integer
+    :return: Query points without fidelity column
+        and the fidelities of each of the query points
+    """
+    # Check we have sufficient columns
+    if query_points.shape[-1] < 2:
+        raise ValueError(
+            "Query points do not have enough columns to be multifidelity,"
+            f" need at least 2, got {query_points.shape[1]}"
+        )
+    input_points = query_points[..., :-1]
+    fidelity_col = query_points[..., -1:]
+    # Check fidelity column values are close to ints
+    tf.debugging.assert_equal(
+        tf.round(fidelity_col),
+        fidelity_col,
+        message="Fidelity column should be float(int), but got a float that"
+        " was not close to an int",
+    )
+    # Check fidelity column values are non-negative
+
+    tf.debugging.assert_non_negative(fidelity_col, message="Fidelity must be non-negative")
+    if max_fidelity is not None:
+        max_input_fid = tf.reduce_max(fidelity_col)
+        max_fidelity_float = tf.cast(max_fidelity, dtype=query_points.dtype)
+        tf.debugging.assert_less_equal(
+            max_input_fid,
+            max_fidelity_float,
+            message=(
+                f"Model only supports fidelities up to {max_fidelity},"
+                f" but {max_input_fid} was passed"
+            ),
+        )
+
+    return input_points, fidelity_col
+
+
+def split_dataset_by_fidelity(dataset: Dataset, num_fidelities: int) -> Sequence[Dataset]:
+    """Split dataset into individual datasets without fidelity information
+
+    :param dataset: Dataset for which to split fidelities
+    :param num_fidlities: Number of fidelities in the problem (not just dataset)
+    :return: Ordered list of datasets with lowest fidelity at index 0 and highest at -1
+    """
+    if num_fidelities < 1:
+        raise ValueError(f"Data must have 1 or more fidelities, got {num_fidelities}")
+    datasets = [get_dataset_for_fidelity(dataset, fidelity) for fidelity in range(num_fidelities)]
+    return datasets
+
+
+def get_dataset_for_fidelity(dataset: Dataset, fidelity: int) -> Dataset:
+    """Get a dataset with only the specified fidelity of data in
+
+    :param dataset: The dataset from which to extract the single fidelity data
+    :param fidelity: The fidelity to extract the data for
+    :return: Dataset with a single fidelity and no fidelity column
+    """
+
+    input_points, fidelity_col = check_and_extract_fidelity_query_points(
+        dataset.query_points
+    )  # [..., D], [..., 1]
+    mask = fidelity_col == fidelity  # [..., ]
+    inds = tf.where(mask)[..., 0]  # [..., ]
+    inputs_for_fidelity = tf.gather(input_points, inds, axis=0)  # [..., D]
+    observations_for_fidelity = tf.gather(dataset.observations, inds, axis=0)  # [..., 1]
+    return Dataset(query_points=inputs_for_fidelity, observations=observations_for_fidelity)
+
+
+def add_fidelity_column(query_points: TensorType, fidelity: int) -> TensorType:
+    """Add fidelity column to query_points without fidelity data
+
+    :param query_points: query points without fidelity to add fidelity column to
+    :param fidelity: fidelity to populate fidelity column with
+    :return: TensorType of query points with fidelity column added
+    """
+    fidelity_col = tf.ones((tf.shape(query_points)[-2], 1), dtype=query_points.dtype) * fidelity
+    query_points_for_fidelity = tf.concat([query_points, fidelity_col], axis=-1)
+    return query_points_for_fidelity

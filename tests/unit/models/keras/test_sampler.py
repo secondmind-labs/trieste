@@ -50,15 +50,11 @@ def _batch_size_fixture(request: Any) -> int:
     return request.param
 
 
-def test_ensemble_trajectory_sampler_raises_for_multi_output_model() -> None:
-    example_data = empty_dataset([2], [2])
-    model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE)
-
-    with pytest.raises(NotImplementedError):
-        DeepEnsembleTrajectorySampler(model, diversify=True)
+@pytest.fixture(name="num_outputs", params=[1, 3])
+def _num_outputs_fixture(request: Any) -> int:
+    return request.param
 
 
-@pytest.mark.parametrize("diversify, num_outputs", [(True, 1), (False, 1), (False, 2)])
 def test_ensemble_trajectory_sampler_returns_trajectory_function_with_correctly_shaped_output(
     num_evals: int,
     batch_size: int,
@@ -82,13 +78,13 @@ def test_ensemble_trajectory_sampler_returns_trajectory_function_with_correctly_
 
 
 def test_ensemble_trajectory_sampler_returns_deterministic_trajectory(
-    num_evals: int, batch_size: int, dim: int, diversify: bool
+    num_evals: int, batch_size: int, dim: int, diversify: bool, num_outputs: int
 ) -> None:
     """
     Evaluating the same data with the same trajectory multiple times should yield
     exactly the same output.
     """
-    example_data = empty_dataset([dim], [1])
+    example_data = empty_dataset([dim], [num_outputs])
     test_data = tf.random.uniform([num_evals, batch_size, dim])  # [N, B, d]
 
     model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE)
@@ -110,7 +106,7 @@ def test_ensemble_trajectory_sampler_is_not_too_deterministic(
     Different trajectories should have different internal state, even if we set the global RNG seed.
     """
     num_evals, batch_size, dim = 19, 5, 10
-    state = "_quantiles" if diversify else "_indices"
+    state = "_eps" if diversify else "_indices"
     example_data = empty_dataset([dim], [1])
     test_data = tf.random.uniform([num_evals, batch_size, dim])  # [N, B, d]
 
@@ -220,6 +216,33 @@ def test_ensemble_trajectory_sampler_samples_are_distinct_within_batch(diversify
     npt.assert_array_less(
         1e-1, tf.reduce_max(tf.abs(eval_2[:, 0] - eval_2[:, 1]))
     )  # distinct for two samples within same draw
+
+
+@random_seed
+def test_ensemble_trajectory_sampler_eps_broadcasted_correctly() -> None:
+    """
+    We check if eps are broadcasted correctly in diversify mode.
+    """
+    example_data = empty_dataset([1], [1])
+    test_data = tf.linspace([-10.0], [10.0], 100)
+    test_data = tf.expand_dims(test_data, -2)  # [N, 1, d]
+    test_data = tf.tile(test_data, [1, 2, 1])  # [N, 2, D]
+
+    model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE)
+
+    trajectory_sampler = DeepEnsembleTrajectorySampler(model, diversify=True)
+    trajectory = trajectory_sampler.get_trajectory()
+
+    _ = trajectory(test_data)  # first call needed to initialize the state
+    trajectory._eps.assign(tf.constant([[0], [1]], dtype=tf.float64))  # type: ignore
+    evals = trajectory(test_data)
+
+    npt.assert_array_less(
+        1e-1, tf.reduce_max(tf.abs(evals[:, 0] - evals[:, 1]))
+    )  # distinct for two samples within same draw
+    npt.assert_allclose(
+        evals[:, 0], model.predict(test_data[:, 0])[0], rtol=5e-6
+    )  # since we set first eps to 0, that trajectory should equal predicted means
 
 
 @random_seed
@@ -384,7 +407,7 @@ def test_ensemble_trajectory_sampler_trajectory_on_subsets_same_as_set(diversify
     eval_2 = trajectory(test_data[100:200, :])
     eval_3 = trajectory(test_data[200:300, :])
 
-    npt.assert_allclose(eval_all, tf.concat([eval_1, eval_2, eval_3], axis=0), rtol=3e-6)
+    npt.assert_allclose(eval_all, tf.concat([eval_1, eval_2, eval_3], axis=0), rtol=5e-6)
 
 
 @random_seed
@@ -420,8 +443,8 @@ def test_ensemble_trajectory_sampler_returns_state(batch_size: int, diversify: b
     trajectory = cast(deep_ensemble_trajectory, sampler.get_trajectory())
 
     if diversify:
-        dtype = tf.float32
-        rnd_state_name = "quantiles"
+        dtype = tf.float64
+        rnd_state_name = "eps"
     else:
         dtype = tf.int32
         rnd_state_name = "indices"

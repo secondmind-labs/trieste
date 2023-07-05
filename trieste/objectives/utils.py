@@ -24,7 +24,7 @@ from typing import Optional, overload
 
 from ..data import Dataset
 from ..observer import MultiObserver, Observer, SingleObserver
-from ..types import TensorType
+from ..types import Tag, TensorType
 
 
 @overload
@@ -33,12 +33,12 @@ def mk_observer(objective: Callable[[TensorType], TensorType]) -> SingleObserver
 
 
 @overload
-def mk_observer(objective: Callable[[TensorType], TensorType], key: str) -> MultiObserver:
+def mk_observer(objective: Callable[[TensorType], TensorType], key: Tag) -> MultiObserver:
     ...
 
 
 def mk_observer(
-    objective: Callable[[TensorType], TensorType], key: Optional[str] = None
+    objective: Callable[[TensorType], TensorType], key: Optional[Tag] = None
 ) -> Observer:
     """
     :param objective: An objective function designed to be used with a single data set and model.
@@ -49,3 +49,11 @@ def mk_observer(
         return lambda qp: {key: Dataset(qp, objective(qp))}
     else:
         return lambda qp: Dataset(qp, objective(qp))
+
+
+def mk_multi_observer(**kwargs: Callable[[TensorType], TensorType]) -> MultiObserver:
+    """
+    :param kwargs: Observation functions.
+    :return: An multi-observer returning the data from ``kwargs``.
+    """
+    return lambda qp: {key: Dataset(qp, objective(qp)) for key, objective in kwargs.items()}

@@ -21,7 +21,7 @@ import trieste
 
 search_space = trieste.space.Box([0, 0], [1, 1])
 observer = trieste.objectives.utils.mk_observer(
-    trieste.objectives.scaled_branin
+    trieste.objectives.ScaledBranin.objective
 )
 initial_query_points = search_space.sample_sobol(5)
 initial_data = observer(initial_query_points)
@@ -88,6 +88,7 @@ trieste.logging.set_summary_filter(lambda name: True)  # enable all summaries
 #
 # Where trieste's monitoring is insufficient, you can also add your own logs. To log additional model parameters, you can define your own model subclass and override the `log` method. You can use the various `tf.summary` method wrappers in `trieste.logging` to ensure that your logs are filtered correctly. For example, the following GPR subclass also logs the average lengthscale at each step. Note that `dataset` argument is required, but here it is unused - one could use it to log additional data-based model summary statistics.
 
+
 # %%
 class GPRExtraLogging(trieste.models.gpflow.GaussianProcessRegression):
     def log(self, dataset):
@@ -123,6 +124,7 @@ result, history = bo.optimize(num_steps, initial_data, model).astuple()
 #
 #
 # Similarly, it is possible to log additional metrics connected to the acquisition rule by overriding rule's `acquire` method (or any other method used while evaluating the rule). For example, the following class also logs the mean coordinates of the selected points:
+
 
 # %%
 class EGOExtraLogging(trieste.acquisition.rule.EfficientGlobalOptimization):

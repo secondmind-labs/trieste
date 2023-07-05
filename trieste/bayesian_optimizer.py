@@ -20,10 +20,12 @@ from __future__ import annotations
 
 import copy
 import traceback
+import warnings
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import (
+    Any,
     Callable,
     ClassVar,
     Dict,
@@ -52,12 +54,12 @@ except ModuleNotFoundError:
     sns = None
 
 from . import logging
-from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
+from .acquisition.rule import TURBO, AcquisitionRule, EfficientGlobalOptimization
 from .data import Dataset
-from .models import TrainableProbabilisticModel
+from .models import SupportsCovarianceWithTopFidelity, TrainableProbabilisticModel
 from .observer import OBJECTIVE, Observer
 from .space import SearchSpace
-from .types import State, TensorType
+from .types import State, Tag, TensorType
 from .utils import Err, Ok, Result, Timer
 
 StateType = TypeVar("StateType")
@@ -72,7 +74,7 @@ TrainableProbabilisticModelType = TypeVar(
 """ Contravariant type variable bound to :class:`TrainableProbabilisticModel`. """
 
 EarlyStopCallback = Callable[
-    [Mapping[str, Dataset], Mapping[str, TrainableProbabilisticModelType], Optional[StateType]],
+    [Mapping[Tag, Dataset], Mapping[Tag, TrainableProbabilisticModelType], Optional[StateType]],
     bool,
 ]
 """ Early stop callback type, generic in the model and state types. """
@@ -82,10 +84,10 @@ EarlyStopCallback = Callable[
 class Record(Generic[StateType]):
     """Container to record the state of each step of the optimization process."""
 
-    datasets: Mapping[str, Dataset]
+    datasets: Mapping[Tag, Dataset]
     """ The known data from the observer. """
 
-    models: Mapping[str, TrainableProbabilisticModel]
+    models: Mapping[Tag, TrainableProbabilisticModel]
     """ The models over the :attr:`datasets`. """
 
     acquisition_state: StateType | None
@@ -133,12 +135,12 @@ class FrozenRecord(Generic[StateType]):
             return dill.load(f)
 
     @property
-    def datasets(self) -> Mapping[str, Dataset]:
+    def datasets(self) -> Mapping[Tag, Dataset]:
         """The known data from the observer."""
         return self.load().datasets
 
     @property
-    def models(self) -> Mapping[str, TrainableProbabilisticModel]:
+    def models(self) -> Mapping[Tag, TrainableProbabilisticModel]:
         """The models over the :attr:`datasets`."""
         return self.load().models
 
@@ -196,7 +198,17 @@ class OptimizationResult(Generic[StateType]):
         """
         return self.final_result, self.history
 
-    def try_get_final_datasets(self) -> Mapping[str, Dataset]:
+    @property
+    def is_ok(self) -> bool:
+        """`True` if the final result contains a :class:`Record`."""
+        return self.final_result.is_ok
+
+    @property
+    def is_err(self) -> bool:
+        """`True` if the final result contains an exception."""
+        return self.final_result.is_err
+
+    def try_get_final_datasets(self) -> Mapping[Tag, Dataset]:
         """
         Convenience method to attempt to get the final data.
 
@@ -229,10 +241,17 @@ class OptimizationResult(Generic[StateType]):
         dataset = self.try_get_final_dataset()
         if tf.rank(dataset.observations) != 2 or dataset.observations.shape[1] != 1:
             raise ValueError("Expected a single objective")
+        if tf.reduce_any(
+            [
+                isinstance(model, SupportsCovarianceWithTopFidelity)
+                for model in self.try_get_final_models()
+            ]
+        ):
+            raise ValueError("Expected single fidelity models")
         arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
         return dataset.query_points[arg_min_idx], dataset.observations[arg_min_idx], arg_min_idx
 
-    def try_get_final_models(self) -> Mapping[str, TrainableProbabilisticModel]:
+    def try_get_final_models(self) -> Mapping[Tag, TrainableProbabilisticModel]:
         """
         Convenience method to attempt to get the final models.
 
@@ -314,15 +333,17 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
     def optimize(
         self,
         num_steps: int,
-        datasets: Mapping[str, Dataset],
-        models: Mapping[str, TrainableProbabilisticModel],
+        datasets: Mapping[Tag, Dataset],
+        models: Mapping[Tag, TrainableProbabilisticModel],
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
+        fit_model: bool = True,
         fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModel, object]
         ] = None,
+        start_step: int = 0,
     ) -> OptimizationResult[None]:
         ...
 
@@ -330,18 +351,20 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
     def optimize(
         self,
         num_steps: int,
-        datasets: Mapping[str, Dataset],
-        models: Mapping[str, TrainableProbabilisticModelType],
+        datasets: Mapping[Tag, Dataset],
+        models: Mapping[Tag, TrainableProbabilisticModelType],
         acquisition_rule: AcquisitionRule[
             TensorType, SearchSpaceType, TrainableProbabilisticModelType
         ],
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
+        fit_model: bool = True,
         fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, object]
         ] = None,
+        start_step: int = 0,
         # this should really be OptimizationResult[None], but tf.Tensor is untyped so the type
         # checker can't differentiate between TensorType and State[S | None, TensorType], and
         # the return types clash. object is close enough to None that object will do.
@@ -352,18 +375,20 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
     def optimize(
         self,
         num_steps: int,
-        datasets: Mapping[str, Dataset],
-        models: Mapping[str, TrainableProbabilisticModelType],
+        datasets: Mapping[Tag, Dataset],
+        models: Mapping[Tag, TrainableProbabilisticModelType],
         acquisition_rule: AcquisitionRule[
             TensorType, SearchSpaceType, TrainableProbabilisticModelType
         ],
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
+        fit_model: bool = True,
         fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, object]
         ] = None,
+        start_step: int = 0,
     ) -> OptimizationResult[object]:
         ...
 
@@ -371,8 +396,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
     def optimize(
         self,
         num_steps: int,
-        datasets: Mapping[str, Dataset],
-        models: Mapping[str, TrainableProbabilisticModelType],
+        datasets: Mapping[Tag, Dataset],
+        models: Mapping[Tag, TrainableProbabilisticModelType],
         acquisition_rule: AcquisitionRule[
             State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
         ],
@@ -380,10 +405,12 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
+        fit_model: bool = True,
         fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
+        start_step: int = 0,
     ) -> OptimizationResult[StateType]:
         ...
 
@@ -391,8 +418,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
     def optimize(
         self,
         num_steps: int,
-        datasets: Mapping[str, Dataset],
-        models: Mapping[str, TrainableProbabilisticModelType],
+        datasets: Mapping[Tag, Dataset],
+        models: Mapping[Tag, TrainableProbabilisticModelType],
         acquisition_rule: AcquisitionRule[
             State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
         ],
@@ -400,10 +427,12 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
+        fit_model: bool = True,
         fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
+        start_step: int = 0,
     ) -> OptimizationResult[StateType]:
         ...
 
@@ -416,10 +445,12 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
+        fit_model: bool = True,
         fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModel, object]
         ] = None,
+        start_step: int = 0,
     ) -> OptimizationResult[None]:
         ...
 
@@ -435,10 +466,12 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
+        fit_model: bool = True,
         fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, object]
         ] = None,
+        start_step: int = 0,
     ) -> OptimizationResult[object]:
         ...
 
@@ -454,10 +487,12 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
+        fit_model: bool = True,
         fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, object]
         ] = None,
+        start_step: int = 0,
     ) -> OptimizationResult[object]:
         ...
 
@@ -474,10 +509,12 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
+        fit_model: bool = True,
         fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
+        start_step: int = 0,
     ) -> OptimizationResult[StateType]:
         ...
 
@@ -494,18 +531,20 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
+        fit_model: bool = True,
         fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
+        start_step: int = 0,
     ) -> OptimizationResult[StateType]:
         ...
 
     def optimize(
         self,
         num_steps: int,
-        datasets: Mapping[str, Dataset] | Dataset,
-        models: Mapping[str, TrainableProbabilisticModelType] | TrainableProbabilisticModelType,
+        datasets: Mapping[Tag, Dataset] | Dataset,
+        models: Mapping[Tag, TrainableProbabilisticModelType] | TrainableProbabilisticModelType,
         acquisition_rule: AcquisitionRule[
             TensorType | State[StateType | None, TensorType],
             SearchSpaceType,
@@ -516,10 +555,12 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
+        fit_model: bool = True,
         fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
+        start_step: int = 0,
     ) -> OptimizationResult[StateType] | OptimizationResult[None]:
         """
         Attempt to find the minimizer of the ``observer`` in the ``search_space`` (both specified at
@@ -561,12 +602,16 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             step. Models and acquisition state are copied using `copy.deepcopy`.
         :param track_path: If set, the optimization state is saved to disk at this path,
             rather than being copied in memory.
-        :param fit_initial_model: If `False`, this method assumes that the initial models have
-            already been optimized on the datasets and so do not require optimization before the
-            first optimization step.
+        :param fit_model: If `False` then we never fit the model during BO (e.g. if we
+            are using a rule that doesn't rely on the models and don't want to waste computation).
+        :param fit_initial_model: If `False` then we assume that the initial models have
+            already been optimized on the datasets and so do not require optimization before
+            the first optimization step.
         :param early_stop_callback: An optional callback that is evaluated with the current
             datasets, models and optimization state before every optimization step. If this
             returns `True` then the optimization loop is terminated early.
+        :param start_step: The step number to start with. This number is removed from ``num_steps``
+            and is useful for restarting previous computations.
         :return: An :class:`OptimizationResult`. The :attr:`final_result` element contains either
             the final optimization data, models and acquisition state, or, if an exception was
             raised while executing the optimization loop, it contains the exception raised. In
@@ -585,8 +630,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             models = {OBJECTIVE: models}  # type: ignore[dict-item]
 
         # reassure the type checker that everything is tagged
-        datasets = cast(Dict[str, Dataset], datasets)
-        models = cast(Dict[str, TrainableProbabilisticModelType], models)
+        datasets = cast(Dict[Tag, Dataset], datasets)
+        models = cast(Dict[Tag, TrainableProbabilisticModelType], models)
 
         if num_steps < 0:
             raise ValueError(f"num_steps must be at least 0, got {num_steps}")
@@ -599,6 +644,15 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
         if not datasets:
             raise ValueError("dicts of datasets and models must be populated.")
+
+        if fit_model and isinstance(acquisition_rule, TURBO):
+            warnings.warn(
+                """
+                Are you sure you want to keep fitting the global model even though you
+                are using TURBO which has only local models? This is a waste of computation.
+                Consider setting 'fit_model'='False'.
+                """
+            )
 
         if acquisition_rule is None:
             if datasets.keys() != {OBJECTIVE}:
@@ -613,16 +667,21 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
         history: list[FrozenRecord[StateType] | Record[StateType]] = []
         query_plot_dfs: dict[int, pd.DataFrame] = {}
-        observation_plot_dfs: dict[str, pd.DataFrame] = {}
+        observation_plot_dfs = observation_plot_init(datasets)
 
         summary_writer = logging.get_tensorboard_writer()
         if summary_writer:
             with summary_writer.as_default(step=0):
-                self._write_summary_init(
-                    acquisition_rule, datasets, models, num_steps, observation_plot_dfs
+                write_summary_init(
+                    self._observer,
+                    self._search_space,
+                    acquisition_rule,
+                    datasets,
+                    models,
+                    num_steps,
                 )
 
-        for step in range(1, num_steps + 1):
+        for step in range(start_step + 1, num_steps + 1):
             logging.set_step_number(step)
 
             if early_stop_callback and early_stop_callback(datasets, models, acquisition_state):
@@ -630,7 +689,6 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                 break
 
             try:
-
                 if track_state:
                     try:
                         if track_path is None:
@@ -656,7 +714,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                             "will be available."
                         ) from e
 
-                if step == 1 and fit_initial_model:
+                if step == 1 and fit_model and fit_initial_model:
                     with Timer() as initial_model_fitting_timer:
                         for tag, model in models.items():
                             dataset = datasets[tag]
@@ -665,7 +723,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     if summary_writer:
                         logging.set_step_number(0)
                         with summary_writer.as_default(step=0):
-                            self._write_summary_initial_model_fit(
+                            write_summary_initial_model_fit(
                                 datasets, models, initial_model_fitting_timer
                             )
                         logging.set_step_number(step)
@@ -689,26 +747,31 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     )
 
                     datasets = {tag: datasets[tag] + tagged_output[tag] for tag in tagged_output}
-
                     with Timer() as model_fitting_timer:
-                        for tag, model in models.items():
-                            dataset = datasets[tag]
-                            model.update(dataset)
-                            model.optimize(dataset)
+                        if fit_model:
+                            for tag, model in models.items():
+                                dataset = datasets[tag]
+                                model.update(dataset)
+                                model.optimize(dataset)
 
                 if summary_writer:
                     with summary_writer.as_default(step=step):
-                        self._write_summary_step(
+                        write_summary_observations(
                             datasets,
                             models,
-                            query_points,
                             tagged_output,
                             model_fitting_timer,
-                            query_point_generation_timer,
-                            total_step_wallclock_timer,
                             observation_plot_dfs,
+                        )
+                        write_summary_query_points(
+                            datasets,
+                            models,
+                            self._search_space,
+                            query_points,
+                            query_point_generation_timer,
                             query_plot_dfs,
                         )
+                        logging.scalar("wallclock/step", total_step_wallclock_timer.time)
 
             except Exception as error:  # pylint: disable=broad-except
                 tf.print(
@@ -740,32 +803,98 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             result.save_result(Path(track_path) / OptimizationResult.RESULTS_FILENAME)
         return result
 
-    def _write_summary_init(
+    def continue_optimization(
         self,
-        acquisition_rule: AcquisitionRule[
-            TensorType | State[StateType | None, TensorType],
-            SearchSpaceType,
-            TrainableProbabilisticModelType,
-        ],
-        datasets: Mapping[str, Dataset],
-        models: Mapping[str, TrainableProbabilisticModel],
         num_steps: int,
-        observation_plot_dfs: MutableMapping[str, pd.DataFrame],
-    ) -> None:
-        """Write initial TensorBoard summary (and set up any initial monitoring state)."""
-        devices = tf.config.list_logical_devices()
-        logging.text(
-            "metadata",
-            f"Observer: `{self._observer}`\n\n"
-            f"Number of steps: `{num_steps}`\n\n"
-            f"Number of initial points: "
-            f"`{dict((k, len(v)) for k, v in datasets.items())}`\n\n"
-            f"Search Space: `{self._search_space}`\n\n"
-            f"Acquisition rule:\n\n    {acquisition_rule}\n\n"
-            f"Models:\n\n    {models}\n\n"
-            f"Available devices: `{dict(Counter(d.device_type for d in devices))}`",
-        )
+        optimization_result: OptimizationResult[StateType],
+        *args: Any,
+        **kwargs: Any,
+    ) -> OptimizationResult[StateType]:
+        """
+        Continue a previous optimization that either failed, was terminated early, or which
+        you simply wish to run for more steps.
 
+        :param num_steps: The total number of optimization steps, including any that have already
+            been run.
+        :param optimization_result: The optimization result from which to extract the datasets,
+            models and acquisition state. If the result was successful then the final result is
+            used; otherwise the last record in the history is used. The size of the history
+            is used to determine how many more steps are required.
+        :param args: Any more positional arguments to pass on to optimize.
+        :param kwargs: Any more keyword arguments to pass on to optimize.
+        :return: An :class:`OptimizationResult`. The history will contain both the history from
+            `optimization_result` (including the `final_result` if that was successful) and
+            any new records.
+        """
+        history: list[Record[StateType] | FrozenRecord[StateType]] = []
+        history.extend(optimization_result.history)
+        if optimization_result.final_result.is_ok:
+            history.append(optimization_result.final_result.unwrap())
+        if not history:
+            raise ValueError("Cannot continue from empty optimization result")
+
+        result = self.optimize(  # type: ignore[call-overload]
+            num_steps,
+            history[-1].datasets,
+            history[-1].models,
+            *args,
+            acquisition_state=history[-1].acquisition_state,
+            **kwargs,
+            start_step=len(history) - 1,
+        )
+        result.history[:1] = history
+        return result
+
+
+def write_summary_init(
+    observer: Observer,
+    search_space: SearchSpace,
+    acquisition_rule: AcquisitionRule[
+        TensorType | State[StateType | None, TensorType],
+        SearchSpaceType,
+        TrainableProbabilisticModelType,
+    ],
+    datasets: Mapping[Tag, Dataset],
+    models: Mapping[Tag, TrainableProbabilisticModel],
+    num_steps: int,
+) -> None:
+    """Write initial BO loop TensorBoard summary."""
+    devices = tf.config.list_logical_devices()
+    logging.text(
+        "metadata",
+        f"Observer: `{observer}`\n\n"
+        f"Number of steps: `{num_steps}`\n\n"
+        f"Number of initial points: "
+        f"`{dict((k, len(v)) for k, v in datasets.items())}`\n\n"
+        f"Search Space: `{search_space}`\n\n"
+        f"Acquisition rule:\n\n    {acquisition_rule}\n\n"
+        f"Models:\n\n    {models}\n\n"
+        f"Available devices: `{dict(Counter(d.device_type for d in devices))}`",
+    )
+
+
+def write_summary_initial_model_fit(
+    datasets: Mapping[Tag, Dataset],
+    models: Mapping[Tag, TrainableProbabilisticModel],
+    model_fitting_timer: Timer,
+) -> None:
+    """Write TensorBoard summary for the model fitting to the initial data."""
+    for tag, model in models.items():
+        with tf.name_scope(f"{tag}.model"):
+            model.log(datasets[tag])
+    logging.scalar(
+        "wallclock/model_fitting",
+        model_fitting_timer.time,
+    )
+
+
+def observation_plot_init(
+    datasets: Mapping[Tag, Dataset],
+) -> dict[Tag, pd.DataFrame]:
+    """Initialise query point pairplot dataframes with initial observations.
+    Also logs warnings if pairplot dependencies are not installed."""
+    observation_plot_dfs: dict[Tag, pd.DataFrame] = {}
+    if logging.get_tensorboard_writer():
         seaborn_warning = False
         if logging.include_summary("query_points/_pairplot") and not (pd and sns):
             seaborn_warning = True
@@ -788,152 +917,155 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                 "\nOne way to do this is to install 'trieste[plotting]'.",
                 output_stream=absl.logging.INFO,
             )
+    return observation_plot_dfs
 
-    def _write_summary_initial_model_fit(
-        self,
-        datasets: Mapping[str, Dataset],
-        models: Mapping[str, TrainableProbabilisticModel],
-        model_fitting_timer: Timer,
-    ) -> None:
-        """Write TensorBoard summary for the model fitting to the initial data."""
-        for tag, model in models.items():
-            with tf.name_scope(f"{tag}.model"):
-                model.log(datasets[tag])
-        logging.scalar(
-            "wallclock/model_fitting",
-            model_fitting_timer.time,
-        )
 
-    def _write_summary_step(
-        self,
-        datasets: Mapping[str, Dataset],
-        models: Mapping[str, TrainableProbabilisticModel],
-        query_points: TensorType,
-        tagged_output: Mapping[str, TensorType],
-        model_fitting_timer: Timer,
-        query_point_generation_timer: Timer,
-        total_step_wallclock_timer: Timer,
-        observation_plot_dfs: MutableMapping[str, pd.DataFrame],
-        query_plot_dfs: MutableMapping[int, pd.DataFrame],
-    ) -> None:
-        """Write TensorBoard summary for the current step."""
-        for tag in datasets:
+def write_summary_observations(
+    datasets: Mapping[Tag, Dataset],
+    models: Mapping[Tag, TrainableProbabilisticModel],
+    tagged_output: Mapping[Tag, TensorType],
+    model_fitting_timer: Timer,
+    observation_plot_dfs: MutableMapping[Tag, pd.DataFrame],
+) -> None:
+    """Write TensorBoard summary for the current step observations."""
+    for tag in datasets:
+        with tf.name_scope(f"{tag}.model"):
+            models[tag].log(datasets[tag])
 
-            with tf.name_scope(f"{tag}.model"):
-                models[tag].log(datasets[tag])
-
-            output_dim = tf.shape(tagged_output[tag].observations)[-1]
-            for i in tf.range(output_dim):
-                suffix = f"[{i}]" if output_dim > 1 else ""
-                if tf.size(tagged_output[tag].observations) > 0:
-                    logging.histogram(
-                        f"{tag}.observation{suffix}/new_observations",
-                        tagged_output[tag].observations[..., i],
-                    )
-                    logging.scalar(
-                        f"{tag}.observation{suffix}/best_new_observation",
-                        np.min(tagged_output[tag].observations[..., i]),
-                    )
-                if tf.size(datasets[tag].observations) > 0:
-                    logging.scalar(
-                        f"{tag}.observation{suffix}/best_overall",
-                        np.min(datasets[tag].observations[..., i]),
-                    )
-
-            if logging.include_summary(f"{tag}.observations/_pairplot") and (
-                pd and sns and output_dim >= 2
-            ):
-                columns = [f"x{i}" for i in range(output_dim)]
-                observation_new_df = pd.DataFrame(
-                    tagged_output[tag].observations, columns=columns
-                ).applymap(float)
-                observation_new_df["observations"] = "new"
-                observation_plot_df = pd.concat(
-                    (observation_plot_dfs.get(tag), observation_new_df),
-                    copy=False,
-                    ignore_index=True,
+        output_dim = tf.shape(tagged_output[tag].observations)[-1]
+        for i in tf.range(output_dim):
+            suffix = f"[{i}]" if output_dim > 1 else ""
+            if tf.size(tagged_output[tag].observations) > 0:
+                logging.histogram(
+                    f"{tag}.observation{suffix}/new_observations",
+                    tagged_output[tag].observations[..., i],
                 )
-                observation_plot_df["pareto"] = non_dominated(datasets[tag].observations)[1] == 0
+                logging.scalar(
+                    f"{tag}.observation{suffix}/best_new_observation",
+                    np.min(tagged_output[tag].observations[..., i]),
+                )
+            if tf.size(datasets[tag].observations) > 0:
+                logging.scalar(
+                    f"{tag}.observation{suffix}/best_overall",
+                    np.min(datasets[tag].observations[..., i]),
+                )
+
+        if logging.include_summary(f"{tag}.observations/_pairplot") and (
+            pd and sns and output_dim >= 2
+        ):
+            columns = [f"x{i}" for i in range(output_dim)]
+            observation_new_df = pd.DataFrame(
+                tagged_output[tag].observations, columns=columns
+            ).applymap(float)
+            observation_new_df["observations"] = "new"
+            observation_plot_df = pd.concat(
+                (observation_plot_dfs.get(tag), observation_new_df),
+                copy=False,
+                ignore_index=True,
+            )
+
+            hue_order = ["initial", "old", "new"]
+            palette = {"initial": "tab:green", "old": "tab:green", "new": "tab:orange"}
+            markers = {"initial": "X", "old": "o", "new": "o"}
+
+            # assume that any OBJECTIVE- or single-tagged multi-output dataset => multi-objective
+            # more complex scenarios (e.g. constrained data) need to be plotted by the acq function
+            if len(datasets) > 1 and tag != OBJECTIVE:
+                observation_plot_df["observation type"] = observation_plot_df.apply(
+                    lambda x: x["observations"],
+                    axis=1,
+                )
+            else:
+                observation_plot_df["pareto"] = non_dominated(datasets[tag].observations)[1]
                 observation_plot_df["observation type"] = observation_plot_df.apply(
                     lambda x: x["observations"] + x["pareto"] * " (non-dominated)",
                     axis=1,
                 )
-                pairplot = sns.pairplot(
-                    observation_plot_df,
-                    vars=columns,
-                    hue="observation type",
-                    hue_order=[
-                        "initial",
-                        "old",
-                        "new",
-                        "initial (non-dominated)",
-                        "old (non-dominated)",
-                        "new (non-dominated)",
-                    ],
-                    palette={
-                        "initial": "tab:green",
-                        "old": "tab:green",
-                        "new": "tab:orange",
+                hue_order += [hue + " (non-dominated)" for hue in hue_order]
+                palette.update(
+                    {
                         "initial (non-dominated)": "tab:purple",
                         "old (non-dominated)": "tab:purple",
                         "new (non-dominated)": "tab:red",
-                    },
-                    markers={
-                        "initial": "X",
-                        "old": "o",
-                        "new": "o",
+                    }
+                )
+                markers.update(
+                    {
                         "initial (non-dominated)": "X",
                         "old (non-dominated)": "o",
                         "new (non-dominated)": "o",
-                    },
+                    }
                 )
-                logging.pyplot(f"{tag}.observations/_pairplot", pairplot.fig)
-                observation_plot_df.loc[
-                    observation_plot_df["observations"] == "new", "observations"
-                ] = "old"
-                observation_plot_dfs[tag] = observation_plot_df
 
-        if tf.rank(query_points) == 2:
-            for i in tf.range(tf.shape(query_points)[1]):
-                if len(query_points) == 1:
-                    logging.scalar(f"query_points/[{i}]", float(query_points[0, i]))
-                else:
-                    logging.histogram(f"query_points/[{i}]", query_points[:, i])
-            logging.histogram("query_points/euclidean_distances", lambda: pdist(query_points))
-
-        if pd and sns and logging.include_summary("query_points/_pairplot"):
-            columns = [f"x{i}" for i in range(tf.shape(query_points)[1])]
-            qp_preds = query_points
-            for tag in datasets:
-                qp_preds = tf.concat(
-                    [qp_preds, tf.cast(models[tag].predict(query_points)[0], query_points.dtype)], 1
-                )
-                columns.append(f"{tag} predicted")
-            query_new_df = pd.DataFrame(qp_preds, columns=columns).applymap(float)
-            query_new_df["query points"] = "new"
-            query_plot_df = pd.concat(
-                (query_plot_dfs.get(0), query_new_df), copy=False, ignore_index=True
+            pairplot = sns.pairplot(
+                observation_plot_df,
+                vars=columns,
+                hue="observation type",
+                hue_order=hue_order,
+                palette=palette,
+                markers=markers,
             )
-            pairplot = sns.pairplot(query_plot_df, hue="query points", height=2.25)
-            padding = 0.025 * (self._search_space.upper - self._search_space.lower)
-            upper_limits = self._search_space.upper + padding
-            lower_limits = self._search_space.lower - padding
-            for i in range(self._search_space.dimension):
-                pairplot.axes[0, i].set_xlim((lower_limits[i], upper_limits[i]))
-                pairplot.axes[i, 0].set_ylim((lower_limits[i], upper_limits[i]))
-            logging.pyplot("query_points/_pairplot", pairplot.fig)
-            query_plot_df["query points"] = "old"
-            query_plot_dfs[0] = query_plot_df
+            logging.pyplot(f"{tag}.observations/_pairplot", pairplot.fig)
+            observation_plot_df.loc[
+                observation_plot_df["observations"] == "new", "observations"
+            ] = "old"
+            observation_plot_dfs[tag] = observation_plot_df
 
-        logging.scalar("wallclock/step", total_step_wallclock_timer.time)
-        logging.scalar(
-            "wallclock/query_point_generation",
-            query_point_generation_timer.time,
+    logging.scalar(
+        "wallclock/model_fitting",
+        model_fitting_timer.time,
+    )
+
+
+def write_summary_query_points(
+    datasets: Mapping[Tag, Dataset],
+    models: Mapping[Tag, TrainableProbabilisticModel],
+    search_space: SearchSpace,
+    query_points: TensorType,
+    query_point_generation_timer: Timer,
+    query_plot_dfs: MutableMapping[int, pd.DataFrame],
+) -> None:
+    """Write TensorBoard summary for the current step query points."""
+
+    if tf.rank(query_points) == 2:
+        for i in tf.range(tf.shape(query_points)[1]):
+            if len(query_points) == 1:
+                logging.scalar(f"query_point/[{i}]", float(query_points[0, i]))
+            else:
+                logging.histogram(f"query_points/[{i}]", query_points[:, i])
+        logging.histogram("query_points/euclidean_distances", lambda: pdist(query_points))
+
+    if pd and sns and logging.include_summary("query_points/_pairplot"):
+        columns = [f"x{i}" for i in range(tf.shape(query_points)[1])]
+        qp_preds = query_points
+        for tag in datasets:
+            pred = models[tag].predict(query_points)[0]
+            qp_preds = tf.concat([qp_preds, tf.cast(pred, query_points.dtype)], 1)
+            output_dim = tf.shape(pred)[-1]
+            for i in range(output_dim):
+                columns.append(f"{tag}{i if (output_dim > 1) else ''} predicted")
+        query_new_df = pd.DataFrame(qp_preds, columns=columns).applymap(float)
+        query_new_df["query points"] = "new"
+        query_plot_df = pd.concat(
+            (query_plot_dfs.get(0), query_new_df), copy=False, ignore_index=True
         )
-        logging.scalar(
-            "wallclock/model_fitting",
-            model_fitting_timer.time,
+        pairplot = sns.pairplot(
+            query_plot_df, hue="query points", hue_order=["old", "new"], height=2.25
         )
+        padding = 0.025 * (search_space.upper - search_space.lower)
+        upper_limits = search_space.upper + padding
+        lower_limits = search_space.lower - padding
+        for i in range(search_space.dimension):
+            pairplot.axes[0, i].set_xlim((lower_limits[i], upper_limits[i]))
+            pairplot.axes[i, 0].set_ylim((lower_limits[i], upper_limits[i]))
+        logging.pyplot("query_points/_pairplot", pairplot.fig)
+        query_plot_df["query points"] = "old"
+        query_plot_dfs[0] = query_plot_df
+
+    logging.scalar(
+        "wallclock/query_point_generation",
+        query_point_generation_timer.time,
+    )
 
 
 def stop_at_minimum(
@@ -943,7 +1075,8 @@ def stop_at_minimum(
     minimum_rtol: float = 0.05,
     minimizers_atol: float = 0,
     minimizers_rtol: float = 0.05,
-    objective_tag: str = OBJECTIVE,
+    objective_tag: Tag = OBJECTIVE,
+    minimum_step_number: Optional[int] = None,
 ) -> EarlyStopCallback[TrainableProbabilisticModel, object]:
     """
     Generate an early stop function that terminates a BO loop when it gets close enough to the
@@ -956,15 +1089,18 @@ def stop_at_minimum(
     :param minimizers_atol: Absolute tolerance for minimizer point.
     :param minimizers_rtol: Relative tolerance for minimizer point.
     :param objective_tag: The tag for the objective data.
+    :param minimum_step_number: Minimum step number to stop at.
     :return: An early stop function that terminates if we get close enough to both the minimum
         and any of the minimizer points.
     """
 
     def early_stop_callback(
-        datasets: Mapping[str, Dataset],
-        _models: Mapping[str, TrainableProbabilisticModel],
+        datasets: Mapping[Tag, Dataset],
+        _models: Mapping[Tag, TrainableProbabilisticModel],
         _acquisition_state: object,
     ) -> bool:
+        if minimum_step_number is not None and logging.get_step_number() < minimum_step_number:
+            return False
         dataset = datasets[objective_tag]
         arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
         if minimum is not None:

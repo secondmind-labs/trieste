@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-black~=21.7b0
+black
 flake8
 isort
-
-# pin typing-extensions so we're compatible with venvs that have TF 2.4 installed
-typing-extensions~=3.7.4
-
-# also pin click so we're compatible with the version of black needed to be compatible with TF 2.4!
-click~=8.0.4

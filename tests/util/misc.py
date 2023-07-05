@@ -27,10 +27,10 @@ from typing_extensions import Final
 from trieste.acquisition.rule import AcquisitionRule
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
-from trieste.objectives import BRANIN_SEARCH_SPACE, HARTMANN_6_SEARCH_SPACE, branin, hartmann_6
+from trieste.objectives import Branin, Hartmann6
 from trieste.objectives.utils import mk_observer
 from trieste.space import SearchSpace
-from trieste.types import TensorType
+from trieste.types import Tag, TensorType
 from trieste.utils import shapes_equal
 
 TF_DEBUGGING_ERROR_TYPES: Final[tuple[type[Exception], ...]] = (
@@ -160,7 +160,7 @@ def quadratic(x: tf.Tensor) -> tf.Tensor:
     if x.shape == [] or x.shape[-1] == 0:
         raise ValueError(f"x must have non-empty trailing dimension, got shape {x.shape}")
 
-    return tf.reduce_sum(x ** 2, axis=-1, keepdims=True)
+    return tf.reduce_sum(x**2, axis=-1, keepdims=True)
 
 
 class FixedAcquisitionRule(AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel]):
@@ -179,8 +179,8 @@ class FixedAcquisitionRule(AcquisitionRule[TensorType, SearchSpace, Probabilisti
     def acquire(
         self,
         search_space: SearchSpace,
-        models: Mapping[str, ProbabilisticModel],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModel],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> TensorType:
         """
         :param search_space: Unused.
@@ -239,10 +239,10 @@ def hartmann_6_dataset(num_query_points: int) -> Dataset:
     :param num_query_points: A number of samples from the objective function.
     :return: A dataset.
     """
-    search_space = HARTMANN_6_SEARCH_SPACE
+    search_space = Hartmann6.search_space
     query_points = search_space.sample(num_query_points)
 
-    observer = mk_observer(hartmann_6)
+    observer = mk_observer(Hartmann6.objective)
     data = observer(query_points)
 
     return data
@@ -254,10 +254,10 @@ def branin_dataset(num_query_points: int) -> Dataset:
     :param num_query_points: A number of samples from the objective function.
     :return: A dataset.
     """
-    search_space = BRANIN_SEARCH_SPACE
+    search_space = Branin.search_space
     query_points = search_space.sample(num_query_points)
 
-    observer = mk_observer(branin)
+    observer = mk_observer(Branin.objective)
     data = observer(query_points)
 
     return data

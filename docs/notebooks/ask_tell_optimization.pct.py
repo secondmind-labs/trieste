@@ -16,7 +16,7 @@ from trieste.ask_tell_optimization import AskTellOptimizer
 from trieste.bayesian_optimizer import Record
 from trieste.data import Dataset
 from trieste.models.gpflow.models import GaussianProcessRegression
-from trieste.objectives import scaled_branin, SCALED_BRANIN_MINIMUM
+from trieste.objectives import ScaledBranin
 from trieste.objectives.utils import mk_observer
 from trieste.space import Box
 
@@ -45,7 +45,7 @@ def build_model(data, kernel_func=None):
 
 num_initial_points = 5
 initial_query_points = search_space.sample(num_initial_points)
-observer = mk_observer(scaled_branin)
+observer = mk_observer(ScaledBranin.objective)
 initial_data = observer(initial_query_points)
 
 # %% [markdown]
@@ -73,12 +73,13 @@ for step in range(n_steps):
 # %% [markdown]
 # Once ask-tell optimization is over, you can extract an optimization result object and perform whatever analysis you need, just like with regular Trieste optimization interface. For instance, here we will plot regret for each optimization step.
 
+
 # %%
 def plot_ask_tell_regret(ask_tell_result):
     observations = ask_tell_result.try_get_final_dataset().observations.numpy()
     arg_min_idx = tf.squeeze(tf.argmin(observations, axis=0))
 
-    suboptimality = observations - SCALED_BRANIN_MINIMUM.numpy()
+    suboptimality = observations - ScaledBranin.minimum.numpy()
     ax = plt.gca()
     plot_regret(
         suboptimality, ax, num_init=num_initial_points, idx_best=arg_min_idx
@@ -154,7 +155,7 @@ for step in range(n_steps):
     saved_state = pickle.dumps(state)
 
     print(f"In the lab running the experiment #{step}.")
-    new_datapoint = scaled_branin(new_config)
+    new_datapoint = ScaledBranin.objective(new_config)
 
     print("Back from the lab")
     print("Restore optimizer from the saved state")
@@ -167,4 +168,23 @@ plot_ask_tell_regret(ask_tell.to_result())
 
 
 # %% [markdown]
-# A word of warning. This serialization technique is not guaranteed to work smoothly with every Tensorflow-based model, so apply to your own problems with caution.
+# In some more complicated scenarios we may also wish to serialise the acquisition function, rather than creating a new one from the models and data, as it may contain stochastic internal data (for example with continuous Thompson sampling, which uses trajectory samplers). This is not an issue here (where we used the default `EfficientGlobalOptimization` rule and `ExpectedImprovement` function) but we can demonstrate it neverthless:
+
+# %%
+from trieste.acquisition.rule import EfficientGlobalOptimization
+
+# (recreate acquisition function and extract default rule)
+ask_tell.ask()
+rule: EfficientGlobalOptimization = ask_tell._acquisition_rule  # type: ignore
+
+# save acquisition function
+acq_fn = rule.acquisition_function
+saved_acq_fn = pickle.dumps(acq_fn)
+
+# regenerate asktell with loaded acquisition function
+loaded_acq_fn = pickle.loads(saved_acq_fn)
+rule = EfficientGlobalOptimization(initial_acquisition_function=loaded_acq_fn)
+ask_tell = AskTellOptimizer.from_record(loaded_state, search_space, rule)
+
+# %% [markdown]
+# A word of warning. These serialization techniques are not guaranteed to work smoothly with every Tensorflow-based model, so apply to your own problems with caution.

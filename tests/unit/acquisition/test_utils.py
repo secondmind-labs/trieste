@@ -21,13 +21,19 @@ import pytest
 import tensorflow as tf
 
 from trieste.acquisition import AcquisitionFunction
-from trieste.acquisition.utils import select_nth_output, split_acquisition_function
+from trieste.acquisition.utils import (
+    get_local_dataset,
+    select_nth_output,
+    split_acquisition_function,
+)
+from trieste.data import Dataset
+from trieste.space import Box, SearchSpaceType
 
 
 @pytest.mark.parametrize(
     "f",
     [
-        lambda x: x ** 2,
+        lambda x: x**2,
         lambda x: tf.cast(x, tf.float64),
     ],
 )
@@ -46,7 +52,6 @@ from trieste.acquisition.utils import select_nth_output, split_acquisition_funct
 def test_split_acquisition_function(
     f: AcquisitionFunction, x: "np.ndarray[Any, Any]", split_size: int, expected_batches: int
 ) -> None:
-
     mock_f = MagicMock()
     mock_f.side_effect = f
     batch_f = split_acquisition_function(mock_f, split_size=split_size)
@@ -65,3 +70,30 @@ def test_select_nth_output() -> None:
 
     assert np.all(select_nth_output(a) == a[..., 0])
     assert np.all(select_nth_output(a, 3) == a[..., 3])
+
+
+@pytest.mark.parametrize(
+    "space, dataset",
+    [
+        (Box([0], [1]), Dataset(tf.constant([[0, 1], [0, 1]]), tf.constant([[1], [1]]))),
+        (Box([0, 0], [1, 1]), Dataset(tf.constant([[1], [1]]), tf.constant([[1], [1]]))),
+    ],
+)
+def test_get_local_dataset_raises_for_invalid_input(
+    space: SearchSpaceType, dataset: Dataset
+) -> None:
+    with pytest.raises(ValueError):
+        get_local_dataset(space, dataset)
+
+
+def test_get_local_dataset_works() -> None:
+    search_space_1 = Box([0, 0, 0], [1, 1, 1])
+    search_space_2 = Box([5, 5, 5], [10, 10, 10])
+    points_1 = search_space_1.sample(10)
+    points_2 = search_space_2.sample(20)
+    dataset_1 = Dataset(points_1, points_1[:, 0:1])
+    dataset_2 = Dataset(points_2, points_2[:, 0:1])
+    combined = dataset_1 + dataset_2
+
+    assert tf.shape(get_local_dataset(search_space_1, combined).query_points)[0] == 10
+    assert tf.shape(get_local_dataset(search_space_2, combined).query_points)[0] == 20

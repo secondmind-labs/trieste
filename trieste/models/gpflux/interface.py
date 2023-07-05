@@ -71,7 +71,9 @@ class GPfluxPredictor(SupportsGetObservationNoise, ABC):
         """Note: unless otherwise noted, this will return the prediction conditioned on one sample
         from the lower layers."""
         f_mean, f_var = self.model_gpflux.predict_f(query_points)
-        return self.model_gpflux.likelihood_layer.likelihood.predict_mean_and_var(f_mean, f_var)
+        return self.model_gpflux.likelihood_layer.likelihood.predict_mean_and_var(
+            query_points, f_mean, f_var
+        )
 
     def get_observation_noise(self) -> TensorType:
         """

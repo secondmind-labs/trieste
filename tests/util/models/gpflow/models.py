@@ -15,8 +15,10 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+from typing import Optional
 
 import gpflow
+import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
@@ -40,6 +42,7 @@ from trieste.models.gpflow.interface import SupportsCovarianceBetweenPoints
 from trieste.models.interfaces import (
     HasReparamSampler,
     HasTrajectorySampler,
+    SupportsCovarianceWithTopFidelity,
     SupportsGetKernel,
     SupportsGetObservationNoise,
 )
@@ -58,10 +61,10 @@ class PseudoTrainableProbModel(TrainableProbabilisticModel, Protocol):
     """A model that does nothing on :meth:`update` and :meth:`optimize`."""
 
     def update(self, dataset: Dataset) -> None:
-        pass
+        return
 
     def optimize(self, dataset: Dataset) -> None:
-        pass
+        return
 
 
 class GaussianMarginal(ProbabilisticModel):
@@ -244,6 +247,74 @@ class QuadraticMeanAndRBFKernelWithSamplers(
         self._dataset[0].assign(dataset.query_points)
         self._dataset[1].assign(dataset.observations)
 
+    def optimize(self, dataset: Dataset) -> None:
+        pass
+
+
+class MultiFidelityQuadraticMeanAndRBFKernel(
+    QuadraticMeanAndRBFKernel, SupportsCovarianceWithTopFidelity
+):
+    r"""
+    A Gaussian process with scalar quadratic mean, an RBF kernel and
+    trajectory_sampler and reparam_sampler methods.
+    """
+
+    def __init__(
+        self,
+        *,
+        x_shift: float | SequenceN[float] | TensorType = 0,
+        kernel_amplitude: float | TensorType | None = None,
+        noise_variance: float = 1.0,
+    ):
+        super().__init__(
+            x_shift=x_shift, kernel_amplitude=kernel_amplitude, noise_variance=noise_variance
+        )
+
+    @property
+    def num_fidelities(self) -> int:
+        return 5
+
+    def covariance_with_top_fidelity(self, x: TensorType) -> TensorType:
+        mean, _ = self.predict(x)
+        return tf.ones_like(mean, dtype=mean.dtype)  # dummy covariances of correct shape
+
+    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        fmean, fvar = self.predict(query_points)
+        yvar = fvar + tf.constant(1.0, dtype=fmean.dtype)  # dummy noise variance
+        return fmean, yvar
+
+
+class MultiFidelityQuadraticMeanAndRBFKernelWithSamplers(
+    QuadraticMeanAndRBFKernelWithSamplers, SupportsCovarianceWithTopFidelity
+):
+    r"""
+    A Gaussian process with scalar quadratic mean, an RBF kernel and
+    trajectory_sampler and reparam_sampler methods.
+    """
+
+    def __init__(
+        self,
+        dataset: Dataset,
+        *,
+        x_shift: float | SequenceN[float] | TensorType = 0,
+        kernel_amplitude: float | TensorType | None = None,
+        noise_variance: float = 1.0,
+    ):
+        super().__init__(
+            dataset,
+            x_shift=x_shift,
+            kernel_amplitude=kernel_amplitude,
+            noise_variance=noise_variance,
+        )
+
+    @property
+    def num_fidelities(self) -> int:
+        return 5
+
+    def covariance_with_top_fidelity(self, x: TensorType) -> TensorType:
+        mean, _ = self.predict(x)
+        return tf.ones_like(mean, dtype=mean.dtype)  # dummy covariances of correct shape
+
 
 class QuadraticMeanAndRBFKernelWithBatchSamplers(
     QuadraticMeanAndRBFKernel, HasTrajectorySampler, HasReparamSampler
@@ -314,6 +385,41 @@ def svgp_model(x: tf.Tensor, y: tf.Tensor, num_latent_gps: int = 1) -> SVGP:
     )
 
 
+def quadratic_mean_rbf_kernel_model(dataset: Dataset) -> QuadraticMeanAndRBFKernelWithSamplers:
+    model = QuadraticMeanAndRBFKernelWithSamplers(
+        noise_variance=tf.constant(0.9, dtype=tf.float64), dataset=dataset
+    )
+    model.kernel = (
+        gpflow.kernels.RBF()
+    )  # need a gpflow kernel object for random feature decompositions
+    return model
+
+
+def svgp_model_with_mean(
+    x: tf.Tensor, y: tf.Tensor, whiten: bool, num_inducing_points: int, num_latent_gps: int = 1
+) -> SVGP:
+    mean_function = gpflow.mean_functions.Linear(
+        A=0.37 * np.ones((1, 1), dtype=gpflow.default_float()),
+        b=0.19 * np.ones((1,), dtype=gpflow.default_float()),
+    )
+    q_mu = np.random.randn(num_inducing_points, 1)
+    q_sqrt = np.tril(np.random.randn(1, num_inducing_points, num_inducing_points))
+    m = SVGP(
+        gpflow.kernels.Matern32(variance=0.91),
+        gpflow.likelihoods.Gaussian(variance=0.23),
+        x[:num_inducing_points],
+        num_data=len(x),
+        num_latent_gps=num_latent_gps,
+        mean_function=mean_function,
+        whiten=whiten,
+        q_mu=q_mu,
+        q_sqrt=q_sqrt,
+    )
+    gpflow.set_trainable(mean_function, False)
+    gpflow.set_trainable(m.inducing_variable, False)
+    return m
+
+
 def vgp_model(x: tf.Tensor, y: tf.Tensor, num_latent_gps: int = 1) -> VGP:
     likelihood = gpflow.likelihoods.Gaussian()
     kernel = gpflow.kernels.Matern32()
@@ -328,37 +434,54 @@ def vgp_matern_model(x: tf.Tensor, y: tf.Tensor) -> VGP:
     return m
 
 
-def two_output_svgp_model(x: tf.Tensor, type: str, whiten: bool) -> SVGP:
-
-    ker1 = gpflow.kernels.Matern32()
-    ker2 = gpflow.kernels.Matern52()
+def svgp_model_by_type(
+    x: tf.Tensor,
+    type: str,
+    whiten: bool,
+    num_inducing_points: int = 3,
+    noise_var: Optional[float] = None,
+    mean_function: Optional[gpflow.mean_functions.MeanFunction] = None,
+) -> SVGP:
+    num_latent_gps = 2
+    ker1 = gpflow.kernels.Matern32(variance=0.8, lengthscales=0.2)
+    ker2 = gpflow.kernels.Matern52(variance=0.3, lengthscales=0.7)
 
     if type == "shared+shared":
         kernel = gpflow.kernels.SharedIndependent(ker1, output_dim=2)
         iv = gpflow.inducing_variables.SharedIndependentInducingVariables(
-            gpflow.inducing_variables.InducingPoints(x[:3])
+            gpflow.inducing_variables.InducingPoints(x[:num_inducing_points])
         )
     elif type == "separate+shared":
         kernel = gpflow.kernels.SeparateIndependent([ker1, ker2])
         iv = gpflow.inducing_variables.SharedIndependentInducingVariables(
-            gpflow.inducing_variables.InducingPoints(x[:3])
+            gpflow.inducing_variables.InducingPoints(x[:num_inducing_points])
         )
     elif type == "separate+separate":
         kernel = gpflow.kernels.SeparateIndependent([ker1, ker2])
-        Zs = [x[(3 * i) : (3 * i + 3)] for i in range(2)]
+        Zs = [
+            x[(num_inducing_points * i) : (num_inducing_points * i + num_inducing_points)]
+            for i in range(2)
+        ]
         iv_list = [gpflow.inducing_variables.InducingPoints(Z) for Z in Zs]
         iv = gpflow.inducing_variables.SeparateIndependentInducingVariables(iv_list)
     else:
+        if "single" in type:
+            num_latent_gps = 1
         kernel = ker1
-        iv = x[:3]
+        iv = x[:num_inducing_points]
 
     return SVGP(
-        kernel, gpflow.likelihoods.Gaussian(), iv, num_data=len(x), num_latent_gps=2, whiten=whiten
+        kernel,
+        gpflow.likelihoods.Gaussian(noise_var),
+        iv,
+        num_data=len(x),
+        num_latent_gps=num_latent_gps,
+        whiten=whiten,
+        mean_function=mean_function,
     )
 
 
 def two_output_sgpr_model(x: tf.Tensor, y: tf.Tensor, type: str = "separate+separate") -> SGPR:
-
     ker1 = gpflow.kernels.Matern32()
     ker2 = gpflow.kernels.Matern52()
 

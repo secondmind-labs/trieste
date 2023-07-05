@@ -92,7 +92,7 @@ class ExactThompsonSampler(ThompsonSampler[ProbabilisticModel]):
     ) -> TensorType:
         """
         Return exact samples from either the objective function's minimiser or its minimal value
-        over the candidate set `at`.
+        over the candidate set `at`. Note that minimiser ties aren't broken randomly.
 
         :param model: The model to sample from.
         :param sample_size: The desired number of samples.
@@ -225,7 +225,7 @@ class ThompsonSamplerFromTrajectory(ThompsonSampler[HasTrajectorySampler]):
     ) -> TensorType:
         """
         Return approximate samples from either the objective function's minimser or its minimal
-        value over the candidate set `at`.
+        value over the candidate set `at`. Note that minimiser ties aren't broken randomly.
 
         :param model: The model to sample from.
         :param sample_size: The desired number of samples.

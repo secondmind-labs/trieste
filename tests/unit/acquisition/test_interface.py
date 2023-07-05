@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import List, Optional, Tuple, cast
+from typing import Iterator, List, Mapping, Optional, Tuple, cast
 
 import pytest
 
@@ -33,13 +33,15 @@ from trieste.acquisition import (
 )
 from trieste.acquisition.interface import (
     AcquisitionFunction,
+    AcquisitionFunctionBuilder,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.models.interfaces import SupportsPredictJoint
-from trieste.types import TensorType
+from trieste.observer import OBJECTIVE
+from trieste.types import Tag, TensorType
 from trieste.utils import DEFAULTS
 
 
@@ -87,9 +89,11 @@ def test_single_model_acquisition_builder_using_passes_on_correct_dataset_and_mo
             assert model is models["foo"]
             return raise_exc
 
-    data = {"foo": empty_dataset([1], [1]), "bar": empty_dataset([1], [1])}
-    models = {"foo": QuadraticMeanAndRBFKernel(), "bar": QuadraticMeanAndRBFKernel()}
-    Builder().using("foo").prepare_acquisition_function(models, datasets=data)
+    FOO: Tag = "foo"
+    BAR: Tag = "bar"
+    data = {FOO: empty_dataset([1], [1]), BAR: empty_dataset([1], [1])}
+    models = {FOO: QuadraticMeanAndRBFKernel(), BAR: QuadraticMeanAndRBFKernel()}
+    Builder().using(FOO).prepare_acquisition_function(models, datasets=data)
 
 
 def test_single_model_greedy_acquisition_builder_raises_immediately_for_wrong_key() -> None:
@@ -111,7 +115,7 @@ def test_single_model_greedy_acquisition_builder_repr_includes_class_name() -> N
     cast(
         List[Tuple[SingleModelAcquisitionBuilder[SupportsPredictJoint]]],
         [
-            (ExpectedImprovement(), "ExpectedImprovement()"),
+            (ExpectedImprovement(), "ExpectedImprovement(None)"),
             (AugmentedExpectedImprovement(), "AugmentedExpectedImprovement()"),
             (NegativeLowerConfidenceBound(1.96), "NegativeLowerConfidenceBound(1.96)"),
             (NegativePredictiveMean(), "NegativePredictiveMean()"),
@@ -135,10 +139,60 @@ def test_single_model_acquisition_function_builder_reprs(
     assert repr(function.using("TAG")) == f"{function_repr} using tag 'TAG'"
     assert (
         repr(ExpectedConstrainedImprovement("TAG", function.using("TAG"), 0.0))
-        == f"ExpectedConstrainedImprovement('TAG', {function_repr} using tag 'TAG', 0.0)"
+        == f"ExpectedConstrainedImprovement('TAG', {function_repr} using tag 'TAG', 0.0, None)"
     )
     assert (
         repr(ExpectedConstrainedHypervolumeImprovement("TAG", function.using("TAG"), 0.0))
         == f"ExpectedConstrainedHypervolumeImprovement('TAG', "
         f"{function_repr} using tag 'TAG', 0.0, get_reference_point)"
     )
+
+
+class CustomDatasets(Mapping[Tag, Dataset]):
+    """Custom dataset mapping to show that we can store metadata in the datasets argument."""
+
+    def __init__(self, datasets: Mapping[Tag, Dataset], iteration_id: int):
+        self.iteration_id = iteration_id
+        self._datasets = dict(datasets)
+
+    def __getitem__(self, key: Tag) -> Dataset:
+        return self._datasets[key]
+
+    def __setitem__(self, key: Tag, value: Dataset) -> None:
+        self._datasets[key] = value
+
+    def __delitem__(self, key: Tag) -> None:
+        del self._datasets[key]
+
+    def __iter__(self) -> Iterator[Tag]:
+        return iter(self._datasets)
+
+    def __len__(self) -> int:
+        return len(self._datasets)
+
+
+def test_custom_dataset_mapping() -> None:
+    """
+    Check that the datasets argument can be an arbitrary Mapping[Tag, Dataset], not just
+    a dict. In particular, check that we can store metadata there and retrieve it in the
+    acquisition function.
+    """
+
+    class _CustomData(AcquisitionFunctionBuilder[ProbabilisticModel]):
+        def prepare_acquisition_function(
+            self,
+            models: Mapping[Tag, ProbabilisticModel],
+            datasets: Optional[Mapping[Tag, Dataset]] = None,
+        ) -> AcquisitionFunction:
+            assert datasets is not None
+            assert len(datasets) == 1
+            assert set(datasets) == {OBJECTIVE}
+            assert len(datasets[OBJECTIVE]) == 0
+            assert "FOO" not in datasets
+            assert isinstance(datasets, CustomDatasets)
+            assert datasets.iteration_id == 2
+            return raise_exc
+
+    data = CustomDatasets({OBJECTIVE: empty_dataset([1], [1])}, 2)
+    models = {OBJECTIVE: QuadraticMeanAndRBFKernel()}
+    _CustomData().prepare_acquisition_function(models, data)

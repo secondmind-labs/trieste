@@ -47,7 +47,7 @@ from trieste.models.gpflow import (
     VariationalGaussianProcess,
     build_vgp_classifier,
 )
-from trieste.objectives import branin
+from trieste.objectives import Branin
 from trieste.space import Box
 from trieste.types import TensorType
 from trieste.utils import DEFAULTS
@@ -102,7 +102,7 @@ def test_predictive_variance(
     xs = tf.reshape(tf.stack(tf.meshgrid(x_range, x_range, indexing="ij"), axis=-1), (-1, 2))
 
     kernel = tfp.math.psd_kernels.MaternFiveHalves(variance_scale, length_scale=0.25)
-    model = GaussianProcess([branin], [kernel])
+    model = GaussianProcess([Branin.objective], [kernel])
 
     mean, variance = model.predict(xs)
     samples = tfp.distributions.Normal(mean, tf.sqrt(variance)).sample(num_samples_per_point)
@@ -203,7 +203,6 @@ def test_expected_feasibility_builder_raises_on_non_scalar_threshold(
 
 @pytest.mark.parametrize("alpha", [0.0, -1.0])
 def test_expected_feasibility_builder_raises_on_non_positive_alpha(alpha: float) -> None:
-
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         ExpectedFeasibility(1, alpha, 1)
 
@@ -250,7 +249,6 @@ def test_bichon_ranjan_criterion(threshold: float, at: tf.Tensor, alpha: float, 
 
 
 def test_integrated_variance_reduction() -> None:
-
     x = to_default_float(tf.constant(np.arange(1, 7).reshape(-1, 1) / 8.0))  # shape: [6, 1]
     y = fnc_2sin_x_over_3(x)
 
@@ -280,7 +278,6 @@ def test_integrated_variance_reduction() -> None:
 
 
 def test_integrated_variance_reduction_works_with_batch() -> None:
-
     x = to_default_float(tf.constant(np.arange(1, 8).reshape(-1, 1) / 8.0))  # shape: [7, 1]
     y = fnc_2sin_x_over_3(x)
 
@@ -437,7 +434,7 @@ def test_bayesian_active_learning_by_disagreement_is_correct(at: tf.Tensor) -> N
         to_default_float(mean), to_default_float(tf.sqrt(var))
     ).sample(100000)
     MC_term21 = tf.reduce_mean(entropy(normal.cdf(samples)))
-    MC_term22 = tf.reduce_mean(np.exp(-(samples ** 2) / np.pi * np.log(2)))
+    MC_term22 = tf.reduce_mean(np.exp(-(samples**2) / np.pi * np.log(2)))
 
     npt.assert_allclose(actual_term2, MC_term21, rtol=0.05, atol=0.05)
     npt.assert_allclose(actual_term2, MC_term22, rtol=0.05, atol=0.05)

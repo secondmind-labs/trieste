@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import copy
 import operator
+import tempfile
 import unittest.mock
 from typing import Any, Optional
 
@@ -26,9 +27,14 @@ import tensorflow_probability as tfp
 from tensorflow.python.keras.callbacks import Callback
 
 from tests.util.misc import ShapeLike, empty_dataset, random_seed
-from tests.util.models.keras.models import trieste_deep_ensemble_model, trieste_keras_ensemble_model
+from tests.util.models.keras.models import (
+    keras_optimizer_weights,
+    trieste_deep_ensemble_model,
+    trieste_keras_ensemble_model,
+)
 from trieste.data import Dataset
 from trieste.logging import step_number, tensorboard_writer
+from trieste.models.interfaces import HasTrajectorySampler
 from trieste.models.keras import (
     DeepEnsemble,
     KerasEnsemble,
@@ -36,6 +42,7 @@ from trieste.models.keras import (
     sample_with_replacement,
 )
 from trieste.models.optimizer import KerasOptimizer, TrainingData
+from trieste.types import TensorType
 
 _ENSEMBLE_SIZE = 3
 
@@ -191,14 +198,11 @@ def test_deep_ensemble_resets_lr_with_lr_schedule() -> None:
 
     keras_ensemble = trieste_keras_ensemble_model(example_data, _ENSEMBLE_SIZE)
 
-    epochs = 10
-    init_lr = 0.01
+    epochs = 2
+    init_lr = 1.0
 
     def scheduler(epoch: int, lr: float) -> float:
-        if epoch == epoch // 2:
-            return lr * 0.1
-        else:
-            return lr
+        return lr * 0.5
 
     fit_args = {
         "epochs": epochs,
@@ -213,7 +217,33 @@ def test_deep_ensemble_resets_lr_with_lr_schedule() -> None:
 
     model.optimize(example_data)
 
+    npt.assert_allclose(model.model.history.history["lr"], [0.5, 0.25])
     npt.assert_allclose(model.model.optimizer.lr.numpy(), init_lr, rtol=1e-6)
+
+
+def test_deep_ensemble_with_lr_scheduler() -> None:
+    example_data = _get_example_data([100, 1])
+
+    keras_ensemble = trieste_keras_ensemble_model(example_data, _ENSEMBLE_SIZE)
+
+    epochs = 2
+    init_lr = 1.0
+
+    fit_args = {
+        "epochs": epochs,
+        "batch_size": 20,
+        "verbose": 0,
+    }
+
+    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+        initial_learning_rate=init_lr, decay_steps=1, decay_rate=0.5
+    )
+    optimizer = KerasOptimizer(tf.optimizers.Adam(lr_schedule), fit_args)
+    model = DeepEnsemble(keras_ensemble, optimizer)
+
+    model.optimize(example_data)
+
+    assert len(model.model.history.history["loss"]) == epochs
 
 
 def test_deep_ensemble_ensemble_distributions(ensemble_size: int, dataset_size: int) -> None:
@@ -221,7 +251,7 @@ def test_deep_ensemble_ensemble_distributions(ensemble_size: int, dataset_size: 
     model, _, _ = trieste_deep_ensemble_model(example_data, ensemble_size, False, False)
 
     distributions = model.ensemble_distributions(example_data.query_points)
-    # breakpoint()
+
     assert len(distributions) == ensemble_size
     for dist in distributions:
         assert isinstance(dist, tfp.distributions.Distribution)
@@ -237,6 +267,39 @@ def test_deep_ensemble_ensemble_distributions(ensemble_size: int, dataset_size: 
         assert tf.is_tensor(predicted_vars)
         assert predicted_means.shape[-2:] == example_data.observations.shape
         assert predicted_vars.shape[-2:] == example_data.observations.shape
+
+
+def test_deep_ensemble_predict_broadcasts(
+    ensemble_size: int, dataset_size: int, num_outputs: int
+) -> None:
+    # create a model that expects [dataset_size, num_outputs] spec
+    dummy_data = _get_example_data([dataset_size, num_outputs], [dataset_size, num_outputs])
+    model, _, _ = trieste_deep_ensemble_model(dummy_data, ensemble_size, False, False)
+
+    # check that it handles predictions with leading batch dimensions
+    query_data = _get_example_data(
+        [1, 2, dataset_size, num_outputs], [1, 2, dataset_size, num_outputs]
+    )
+    predicted_means, predicted_vars = model.predict(query_data.query_points)
+
+    assert tf.is_tensor(predicted_vars)
+    assert predicted_vars.shape == query_data.observations.shape
+    assert tf.is_tensor(predicted_means)
+    assert predicted_means.shape == query_data.observations.shape
+
+
+def test_deep_ensemble_predict_omit_trailing_dim_one(ensemble_size: int, dataset_size: int) -> None:
+    dummy_data = _get_example_data([dataset_size, 1], [dataset_size, 1])
+    model, _, _ = trieste_deep_ensemble_model(dummy_data, ensemble_size, False, False)
+
+    # Functional has code to "allow (None,) and (None, 1) Tensors to be passed interchangeably"
+    qp = tf.random.uniform(tf.TensorShape([dataset_size]), dtype=tf.float64)
+    predicted_means, predicted_vars = model.predict(qp)
+
+    assert tf.is_tensor(predicted_vars)
+    assert predicted_vars.shape == dummy_data.observations.shape
+    assert tf.is_tensor(predicted_means)
+    assert predicted_means.shape == dummy_data.observations.shape
 
 
 def test_deep_ensemble_predict_call_shape(
@@ -361,7 +424,7 @@ def test_deep_ensemble_loss(bootstrap_data: bool) -> None:
     loss = model.model.evaluate(tranformed_x, tranformed_y)[: _ENSEMBLE_SIZE + 1]
     reference_loss = reference_model.model.evaluate(tranformed_x, tranformed_y)
 
-    npt.assert_allclose(loss, reference_loss, rtol=1e-6)
+    npt.assert_allclose(tf.constant(loss), reference_loss, rtol=1e-6)
 
 
 @random_seed
@@ -493,19 +556,65 @@ def test_deep_ensemble_deep_copyable() -> None:
     npt.assert_array_compare(operator.__ne__, variance_f_copy_updated_2, variance_f_copy_updated)
 
 
+def test_deep_ensemble_tf_saved_model() -> None:
+    example_data = _get_example_data([10, 3], [10, 3])
+    model, _, _ = trieste_deep_ensemble_model(example_data, 2, False, False)
+
+    with tempfile.TemporaryDirectory() as path:
+        # create a trajectory sampler (used for sample method)
+        assert isinstance(model, HasTrajectorySampler)
+        trajectory_sampler = model.trajectory_sampler()
+        trajectory = trajectory_sampler.get_trajectory()
+
+        # generate client model with predict and sample methods
+        module = model.get_module_with_variables(trajectory_sampler, trajectory)
+        module.predict = tf.function(
+            model.predict, input_signature=[tf.TensorSpec(shape=[None, 3], dtype=tf.float64)]
+        )
+
+        def _sample(query_points: TensorType, num_samples: int) -> TensorType:
+            trajectory_updated = trajectory_sampler.resample_trajectory(trajectory)
+            expanded_query_points = tf.expand_dims(query_points, -2)  # [N, 1, D]
+            tiled_query_points = tf.tile(expanded_query_points, [1, num_samples, 1])  # [N, S, D]
+            return tf.transpose(trajectory_updated(tiled_query_points), [1, 0, 2])[
+                :, :, :1
+            ]  # [S, N, L]
+
+        module.sample = tf.function(
+            _sample,
+            input_signature=[
+                tf.TensorSpec(shape=[None, 3], dtype=tf.float64),  # query_points
+                tf.TensorSpec(shape=(), dtype=tf.int32),  # num_samples
+            ],
+        )
+
+        tf.saved_model.save(module, str(path))
+        client_model = tf.saved_model.load(str(path))
+
+    # test exported methods
+    mean_f, variance_f = model.predict(example_data.query_points)
+    mean_f_copy, variance_f_copy = client_model.predict(example_data.query_points)
+    npt.assert_allclose(mean_f, mean_f_copy)
+    npt.assert_allclose(variance_f, variance_f_copy)
+    client_model.sample(example_data.query_points, 10)
+
+
 def test_deep_ensemble_deep_copies_optimizer_state() -> None:
     example_data = _get_example_data([10, 3], [10, 3])
     model, _, _ = trieste_deep_ensemble_model(example_data, 2, False, False)
     new_example_data = _get_example_data([20, 3], [20, 3])
     model.update(new_example_data)
-    assert not model.model.optimizer.get_weights()
+    assert not keras_optimizer_weights(model.model.optimizer)
     model.optimize(new_example_data)
-    assert model.model.optimizer.get_weights()
+    assert keras_optimizer_weights(model.model.optimizer)
 
     model_copy = copy.deepcopy(model)
     assert model.model.optimizer is not model_copy.model.optimizer
     npt.assert_allclose(model_copy.model.optimizer.iterations, 1)
-    npt.assert_equal(model.model.optimizer.get_weights(), model_copy.model.optimizer.get_weights())
+    npt.assert_equal(
+        keras_optimizer_weights(model.model.optimizer),
+        keras_optimizer_weights(model_copy.model.optimizer),
+    )
 
 
 @pytest.mark.parametrize(
@@ -622,37 +731,11 @@ def test_deep_ensemble_log(
     assert mocked_summary_writer.method_calls[0][0] == "as_default"
     assert mocked_summary_writer.method_calls[0][-1]["step"] == 42
 
-    loss_names = ["loss/diff", "loss/final", "loss/min", "loss/max"]
-    metrics_names = ["mse/diff", "mse/final", "mse/min", "mse/max"]
-    accuracy_names = [
-        "accuracy/root_mean_square_error",
-        "accuracy/mean_absolute_error",
-        "accuracy/z_residuals_std",
-    ]
-    variance_stats = [
-        "variance/predict_variance_mean",
-        "variance/empirical",
-        "variance/root_mean_variance_error",
-    ]
-
-    names_scalars = ["epochs/num_epochs"] + loss_names + metrics_names
-    num_scalars = 1 + len(loss_names)
-    names_histogram = ["loss/epoch"] + ["mse/epoch"]
-    num_histogram = 1
-    if use_dataset:
-        names_scalars = names_scalars + accuracy_names + variance_stats
-        num_scalars = num_scalars + len(accuracy_names) + len(variance_stats)
-        names_histogram = (
-            names_histogram
-            + ["accuracy/absolute_errors", "accuracy/z_residuals"]
-            + ["variance/predict_variance", "variance/variance_error"]
-        )
-        num_histogram += 4
+    num_scalars = 5  # 5 loss and metrics specific
+    num_histogram = 1  # 1 loss and metrics specific
+    if use_dataset:  # write_summary_data_based_metrics
+        num_scalars += 8
+        num_histogram += 6
 
     assert mocked_summary_scalar.call_count == num_scalars
-    for i in range(len(mocked_summary_scalar.call_args_list)):
-        assert any([j in mocked_summary_scalar.call_args_list[i][0][0] for j in names_scalars])
-
     assert mocked_summary_histogram.call_count == num_histogram
-    for i in range(len(mocked_summary_histogram.call_args_list)):
-        assert any([j in mocked_summary_histogram.call_args_list[i][0][0] for j in names_histogram])

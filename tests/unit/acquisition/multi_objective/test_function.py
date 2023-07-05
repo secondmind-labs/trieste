@@ -61,8 +61,12 @@ from trieste.acquisition.multi_objective.partition import (
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel, ProbabilisticModelType, ReparametrizationSampler
-from trieste.types import TensorType
+from trieste.types import Tag, TensorType
 from trieste.utils import DEFAULTS
+
+# tags
+FOO: Tag = "foo"
+NA: Tag = ""
 
 
 def _mo_test_model(
@@ -79,8 +83,8 @@ def _mo_test_model(
 class _Certainty(AcquisitionFunctionBuilder[ProbabilisticModel]):
     def prepare_acquisition_function(
         self,
-        models: Mapping[str, ProbabilisticModel],
-        datasets: Optional[Mapping[str, Dataset]] = None,
+        models: Mapping[Tag, ProbabilisticModel],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> AcquisitionFunction:
         return lambda x: tf.ones((tf.shape(x)[0], 1), dtype=tf.float64)
 
@@ -299,7 +303,7 @@ def test_expected_hypervolume_improvement_matches_monte_carlo(
 ) -> None:
     # Note: the test data number grows exponentially with num of obj
     data_num_seg_per_dim = 2  # test data number per input dim
-    N = data_num_seg_per_dim ** input_dim
+    N = data_num_seg_per_dim**input_dim
     xs = tf.convert_to_tensor(
         list(itertools.product(*[list(tf.linspace(-1, 1, data_num_seg_per_dim))] * input_dim))
     )
@@ -457,7 +461,6 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_raises_for_invalid_j
 
 
 def test_batch_monte_carlo_ehvi_raises_for_model_without_reparam_sampler() -> None:
-
     model = _mo_test_model(2, *[1.0] * 2, with_reparam_sampler=False)
 
     training_input = tf.constant([[0.3], [0.22], [0.1], [0.35]])
@@ -669,13 +672,13 @@ def test_batch_monte_carlo_expected_hypervolume_improvement_utility_on_specified
 def test_expected_constrained_hypervolume_improvement_raises_for_invalid_batch_size(
     at: TensorType,
 ) -> None:
-    pof = ProbabilityOfFeasibility(0.0).using("")
-    builder = ExpectedConstrainedHypervolumeImprovement("", pof, tf.constant(0.5))
+    pof = ProbabilityOfFeasibility(0.0).using(NA)
+    builder = ExpectedConstrainedHypervolumeImprovement(NA, pof, tf.constant(0.5))
     initial_query_points = tf.constant([[-1.0]])
     initial_objective_function_values = tf.constant([[1.0, 1.0]])
-    data = {"": Dataset(initial_query_points, initial_objective_function_values)}
+    data = {NA: Dataset(initial_query_points, initial_objective_function_values)}
 
-    echvi = builder.prepare_acquisition_function({"": QuadraticMeanAndRBFKernel()}, datasets=data)
+    echvi = builder.prepare_acquisition_function({NA: QuadraticMeanAndRBFKernel()}, datasets=data)
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         echvi(at)
@@ -690,32 +693,32 @@ def test_expected_constrained_hypervolume_improvement_can_reproduce_ehvi() -> No
     obj_model = _mo_test_model(num_obj, *[None] * num_obj)
     model_pred_observation = obj_model.predict(train_x)[0]
 
-    data = {"foo": Dataset(train_x[:5], model_pred_observation[:5])}
-    models_ = {"foo": obj_model}
+    data = {FOO: Dataset(train_x[:5], model_pred_observation[:5])}
+    models_ = {FOO: obj_model}
 
     builder = ExpectedConstrainedHypervolumeImprovement(
-        "foo",
+        FOO,
         _Certainty(),
         0,
-        reference_point_spec=get_reference_point(Pareto(data["foo"].observations).front),
+        reference_point_spec=get_reference_point(Pareto(data[FOO].observations).front),
     )
     echvi = builder.prepare_acquisition_function(models_, datasets=data)
 
     ehvi = (
         ExpectedHypervolumeImprovement()
-        .using("foo")
+        .using(FOO)
         .prepare_acquisition_function(models_, datasets=data)
     )
 
     at = tf.constant([[[-0.1]], [[1.23]], [[-6.78]]], dtype=tf.float64)
     npt.assert_allclose(echvi(at), ehvi(at))
 
-    new_data = {"foo": Dataset(train_x, model_pred_observation)}
+    new_data = {FOO: Dataset(train_x, model_pred_observation)}
     up_echvi = builder.update_acquisition_function(echvi, models_, datasets=new_data)
     assert up_echvi == echvi
     up_ehvi = (
         ExpectedHypervolumeImprovement()
-        .using("foo")
+        .using(FOO)
         .prepare_acquisition_function(models_, datasets=new_data)
     )
 
@@ -752,37 +755,37 @@ def test_expected_constrained_hypervolume_improvement_based_on_specified_ref_poi
     class _Certainty(AcquisitionFunctionBuilder[ProbabilisticModelType]):
         def prepare_acquisition_function(
             self,
-            models: Mapping[str, ProbabilisticModel],
-            datasets: Optional[Mapping[str, Dataset]] = None,
+            models: Mapping[Tag, ProbabilisticModel],
+            datasets: Optional[Mapping[Tag, Dataset]] = None,
         ) -> AcquisitionFunction:
             return lambda x: tf.ones_like(tf.squeeze(x, -2))
 
-    data = {"foo": Dataset(train_x[:5], model_pred_observation[:5])}
-    models_ = {"foo": obj_model}
+    data = {FOO: Dataset(train_x[:5], model_pred_observation[:5])}
+    models_ = {FOO: obj_model}
 
     builder = ExpectedConstrainedHypervolumeImprovement(  # type: ignore
-        "foo",
+        FOO,
         _Certainty(),
         0,
-        reference_point_spec=get_reference_point(Pareto(data["foo"].observations).front),
+        reference_point_spec=get_reference_point(Pareto(data[FOO].observations).front),
     )
     echvi = builder.prepare_acquisition_function(models_, datasets=data)
 
     ehvi = (
         ExpectedHypervolumeImprovement()
-        .using("foo")
+        .using(FOO)
         .prepare_acquisition_function(models_, datasets=data)
     )
 
     at = tf.constant([[[-0.1]], [[1.23]], [[-6.78]]], dtype=tf.float64)
     npt.assert_allclose(echvi(at), ehvi(at))
 
-    new_data = {"foo": Dataset(train_x, model_pred_observation)}
+    new_data = {FOO: Dataset(train_x, model_pred_observation)}
     up_echvi = builder.update_acquisition_function(echvi, models_, datasets=new_data)
     assert up_echvi == echvi
     up_ehvi = (
         ExpectedHypervolumeImprovement()
-        .using("foo")
+        .using(FOO)
         .prepare_acquisition_function(models_, datasets=new_data)
     )
 
@@ -794,8 +797,8 @@ def test_echvi_is_constraint_when_no_feasible_points() -> None:
     class _Constraint(AcquisitionFunctionBuilder[ProbabilisticModel]):
         def prepare_acquisition_function(
             self,
-            models: Mapping[str, ProbabilisticModel],
-            datasets: Optional[Mapping[str, Dataset]] = None,
+            models: Mapping[Tag, ProbabilisticModel],
+            datasets: Optional[Mapping[Tag, Dataset]] = None,
         ) -> AcquisitionFunction:
             def acquisition(x: TensorType) -> TensorType:
                 x_ = tf.squeeze(x, -2)
@@ -803,10 +806,10 @@ def test_echvi_is_constraint_when_no_feasible_points() -> None:
 
             return acquisition
 
-    data = {"foo": Dataset(tf.constant([[-2.0], [1.0]]), tf.constant([[4.0], [1.0]]))}
-    models_ = {"foo": QuadraticMeanAndRBFKernel()}
+    data = {FOO: Dataset(tf.constant([[-2.0], [1.0]]), tf.constant([[4.0], [1.0]]))}
+    models_ = {FOO: QuadraticMeanAndRBFKernel()}
     echvi = ExpectedConstrainedHypervolumeImprovement(
-        "foo", _Constraint()
+        FOO, _Constraint()
     ).prepare_acquisition_function(models_, datasets=data)
 
     constraint_fn = _Constraint().prepare_acquisition_function(models_, datasets=data)
@@ -816,29 +819,29 @@ def test_echvi_is_constraint_when_no_feasible_points() -> None:
 
 
 def test_echvi_raises_for_non_scalar_min_pof() -> None:
-    pof = ProbabilityOfFeasibility(0.0).using("")
+    pof = ProbabilityOfFeasibility(0.0).using(NA)
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        ExpectedConstrainedHypervolumeImprovement("", pof, tf.constant([0.0]))
+        ExpectedConstrainedHypervolumeImprovement(NA, pof, tf.constant([0.0]))
 
 
 def test_echvi_raises_for_out_of_range_min_pof() -> None:
-    pof = ProbabilityOfFeasibility(0.0).using("")
+    pof = ProbabilityOfFeasibility(0.0).using(NA)
     with pytest.raises(tf.errors.InvalidArgumentError):
-        ExpectedConstrainedHypervolumeImprovement("", pof, 1.5)
+        ExpectedConstrainedHypervolumeImprovement(NA, pof, 1.5)
 
 
 def test_echvi_raises_for_empty_data() -> None:
     class _Constraint(AcquisitionFunctionBuilder[ProbabilisticModel]):
         def prepare_acquisition_function(
             self,
-            models: Mapping[str, ProbabilisticModel],
-            datasets: Optional[Mapping[str, Dataset]] = None,
+            models: Mapping[Tag, ProbabilisticModel],
+            datasets: Optional[Mapping[Tag, Dataset]] = None,
         ) -> AcquisitionFunction:
             return raise_exc
 
-    data = {"foo": Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))}
-    models_ = {"foo": QuadraticMeanAndRBFKernel()}
-    builder = ExpectedConstrainedHypervolumeImprovement("foo", _Constraint())
+    data = {FOO: Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))}
+    models_ = {FOO: QuadraticMeanAndRBFKernel()}
+    builder = ExpectedConstrainedHypervolumeImprovement(FOO, _Constraint())
 
     with pytest.raises(tf.errors.InvalidArgumentError):
         builder.prepare_acquisition_function(models_, datasets=data)
@@ -848,9 +851,9 @@ def test_echvi_raises_for_empty_data() -> None:
 
 def test_hippo_builder_raises_for_empty_data() -> None:
     num_obj = 3
-    dataset = {"": empty_dataset([2], [num_obj])}
-    model = {"": QuadraticMeanAndRBFKernel()}
-    hippo = cast(GreedyAcquisitionFunctionBuilder[QuadraticMeanAndRBFKernel], HIPPO(""))
+    dataset = {NA: empty_dataset([2], [num_obj])}
+    model = {NA: QuadraticMeanAndRBFKernel()}
+    hippo = cast(GreedyAcquisitionFunctionBuilder[QuadraticMeanAndRBFKernel], HIPPO(NA))
 
     with pytest.raises(tf.errors.InvalidArgumentError):
         hippo.prepare_acquisition_function(model, dataset)
@@ -903,18 +906,18 @@ def test_hippo_penalizer_penalizes_pending_point(point_to_penalize: TensorType) 
 @pytest.mark.parametrize(
     "base_builder",
     [
-        ExpectedHypervolumeImprovement().using(""),
-        ExpectedConstrainedHypervolumeImprovement("", _Certainty(), 0.0),
+        ExpectedHypervolumeImprovement().using(NA),
+        ExpectedConstrainedHypervolumeImprovement(NA, _Certainty(), 0.0),
     ],
 )
 def test_hippo_penalized_acquisitions_match_base_acquisition(
     base_builder: AcquisitionFunctionBuilder[ProbabilisticModel],
 ) -> None:
-    data = {"": Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))}
-    model = {"": _mo_test_model(2, *[None] * 2)}
+    data = {NA: Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))}
+    model = {NA: _mo_test_model(2, *[None] * 2)}
 
     hippo_acq_builder: HIPPO[ProbabilisticModel] = HIPPO(
-        "", base_acquisition_function_builder=base_builder
+        NA, base_acquisition_function_builder=base_builder
     )
     hippo_acq = hippo_acq_builder.prepare_acquisition_function(model, data, None)
 
@@ -933,23 +936,23 @@ def test_hippo_penalized_acquisitions_match_base_acquisition(
 @pytest.mark.parametrize(
     "base_builder",
     [
-        ExpectedHypervolumeImprovement().using(""),
-        ExpectedConstrainedHypervolumeImprovement("", _Certainty(), 0.0),
+        ExpectedHypervolumeImprovement().using(NA),
+        ExpectedConstrainedHypervolumeImprovement(NA, _Certainty(), 0.0),
     ],
 )
 def test_hippo_penalized_acquisitions_combine_base_and_penalization_correctly(
     base_builder: AcquisitionFunctionBuilder[ProbabilisticModel],
 ) -> None:
-    data = {"": Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))}
-    model = {"": _mo_test_model(2, *[None] * 2)}
+    data = {NA: Dataset(tf.zeros([3, 2], dtype=tf.float64), tf.ones([3, 2], dtype=tf.float64))}
+    model = {NA: _mo_test_model(2, *[None] * 2)}
     pending_points = tf.zeros([2, 2], dtype=tf.float64)
 
     hippo_acq_builder: HIPPO[ProbabilisticModel] = HIPPO(
-        "", base_acquisition_function_builder=base_builder
+        NA, base_acquisition_function_builder=base_builder
     )
     hippo_acq = hippo_acq_builder.prepare_acquisition_function(model, data, pending_points)
     base_acq = base_builder.prepare_acquisition_function(model, data)
-    penalizer = hippo_penalizer(model[""], pending_points)
+    penalizer = hippo_penalizer(model[NA], pending_points)
     assert hippo_acq._get_tracing_count() == 0  # type: ignore
 
     x_range = tf.linspace(0.0, 1.0, 11)

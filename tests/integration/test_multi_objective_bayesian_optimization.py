@@ -27,6 +27,7 @@ from trieste.acquisition.optimizer import generate_continuous_optimizer
 from trieste.acquisition.rule import (
     AcquisitionRule,
     AsynchronousOptimization,
+    BatchHypervolumeSharpeRatioIndicator,
     EfficientGlobalOptimization,
 )
 from trieste.bayesian_optimizer import BayesianOptimizer
@@ -43,6 +44,11 @@ from trieste.objectives.utils import mk_observer
 from trieste.observer import OBJECTIVE
 from trieste.space import Box
 from trieste.types import TensorType
+
+try:
+    import pymoo
+except ImportError:  # pragma: no cover (tested but not by coverage)
+    pymoo = None
 
 
 @random_seed
@@ -118,6 +124,13 @@ from trieste.types import TensorType
             -3.2095,
             id="BatchMonteCarloExpectedHypervolumeImprovement/4",
         ),
+        pytest.param(
+            15,
+            BatchHypervolumeSharpeRatioIndicator(num_query_points=20) if pymoo else None,
+            -3.2095,
+            id="BatchHypervolumeSharpeRatioIndicator",
+            marks=pytest.mark.qhsri,
+        ),
     ],
 )
 def test_multi_objective_optimizer_finds_pareto_front_of_the_VLMOP2_function(
@@ -125,7 +138,8 @@ def test_multi_objective_optimizer_finds_pareto_front_of_the_VLMOP2_function(
     acquisition_rule: AcquisitionRule[TensorType, Box, TrainableProbabilisticModel],
     convergence_threshold: float,
 ) -> None:
-    search_space = Box([-2, -2], [2, 2])
+    problem = VLMOP2(2)
+    search_space = problem.search_space
 
     def build_stacked_independent_objectives_model(data: Dataset) -> TrainableModelStack:
         gprs = []
@@ -138,7 +152,7 @@ def test_multi_objective_optimizer_finds_pareto_front_of_the_VLMOP2_function(
 
         return TrainablePredictJointReparamModelStack(*gprs)
 
-    observer = mk_observer(VLMOP2().objective(), OBJECTIVE)
+    observer = mk_observer(problem.objective, OBJECTIVE)
 
     initial_query_points = search_space.sample(10)
     initial_data = observer(initial_query_points)
@@ -150,7 +164,6 @@ def test_multi_objective_optimizer_finds_pareto_front_of_the_VLMOP2_function(
 
         set_summary_filter(lambda x: True)
         with tensorboard_writer(summary_writer):
-
             dataset = (
                 BayesianOptimizer(observer, search_space)
                 .optimize(num_steps, initial_data, {OBJECTIVE: model}, acquisition_rule)
@@ -158,10 +171,15 @@ def test_multi_objective_optimizer_finds_pareto_front_of_the_VLMOP2_function(
             )
 
     # A small log hypervolume difference corresponds to a succesful optimization.
-    ref_point = get_reference_point(dataset.observations)
+    ideal_pf = problem.gen_pareto_optimal_points(100)
+    ref_point = get_reference_point(ideal_pf)
 
-    obs_hv = Pareto(dataset.observations).hypervolume_indicator(ref_point)
-    ideal_pf = tf.cast(VLMOP2().gen_pareto_optimal_points(100), dtype=tf.float64)
+    obs_pareto = Pareto(dataset.observations)
+    if obs_pareto.front.shape[0] > 0:
+        obs_hv = obs_pareto.hypervolume_indicator(ref_point)
+    else:
+        obs_hv = 0
+
     ideal_hv = Pareto(ideal_pf).hypervolume_indicator(ref_point)
 
     assert tf.math.log(ideal_hv - obs_hv) < convergence_threshold

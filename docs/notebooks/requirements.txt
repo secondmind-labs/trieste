@@ -14,16 +14,10 @@
 
 numpy
 plotly
-pandas<1.0
-Jinja2<3.1
 matplotlib
 ray[default]
 jupyterlab
 jupytext
-gym<0.22
+gym[box2d]
 box2d
-
-# pin to version of TF used in prod
-gpflux == 0.2.3
-tensorflow ~= 2.4.1
-tensorflow-probability ~= 0.12.0
+box2d-kengz

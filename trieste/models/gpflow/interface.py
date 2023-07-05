@@ -21,7 +21,6 @@ import gpflow
 import tensorflow as tf
 from gpflow.models import GPModel
 from gpflow.posteriors import BasePosterior, PrecomputeCacheType
-from gpflow.utilities.traversal import _merge_leaf_components, leaf_components
 from typing_extensions import Protocol
 
 from ... import logging
@@ -35,6 +34,11 @@ from ..interfaces import (
     SupportsPredictJoint,
 )
 from ..optimizer import Optimizer
+from ..utils import (
+    write_summary_data_based_metrics,
+    write_summary_kernel_parameters,
+    write_summary_likelihood_parameters,
+)
 from .sampler import BatchReparametrizationSampler
 
 
@@ -67,9 +71,14 @@ class GPflowPredictor(
         """
         self._posterior = self.model.posterior(PrecomputeCacheType.VARIABLE)
 
+    def _ensure_variable_model_data(self) -> None:
+        """Ensure GPflow data, which is normally stored in Tensors, is instead stored in
+        dynamically shaped Variables. Override this as required."""
+
     def __setstate__(self, state: dict[str, Any]) -> None:
         # when unpickling we may need to regenerate the posterior cache
         self.__dict__.update(state)
+        self._ensure_variable_model_data()
         if self._posterior is not None:
             self.create_posterior_cache()
 
@@ -146,22 +155,21 @@ class GPflowPredictor(
 
     def log(self, dataset: Optional[Dataset] = None) -> None:
         """
-        Log model-specific information at a given optimization step.
+        Log model training information at a given optimization step to the Tensorboard.
+        We log kernel and likelihood parameters. We also log several training data based metrics,
+        such as root mean square error between predictions and observations and several others.
 
         :param dataset: Optional data that can be used to log additional data-based model summaries.
         """
         summary_writer = logging.get_tensorboard_writer()
         if summary_writer:
             with summary_writer.as_default(step=logging.get_step_number()):
-                kernel = self.get_kernel()
-                components = _merge_leaf_components(leaf_components(kernel))
-                for k, v in components.items():
-                    if v.trainable:
-                        if tf.rank(v) == 0:
-                            logging.scalar(f"kernel.{k}", v)
-                        elif tf.rank(v) == 1:
-                            for i, vi in enumerate(v):
-                                logging.scalar(f"kernel.{k}[{i}]", vi)
+                write_summary_kernel_parameters(self.get_kernel())
+                write_summary_likelihood_parameters(self.model.likelihood)
+                if dataset:
+                    write_summary_data_based_metrics(
+                        dataset=dataset, model=self, prefix="training_"
+                    )
 
     def reparam_sampler(self, num_samples: int) -> ReparametrizationSampler[GPflowPredictor]:
         """

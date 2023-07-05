@@ -126,7 +126,7 @@ def test_dgp_reparam_sampler_samples_approximate_expected_distribution(
         means.append(Fmean_sample)
         vars.append(Fvar_sample)
     ref_mean = tf.reduce_mean(tf.stack(means), axis=0)
-    ref_variance = tf.reduce_mean(tf.stack(vars) + tf.stack(means) ** 2, axis=0) - ref_mean ** 2
+    ref_variance = tf.reduce_mean(tf.stack(vars) + tf.stack(means) ** 2, axis=0) - ref_mean**2
 
     error = 1 / tf.sqrt(tf.cast(num_samples, tf.float32))
     npt.assert_allclose(sample_mean, ref_mean, atol=2 * error)
@@ -264,7 +264,7 @@ def test_dgp_decoupled_trajectory_sampler_samples_approximate_expected_distribut
         means.append(Fmean_sample)
         vars.append(Fvar_sample)
     ref_mean = tf.reduce_mean(tf.stack(means), axis=0)
-    ref_variance = tf.reduce_mean(tf.stack(vars) + tf.stack(means) ** 2, axis=0) - ref_mean ** 2
+    ref_variance = tf.reduce_mean(tf.stack(vars) + tf.stack(means) ** 2, axis=0) - ref_mean**2
 
     error = 1 / tf.sqrt(tf.cast(num_samples, tf.float32))
     npt.assert_allclose(sample_mean, ref_mean, atol=2 * error)
@@ -386,13 +386,15 @@ def test_dgp_decoupled_layer_raises_for_invalid_number_of_features(num_features:
         DeepGaussianProcessDecoupledLayer(model, 0, num_features)
 
 
-def test_dgp_decoupled_layer_raises_for_invalid_kernel() -> None:
-    inducing_var = construct_basic_inducing_variables(
-        num_inducing=5,
-        input_dim=1,
-        share_variables=True,
-        z_init=tf.random.normal([5, 1], dtype=gpflow.default_float()),
+def test_dgp_decoupled_layer_raises_for_invalid_inducing_variables() -> None:
+    ip1 = gpflow.inducing_variables.InducingPoints(
+        tf.random.normal([5, 1], dtype=gpflow.default_float())
     )
+    ip2 = gpflow.inducing_variables.InducingPoints(
+        tf.random.normal([5, 1], dtype=gpflow.default_float())
+    )
+    inducing_var = gpflow.inducing_variables.SeparateIndependentInducingVariables([ip1, ip2])
+
     layer = gpflux.layers.GPLayer(
         gpflow.kernels.SeparateIndependent(
             [gpflow.kernels.SquaredExponential(), gpflow.kernels.SquaredExponential()]
@@ -406,7 +408,7 @@ def test_dgp_decoupled_layer_raises_for_invalid_kernel() -> None:
     model = DeepGaussianProcess(simple_two_layer_dgp_model(x))
     model.model_gpflux.f_layers[0] = layer
 
-    with pytest.raises(ValueError, match="Multioutput kernels .*"):
+    with pytest.raises(ValueError, match="SeparateIndependentInducingVariables .*"):
         DeepGaussianProcessDecoupledLayer(model, 0)
 
 
