@@ -73,7 +73,7 @@ def test_versions_is_valid(versions: list[dict[str, Any]]) -> None:
         assert isinstance(v, dict)
         assert set(v.keys()) == {"version", "url"}
         assert all(isinstance(value, str) for value in v.values())
-        assert v["url"] == f"https://secondmind-labs.github.io/trieste/{v['version']}/index.html"
+        assert v["url"] == f"https://secondmind-labs.github.io/trieste/{v['version']}/"
 
 
 def test_version_in_versions(version: str, versions: list[dict[str, Any]]) -> None:
