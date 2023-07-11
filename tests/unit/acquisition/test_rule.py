@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import copy
 from collections.abc import Mapping
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
 
 import gpflow
 import numpy.testing as npt
@@ -234,7 +234,6 @@ def test_efficient_global_optimization(optimizer: AcquisitionOptimizer[Box]) -> 
             self,
             model: ProbabilisticModel,
             dataset: Optional[Dataset] = None,
-            metadata: Optional[Mapping[str, Any]] = None,
         ) -> AcquisitionFunction:
             return lambda x: -quadratic(tf.squeeze(x, -2) - 1)
 
@@ -243,7 +242,6 @@ def test_efficient_global_optimization(optimizer: AcquisitionOptimizer[Box]) -> 
             function: AcquisitionFunction,
             model: ProbabilisticModel,
             dataset: Optional[Dataset] = None,
-            metadata: Optional[Mapping[str, Any]] = None,
         ) -> AcquisitionFunction:
             self._updated = True
             return function
@@ -266,7 +264,6 @@ def test_efficient_global_optimization_initial_acquisition_function() -> None:
             self,
             model: ProbabilisticModel,
             dataset: Optional[Dataset] = None,
-            metadata: Optional[Mapping[str, Any]] = None,
         ) -> AcquisitionFunction:
             noise = tf.random.uniform([], -0.05, 0.05, dtype=tf.float64)
             return lambda x: -quadratic(tf.squeeze(x, -2) - 1) + noise
@@ -276,7 +273,6 @@ def test_efficient_global_optimization_initial_acquisition_function() -> None:
             function: AcquisitionFunction,
             model: ProbabilisticModel,
             dataset: Optional[Dataset] = None,
-            metadata: Optional[Mapping[str, Any]] = None,
         ) -> AcquisitionFunction:
             return function
 
@@ -314,7 +310,6 @@ class _JointBatchModelMinusMeanMaximumSingleBuilder(AcquisitionFunctionBuilder[P
         self,
         models: Mapping[Tag, ProbabilisticModel],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         return lambda at: -tf.reduce_max(models[OBJECTIVE].predict(at)[0], axis=-2)
 
@@ -367,7 +362,6 @@ class _GreedyBatchModelMinusMeanMaximumSingleBuilder(
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
         pending_points: TensorType = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         if pending_points is None:
             return lambda at: -tf.reduce_max(model.predict(at)[0], axis=-2)
@@ -384,7 +378,6 @@ class _GreedyBatchModelMinusMeanMaximumSingleBuilder(
         dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         self._update_count += 1
         return self.prepare_acquisition_function(
@@ -447,7 +440,6 @@ class _VectorizedBatchModelMinusMeanMaximumSingleBuilder(
         self,
         models: Mapping[Tag, ProbabilisticModel],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         return lambda at: tf.squeeze(-models[OBJECTIVE].predict(at)[0], -1)
 
@@ -563,7 +555,6 @@ class _Midpoint(AcquisitionRule[TensorType, Box, ProbabilisticModel]):
         search_space: Box,
         models: Mapping[Tag, ProbabilisticModel],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> TensorType:
         return (search_space.upper[None] + search_space.lower[None]) / 2
 

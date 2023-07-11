@@ -181,13 +181,11 @@ class FixedAcquisitionRule(AcquisitionRule[TensorType, SearchSpace, Probabilisti
         search_space: SearchSpace,
         models: Mapping[Tag, ProbabilisticModel],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> TensorType:
         """
         :param search_space: Unused.
         :param models: Unused.
         :param datasets: Unused.
-        :param metadata: Unused.
         :return: The fixed value specified on initialisation.
         """
         return self._qp

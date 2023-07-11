@@ -80,7 +80,7 @@
 # %%
 from __future__ import annotations
 
-from typing import Any, Mapping, Optional
+from typing import Optional
 
 import tensorflow as tf
 from trieste.types import TensorType
@@ -203,10 +203,7 @@ from trieste.data import Dataset
 
 class ProbabilityOfValidity(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     def prepare_acquisition_function(
-        self,
-        model: ProbabilisticModel,
-        dataset: Optional[Dataset] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
+        self, model: ProbabilisticModel, dataset: Optional[Dataset] = None
     ) -> AcquisitionFunction:
         def acquisition(at: TensorType) -> TensorType:
             mean, _ = model.predict_y(tf.squeeze(at, -2))
@@ -222,10 +219,7 @@ class ProbabilityOfValidity(SingleModelAcquisitionBuilder[ProbabilisticModel]):
 # %%
 class ProbabilityOfValidity2(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     def prepare_acquisition_function(
-        self,
-        model: ProbabilisticModel,
-        dataset: Optional[Dataset] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
+        self, model: ProbabilisticModel, dataset: Optional[Dataset] = None
     ) -> AcquisitionFunction:
         @tf.function
         def acquisition(at: TensorType) -> TensorType:
@@ -239,7 +233,6 @@ class ProbabilityOfValidity2(SingleModelAcquisitionBuilder[ProbabilisticModel]):
         function: AcquisitionFunction,
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         return function  # no need to update anything
 

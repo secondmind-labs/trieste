@@ -20,7 +20,7 @@ learning.
 from __future__ import annotations
 
 import math
-from typing import Any, Mapping, Optional, Sequence, Union
+from typing import Optional, Sequence, Union
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -54,12 +54,11 @@ class PredictiveVariance(SingleModelAcquisitionBuilder[SupportsPredictJoint]):
         self,
         model: SupportsPredictJoint,
         dataset: Optional[Dataset] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model.
         :param dataset: Unused.
-        :param metadata: Unused.
+
         :return: The determinant of the predictive function.
         """
         if not isinstance(model, SupportsPredictJoint):
@@ -75,13 +74,11 @@ class PredictiveVariance(SingleModelAcquisitionBuilder[SupportsPredictJoint]):
         function: AcquisitionFunction,
         model: SupportsPredictJoint,
         dataset: Optional[Dataset] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
         :param model: The model.
         :param dataset: Unused.
-        :param metadata: Unused.
         """
         return function  # no need to update anything
 
@@ -153,12 +150,10 @@ class ExpectedFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel]):
         self,
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model.
         :param dataset: Unused.
-        :param metadata: Unused.
         :return: The expected feasibility function. This function will raise
             :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
             greater than one.
@@ -170,7 +165,6 @@ class ExpectedFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel]):
         function: AcquisitionFunction,
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         return function  # no need to update anything
 
@@ -279,12 +273,11 @@ class IntegratedVarianceReduction(SingleModelAcquisitionBuilder[FastUpdateModel]
         self,
         model: FastUpdateModel,
         dataset: Optional[Dataset] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model.
         :param dataset: Unused.
-        :param metadata: Unused.
+
         :return: The integral of the predictive variance.
         """
         if not isinstance(model, FastUpdateModel):
@@ -300,13 +293,11 @@ class IntegratedVarianceReduction(SingleModelAcquisitionBuilder[FastUpdateModel]
         function: AcquisitionFunction,
         model: FastUpdateModel,
         dataset: Optional[Dataset] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
         :param model: The model.
         :param dataset: Unused.
-        :param metadata: Unused.
         """
         return function  # no need to update anything
 
@@ -446,12 +437,11 @@ class BayesianActiveLearningByDisagreement(SingleModelAcquisitionBuilder[Probabi
         self,
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model.
         :param dataset: Unused.
-        :param metadata: Unused.
+
         :return: The determinant of the predictive function.
         """
 
@@ -462,13 +452,11 @@ class BayesianActiveLearningByDisagreement(SingleModelAcquisitionBuilder[Probabi
         function: AcquisitionFunction,
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
         :param model: The model.
         :param dataset: Unused.
-        :param metadata: Unused.
         """
         return function  # no need to update anything
 

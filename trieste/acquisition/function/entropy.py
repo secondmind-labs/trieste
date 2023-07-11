@@ -16,7 +16,7 @@ This module contains entropy-based acquisition function builders.
 """
 from __future__ import annotations
 
-from typing import Any, List, Mapping, Optional, TypeVar, cast, overload
+from typing import List, Optional, TypeVar, cast, overload
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -120,12 +120,10 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder[ProbabilisticModelType
         self,
         model: ProbabilisticModelType,
         dataset: Optional[Dataset] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model.
         :param dataset: The data from the observer.
-        :param metadata: Unused.
         :return: The max-value entropy search acquisition function modified for objective
             minimisation. This function will raise :exc:`ValueError` or
             :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
@@ -147,13 +145,11 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder[ProbabilisticModelType
         function: AcquisitionFunction,
         model: ProbabilisticModelType,
         dataset: Optional[Dataset] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
         :param model: The model.
         :param dataset: The data from the observer.
-        :param metadata: Unused.
         """
         tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
@@ -329,13 +325,11 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[GIBBONModelType]):
         model: GIBBONModelType,
         dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model.
         :param dataset: The data from the observer. Must be populated.
         :param pending_points: The points we penalize with respect to.
-        :param metadata: Unused.
         :return: The GIBBON acquisition function modified for objective minimisation.
         :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
         """
@@ -362,7 +356,6 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[GIBBONModelType]):
         dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
@@ -373,7 +366,6 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[GIBBONModelType]):
         :param new_optimization_step: Indicates whether this call to update_acquisition_function
             is to start of a new optimization step, or to continue collecting batch of points
             for the current step. Defaults to ``True``.
-        :param metadata: Unused.
         :return: The updated acquisition function.
         """
         tf.debugging.Assert(dataset is not None, [tf.constant([])])
@@ -684,7 +676,6 @@ class MUMBO(MinValueEntropySearch[MUMBOModelType]):
         self,
         model: MUMBOModelType,
         dataset: Optional[Dataset] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The multifidelity model.
@@ -705,7 +696,6 @@ class MUMBO(MinValueEntropySearch[MUMBOModelType]):
         function: AcquisitionFunction,
         model: MUMBOModelType,
         dataset: Optional[Dataset] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
@@ -815,15 +805,11 @@ class CostWeighting(SingleModelAcquisitionBuilder[ProbabilisticModel]):
         self._num_fidelities = len(self._fidelity_costs)
 
     def prepare_acquisition_function(
-        self,
-        model: ProbabilisticModel,
-        dataset: Optional[Dataset] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
+        self, model: ProbabilisticModel, dataset: Optional[Dataset] = None
     ) -> AcquisitionFunction:
         """
         :param model: The model.
         :param dataset: The data from the observer. Not actually used here.
-        :param metadata: Unused.
         :return: The reciprocal of the costs corresponding to the fidelity level of each input.
         """
 
@@ -851,7 +837,6 @@ class CostWeighting(SingleModelAcquisitionBuilder[ProbabilisticModel]):
         function: AcquisitionFunction,
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         Nothing to do here, so just return previous cost function.
@@ -859,6 +844,5 @@ class CostWeighting(SingleModelAcquisitionBuilder[ProbabilisticModel]):
         :param function: The acquisition function to update.
         :param model: The model.
         :param dataset: The data from the observer.
-        :param metadata: Unused.
         """
         return function

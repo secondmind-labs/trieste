@@ -16,7 +16,7 @@ from __future__ import annotations
 import tempfile
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, NoReturn, Optional
+from typing import NoReturn, Optional
 
 import numpy.testing as npt
 import pytest
@@ -365,7 +365,6 @@ def test_bayesian_optimizer_uses_specified_acquisition_state(
             search_space: Box,
             models: Mapping[Tag, ProbabilisticModel],
             datasets: Optional[Mapping[Tag, Dataset]] = None,
-            metadata: Optional[Mapping[str, Any]] = None,
         ) -> State[int | None, TensorType]:
             def go(state: int | None) -> tuple[int | None, TensorType]:
                 self.states_received.append(state)
@@ -438,7 +437,6 @@ class _BrokenRule(AcquisitionRule[NoReturn, SearchSpace, ProbabilisticModel]):
         search_space: SearchSpace,
         models: Mapping[Tag, ProbabilisticModel],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> NoReturn:
         raise _Whoops
 
@@ -498,7 +496,6 @@ def test_bayesian_optimizer_optimize_is_noop_for_zero_steps() -> None:
             search_space: Box,
             models: Mapping[Tag, ProbabilisticModel],
             datasets: Optional[Mapping[Tag, Dataset]] = None,
-            metadata: Optional[Mapping[str, Any]] = None,
         ) -> NoReturn:
             assert False
 
@@ -535,7 +532,6 @@ def test_bayesian_optimizer_can_use_two_gprs_for_objective_defined_by_two_dimens
             search_space: Box,
             models: Mapping[Tag, ProbabilisticModel],
             datasets: Optional[Mapping[Tag, Dataset]] = None,
-            metadata: Optional[Mapping[str, Any]] = None,
         ) -> State[int | None, TensorType]:
             def go(previous_state: int | None) -> tuple[int | None, TensorType]:
                 if previous_state is None:
@@ -619,7 +615,6 @@ def test_bayesian_optimizer_optimize_tracked_state(save_to_disk: bool) -> None:
             search_space: Box,
             models: Mapping[Tag, ProbabilisticModel],
             datasets: Optional[Mapping[Tag, Dataset]] = None,
-            metadata: Optional[Mapping[str, Any]] = None,
         ) -> State[int | None, TensorType]:
             def go(state: int | None) -> tuple[int | None, TensorType]:
                 new_state = 0 if state is None else state + 1

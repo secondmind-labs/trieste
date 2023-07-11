@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Any, Optional
+from typing import Optional
 
 import numpy.testing as npt
 import pytest
@@ -57,7 +57,6 @@ def test_reducer__repr_builders() -> None:
             self,
             models: Mapping[Tag, ProbabilisticModel],
             datasets: Optional[Mapping[Tag, Dataset]] = None,
-            metadata: Optional[Mapping[str, Any]] = None,
         ) -> AcquisitionFunction:
             return raise_exc
 
@@ -73,7 +72,6 @@ class _Static(AcquisitionFunctionBuilder[ProbabilisticModel]):
         self,
         models: Mapping[Tag, ProbabilisticModel],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         return self._f
 
@@ -82,7 +80,6 @@ class _Static(AcquisitionFunctionBuilder[ProbabilisticModel]):
         function: AcquisitionFunction,
         models: Mapping[Tag, ProbabilisticModel],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         return lambda x: function(x) + 1
 

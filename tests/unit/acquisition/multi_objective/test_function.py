@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import itertools
 import math
-from typing import Any, Callable, Mapping, Optional, Sequence, cast
+from typing import Callable, Mapping, Optional, Sequence, cast
 
 import numpy.testing as npt
 import pytest
@@ -85,7 +85,6 @@ class _Certainty(AcquisitionFunctionBuilder[ProbabilisticModel]):
         self,
         models: Mapping[Tag, ProbabilisticModel],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         return lambda x: tf.ones((tf.shape(x)[0], 1), dtype=tf.float64)
 
@@ -758,7 +757,6 @@ def test_expected_constrained_hypervolume_improvement_based_on_specified_ref_poi
             self,
             models: Mapping[Tag, ProbabilisticModel],
             datasets: Optional[Mapping[Tag, Dataset]] = None,
-            metadata: Optional[Mapping[str, Any]] = None,
         ) -> AcquisitionFunction:
             return lambda x: tf.ones_like(tf.squeeze(x, -2))
 
@@ -801,7 +799,6 @@ def test_echvi_is_constraint_when_no_feasible_points() -> None:
             self,
             models: Mapping[Tag, ProbabilisticModel],
             datasets: Optional[Mapping[Tag, Dataset]] = None,
-            metadata: Optional[Mapping[str, Any]] = None,
         ) -> AcquisitionFunction:
             def acquisition(x: TensorType) -> TensorType:
                 x_ = tf.squeeze(x, -2)
@@ -839,7 +836,6 @@ def test_echvi_raises_for_empty_data() -> None:
             self,
             models: Mapping[Tag, ProbabilisticModel],
             datasets: Optional[Mapping[Tag, Dataset]] = None,
-            metadata: Optional[Mapping[str, Any]] = None,
         ) -> AcquisitionFunction:
             return raise_exc
 

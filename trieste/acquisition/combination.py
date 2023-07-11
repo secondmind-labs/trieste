@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections.abc import Mapping, Sequence
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
 
 import tensorflow as tf
 
@@ -52,7 +52,6 @@ class Reducer(AcquisitionFunctionBuilder[ProbabilisticModelType]):
         self,
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         r"""
         Return an acquisition function. This acquisition function is defined by first building
@@ -63,12 +62,10 @@ class Reducer(AcquisitionFunctionBuilder[ProbabilisticModelType]):
 
         :param datasets: The data from the observer.
         :param models: The models over each dataset in ``datasets``.
-        :param metadata: The acquisition metadata to pass to the subfunctions (Optional).
         :return: The reduced acquisition function.
         """
         self.functions = tuple(
-            acq.prepare_acquisition_function(models, datasets=datasets, metadata=metadata)
-            for acq in self.acquisitions
+            acq.prepare_acquisition_function(models, datasets=datasets) for acq in self.acquisitions
         )
 
         def evaluate_acquisition_function_fn(at: TensorType) -> TensorType:
@@ -81,16 +78,14 @@ class Reducer(AcquisitionFunctionBuilder[ProbabilisticModelType]):
         function: AcquisitionFunction,
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
         :param models: The model.
         :param datasets: Unused.
-        :param metadata: The acquisition metadata to pass to the subfunctions (Optional).
         """
         self.functions = tuple(
-            acq.update_acquisition_function(function, models, datasets=datasets, metadata=metadata)
+            acq.update_acquisition_function(function, models, datasets=datasets)
             for function, acq in zip(self.functions, self.acquisitions)
         )
 

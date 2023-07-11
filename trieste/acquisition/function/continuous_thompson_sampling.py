@@ -16,7 +16,7 @@ This module contains acquisition function builders for continuous Thompson sampl
 """
 from __future__ import annotations
 
-from typing import Any, Callable, Mapping, Optional, Type
+from typing import Any, Callable, Optional, Type
 
 import tensorflow as tf
 
@@ -60,13 +60,11 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTr
         model: HasTrajectorySampler,
         dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> TrajectoryFunction:
         """
         :param model: The model.
         :param dataset: The data from the observer (not used).
         :param pending_points: The points already in the current batch (not used).
-        :param metadata: Unused.
         :return: A negated trajectory sampled from the model.
         """
         if not isinstance(model, HasTrajectorySampler):
@@ -86,7 +84,6 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTr
         dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> TrajectoryFunction:
         """
         :param function: The trajectory function to update.
@@ -96,7 +93,6 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTr
         :param new_optimization_step: Indicates whether this call to update_acquisition_function
             is to start of a new optimization step, of to continue collecting batch of points
             for the current step. Defaults to ``True``.
-        :param metadata: Unused.
         :return: A new trajectory sampled from the model.
         """
 
@@ -142,12 +138,10 @@ class ParallelContinuousThompsonSampling(
         self,
         model: HasTrajectorySampler,
         dataset: Optional[Dataset] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> TrajectoryFunction:
         """
         :param model: The model.
         :param dataset: The data from the observer (not used).
-        :param metadata: Unused.
         :return: A negated trajectory sampled from the model.
         """
         if not isinstance(model, HasTrajectorySampler):
@@ -166,13 +160,11 @@ class ParallelContinuousThompsonSampling(
         function: TrajectoryFunction,
         model: HasTrajectorySampler,
         dataset: Optional[Dataset] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> TrajectoryFunction:
         """
         :param function: The trajectory function to update.
         :param model: The model.
         :param dataset: The data from the observer (not used).
-        :param metadata: Unused.
         :return: A new trajectory sampled from the model.
         """
         if function is not self._negated_trajectory:
