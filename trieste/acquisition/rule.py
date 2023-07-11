@@ -58,8 +58,10 @@ from .interface import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
     GreedyAcquisitionFunctionBuilder,
+    MetadataAcquisitionFunctionBuilder,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
+    SingleModelMetadataAcquisitionBuilder,
     SingleModelVectorizedAcquisitionBuilder,
     VectorizedAcquisitionFunctionBuilder,
 )
@@ -103,9 +105,10 @@ class AcquisitionRule(ABC, Generic[ResultType, SearchSpaceType, ProbabilisticMod
         search_space: SearchSpaceType,
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> ResultType:
         """
-        Return a value of type `T_co`. Typically this will be a set of query points, either on its
+        Return a value of type `T_co`. Typically, this will be a set of query points, either on its
         own as a `TensorType` (see e.g. :class:`EfficientGlobalOptimization`), or within some
         context (see e.g. :class:`TrustRegion`). We assume that this requires at least models, but
         it may sometimes also need data.
@@ -117,6 +120,7 @@ class AcquisitionRule(ABC, Generic[ResultType, SearchSpaceType, ProbabilisticMod
         :param search_space: The local acquisition search space for *this step*.
         :param models: The model for each tag.
         :param datasets: The known observer query points and observations for each tag (optional).
+        :param metadata: Any additional acquisition metadata (optional).
         :return: A value of type `T_co`.
         """
 
@@ -125,6 +129,7 @@ class AcquisitionRule(ABC, Generic[ResultType, SearchSpaceType, ProbabilisticMod
         search_space: SearchSpaceType,
         model: ProbabilisticModelType,
         dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> ResultType:
         """
         A convenience wrapper for :meth:`acquire` that uses only one model, dataset pair.
@@ -133,6 +138,7 @@ class AcquisitionRule(ABC, Generic[ResultType, SearchSpaceType, ProbabilisticMod
             is defined.
         :param model: The model to use.
         :param dataset: The known observer query points and observations (optional).
+        :param metadata: Any additional acquisition metadata (optional).
         :return: A value of type `T_co`.
         """
         if isinstance(dataset, dict) or isinstance(model, dict):
@@ -144,6 +150,7 @@ class AcquisitionRule(ABC, Generic[ResultType, SearchSpaceType, ProbabilisticMod
             search_space,
             {OBJECTIVE: model},
             datasets=None if dataset is None else {OBJECTIVE: dataset},
+            metadata=metadata,
         )
 
 
@@ -168,8 +175,10 @@ class EfficientGlobalOptimization(
         builder: (
             AcquisitionFunctionBuilder[ProbabilisticModelType]
             | GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]
+            | MetadataAcquisitionFunctionBuilder[ProbabilisticModelType]
             | SingleModelAcquisitionBuilder[ProbabilisticModelType]
             | SingleModelGreedyAcquisitionBuilder[ProbabilisticModelType]
+            | SingleModelMetadataAcquisitionBuilder[ProbabilisticModelType]
         ),
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
@@ -183,9 +192,11 @@ class EfficientGlobalOptimization(
             AcquisitionFunctionBuilder[ProbabilisticModelType]
             | GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]
             | VectorizedAcquisitionFunctionBuilder[ProbabilisticModelType]
+            | MetadataAcquisitionFunctionBuilder[ProbabilisticModelType]
             | SingleModelAcquisitionBuilder[ProbabilisticModelType]
             | SingleModelGreedyAcquisitionBuilder[ProbabilisticModelType]
             | SingleModelVectorizedAcquisitionBuilder[ProbabilisticModelType]
+            | SingleModelMetadataAcquisitionBuilder[ProbabilisticModelType]
         ] = None,
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
@@ -227,6 +238,7 @@ class EfficientGlobalOptimization(
                 SingleModelAcquisitionBuilder,
                 SingleModelGreedyAcquisitionBuilder,
                 SingleModelVectorizedAcquisitionBuilder,
+                SingleModelMetadataAcquisitionBuilder,
             ),
         ):
             builder = builder.using(OBJECTIVE)
@@ -235,7 +247,9 @@ class EfficientGlobalOptimization(
             if isinstance(builder, VectorizedAcquisitionFunctionBuilder):
                 # optimize batch elements independently
                 optimizer = batchify_vectorize(optimizer, num_query_points)
-            elif isinstance(builder, AcquisitionFunctionBuilder):
+            elif isinstance(
+                builder, (AcquisitionFunctionBuilder, MetadataAcquisitionFunctionBuilder)
+            ):
                 # optimize batch elements jointly
                 optimizer = batchify_joint(optimizer, num_query_points)
             elif isinstance(builder, GreedyAcquisitionFunctionBuilder):
@@ -246,6 +260,7 @@ class EfficientGlobalOptimization(
             AcquisitionFunctionBuilder[ProbabilisticModelType],
             GreedyAcquisitionFunctionBuilder[ProbabilisticModelType],
             VectorizedAcquisitionFunctionBuilder[ProbabilisticModelType],
+            MetadataAcquisitionFunctionBuilder[ProbabilisticModelType],
         ] = builder
         self._optimizer = optimizer
         self._num_query_points = num_query_points
@@ -268,6 +283,7 @@ class EfficientGlobalOptimization(
         search_space: SearchSpaceType,
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> TensorType:
         """
         Return the query point(s) that optimizes the acquisition function produced by ``builder``
@@ -277,19 +293,37 @@ class EfficientGlobalOptimization(
         :param models: The model for each tag.
         :param datasets: The known observer query points and observations. Whether this is required
             depends on the acquisition function used.
+        :param metadata: Any additional acquisition metadata. This is passed to any
+            :class:`~trieste.acquisition.MetadataAcquisitionFunctionBuilder` builder, and
+            ignored otherwise.
         :return: The single (or batch of) points to query.
         """
         if self._acquisition_function is None:
-            self._acquisition_function = self._builder.prepare_acquisition_function(
-                models,
-                datasets=datasets,
-            )
+            if isinstance(self._builder, MetadataAcquisitionFunctionBuilder):
+                self._acquisition_function = self._builder.prepare_acquisition_function(
+                    models,
+                    datasets=datasets,
+                    metadata=metadata,
+                )
+            else:
+                self._acquisition_function = self._builder.prepare_acquisition_function(
+                    models,
+                    datasets=datasets,
+                )
         else:
-            self._acquisition_function = self._builder.update_acquisition_function(
-                self._acquisition_function,
-                models,
-                datasets=datasets,
-            )
+            if isinstance(self._builder, MetadataAcquisitionFunctionBuilder):
+                self._acquisition_function = self._builder.update_acquisition_function(
+                    self._acquisition_function,
+                    models,
+                    datasets=datasets,
+                    metadata=metadata,
+                )
+            else:
+                self._acquisition_function = self._builder.update_acquisition_function(
+                    self._acquisition_function,
+                    models,
+                    datasets=datasets,
+                )
 
         summary_writer = logging.get_tensorboard_writer()
         step_number = logging.get_step_number()
@@ -537,6 +571,7 @@ class AsynchronousOptimization(
         search_space: SearchSpaceType,
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> types.State[AsynchronousRuleState | None, TensorType]:
         """
         Constructs a function that, given ``AsynchronousRuleState``,
@@ -693,6 +728,7 @@ class AsynchronousGreedy(
         search_space: SearchSpaceType,
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> types.State[AsynchronousRuleState | None, TensorType]:
         """
         Constructs a function that, given ``AsynchronousRuleState``,
@@ -708,6 +744,7 @@ class AsynchronousGreedy(
         :param search_space: The local acquisition search space for *this step*.
         :param models: The model of the known data. Uses the single key `OBJECTIVE`.
         :param datasets: The known observer query points and observations.
+        :param metadata: Unused.
         :return: A function that constructs the next acquisition state and the recommended query
             points from the previous acquisition state.
         """
@@ -804,6 +841,7 @@ class RandomSampling(AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel
         search_space: SearchSpace,
         models: Mapping[Tag, ProbabilisticModel],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> TensorType:
         """
         Sample ``num_query_points`` (see :meth:`__init__`) points from the
@@ -812,6 +850,7 @@ class RandomSampling(AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel
         :param search_space: The acquisition search space.
         :param models: Unused.
         :param datasets: Unused.
+        :param metadata: Unused.
         :return: The ``num_query_points`` points to query.
         """
         samples = search_space.sample(self._num_query_points)
@@ -905,6 +944,7 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
         search_space: SearchSpace,
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> TensorType:
         """
         Sample `num_search_space_samples` (see :meth:`__init__`) points from the
@@ -914,6 +954,7 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
         :param search_space: The local acquisition search space for *this step*.
         :param models: The model of the known data. Uses the single key `OBJECTIVE`.
         :param datasets: The known observer query points and observations.
+        :param metadata: Unused.
         :return: The ``num_query_points`` points to query.
         :raise ValueError: If ``models`` do not contain the key `OBJECTIVE`, or it contains any
             other key.
@@ -1019,6 +1060,7 @@ class TrustRegion(
         search_space: Box,
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> types.State[State | None, TensorType]:
         """
         Construct a local search space from ``search_space`` according the trust region algorithm,
@@ -1050,6 +1092,7 @@ class TrustRegion(
         :param models: The model for each tag.
         :param datasets: The known observer query points and observations. Uses the data for key
             `OBJECTIVE` to calculate the new trust region.
+        :param metadata: Any additional acquisition metadata (optional).
         :return: A function that constructs the next acquisition state and the recommended query
             points from the previous acquisition state.
         :raise KeyError: If ``datasets`` does not contain the key `OBJECTIVE`.
@@ -1095,7 +1138,9 @@ class TrustRegion(
                     tf.reduce_min([global_upper, xmin + eps], axis=0),
                 )
 
-            points = self._rule.acquire(acquisition_space, models, datasets=datasets)
+            points = self._rule.acquire(
+                acquisition_space, models, datasets=datasets, metadata=metadata
+            )
             state_ = TrustRegion.State(acquisition_space, eps, y_min, is_global)
 
             return state_, points
@@ -1231,6 +1276,7 @@ class TURBO(
         search_space: Box,
         models: Mapping[Tag, TrainableSupportsGetKernel],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> types.State[State | None, TensorType]:
         """
         Construct a local search space from ``search_space`` according the TURBO algorithm,
@@ -1256,6 +1302,7 @@ class TURBO(
         :param models: The model for each tag.
         :param datasets: The known observer query points and observations. Uses the data for key
             `OBJECTIVE` to calculate the new trust region.
+        :param metadata: Any additional acquisition metadata (optional).
         :return: A function that constructs the next acquisition state and the recommended query
             points from the previous acquisition state.
         :raise KeyError: If ``datasets`` does not contain the key `OBJECTIVE`.
@@ -1324,7 +1371,9 @@ class TURBO(
             local_model.optimize(local_dataset)
 
             # use local model and local dataset to choose next query point(s)
-            points = self._rule.acquire_single(acquisition_space, local_model, local_dataset)
+            points = self._rule.acquire_single(
+                acquisition_space, local_model, local_dataset, metadata=metadata
+            )
             state_ = TURBO.State(acquisition_space, L, failure_counter, success_counter, y_min)
 
             return state_, points
@@ -1433,6 +1482,7 @@ class BatchHypervolumeSharpeRatioIndicator(
         search_space: SearchSpace,
         models: Mapping[Tag, ProbabilisticModel],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> TensorType:
         """Acquire a batch of points to observe based on the batch hypervolume
         Sharpe ratio indicator method.
@@ -1443,6 +1493,7 @@ class BatchHypervolumeSharpeRatioIndicator(
         :param search_space: The local acquisition search space for *this step*.
         :param models: The model for each tag.
         :param datasets: The known observer query points and observations.
+        :param metadata: Unused.
         :return: The batch of points to query.
         """
         if models.keys() != {OBJECTIVE}:

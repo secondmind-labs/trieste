@@ -18,7 +18,7 @@ the utility of evaluating sets of candidate points.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Callable, Generic, Mapping, Optional
+from typing import Any, Callable, Generic, Mapping, Optional
 
 from ..data import Dataset
 from ..models.interfaces import ProbabilisticModelType
@@ -363,6 +363,130 @@ class SingleModelVectorizedAcquisitionBuilder(
                 return f"{self.single_builder!r} using tag {tag!r}"
 
         return _Anon(self)
+
+
+class MetadataAcquisitionFunctionBuilder(Generic[ProbabilisticModelType], ABC):
+    """An :class:`MetadataAcquisitionFunctionBuilder` builds and updates an acquisition function
+    using additional passed in metadata."""
+
+    @abstractmethod
+    def prepare_acquisition_function(
+        self,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
+    ) -> AcquisitionFunction:
+        """
+        Prepare an acquisition function. We assume that this requires at least models, but
+        it may sometimes also need data.
+
+        :param models: The models for each tag.
+        :param datasets: The data from the observer (optional).
+        :param metadata: Metadata from the observer (optional).
+        :return: An acquisition function.
+        """
+
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
+    ) -> AcquisitionFunction:
+        """
+        Update an acquisition function. By default this generates a new acquisition function each
+        time. However, if the function is decorated with `@tf.function`, then you can override
+        this method to update its variables instead and avoid retracing the acquisition function on
+        every optimization loop.
+
+        :param function: The acquisition function to update.
+        :param models: The models for each tag.
+        :param datasets: The data from the observer (optional).
+        :param metadata: Metadata from the observer (optional).
+        :return: The updated acquisition function.
+        """
+        return self.prepare_acquisition_function(models, datasets=datasets, metadata=metadata)
+
+
+class SingleModelMetadataAcquisitionBuilder(Generic[ProbabilisticModelType], ABC):
+    """
+    Convenience acquisition function builder for an acquisition function (or component of a
+    composite acquisition function) that requires only one model, dataset pair.
+    """
+
+    def using(self, tag: Tag) -> MetadataAcquisitionFunctionBuilder[ProbabilisticModelType]:
+        """
+        :param tag: The tag for the model, dataset pair to use to build this acquisition function.
+        :return: An acquisition function builder that selects the model and dataset specified by
+            ``tag``, as defined in :meth:`prepare_acquisition_function`.
+        """
+
+        class _Anon(MetadataAcquisitionFunctionBuilder[ProbabilisticModelType]):
+            def __init__(
+                self, single_builder: SingleModelMetadataAcquisitionBuilder[ProbabilisticModelType]
+            ):
+                self.single_builder = single_builder
+
+            def prepare_acquisition_function(
+                self,
+                models: Mapping[Tag, ProbabilisticModelType],
+                datasets: Optional[Mapping[Tag, Dataset]] = None,
+                metadata: Optional[Mapping[str, Any]] = None,
+            ) -> AcquisitionFunction:
+                return self.single_builder.prepare_acquisition_function(
+                    models[tag],
+                    dataset=None if datasets is None else datasets[tag],
+                    metadata=metadata,
+                )
+
+            def update_acquisition_function(
+                self,
+                function: AcquisitionFunction,
+                models: Mapping[Tag, ProbabilisticModelType],
+                datasets: Optional[Mapping[Tag, Dataset]] = None,
+                metadata: Optional[Mapping[str, Any]] = None,
+            ) -> AcquisitionFunction:
+                return self.single_builder.update_acquisition_function(
+                    function,
+                    models[tag],
+                    dataset=None if datasets is None else datasets[tag],
+                    metadata=metadata,
+                )
+
+            def __repr__(self) -> str:
+                return f"{self.single_builder!r} using tag {tag!r}"
+
+        return _Anon(self)
+
+    @abstractmethod
+    def prepare_acquisition_function(
+        self,
+        model: ProbabilisticModelType,
+        dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param model: The model.
+        :param dataset: The data to use to build the acquisition function (optional).
+        :param metadata: The metadata to use to build the acquisition function (optional).
+        :return: An acquisition function.
+        """
+
+    def update_acquisition_function(
+        self,
+        function: AcquisitionFunction,
+        model: ProbabilisticModelType,
+        dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param model: The model.
+        :param dataset: The data from the observer (optional).
+        :param metadata: The metadata from the observer (optional).
+        :return: The updated acquisition function.
+        """
+        return self.prepare_acquisition_function(model, dataset=dataset, metadata=metadata)
 
 
 PenalizationFunction = Callable[[TensorType], TensorType]

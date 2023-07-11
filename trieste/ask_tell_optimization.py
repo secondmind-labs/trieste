@@ -21,7 +21,7 @@ perform Bayesian Optimization with external control of the optimization loop.
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Dict, Generic, Mapping, TypeVar, cast, overload
+from typing import Any, Dict, Generic, Mapping, Optional, TypeVar, cast, overload
 
 try:
     import pandas as pd
@@ -375,10 +375,11 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         record: Record[StateType] = self.to_record(copy=copy)
         return OptimizationResult(Ok(record), [])
 
-    def ask(self) -> TensorType:
+    def ask(self, metadata: Optional[Mapping[str, Any]] = None) -> TensorType:
         """Suggests a point (or points in batch mode) to observe by optimizing the acquisition
         function. If the acquisition is stateful, its state is saved.
 
+        :param metadata: Any acquisition metadata (optional).
         :return: A :class:`TensorType` instance representing suggested point(s).
         """
         # This trick deserves a comment to explain what's going on
@@ -390,7 +391,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
 
         with Timer() as query_point_generation_timer:
             points_or_stateful = self._acquisition_rule.acquire(
-                self._search_space, self._models, datasets=self._datasets
+                self._search_space, self._models, datasets=self._datasets, metadata=metadata
             )
 
         if callable(points_or_stateful):

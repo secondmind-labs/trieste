@@ -128,7 +128,7 @@ result, history = bo.optimize(num_steps, initial_data, model).astuple()
 
 # %%
 class EGOExtraLogging(trieste.acquisition.rule.EfficientGlobalOptimization):
-    def acquire(self, search_space, models, datasets=None):
+    def acquire(self, search_space, models, datasets=None, metadata=None):
         points = super().acquire(search_space, models, datasets)
         summary_writer = trieste.logging.get_tensorboard_writer()
         if summary_writer:
