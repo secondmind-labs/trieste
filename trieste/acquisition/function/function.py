@@ -17,7 +17,7 @@ functions --- functions that estimate the utility of evaluating sets of candidat
 """
 from __future__ import annotations
 
-from typing import Callable, Mapping, Optional, cast
+from typing import Any, Callable, Mapping, Optional, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -54,11 +54,15 @@ class ProbabilityOfImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         return "ProbabilityOfImprovement()"
 
     def prepare_acquisition_function(
-        self, model: ProbabilisticModel, dataset: Optional[Dataset] = None
+        self,
+        model: ProbabilisticModel,
+        dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model.
         :param dataset: The data from the observer. Must be populated.
+        :param metadata: Unused.
         :return: The probability of improvement function. This function will raise
             :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
             greater than one.
@@ -76,10 +80,12 @@ class ProbabilityOfImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         function: AcquisitionFunction,
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
         :param model: The model.
+        :param metadata: Unused.
         :param dataset: The data from the observer.  Must be populated.
         """
         tf.debugging.Assert(dataset is not None, [])
@@ -117,10 +123,12 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
         self,
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model.
         :param dataset: The data from the observer. Must be populated.
+        :param metadata: Unused.
         :return: The expected improvement function. This function will raise
             :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
             greater than one.
@@ -154,11 +162,13 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]):
         function: AcquisitionFunction,
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
         :param model: The model.
         :param dataset: The data from the observer.  Must be populated.
+        :param metadata: Unused.
         """
         tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
@@ -236,10 +246,12 @@ class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder[SupportsGetObse
         self,
         model: SupportsGetObservationNoise,
         dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model.
         :param dataset: The data from the observer. Must be populated.
+        :param metadata: Unused.
         :return: The expected improvement function. This function will raise
             :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
             greater than one.
@@ -262,11 +274,13 @@ class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder[SupportsGetObse
         function: AcquisitionFunction,
         model: SupportsGetObservationNoise,
         dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
         :param model: The model.
         :param dataset: The data from the observer. Must be populated.
+        :param metadata: Unused.
         """
         tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
@@ -348,10 +362,12 @@ class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder[ProbabilisticMo
         self,
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model.
         :param dataset: Unused.
+        :param metadata: Unused.
         :return: The negative lower confidence bound function. This function will raise
             :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
             greater than one.
@@ -365,11 +381,13 @@ class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder[ProbabilisticMo
         function: AcquisitionFunction,
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
         :param model: The model.
         :param dataset: Unused.
+        :param metadata: Unused.
         """
         return function  # no need to update anything
 
@@ -456,10 +474,12 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel]
         self,
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model.
         :param dataset: Unused.
+        :param metadata: Unused.
         :return: The probability of feasibility function. This function will raise
             :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
             greater than one.
@@ -471,11 +491,13 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder[ProbabilisticModel]
         function: AcquisitionFunction,
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
         :param model: The model.
         :param dataset: Unused.
+        :param metadata: Unused.
         """
         return function  # no need to update anything
 
@@ -549,10 +571,12 @@ class FastConstraintsFeasibility(SingleModelAcquisitionBuilder[ProbabilisticMode
         self,
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param model: Unused.
         :param dataset: Unused.
+        :param metadata: Unused.
         :return: The function for feasibility of constraints.
         """
         return fast_constraints_feasibility(self._search_space, self._smoothing_function)
@@ -562,11 +586,13 @@ class FastConstraintsFeasibility(SingleModelAcquisitionBuilder[ProbabilisticMode
         function: AcquisitionFunction,
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
         :param model: Unused.
         :param dataset: Unused.
+        :param metadata: Unused.
         :return: The function for feasibility of constraints.
         """
         return function  # No need to update anything.
@@ -661,10 +687,12 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
         self,
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param models: The models over each tag.
         :param datasets: The data from the observer.
+        :param metadata: Unused.
         :return: The expected constrained improvement acquisition function. This function will raise
             :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
             greater than one.
@@ -715,11 +743,13 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
         function: AcquisitionFunction,
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
         :param models: The models for each tag.
         :param datasets: The data from the observer.
+        :param metadata: Unused.
         """
         tf.debugging.Assert(datasets is not None, [tf.constant([])])
         datasets = cast(Mapping[Tag, Dataset], datasets)
@@ -816,10 +846,12 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSamp
         self,
         model: HasReparamSampler,
         dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model over the specified ``dataset``. Must have output dimension [1].
         :param dataset: The data from the observer. Cannot be empty.
+        :param metadata: Unused.
         :return: The estimated *expected improvement* acquisition function.
         :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, ``model``
             does not have an output dimension of [1] or does not have a ``reparam_sample`` method.
@@ -854,11 +886,13 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSamp
         function: AcquisitionFunction,
         model: HasReparamSampler,
         dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
         :param model: The model. Must have output dimension [1]. Unused here.
         :param dataset: The data from the observer. Cannot be empty
+        :param metadata: Unused.
         """
         tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
@@ -958,10 +992,12 @@ class MonteCarloAugmentedExpectedImprovement(
         self,
         model: SupportsReparamSamplerObservationNoise,
         dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model over the specified ``dataset``. Must have output dimension [1].
         :param dataset: The data from the observer. Cannot be empty.
+        :param metadata: Unused.
         :return: The estimated *expected improvement* acquisition function.
         :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, ``model``
             does not have an output dimension of [1], does not have a ``reparam_sample`` method, or
@@ -998,11 +1034,13 @@ class MonteCarloAugmentedExpectedImprovement(
         function: AcquisitionFunction,
         model: SupportsReparamSamplerObservationNoise,
         dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
         :param model: The model. Must have output dimension [1]. Unused here
         :param dataset: The data from the observer. Cannot be empty.
+        :param metadata: Unused.
         """
         tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
@@ -1105,10 +1143,12 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasRepara
         self,
         model: HasReparamSampler,
         dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model. Must have event shape [1].
         :param dataset: The data from the observer. Must be populated.
+        :param metadata: Unused.
         :return: The batch *expected improvement* acquisition function.
         :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, or ``model``
             does not have an event shape of [1].
@@ -1131,11 +1171,13 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasRepara
         function: AcquisitionFunction,
         model: HasReparamSampler,
         dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
         :param model: The model. Must have event shape [1].
         :param dataset: The data from the observer. Must be populated.
+        :param metadata: Unused.
         """
         tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
@@ -1224,10 +1266,12 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         self,
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model. Must have event shape [1].
         :param dataset: The data from the observer. Must be populated.
+        :param metadata: Unused.
         :return: The batch *expected improvement* acquisition function.
         :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, or ``model``
             does not have an event shape of [1].
@@ -1260,11 +1304,13 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
         function: AcquisitionFunction,
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
         :param model: The model. Must have event shape [1].
         :param dataset: The data from the observer. Must be populated.
+        :param metadata: Unused.
         """
         tf.debugging.Assert(dataset is not None, [])
         dataset = cast(Dataset, dataset)
@@ -1831,10 +1877,12 @@ class MultipleOptimismNegativeLowerConfidenceBound(
         self,
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model.
         :param dataset: Unused.
+        :param metadata: Unused.
         :return: The multiple optimism negative lower confidence bound function.
         """
         return multiple_optimism_lower_confidence_bound(model, self._search_space.dimension)
@@ -1844,11 +1892,13 @@ class MultipleOptimismNegativeLowerConfidenceBound(
         function: AcquisitionFunction,
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
         :param model: The model.
         :param dataset: Unused.
+        :param metadata: Unused.
         """
         tf.debugging.Assert(
             isinstance(function, multiple_optimism_lower_confidence_bound), [tf.constant([])]
@@ -1940,10 +1990,12 @@ class MakePositive(SingleModelAcquisitionBuilder[ProbabilisticModelType]):
         self,
         model: ProbabilisticModelType,
         dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model.
         :param dataset: The data to use to build the acquisition function (optional).
+        :param metadata: Unused.
         :return: An acquisition function.
         """
         self._base_function = self._base_builder.prepare_acquisition_function(model, dataset)
@@ -1959,11 +2011,13 @@ class MakePositive(SingleModelAcquisitionBuilder[ProbabilisticModelType]):
         function: AcquisitionFunction,
         model: ProbabilisticModelType,
         dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
         :param model: The model.
         :param dataset: The data from the observer (optional).
+        :param metadata: Unused.
         :return: The updated acquisition function.
         """
         up_fn = self._base_builder.update_acquisition_function(self._base_function, model, dataset)

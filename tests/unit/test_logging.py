@@ -18,7 +18,7 @@ import unittest.mock
 from collections.abc import Mapping
 from itertools import zip_longest
 from time import sleep
-from typing import Optional
+from typing import Any, Optional
 
 import numpy.testing as npt
 import pytest
@@ -218,6 +218,7 @@ def test_wallclock_time_logging(
             search_space: SearchSpace,
             models: Mapping[Tag, ProbabilisticModel],
             datasets: Optional[Mapping[Tag, Dataset]] = None,
+            metadata: Optional[Mapping[str, Any]] = None,
         ) -> TensorType:
             sleep(acq_time)
             return self._qp

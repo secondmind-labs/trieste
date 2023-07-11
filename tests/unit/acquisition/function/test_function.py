@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Callable, Optional, Sequence
+from typing import Any, Callable, Optional, Sequence
 from unittest.mock import MagicMock
 
 import numpy.testing as npt
@@ -956,6 +956,7 @@ def test_expected_constrained_improvement_can_reproduce_expected_improvement() -
             self,
             models: Mapping[Tag, ProbabilisticModel],
             datasets: Optional[Mapping[Tag, Dataset]] = None,
+            metadata: Optional[Mapping[str, Any]] = None,
         ) -> AcquisitionFunction:
             return lambda x: tf.ones_like(tf.squeeze(x, -2))
 
@@ -999,6 +1000,7 @@ def test_expected_constrained_improvement_is_relative_to_feasible_point(
             self,
             models: Mapping[Tag, ProbabilisticModel],
             datasets: Optional[Mapping[Tag, Dataset]] = None,
+            metadata: Optional[Mapping[str, Any]] = None,
         ) -> AcquisitionFunction:
             return lambda x: tf.cast(tf.squeeze(x, -2) >= 0, x.dtype)
 
@@ -1024,6 +1026,7 @@ def test_expected_constrained_improvement_is_less_for_constrained_points() -> No
             self,
             models: Mapping[Tag, ProbabilisticModel],
             datasets: Optional[Mapping[Tag, Dataset]] = None,
+            metadata: Optional[Mapping[str, Any]] = None,
         ) -> AcquisitionFunction:
             return lambda x: tf.cast(tf.squeeze(x, -2) >= 0, x.dtype)
 
@@ -1048,6 +1051,7 @@ def test_expected_constrained_improvement_raises_for_empty_data() -> None:
             self,
             models: Mapping[Tag, ProbabilisticModel],
             datasets: Optional[Mapping[Tag, Dataset]] = None,
+            metadata: Optional[Mapping[str, Any]] = None,
         ) -> AcquisitionFunction:
             return raise_exc
 
@@ -1080,6 +1084,7 @@ def test_expected_constrained_improvement_is_constraint_when_no_feasible_points(
             self,
             models: Mapping[Tag, ProbabilisticModel],
             datasets: Optional[Mapping[Tag, Dataset]] = None,
+            metadata: Optional[Mapping[str, Any]] = None,
         ) -> AcquisitionFunction:
             def acquisition(x: TensorType) -> TensorType:
                 x_ = tf.squeeze(x, -2)
@@ -1111,6 +1116,7 @@ def test_expected_constrained_improvement_min_feasibility_probability_bound_is_i
             self,
             models: Mapping[Tag, ProbabilisticModel],
             datasets: Optional[Mapping[Tag, Dataset]] = None,
+            metadata: Optional[Mapping[str, Any]] = None,
         ) -> AcquisitionFunction:
             return pof
 

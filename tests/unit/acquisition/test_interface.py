@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import Iterator, List, Mapping, Optional, Tuple, cast
+from typing import Any, Iterator, List, Mapping, Optional, Tuple, cast
 
 import pytest
 
@@ -50,6 +50,7 @@ class _ArbitrarySingleBuilder(SingleModelAcquisitionBuilder[ProbabilisticModel])
         self,
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         return raise_exc
 
@@ -60,6 +61,7 @@ class _ArbitraryGreedySingleBuilder(SingleModelGreedyAcquisitionBuilder[Probabil
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         return raise_exc
 
@@ -84,16 +86,19 @@ def test_single_model_acquisition_builder_using_passes_on_correct_dataset_and_mo
             self,
             model: ProbabilisticModel,
             dataset: Optional[Dataset] = None,
+            metadata: Optional[Mapping[str, Any]] = None,
         ) -> AcquisitionFunction:
             assert dataset is data["foo"]
             assert model is models["foo"]
+            assert metadata == {"iteration_id": 1}
             return raise_exc
 
     FOO: Tag = "foo"
     BAR: Tag = "bar"
     data = {FOO: empty_dataset([1], [1]), BAR: empty_dataset([1], [1])}
+    metadata = {"iteration_id": 1}
     models = {FOO: QuadraticMeanAndRBFKernel(), BAR: QuadraticMeanAndRBFKernel()}
-    Builder().using(FOO).prepare_acquisition_function(models, datasets=data)
+    Builder().using(FOO).prepare_acquisition_function(models, datasets=data, metadata=metadata)
 
 
 def test_single_model_greedy_acquisition_builder_raises_immediately_for_wrong_key() -> None:
@@ -183,6 +188,7 @@ def test_custom_dataset_mapping() -> None:
             self,
             models: Mapping[Tag, ProbabilisticModel],
             datasets: Optional[Mapping[Tag, Dataset]] = None,
+            metadata: Optional[Mapping[str, Any]] = None,
         ) -> AcquisitionFunction:
             assert datasets is not None
             assert len(datasets) == 1
@@ -191,6 +197,7 @@ def test_custom_dataset_mapping() -> None:
             assert "FOO" not in datasets
             assert isinstance(datasets, CustomDatasets)
             assert datasets.iteration_id == 2
+            assert metadata is None
             return raise_exc
 
     data = CustomDatasets({OBJECTIVE: empty_dataset([1], [1])}, 2)

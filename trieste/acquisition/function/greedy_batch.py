@@ -16,7 +16,7 @@ This module contains local penalization-based acquisition function builders.
 """
 from __future__ import annotations
 
-from typing import Callable, Dict, Mapping, Optional, Union, cast
+from typing import Any, Callable, Dict, Mapping, Optional, Union, cast
 
 import gpflow
 import tensorflow as tf
@@ -121,11 +121,13 @@ class LocalPenalization(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel])
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model.
         :param dataset: The data from the observer. Must be populated.
         :param pending_points: The points we penalize with respect to.
+        :param metadata: Unused.
         :return: The (log) expected improvement penalized with respect to the pending points.
         :raise tf.errors.InvalidArgumentError: If the ``dataset`` is empty.
         """
@@ -146,6 +148,7 @@ class LocalPenalization(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel])
         dataset: Optional[Dataset] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
@@ -156,6 +159,7 @@ class LocalPenalization(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel])
         :param new_optimization_step: Indicates whether this call to update_acquisition_function
             is to start of a new optimization step, of to continue collecting batch of points
             for the current step. Defaults to ``True``.
+        :param metadata: Unused.
         :return: The updated acquisition function.
         """
         tf.debugging.Assert(dataset is not None, [tf.constant([])])
@@ -526,6 +530,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
         models: Mapping[Tag, FantasizerModelOrStack],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
 
@@ -533,6 +538,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
         :param datasets: The data from the observer (optional).
         :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
             where M is the number of pending points and D is the search space dimension.
+        :param metadata: Unused.
         :return: An acquisition function.
         """
         for model in models.values():
@@ -558,6 +564,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
         datasets: Optional[Mapping[Tag, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
@@ -568,6 +575,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
         :param new_optimization_step: Indicates whether this call to update_acquisition_function
             is to start of a new optimization step, of to continue collecting batch of points
             for the current step. Defaults to ``True``.
+        :param metadata: Unused.
         :return: The updated acquisition function.
         """
         if pending_points is None:

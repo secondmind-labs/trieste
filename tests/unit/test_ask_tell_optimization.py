@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import Mapping, Optional
+from typing import Any, Mapping, Optional
 
 import pytest
 import tensorflow as tf
@@ -326,6 +326,7 @@ def test_ask_tell_optimizer_uses_specified_acquisition_state(
             search_space: Box,
             models: Mapping[Tag, ProbabilisticModel],
             datasets: Optional[Mapping[Tag, Dataset]] = None,
+            metadata: Optional[Mapping[str, Any]] = None,
         ) -> State[int | None, TensorType]:
             def go(state: int | None) -> tuple[int | None, TensorType]:
                 self.states_received.append(state)

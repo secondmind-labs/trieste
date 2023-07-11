@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import math
 from itertools import combinations, product
-from typing import Callable, Mapping, Optional, Sequence, cast
+from typing import Any, Callable, Mapping, Optional, Sequence, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -85,10 +85,12 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder[Probabilistic
         self,
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model.
         :param dataset: The data from the observer. Must be populated.
+        :param metadata: Unused.
         :return: The expected hypervolume improvement acquisition function.
         """
         tf.debugging.Assert(dataset is not None, [tf.constant([])])
@@ -115,11 +117,13 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder[Probabilistic
         function: AcquisitionFunction,
         model: ProbabilisticModel,
         dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param function: The acquisition function to update.
         :param model: The model.
         :param dataset: The data from the observer. Must be populated.
+        :param metadata: Unused.
         """
         tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
@@ -313,10 +317,12 @@ class BatchMonteCarloExpectedHypervolumeImprovement(
         self,
         model: HasReparamSampler,
         dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         :param model: The model. Must have event shape [1].
         :param dataset: The data from the observer. Must be populated.
+        :param metadata: Unused.
         :return: The batch expected hypervolume improvement acquisition function.
         """
         tf.debugging.Assert(dataset is not None, [tf.constant([])])
@@ -552,6 +558,7 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         Creates a new instance of the acquisition function.
@@ -559,6 +566,7 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
         :param models: The models.
         :param datasets: The data from the observer. Must be populated.
         :param pending_points: The points we penalize with respect to.
+        :param metadata: Unused.
         :return: The HIPPO acquisition function.
         :raise tf.errors.InvalidArgumentError: If the ``dataset`` is empty.
         """
@@ -583,6 +591,7 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
         datasets: Optional[Mapping[Tag, Dataset]] = None,
         pending_points: Optional[TensorType] = None,
         new_optimization_step: bool = True,
+        metadata: Optional[Mapping[str, Any]] = None,
     ) -> AcquisitionFunction:
         """
         Updates the acquisition function.
@@ -595,6 +604,7 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
         :param new_optimization_step: Indicates whether this call to update_acquisition_function
             is to start of a new optimization step, of to continue collecting batch of points
             for the current step. Defaults to ``True``.
+        :param metadata: Unused.
         :return: The updated acquisition function.
         """
         tf.debugging.Assert(datasets is not None, [tf.constant([])])
