@@ -365,7 +365,7 @@ class SingleModelVectorizedAcquisitionBuilder(
         return _Anon(self)
 
 
-class MetadataAcquisitionFunctionBuilder(Generic[ProbabilisticModelType], ABC):
+class MetadataAcquisitionFunctionBuilder(AcquisitionFunctionBuilder[ProbabilisticModelType], ABC):
     """An :class:`MetadataAcquisitionFunctionBuilder` builds and updates an acquisition function
     using additional passed in metadata."""
 
@@ -408,7 +408,9 @@ class MetadataAcquisitionFunctionBuilder(Generic[ProbabilisticModelType], ABC):
         return self.prepare_acquisition_function(models, datasets=datasets, metadata=metadata)
 
 
-class SingleModelMetadataAcquisitionBuilder(Generic[ProbabilisticModelType], ABC):
+class SingleModelMetadataAcquisitionBuilder(
+    SingleModelAcquisitionBuilder[ProbabilisticModelType], ABC
+):
     """
     Convenience acquisition function builder for an acquisition function (or component of a
     composite acquisition function) that requires only one model, dataset pair.

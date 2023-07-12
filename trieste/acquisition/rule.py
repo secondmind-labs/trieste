@@ -61,7 +61,6 @@ from .interface import (
     MetadataAcquisitionFunctionBuilder,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
-    SingleModelMetadataAcquisitionBuilder,
     VectorizedAcquisitionFunctionBuilder,
 )
 from .multi_objective import Pareto
@@ -129,7 +128,7 @@ class AcquisitionRule(ABC, Generic[ResultType, SearchSpaceType, ProbabilisticMod
         metadata: Optional[Mapping[str, Any]] = None,
     ) -> ResultType:
         """
-        Same as acquire, but accepts an additional metadata argument. By default this is just
+        Same as acquire, but accepts an additional metadata argument. By default, this is just
         dropped, but you can override this method to use the metadata during acquisition.
         """
         return self.acquire(search_space, models, datasets=datasets)
@@ -185,10 +184,8 @@ class EfficientGlobalOptimization(
         builder: (
             AcquisitionFunctionBuilder[ProbabilisticModelType]
             | GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]
-            | MetadataAcquisitionFunctionBuilder[ProbabilisticModelType]
             | SingleModelAcquisitionBuilder[ProbabilisticModelType]
             | SingleModelGreedyAcquisitionBuilder[ProbabilisticModelType]
-            | SingleModelMetadataAcquisitionBuilder[ProbabilisticModelType]
         ),
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
@@ -201,10 +198,8 @@ class EfficientGlobalOptimization(
         builder: Optional[
             AcquisitionFunctionBuilder[ProbabilisticModelType]
             | GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]
-            | MetadataAcquisitionFunctionBuilder[ProbabilisticModelType]
             | SingleModelAcquisitionBuilder[ProbabilisticModelType]
             | SingleModelGreedyAcquisitionBuilder[ProbabilisticModelType]
-            | SingleModelMetadataAcquisitionBuilder[ProbabilisticModelType]
         ] = None,
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
@@ -245,7 +240,6 @@ class EfficientGlobalOptimization(
             (
                 SingleModelAcquisitionBuilder,
                 SingleModelGreedyAcquisitionBuilder,
-                SingleModelMetadataAcquisitionBuilder,
             ),
         ):
             builder = builder.using(OBJECTIVE)
@@ -254,9 +248,7 @@ class EfficientGlobalOptimization(
             if isinstance(builder, VectorizedAcquisitionFunctionBuilder):
                 # optimize batch elements independently
                 optimizer = batchify_vectorize(optimizer, num_query_points)
-            elif isinstance(
-                builder, (AcquisitionFunctionBuilder, MetadataAcquisitionFunctionBuilder)
-            ):
+            elif isinstance(builder, AcquisitionFunctionBuilder):
                 # optimize batch elements jointly
                 optimizer = batchify_joint(optimizer, num_query_points)
             elif isinstance(builder, GreedyAcquisitionFunctionBuilder):
@@ -266,7 +258,6 @@ class EfficientGlobalOptimization(
         self._builder: Union[
             AcquisitionFunctionBuilder[ProbabilisticModelType],
             GreedyAcquisitionFunctionBuilder[ProbabilisticModelType],
-            MetadataAcquisitionFunctionBuilder[ProbabilisticModelType],
         ] = builder
         self._optimizer = optimizer
         self._num_query_points = num_query_points
@@ -523,9 +514,7 @@ class AsynchronousOptimization(
         self: "AsynchronousOptimization[SearchSpaceType, ProbabilisticModelType]",
         builder: (
             AcquisitionFunctionBuilder[ProbabilisticModelType]
-            | MetadataAcquisitionFunctionBuilder[ProbabilisticModelType]
             | SingleModelAcquisitionBuilder[ProbabilisticModelType]
-            | SingleModelMetadataAcquisitionBuilder[ProbabilisticModelType]
         ),
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
@@ -536,9 +525,7 @@ class AsynchronousOptimization(
         self,
         builder: Optional[
             AcquisitionFunctionBuilder[ProbabilisticModelType]
-            | MetadataAcquisitionFunctionBuilder[ProbabilisticModelType]
             | SingleModelAcquisitionBuilder[ProbabilisticModelType]
-            | SingleModelMetadataAcquisitionBuilder[ProbabilisticModelType]
         ] = None,
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
@@ -566,9 +553,7 @@ class AsynchronousOptimization(
         if optimizer is None:
             optimizer = automatic_optimizer_selector
 
-        if isinstance(
-            builder, (SingleModelAcquisitionBuilder, SingleModelMetadataAcquisitionBuilder)
-        ):
+        if isinstance(builder, SingleModelAcquisitionBuilder):
             builder = builder.using(OBJECTIVE)
 
         # even though we are only using batch acquisition functions
@@ -576,10 +561,7 @@ class AsynchronousOptimization(
         if num_query_points > 1:
             optimizer = batchify_joint(optimizer, num_query_points)
 
-        self._builder: Union[
-            AcquisitionFunctionBuilder[ProbabilisticModelType],
-            MetadataAcquisitionFunctionBuilder[ProbabilisticModelType],
-        ] = builder
+        self._builder: AcquisitionFunctionBuilder[ProbabilisticModelType] = builder
         self._optimizer = optimizer
         self._acquisition_function: Optional[AcquisitionFunction] = None
 
