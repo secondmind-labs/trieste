@@ -105,7 +105,6 @@ class AcquisitionRule(ABC, Generic[ResultType, SearchSpaceType, ProbabilisticMod
         search_space: SearchSpaceType,
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> ResultType:
         """
         Return a value of type `T_co`. Typically, this will be a set of query points, either on its
@@ -123,6 +122,19 @@ class AcquisitionRule(ABC, Generic[ResultType, SearchSpaceType, ProbabilisticMod
         :param metadata: Any additional acquisition metadata (optional).
         :return: A value of type `T_co`.
         """
+
+    def acquire_with_metadata(
+        self,
+        search_space: SearchSpaceType,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
+    ) -> ResultType:
+        """
+        Same as acquire, but accepts an additional metadata argument. By default this is just
+        dropped, but you can override this method to use the metadata during acquisition.
+        """
+        return self.acquire(search_space, models, datasets=datasets)
 
     def acquire_single(
         self,
@@ -146,7 +158,7 @@ class AcquisitionRule(ABC, Generic[ResultType, SearchSpaceType, ProbabilisticMod
                 "AcquisitionRule.acquire_single method does not support multiple datasets "
                 "or models: use acquire instead"
             )
-        return self.acquire(
+        return self.acquire_with_metadata(
             search_space,
             {OBJECTIVE: model},
             datasets=None if dataset is None else {OBJECTIVE: dataset},
@@ -279,6 +291,14 @@ class EfficientGlobalOptimization(
         return self._acquisition_function
 
     def acquire(
+        self,
+        search_space: SearchSpaceType,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+    ) -> TensorType:
+        return self.acquire_with_metadata(search_space, models, datasets=datasets)
+
+    def acquire_with_metadata(
         self,
         search_space: SearchSpaceType,
         models: Mapping[Tag, ProbabilisticModelType],
@@ -566,12 +586,13 @@ class AsynchronousOptimization(
         {self._builder!r},
         {self._optimizer!r})"""
 
+    # TODO: support metadata
+
     def acquire(
         self,
         search_space: SearchSpaceType,
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> types.State[AsynchronousRuleState | None, TensorType]:
         """
         Constructs a function that, given ``AsynchronousRuleState``,
@@ -728,7 +749,6 @@ class AsynchronousGreedy(
         search_space: SearchSpaceType,
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> types.State[AsynchronousRuleState | None, TensorType]:
         """
         Constructs a function that, given ``AsynchronousRuleState``,
@@ -744,7 +764,6 @@ class AsynchronousGreedy(
         :param search_space: The local acquisition search space for *this step*.
         :param models: The model of the known data. Uses the single key `OBJECTIVE`.
         :param datasets: The known observer query points and observations.
-        :param metadata: Unused.
         :return: A function that constructs the next acquisition state and the recommended query
             points from the previous acquisition state.
         """
@@ -841,7 +860,6 @@ class RandomSampling(AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel
         search_space: SearchSpace,
         models: Mapping[Tag, ProbabilisticModel],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> TensorType:
         """
         Sample ``num_query_points`` (see :meth:`__init__`) points from the
@@ -850,7 +868,6 @@ class RandomSampling(AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel
         :param search_space: The acquisition search space.
         :param models: Unused.
         :param datasets: Unused.
-        :param metadata: Unused.
         :return: The ``num_query_points`` points to query.
         """
         samples = search_space.sample(self._num_query_points)
@@ -944,7 +961,6 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
         search_space: SearchSpace,
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> TensorType:
         """
         Sample `num_search_space_samples` (see :meth:`__init__`) points from the
@@ -954,7 +970,6 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
         :param search_space: The local acquisition search space for *this step*.
         :param models: The model of the known data. Uses the single key `OBJECTIVE`.
         :param datasets: The known observer query points and observations.
-        :param metadata: Unused.
         :return: The ``num_query_points`` points to query.
         :raise ValueError: If ``models`` do not contain the key `OBJECTIVE`, or it contains any
             other key.
@@ -1060,6 +1075,14 @@ class TrustRegion(
         search_space: Box,
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
+    ) -> types.State[State | None, TensorType]:
+        return self.acquire_with_metadata(search_space, models, datasets=datasets)
+
+    def acquire_with_metadata(
+        self,
+        search_space: Box,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
         metadata: Optional[Mapping[str, Any]] = None,
     ) -> types.State[State | None, TensorType]:
         """
@@ -1138,7 +1161,7 @@ class TrustRegion(
                     tf.reduce_min([global_upper, xmin + eps], axis=0),
                 )
 
-            points = self._rule.acquire(
+            points = self._rule.acquire_with_metadata(
                 acquisition_space, models, datasets=datasets, metadata=metadata
             )
             state_ = TrustRegion.State(acquisition_space, eps, y_min, is_global)
@@ -1272,6 +1295,14 @@ class TURBO(
         return f"TURBO({self._num_trust_regions!r}, {self._rule})"
 
     def acquire(
+        self,
+        search_space: Box,
+        models: Mapping[Tag, TrainableSupportsGetKernel],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+    ) -> types.State[State | None, TensorType]:
+        return self.acquire_with_metadata(search_space, models, datasets=datasets)
+
+    def acquire_with_metadata(
         self,
         search_space: Box,
         models: Mapping[Tag, TrainableSupportsGetKernel],
@@ -1482,7 +1513,6 @@ class BatchHypervolumeSharpeRatioIndicator(
         search_space: SearchSpace,
         models: Mapping[Tag, ProbabilisticModel],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> TensorType:
         """Acquire a batch of points to observe based on the batch hypervolume
         Sharpe ratio indicator method.
@@ -1493,7 +1523,6 @@ class BatchHypervolumeSharpeRatioIndicator(
         :param search_space: The local acquisition search space for *this step*.
         :param models: The model for each tag.
         :param datasets: The known observer query points and observations.
-        :param metadata: Unused.
         :return: The batch of points to query.
         """
         if models.keys() != {OBJECTIVE}:

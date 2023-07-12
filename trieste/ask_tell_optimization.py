@@ -390,7 +390,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         # so code below is needed to cater for both cases
 
         with Timer() as query_point_generation_timer:
-            points_or_stateful = self._acquisition_rule.acquire(
+            points_or_stateful = self._acquisition_rule.acquire_with_metadata(
                 self._search_space, self._models, datasets=self._datasets, metadata=metadata
             )
 

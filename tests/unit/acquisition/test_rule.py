@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import copy
 from collections.abc import Mapping
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
 
 import gpflow
 import numpy.testing as npt
@@ -555,7 +555,6 @@ class _Midpoint(AcquisitionRule[TensorType, Box, ProbabilisticModel]):
         search_space: Box,
         models: Mapping[Tag, ProbabilisticModel],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
     ) -> TensorType:
         return (search_space.upper[None] + search_space.lower[None]) / 2
 
