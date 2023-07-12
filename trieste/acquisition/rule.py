@@ -62,7 +62,6 @@ from .interface import (
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
     SingleModelMetadataAcquisitionBuilder,
-    SingleModelVectorizedAcquisitionBuilder,
     VectorizedAcquisitionFunctionBuilder,
 )
 from .multi_objective import Pareto
