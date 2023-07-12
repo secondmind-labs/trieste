@@ -202,11 +202,9 @@ class EfficientGlobalOptimization(
         builder: Optional[
             AcquisitionFunctionBuilder[ProbabilisticModelType]
             | GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]
-            | VectorizedAcquisitionFunctionBuilder[ProbabilisticModelType]
             | MetadataAcquisitionFunctionBuilder[ProbabilisticModelType]
             | SingleModelAcquisitionBuilder[ProbabilisticModelType]
             | SingleModelGreedyAcquisitionBuilder[ProbabilisticModelType]
-            | SingleModelVectorizedAcquisitionBuilder[ProbabilisticModelType]
             | SingleModelMetadataAcquisitionBuilder[ProbabilisticModelType]
         ] = None,
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
@@ -248,7 +246,6 @@ class EfficientGlobalOptimization(
             (
                 SingleModelAcquisitionBuilder,
                 SingleModelGreedyAcquisitionBuilder,
-                SingleModelVectorizedAcquisitionBuilder,
                 SingleModelMetadataAcquisitionBuilder,
             ),
         ):
@@ -270,7 +267,6 @@ class EfficientGlobalOptimization(
         self._builder: Union[
             AcquisitionFunctionBuilder[ProbabilisticModelType],
             GreedyAcquisitionFunctionBuilder[ProbabilisticModelType],
-            VectorizedAcquisitionFunctionBuilder[ProbabilisticModelType],
             MetadataAcquisitionFunctionBuilder[ProbabilisticModelType],
         ] = builder
         self._optimizer = optimizer
