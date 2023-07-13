@@ -58,7 +58,6 @@ from .interface import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
     GreedyAcquisitionFunctionBuilder,
-    MetadataAcquisitionFunctionBuilder,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
     VectorizedAcquisitionFunctionBuilder,
@@ -298,37 +297,17 @@ class EfficientGlobalOptimization(
         :param models: The model for each tag.
         :param datasets: The known observer query points and observations. Whether this is required
             depends on the acquisition function used.
-        :param metadata: Any additional acquisition metadata. This is passed to any
-            :class:`~trieste.acquisition.MetadataAcquisitionFunctionBuilder` builder, and
-            ignored otherwise.
+        :param metadata: Any additional acquisition metadata. (optional)
         :return: The single (or batch of) points to query.
         """
         if self._acquisition_function is None:
-            if isinstance(self._builder, MetadataAcquisitionFunctionBuilder):
-                self._acquisition_function = self._builder.prepare_acquisition_function(
-                    models,
-                    datasets=datasets,
-                    metadata=metadata,
-                )
-            else:
-                self._acquisition_function = self._builder.prepare_acquisition_function(
-                    models,
-                    datasets=datasets,
-                )
+            self._acquisition_function = self._builder.prepare_acquisition_function_with_metadata(
+                models, datasets=datasets, metadata=metadata
+            )
         else:
-            if isinstance(self._builder, MetadataAcquisitionFunctionBuilder):
-                self._acquisition_function = self._builder.update_acquisition_function(
-                    self._acquisition_function,
-                    models,
-                    datasets=datasets,
-                    metadata=metadata,
-                )
-            else:
-                self._acquisition_function = self._builder.update_acquisition_function(
-                    self._acquisition_function,
-                    models,
-                    datasets=datasets,
-                )
+            self._acquisition_function = self._builder.update_acquisition_function_with_metadata(
+                self._acquisition_function, models, datasets=datasets, metadata=metadata
+            )
 
         summary_writer = logging.get_tensorboard_writer()
         step_number = logging.get_step_number()
@@ -354,12 +333,15 @@ class EfficientGlobalOptimization(
             for i in range(
                 self._num_query_points - 1
             ):  # greedily allocate remaining batch elements
-                self._acquisition_function = self._builder.update_acquisition_function(
-                    self._acquisition_function,
-                    models,
-                    datasets=datasets,
-                    pending_points=points,
-                    new_optimization_step=False,
+                self._acquisition_function = (
+                    self._builder.update_acquisition_function_with_metadata(
+                        self._acquisition_function,
+                        models,
+                        datasets=datasets,
+                        pending_points=points,
+                        new_optimization_step=False,
+                        metadata=metadata,
+                    )
                 )
                 with tf.name_scope(f"EGO.optimizer[{i+1}]"):
                     chosen_point = self._optimizer(search_space, self._acquisition_function)
@@ -602,9 +584,7 @@ class AsynchronousOptimization(
         :param search_space: The local acquisition search space for *this step*.
         :param models: The model of the known data. Uses the single key `OBJECTIVE`.
         :param datasets: The known observer query points and observations.
-        :param metadata: Any additional acquisition metadata. This is passed to any
-            :class:`~trieste.acquisition.MetadataAcquisitionFunctionBuilder` builder, and
-            ignored otherwise.
+        :param metadata: Any additional acquisition metadata. (optional)
         :return: A function that constructs the next acquisition state and the recommended query
             points from the previous acquisition state.
         """
@@ -618,26 +598,13 @@ class AsynchronousOptimization(
             )
 
         if self._acquisition_function is None:
-            if isinstance(self._builder, MetadataAcquisitionFunctionBuilder):
-                self._acquisition_function = self._builder.prepare_acquisition_function(
-                    models, datasets=datasets, metadata=metadata
-                )
-            else:
-                self._acquisition_function = self._builder.prepare_acquisition_function(
-                    models,
-                    datasets=datasets,
-                )
+            self._acquisition_function = self._builder.prepare_acquisition_function_with_metadata(
+                models, datasets=datasets, metadata=metadata
+            )
         else:
-            if isinstance(self._builder, MetadataAcquisitionFunctionBuilder):
-                self._acquisition_function = self._builder.update_acquisition_function(
-                    self._acquisition_function, models, datasets=datasets, metadata=metadata
-                )
-            else:
-                self._acquisition_function = self._builder.update_acquisition_function(
-                    self._acquisition_function,
-                    models,
-                    datasets=datasets,
-                )
+            self._acquisition_function = self._builder.update_acquisition_function_with_metadata(
+                self._acquisition_function, models, datasets=datasets, metadata=metadata
+            )
 
         def state_func(
             state: AsynchronousRuleState | None,
