@@ -212,11 +212,11 @@ class expected_improvement(AcquisitionFunctionClass):
         """Update the acquisition function with a new eta value."""
         self._eta.assign(eta)
 
+    @tf.function
     @check_shapes(
         "x: [N..., 1, D] # This acquisition function only supports batch sizes of one",
         "return: [N..., L]",
     )
-    @tf.function
     def __call__(self, x: TensorType) -> TensorType:
         mean, variance = self._model.predict(tf.squeeze(x, -2))
         normal = tfp.distributions.Normal(mean, tf.sqrt(variance))

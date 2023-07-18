@@ -22,7 +22,7 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
-from check_shapes.exceptions import ShapeMismatchError
+from tensorflow.python.autograph.impl.api import StagingError
 
 from tests.util.misc import (
     TF_DEBUGGING_ERROR_TYPES,
@@ -283,7 +283,7 @@ def test_expected_improvement_switches_to_improvement_on_feasible_points() -> No
 def test_expected_improvement_raises_for_invalid_batch_size(at: TensorType) -> None:
     ei = expected_improvement(QuadraticMeanAndRBFKernel(), tf.constant([1.0]))
 
-    with pytest.raises(ShapeMismatchError):
+    with pytest.raises(StagingError):
         ei(at)
 
 
@@ -947,7 +947,7 @@ def test_expected_constrained_improvement_raises_for_invalid_batch_size(at: Tens
 
     eci = builder.prepare_acquisition_function({NA: QuadraticMeanAndRBFKernel()}, datasets=data)
 
-    with pytest.raises(ShapeMismatchError):
+    with pytest.raises(StagingError):
         eci(at)
 
 
