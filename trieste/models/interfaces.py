@@ -19,6 +19,7 @@ from typing import Any, Callable, Generic, Optional, TypeVar
 
 import gpflow
 import tensorflow as tf
+from check_shapes import check_shapes
 from typing_extensions import Protocol, runtime_checkable
 
 from ..data import Dataset
@@ -46,6 +47,11 @@ class ProbabilisticModel(Protocol):
     """
 
     @abstractmethod
+    @check_shapes(
+        "query_points: [batch..., N, D]",
+        "return[0]: [batch..., N, E]",
+        "return[1]: [batch..., N, E]",
+    )
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
         Return the mean and variance of the independent marginal distributions at each point in
@@ -55,26 +61,32 @@ class ProbabilisticModel(Protocol):
         dimensions of ``query_points`` are all interpreted as broadcasting dimensions instead of
         batch dimensions, and the covariance is squeezed to remove redundant nesting.
 
-        :param query_points: The points at which to make predictions, of shape [..., D].
+        :param query_points: The points at which to make predictions.
         :return: The mean and variance of the independent marginal distributions at each point in
-            ``query_points``. For a predictive distribution with event shape E, the mean and
-            variance will both have shape [...] + E.
+            ``query_points``.
         """
         raise NotImplementedError
 
     @abstractmethod
+    @check_shapes(
+        "query_points: [batch..., N, D]",
+        "return: [batch..., S, N, E]",
+    )
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         """
         Return ``num_samples`` samples from the independent marginal distributions at
         ``query_points``.
 
-        :param query_points: The points at which to sample, with shape [..., N, D].
+        :param query_points: The points at which to sample.
         :param num_samples: The number of samples at each point.
-        :return: The samples. For a predictive distribution with event shape E, this has shape
-            [..., S, N] + E, where S is the number of samples.
+        :return: The samples, where *S* is the number of samples.
         """
         raise NotImplementedError
 
+    @check_shapes(
+        "query_points: [batch..., N, D]",
+        "return: [batch..., S, N, E]",
+    )
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
         Return the mean and variance of the independent marginal distributions at each point in
@@ -82,10 +94,9 @@ class ProbabilisticModel(Protocol):
 
         Note that this is not supported by all models.
 
-        :param query_points: The points at which to make predictions, of shape [..., D].
+        :param query_points: The points at which to make predictions.
         :return: The mean and variance of the independent marginal distributions at each point in
-            ``query_points``. For a predictive distribution with event shape E, the mean and
-            variance will both have shape [...] + E.
+            ``query_points``.
         """
         pass  # (required so that mypy doesn't think this method is abstract)
         raise NotImplementedError(
