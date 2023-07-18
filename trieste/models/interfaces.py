@@ -49,8 +49,8 @@ class ProbabilisticModel(Protocol):
     @abstractmethod
     @check_shapes(
         "query_points: [batch..., D]",
-        "return[0]: [batch..., E]",
-        "return[1]: [batch..., E]",
+        "return[0]: [batch..., E...]",
+        "return[1]: [batch..., E...]",
     )
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
@@ -61,31 +61,33 @@ class ProbabilisticModel(Protocol):
         dimensions of ``query_points`` are all interpreted as broadcasting dimensions instead of
         batch dimensions, and the covariance is squeezed to remove redundant nesting.
 
-        :param query_points: The points at which to make predictions.
+        :param query_points: The points at which to make predictions, of shape [..., D].
         :return: The mean and variance of the independent marginal distributions at each point in
-            ``query_points``.
+            ``query_points``. For a predictive distribution with event shape E, the mean and
+            variance will both have shape [...] + E.
         """
         raise NotImplementedError
 
     @abstractmethod
     @check_shapes(
         "query_points: [batch..., N, D]",
-        "return: [batch..., S, N, E]",
+        "return: [batch..., S, N, E...]",
     )
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         """
         Return ``num_samples`` samples from the independent marginal distributions at
         ``query_points``.
 
-        :param query_points: The points at which to sample.
+        :param query_points: The points at which to sample, with shape [..., N, D].
         :param num_samples: The number of samples at each point.
-        :return: The samples, where *S* is the number of samples.
+        :return: The samples. For a predictive distribution with event shape E, this has shape
+            [..., S, N] + E, where S is the number of samples.
         """
         raise NotImplementedError
 
     @check_shapes(
         "query_points: [broadcast batch..., D]",
-        "return: [batch..., E]",
+        "return: [batch..., E...]",
     )
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
@@ -94,9 +96,10 @@ class ProbabilisticModel(Protocol):
 
         Note that this is not supported by all models.
 
-        :param query_points: The points at which to make predictions.
+        :param query_points: The points at which to make predictions, of shape [..., D].
         :return: The mean and variance of the independent marginal distributions at each point in
-            ``query_points``.
+            ``query_points``. For a predictive distribution with event shape E, the mean and
+            variance will both have shape [...] + E.
         """
         pass  # (required so that mypy doesn't think this method is abstract)
         raise NotImplementedError(
