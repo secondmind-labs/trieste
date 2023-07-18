@@ -48,9 +48,9 @@ class ProbabilisticModel(Protocol):
 
     @abstractmethod
     @check_shapes(
-        "query_points: [batch..., N, D]",
-        "return[0]: [batch..., N, E]",
-        "return[1]: [batch..., N, E]",
+        "query_points: [batch..., D]",
+        "return[0]: [batch..., E]",
+        "return[1]: [batch..., E]",
     )
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
@@ -84,8 +84,8 @@ class ProbabilisticModel(Protocol):
         raise NotImplementedError
 
     @check_shapes(
-        "query_points: [batch..., N, D]",
-        "return: [batch..., S, N, E]",
+        "query_points: [broadcast batch..., D]",
+        "return: [batch..., E]",
     )
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
