@@ -95,6 +95,17 @@ from .interface import (
     UpdatablePenalizationFunction,
     VectorizedAcquisitionFunctionBuilder,
 )
+from .rule import (
+    TURBO,
+    AcquisitionRule,
+    AsynchronousGreedy,
+    AsynchronousOptimization,
+    BatchHypervolumeSharpeRatioIndicator,
+    DiscreteThompsonSampling,
+    EfficientGlobalOptimization,
+    RandomSampling,
+    TrustRegion,
+)
 from .sampler import (
     ExactThompsonSampler,
     GumbelSampler,

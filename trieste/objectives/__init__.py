@@ -44,3 +44,4 @@ from .single_objectives import (
     SingleObjectiveTestProblem,
     Trid10,
 )
+from .utils import mk_multi_observer, mk_observer
