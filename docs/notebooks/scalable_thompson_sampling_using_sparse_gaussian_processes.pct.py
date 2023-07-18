@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # %% [markdown]
-# # Scalable Thompson Sampling using Sparse Gaussian Process Models
+# # Scalable Thompson Sampling
 
 # %% [markdown]
 # In our other [Thompson sampling notebook](thompson_sampling.pct.py) we demonstrate how to perform batch optimization using a traditional implementation of Thompson sampling that samples exactly from an underlying Gaussian Process surrogate model. Unfortunately, this approach incurs a large computational overhead that scales polynomially with the optimization budget and so cannot be applied to settings with larger optimization budgets, e.g. those where large batches (>>10) of points can be collected.

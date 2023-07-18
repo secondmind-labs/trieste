@@ -1,5 +1,5 @@
 # %% [markdown]
-# # Using deep Gaussian processes with GPflux for Bayesian optimization.
+# # Deep Gaussian processes
 
 # %%
 import numpy as np

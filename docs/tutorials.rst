@@ -18,7 +18,7 @@ Tutorials
 Example optimization problems
 -----------------------------
 
-The following tutorials explore various optimization problems using Trieste.
+The following tutorials explore various types of optimization problems using Trieste.
 
 .. toctree::
    :maxdepth: 1

@@ -1,5 +1,5 @@
 # %% [markdown]
-# # Bayesian optimization with deep ensembles
+# # Deep ensembles
 #
 # Gaussian processes as a surrogate models are hard to beat on smaller datasets and optimization budgets. However, they scale poorly with amount of data, cannot easily capture non-stationarities and they are rather slow at prediction time. Here we show how uncertainty-aware neural networks can be effective alternative to Gaussian processes in Bayesian optimisation, in particular for large budgets, non-stationary objective functions or when predictions need to be made quickly.
 #

@@ -1,5 +1,5 @@
 # %% [markdown]
-# # EGO with a failure region
+# # Failure regions
 
 # %%
 from __future__ import annotations

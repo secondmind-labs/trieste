@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # %% [markdown]
-# # Multi-objective optimization with Expected HyperVolume Improvement
+# # Multi-objective optimization
 
 # %%
 import math
