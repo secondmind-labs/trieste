@@ -25,7 +25,7 @@ tf.random.set_seed(1794)
 
 
 # %% [markdown]
-# ## Deep ensembles
+# ## What are deep ensembles?
 #
 # Deep neural networks typically output only mean predictions, not posterior distributions as probabilistic models such as Gaussian processes do. Posterior distributions encode mean predictions, but also *epistemic* uncertainty - type of uncertainty that stems from model misspecification, and which can be eliminated with further data. Aleatoric uncertainty that stems from stochasticity of the data generating process is not contained in the posterior, but can be learned from the data. Bayesian optimization requires probabilistic models because epistemic uncertainty plays a key role in balancing between exploration and exploitation.
 #

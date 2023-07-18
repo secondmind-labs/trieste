@@ -1,5 +1,5 @@
 # %% [markdown]
-# # Asynchronous batch Bayesian optimization
+# # Asynchronous batch Bayesian Optimization
 #
 # As shown in [Asynchronous Bayesian Optimization](asynchronous_greedy_multiprocessing.ipynb) tutorial, Trieste provides support for running observations asynchronously. In that tutorial we used a greedy batch acquisition function called Local Penalization, and requested one new point whenever an observation was received. We also used the Python multiprocessing module to run distributed observations in parallel.
 #
