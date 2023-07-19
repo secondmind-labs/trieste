@@ -21,7 +21,7 @@ from typing import Callable, Dict, Mapping, Optional, Union, cast
 import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
-from check_shapes import inherit_check_shapes, check_shapes
+from check_shapes import check_shapes
 from typing_extensions import Protocol, runtime_checkable
 
 from ...data import Dataset

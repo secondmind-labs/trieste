@@ -19,7 +19,7 @@ from typing import Any, Callable, Generic, Optional, TypeVar
 
 import gpflow
 import tensorflow as tf
-from check_shapes import check_shapes, inherit_check_shapes
+from check_shapes import check_shapes
 from typing_extensions import Protocol, runtime_checkable
 
 from ..data import Dataset
