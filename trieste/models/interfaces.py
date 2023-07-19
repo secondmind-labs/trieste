@@ -378,7 +378,9 @@ class ModelStack(ProbabilisticModel, Generic[ProbabilisticModelType]):
         """
         self._models, self._event_sizes = zip(*(model_with_event_size,) + models_with_event_sizes)
 
-    @inherit_check_shapes
+    # NB we don't use @inherit_shapes below as some classes break the shape API (👀 fantasizer)
+    # instead we rely on the shape checking inside the submodels
+
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         r"""
         :param query_points: The points at which to make predictions, of shape [..., D].
@@ -390,7 +392,6 @@ class ModelStack(ProbabilisticModel, Generic[ProbabilisticModelType]):
         means, vars_ = zip(*[model.predict(query_points) for model in self._models])
         return tf.concat(means, axis=-1), tf.concat(vars_, axis=-1)
 
-    @inherit_check_shapes
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         r"""
         :param query_points: The points at which to sample, with shape [..., N, D].
@@ -402,7 +403,6 @@ class ModelStack(ProbabilisticModel, Generic[ProbabilisticModelType]):
         samples = [model.sample(query_points, num_samples) for model in self._models]
         return tf.concat(samples, axis=-1)
 
-    @inherit_check_shapes
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         r"""
         :param query_points: The points at which to make predictions, of shape [..., D].
@@ -508,7 +508,6 @@ class PredictJointModelStack(ModelStack[SupportsPredictJoint], SupportsPredictJo
     It delegates :meth:`predict_joint` to each model.
     """
 
-    @inherit_check_shapes
     def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         r"""
         :param query_points: The points at which to make predictions, of shape [..., B, D].
