@@ -46,6 +46,7 @@ from trieste.models.interfaces import (
     SupportsCovarianceWithTopFidelity,
     SupportsGetKernel,
     SupportsGetObservationNoise,
+    SupportsPredictJoint,
 )
 from trieste.models.optimizer import Optimizer
 from trieste.types import TensorType
@@ -120,7 +121,7 @@ class GaussianProcess(
         return tf.concat(covs, axis=-3)
 
 
-class GaussianProcessWithoutNoise(GaussianMarginal, HasReparamSampler):
+class GaussianProcessWithoutNoise(GaussianMarginal, SupportsPredictJoint, HasReparamSampler):
     """A (static) Gaussian process over a vector random variable with independent reparam sampler
     but without noise variance."""
 
