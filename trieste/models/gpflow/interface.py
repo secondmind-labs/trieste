@@ -102,6 +102,7 @@ class GPflowPredictor(
             cov = tf.clip_by_value(cov, 1e-12, cov.dtype.max)
         return mean, cov
 
+    @inherit_check_shapes
     def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         mean, cov = (self._posterior or self.model).predict_f(query_points, full_cov=True)
         # posterior predict can return negative variance values [cf GPFlow issue #1813]

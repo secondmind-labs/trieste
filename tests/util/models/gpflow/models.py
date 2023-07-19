@@ -102,6 +102,7 @@ class GaussianProcess(
         mean, cov = self.predict_joint(query_points[..., None, :])
         return tf.squeeze(mean, -2), tf.squeeze(cov, [-2, -1])
 
+    @inherit_check_shapes
     def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         means = [f(query_points) for f in self._mean_functions]
         covs = [k.tensor(query_points, query_points, 1, 1)[..., None, :, :] for k in self._kernels]
@@ -139,6 +140,7 @@ class GaussianProcessWithoutNoise(GaussianMarginal, HasReparamSampler):
         mean, cov = self.predict_joint(query_points[..., None, :])
         return tf.squeeze(mean, -2), tf.squeeze(cov, [-2, -1])
 
+    @inherit_check_shapes
     def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         means = [f(query_points) for f in self._mean_functions]
         covs = [k.tensor(query_points, query_points, 1, 1)[..., None, :, :] for k in self._kernels]

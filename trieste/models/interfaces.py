@@ -157,6 +157,11 @@ class SupportsPredictJoint(ProbabilisticModel, Protocol):
     """A probabilistic model that supports predict_joint."""
 
     @abstractmethod
+    @check_shapes(
+        "query_points: [batch..., B, D]",
+        "return[0]: [batch..., B, E...]",
+        "return[1]: [batch..., E..., B, B]",
+    )
     def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
         :param query_points: The points at which to make predictions, of shape [..., B, D].
@@ -503,6 +508,7 @@ class PredictJointModelStack(ModelStack[SupportsPredictJoint], SupportsPredictJo
     It delegates :meth:`predict_joint` to each model.
     """
 
+    @inherit_check_shapes
     def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         r"""
         :param query_points: The points at which to make predictions, of shape [..., B, D].

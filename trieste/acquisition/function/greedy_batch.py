@@ -673,6 +673,7 @@ class _fantasized_model(SupportsPredictJoint, SupportsGetKernel, SupportsGetObse
 
         return _broadcast_predict(query_points, fun)
 
+    @inherit_check_shapes
     def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
         This function wraps conditional_predict_joint. It cannot directly call
