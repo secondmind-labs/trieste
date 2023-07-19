@@ -21,6 +21,7 @@ from typing import Callable, Dict, Mapping, Optional, Union, cast
 import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
+from check_shapes import inherit_check_shapes
 from typing_extensions import Protocol, runtime_checkable
 
 from ...data import Dataset
@@ -652,6 +653,7 @@ class _fantasized_model(SupportsPredictJoint, SupportsGetKernel, SupportsGetObse
         self._fantasized_query_points.assign(fantasized_data.query_points)
         self._fantasized_observations.assign(fantasized_data.observations)
 
+    @inherit_check_shapes
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
         This function wraps conditional_predict_f. It cannot directly call
@@ -690,6 +692,7 @@ class _fantasized_model(SupportsPredictJoint, SupportsGetKernel, SupportsGetObse
 
         return _broadcast_predict(query_points, fun)
 
+    @inherit_check_shapes
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         """
         This function wraps conditional_predict_f_sample. It cannot directly call
@@ -716,6 +719,7 @@ class _fantasized_model(SupportsPredictJoint, SupportsGetKernel, SupportsGetObse
         )  # [B, ..., S, L]
         return _restore_leading_dim(samples, leading_dim)
 
+    @inherit_check_shapes
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
         This function wraps conditional_predict_y. It cannot directly call

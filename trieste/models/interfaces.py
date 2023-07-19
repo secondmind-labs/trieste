@@ -19,7 +19,7 @@ from typing import Any, Callable, Generic, Optional, TypeVar
 
 import gpflow
 import tensorflow as tf
-from check_shapes import check_shapes
+from check_shapes import check_shapes, inherit_check_shapes
 from typing_extensions import Protocol, runtime_checkable
 
 from ..data import Dataset
@@ -373,6 +373,7 @@ class ModelStack(ProbabilisticModel, Generic[ProbabilisticModelType]):
         """
         self._models, self._event_sizes = zip(*(model_with_event_size,) + models_with_event_sizes)
 
+    @inherit_check_shapes
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         r"""
         :param query_points: The points at which to make predictions, of shape [..., D].
@@ -384,6 +385,7 @@ class ModelStack(ProbabilisticModel, Generic[ProbabilisticModelType]):
         means, vars_ = zip(*[model.predict(query_points) for model in self._models])
         return tf.concat(means, axis=-1), tf.concat(vars_, axis=-1)
 
+    @inherit_check_shapes
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         r"""
         :param query_points: The points at which to sample, with shape [..., N, D].
@@ -395,6 +397,7 @@ class ModelStack(ProbabilisticModel, Generic[ProbabilisticModelType]):
         samples = [model.sample(query_points, num_samples) for model in self._models]
         return tf.concat(samples, axis=-1)
 
+    @inherit_check_shapes
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         r"""
         :param query_points: The points at which to make predictions, of shape [..., D].

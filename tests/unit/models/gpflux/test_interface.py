@@ -18,6 +18,7 @@ import gpflow
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
+from check_shapes import inherit_check_shapes
 from gpflow.conditionals.util import sample_mvn
 from gpflux.helpers import construct_basic_inducing_variables, construct_basic_kernel
 from gpflux.layers import GPLayer
@@ -57,6 +58,7 @@ class _QuadraticPredictor(GPfluxPredictor):
     def optimizer(self) -> tf.keras.optimizers.Optimizer:
         return self._optimizer
 
+    @inherit_check_shapes
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         # Taken from GPflow implementation of `GPModel.predict_f_samples` in gpflow.models.model
         mean, cov = self._model_gpflux.predict_f(query_points, full_cov=True)

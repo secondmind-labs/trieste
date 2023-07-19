@@ -19,6 +19,7 @@ from typing import Optional
 
 import tensorflow as tf
 import tensorflow_probability as tfp
+from check_shapes import inherit_check_shapes
 from typing_extensions import Protocol, runtime_checkable
 
 from ...types import TensorType
@@ -60,9 +61,11 @@ class KerasPredictor(ProbabilisticModel, ABC):
         """The optimizer wrapper for training the model."""
         return self._optimizer
 
+    @inherit_check_shapes
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         return self.model.predict(query_points)
 
+    @inherit_check_shapes
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         raise NotImplementedError(
             """

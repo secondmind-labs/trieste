@@ -21,6 +21,7 @@ import gpflow
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
+from check_shapes import inherit_check_shapes
 from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
 from typing_extensions import Protocol
 
@@ -70,6 +71,7 @@ class PseudoTrainableProbModel(TrainableProbabilisticModel, Protocol):
 class GaussianMarginal(ProbabilisticModel):
     """A probabilistic model with Gaussian marginal distribution. Assumes events of shape [N]."""
 
+    @inherit_check_shapes
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         mean, var = self.predict(query_points)
         samples = tfp.distributions.Normal(mean, tf.sqrt(var)).sample(num_samples)
@@ -95,6 +97,7 @@ class GaussianProcess(
     def __repr__(self) -> str:
         return f"GaussianProcess({self._mean_functions!r}, {self._kernels!r})"
 
+    @inherit_check_shapes
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         mean, cov = self.predict_joint(query_points[..., None, :])
         return tf.squeeze(mean, -2), tf.squeeze(cov, [-2, -1])
@@ -131,6 +134,7 @@ class GaussianProcessWithoutNoise(GaussianMarginal, HasReparamSampler):
     def __repr__(self) -> str:
         return f"GaussianProcessWithoutNoise({self._mean_functions!r}, {self._kernels!r})"
 
+    @inherit_check_shapes
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         mean, cov = self.predict_joint(query_points[..., None, :])
         return tf.squeeze(mean, -2), tf.squeeze(cov, [-2, -1])
@@ -278,6 +282,7 @@ class MultiFidelityQuadraticMeanAndRBFKernel(
         mean, _ = self.predict(x)
         return tf.ones_like(mean, dtype=mean.dtype)  # dummy covariances of correct shape
 
+    @inherit_check_shapes
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         fmean, fvar = self.predict(query_points)
         yvar = fvar + tf.constant(1.0, dtype=fmean.dtype)  # dummy noise variance
