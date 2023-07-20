@@ -26,9 +26,13 @@ from math import pi
 from typing import Callable, Sequence
 
 import tensorflow as tf
+from check_shapes import check_shapes
 
 from ..space import Box, Constraint, LinearConstraint, NonlinearConstraint
 from ..types import TensorType
+
+ObjectiveTestFunction = Callable[[TensorType], TensorType]
+"""A synthetic test function"""
 
 
 @dataclass(frozen=True)
@@ -40,7 +44,7 @@ class ObjectiveTestProblem:
     name: str
     """The test function name"""
 
-    objective: Callable[[TensorType], TensorType]
+    objective: ObjectiveTestFunction
     """The synthetic test function"""
 
     search_space: Box
@@ -71,6 +75,11 @@ class SingleObjectiveTestProblem(ObjectiveTestProblem):
     """The global minimum of the test function."""
 
 
+def check_objective_shapes(d: int) -> Callable[[ObjectiveTestFunction], ObjectiveTestFunction]:
+    """Returns a decorator for checking the shape of single objective test functions."""
+    return check_shapes(f"x: [batch..., {d}]", "return: [batch..., 1]")
+
+
 def _branin_internals(x: TensorType, scale: TensorType, translate: TensorType) -> TensorType:
     x0 = x[..., :1] * 15.0 - 5.0
     x1 = x[..., 1:] * 15.0
@@ -84,6 +93,7 @@ def _branin_internals(x: TensorType, scale: TensorType, translate: TensorType) -
     return scale * ((x1 - b * x0**2 + c * x0 - r) ** 2 + s * (1 - t) * tf.cos(x0) + translate)
 
 
+@check_objective_shapes(d=2)
 def branin(x: TensorType) -> TensorType:
     """
     The Branin-Hoo function over :math:`[0, 1]^2`. See
@@ -93,11 +103,10 @@ def branin(x: TensorType) -> TensorType:
     :return: The function values at ``x``, with shape [..., 1].
     :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
     """
-    tf.debugging.assert_shapes([(x, (..., 2))])
-
     return _branin_internals(x, 1, 10)
 
 
+@check_objective_shapes(d=2)
 def scaled_branin(x: TensorType) -> TensorType:
     """
     The Branin-Hoo function, rescaled to have zero mean and unit variance over :math:`[0, 1]^2`. See
@@ -107,8 +116,6 @@ def scaled_branin(x: TensorType) -> TensorType:
     :return: The function values at ``x``, with shape [..., 1].
     :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
     """
-    tf.debugging.assert_shapes([(x, (..., 2))])
-
     return _branin_internals(x, 1 / 51.95, -44.81)
 
 
@@ -175,6 +182,7 @@ ConstrainedScaledBranin = SingleObjectiveTestProblem(
 search space."""
 
 
+@check_objective_shapes(d=2)
 def simple_quadratic(x: TensorType) -> TensorType:
     """
     A trivial quadratic function over :math:`[0, 1]^2`. Useful for quick testing.
@@ -183,8 +191,6 @@ def simple_quadratic(x: TensorType) -> TensorType:
     :return: The function values at ``x``, with shape [..., 1].
     :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
     """
-    tf.debugging.assert_shapes([(x, (..., 2))])
-
     return -tf.math.reduce_sum(x, axis=-1, keepdims=True) ** 2
 
 
@@ -198,6 +204,7 @@ SimpleQuadratic = SingleObjectiveTestProblem(
 """A trivial quadratic function over :math:`[0, 1]^2`. Useful for quick testing."""
 
 
+@check_objective_shapes(d=1)
 def gramacy_lee(x: TensorType) -> TensorType:
     """
     The Gramacy & Lee function, typically evaluated over :math:`[0.5, 2.5]`. See
@@ -207,7 +214,6 @@ def gramacy_lee(x: TensorType) -> TensorType:
     :return: The function values, with shape [..., 1].
     :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
     """
-    tf.debugging.assert_shapes([(x, (..., 1))])
     return tf.sin(10 * math.pi * x) / (2 * x) + (x - 1) ** 4
 
 
@@ -222,6 +228,7 @@ GramacyLee = SingleObjectiveTestProblem(
 :cite:`gramacy2012cases` for details."""
 
 
+@check_objective_shapes(d=2)
 def logarithmic_goldstein_price(x: TensorType) -> TensorType:
     """
     A logarithmic form of the Goldstein-Price function, with zero mean and unit variance over
@@ -231,8 +238,6 @@ def logarithmic_goldstein_price(x: TensorType) -> TensorType:
     :return: The function values at ``x``, with shape [..., 1].
     :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
     """
-    tf.debugging.assert_shapes([(x, (..., 2))])
-
     x0, x1 = tf.split(4 * x - 2, 2, axis=-1)
 
     a = (x0 + x1 + 1) ** 2
@@ -254,6 +259,7 @@ LogarithmicGoldsteinPrice = SingleObjectiveTestProblem(
 :math:`[0, 1]^2`. See :cite:`Picheny2013` for details."""
 
 
+@check_objective_shapes(d=3)
 def hartmann_3(x: TensorType) -> TensorType:
     """
     The Hartmann 3 test function over :math:`[0, 1]^3`. This function has 3 local
@@ -263,8 +269,6 @@ def hartmann_3(x: TensorType) -> TensorType:
     :return: The function values at ``x``, with shape [..., 1].
     :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
     """
-    tf.debugging.assert_shapes([(x, (..., 3))])
-
     a = [1.0, 1.2, 3.0, 3.2]
     A = [[3.0, 10.0, 30.0], [0.1, 10.0, 35.0], [3.0, 10.0, 30.0], [0.1, 10.0, 35.0]]
     P = [
@@ -289,6 +293,7 @@ Hartmann3 = SingleObjectiveTestProblem(
 and one global minima. See https://www.sfu.ca/~ssurjano/hart3.html for details."""
 
 
+@check_objective_shapes(d=4)
 def shekel_4(x: TensorType) -> TensorType:
     """
     The Shekel test function over :math:`[0, 1]^4`. This function has ten local
@@ -300,8 +305,6 @@ def shekel_4(x: TensorType) -> TensorType:
     :return: The function values at ``x``, with shape [..., 1].
     :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
     """
-    tf.debugging.assert_shapes([(x, (..., 4))])
-
     y: TensorType = x * 10.0
 
     beta = [0.1, 0.2, 0.2, 0.4, 0.4, 0.6, 0.3, 0.7, 0.5, 0.5]
@@ -355,6 +358,7 @@ def levy(x: TensorType, d: int) -> TensorType:
     return term1 + wi_sum + term3
 
 
+@check_objective_shapes(d=8)
 def levy_8(x: TensorType) -> TensorType:
     """
     Convenience function for the 8-dimensional :func:`levy` function, with output
@@ -400,6 +404,7 @@ def rosenbrock(x: TensorType, d: int) -> TensorType:
     return unscaled_function
 
 
+@check_objective_shapes(d=4)
 def rosenbrock_4(x: TensorType) -> TensorType:
     """
     Convenience function for the 4-dimensional :func:`rosenbrock` function with steepness 10.
@@ -425,6 +430,7 @@ This function (also known as the Banana function) is unimodal, however the minim
 lies in a narrow valley."""
 
 
+@check_objective_shapes(d=5)
 def ackley_5(x: TensorType) -> TensorType:
     """
     The Ackley test function over :math:`[0, 1]^5`. This function has
@@ -437,8 +443,6 @@ def ackley_5(x: TensorType) -> TensorType:
     :return: The function values at ``x``, with shape [..., 1].
     :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
     """
-    tf.debugging.assert_shapes([(x, (..., 5))])
-
     x = (x - 0.5) * (32.768 * 2.0)
 
     exponent_1 = -0.2 * tf.math.sqrt((1 / 5.0) * tf.reduce_sum(x**2, -1))
@@ -468,6 +472,7 @@ Note that we rescale the original problem, which is typically defined
 over `[-32.768, 32.768]`."""
 
 
+@check_objective_shapes(d=6)
 def hartmann_6(x: TensorType) -> TensorType:
     """
     The Hartmann 6 test function over :math:`[0, 1]^6`. This function has
@@ -478,8 +483,6 @@ def hartmann_6(x: TensorType) -> TensorType:
     :return: The function values at ``x``, with shape [..., 1].
     :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
     """
-    tf.debugging.assert_shapes([(x, (..., 6))])
-
     a = [1.0, 1.2, 3.0, 3.2]
     A = [
         [10.0, 3.0, 17.0, 3.5, 1.7, 8.0],
@@ -533,6 +536,7 @@ def michalewicz(x: TensorType, d: int = 2, m: int = 10) -> TensorType:
     return -result
 
 
+@check_objective_shapes(d=2)
 def michalewicz_2(x: TensorType) -> TensorType:
     """
     Convenience function for the 2-dimensional :func:`michalewicz` function with steepness 10.
@@ -542,6 +546,7 @@ def michalewicz_2(x: TensorType) -> TensorType:
     return michalewicz(x, d=2)
 
 
+@check_objective_shapes(d=5)
 def michalewicz_5(x: TensorType) -> TensorType:
     """
     Convenience function for the 5-dimensional :func:`michalewicz` function with steepness 10.
@@ -551,6 +556,7 @@ def michalewicz_5(x: TensorType) -> TensorType:
     return michalewicz(x, d=5)
 
 
+@check_objective_shapes(d=10)
 def michalewicz_10(x: TensorType) -> TensorType:
     """
     Convenience function for the 10-dimensional :func:`michalewicz` function with steepness 10.
@@ -628,6 +634,7 @@ def trid(x: TensorType, d: int = 10) -> TensorType:
     return result
 
 
+@check_objective_shapes(d=10)
 def trid_10(x: TensorType) -> TensorType:
     """The Trid function with dimension 10.
 
