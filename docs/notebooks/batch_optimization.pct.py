@@ -1,5 +1,5 @@
 # %% [markdown]
-# # Batch Bayesian Optimization
+# # Batch Bayesian optimization
 
 # %% [markdown]
 # Sometimes it is practically convenient to query several points at a time. This notebook demonstrates four ways to perfom batch Bayesian optimization with Trieste.
