@@ -79,6 +79,7 @@ from trieste.models.gpflow.inducing_point_selectors import (
     RandomSubSampleInducingPointSelector,
     UniformInducingPointSelector,
 )
+from trieste.models.gpflow.optimizer import loss_history_callback
 from trieste.models.gpflow.sampler import (
     DecoupledTrajectorySampler,
     RandomFourierFeatureTrajectorySampler,
@@ -153,6 +154,22 @@ def test_gpflow_wrappers_default_optimize(
     model.optimize(Dataset(*data))
 
     assert internal_model.training_loss(**args) < loss
+
+
+def test_gpflow_history_callback(
+    gpflow_interface_factory: ModelFactoryType,
+) -> None:
+    data = mock_data()
+    optimizer = Optimizer(optimizer=gpflow.optimizers.Scipy())
+    model, _ = gpflow_interface_factory(*data, optimizer=optimizer)
+    losses: list[TensorType] = []
+    model.optimizer.minimize_args["step_callback"] = loss_history_callback(
+        model.model, data, losses
+    )
+    model.optimize(Dataset(*data))
+
+    assert len(losses) > 50
+    assert losses[-1] < losses[0]
 
 
 def test_gpflow_wrappers_ref_optimize(gpflow_interface_factory: ModelFactoryType) -> None:

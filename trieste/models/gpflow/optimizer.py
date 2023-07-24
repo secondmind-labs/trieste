@@ -18,12 +18,14 @@ This module registers the GPflow specific loss functions.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Sequence
 
 import tensorflow as tf
 from gpflow.models import ExternalDataTrainingLossMixin, InternalDataTrainingLossMixin
+from gpflow.optimizers.scipy import StepCallback
 from tensorflow.python.data.ops.iterator_ops import OwnedIterator as DatasetOwnedIterator
 
+from ...types import TensorType
 from ..optimizer import LossClosure, TrainingData, create_loss_function
 
 
@@ -92,3 +94,30 @@ def _create_loss_function_external(
         builder.closure_builder = closure_builder
 
     return builder.closure_builder((X, Y))
+
+
+def loss_history_callback(
+    model: InternalDataTrainingLossMixin | ExternalDataTrainingLossMixin,
+    data: TrainingData,
+    history: list[TensorType],
+    compile: bool = True,
+) -> StepCallback:
+    """
+    A step callback to use with the :class:`~gpflow.optimizers.Scipy` optimizer that tracks
+    the training loss history. To use this with a `GPflowPredictor model, assign the result
+    to `model.optimizer.minimize_args["step_callback"]`.
+
+    :param model: The model to track the loss function for.
+    :param dataset: The data with which to track the loss function.
+    :param history: A list to append loss values to.
+    :param compile: Whether to compile with :func:`tf.function`.
+    :return: A `StepCallback` to use with the :class:`~gpflow.optimizers.Scipy` optimizer.
+    """
+    training_loss = create_loss_function(model, data, compile=compile)
+
+    def step_callback(
+        step: int, variables: Sequence[tf.Variable], values: Sequence[tf.Tensor]
+    ) -> None:
+        history.append(training_loss())
+
+    return step_callback
