@@ -128,9 +128,9 @@ for step in range(num_steps):
             assert isinstance(state, MultiTrustRegionBox.State)
 
             xmin = {
-                tag: state.acquisition_space.get_subspace(
+                tag: state.acquisition_space.get_subspace(  # type: ignore[attr-defined]
                     tag
-                ).get_local_min(  # type: ignore[attr-defined]
+                ).get_local_min(
                     ask_tell.dataset
                 )[
                     0
