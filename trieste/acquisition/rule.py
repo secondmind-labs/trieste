@@ -1106,7 +1106,6 @@ class TrustRegion(
                     tf.reduce_max([global_lower, xmin - eps], axis=0),
                     tf.reduce_min([global_upper, xmin + eps], axis=0),
                 )
-                assert state is not None
 
             points = self._rule.acquire(acquisition_space, models, datasets=datasets)
             state_ = TrustRegion.State(acquisition_space, eps, y_min, is_global)
