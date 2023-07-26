@@ -267,7 +267,7 @@ def generate_continuous_optimizer(
             tiled_candidates = candidates  # [num_initial_samples, V, D]
         else:
             tiled_candidates = tf.tile(
-                candidates[:None, :], [1, V, 1]
+                candidates[:, None, :], [1, V, 1]
             )  # [num_initial_samples, V, D]
 
         target_func_values = target_func(tiled_candidates)  # [num_samples, V]
