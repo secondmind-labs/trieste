@@ -1,5 +1,5 @@
 # %% [markdown]
-# # Noise-free optimization with Expected Improvement
+# # Introduction to Bayesian Optimization
 
 # %%
 import numpy as np

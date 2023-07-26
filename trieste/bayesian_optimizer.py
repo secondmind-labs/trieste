@@ -25,6 +25,7 @@ from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import (
+    Any,
     Callable,
     ClassVar,
     Dict,
@@ -197,6 +198,16 @@ class OptimizationResult(Generic[StateType]):
         """
         return self.final_result, self.history
 
+    @property
+    def is_ok(self) -> bool:
+        """`True` if the final result contains a :class:`Record`."""
+        return self.final_result.is_ok
+
+    @property
+    def is_err(self) -> bool:
+        """`True` if the final result contains an exception."""
+        return self.final_result.is_err
+
     def try_get_final_datasets(self) -> Mapping[Tag, Dataset]:
         """
         Convenience method to attempt to get the final data.
@@ -327,10 +338,12 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
-        fit_model: str = "all",
+        fit_model: bool = True,
+        fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModel, object]
         ] = None,
+        start_step: int = 0,
     ) -> OptimizationResult[None]:
         ...
 
@@ -346,10 +359,12 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
-        fit_model: str = "all",
+        fit_model: bool = True,
+        fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, object]
         ] = None,
+        start_step: int = 0,
         # this should really be OptimizationResult[None], but tf.Tensor is untyped so the type
         # checker can't differentiate between TensorType and State[S | None, TensorType], and
         # the return types clash. object is close enough to None that object will do.
@@ -368,10 +383,12 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
-        fit_model: str = "all",
+        fit_model: bool = True,
+        fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, object]
         ] = None,
+        start_step: int = 0,
     ) -> OptimizationResult[object]:
         ...
 
@@ -388,10 +405,12 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
-        fit_model: str = "all",
+        fit_model: bool = True,
+        fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
+        start_step: int = 0,
     ) -> OptimizationResult[StateType]:
         ...
 
@@ -408,10 +427,12 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
-        fit_model: str = "all",
+        fit_model: bool = True,
+        fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
+        start_step: int = 0,
     ) -> OptimizationResult[StateType]:
         ...
 
@@ -424,10 +445,12 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
-        fit_model: str = "all",
+        fit_model: bool = True,
+        fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModel, object]
         ] = None,
+        start_step: int = 0,
     ) -> OptimizationResult[None]:
         ...
 
@@ -443,10 +466,12 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
-        fit_model: str = "all",
+        fit_model: bool = True,
+        fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, object]
         ] = None,
+        start_step: int = 0,
     ) -> OptimizationResult[object]:
         ...
 
@@ -462,10 +487,12 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
-        fit_model: str = "all",
+        fit_model: bool = True,
+        fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, object]
         ] = None,
+        start_step: int = 0,
     ) -> OptimizationResult[object]:
         ...
 
@@ -482,10 +509,12 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
-        fit_model: str = "all",
+        fit_model: bool = True,
+        fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
+        start_step: int = 0,
     ) -> OptimizationResult[StateType]:
         ...
 
@@ -502,10 +531,12 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
-        fit_model: str = "all",
+        fit_model: bool = True,
+        fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
+        start_step: int = 0,
     ) -> OptimizationResult[StateType]:
         ...
 
@@ -524,10 +555,12 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         *,
         track_state: bool = True,
         track_path: Optional[Path | str] = None,
-        fit_model: str = "all",
+        fit_model: bool = True,
+        fit_initial_model: bool = True,
         early_stop_callback: Optional[
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
+        start_step: int = 0,
     ) -> OptimizationResult[StateType] | OptimizationResult[None]:
         """
         Attempt to find the minimizer of the ``observer`` in the ``search_space`` (both specified at
@@ -569,14 +602,16 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             step. Models and acquisition state are copied using `copy.deepcopy`.
         :param track_path: If set, the optimization state is saved to disk at this path,
             rather than being copied in memory.
-        :param fit_model: If `all` the we fit the models before the first BO step and after all
-            subsequent steps. If `all_but_init` then we assume that the initial models have
+        :param fit_model: If `False` then we never fit the model during BO (e.g. if we
+            are using a rule that doesn't rely on the models and don't want to waste computation).
+        :param fit_initial_model: If `False` then we assume that the initial models have
             already been optimized on the datasets and so do not require optimization before
-            the first optimization step. If `never` then never fit the models (i.e. if we
-            are using a rule that doesnt rely on the models and dont want to waste computation).
+            the first optimization step.
         :param early_stop_callback: An optional callback that is evaluated with the current
             datasets, models and optimization state before every optimization step. If this
             returns `True` then the optimization loop is terminated early.
+        :param start_step: The step number to start with. This number is removed from ``num_steps``
+            and is useful for restarting previous computations.
         :return: An :class:`OptimizationResult`. The :attr:`final_result` element contains either
             the final optimization data, models and acquisition state, or, if an exception was
             raised while executing the optimization loop, it contains the exception raised. In
@@ -610,18 +645,12 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         if not datasets:
             raise ValueError("dicts of datasets and models must be populated.")
 
-        if fit_model not in ["all", "all_but_init", "never"]:
-            raise ValueError(
-                f"Expecting fit_model to be 'all', 'all_but_init' or 'never', "
-                f"but received {fit_model!r}"
-            )
-
-        if (fit_model in ["all", "all_but_init"]) and isinstance(acquisition_rule, TURBO):
+        if fit_model and isinstance(acquisition_rule, TURBO):
             warnings.warn(
                 """
                 Are you sure you want to keep fitting the global model even though you
                 are using TURBO which has only local models? This is a waste of computation.
-                Consider setting 'fit_model'='never'.
+                Consider setting 'fit_model'='False'.
                 """
             )
 
@@ -652,7 +681,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     num_steps,
                 )
 
-        for step in range(1, num_steps + 1):
+        for step in range(start_step + 1, num_steps + 1):
             logging.set_step_number(step)
 
             if early_stop_callback and early_stop_callback(datasets, models, acquisition_state):
@@ -685,7 +714,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                             "will be available."
                         ) from e
 
-                if step == 1 and fit_model == "all":
+                if step == 1 and fit_model and fit_initial_model:
                     with Timer() as initial_model_fitting_timer:
                         for tag, model in models.items():
                             dataset = datasets[tag]
@@ -719,7 +748,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
                     datasets = {tag: datasets[tag] + tagged_output[tag] for tag in tagged_output}
                     with Timer() as model_fitting_timer:
-                        if fit_model in ["all", "all_but_init"]:
+                        if fit_model:
                             for tag, model in models.items():
                                 dataset = datasets[tag]
                                 model.update(dataset)
@@ -772,6 +801,48 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         result = OptimizationResult(Ok(record), history)
         if track_state and track_path is not None:
             result.save_result(Path(track_path) / OptimizationResult.RESULTS_FILENAME)
+        return result
+
+    def continue_optimization(
+        self,
+        num_steps: int,
+        optimization_result: OptimizationResult[StateType],
+        *args: Any,
+        **kwargs: Any,
+    ) -> OptimizationResult[StateType]:
+        """
+        Continue a previous optimization that either failed, was terminated early, or which
+        you simply wish to run for more steps.
+
+        :param num_steps: The total number of optimization steps, including any that have already
+            been run.
+        :param optimization_result: The optimization result from which to extract the datasets,
+            models and acquisition state. If the result was successful then the final result is
+            used; otherwise the last record in the history is used. The size of the history
+            is used to determine how many more steps are required.
+        :param args: Any more positional arguments to pass on to optimize.
+        :param kwargs: Any more keyword arguments to pass on to optimize.
+        :return: An :class:`OptimizationResult`. The history will contain both the history from
+            `optimization_result` (including the `final_result` if that was successful) and
+            any new records.
+        """
+        history: list[Record[StateType] | FrozenRecord[StateType]] = []
+        history.extend(optimization_result.history)
+        if optimization_result.final_result.is_ok:
+            history.append(optimization_result.final_result.unwrap())
+        if not history:
+            raise ValueError("Cannot continue from empty optimization result")
+
+        result = self.optimize(  # type: ignore[call-overload]
+            num_steps,
+            history[-1].datasets,
+            history[-1].models,
+            *args,
+            acquisition_state=history[-1].acquisition_state,
+            **kwargs,
+            start_step=len(history) - 1,
+        )
+        result.history[:1] = history
         return result
 
 
@@ -1005,6 +1076,7 @@ def stop_at_minimum(
     minimizers_atol: float = 0,
     minimizers_rtol: float = 0.05,
     objective_tag: Tag = OBJECTIVE,
+    minimum_step_number: Optional[int] = None,
 ) -> EarlyStopCallback[TrainableProbabilisticModel, object]:
     """
     Generate an early stop function that terminates a BO loop when it gets close enough to the
@@ -1017,6 +1089,7 @@ def stop_at_minimum(
     :param minimizers_atol: Absolute tolerance for minimizer point.
     :param minimizers_rtol: Relative tolerance for minimizer point.
     :param objective_tag: The tag for the objective data.
+    :param minimum_step_number: Minimum step number to stop at.
     :return: An early stop function that terminates if we get close enough to both the minimum
         and any of the minimizer points.
     """
@@ -1026,6 +1099,8 @@ def stop_at_minimum(
         _models: Mapping[Tag, TrainableProbabilisticModel],
         _acquisition_state: object,
     ) -> bool:
+        if minimum_step_number is not None and logging.get_step_number() < minimum_step_number:
+            return False
         dataset = datasets[objective_tag]
         arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
         if minimum is not None:

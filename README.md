@@ -28,7 +28,7 @@ Trieste (pronounced tree-est) is a Bayesian optimization toolbox built on [Tenso
 
 ## Getting started
 
-Here's a quick overview of the main components of a Bayesian optimization loop. For more details, see our [Documentation](https://secondmind-labs.github.io/trieste) where we have multiple [Tutorials](https://secondmind-labs.github.io/trieste/tutorials.html) covering both the basic functionalities of the toolbox, as well as more advanced usage.
+Here's a quick overview of the main components of a Bayesian optimization loop. For more details, see our <span style="font-variant:small-caps;">[Documentation](https://secondmind-labs.github.io/trieste)</span> where we have multiple <span style="font-variant:small-caps;">[Tutorials](https://secondmind-labs.github.io/trieste/tutorials.html)</span> covering both the basic functionalities of the toolbox, as well as more advanced usage.
 
 Let's set up a synthetic black-box objective function we wish to minimize, for example, a popular Branin optimization function, and generate some initial data
 ```python
@@ -42,7 +42,7 @@ initial_data = observer(initial_query_points)
 
 First step is to create a probabilistic model of the objective function, for example a Gaussian Process model
 ```python
-from trieste.models import build_gpr, GaussianProcessRegression
+from trieste.models.gpflow import build_gpr, GaussianProcessRegression
 
 gpflow_model = build_gpr(initial_data, Branin.search_space)
 model = GaussianProcessRegression(gpflow_model)
@@ -59,7 +59,7 @@ Finally, we optimize the acquisition function using our model for a number of st
 ```python
 from trieste.bayesian_optimizer import BayesianOptimizer
 
-bo = BayesianOptimizer(observer, search_space)
+bo = BayesianOptimizer(observer, Branin.search_space)
 num_steps = 15
 result = bo.optimize(num_steps, initial_data, model)
 query_point, observation, arg_min_idx = result.try_get_optimal_point()
@@ -104,6 +104,11 @@ $ pip install -r notebooks/requirements.txt
 Finally, run the notebooks with
 ```bash
 $ jupyter-notebook notebooks
+```
+
+Alternatively, you can copy and paste the tutorials into fresh notebooks and avoid installing the library from source. To ensure you have the required plotting dependencies, simply run:
+```bash
+$ pip install trieste[plotting]
 ```
 
 ## The Trieste Community

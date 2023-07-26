@@ -141,7 +141,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                 12, AsynchronousOptimization(num_query_points=3), id="AsynchronousOptimization"
             ),
             pytest.param(
-                10,
+                15,
                 EfficientGlobalOptimization(
                     LocalPenalization(
                         ScaledBranin.search_space,
@@ -151,7 +151,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                 id="LocalPenalization",
             ),
             pytest.param(
-                10,
+                15,
                 AsynchronousGreedy(
                     LocalPenalization(
                         ScaledBranin.search_space,
@@ -180,7 +180,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                 ),
                 id="MultipleOptimismNegativeLowerConfidenceBound",
             ),
-            pytest.param(15, TrustRegion(), id="TrustRegion"),
+            pytest.param(20, TrustRegion(), id="TrustRegion"),
             pytest.param(
                 15,
                 TrustRegion(
@@ -616,9 +616,6 @@ def _test_optimizer_finds_minimum(
     with tempfile.TemporaryDirectory() as tmpdirname:
         summary_writer = tf.summary.create_file_writer(tmpdirname)
         with tensorboard_writer(summary_writer):
-            fit_model = (
-                "never" if isinstance(acquisition_rule, TURBO) else "all_but_init"
-            )  # avoid updating global model
             result = BayesianOptimizer(observer, search_space).optimize(
                 num_steps or 2,
                 initial_data,
@@ -626,8 +623,15 @@ def _test_optimizer_finds_minimum(
                 acquisition_rule,
                 track_state=True,
                 track_path=Path(tmpdirname) / "history",
-                early_stop_callback=stop_at_minimum(minima, minimizers, minimum_rtol=rtol_level),
-                fit_model=fit_model,
+                early_stop_callback=stop_at_minimum(
+                    # stop as soon as we find the minimum (but always run at least one step)
+                    minima,
+                    minimizers,
+                    minimum_rtol=rtol_level,
+                    minimum_step_number=2,
+                ),
+                fit_model=not isinstance(acquisition_rule, TURBO),
+                fit_initial_model=False,
             )
 
             # check history saved ok

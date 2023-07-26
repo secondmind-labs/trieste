@@ -18,9 +18,10 @@ Utilities for creating (Keras) neural network models to be used in the tests.
 
 from __future__ import annotations
 
-from typing import Tuple
+from typing import Optional, Tuple
 
 import tensorflow as tf
+from packaging.version import Version
 
 from trieste.data import Dataset
 from trieste.models.keras import (
@@ -30,6 +31,7 @@ from trieste.models.keras import (
     get_tensor_spec_from_data,
 )
 from trieste.models.optimizer import KerasOptimizer
+from trieste.types import TensorType
 
 
 def trieste_keras_ensemble_model(
@@ -76,3 +78,11 @@ def trieste_deep_ensemble_model(
     model = DeepEnsemble(keras_ensemble, optimizer_wrapper, bootstrap_data)
 
     return model, keras_ensemble, optimizer_wrapper
+
+
+def keras_optimizer_weights(optimizer: tf.keras.optimizers.Optimizer) -> Optional[TensorType]:
+    # optimizer weight API was changed in TF 2.11: https://github.com/keras-team/keras/issues/16983
+    if Version(tf.__version__) < Version("2.11"):
+        return optimizer.get_weights()
+    else:
+        return optimizer.variables[0]

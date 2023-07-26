@@ -18,7 +18,7 @@ Tutorials
 Example optimization problems
 -----------------------------
 
-The following tutorials explore various optimization problems using Trieste.
+The following tutorials explore various types of optimization problems using Trieste.
 
 .. toctree::
    :maxdepth: 1
@@ -52,7 +52,7 @@ The following tutorials (or sections thereof) explain how to use and extend spec
 * :doc:`How do I recover a failed optimization loop?<notebooks/recovering_from_errors>`
 * :doc:`How do I track and visualize an optimization loop in realtime using TensorBoard?<notebooks/visualizing_with_tensorboard>`
 * :doc:`What are the key Python types used in Trieste and how can they be extended?<notebooks/code_overview>`
-* :doc:`Does Trieste have interface for external control of the optimization loop, also known as Ask-Tell interface?<notebooks/ask_tell_optimization>`
+* :doc:`How do I externally control the optimization loop via an Ask-Tell interface?<notebooks/ask_tell_optimization>`
 * :doc:`How do I perform data transformations required for training the model?<notebooks/data_transformation>`
 * How do I use Trieste in asynchronous objective evaluation mode?
 
@@ -87,7 +87,7 @@ then run
 
    $ jupyter-notebook notebooks
 
-Alternatively, you copy and paste the tutorials into fresh notebooks and avoid installing the library from source. To ensure you have the required plotting dependencies, simply run:
+Alternatively, you can copy and paste the tutorials into fresh notebooks and avoid installing the library from source. To ensure you have the required plotting dependencies, simply run:
 
 .. code::
 
