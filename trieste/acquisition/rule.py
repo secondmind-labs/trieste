@@ -979,17 +979,9 @@ class TrustRegion(
         `TensorType` instead of a `bool`.
         """
 
-        num_local_steps: int | TensorType
-        """
-        `True` if the search space was global, else `False` if it was local. May be a scalar boolean
-        `TensorType` instead of a `bool`.
-        """
-
         def __deepcopy__(self, memo: dict[int, object]) -> TrustRegion.State:
             box_copy = copy.deepcopy(self.acquisition_space, memo)
-            return TrustRegion.State(
-                box_copy, self.eps, self.y_min, self.is_global, self.num_local_steps
-            )
+            return TrustRegion.State(box_copy, self.eps, self.y_min, self.is_global)
 
     @overload
     def __init__(
@@ -997,7 +989,6 @@ class TrustRegion(
         rule: None = None,
         beta: float = 0.7,
         kappa: float = 1e-4,
-        max_num_local_steps: int = 1,
     ):
         ...
 
@@ -1007,7 +998,6 @@ class TrustRegion(
         rule: AcquisitionRule[TensorType, Box, ProbabilisticModelType],
         beta: float = 0.7,
         kappa: float = 1e-4,
-        max_num_local_steps: int = 1,
     ):
         ...
 
@@ -1016,7 +1006,6 @@ class TrustRegion(
         rule: AcquisitionRule[TensorType, Box, ProbabilisticModelType] | None = None,
         beta: float = 0.7,
         kappa: float = 1e-4,
-        max_num_local_steps: int = 1,
     ):
         """
         :param rule: The acquisition rule that defines how to search for a new query point in a
@@ -1032,7 +1021,6 @@ class TrustRegion(
         self._rule = rule
         self._beta = beta
         self._kappa = kappa
-        self._max_num_local_steps = max_num_local_steps
 
     def __repr__(self) -> str:
         """"""
@@ -1108,16 +1096,10 @@ class TrustRegion(
                     else state.eps * self._beta
                 )
 
-                # is_global = step_is_success or not state.is_global
-
-                if state.is_global:
-                    is_global = step_is_success
-                else:
-                    is_global = state.num_local_steps >= self._max_num_local_steps
+                is_global = step_is_success or not state.is_global
 
             if is_global:
                 acquisition_space = search_space
-                num_local_steps = 0
             else:
                 xmin = dataset.query_points[tf.argmin(dataset.observations)[0], :]
                 acquisition_space = Box(
@@ -1125,10 +1107,9 @@ class TrustRegion(
                     tf.reduce_min([global_upper, xmin + eps], axis=0),
                 )
                 assert state is not None
-                num_local_steps = state.num_local_steps + 1
 
             points = self._rule.acquire(acquisition_space, models, datasets=datasets)
-            state_ = TrustRegion.State(acquisition_space, eps, y_min, is_global, num_local_steps)
+            state_ = TrustRegion.State(acquisition_space, eps, y_min, is_global)
 
             return state_, points
 
