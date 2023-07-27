@@ -1017,12 +1017,21 @@ class TaggedMultiSearchSpace(CollectionSearchSpace):
             dimension to each other.
         """
 
+        # At least one subspace is required.
+        tf.debugging.assert_greater(
+            len(spaces),
+            0,
+            message=f"""
+                At least one subspace is required but received {len(spaces)}.
+                """,
+        )
+
         tf.debugging.assert_equal(
             len(set([int(space.dimension) for space in spaces])),
             1,
             message=f"""
-                All spaces must have the same dimension but received
-                {[space.dimension for space in spaces]}.
+                All subspaces must have the same dimension but received
+                {[int(space.dimension) for space in spaces]}.
                 """,
         )
 
@@ -1087,6 +1096,22 @@ class TaggedMultiSearchSpace(CollectionSearchSpace):
         return TaggedMultiSearchSpace(
             spaces=tuple(self._spaces.values()) + tuple(other._spaces.values())
         )
+
+    def discretize(self, num_samples: int) -> DiscreteSearchSpace:
+        """
+        :param num_samples: The number of points in the :class:`DiscreteSearchSpace`.
+        :return: A discrete search space consisting of ``num_samples`` points sampled uniformly from
+            this search space.
+        :raise NotImplementedError: If this :class:`SearchSpace` has constraints.
+        """
+        if self.has_constraints:  # Constraints are not supported.
+            raise NotImplementedError(
+                "Discretization is currently not supported in the presence of constraints."
+            )
+        samples = self.sample(num_samples)  # Sample num_samples points from each subspace.
+        samples = tf.reshape(samples, [-1, self.dimension])  # Flatten the samples across subspaces.
+        samples = tf.random.shuffle(samples)[:num_samples]  # Randomly pick num_samples points.
+        return DiscreteSearchSpace(points=samples)
 
     def __deepcopy__(self, memo: dict[int, object]) -> TaggedMultiSearchSpace:
         return self

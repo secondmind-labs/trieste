@@ -17,7 +17,7 @@ import copy
 import itertools
 import operator
 from functools import reduce
-from typing import Container, Optional, Sequence
+from typing import Container, List, Optional, Sequence, Type
 
 import numpy.testing as npt
 import pytest
@@ -27,11 +27,13 @@ from typing_extensions import Final
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, various_shapes
 from trieste.space import (
     Box,
+    CollectionSearchSpace,
     Constraint,
     DiscreteSearchSpace,
     LinearConstraint,
     NonlinearConstraint,
     SearchSpace,
+    TaggedMultiSearchSpace,
     TaggedProductSearchSpace,
 )
 from trieste.types import TensorType
@@ -662,36 +664,360 @@ def test_box_deepcopy() -> None:
     npt.assert_allclose(box.upper, box_copy.upper)
 
 
-def test_product_space_raises_for_non_unqique_subspace_names() -> None:
+# Parameterize for both TaggedMultiSearchSpace and TaggedProductSearchSpace.
+@pytest.mark.parametrize("search_space_type", [TaggedMultiSearchSpace, TaggedProductSearchSpace])
+def test_collection_space_raises_for_non_unqique_subspace_names(
+    search_space_type: Type[CollectionSearchSpace],
+) -> None:
     space_A = Box([-1, -2], [2, 3])
     space_B = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]]))
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        TaggedProductSearchSpace(spaces=[space_A, space_B], tags=["A", "A"])
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES, match="Subspace names must be unique"):
+        search_space_type(spaces=[space_A, space_B], tags=["A", "A"])
 
 
-def test_product_space_raises_for_length_mismatch_between_spaces_and_tags() -> None:
+@pytest.mark.parametrize("search_space_type", [TaggedMultiSearchSpace, TaggedProductSearchSpace])
+def test_collection_space_raises_for_length_mismatch_between_spaces_and_tags(
+    search_space_type: Type[CollectionSearchSpace],
+) -> None:
     space_A = Box([-1, -2], [2, 3])
     space_B = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]]))
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        TaggedProductSearchSpace(spaces=[space_A, space_B], tags=["A", "B", "C"])
+    with pytest.raises(
+        TF_DEBUGGING_ERROR_TYPES, match="Number of tags must match number of subspaces"
+    ):
+        search_space_type(spaces=[space_A, space_B], tags=["A", "B", "C"])
 
 
-def test_product_space_subspace_tags_attribute() -> None:
+@pytest.mark.parametrize("search_space_type", [TaggedMultiSearchSpace, TaggedProductSearchSpace])
+def test_collection_space_subspace_tags_attribute(
+    search_space_type: Type[CollectionSearchSpace],
+) -> None:
     decision_space = Box([-1, -2], [2, 3])
     context_space = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]]))
-    product_space = TaggedProductSearchSpace(
+    product_space = search_space_type(
         spaces=[context_space, decision_space], tags=["context", "decision"]
     )
 
     npt.assert_array_equal(product_space.subspace_tags, ["context", "decision"])
 
 
-def test_product_space_subspace_tags_default_behaviour() -> None:
+@pytest.mark.parametrize("search_space_type", [TaggedMultiSearchSpace, TaggedProductSearchSpace])
+def test_collection_space_subspace_tags_default_behaviour(
+    search_space_type: Type[CollectionSearchSpace],
+) -> None:
     decision_space = Box([-1, -2], [2, 3])
     context_space = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]]))
-    product_space = TaggedProductSearchSpace(spaces=[context_space, decision_space])
+    product_space = search_space_type(spaces=[context_space, decision_space])
 
     npt.assert_array_equal(product_space.subspace_tags, ["0", "1"])
+
+
+@pytest.mark.parametrize("search_space_type", [TaggedMultiSearchSpace, TaggedProductSearchSpace])
+def test_collection_space_get_subspace_raises_for_invalid_tag(
+    search_space_type: Type[CollectionSearchSpace],
+) -> None:
+    space_A = Box([-1, -2], [2, 3])
+    space_B = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]]))
+    product_space = search_space_type(spaces=[space_A, space_B], tags=["A", "B"])
+
+    with pytest.raises(
+        TF_DEBUGGING_ERROR_TYPES, match="Attempted to access a subspace that does not exist"
+    ):
+        product_space.get_subspace("dummy")
+
+
+@pytest.mark.parametrize("search_space_type", [TaggedMultiSearchSpace, TaggedProductSearchSpace])
+def test_collection_space_get_subspace(search_space_type: Type[CollectionSearchSpace]) -> None:
+    space_A = Box([-1, -2], [2, 3])
+    space_B = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]]))
+    space_C = Box([-1, -3], [2, 2])
+    product_space = search_space_type(spaces=[space_A, space_B, space_C], tags=["A", "B", "C"])
+
+    subspace_A = product_space.get_subspace("A")
+    assert isinstance(subspace_A, Box)
+    npt.assert_array_equal(subspace_A.lower, [-1, -2])
+    npt.assert_array_equal(subspace_A.upper, [2, 3])
+
+    subspace_B = product_space.get_subspace("B")
+    assert isinstance(subspace_B, DiscreteSearchSpace)
+    npt.assert_array_equal(subspace_B.points, tf.constant([[-0.5, 0.5]]))
+
+    subspace_C = product_space.get_subspace("C")
+    assert isinstance(subspace_C, Box)
+    npt.assert_array_equal(subspace_C.lower, [-1, -3])
+    npt.assert_array_equal(subspace_C.upper, [2, 2])
+
+
+@pytest.mark.parametrize(
+    "search_space_type, point",
+    [
+        (TaggedMultiSearchSpace, tf.constant([-1.0, 0.0], dtype=tf.float64)),
+        (TaggedMultiSearchSpace, tf.constant([2.0, -2.0], dtype=tf.float64)),
+        (TaggedMultiSearchSpace, tf.constant([-0.5, 0.5], dtype=tf.float64)),
+        (TaggedProductSearchSpace, tf.constant([-1.0, 0.0, -0.5, 0.5], dtype=tf.float64)),
+        (TaggedProductSearchSpace, tf.constant([2.0, -2.0, -0.5, 0.5], dtype=tf.float64)),
+    ],
+)
+def test_collection_space_contains_point(
+    search_space_type: Type[CollectionSearchSpace],
+    point: tf.Tensor,
+) -> None:
+    space_A = Box([-1.0, -2.0], [2.0, 0.0])
+    space_B = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]], dtype=tf.float64))
+    collection_space = search_space_type(spaces=[space_A, space_B])
+    assert point in collection_space
+    assert collection_space.contains(point)
+
+
+@pytest.mark.parametrize(
+    "search_space_type, point",
+    [
+        pytest.param(
+            TaggedMultiSearchSpace,
+            tf.constant([-1.1, 0.0], dtype=tf.float64),
+            id="just outside box",
+        ),
+        pytest.param(
+            TaggedMultiSearchSpace,
+            tf.constant([-10, 10.0], dtype=tf.float64),
+            id="well outside box",
+        ),
+        pytest.param(
+            TaggedMultiSearchSpace,
+            tf.constant([-0.5, 0.51], dtype=tf.float64),
+            id="just outside discrete",
+        ),
+        pytest.param(
+            TaggedProductSearchSpace,
+            tf.constant([-1.1, 0.0, -0.5, 0.5], dtype=tf.float64),
+            id="just outside context space",
+        ),
+        pytest.param(
+            TaggedProductSearchSpace,
+            tf.constant([-10, 10.0, -0.5, 0.5], dtype=tf.float64),
+            id="well outside context space",
+        ),
+        pytest.param(
+            TaggedProductSearchSpace,
+            tf.constant([2.0, 0.0, 2.0, 7.0], dtype=tf.float64),
+            id="outside decision space",
+        ),
+        pytest.param(
+            TaggedProductSearchSpace,
+            tf.constant([-10.0, -10.0, -10.0, -10.0], dtype=tf.float64),
+            id="outside both",
+        ),
+        pytest.param(
+            TaggedProductSearchSpace,
+            tf.constant([-0.5, 0.5, 1.0, 0.0], dtype=tf.float64),
+            id="swap order of components",
+        ),
+    ],
+)
+def test_collection_space_does_not_contain_point(
+    search_space_type: Type[CollectionSearchSpace],
+    point: tf.Tensor,
+) -> None:
+    space_A = Box([-1.0, -2.0], [2.0, 0.0])
+    space_B = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]], dtype=tf.float64))
+    collection_space = search_space_type(spaces=[space_A, space_B])
+    assert point not in collection_space
+    assert not collection_space.contains(point)
+
+
+@pytest.mark.parametrize(
+    "search_space_type, points",
+    [
+        (TaggedMultiSearchSpace, tf.constant([[-1.1, 0.0], [-0.5, 0.5]], dtype=tf.float64)),
+        (
+            TaggedProductSearchSpace,
+            tf.constant([[-1.1, 0.0, -0.5, 0.5], [-1.0, 0.0, -0.5, 0.5]], dtype=tf.float64),
+        ),
+    ],
+)
+def test_collection_space_contains_broadcasts(
+    search_space_type: Type[CollectionSearchSpace],
+    points: tf.Tensor,
+) -> None:
+    space_A = Box([-1.0, -2.0], [2.0, 3.0])
+    space_B = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]], dtype=tf.float64))
+    collection_space = search_space_type(spaces=[space_A, space_B])
+    tf.assert_equal(collection_space.contains(points), [False, True])
+    # point in space raises (because python insists on a bool)
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        _ = points in collection_space
+
+
+@pytest.mark.parametrize("search_space_type", [TaggedMultiSearchSpace, TaggedProductSearchSpace])
+@pytest.mark.parametrize(
+    "spaces",
+    [
+        [DiscreteSearchSpace(tf.constant([[-0.5]]))],
+        [
+            DiscreteSearchSpace(tf.constant([[-0.5, 1.3]])),
+            DiscreteSearchSpace(tf.constant([[-0.5, -0.3], [1.2, 0.4]])),
+        ],
+        [
+            Box([-2], [3]),
+            DiscreteSearchSpace(tf.constant([[-0.5]])),
+            Box([-1], [2]),
+        ],
+    ],
+)
+def test_collection_space_contains_raises_on_point_of_different_shape(
+    search_space_type: Type[CollectionSearchSpace],
+    spaces: Sequence[SearchSpace],
+) -> None:
+    space = search_space_type(spaces=spaces)
+    dimension = space.dimension
+    for wrong_input_shape in [dimension - 1, dimension + 1]:
+        point = tf.zeros([wrong_input_shape])
+        with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+            _ = point in space
+        with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+            _ = space.contains(point)
+
+
+@pytest.mark.parametrize(
+    "search_space_type, space_A, exp_shape_tail",
+    [
+        (TaggedMultiSearchSpace, Box([-1, -2], [2, 3]), [2, 2]),
+        (TaggedProductSearchSpace, Box([-1], [2]), [3]),
+    ],
+)
+@pytest.mark.parametrize("num_samples", [0, 1, 10])
+def test_collection_space_sampling_returns_correct_shape(
+    search_space_type: Type[CollectionSearchSpace],
+    space_A: SearchSpace,
+    exp_shape_tail: List[int],
+    num_samples: int,
+) -> None:
+    space_B = DiscreteSearchSpace(tf.ones([100, 2], dtype=tf.float64))
+    if search_space_type is TaggedMultiSearchSpace:
+        product: SearchSpace = TaggedMultiSearchSpace([space_A]) * TaggedMultiSearchSpace([space_B])
+    else:
+        product = space_A * space_B
+    for collection_space in (search_space_type(spaces=[space_A, space_B]), product):
+        samples = collection_space.sample(num_samples)
+        npt.assert_array_equal(tf.shape(samples), [num_samples] + exp_shape_tail)
+
+
+@pytest.mark.parametrize(
+    "search_space_type, space_A",
+    [
+        (TaggedMultiSearchSpace, Box([-1, -2], [2, 3])),
+        (TaggedProductSearchSpace, Box([-1], [2])),
+    ],
+)
+@pytest.mark.parametrize("num_samples", [-1, -10])
+def test_collection_space_sampling_raises_for_invalid_sample_size(
+    search_space_type: Type[CollectionSearchSpace],
+    space_A: SearchSpace,
+    num_samples: int,
+) -> None:
+    space_B = DiscreteSearchSpace(tf.ones([100, 2], dtype=tf.float64))
+    collection_space = search_space_type(spaces=[space_A, space_B])
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        collection_space.sample(num_samples)
+
+
+@pytest.mark.parametrize(
+    "search_space_type, space_A",
+    [
+        (TaggedMultiSearchSpace, Box([-1, -2], [2, 3])),
+        (TaggedProductSearchSpace, Box([-1], [2])),
+    ],
+)
+@pytest.mark.parametrize("num_samples", [0, 1, 10])
+def test_collection_space_discretize_returns_search_space_with_only_points_contained_within_box(
+    search_space_type: Type[CollectionSearchSpace],
+    space_A: SearchSpace,
+    num_samples: int,
+) -> None:
+    space_B = DiscreteSearchSpace(tf.ones([100, 2], dtype=tf.float64))
+    collection_space = search_space_type(spaces=[space_A, space_B])
+
+    dss = collection_space.discretize(num_samples)
+    samples = dss.sample(num_samples)
+
+    assert all(sample in collection_space for sample in samples)
+
+
+@pytest.mark.parametrize(
+    "search_space_type, space_A",
+    [
+        (TaggedMultiSearchSpace, Box([-1, -2], [2, 3])),
+        (TaggedProductSearchSpace, Box([-1], [2])),
+    ],
+)
+@pytest.mark.parametrize("num_samples", [0, 1, 10])
+def test_collection_space_discretize_returns_search_space_with_correct_number_of_points(
+    search_space_type: Type[CollectionSearchSpace],
+    space_A: SearchSpace,
+    num_samples: int,
+) -> None:
+    space_B = DiscreteSearchSpace(tf.ones([100, 2], dtype=tf.float64))
+    collection_space = search_space_type(spaces=[space_A, space_B])
+
+    dss = collection_space.discretize(num_samples)
+    samples = dss.sample(num_samples)
+
+    assert len(samples) == num_samples
+
+
+@pytest.mark.parametrize(
+    "search_space_type, space_A",
+    [
+        (TaggedMultiSearchSpace, Box([-1, -2], [2, 3])),
+        (TaggedProductSearchSpace, Box([-1], [2])),
+    ],
+)
+@pytest.mark.parametrize("seed", [1, 42, 123])
+def test_collection_space_sampling_returns_same_points_for_same_seed(
+    search_space_type: Type[CollectionSearchSpace], space_A: SearchSpace, seed: int
+) -> None:
+    space_B = DiscreteSearchSpace(tf.random.uniform([100, 2], dtype=tf.float64, seed=42))
+    collection_space = search_space_type(spaces=[space_A, space_B])
+    random_samples_1 = collection_space.sample(num_samples=100, seed=seed)
+    random_samples_2 = collection_space.sample(num_samples=100, seed=seed)
+    npt.assert_allclose(random_samples_1, random_samples_2)
+
+
+@pytest.mark.parametrize(
+    "search_space_type, space_A",
+    [
+        (TaggedMultiSearchSpace, Box([-1, -2], [2, 3])),
+        (TaggedProductSearchSpace, Box([-1], [2])),
+    ],
+)
+def test_collection_space_sampling_returns_different_points_for_different_call(
+    search_space_type: Type[CollectionSearchSpace],
+    space_A: SearchSpace,
+) -> None:
+    space_B = DiscreteSearchSpace(tf.random.uniform([100, 2], dtype=tf.float64, seed=42))
+    collection_space = search_space_type(spaces=[space_A, space_B])
+    random_samples_1 = collection_space.sample(num_samples=100)
+    random_samples_2 = collection_space.sample(num_samples=100)
+    npt.assert_raises(AssertionError, npt.assert_allclose, random_samples_1, random_samples_2)
+
+
+@pytest.mark.parametrize(
+    "search_space_type, space_A",
+    [
+        (TaggedMultiSearchSpace, Box([-1, -2], [2, 3])),
+        (TaggedProductSearchSpace, Box([-1], [2])),
+    ],
+)
+def test_collection_space_deepcopy(
+    search_space_type: Type[CollectionSearchSpace],
+    space_A: SearchSpace,
+) -> None:
+    space_B = DiscreteSearchSpace(tf.ones([100, 2], dtype=tf.float64))
+    collection_space = search_space_type(spaces=[space_A, space_B], tags=["A", "B"])
+
+    copied_space = copy.deepcopy(collection_space)
+    npt.assert_allclose(copied_space.get_subspace("A").lower, space_A.lower)
+    npt.assert_allclose(copied_space.get_subspace("A").upper, space_A.upper)
+    npt.assert_allclose(copied_space.get_subspace("B").points, space_B.points)  # type: ignore
 
 
 @pytest.mark.parametrize(
@@ -703,7 +1029,7 @@ def test_product_space_subspace_tags_default_behaviour() -> None:
         ([Box([-1, -2], [2, 3]), Box([-1, -2], [2, 3]), Box([-1], [2])], 5),
     ],
 )
-def test_product_search_space_returns_correct_dimension(
+def test_product_space_returns_correct_dimension(
     spaces: Sequence[SearchSpace], dimension: int
 ) -> None:
     for space in (TaggedProductSearchSpace(spaces=spaces), reduce(operator.mul, spaces)):
@@ -741,38 +1067,6 @@ def test_product_space_returns_correct_bounds(
     for space in (TaggedProductSearchSpace(spaces=spaces), reduce(operator.mul, spaces)):
         npt.assert_array_equal(space.lower, lower)
         npt.assert_array_equal(space.upper, upper)
-
-
-def test_product_space_get_subspace_raises_for_invalid_tag() -> None:
-    space_A = Box([-1, -2], [2, 3])
-    space_B = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]]))
-    product_space = TaggedProductSearchSpace(spaces=[space_A, space_B], tags=["A", "B"])
-
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        product_space.get_subspace("dummy")
-
-
-def test_product_space_get_subspace() -> None:
-    space_A = Box([-1, -2], [2, 3])
-    space_B = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]]))
-    space_C = Box([-1], [2])
-    product_space = TaggedProductSearchSpace(
-        spaces=[space_A, space_B, space_C], tags=["A", "B", "C"]
-    )
-
-    subspace_A = product_space.get_subspace("A")
-    assert isinstance(subspace_A, Box)
-    npt.assert_array_equal(subspace_A.lower, [-1, -2])
-    npt.assert_array_equal(subspace_A.upper, [2, 3])
-
-    subspace_B = product_space.get_subspace("B")
-    assert isinstance(subspace_B, DiscreteSearchSpace)
-    npt.assert_array_equal(subspace_B.points, tf.constant([[-0.5, 0.5]]))
-
-    subspace_C = product_space.get_subspace("C")
-    assert isinstance(subspace_C, Box)
-    npt.assert_array_equal(subspace_C.lower, [-1])
-    npt.assert_array_equal(subspace_C.upper, [2])
 
 
 @pytest.mark.parametrize(
@@ -860,143 +1154,6 @@ def test_product_space_can_get_subspace_components(
         npt.assert_array_equal(space.get_subspace_component(tag, points), subspace_points)
 
 
-@pytest.mark.parametrize(
-    "point",
-    [
-        tf.constant([-1.0, 0.0, -0.5, 0.5], dtype=tf.float64),
-        tf.constant([2.0, 3.0, -0.5, 0.5], dtype=tf.float64),
-    ],
-)
-def test_product_space_contains_point(point: tf.Tensor) -> None:
-    space_A = Box([-1.0, -2.0], [2.0, 3.0])
-    space_B = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]], dtype=tf.float64))
-    product_space = TaggedProductSearchSpace(spaces=[space_A, space_B])
-    assert point in product_space
-    assert product_space.contains(point)
-
-
-@pytest.mark.parametrize(
-    "point",
-    [
-        tf.constant([-1.1, 0.0, -0.5, 0.5], dtype=tf.float64),  # just outside context space
-        tf.constant([-10, 10.0, -0.5, 0.5], dtype=tf.float64),  # well outside context space
-        tf.constant([2.0, 3.0, 2.0, 7.0], dtype=tf.float64),  # outside decision space
-        tf.constant([-10.0, -10.0, -10.0, -10.0], dtype=tf.float64),  # outside both
-        tf.constant([-0.5, 0.5, 1.0, 2.0], dtype=tf.float64),  # swap order of components
-    ],
-)
-def test_product_space_does_not_contain_point(point: tf.Tensor) -> None:
-    space_A = Box([-1.0, -2.0], [2.0, 3.0])
-    space_B = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]], dtype=tf.float64))
-    product_space = TaggedProductSearchSpace(spaces=[space_A, space_B])
-    assert point not in product_space
-    assert not product_space.contains(point)
-
-
-def test_product_space_contains_broadcasts() -> None:
-    space_A = Box([-1.0, -2.0], [2.0, 3.0])
-    space_B = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]], dtype=tf.float64))
-    product_space = TaggedProductSearchSpace(spaces=[space_A, space_B])
-    points = tf.constant([[-1.1, 0.0, -0.5, 0.5], [-1.0, 0.0, -0.5, 0.5]], dtype=tf.float64)
-    tf.assert_equal(product_space.contains(points), [False, True])
-    # point in space raises (because python insists on a bool)
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        _ = points in product_space
-
-
-@pytest.mark.parametrize(
-    "spaces",
-    [
-        [DiscreteSearchSpace(tf.constant([[-0.5]]))],
-        [
-            DiscreteSearchSpace(tf.constant([[-0.5]])),
-            DiscreteSearchSpace(tf.constant([[-0.5, -0.3], [1.2, 0.4]])),
-        ],
-        [
-            Box([-1, -2], [2, 3]),
-            DiscreteSearchSpace(tf.constant([[-0.5]])),
-            Box([-1], [2]),
-        ],
-    ],
-)
-def test_product_space_contains_raises_on_point_of_different_shape(
-    spaces: Sequence[SearchSpace],
-) -> None:
-    space = TaggedProductSearchSpace(spaces=spaces)
-    dimension = space.dimension
-    for wrong_input_shape in [dimension - 1, dimension + 1]:
-        point = tf.zeros([wrong_input_shape])
-        with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-            _ = point in space
-        with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-            _ = space.contains(point)
-
-
-@pytest.mark.parametrize("num_samples", [0, 1, 10])
-def test_product_space_sampling_returns_correct_shape(num_samples: int) -> None:
-    space_A = Box([-1], [2])
-    space_B = DiscreteSearchSpace(tf.ones([100, 2], dtype=tf.float64))
-    for product_space in (TaggedProductSearchSpace(spaces=[space_A, space_B]), space_A * space_B):
-        samples = product_space.sample(num_samples)
-        npt.assert_array_equal(tf.shape(samples), [num_samples, 3])
-
-
-@pytest.mark.parametrize("num_samples", [-1, -10])
-def test_product_space_sampling_raises_for_invalid_sample_size(num_samples: int) -> None:
-    space_A = Box([-1], [2])
-    space_B = DiscreteSearchSpace(tf.ones([100, 2], dtype=tf.float64))
-    product_space = TaggedProductSearchSpace(spaces=[space_A, space_B])
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        product_space.sample(num_samples)
-
-
-@pytest.mark.parametrize("num_samples", [0, 1, 10])
-def test_product_space_discretize_returns_search_space_with_only_points_contained_within_box(
-    num_samples: int,
-) -> None:
-    space_A = Box([-1], [2])
-    space_B = DiscreteSearchSpace(tf.ones([100, 2], dtype=tf.float64))
-    product_space = TaggedProductSearchSpace(spaces=[space_A, space_B])
-
-    dss = product_space.discretize(num_samples)
-    samples = dss.sample(num_samples)
-
-    assert all(sample in product_space for sample in samples)
-
-
-@pytest.mark.parametrize("num_samples", [0, 1, 10])
-def test_product_space_discretize_returns_search_space_with_correct_number_of_points(
-    num_samples: int,
-) -> None:
-    space_A = Box([-1], [2])
-    space_B = DiscreteSearchSpace(tf.ones([100, 2], dtype=tf.float64))
-    product_space = TaggedProductSearchSpace(spaces=[space_A, space_B])
-
-    dss = product_space.discretize(num_samples)
-    samples = dss.sample(num_samples)
-
-    assert len(samples) == num_samples
-
-
-@pytest.mark.parametrize("seed", [1, 42, 123])
-def test_product_space_sampling_returns_same_points_for_same_seed(seed: int) -> None:
-    space_A = Box([-1], [2])
-    space_B = DiscreteSearchSpace(tf.random.uniform([100, 2], dtype=tf.float64, seed=42))
-    product_space = TaggedProductSearchSpace(spaces=[space_A, space_B])
-    random_samples_1 = product_space.sample(num_samples=100, seed=seed)
-    random_samples_2 = product_space.sample(num_samples=100, seed=seed)
-    npt.assert_allclose(random_samples_1, random_samples_2)
-
-
-def test_product_space_sampling_returns_different_points_for_different_call() -> None:
-    space_A = Box([-1], [2])
-    space_B = DiscreteSearchSpace(tf.random.uniform([100, 2], dtype=tf.float64, seed=42))
-    product_space = TaggedProductSearchSpace(spaces=[space_A, space_B])
-    random_samples_1 = product_space.sample(num_samples=100)
-    random_samples_2 = product_space.sample(num_samples=100)
-    npt.assert_raises(AssertionError, npt.assert_allclose, random_samples_1, random_samples_2)
-
-
 def test_product_space___mul___() -> None:
     space_A = Box([-1], [2])
     space_B = DiscreteSearchSpace(tf.ones([100, 2], dtype=tf.float64))
@@ -1027,17 +1184,6 @@ def test_product_space___mul___() -> None:
     npt.assert_array_equal(subspace_1_D.points, tf.ones([5, 3], dtype=tf.float64))
 
 
-def test_product_search_space_deepcopy() -> None:
-    space_A = Box([-1], [2])
-    space_B = DiscreteSearchSpace(tf.ones([100, 2], dtype=tf.float64))
-    product_space = TaggedProductSearchSpace(spaces=[space_A, space_B], tags=["A", "B"])
-
-    copied_space = copy.deepcopy(product_space)
-    npt.assert_allclose(copied_space.get_subspace("A").lower, space_A.lower)
-    npt.assert_allclose(copied_space.get_subspace("A").upper, space_A.upper)
-    npt.assert_allclose(copied_space.get_subspace("B").points, space_B.points)  # type: ignore
-
-
 def test_product_space_handles_empty_spaces() -> None:
     space_A = Box([-1, -2], [2, 3])
     tag_A = TaggedProductSearchSpace(spaces=[space_A], tags=["A"])
@@ -1047,6 +1193,122 @@ def test_product_space_handles_empty_spaces() -> None:
     assert tag_C.dimension == 2
     npt.assert_array_equal(tag_C.lower, [-1, -2])
     npt.assert_array_equal(tag_C.upper, [2, 3])
+    npt.assert_array_equal(tag_C.subspace_tags, ["AA", "BB"])
+
+
+def test_multi_space_raises_for_empty_collection() -> None:
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES, match="At least one subspace is required"):
+        TaggedMultiSearchSpace([])
+
+
+@pytest.mark.parametrize(
+    "spaces",
+    [
+        ([Box([-1], [2]), Box([-1, -2], [2, 3])]),
+        ([Box([-1, -2], [2, 3]), DiscreteSearchSpace(tf.constant([[-0.5]]))]),
+    ],
+)
+def test_multi_space_raises_for_mixed_dimensions(spaces: Sequence[SearchSpace]) -> None:
+    with pytest.raises(
+        TF_DEBUGGING_ERROR_TYPES, match="All subspaces must have the same dimension"
+    ):
+        TaggedMultiSearchSpace(spaces)
+
+
+@pytest.mark.parametrize(
+    "spaces, dimension",
+    [
+        ([DiscreteSearchSpace(tf.constant([[-0.5, -0.3], [1.2, 0.4]]))], 2),
+        ([DiscreteSearchSpace(tf.constant([[-0.5]])), Box([-1], [2])], 1),
+        ([Box([-1, -2], [2, 3]), DiscreteSearchSpace(tf.constant([[-0.5, -1.5]]))], 2),
+        ([Box([-1, -2], [2, 3]), Box([-1, -2], [2, 3]), Box([-1, 1], [2, 2])], 2),
+    ],
+)
+def test_multi_space_returns_correct_dimension(
+    spaces: Sequence[SearchSpace], dimension: int
+) -> None:
+    for space in (
+        TaggedMultiSearchSpace(spaces=spaces),
+        reduce(operator.mul, [TaggedMultiSearchSpace([s]) for s in spaces]),
+    ):
+        assert space.dimension == dimension
+
+
+@pytest.mark.parametrize(
+    "spaces, lower, upper",
+    [
+        (
+            [DiscreteSearchSpace(tf.constant([[-0.5, 0.4], [1.2, -0.3]]))],
+            tf.constant([[-0.5, -0.3]]),
+            tf.constant([[1.2, 0.4]]),
+        ),
+        (
+            [DiscreteSearchSpace(tf.constant([[-0.5]], dtype=tf.float64)), Box([-1.0], [2.0])],
+            tf.constant([[-0.5], [-1.0]]),
+            tf.constant([[-0.5], [2.0]]),
+        ),
+        (
+            [
+                Box([-1, -2], [2, 3]),
+                DiscreteSearchSpace(tf.constant([[-0.5, 1.5]], dtype=tf.float64)),
+            ],
+            tf.constant([[-1.0, -2.0], [-0.5, 1.5]]),
+            tf.constant([[2.0, 3.0], [-0.5, 1.5]]),
+        ),
+        (
+            [Box([-1, -2], [2, 3]), Box([-1, -2], [2, 3]), Box([-1, 1], [2, 2])],
+            tf.constant([[-1.0, -2.0], [-1.0, -2.0], [-1.0, 1.0]]),
+            tf.constant([[2.0, 3.0], [2.0, 3.0], [2.0, 2.0]]),
+        ),
+    ],
+)
+def test_multi_space_returns_correct_bounds(
+    spaces: Sequence[SearchSpace], lower: tf.Tensor, upper: tf.Tensor
+) -> None:
+    for space in (
+        TaggedMultiSearchSpace(spaces=spaces),
+        reduce(operator.mul, [TaggedMultiSearchSpace([s]) for s in spaces]),
+    ):
+        npt.assert_array_equal(space.lower, lower)
+        npt.assert_array_equal(space.upper, upper)
+
+
+def test_multi_space___mul___() -> None:
+    space_A = Box([-1, -2], [2, 3])
+    space_B = DiscreteSearchSpace(tf.ones([100, 2], dtype=tf.float64))
+    product_space_1 = TaggedMultiSearchSpace(spaces=[space_A, space_B], tags=["A", "B"])
+
+    space_C = Box([-2, -2], [2, 3])
+    space_D = DiscreteSearchSpace(tf.ones([5, 2], dtype=tf.float64))
+    product_space_2 = TaggedMultiSearchSpace(spaces=[space_C, space_D], tags=["C", "D"])
+
+    product_of_product_spaces = product_space_1 * product_space_2
+
+    subspace_0_A = product_of_product_spaces.get_subspace("0")
+    assert isinstance(subspace_0_A, Box)
+    npt.assert_array_equal(subspace_0_A.lower, [-1, -2])
+    npt.assert_array_equal(subspace_0_A.upper, [2, 3])
+    subspace_0_B = product_of_product_spaces.get_subspace("1")
+    assert isinstance(subspace_0_B, DiscreteSearchSpace)
+    npt.assert_array_equal(subspace_0_B.points, tf.ones([100, 2], dtype=tf.float64))
+
+    subspace_1_C = product_of_product_spaces.get_subspace("2")
+    assert isinstance(subspace_1_C, Box)
+    npt.assert_array_equal(subspace_1_C.lower, [-2, -2])
+    npt.assert_array_equal(subspace_1_C.upper, [2, 3])
+    subspace_1_D = product_of_product_spaces.get_subspace("3")
+    assert isinstance(subspace_1_D, DiscreteSearchSpace)
+    npt.assert_array_equal(subspace_1_D.points, tf.ones([5, 2], dtype=tf.float64))
+
+
+def test_multi_space_handles_empty_spaces() -> None:
+    tag_A = TaggedProductSearchSpace(spaces=[], tags=[])
+    tag_B = TaggedProductSearchSpace(spaces=[], tags=[])
+    tag_C = TaggedMultiSearchSpace(spaces=[tag_A, tag_B], tags=["AA", "BB"])
+
+    assert tag_C.dimension == 0
+    npt.assert_array_equal(tag_C.lower, [[], []])
+    npt.assert_array_equal(tag_C.upper, [[], []])
     npt.assert_array_equal(tag_C.subspace_tags, ["AA", "BB"])
 
 
@@ -1095,6 +1357,31 @@ def _nlc_func(x: TensorType) -> TensorType:
         (
             TaggedProductSearchSpace([Box([-1], [1]), Box([1], [2])], tags=["A", "B"]),
             TaggedProductSearchSpace([Box([1], [2]), Box([-1], [1])], tags=["B", "A"]),
+            False,
+        ),
+        (
+            TaggedMultiSearchSpace([Box([-1], [1]), Box([1], [2])]),
+            TaggedMultiSearchSpace([Box([-1], [1]), Box([1], [2])]),
+            True,
+        ),
+        (
+            TaggedMultiSearchSpace([Box([-1], [1]), Box([1], [2])]),
+            TaggedMultiSearchSpace([Box([-1], [1]), Box([3], [4])]),
+            False,
+        ),
+        (
+            TaggedMultiSearchSpace([Box([-1], [1]), Box([1], [2])], tags=["A", "B"]),
+            TaggedMultiSearchSpace([Box([-1], [1]), Box([1], [2])], tags=["B", "A"]),
+            False,
+        ),
+        (
+            TaggedMultiSearchSpace([Box([-1], [1]), Box([1], [2])], tags=["A", "B"]),
+            TaggedMultiSearchSpace([Box([1], [2]), Box([-1], [1])], tags=["B", "A"]),
+            False,
+        ),
+        (
+            TaggedProductSearchSpace([Box([-1], [1]), Box([1], [2])]),
+            TaggedMultiSearchSpace([Box([-1], [1]), Box([1], [2])]),
             False,
         ),
         (

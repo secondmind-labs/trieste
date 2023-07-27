@@ -1171,7 +1171,7 @@ class MultiTrustRegion(
     ],
     Generic[ProbabilisticModelType, UpdateableSearchSpaceType],
 ):
-    """Abstrct class for multi trust region acquisition rules."""
+    """Abstract class for multi trust region acquisition rules."""
 
     @dataclass(frozen=True)
     class State:
