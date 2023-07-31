@@ -1,5 +1,5 @@
 # %% [markdown]
-# # Active Learning
+# # Active learning
 
 # %% [markdown]
 # Sometimes, we may just want to learn a black-box function, rather than optimizing it. This goal is known as active learning and corresponds to choosing query points that reduce our model uncertainty. This notebook demonstrates how to perform Bayesian active learning using Trieste.

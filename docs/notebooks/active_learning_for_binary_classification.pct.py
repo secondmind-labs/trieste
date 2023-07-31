@@ -1,5 +1,5 @@
 # %% [markdown]
-# # Active Learning for binary classification
+# # Active learning for binary classification
 
 # %%
 import gpflow
