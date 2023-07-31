@@ -15,10 +15,10 @@
 Tutorials
 =========
 
-Example optimization problems
------------------------------
+Optimization problems
+---------------------
 
-The following tutorials explore various types of optimization problems using Trieste.
+The following tutorials illustrate solving different types of optimization problems using Trieste.
 
 .. toctree::
    :maxdepth: 1
@@ -44,7 +44,7 @@ The following tutorials explore various types of optimization problems using Tri
 Frequently asked questions
 --------------------------
 
-The following tutorials (or sections thereof) explain how to use and extend specific Trieste functionality.
+The following tutorials explain how to use and extend specific Trieste functionality.
 
 * :doc:`How do I set up a basic Bayesian optimization routine?<notebooks/expected_improvement>`
 * :doc:`How do I set up a batch Bayesian optimization routine?<notebooks/batch_optimization>`

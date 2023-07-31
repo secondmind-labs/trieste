@@ -1,5 +1,5 @@
 # %% [markdown]
-# # Introduction to Bayesian Optimization
+# # Introduction to Bayesian optimization
 
 # %%
 import numpy as np
