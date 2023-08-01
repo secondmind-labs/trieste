@@ -299,8 +299,8 @@ def test_deep_gaussian_process_with_lr_scheduler(
 
     model.optimize_and_save_result(Dataset(x, y))
 
-    assert model.last_result is not None
-    assert len(model.last_result.history["loss"]) == epochs
+    assert model.last_optimization_result is not None
+    assert len(model.last_optimization_result.history["loss"]) == epochs
 
 
 def test_deep_gaussian_process_default_optimizer_is_correct(

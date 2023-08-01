@@ -155,8 +155,8 @@ def test_gpflow_wrappers_default_optimize(
     new_loss = internal_model.training_loss(**args)
     assert new_loss < loss
     if not isinstance(internal_model, SVGP):
-        assert model.last_result is not None
-        npt.assert_allclose(new_loss, model.last_result.fun)
+        assert model.last_optimization_result is not None
+        npt.assert_allclose(new_loss, model.last_optimization_result.fun)
 
 
 def test_gpflow_wrappers_ref_optimize(gpflow_interface_factory: ModelFactoryType) -> None:

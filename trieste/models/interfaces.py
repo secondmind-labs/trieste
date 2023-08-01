@@ -140,12 +140,12 @@ class TrainableProbabilisticModel(ProbabilisticModel, Protocol):
 
     def optimize_and_save_result(self, dataset: Dataset) -> None:
         """
-        Optimize the model objective and save the optimization result in last_result.
+        Optimize the model objective and save the optimization result in last_optimization_result.
         """
         setattr(self, "_last_optimization_result", self.optimize(dataset))
 
     @property
-    def last_result(self) -> Optional[Any]:
+    def last_optimization_result(self) -> Optional[Any]:
         """
         The last saved (optimizer-specific) optimization result.
         """

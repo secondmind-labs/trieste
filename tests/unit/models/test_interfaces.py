@@ -194,7 +194,7 @@ def test_model_stack_training() -> None:
     data = Dataset(tf.random.uniform([5, 7, 3]), tf.random.uniform([5, 7, 4]))
     stack.update(data)
     stack.optimize_and_save_result(data)
-    assert stack.last_result == [None] * 3
+    assert stack.last_optimization_result == [None] * 3
 
 
 def test_model_stack_reparam_sampler_raises_for_submodels_without_reparam_sampler() -> None:
