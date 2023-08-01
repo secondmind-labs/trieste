@@ -151,14 +151,6 @@ class GPflowPredictor(
 
         return noise_variance
 
-    # def optimize(self, dataset: Dataset) -> None:
-    #     """
-    #     Optimize the model with the specified `dataset`.
-    #
-    #     :param dataset: The data with which to optimize the `model`.
-    #     """
-    #     self.optimizer.optimize(self.model, dataset)
-
     def log(self, dataset: Optional[Dataset] = None) -> None:
         """
         Log model training information at a given optimization step to the Tensorboard.
