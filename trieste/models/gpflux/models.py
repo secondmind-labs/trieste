@@ -18,6 +18,7 @@ from typing import Any, Callable, Optional
 
 import dill
 import gpflow
+import keras.callbacks
 import tensorflow as tf
 from gpflow.inducing_variables import InducingPoints
 from gpflux.layers import GPLayer, LatentVariableLayer
@@ -338,7 +339,7 @@ class DeepGaussianProcess(
 
             inputs = layer(inputs)
 
-    def optimize(self, dataset: Dataset) -> None:
+    def optimize(self, dataset: Dataset) -> keras.callbacks.History:
         """
         Optimize the model with the specified `dataset`.
         :param dataset: The data with which to optimize the `model`.
@@ -369,6 +370,8 @@ class DeepGaussianProcess(
             self.optimizer.optimizer.lr, tf.keras.optimizers.schedules.LearningRateSchedule
         ):
             self.optimizer.optimizer.lr.assign(self.original_lr)
+
+        return hist
 
     def log(self, dataset: Optional[Dataset] = None) -> None:
         """

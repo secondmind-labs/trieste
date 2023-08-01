@@ -297,9 +297,10 @@ def test_deep_gaussian_process_with_lr_scheduler(
     optimizer = KerasOptimizer(tf.optimizers.Adam(lr_schedule), fit_args)
     model = DeepGaussianProcess(two_layer_model(x), optimizer)
 
-    model.optimize(Dataset(x, y))
+    model.optimize_and_save_result(Dataset(x, y))
 
-    assert len(model.model_keras.history.history["loss"]) == epochs
+    assert model.last_result is not None
+    assert len(model.last_result.history["loss"]) == epochs
 
 
 def test_deep_gaussian_process_default_optimizer_is_correct(

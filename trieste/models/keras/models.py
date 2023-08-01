@@ -18,6 +18,7 @@ import re
 from typing import Any, Dict, Optional
 
 import dill
+import keras.callbacks
 import tensorflow as tf
 import tensorflow_probability as tfp
 import tensorflow_probability.python.distributions as tfd
@@ -349,7 +350,7 @@ class DeepEnsemble(
         """
         return
 
-    def optimize(self, dataset: Dataset) -> None:
+    def optimize(self, dataset: Dataset) -> keras.callbacks.History:
         """
         Optimize the underlying Keras ensemble model with the specified ``dataset``.
 
@@ -392,6 +393,8 @@ class DeepEnsemble(
             self.optimizer.optimizer.lr, tf.keras.optimizers.schedules.LearningRateSchedule
         ):
             self.optimizer.optimizer.lr.assign(self.original_lr)
+
+        return history
 
     def log(self, dataset: Optional[Dataset] = None) -> None:
         """

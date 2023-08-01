@@ -204,7 +204,7 @@ def mock_data() -> tuple[tf.Tensor, tf.Tensor]:
 
 
 class QuadraticMeanAndRBFKernelWithSamplers(
-    QuadraticMeanAndRBFKernel, HasTrajectorySampler, HasReparamSampler
+    QuadraticMeanAndRBFKernel, HasTrajectorySampler, HasReparamSampler, TrainableProbabilisticModel
 ):
     r"""
     A Gaussian process with scalar quadratic mean, an RBF kernel and

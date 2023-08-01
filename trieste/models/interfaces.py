@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Generic, Optional, TypeVar
+from typing import Any, Callable, Generic, Optional, Sequence, TypeVar
 
 import gpflow
 import tensorflow as tf
@@ -128,14 +128,28 @@ class TrainableProbabilisticModel(ProbabilisticModel, Protocol):
         raise NotImplementedError
 
     @abstractmethod
-    def optimize(self, dataset: Dataset) -> None:
+    def optimize(self, dataset: Dataset) -> Any:
         """
         Optimize the model objective with respect to (hyper)parameters given the specified
         ``dataset``.
 
         :param dataset: The data with which to train the model.
+        :return: Any (optimizer-specific) optimization result.
         """
         raise NotImplementedError
+
+    def optimize_and_save_result(self, dataset: Dataset) -> None:
+        """
+        Optimize the model objective and save the optimization result in last_result.
+        """
+        setattr(self, "_last_optimization_result", self.optimize(dataset))
+
+    @property
+    def last_result(self) -> Optional[Any]:
+        """
+        The last saved (optimizer-specific) optimization result.
+        """
+        return getattr(self, "_last_optimization_result")
 
 
 @runtime_checkable
@@ -428,7 +442,7 @@ class TrainableModelStack(ModelStack[TrainableProbabilisticModel], TrainableProb
         for model, obs in zip(self._models, observations):
             model.update(Dataset(dataset.query_points, obs))
 
-    def optimize(self, dataset: Dataset) -> None:
+    def optimize(self, dataset: Dataset) -> Sequence[Any]:
         """
         Optimize all the wrapped models on their corresponding data. The data for each model is
         extracted by splitting the observations in ``dataset`` along the event axis according to the
@@ -437,9 +451,12 @@ class TrainableModelStack(ModelStack[TrainableProbabilisticModel], TrainableProb
         :param dataset: The query points and observations for *all* the wrapped models.
         """
         observations = tf.split(dataset.observations, self._event_sizes, axis=-1)
+        results = []
 
         for model, obs in zip(self._models, observations):
-            model.optimize(Dataset(dataset.query_points, obs))
+            results.append(model.optimize(Dataset(dataset.query_points, obs)))
+
+        return results
 
 
 class HasReparamSamplerModelStack(ModelStack[HasReparamSampler], HasReparamSampler):
