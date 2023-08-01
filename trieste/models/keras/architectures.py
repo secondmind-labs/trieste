@@ -22,7 +22,6 @@ from abc import abstractmethod
 from typing import Any, Callable, Sequence
 
 import dill
-import keras.callbacks
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -128,10 +127,6 @@ class KerasEnsemble:
             finally:
                 self._model.history.model = history_model
 
-        # Don't try to serialize any other copies of the history callback
-        if isinstance(state.get("_last_optimization_result"), keras.callbacks.History):
-            state["_last_optimization_result"] = ...
-
         return state
 
     def __setstate__(self, state: dict[str, Any]) -> None:
@@ -155,8 +150,6 @@ class KerasEnsemble:
                 )
                 model.set_weights(weights)
                 self._model.history.set_model(model)
-            if state.get("_last_optimization_result") is ...:
-                self._last_optimization_result = self._model.history
 
 
 class KerasEnsembleNetwork:

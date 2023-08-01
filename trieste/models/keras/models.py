@@ -494,6 +494,11 @@ class DeepEnsemble(
                     tensorboard_writers,
                 ):
                     callback._writers = writers
+
+        # don't serialize any history optimization result
+        if isinstance(state.get("_last_optimization_result"), keras.callbacks.History):
+            state["_last_optimization_result"] = ...
+
         return state
 
     def __setstate__(self, state: dict[str, Any]) -> None:
@@ -520,3 +525,7 @@ class DeepEnsemble(
             loss=[self.optimizer.loss] * self._model.ensemble_size,
             metrics=[self.optimizer.metrics] * self._model.ensemble_size,
         )
+
+        # recover optimization result if necessary (and possible)
+        if state.get("_last_optimization_result") is ...:
+            self._last_optimization_result = getattr(self.model, "history")
