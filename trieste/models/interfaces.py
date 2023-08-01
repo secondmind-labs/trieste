@@ -87,7 +87,8 @@ class ProbabilisticModel(Protocol):
 
     @check_shapes(
         "query_points: [broadcast batch..., D]",
-        "return: [batch..., E...]",
+        "return[0]: [batch..., E...]",
+        "return[1]: [batch..., E...]",
     )
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
