@@ -16,7 +16,7 @@
 import gpflow.kernels
 
 # %% [markdown]
-# # Multifidelity Modelling
+# # Multifidelity modelling
 #
 # This tutorial demonstrates the usage of the `MultifidelityAutoregressive` model for fitting multifidelity data. This is an implementation of the AR1 model initially described in <cite data-cite="Kennedy2000"/>.
 

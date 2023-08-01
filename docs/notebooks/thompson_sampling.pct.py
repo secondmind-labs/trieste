@@ -1,5 +1,5 @@
 # %% [markdown]
-# # Thompson Sampling
+# # Thompson sampling
 
 # %%
 import numpy as np
