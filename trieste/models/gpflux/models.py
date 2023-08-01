@@ -212,6 +212,10 @@ class DeepGaussianProcess(
             finally:
                 self._model_keras.history.model = history_model
 
+        # don't try to serialize any other copies of the history callback
+        if isinstance(state.get("_last_optimization_result"), keras.callbacks.History):
+            state["_last_optimization_result"] = ...
+
         return state
 
     def __setstate__(self, state: dict[str, Any]) -> None:
@@ -265,6 +269,8 @@ class DeepGaussianProcess(
                 model = tf.keras.models.model_from_json(model_json)
                 model.set_weights(weights)
                 self._model_keras.history.set_model(model)
+            if state.get("_last_optimization_result") is ...:
+                self._last_optimization_result = self._model_keras.history
 
     def __repr__(self) -> str:
         """"""
