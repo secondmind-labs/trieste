@@ -1,5 +1,5 @@
 # %% [markdown]
-# # Ask-Tell Optimization Interface
+# # Ask-Tell optimization interface
 
 # %% [markdown]
 # In this notebook we will illustrate the use of an Ask-Tell interface in Trieste. It is useful for cases where you want to have greater control of the optimization loop, or when letting Trieste manage this loop is impossible.

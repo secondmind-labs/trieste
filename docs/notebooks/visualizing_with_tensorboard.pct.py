@@ -1,5 +1,5 @@
 # %% [markdown]
-# # Tracking and visualizing optimizations using Tensorboard
+# # Visualizing with Tensorboard
 
 # %%
 import numpy as np

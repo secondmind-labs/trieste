@@ -1,5 +1,5 @@
 # %% [markdown]
-# # Active Learning for Gaussian Process Classification Model
+# # Active learning for binary classification
 
 # %%
 import gpflow

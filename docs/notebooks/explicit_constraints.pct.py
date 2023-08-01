@@ -1,5 +1,5 @@
 # %% [markdown]
-# # Explicit Constraints
+# # Explicit constraints
 
 # %% [markdown]
 # This notebook demonstrates ways to perfom Bayesian optimization with Trieste in the presence of explicit input constraints.

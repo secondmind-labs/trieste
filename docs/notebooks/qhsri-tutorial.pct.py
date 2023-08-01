@@ -13,7 +13,7 @@
 # ---
 
 # %% [markdown]
-# # Batch HSRI Tutorial
+# # Batching with Sharpe Ratio
 
 # %% [markdown]
 # Batch Hypervolume Sharpe Ratio Indicator (qHSRI) is a method proposed by Binois et al. (see <cite data-cite="binois2021portfolio"/>) for picking a batch of query points during Bayesian Optimisation. It makes use of the Sharpe Ratio, a portfolio selection method used in investment selection to carefully balance risk and reward.
