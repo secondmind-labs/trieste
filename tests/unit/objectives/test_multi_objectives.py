@@ -16,8 +16,8 @@ from typing import Callable
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
+from check_shapes.exceptions import ShapeMismatchError
 
-from tests.util.misc import TF_DEBUGGING_ERROR_TYPES
 from trieste.objectives.multi_objectives import DTLZ1, DTLZ2, VLMOP2, MultiObjectiveTestProblem
 from trieste.types import TensorType
 
@@ -142,7 +142,7 @@ def test_gen_pareto_front_is_equal_to_math_defined(
 def test_func_raises_specified_input_dim_not_align_with_actual_input_dim(
     obj_inst: MultiObjectiveTestProblem, actual_x: TensorType
 ) -> None:
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+    with pytest.raises(ShapeMismatchError):
         obj_inst.objective(actual_x)
 
 

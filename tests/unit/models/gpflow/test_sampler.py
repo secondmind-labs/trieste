@@ -22,6 +22,7 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
+from check_shapes.exceptions import ShapeMismatchError
 from scipy import stats
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, quadratic, random_seed
@@ -140,7 +141,7 @@ def test_independent_reparametrization_sampler_sample_raises_for_invalid_at_shap
 ) -> None:
     sampler = IndependentReparametrizationSampler(1, QuadraticMeanAndRBFKernel(), qmc=qmc)
 
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+    with pytest.raises(ShapeMismatchError):
         sampler.sample(tf.zeros(shape))
 
 

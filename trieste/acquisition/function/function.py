@@ -21,6 +21,7 @@ from typing import Callable, Mapping, Optional, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
+from check_shapes import check_shapes
 
 from ...data import Dataset
 from ...models import ProbabilisticModel, ReparametrizationSampler
@@ -212,11 +213,11 @@ class expected_improvement(AcquisitionFunctionClass):
         self._eta.assign(eta)
 
     @tf.function
+    @check_shapes(
+        "x: [N..., 1, D] # This acquisition function only supports batch sizes of one",
+        "return: [N..., L]",
+    )
     def __call__(self, x: TensorType) -> TensorType:
-        tf.debugging.assert_shapes(
-            [(x, [..., 1, None])],
-            message="This acquisition function only supports batch sizes of one.",
-        )
         mean, variance = self._model.predict(tf.squeeze(x, -2))
         normal = tfp.distributions.Normal(mean, tf.sqrt(variance))
         return (self._eta - mean) * normal.cdf(self._eta) + variance * normal.prob(self._eta)

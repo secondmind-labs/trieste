@@ -21,6 +21,7 @@ from typing import NoReturn, Optional
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
+from check_shapes import inherit_check_shapes
 
 from tests.util.misc import (
     FixedAcquisitionRule,
@@ -596,6 +597,7 @@ class _DecreasingVarianceModel(QuadraticMeanAndRBFKernel, TrainableProbabilistic
         super().__init__()
         self._data = data
 
+    @inherit_check_shapes
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         mean, var = super().predict(query_points)
         return mean, var / len(self._data)

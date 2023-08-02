@@ -21,6 +21,7 @@ from typing import Callable, Dict, Mapping, Optional, Union, cast
 import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
+from check_shapes import check_shapes
 from typing_extensions import Protocol, runtime_checkable
 
 from ...data import Dataset
@@ -652,6 +653,11 @@ class _fantasized_model(SupportsPredictJoint, SupportsGetKernel, SupportsGetObse
         self._fantasized_query_points.assign(fantasized_data.query_points)
         self._fantasized_observations.assign(fantasized_data.observations)
 
+    @check_shapes(
+        "query_points: [batch..., N, D]",
+        "return[0]: [batch..., ..., N, L]",
+        "return[1]: [batch..., ..., N, L]",
+    )
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
         This function wraps conditional_predict_f. It cannot directly call
@@ -659,7 +665,7 @@ class _fantasized_model(SupportsPredictJoint, SupportsGetKernel, SupportsGetObse
         We use map_fn to allow leading dimensions for query_points.
 
         :param query_points: shape [...*, N, d]
-        :return: mean, shape [...*, ..., N, L] and cov, shape [...*, ..., L, N],
+        :return: mean, shape [...*, ..., N, L] and cov, shape [...*, ..., N, L],
             where ... are the leading dimensions of fantasized_data
         """
 
@@ -671,6 +677,11 @@ class _fantasized_model(SupportsPredictJoint, SupportsGetKernel, SupportsGetObse
 
         return _broadcast_predict(query_points, fun)
 
+    @check_shapes(
+        "query_points: [batch..., N, D]",
+        "return[0]: [batch..., ..., N, L]",
+        "return[1]: [batch..., ..., L, N, N]",
+    )
     def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
         This function wraps conditional_predict_joint. It cannot directly call
@@ -690,6 +701,10 @@ class _fantasized_model(SupportsPredictJoint, SupportsGetKernel, SupportsGetObse
 
         return _broadcast_predict(query_points, fun)
 
+    @check_shapes(
+        "query_points: [batch..., N, D]",
+        "return: [batch..., ..., S, N, L]",
+    )
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         """
         This function wraps conditional_predict_f_sample. It cannot directly call
@@ -716,6 +731,11 @@ class _fantasized_model(SupportsPredictJoint, SupportsGetKernel, SupportsGetObse
         )  # [B, ..., S, L]
         return _restore_leading_dim(samples, leading_dim)
 
+    @check_shapes(
+        "query_points: [broadcast batch..., N, D]",
+        "return[0]: [batch..., ..., N, L]",
+        "return[1]: [batch..., ..., N, L]",
+    )
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
         This function wraps conditional_predict_y. It cannot directly call
@@ -723,7 +743,7 @@ class _fantasized_model(SupportsPredictJoint, SupportsGetKernel, SupportsGetObse
         We use tf.map_fn to allow leading dimensions for query_points.
 
         :param query_points: shape [...*, N, D]
-        :return: mean, shape [...*, ..., N, L] and var, shape [...*, ..., L, N],
+        :return: mean, shape [...*, ..., N, L] and var, shape [...*, ..., N, L],
             where ... are the leading dimensions of fantasized_data
         """
 
