@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # %% [markdown]
-# # Data transformation with the help of Ask-Tell interface.
+# # Data transformation
 
 # %%
 import os

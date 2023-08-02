@@ -28,7 +28,7 @@ output :math:`f: X \to \mathbb R`, this is
 .. math:: \mathop{\mathrm{argmin}}_{x \in X} f(x) \qquad .
 
 When the objective function has higher-dimensional output, we can still talk of finding the minima,
-though the optimal values will form a Pareto set rather than a single point. Trieste provides
+though the optimal values will form a `Pareto set <https://en.wikipedia.org/wiki/Pareto_front>`_ rather than a single point. Trieste provides
 functionality for optimization of single-valued objective functions, and supports extension to the
 higher-dimensional case. It also supports optimization over constrained spaces, learning the
 constraints alongside the objective.

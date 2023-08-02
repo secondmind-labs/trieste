@@ -1,5 +1,5 @@
 # %% [markdown]
-# # Bayesian active learning of failure or feasibility regions
+# # Active learning of feasibility regions
 #
 # When designing a system it is important to identify design parameters that may affect the reliability of the system and cause failures, or lead to unsatisfactory performance. Consider designing a communication network that for some design parameters would lead to too long delays for users. A designer of the system would then decide what is the maximum acceptable delay and want to identify a *failure region* in the parameter space that would lead to longer delays., or conversely, a *feasible region* with safe performance.
 #

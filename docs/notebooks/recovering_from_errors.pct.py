@@ -1,5 +1,5 @@
 # %% [markdown]
-# # Recovering from errors during optimization
+# # Recovering from errors
 
 # %%
 import numpy as np

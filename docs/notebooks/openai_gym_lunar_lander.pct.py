@@ -1,5 +1,5 @@
 # %% [markdown]
-# # Trieste meets OpenAI Gym
+# # OpenAI Gym
 #
 # This notebook demonstrates how to use Trieste to apply Bayesian optimization to a problem that is slightly more practical than classical optimization benchmarks shown used in other tutorials. We will use OpenAI Gym, which is a popular toolkit for reinforcement learning (RL) algorithms.
 #
