@@ -18,6 +18,7 @@ from collections.abc import Mapping
 from typing import Callable, Optional
 
 import gpflow
+import numpy as np
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
@@ -48,6 +49,7 @@ from trieste.acquisition.rule import (
     EfficientGlobalOptimization,
     RandomSampling,
     TrustRegion,
+    TrustRegionBox,
 )
 from trieste.acquisition.sampler import (
     ExactThompsonSampler,
@@ -1110,6 +1112,168 @@ def test_turbo_state_deepcopy() -> None:
     npt.assert_allclose(tr_state_copy.failure_counter, tr_state.failure_counter)
     npt.assert_allclose(tr_state_copy.success_counter, tr_state.success_counter)
     npt.assert_allclose(tr_state_copy.y_min, tr_state.y_min)
+
+
+# get_local_min raises if dataset is None.
+def test_trust_region_box_get_local_min_raises_if_dataset_is_none() -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    trb = TrustRegionBox(search_space)
+    with pytest.raises(ValueError, match="dataset must be provided"):
+        trb.get_local_min(None)
+
+
+# get_local_min picks the minimum x and y values from the dataset.
+def test_trust_region_box_get_local_min() -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    dataset = Dataset(
+        tf.constant([[0.1, 0.1], [0.5, 0.5], [0.3, 0.4], [0.8, 0.8], [0.4, 0.4]], dtype=tf.float64),
+        tf.constant([[0.0], [0.5], [0.2], [0.1], [1.0]], dtype=tf.float64),
+    )
+    trb = TrustRegionBox(search_space)
+    trb._lower = tf.constant([0.2, 0.2], dtype=tf.float64)
+    trb._upper = tf.constant([0.7, 0.7], dtype=tf.float64)
+    x_min, y_min = trb.get_local_min(dataset)
+    npt.assert_array_equal(x_min, tf.constant([0.3, 0.4], dtype=tf.float64))
+    npt.assert_array_equal(y_min, tf.constant([0.2], dtype=tf.float64))
+
+
+# get_local_min returns first x value and inf y value when points in dataset are outside the
+# search space.
+def test_trust_region_box_get_local_min_outside_search_space() -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    dataset = Dataset(
+        tf.constant([[1.2, 1.3], [-0.4, -0.5]], dtype=tf.float64),
+        tf.constant([[0.7], [0.9]], dtype=tf.float64),
+    )
+    trb = TrustRegionBox(search_space)
+    x_min, y_min = trb.get_local_min(dataset)
+    npt.assert_array_equal(x_min, tf.constant([1.2, 1.3], dtype=tf.float64))
+    npt.assert_array_equal(y_min, tf.constant([np.inf], dtype=tf.float64))
+
+
+# get_single_model_and_dataset returns model and dataset with the OBJECTIVE tag.
+def test_trust_region_box_get_single_model_dataset() -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    dataset = Dataset(tf.zeros([1, 2], dtype=tf.float64), tf.zeros([1, 1], dtype=tf.float64))
+    models = {
+        "foo": QuadraticMeanAndRBFKernel(),
+        OBJECTIVE: QuadraticMeanAndRBFKernelWithSamplers(dataset),
+    }
+    datasets = {"foo": empty_dataset([2], [1]), OBJECTIVE: dataset}
+    trb = TrustRegionBox(search_space)
+    _model, _dataset = trb.get_single_model_and_dataset(models, datasets)
+    assert isinstance(_model, QuadraticMeanAndRBFKernelWithSamplers)
+    assert _dataset is dataset
+
+
+# Reinitialize sets the box to a random location, and sets the eps and y_min values.
+def test_trust_region_box_reinitialize() -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    datasets = {
+        OBJECTIVE: Dataset(  # Points outside the search space should be ignored.
+            tf.constant([[1.2, 1.3], [-0.4, -0.5]], dtype=tf.float64),
+            tf.constant([[0.7], [0.9]], dtype=tf.float64),
+        )
+    }
+    trb = TrustRegionBox(search_space)
+    trb.reinitialize(datasets=datasets)
+
+    exp_eps = 0.5 * (search_space.upper - search_space.lower) / 5.0 ** (1.0 / 2.0)
+    npt.assert_array_equal(trb._eps, exp_eps)
+    npt.assert_array_compare(np.less_equal, search_space.lower, trb.location)
+    npt.assert_array_compare(np.less_equal, trb.location, search_space.upper)
+    npt.assert_array_compare(np.less_equal, search_space.lower, trb.lower)
+    npt.assert_array_compare(np.less_equal, trb.upper, search_space.upper)
+    npt.assert_array_compare(np.less_equal, trb.upper - trb.lower, 2 * exp_eps)
+    npt.assert_array_equal(trb.y_min, tf.constant([np.inf], dtype=tf.float64))
+
+
+# Update call reintializes the box if eps is smaller than min_eps.
+def test_trust_region_box_update_reinitialize() -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    datasets = {
+        OBJECTIVE: Dataset(  # Points outside the search space should be ignored.
+            tf.constant([[1.2, 1.3], [-0.4, -0.5]], dtype=tf.float64),
+            tf.constant([[0.7], [0.9]], dtype=tf.float64),
+        )
+    }
+    trb = TrustRegionBox(search_space, min_eps=0.5)
+    trb.reinitialize(datasets=datasets)
+    location = trb.location
+
+    trb.update(datasets=datasets)
+    npt.assert_array_compare(np.not_equal, location, trb.location)
+    location = trb.location
+
+    trb.update(datasets=datasets)
+    npt.assert_array_compare(np.not_equal, location, trb.location)
+
+
+# Update call does not reintialize the box if eps is larger than min_eps.
+def test_trust_region_box_update_no_reinitialize() -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    datasets = {
+        OBJECTIVE: Dataset(
+            tf.constant([[0.5, 0.5], [0.0, 0.0], [1.0, 1.0]], dtype=tf.float64),
+            tf.constant([[0.5], [0.0], [1.0]], dtype=tf.float64),
+        )
+    }
+    trb = TrustRegionBox(search_space, min_eps=0.1)
+    trb.reinitialize(datasets=datasets)
+    trb.location = tf.constant([0.5, 0.5], dtype=tf.float64)
+    location = trb.location
+
+    trb.update(datasets=datasets)
+    npt.assert_array_equal(location, trb.location)
+
+
+# Update shrinks/expands box on successful/unsuccessful step.
+@pytest.mark.parametrize("success", [True, False])
+def test_trust_region_box_update_size(success: bool) -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    datasets = {
+        OBJECTIVE: Dataset(
+            tf.constant([[0.5, 0.5], [0.0, 0.0], [1.0, 1.0]], dtype=tf.float64),
+            tf.constant([[0.5], [0.0], [1.0]], dtype=tf.float64),
+        )
+    }
+    trb = TrustRegionBox(search_space, min_eps=0.1)
+    trb.reinitialize(datasets=datasets)
+    eps = trb._eps
+
+    if success:
+        # Sample a point from the box.
+        point = trb.sample(1)
+    else:
+        # Pick point outside the box.
+        point = tf.constant([[1.2, 1.3]], dtype=tf.float64)
+
+    # Add a new min point to the dataset.
+    datasets[OBJECTIVE] = Dataset(
+        np.concatenate([datasets[OBJECTIVE].query_points, point], axis=0),
+        np.concatenate([datasets[OBJECTIVE].observations, [[-0.1]]], axis=0),
+    )
+    # Update the box.
+    trb.update(datasets=datasets)
+
+    if success:
+        # Check that the location is the new min point.
+        point = np.squeeze(point)
+        npt.assert_allclose(point, trb.location)
+        npt.assert_allclose(tf.constant([-0.1], dtype=tf.float64), trb.y_min)
+        # Check that the box is smaller by beta.
+        npt.assert_allclose(eps / trb._beta, trb._eps)
+    else:
+        # Check that the location is the old min point.
+        point, y_min = trb.get_local_min(datasets[OBJECTIVE])
+        npt.assert_allclose(point, trb.location)
+        npt.assert_allclose(y_min, trb.y_min)
+        # Check that the box is larger by beta.
+        npt.assert_allclose(eps * trb._beta, trb._eps)
+
+    # Check the new box bounds.
+    npt.assert_allclose(trb.lower, np.maximum(point - trb._eps, search_space.lower))
+    npt.assert_allclose(trb.upper, np.minimum(point + trb._eps, search_space.upper))
 
 
 def test_asynchronous_rule_state_pending_points() -> None:
