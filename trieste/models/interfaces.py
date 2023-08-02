@@ -19,6 +19,7 @@ from typing import Any, Callable, Generic, Optional, Sequence, TypeVar
 
 import gpflow
 import tensorflow as tf
+from check_shapes import check_shapes
 from typing_extensions import Protocol, runtime_checkable
 
 from ..data import Dataset
@@ -46,6 +47,11 @@ class ProbabilisticModel(Protocol):
     """
 
     @abstractmethod
+    @check_shapes(
+        "query_points: [batch..., D]",
+        "return[0]: [batch..., E...]",
+        "return[1]: [batch..., E...]",
+    )
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
         Return the mean and variance of the independent marginal distributions at each point in
@@ -63,6 +69,10 @@ class ProbabilisticModel(Protocol):
         raise NotImplementedError
 
     @abstractmethod
+    @check_shapes(
+        "query_points: [batch..., N, D]",
+        "return: [batch..., S, N, E...]",
+    )
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         """
         Return ``num_samples`` samples from the independent marginal distributions at
@@ -75,6 +85,11 @@ class ProbabilisticModel(Protocol):
         """
         raise NotImplementedError
 
+    @check_shapes(
+        "query_points: [broadcast batch..., D]",
+        "return[0]: [batch..., E...]",
+        "return[1]: [batch..., E...]",
+    )
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
         Return the mean and variance of the independent marginal distributions at each point in
@@ -157,6 +172,11 @@ class SupportsPredictJoint(ProbabilisticModel, Protocol):
     """A probabilistic model that supports predict_joint."""
 
     @abstractmethod
+    @check_shapes(
+        "query_points: [batch..., B, D]",
+        "return[0]: [batch..., B, E...]",
+        "return[1]: [batch..., E..., B, B]",
+    )
     def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
         :param query_points: The points at which to make predictions, of shape [..., B, D].
@@ -372,6 +392,9 @@ class ModelStack(ProbabilisticModel, Generic[ProbabilisticModelType]):
         :param \*models_with_event_sizes: The other models, and sizes of their output events.
         """
         self._models, self._event_sizes = zip(*(model_with_event_size,) + models_with_event_sizes)
+
+    # NB we don't use @inherit_shapes below as some classes break the shape API (👀 fantasizer)
+    # instead we rely on the shape checking inside the submodels
 
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         r"""

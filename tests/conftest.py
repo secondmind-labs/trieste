@@ -14,9 +14,21 @@
 
 from __future__ import annotations
 
+from typing import Iterable
+
 import pytest
 from _pytest.config import Config
 from _pytest.config.argparsing import Parser
+from check_shapes import (
+    DocstringFormat,
+    ShapeCheckingState,
+    get_enable_check_shapes,
+    get_enable_function_call_precompute,
+    get_rewrite_docstrings,
+    set_enable_check_shapes,
+    set_enable_function_call_precompute,
+    set_rewrite_docstrings,
+)
 
 
 def pytest_addoption(parser: Parser) -> None:
@@ -74,3 +86,18 @@ def pytest_collection_modifyitems(config: Config, items: list[pytest.Item]) -> N
         import tensorflow as tf
 
         tf.config.experimental_run_functions_eagerly(True)
+
+
+@pytest.fixture(autouse=True)
+def enable_shape_checks() -> Iterable[None]:
+    # ensure `check_shapes` is always enabled for tests
+    old_enable = get_enable_check_shapes()
+    old_rewrite_docstrings = get_rewrite_docstrings()
+    old_function_call_precompute = get_enable_function_call_precompute()
+    set_enable_check_shapes(ShapeCheckingState.ENABLED)
+    set_rewrite_docstrings(DocstringFormat.SPHINX)
+    set_enable_function_call_precompute(True)
+    yield
+    set_enable_function_call_precompute(old_function_call_precompute)
+    set_rewrite_docstrings(old_rewrite_docstrings)
+    set_enable_check_shapes(old_enable)

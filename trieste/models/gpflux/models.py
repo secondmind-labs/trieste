@@ -20,6 +20,7 @@ import dill
 import gpflow
 import keras.callbacks
 import tensorflow as tf
+from check_shapes import inherit_check_shapes
 from gpflow.inducing_variables import InducingPoints
 from gpflux.layers import GPLayer, LatentVariableLayer
 from gpflux.models import DeepGP
@@ -286,6 +287,7 @@ class DeepGaussianProcess(
     def model_keras(self) -> tf.keras.Model:
         return self._model_keras
 
+    @inherit_check_shapes
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         trajectory = self.trajectory_sampler().get_trajectory()
         expanded_query_points = tf.expand_dims(query_points, -2)  # [N, 1, D]

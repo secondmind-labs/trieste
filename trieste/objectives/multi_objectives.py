@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from functools import partial
 
 import tensorflow as tf
+from check_shapes import check_shape, check_shapes
 from typing_extensions import Protocol
 
 from ..space import Box
@@ -55,6 +56,7 @@ class MultiObjectiveTestProblem(ObjectiveTestProblem):
     random number seed."""
 
 
+@check_shapes("return: [batch..., 2]")  # cf https://github.com/GPflow/check_shapes/issues/42
 def vlmop2(x: TensorType, d: int) -> TensorType:
     """
     The VLMOP2 synthetic function.
@@ -64,10 +66,7 @@ def vlmop2(x: TensorType, d: int) -> TensorType:
     :return: The function values at ``x``, with shape [..., 2].
     :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
     """
-    tf.debugging.assert_shapes(
-        [(x, (..., d))],
-        message=f"input x dim: {x.shape[-1]} does not align with pre-specified dim: {d}",
-    )
+    check_shape(x, f"[batch..., {d}]")
     transl = 1 / tf.sqrt(tf.cast(d, x.dtype))
     y1 = 1 - tf.exp(-1 * tf.reduce_sum((x - transl) ** 2, axis=-1))
     y2 = 1 - tf.exp(-1 * tf.reduce_sum((x + transl) ** 2, axis=-1))
@@ -116,6 +115,7 @@ def dtlz_mkd(input_dim: int, num_objective: int) -> tuple[int, int, int]:
     return (M, k, d)
 
 
+@check_shapes()
 def dtlz1(x: TensorType, m: int, k: int, d: int) -> TensorType:
     """
     The DTLZ1 synthetic function.
@@ -127,10 +127,7 @@ def dtlz1(x: TensorType, m: int, k: int, d: int) -> TensorType:
     :return: The function values at ``x``, with shape [..., m].
     :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
     """
-    tf.debugging.assert_shapes(
-        [(x, (..., d))],
-        message=f"input x dim: {x.shape[-1]} does not align with pre-specified dim: {d}",
-    )
+    check_shape(x, f"[batch..., {d}]")
     tf.debugging.assert_greater(m, 0, message=f"positive objective numbers expected but found {m}")
 
     def g(xM: TensorType) -> TensorType:
@@ -150,7 +147,9 @@ def dtlz1(x: TensorType, m: int, k: int, d: int) -> TensorType:
             y *= 1 - x[..., m - i - 1, tf.newaxis]
         ta = ta.write(i, y)
 
-    return tf.squeeze(tf.concat(tf.split(ta.stack(), m, axis=0), axis=-1), axis=0)
+    return check_shape(
+        tf.squeeze(tf.concat(tf.split(ta.stack(), m, axis=0), axis=-1), axis=0), f"[batch..., {m}]"
+    )
 
 
 def DTLZ1(input_dim: int, num_objective: int) -> MultiObjectiveTestProblem:
@@ -181,6 +180,7 @@ def DTLZ1(input_dim: int, num_objective: int) -> MultiObjectiveTestProblem:
     )
 
 
+@check_shapes()
 def dtlz2(x: TensorType, m: int, d: int) -> TensorType:
     """
     The DTLZ2 synthetic function.
@@ -191,10 +191,7 @@ def dtlz2(x: TensorType, m: int, d: int) -> TensorType:
     :return: The function values at ``x``, with shape [..., m].
     :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
     """
-    tf.debugging.assert_shapes(
-        [(x, (..., d))],
-        message=f"input x dim: {x.shape[-1]} does not align with pre-specified dim: {d}",
-    )
+    check_shape(x, f"[batch..., {d}]")
     tf.debugging.assert_greater(m, 0, message=f"positive objective numbers expected but found {m}")
 
     def g(xM: TensorType) -> TensorType:
@@ -210,7 +207,9 @@ def dtlz2(x: TensorType, m: int, d: int) -> TensorType:
             y *= tf.sin(math.pi / 2 * x[..., m - 1 - i, tf.newaxis])
         ta = ta.write(i, y)
 
-    return tf.squeeze(tf.concat(tf.split(ta.stack(), m, axis=0), axis=-1), axis=0)
+    return check_shape(
+        tf.squeeze(tf.concat(tf.split(ta.stack(), m, axis=0), axis=-1), axis=0), f"[batch..., {m}]"
+    )
 
 
 def DTLZ2(input_dim: int, num_objective: int) -> MultiObjectiveTestProblem:

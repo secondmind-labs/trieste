@@ -17,6 +17,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 import tensorflow as tf
+from check_shapes import inherit_check_shapes
 from gpflow.base import Module
 
 from ...types import TensorType
@@ -58,6 +59,7 @@ class GPfluxPredictor(SupportsGetObservationNoise, ABC):
         """The optimizer wrapper for training the model."""
         return self._optimizer
 
+    @inherit_check_shapes
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """Note: unless otherwise noted, this returns the mean and variance of the last layer
         conditioned on one sample from the previous layers."""
@@ -67,6 +69,7 @@ class GPfluxPredictor(SupportsGetObservationNoise, ABC):
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         raise NotImplementedError
 
+    @inherit_check_shapes
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """Note: unless otherwise noted, this will return the prediction conditioned on one sample
         from the lower layers."""

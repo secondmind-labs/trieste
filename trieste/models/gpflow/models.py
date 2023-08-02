@@ -19,6 +19,7 @@ from typing import Optional, Sequence, Tuple, Union, cast
 import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
+from check_shapes import inherit_check_shapes
 from gpflow.conditionals.util import sample_mvn
 from gpflow.inducing_variables import (
     SeparateIndependentInducingVariables,
@@ -157,6 +158,7 @@ class GaussianProcessRegression(
             ),
         )
 
+    @inherit_check_shapes
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         f_mean, f_var = self.predict(query_points)
         return self.model.likelihood.predict_mean_and_var(query_points, f_mean, f_var)
@@ -606,6 +608,7 @@ class SparseGaussianProcessRegression(
     ) -> Optional[InducingPointSelector[SparseGaussianProcessRegression]]:
         return self._inducing_point_selector
 
+    @inherit_check_shapes
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         f_mean, f_var = self.predict(query_points)
         return self.model.likelihood.predict_mean_and_var(query_points, f_mean, f_var)
@@ -928,6 +931,7 @@ class SparseVariational(
     def inducing_point_selector(self) -> Optional[InducingPointSelector[SparseVariational]]:
         return self._inducing_point_selector
 
+    @inherit_check_shapes
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         f_mean, f_var = self.predict(query_points)
         return self.model.likelihood.predict_mean_and_var(query_points, f_mean, f_var)
@@ -1240,6 +1244,7 @@ class VariationalGaussianProcess(
     def model(self) -> VGP:
         return self._model
 
+    @inherit_check_shapes
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         f_mean, f_var = self.predict(query_points)
         return self.model.likelihood.predict_mean_and_var(query_points, f_mean, f_var)
@@ -1409,6 +1414,7 @@ class MultifidelityAutoregressive(TrainableProbabilisticModel, SupportsCovarianc
     def num_fidelities(self) -> int:
         return self._num_fidelities
 
+    @inherit_check_shapes
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
         Predict the marginal mean and variance at query_points.
@@ -1489,6 +1495,7 @@ class MultifidelityAutoregressive(TrainableProbabilisticModel, SupportsCovarianc
         )
         return residuals
 
+    @inherit_check_shapes
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         """
         Sample `num_samples` samples from the posterior distribution at `query_points`
@@ -1525,6 +1532,7 @@ class MultifidelityAutoregressive(TrainableProbabilisticModel, SupportsCovarianc
 
         return signal_sample
 
+    @inherit_check_shapes
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
         Predict the marginal mean and variance at `query_points` including observation noise
@@ -1691,6 +1699,7 @@ class MultifidelityNonlinearAutoregressive(
     def num_fidelities(self) -> int:
         return self._num_fidelities
 
+    @inherit_check_shapes
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         """
         Return ``num_samples`` samples from the independent marginal distributions at
@@ -1734,6 +1743,7 @@ class MultifidelityNonlinearAutoregressive(
 
         return signal_sample
 
+    @inherit_check_shapes
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
         Predict the marginal mean and variance at query_points.
@@ -1754,6 +1764,7 @@ class MultifidelityNonlinearAutoregressive(
         mean = tf.reduce_mean(sample_mean, axis=-1)
         return mean, variance
 
+    @inherit_check_shapes
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
         Predict the marginal mean and variance at `query_points` including observation noise

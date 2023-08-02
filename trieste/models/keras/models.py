@@ -22,6 +22,7 @@ import keras.callbacks
 import tensorflow as tf
 import tensorflow_probability as tfp
 import tensorflow_probability.python.distributions as tfd
+from check_shapes import inherit_check_shapes
 from tensorflow.python.keras.callbacks import Callback
 
 from ... import logging
@@ -228,6 +229,7 @@ class DeepEnsemble(
         x_transformed: dict[str, TensorType] = self.prepare_query_points(query_points)
         return self._model.model(x_transformed)
 
+    @inherit_check_shapes
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         r"""
         Returns mean and variance at ``query_points`` for the whole ensemble.
@@ -292,6 +294,7 @@ class DeepEnsemble(
 
         return predicted_means, predicted_vars
 
+    @inherit_check_shapes
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         """
         Return ``num_samples`` samples at ``query_points``. We use the mixture approximation in

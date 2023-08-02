@@ -23,6 +23,7 @@ from typing import Callable, Optional, Tuple, TypeVar, Union, cast
 
 import tensorflow as tf
 import tensorflow_probability as tfp
+from check_shapes import check_shapes
 from gpflow.kernels import Kernel, MultioutputKernel
 from gpflux.layers.basis_functions.fourier_features import RandomFourierFeaturesCosine
 from gpflux.math import compute_A_inv_b
@@ -104,6 +105,10 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
         self._qmc = qmc
         self._qmc_skip = qmc_skip
 
+    @check_shapes(
+        "at: [N..., 1, D] # IndependentReparametrizationSampler only supports batch sizes of one",
+        "return: [N..., S, 1, L]",
+    )
     def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
         """
         Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
@@ -120,7 +125,6 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
         :raise ValueError (or InvalidArgumentError): If ``at`` has an invalid shape or ``jitter``
             is negative.
         """
-        tf.debugging.assert_shapes([(at, [..., 1, None])])
         tf.debugging.assert_greater_equal(jitter, 0.0)
 
         mean, var = self._model.predict(at[..., None, :, :])  # [..., 1, 1, L], [..., 1, 1, L]
