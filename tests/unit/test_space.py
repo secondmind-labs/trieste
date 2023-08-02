@@ -664,7 +664,6 @@ def test_box_deepcopy() -> None:
     npt.assert_allclose(box.upper, box_copy.upper)
 
 
-# Parameterize for both TaggedMultiSearchSpace and TaggedProductSearchSpace.
 @pytest.mark.parametrize("search_space_type", [TaggedMultiSearchSpace, TaggedProductSearchSpace])
 def test_collection_space_raises_for_non_unqique_subspace_names(
     search_space_type: Type[CollectionSearchSpace],

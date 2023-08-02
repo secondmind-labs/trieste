@@ -14,6 +14,7 @@
 import functools
 from typing import Tuple, Union
 
+import numpy as np
 import tensorflow as tf
 
 from ..data import Dataset
@@ -135,3 +136,36 @@ def get_local_dataset(local_space: SearchSpaceType, dataset: Dataset) -> Dataset
         observations=tf.boolean_mask(dataset.observations, is_in_region_mask),
     )
     return local_dataset
+
+
+def get_unique_points_mask(points: TensorType, tolerance: float = 1e-6) -> TensorType:
+    """Find unique points in a list, within a given tolerance.
+
+    :param points: A tensor of points.
+    :param tolerance: The tolerance within which points are considered equal.
+    :return: A boolean mask for the unique points.
+    """
+
+    # Calculate the pairwise distances between points.
+    distances = tf.norm(tf.expand_dims(points, 1) - tf.expand_dims(points, 0), axis=-1)
+
+    # Create a mask that is True for the lower triangle of the distance matrix, not including
+    # the diagonal.
+    mask_tri = tf.linalg.band_part(tf.ones_like(distances, dtype=tf.bool), -1, 0)
+
+    # Use the mask to ignore the upper triangle and diagonal of the distance matrix.
+    distances_masked = tf.where(mask_tri, distances, tf.constant(np.inf, dtype=distances.dtype))
+
+    tolerance = tf.constant(tolerance, dtype=distances.dtype)
+
+    # Create a boolean mask for each point.
+    mask = tf.reduce_all(
+        tf.logical_or(
+            distances_masked > tolerance, tf.eye(distances_masked.shape[0], dtype=tf.bool)
+        ),
+        axis=1,
+    )
+
+    # Return the mask of unique points; can get the actual points with:
+    #   tf.boolean_mask(points, mask)
+    return mask

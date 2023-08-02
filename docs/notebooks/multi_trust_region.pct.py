@@ -11,7 +11,7 @@ from matplotlib.pyplot import cm
 import trieste
 from trieste.acquisition import ParallelContinuousThompsonSampling
 from trieste.acquisition.optimizer import automatic_optimizer_selector
-from trieste.acquisition.rule import MultiTrustRegionBox
+from trieste.acquisition.rule import MultiTrustRegionBox, TrustRegionBox
 from trieste.acquisition.utils import split_acquisition_function_calls
 from trieste.ask_tell_optimization import AskTellOptimizer
 from trieste.experimental.plotting import plot_regret
@@ -82,7 +82,9 @@ base_rule = trieste.acquisition.rule.EfficientGlobalOptimization(
     ),
 )
 
-acq_rule = MultiTrustRegionBox(base_rule, number_of_tr=num_query_points)
+acq_rule = MultiTrustRegionBox(
+    TrustRegionBox, base_rule, number_of_tr=num_query_points
+)
 
 ask_tell = AskTellOptimizer(
     search_space, initial_data, model, fit_model=True, acquisition_rule=acq_rule
