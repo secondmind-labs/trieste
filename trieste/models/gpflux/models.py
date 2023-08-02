@@ -269,8 +269,10 @@ class DeepGaussianProcess(
                 model = tf.keras.models.model_from_json(model_json)
                 model.set_weights(weights)
                 self._model_keras.history.set_model(model)
-            if state.get("_last_optimization_result") is ...:
-                self._last_optimization_result = self._model_keras.history
+
+        # recover optimization result if necessary (and possible)
+        if state.get("_last_optimization_result") is ...:
+            self._last_optimization_result = getattr(self._model_keras, "history")
 
     def __repr__(self) -> str:
         """"""
