@@ -18,6 +18,7 @@ import re
 from typing import Any, Dict, Optional
 
 import dill
+import keras.callbacks
 import tensorflow as tf
 import tensorflow_probability as tfp
 import tensorflow_probability.python.distributions as tfd
@@ -352,7 +353,7 @@ class DeepEnsemble(
         """
         return
 
-    def optimize(self, dataset: Dataset) -> None:
+    def optimize(self, dataset: Dataset) -> keras.callbacks.History:
         """
         Optimize the underlying Keras ensemble model with the specified ``dataset``.
 
@@ -395,6 +396,8 @@ class DeepEnsemble(
             self.optimizer.optimizer.lr, tf.keras.optimizers.schedules.LearningRateSchedule
         ):
             self.optimizer.optimizer.lr.assign(self.original_lr)
+
+        return history
 
     def log(self, dataset: Optional[Dataset] = None) -> None:
         """
@@ -494,6 +497,11 @@ class DeepEnsemble(
                     tensorboard_writers,
                 ):
                     callback._writers = writers
+
+        # don't serialize any history optimization result
+        if isinstance(state.get("_last_optimization_result"), keras.callbacks.History):
+            state["_last_optimization_result"] = ...
+
         return state
 
     def __setstate__(self, state: dict[str, Any]) -> None:
@@ -520,3 +528,7 @@ class DeepEnsemble(
             loss=[self.optimizer.loss] * self._model.ensemble_size,
             metrics=[self.optimizer.metrics] * self._model.ensemble_size,
         )
+
+        # recover optimization result if necessary (and possible)
+        if state.get("_last_optimization_result") is ...:
+            self._last_optimization_result = getattr(self.model, "history")

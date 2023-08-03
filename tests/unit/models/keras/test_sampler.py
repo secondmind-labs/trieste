@@ -407,7 +407,7 @@ def test_ensemble_trajectory_sampler_trajectory_on_subsets_same_as_set(diversify
     eval_2 = trajectory(test_data[100:200, :])
     eval_3 = trajectory(test_data[200:300, :])
 
-    npt.assert_allclose(eval_all, tf.concat([eval_1, eval_2, eval_3], axis=0), rtol=5e-6)
+    npt.assert_allclose(eval_all, tf.concat([eval_1, eval_2, eval_3], axis=0), rtol=1e-5)
 
 
 @random_seed

@@ -54,7 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        part: [ "1", "2", "3" ]
+        part: [ "1", "2", "3", "4" ]
     name: tests (part${{ matrix.part }})
     steps:
     - uses: actions/checkout@v2
@@ -68,7 +68,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        part: [ "1", "2", "3" ]
+        part: [ "1", "2", "3", "4" ]
     name: tests_old (part${{ matrix.part }})
     steps:
     - uses: actions/checkout@v2

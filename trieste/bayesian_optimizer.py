@@ -719,7 +719,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         for tag, model in models.items():
                             dataset = datasets[tag]
                             model.update(dataset)
-                            model.optimize(dataset)
+                            model.optimize_and_save_result(dataset)
                     if summary_writer:
                         logging.set_step_number(0)
                         with summary_writer.as_default(step=0):
@@ -752,7 +752,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                             for tag, model in models.items():
                                 dataset = datasets[tag]
                                 model.update(dataset)
-                                model.optimize(dataset)
+                                model.optimize_and_save_result(dataset)
 
                 if summary_writer:
                     with summary_writer.as_default(step=step):
