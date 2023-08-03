@@ -16,6 +16,7 @@ from typing import Tuple, Union
 
 import numpy as np
 import tensorflow as tf
+from check_shapes import check_shapes
 
 from ..data import Dataset
 from ..space import SearchSpaceType
@@ -138,10 +139,19 @@ def get_local_dataset(local_space: SearchSpaceType, dataset: Dataset) -> Dataset
     return local_dataset
 
 
+@check_shapes(
+    "points: [n_points, ...]",
+    "return: [n_points]",
+)
 def get_unique_points_mask(points: TensorType, tolerance: float = 1e-6) -> TensorType:
-    """Find unique points in a list, within a given tolerance.
+    """Find the boolean mask of unique points in a tensor, within a given tolerance.
 
-    :param points: A tensor of points.
+    Users can get the actual points with:
+
+        mask = get_unique_points_mask(points, tolerance)
+        unique_points = tf.boolean_mask(points, mask)
+
+    :param points: A tensor of points, with the first dimension being the number of points.
     :param tolerance: The tolerance within which points are considered equal.
     :return: A boolean mask for the unique points.
     """
@@ -166,6 +176,4 @@ def get_unique_points_mask(points: TensorType, tolerance: float = 1e-6) -> Tenso
         axis=1,
     )
 
-    # Return the mask of unique points; can get the actual points with:
-    #   tf.boolean_mask(points, mask)
     return mask

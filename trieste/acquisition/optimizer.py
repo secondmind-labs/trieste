@@ -266,6 +266,16 @@ def generate_continuous_optimizer(
             )
             tiled_candidates = candidates  # [num_initial_samples, V, D]
         else:
+            tf.debugging.assert_rank(
+                candidates,
+                2,
+                message=(
+                    f"""
+                    The initial samples must be a tensor of rank 2, got a tensor of rank
+                    {tf.rank(candidates)}.
+                    """
+                ),
+            )
             tiled_candidates = tf.tile(
                 candidates[:, None, :], [1, V, 1]
             )  # [num_initial_samples, V, D]
@@ -329,6 +339,16 @@ def generate_continuous_optimizer(
                 )
                 tiled_random_points = random_points  # [num_recovery_runs, V, D]
             else:
+                tf.debugging.assert_rank(
+                    random_points,
+                    2,
+                    message=(
+                        f"""
+                        The random samples must be a tensor of rank 2, got a tensor of rank
+                        {tf.rank(random_points)}.
+                        """
+                    ),
+                )
                 tiled_random_points = tf.tile(
                     random_points[:, None, :], [1, V, 1]
                 )  # [num_recovery_runs, V, D]
