@@ -18,6 +18,7 @@ from typing import Any, Callable, Optional
 
 import dill
 import gpflow
+import keras.callbacks
 import tensorflow as tf
 from check_shapes import inherit_check_shapes
 from gpflow.inducing_variables import InducingPoints
@@ -212,6 +213,10 @@ class DeepGaussianProcess(
             finally:
                 self._model_keras.history.model = history_model
 
+        # don't try to serialize any other copies of the history callback
+        if isinstance(state.get("_last_optimization_result"), keras.callbacks.History):
+            state["_last_optimization_result"] = ...
+
         return state
 
     def __setstate__(self, state: dict[str, Any]) -> None:
@@ -265,6 +270,10 @@ class DeepGaussianProcess(
                 model = tf.keras.models.model_from_json(model_json)
                 model.set_weights(weights)
                 self._model_keras.history.set_model(model)
+
+        # recover optimization result if necessary (and possible)
+        if state.get("_last_optimization_result") is ...:
+            self._last_optimization_result = getattr(self._model_keras, "history")
 
     def __repr__(self) -> str:
         """"""
@@ -340,7 +349,7 @@ class DeepGaussianProcess(
 
             inputs = layer(inputs)
 
-    def optimize(self, dataset: Dataset) -> None:
+    def optimize(self, dataset: Dataset) -> keras.callbacks.History:
         """
         Optimize the model with the specified `dataset`.
         :param dataset: The data with which to optimize the `model`.
@@ -371,6 +380,8 @@ class DeepGaussianProcess(
             self.optimizer.optimizer.lr, tf.keras.optimizers.schedules.LearningRateSchedule
         ):
             self.optimizer.optimizer.lr.assign(self.original_lr)
+
+        return hist
 
     def log(self, dataset: Optional[Dataset] = None) -> None:
         """

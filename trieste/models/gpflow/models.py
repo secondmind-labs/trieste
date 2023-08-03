@@ -49,7 +49,7 @@ from ..interfaces import (
     TrainableProbabilisticModel,
     TrajectorySampler,
 )
-from ..optimizer import BatchOptimizer, Optimizer
+from ..optimizer import BatchOptimizer, Optimizer, OptimizeResult
 from .inducing_point_selectors import InducingPointSelector
 from .interface import GPflowPredictor, SupportsCovarianceBetweenPoints
 from .sampler import DecoupledTrajectorySampler, RandomFourierFeatureTrajectorySampler
@@ -65,7 +65,6 @@ from .utils import (
 
 class GaussianProcessRegression(
     GPflowPredictor,
-    TrainableProbabilisticModel,
     FastUpdateModel,
     SupportsCovarianceBetweenPoints,
     SupportsGetInternalData,
@@ -249,7 +248,7 @@ class GaussianProcessRegression(
 
         return cov
 
-    def optimize(self, dataset: Dataset) -> None:
+    def optimize(self, dataset: Dataset) -> OptimizeResult:
         """
         Optimize the model with the specified `dataset`.
 
@@ -284,8 +283,9 @@ class GaussianProcessRegression(
             self.find_best_model_initialization(
                 self._num_kernel_samples * num_trainable_params_with_priors_or_constraints
             )
-        self.optimizer.optimize(self.model, dataset)
+        result = self.optimizer.optimize(self.model, dataset)
         self.update_posterior_cache()
+        return result
 
     def find_best_model_initialization(self, num_kernel_samples: int) -> None:
         """
@@ -523,7 +523,6 @@ class GaussianProcessRegression(
 
 class SparseGaussianProcessRegression(
     GPflowPredictor,
-    TrainableProbabilisticModel,
     SupportsCovarianceBetweenPoints,
     SupportsGetInducingVariables,
     SupportsGetInternalData,
@@ -637,14 +636,15 @@ class SparseGaussianProcessRegression(
         if not is_variable(self._model.num_data):
             self._model.num_data = tf.Variable(self._model.num_data, trainable=False)
 
-    def optimize(self, dataset: Dataset) -> None:
+    def optimize(self, dataset: Dataset) -> OptimizeResult:
         """
         Optimize the model with the specified `dataset`.
 
         :param dataset: The data with which to optimize the `model`.
         """
-        self.optimizer.optimize(self.model, dataset)
+        result = self.optimizer.optimize(self.model, dataset)
         self.update_posterior_cache()
+        return result
 
     def update(self, dataset: Dataset) -> None:
         self._ensure_variable_model_data()
@@ -836,7 +836,6 @@ class SparseGaussianProcessRegression(
 
 class SparseVariational(
     GPflowPredictor,
-    TrainableProbabilisticModel,
     SupportsCovarianceBetweenPoints,
     SupportsGetInducingVariables,
     HasTrajectorySampler,
@@ -979,14 +978,15 @@ class SparseVariational(
                 self._update_inducing_variables(new_inducing_points)
                 self.update_posterior_cache()
 
-    def optimize(self, dataset: Dataset) -> None:
+    def optimize(self, dataset: Dataset) -> OptimizeResult:
         """
         Optimize the model with the specified `dataset`.
 
         :param dataset: The data with which to optimize the `model`.
         """
-        self.optimizer.optimize(self.model, dataset)
+        result = self.optimizer.optimize(self.model, dataset)
         self.update_posterior_cache()
+        return result
 
     def _update_inducing_variables(self, new_inducing_points: TensorType) -> None:
         """
@@ -1098,7 +1098,6 @@ class SparseVariational(
 
 class VariationalGaussianProcess(
     GPflowPredictor,
-    TrainableProbabilisticModel,
     SupportsCovarianceBetweenPoints,
     SupportsGetInducingVariables,
     HasTrajectorySampler,
@@ -1262,7 +1261,7 @@ class VariationalGaussianProcess(
         update_vgp_data(self.model, (dataset.query_points, dataset.observations))
         self.update_posterior_cache()
 
-    def optimize(self, dataset: Dataset) -> None:
+    def optimize(self, dataset: Dataset) -> Optional[OptimizeResult]:
         """
         :class:`VariationalGaussianProcess` has a custom `optimize` method that (optionally) permits
         alternating between standard optimization steps (for kernel parameters) and natural gradient
@@ -1297,13 +1296,14 @@ class VariationalGaussianProcess(
             for _ in range(base_optimizer.max_iter):  # type: ignore
                 perform_optimization_step()
 
-            gpflow.set_trainable(model.q_mu, True)  # revert varitional params to trainable
+            gpflow.set_trainable(model.q_mu, True)  # revert variational params to trainable
             gpflow.set_trainable(model.q_sqrt, True)
-
+            result = None  # TODO: find something useful to return
         else:
-            self.optimizer.optimize(model, dataset)
+            result = self.optimizer.optimize(model, dataset)
 
         self.update_posterior_cache()
+        return result
 
     def get_inducing_variables(self) -> Tuple[TensorType, TensorType, TensorType, bool]:
         """
