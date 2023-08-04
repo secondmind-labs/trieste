@@ -1151,23 +1151,8 @@ def test_trust_region_box_get_local_min_outside_search_space() -> None:
     npt.assert_array_equal(y_min, tf.constant([np.inf], dtype=tf.float64))
 
 
-# get_single_model_and_dataset returns model and dataset with the OBJECTIVE tag.
-def test_trust_region_box_get_single_model_dataset() -> None:
-    search_space = Box([0.0, 0.0], [1.0, 1.0])
-    dataset = Dataset(tf.zeros([1, 2], dtype=tf.float64), tf.zeros([1, 1], dtype=tf.float64))
-    models = {
-        "foo": QuadraticMeanAndRBFKernel(),
-        OBJECTIVE: QuadraticMeanAndRBFKernelWithSamplers(dataset),
-    }
-    datasets = {"foo": empty_dataset([2], [1]), OBJECTIVE: dataset}
-    trb = TrustRegionBox(search_space)
-    _model, _dataset = trb.get_single_model_and_dataset(models, datasets)
-    assert isinstance(_model, QuadraticMeanAndRBFKernelWithSamplers)
-    assert _dataset is dataset
-
-
-# Reinitialize sets the box to a random location, and sets the eps and y_min values.
-def test_trust_region_box_reinitialize() -> None:
+# Initialize sets the box to a random location, and sets the eps and y_min values.
+def test_trust_region_box_initialize() -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     datasets = {
         OBJECTIVE: Dataset(  # Points outside the search space should be ignored.
@@ -1176,7 +1161,7 @@ def test_trust_region_box_reinitialize() -> None:
         )
     }
     trb = TrustRegionBox(search_space)
-    trb.reinitialize(datasets=datasets)
+    trb.initialize(datasets=datasets)
 
     exp_eps = 0.5 * (search_space.upper - search_space.lower) / 5.0 ** (1.0 / 2.0)
     npt.assert_array_equal(trb._eps, exp_eps)
@@ -1188,8 +1173,8 @@ def test_trust_region_box_reinitialize() -> None:
     npt.assert_array_equal(trb.y_min, tf.constant([np.inf], dtype=tf.float64))
 
 
-# Update call reintializes the box if eps is smaller than min_eps.
-def test_trust_region_box_update_reinitialize() -> None:
+# Update call initializes the box if eps is smaller than min_eps.
+def test_trust_region_box_update_initialize() -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     datasets = {
         OBJECTIVE: Dataset(  # Points outside the search space should be ignored.
@@ -1198,7 +1183,7 @@ def test_trust_region_box_update_reinitialize() -> None:
         )
     }
     trb = TrustRegionBox(search_space, min_eps=0.5)
-    trb.reinitialize(datasets=datasets)
+    trb.initialize(datasets=datasets)
     location = trb.location
 
     trb.update(datasets=datasets)
@@ -1209,8 +1194,8 @@ def test_trust_region_box_update_reinitialize() -> None:
     npt.assert_array_compare(np.not_equal, location, trb.location)
 
 
-# Update call does not reintialize the box if eps is larger than min_eps.
-def test_trust_region_box_update_no_reinitialize() -> None:
+# Update call does not initialize the box if eps is larger than min_eps.
+def test_trust_region_box_update_no_initialize() -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     datasets = {
         OBJECTIVE: Dataset(
@@ -1219,7 +1204,7 @@ def test_trust_region_box_update_no_reinitialize() -> None:
         )
     }
     trb = TrustRegionBox(search_space, min_eps=0.1)
-    trb.reinitialize(datasets=datasets)
+    trb.initialize(datasets=datasets)
     trb.location = tf.constant([0.5, 0.5], dtype=tf.float64)
     location = trb.location
 
@@ -1238,7 +1223,7 @@ def test_trust_region_box_update_size(success: bool) -> None:
         )
     }
     trb = TrustRegionBox(search_space, min_eps=0.1)
-    trb.reinitialize(datasets=datasets)
+    trb.initialize(datasets=datasets)
     eps = trb._eps
 
     if success:

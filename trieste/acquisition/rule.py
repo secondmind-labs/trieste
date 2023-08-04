@@ -83,7 +83,7 @@ from .optimizer import (
     batchify_vectorize,
 )
 from .sampler import ExactThompsonSampler, ThompsonSampler
-from .utils import get_local_dataset, get_unique_points_mask, select_nth_output
+from .utils import get_local_dataset, get_unique_points_mask, get_value_for_tag, select_nth_output
 
 ResultType = TypeVar("ResultType", covariant=True)
 """ Unbound covariant type variable. """
@@ -1119,13 +1119,13 @@ class UpdateableSearchSpace(SearchSpace):
     """A search space that can be updated."""
 
     @abstractmethod
-    def reinitialize(
+    def initialize(
         self,
         models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
         datasets: Optional[Mapping[Tag, Dataset]] = None,
         **kwargs: Any,
     ) -> None:
-        """Reinitialize the search space using the given models and datasets."""
+        """Initialize the search space using the given models and datasets."""
         ...
 
     @abstractmethod
@@ -1137,28 +1137,6 @@ class UpdateableSearchSpace(SearchSpace):
     ) -> None:
         """Update the search space using the given models and datasets."""
         ...
-
-    def get_single_model_and_dataset(
-        self,
-        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
-        datasets: Optional[Mapping[Tag, Dataset]] = None,
-    ) -> Tuple[Optional[ProbabilisticModelType], Optional[Dataset]]:
-        """Get a single model and dataset from the given arguments."""
-        if models is None:
-            model = None
-        elif OBJECTIVE in models.keys():
-            model = models[OBJECTIVE]
-        else:
-            raise ValueError(f"""if models is provided, it must contain the key {OBJECTIVE}""")
-
-        if datasets is None:
-            dataset = None
-        elif OBJECTIVE in datasets.keys():
-            dataset = datasets[OBJECTIVE]
-        else:
-            raise ValueError(f"""if datasets is provided, it must contain the key {OBJECTIVE}""")
-
-        return model, dataset
 
 
 UpdateableSearchSpaceType = TypeVar("UpdateableSearchSpaceType", bound=UpdateableSearchSpace)
@@ -1227,7 +1205,7 @@ class MultiTrustRegion(
         ) -> Tuple[MultiTrustRegion.State | None, TensorType]:
             """If state is None, initialise the subspaces by picking new locations. Otherwise,
             update the existing subspaces.
-            Reinitialize the subspaces if necessary, potentially looking at the entire group.
+            Initialize the subspaces if necessary, potentially looking at the entire group.
             Use the rule to acquire points from the acquisition space.
             """
             # If state is set, the tags should be the same as the tags of the acquisition space
@@ -1243,7 +1221,7 @@ class MultiTrustRegion(
             for tag in self._tags:
                 if state is None:
                     subspace = self.create_subspace(search_space)
-                    subspace.reinitialize(models, datasets)
+                    subspace.initialize(models, datasets)
                 else:
                     _subspace = state.acquisition_space.get_subspace(tag)
                     assert isinstance(_subspace, self._subspace_type)
@@ -1252,7 +1230,7 @@ class MultiTrustRegion(
 
                 subspaces.append(subspace)
 
-            self.maybe_reinitialize_subspaces(subspaces, models, datasets)
+            self.maybe_initialize_subspaces(subspaces, models, datasets)
 
             if state is None:
                 acquisition_space = TaggedMultiSearchSpace(subspaces, self._tags)
@@ -1274,29 +1252,29 @@ class MultiTrustRegion(
         This is the default implementation. Can be overridden by subclasses."""
         return self._subspace_type()
 
-    def maybe_reinitialize_subspaces(
+    def maybe_initialize_subspaces(
         self,
         subspaces: Sequence[UpdateableSearchSpaceType],
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> None:
-        """Reinitialize subspaces if necessary.
-        Get a mask of subspaces that need to be reinitialized using an abstract method.
-        Reinitialize individual subpaces by calling the method of the UpdateableSearchSpace class.
+        """Initialize subspaces if necessary.
+        Get a mask of subspaces that need to be initialized using an abstract method.
+        Initialize individual subpaces by calling the method of the UpdateableSearchSpace class.
         """
-        mask = self.get_reinitialize_subspaces_mask(subspaces, models, datasets)
+        mask = self.get_initialize_subspaces_mask(subspaces, models, datasets)
         for ix, subspace in enumerate(subspaces):
             if mask[ix]:
-                subspace.reinitialize(models, datasets)
+                subspace.initialize(models, datasets)
 
     @abstractmethod
-    def get_reinitialize_subspaces_mask(
+    def get_initialize_subspaces_mask(
         self,
         subspaces: Sequence[UpdateableSearchSpaceType],
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> TensorType:
-        """Get mask for subspaces that need to be reinitialized."""
+        """Get mask for subspaces that need to be initialized."""
         ...
 
 
@@ -1351,14 +1329,14 @@ class TrustRegionBox(Box, UpdateableSearchSpace):
             [self.global_search_space.upper, self.location + self._eps], axis=0
         )
 
-    def reinitialize(
+    def initialize(
         self,
         models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
         datasets: Optional[Mapping[Tag, Dataset]] = None,
         **kwargs: Any,
     ) -> None:
-        """Reinitialize the box."""
-        _, dataset = self.get_single_model_and_dataset(models, datasets)
+        """Initialize the box."""
+        dataset = get_value_for_tag(datasets)
 
         self.location = tf.squeeze(self.global_search_space.sample(1), axis=0)
         self._init_eps()
@@ -1373,11 +1351,11 @@ class TrustRegionBox(Box, UpdateableSearchSpace):
         **kwargs: Any,
     ) -> None:
         """Update this box, including centre/location, using the given dataset. If the size of the
-        box is less than the minimum size, reinitialize the box."""
-        _, dataset = self.get_single_model_and_dataset(models, datasets)
+        box is less than the minimum size, initialize the box."""
+        dataset = get_value_for_tag(datasets)
 
         if tf.reduce_any(self._eps < self._min_eps):
-            self.reinitialize(models, datasets, **kwargs)
+            self.initialize(models, datasets, **kwargs)
             return
 
         x_min, y_min = self.get_local_min(dataset)
@@ -1457,14 +1435,14 @@ class MultiTrustRegionBox(MultiTrustRegion[ProbabilisticModelType, TrustRegionBo
         """Create a subspace from the given global search space."""
         return self._subspace_type(search_space, self._beta, self._kappa, self._min_eps)
 
-    def get_reinitialize_subspaces_mask(
+    def get_initialize_subspaces_mask(
         self,
         subspaces: Sequence[TrustRegionBoxType],
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> TensorType:
-        """Get mask for subspaces that need to be reinitialized.
-        # Reinitalise the subspaces that have non-unique locations.
+        """Get mask for subspaces that need to be initialized.
+        # Initialize the subspaces that have non-unique locations.
         """
         centres = tf.stack([subspace.location for subspace in subspaces])
         return tf.logical_not(get_unique_points_mask(centres, tolerance=1e-6))

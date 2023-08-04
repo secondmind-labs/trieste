@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import functools
-from typing import Tuple, Union
+from typing import Mapping, Optional, Tuple, TypeVar, Union
 
 import numpy as np
 import tensorflow as tf
 from check_shapes import check_shapes
 
 from ..data import Dataset
+from ..observer import OBJECTIVE
 from ..space import SearchSpaceType
-from ..types import TensorType
+from ..types import Tag, TensorType
 from .interface import AcquisitionFunction
 from .optimizer import AcquisitionOptimizer
 
@@ -156,24 +157,44 @@ def get_unique_points_mask(points: TensorType, tolerance: float = 1e-6) -> Tenso
     :return: A boolean mask for the unique points.
     """
 
-    # Calculate the pairwise distances between points.
-    distances = tf.norm(tf.expand_dims(points, 1) - tf.expand_dims(points, 0), axis=-1)
+    tolerance = tf.constant(tolerance, dtype=points.dtype)
+    n_points = tf.shape(points)[0]
+    used_points = tf.fill(value=tf.constant(np.inf, dtype=points.dtype), dims=tf.shape(points))
+    mask = tf.zeros(shape=(n_points,), dtype=tf.bool)
 
-    # Create a mask that is True for the lower triangle of the distance matrix, not including
-    # the diagonal.
-    mask_tri = tf.linalg.band_part(tf.ones_like(distances, dtype=tf.bool), -1, 0)
+    for idx in tf.range(n_points):
+        # Pairwise distance with remaining points.
+        distances = tf.norm(points[idx] - used_points, axis=-1)
+        # Find if there is any point within the tolerance.
+        min_distance = tf.reduce_min(distances)
+        is_unique_point = min_distance >= tolerance
 
-    # Use the mask to ignore the upper triangle and diagonal of the distance matrix.
-    distances_masked = tf.where(mask_tri, distances, tf.constant(np.inf, dtype=distances.dtype))
+        # Update mask.
+        mask = tf.tensor_scatter_nd_update(mask, [[idx]], [is_unique_point])
 
-    tolerance = tf.constant(tolerance, dtype=distances.dtype)
-
-    # Create a boolean mask for each point.
-    mask = tf.reduce_all(
-        tf.logical_or(
-            distances_masked > tolerance, tf.eye(distances_masked.shape[0], dtype=tf.bool)
-        ),
-        axis=1,
-    )
+        if is_unique_point:
+            # Save this point to 'used_points' for future iterations.
+            used_points = tf.tensor_scatter_nd_update(used_points, [[idx]], [points[idx]])
 
     return mask
+
+
+T = TypeVar("T")
+""" An unbound type variable. """
+
+
+def get_value_for_tag(mapping: Optional[Mapping[Tag, T]], tag: Tag = OBJECTIVE) -> Optional[T]:
+    """Return the value of a tag in a mapping.
+
+    :param mapping: A mapping from tags to values.
+    :param tag: A tag.
+    :return: The value of the tag in the mapping, or None if the mapping is None.
+    :raises ValueError: If the tag is not in the mapping and the mapping is not None.
+    """
+
+    if mapping is None:
+        return None
+    elif tag in mapping.keys():
+        return mapping[tag]
+    else:
+        raise ValueError(f"tag '{tag}' not found in mapping")

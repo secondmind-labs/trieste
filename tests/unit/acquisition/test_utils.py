@@ -23,10 +23,13 @@ import tensorflow as tf
 from trieste.acquisition import AcquisitionFunction
 from trieste.acquisition.utils import (
     get_local_dataset,
+    get_unique_points_mask,
+    get_value_for_tag,
     select_nth_output,
     split_acquisition_function,
 )
 from trieste.data import Dataset
+from trieste.observer import OBJECTIVE
 from trieste.space import Box, SearchSpaceType
 
 
@@ -97,3 +100,52 @@ def test_get_local_dataset_works() -> None:
 
     assert tf.shape(get_local_dataset(search_space_1, combined).query_points)[0] == 10
     assert tf.shape(get_local_dataset(search_space_2, combined).query_points)[0] == 20
+
+
+@pytest.mark.parametrize(
+    "points, tolerance, expected_mask",
+    [
+        (
+            tf.constant([[1.0, 1.0], [1.2, 1.1], [2.0, 2.0], [2.2, 2.2], [3.0, 3.0]]),
+            0.5,
+            tf.constant([True, False, True, False, True]),
+        ),
+        (
+            tf.constant([[1.0, 2.0], [2.0, 3.0], [1.0, 2.1]]),
+            0.2,
+            tf.constant([True, True, False]),
+        ),
+        (
+            tf.constant([[1.0], [2.0], [1.0], [3.0], [1.71], [1.699999], [3.29], [3.300001]]),
+            0.3,
+            tf.constant([True, True, False, True, False, True, False, True]),
+        ),
+        (
+            tf.constant([[1.0], [2.0], [1.0], [3.0], [1.699999], [1.71], [3.300001], [3.29]]),
+            0.3,
+            tf.constant([True, True, False, True, True, False, True, False]),
+        ),
+    ],
+)
+def test_get_unique_points_mask(
+    points: tf.Tensor, tolerance: float, expected_mask: tf.Tensor
+) -> None:
+    mask = get_unique_points_mask(points, tolerance)
+    np.testing.assert_array_equal(mask, expected_mask)
+
+
+def test_get_value_for_tag_returns_none_if_mapping_is_none() -> None:
+    assert get_value_for_tag(None) is None
+
+
+def test_get_value_for_tag_raises_if_tag_not_in_mapping() -> None:
+    with pytest.raises(ValueError, match="tag 'baz' not found in mapping"):
+        get_value_for_tag({"foo": "bar"}, "baz")
+
+
+def test_get_value_for_tag_returns_value_for_default_tag() -> None:
+    assert get_value_for_tag({"foo": "bar", OBJECTIVE: "baz"}) == "baz"
+
+
+def test_get_value_for_tag_returns_value_for_specified_tag() -> None:
+    assert get_value_for_tag({"foo": "bar", OBJECTIVE: "baz"}, "foo") == "bar"
