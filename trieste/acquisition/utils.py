@@ -14,7 +14,6 @@
 import functools
 from typing import Mapping, Optional, Tuple, TypeVar, Union
 
-import numpy as np
 import tensorflow as tf
 from check_shapes import check_shapes
 
@@ -159,22 +158,18 @@ def get_unique_points_mask(points: TensorType, tolerance: float = 1e-6) -> Tenso
 
     tolerance = tf.constant(tolerance, dtype=points.dtype)
     n_points = tf.shape(points)[0]
-    used_points = tf.fill(value=tf.constant(np.inf, dtype=points.dtype), dims=tf.shape(points))
     mask = tf.zeros(shape=(n_points,), dtype=tf.bool)
 
     for idx in tf.range(n_points):
-        # Pairwise distance with remaining points.
+        # Pairwise distance with previous unique points.
+        used_points = tf.boolean_mask(points, mask)
         distances = tf.norm(points[idx] - used_points, axis=-1)
         # Find if there is any point within the tolerance.
         min_distance = tf.reduce_min(distances)
-        is_unique_point = min_distance >= tolerance
 
         # Update mask.
+        is_unique_point = min_distance >= tolerance
         mask = tf.tensor_scatter_nd_update(mask, [[idx]], [is_unique_point])
-
-        if is_unique_point:
-            # Save this point to 'used_points' for future iterations.
-            used_points = tf.tensor_scatter_nd_update(used_points, [[idx]], [points[idx]])
 
     return mask
 
