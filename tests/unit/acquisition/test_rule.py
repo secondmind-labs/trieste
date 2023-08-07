@@ -33,6 +33,7 @@ from trieste.acquisition import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
     NegativeLowerConfidenceBound,
+    ParallelContinuousThompsonSampling,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
     VectorizedAcquisitionFunctionBuilder,
@@ -47,6 +48,7 @@ from trieste.acquisition.rule import (
     BatchHypervolumeSharpeRatioIndicator,
     DiscreteThompsonSampling,
     EfficientGlobalOptimization,
+    MultiTrustRegionBox,
     RandomSampling,
     TrustRegion,
     TrustRegionBox,
@@ -61,7 +63,7 @@ from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.models.interfaces import TrainableSupportsGetKernel
 from trieste.observer import OBJECTIVE
-from trieste.space import Box
+from trieste.space import Box, SearchSpace, TaggedMultiSearchSpace
 from trieste.types import State, Tag, TensorType
 
 
@@ -1259,6 +1261,122 @@ def test_trust_region_box_update_size(success: bool) -> None:
     # Check the new box bounds.
     npt.assert_allclose(trb.lower, np.maximum(point - trb._eps, search_space.lower))
     npt.assert_allclose(trb.upper, np.minimum(point + trb._eps, search_space.upper))
+
+
+# When state is None, acquire returns a multi search space of the correct type.
+def test_multi_trust_region_box_acquire_no_state() -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    dataset = Dataset(
+        tf.constant([[0.5, 0.5], [0.0, 0.0], [1.0, 1.0]], dtype=tf.float64),
+        tf.constant([[0.5], [0.0], [1.0]], dtype=tf.float64),
+    )
+    datasets = {OBJECTIVE: dataset}
+    # models = {OBJECTIVE: svgp_model(dataset.query_points, dataset.observations)}
+    model = QuadraticMeanAndRBFKernelWithSamplers(
+        dataset=dataset, noise_variance=tf.constant(1.0, dtype=tf.float64)
+    )
+    model.kernel = (
+        gpflow.kernels.RBF()
+    )  # need a gpflow kernel object for random feature decompositions
+    models = {OBJECTIVE: model}
+    base_rule = EfficientGlobalOptimization(  # type: ignore[var-annotated]
+        builder=ParallelContinuousThompsonSampling(), num_query_points=2
+    )
+    subspaces = [TrustRegionBox(search_space, beta=0.1, kappa=1e-3, min_eps=1e-1) for _ in range(2)]
+    mtb = MultiTrustRegionBox(subspaces, base_rule)
+    state, points = mtb.acquire(search_space, models, datasets)(None)
+
+    assert state is not None
+    assert isinstance(state.acquisition_space, TaggedMultiSearchSpace)
+    assert len(state.acquisition_space.subspace_tags) == 2
+
+    for index, (tag, point) in enumerate(zip(state.acquisition_space.subspace_tags, points)):
+        subspace = state.acquisition_space.get_subspace(tag)
+        assert subspace == subspaces[index]
+        assert isinstance(subspace, TrustRegionBox)
+        assert subspace.global_search_space == search_space
+        assert subspace._beta == 0.1
+        assert subspace._kappa == 1e-3
+        assert subspace._min_eps == 1e-1
+        assert point in subspace
+
+
+class TestTrustRegionBox(TrustRegionBox):
+    def __init__(
+        self,
+        fixed_location: TensorType,
+        global_search_space: SearchSpace,
+        beta: float = 0.7,
+        kappa: float = 1e-4,
+        min_eps: float = 1e-2,
+    ):
+        super().__init__(global_search_space, beta, kappa, min_eps)
+        self._location = fixed_location
+
+    @property
+    def location(self) -> TensorType:
+        return self._location
+
+    @location.setter
+    def location(self, location: TensorType) -> None:
+        ...
+
+    def _init_eps(self) -> None:
+        self._eps = tf.constant(0.07, dtype=tf.float64)
+
+
+# Start with a defined state and dataset. Acquire should return an updated state.
+def test_multi_trust_region_box_acquire_with_state() -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    init_dataset = Dataset(
+        tf.constant([[0.25, 0.25], [0.5, 0.5], [0.75, 0.75]], dtype=tf.float64),
+        tf.constant([[1.0], [1.0], [1.0]], dtype=tf.float64),
+    )
+    model = QuadraticMeanAndRBFKernelWithSamplers(
+        dataset=init_dataset, noise_variance=tf.constant(1e-6, dtype=tf.float64)
+    )
+    model.kernel = (
+        gpflow.kernels.RBF()
+    )  # need a gpflow kernel object for random feature decompositions
+    models = {OBJECTIVE: model}
+    base_rule = EfficientGlobalOptimization(  # type: ignore[var-annotated]
+        builder=ParallelContinuousThompsonSampling(), num_query_points=3
+    )
+
+    # Third region is close to the first.
+    subspaces = [
+        TestTrustRegionBox(tf.constant([0.3, 0.3], dtype=tf.float64), search_space),
+        TestTrustRegionBox(tf.constant([0.7, 0.7], dtype=tf.float64), search_space),
+        TestTrustRegionBox(tf.constant([0.3, 0.3], dtype=tf.float64) + 1e-7, search_space),
+    ]
+    mtb = MultiTrustRegionBox(subspaces, base_rule)
+    state = MultiTrustRegionBox.State(acquisition_space=TaggedMultiSearchSpace(subspaces))
+    for subspace in subspaces:
+        subspace.initialize(datasets={OBJECTIVE: init_dataset})
+
+    dataset = Dataset(
+        init_dataset.query_points,
+        tf.constant([[0.1], [0.2], [0.3]], dtype=tf.float64),
+    )
+    state_func = mtb.acquire(search_space, models, {OBJECTIVE: dataset})
+    next_state, points = state_func(state)
+
+    assert next_state is not None
+    assert len(points) == 3
+    # The regions correspond to first, third and first points in the dataset.
+    # First two regions should be updated.
+    # The third region should be initialized and not updated, as it is too close to the first
+    # subspace.
+    for point, subspace, exp_obs, exp_eps in zip(
+        points,
+        subspaces,
+        [dataset.observations[0], dataset.observations[2], dataset.observations[0]],
+        [0.1, 0.1, 0.07],  # First two regions updated, third region initialized.
+    ):
+        assert point in subspace
+        npt.assert_array_equal(subspace.y_min, exp_obs)
+        # Check the box was updated/initialized correctly.
+        npt.assert_allclose(subspace._eps, exp_eps)
 
 
 def test_asynchronous_rule_state_pending_points() -> None:

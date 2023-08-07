@@ -45,6 +45,7 @@ from trieste.space import (
     DiscreteSearchSpace,
     LinearConstraint,
     SearchSpace,
+    TaggedMultiSearchSpace,
     TaggedProductSearchSpace,
 )
 from trieste.types import TensorType
@@ -201,6 +202,15 @@ def test_optimize_continuous_raises_with_invalid_vectorized_batch_size(batch_siz
     acq_fn = _quadratic_sum([1.0])
     with pytest.raises(ValueError):
         generate_continuous_optimizer()(search_space, (acq_fn, batch_size))
+
+
+def test_optimize_continuous_raises_with_mismatch_multi_search_space() -> None:
+    space_A = Box([-1], [2])
+    space_B = Box([3], [4])
+    multi_space = TaggedMultiSearchSpace(spaces=[space_A, space_B])
+    acq_fn = _quadratic_sum([1.0])
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES, match="The batch shape of initial samples 2 must"):
+        generate_continuous_optimizer()(multi_space, acq_fn)
 
 
 @pytest.mark.parametrize("num_optimization_runs", [1, 10])

@@ -692,11 +692,11 @@ def test_collection_space_subspace_tags_attribute(
 ) -> None:
     decision_space = Box([-1, -2], [2, 3])
     context_space = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]]))
-    product_space = search_space_type(
+    multi_space = search_space_type(
         spaces=[context_space, decision_space], tags=["context", "decision"]
     )
 
-    npt.assert_array_equal(product_space.subspace_tags, ["context", "decision"])
+    npt.assert_array_equal(multi_space.subspace_tags, ["context", "decision"])
 
 
 @pytest.mark.parametrize("search_space_type", [TaggedMultiSearchSpace, TaggedProductSearchSpace])
@@ -705,9 +705,9 @@ def test_collection_space_subspace_tags_default_behaviour(
 ) -> None:
     decision_space = Box([-1, -2], [2, 3])
     context_space = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]]))
-    product_space = search_space_type(spaces=[context_space, decision_space])
+    multi_space = search_space_type(spaces=[context_space, decision_space])
 
-    npt.assert_array_equal(product_space.subspace_tags, ["0", "1"])
+    npt.assert_array_equal(multi_space.subspace_tags, ["0", "1"])
 
 
 @pytest.mark.parametrize("search_space_type", [TaggedMultiSearchSpace, TaggedProductSearchSpace])
@@ -716,12 +716,12 @@ def test_collection_space_get_subspace_raises_for_invalid_tag(
 ) -> None:
     space_A = Box([-1, -2], [2, 3])
     space_B = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]]))
-    product_space = search_space_type(spaces=[space_A, space_B], tags=["A", "B"])
+    multi_space = search_space_type(spaces=[space_A, space_B], tags=["A", "B"])
 
     with pytest.raises(
         TF_DEBUGGING_ERROR_TYPES, match="Attempted to access a subspace that does not exist"
     ):
-        product_space.get_subspace("dummy")
+        multi_space.get_subspace("dummy")
 
 
 @pytest.mark.parametrize("search_space_type", [TaggedMultiSearchSpace, TaggedProductSearchSpace])
@@ -729,18 +729,18 @@ def test_collection_space_get_subspace(search_space_type: Type[CollectionSearchS
     space_A = Box([-1, -2], [2, 3])
     space_B = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]]))
     space_C = Box([-1, -3], [2, 2])
-    product_space = search_space_type(spaces=[space_A, space_B, space_C], tags=["A", "B", "C"])
+    multi_space = search_space_type(spaces=[space_A, space_B, space_C], tags=["A", "B", "C"])
 
-    subspace_A = product_space.get_subspace("A")
+    subspace_A = multi_space.get_subspace("A")
     assert isinstance(subspace_A, Box)
     npt.assert_array_equal(subspace_A.lower, [-1, -2])
     npt.assert_array_equal(subspace_A.upper, [2, 3])
 
-    subspace_B = product_space.get_subspace("B")
+    subspace_B = multi_space.get_subspace("B")
     assert isinstance(subspace_B, DiscreteSearchSpace)
     npt.assert_array_equal(subspace_B.points, tf.constant([[-0.5, 0.5]]))
 
-    subspace_C = product_space.get_subspace("C")
+    subspace_C = multi_space.get_subspace("C")
     assert isinstance(subspace_C, Box)
     npt.assert_array_equal(subspace_C.lower, [-1, -3])
     npt.assert_array_equal(subspace_C.upper, [2, 2])
