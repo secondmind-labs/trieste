@@ -82,9 +82,8 @@ base_rule = trieste.acquisition.rule.EfficientGlobalOptimization(
     ),
 )
 
-acq_rule = MultiTrustRegionBox(
-    TrustRegionBox, base_rule, number_of_tr=num_query_points
-)
+subspaces = [TrustRegionBox(search_space) for _ in range(num_query_points)]
+acq_rule = MultiTrustRegionBox(subspaces, base_rule)
 
 ask_tell = AskTellOptimizer(
     search_space, initial_data, model, fit_model=True, acquisition_rule=acq_rule

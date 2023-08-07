@@ -22,19 +22,7 @@ import math
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import (
-    Any,
-    Callable,
-    Generic,
-    Optional,
-    Sequence,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-    cast,
-    overload,
-)
+from typing import Any, Callable, Generic, Optional, Sequence, Tuple, TypeVar, Union, cast, overload
 
 import numpy as np
 
@@ -1123,7 +1111,6 @@ class UpdateableSearchSpace(SearchSpace):
         self,
         models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
         datasets: Optional[Mapping[Tag, Dataset]] = None,
-        **kwargs: Any,
     ) -> None:
         """Initialize the search space using the given models and datasets."""
         ...
@@ -1133,7 +1120,6 @@ class UpdateableSearchSpace(SearchSpace):
         self,
         models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
         datasets: Optional[Mapping[Tag, Dataset]] = None,
-        **kwargs: Any,
     ) -> None:
         """Update the search space using the given models and datasets."""
         ...
@@ -1168,31 +1154,25 @@ class MultiTrustRegion(
 
     def __init__(
         self: "MultiTrustRegion[ProbabilisticModelType, UpdateableSearchSpaceType]",
-        subspace_type: Type[UpdateableSearchSpaceType],
+        init_subspaces: Sequence[UpdateableSearchSpaceType],
         rule: AcquisitionRule[TensorType, SearchSpace, ProbabilisticModelType] | None = None,
-        number_of_tr: int = 1,
     ):
         """
-        :param subspace_type: The type of the subspace to use.
+        :param init_subspaces: The initial search spaces for each trust region.
         :param rule: The acquisition rule that defines how to search for a new query point in a
             given search space. Defaults to :class:`EfficientGlobalOptimization` with default
             arguments.
-        :param number_of_tr: The number of trust regions.
         """
         if rule is None:
             rule = EfficientGlobalOptimization()
 
-        self._subspace_type = subspace_type
+        self._init_subspaces = tuple(init_subspaces)
+        self._tags = tuple([str(index) for index in range(len(init_subspaces))])
         self._rule = rule
-        self._number_of_tr = number_of_tr
-        self._tags = tuple([str(index) for index in range(number_of_tr)])
 
     def __repr__(self) -> str:
         """"""
-        return f"""MultiTrustRegion(
-            {self._subspace_type!r},
-            {self._rule!r},
-            {self._number_of_tr!r})"""
+        return f"""{self.__class__.__name__}({self._init_subspaces!r}, {self._rule!r})"""
 
     def acquire(
         self,
@@ -1218,13 +1198,13 @@ class MultiTrustRegion(
                     MultiTrustRegion acquisition rule {self._tags}"""
 
             subspaces = []
-            for tag in self._tags:
+            for index, tag in enumerate(self._tags):
                 if state is None:
-                    subspace = self.create_subspace(search_space)
+                    subspace = self._init_subspaces[index]
                     subspace.initialize(models, datasets)
                 else:
                     _subspace = state.acquisition_space.get_subspace(tag)
-                    assert isinstance(_subspace, self._subspace_type)
+                    assert isinstance(_subspace, type(self._init_subspaces[index]))
                     subspace = _subspace
                     subspace.update(models, datasets)
 
@@ -1244,14 +1224,6 @@ class MultiTrustRegion(
 
         return state_func
 
-    def create_subspace(
-        self,
-        search_space: SearchSpace,
-    ) -> UpdateableSearchSpaceType:
-        """Create a subspace from the given search space.
-        This is the default implementation. Can be overridden by subclasses."""
-        return self._subspace_type()
-
     def maybe_initialize_subspaces(
         self,
         subspaces: Sequence[UpdateableSearchSpaceType],
@@ -1260,7 +1232,7 @@ class MultiTrustRegion(
     ) -> None:
         """Initialize subspaces if necessary.
         Get a mask of subspaces that need to be initialized using an abstract method.
-        Initialize individual subpaces by calling the method of the UpdateableSearchSpace class.
+        Initialize individual subpaces by calling the method of the UpdateableSearchSpaceType class.
         """
         mask = self.get_initialize_subspaces_mask(subspaces, models, datasets)
         for ix, subspace in enumerate(subspaces):
@@ -1333,7 +1305,6 @@ class TrustRegionBox(Box, UpdateableSearchSpace):
         self,
         models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
         datasets: Optional[Mapping[Tag, Dataset]] = None,
-        **kwargs: Any,
     ) -> None:
         """Initialize the box."""
         dataset = get_value_for_tag(datasets)
@@ -1348,14 +1319,13 @@ class TrustRegionBox(Box, UpdateableSearchSpace):
         self,
         models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
         datasets: Optional[Mapping[Tag, Dataset]] = None,
-        **kwargs: Any,
     ) -> None:
         """Update this box, including centre/location, using the given dataset. If the size of the
         box is less than the minimum size, initialize the box."""
         dataset = get_value_for_tag(datasets)
 
         if tf.reduce_any(self._eps < self._min_eps):
-            self.initialize(models, datasets, **kwargs)
+            self.initialize(models, datasets)
             return
 
         x_min, y_min = self.get_local_min(dataset)
@@ -1386,63 +1356,17 @@ class TrustRegionBox(Box, UpdateableSearchSpace):
         return tf.squeeze(x_min, axis=0), tf.squeeze(y_min)
 
 
-TrustRegionBoxType = TypeVar("TrustRegionBoxType", bound=TrustRegionBox)
-""" A type variable bound to :class:`TrustRegionBox`. """
-
-
-class MultiTrustRegionBox(MultiTrustRegion[ProbabilisticModelType, TrustRegionBoxType]):
-    """Implements the *trust region* acquisition algorithm for a box."""
-
-    def __init__(
-        self,
-        subspace_type: Type[TrustRegionBoxType],
-        rule: AcquisitionRule[TensorType, SearchSpace, ProbabilisticModelType] | None = None,
-        number_of_tr: int = 1,
-        beta: float = 0.7,
-        kappa: float = 1e-4,
-        min_eps: float = 1e-2,
-    ):
-        """Concrete implementation of :class:`MultiTrustRegion` for a box.
-
-        :param subspace_type: The type of the subspace to use.
-        :param rule: The acquisition rule that defines how to search for a new query point in a
-            given search space. Defaults to :class:`EfficientGlobalOptimization` with default
-            arguments.
-        :param number_of_tr: The number of trust regions.
-        :param beta: The inverse of the trust region contraction factor.
-        :param kappa: The trust region volume scaling factor.
-        :param min_eps: The minimum size of the trust region.
-        """
-        super().__init__(subspace_type, rule, number_of_tr)
-        self._beta = beta
-        self._kappa = kappa
-        self._min_eps = min_eps
-
-    def __repr__(self) -> str:
-        """"""
-        return f"""MultiTrustRegionBox(
-            {self._subspace_type!r},
-            {self._rule!r},
-            {self._number_of_tr!r},
-            {self._beta!r},
-            {self._kappa!r},
-            {self._min_eps!r})"""
-
-    def create_subspace(
-        self,
-        search_space: SearchSpace,
-    ) -> TrustRegionBoxType:
-        """Create a subspace from the given global search space."""
-        return self._subspace_type(search_space, self._beta, self._kappa, self._min_eps)
+class MultiTrustRegionBox(MultiTrustRegion[ProbabilisticModelType, TrustRegionBox]):
+    """Implements the :class:`MultiTrustRegion` *trust region* acquisition algorithm for a box."""
 
     def get_initialize_subspaces_mask(
         self,
-        subspaces: Sequence[TrustRegionBoxType],
+        subspaces: Sequence[TrustRegionBox],
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> TensorType:
         """Get mask for subspaces that need to be initialized.
-        # Initialize the subspaces that have non-unique locations.
+        Initialize the subspaces that have non-unique locations.
         """
         centres = tf.stack([subspace.location for subspace in subspaces])
         return tf.logical_not(get_unique_points_mask(centres, tolerance=1e-6))
