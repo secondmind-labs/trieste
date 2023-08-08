@@ -31,6 +31,9 @@ class _QuadraticPredictor(GPflowPredictor):
     def model(self) -> GPModel:
         return _QuadraticGPModel()
 
+    def optimize(self, dataset: Dataset) -> None:
+        self.optimizer.optimize(self.model, dataset)
+
     def update(self, dataset: Dataset) -> None:
         return
 

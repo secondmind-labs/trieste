@@ -33,6 +33,7 @@ from ..interfaces import (
     SupportsGetKernel,
     SupportsGetObservationNoise,
     SupportsPredictJoint,
+    TrainableProbabilisticModel,
 )
 from ..optimizer import Optimizer
 from ..utils import (
@@ -44,7 +45,12 @@ from .sampler import BatchReparametrizationSampler
 
 
 class GPflowPredictor(
-    SupportsPredictJoint, SupportsGetKernel, SupportsGetObservationNoise, HasReparamSampler, ABC
+    SupportsPredictJoint,
+    SupportsGetKernel,
+    SupportsGetObservationNoise,
+    HasReparamSampler,
+    TrainableProbabilisticModel,
+    ABC,
 ):
     """A trainable wrapper for a GPflow Gaussian process model."""
 
@@ -149,14 +155,6 @@ class GPflowPredictor(
             raise NotImplementedError(f"Model {self!r} does not have scalar observation noise")
 
         return noise_variance
-
-    def optimize(self, dataset: Dataset) -> None:
-        """
-        Optimize the model with the specified `dataset`.
-
-        :param dataset: The data with which to optimize the `model`.
-        """
-        self.optimizer.optimize(self.model, dataset)
 
     def log(self, dataset: Optional[Dataset] = None) -> None:
         """

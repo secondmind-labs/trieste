@@ -233,7 +233,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
                 for tag, model in self._models.items():
                     dataset = datasets[tag]
                     model.update(dataset)
-                    model.optimize(dataset)
+                    model.optimize_and_save_result(dataset)
 
             summary_writer = logging.get_tensorboard_writer()
             if summary_writer:
@@ -434,7 +434,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
             for tag, model in self._models.items():
                 dataset = self._datasets[tag]
                 model.update(dataset)
-                model.optimize(dataset)
+                model.optimize_and_save_result(dataset)
 
         summary_writer = logging.get_tensorboard_writer()
         if summary_writer:

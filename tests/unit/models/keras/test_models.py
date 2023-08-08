@@ -215,9 +215,10 @@ def test_deep_ensemble_resets_lr_with_lr_schedule() -> None:
 
     npt.assert_allclose(model.model.optimizer.lr.numpy(), init_lr, rtol=1e-6)
 
-    model.optimize(example_data)
+    model.optimize_and_save_result(example_data)
 
-    npt.assert_allclose(model.model.history.history["lr"], [0.5, 0.25])
+    assert model.last_optimization_result is not None
+    npt.assert_allclose(model.last_optimization_result.history["lr"], [0.5, 0.25])
     npt.assert_allclose(model.model.optimizer.lr.numpy(), init_lr, rtol=1e-6)
 
 
