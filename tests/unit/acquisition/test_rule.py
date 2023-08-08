@@ -1403,6 +1403,34 @@ def test_multi_trust_region_box_acquire_with_state() -> None:
         npt.assert_allclose(subspace._eps, exp_eps)
 
 
+def test_multi_trust_region_box_state_deepcopy() -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    dataset = Dataset(
+        tf.constant([[0.25, 0.25], [0.5, 0.5], [0.75, 0.75]], dtype=tf.float64),
+        tf.constant([[1.0], [1.0], [1.0]], dtype=tf.float64),
+    )
+    subspaces = [TrustRegionBox(search_space, 0.07, 1e-5, 1e-3) for _ in range(3)]
+    for _subspace in subspaces:
+        _subspace.initialize(datasets={OBJECTIVE: dataset})
+    state = MultiTrustRegionBox.State(acquisition_space=TaggedMultiSearchSpace(subspaces))
+
+    state_copy = copy.deepcopy(state)
+    assert state_copy is not state
+    assert state_copy.acquisition_space.subspace_tags == state.acquisition_space.subspace_tags
+
+    for subspace, subspace_copy in zip(
+        state.acquisition_space._spaces.values(), state_copy.acquisition_space._spaces.values()
+    ):
+        assert isinstance(subspace, TrustRegionBox)
+        assert isinstance(subspace_copy, TrustRegionBox)
+        assert subspace._beta == subspace_copy._beta
+        assert subspace._kappa == subspace_copy._kappa
+        assert subspace._min_eps == subspace_copy._min_eps
+        npt.assert_array_equal(subspace._eps, subspace_copy._eps)
+        npt.assert_array_equal(subspace._location, subspace_copy._location)
+        npt.assert_array_equal(subspace.y_min, subspace_copy.y_min)
+
+
 def test_asynchronous_rule_state_pending_points() -> None:
     pending_points = tf.constant([[1], [2], [3]])
 
