@@ -25,6 +25,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Generic, Optional, Sequence, Tuple, TypeVar, Union, cast, overload
 
 import numpy as np
+from check_shapes import check_shapes, inherit_check_shapes
 
 try:
     import pymoo
@@ -1198,13 +1199,13 @@ class MultiTrustRegion(
                     MultiTrustRegion acquisition rule {self._tags}"""
 
             subspaces = []
-            for index, tag in enumerate(self._tags):
+            for tag, init_subspace in zip(self._tags, self._init_subspaces):
                 if state is None:
-                    subspace = self._init_subspaces[index]
+                    subspace = init_subspace
                     subspace.initialize(models, datasets)
                 else:
                     _subspace = state.acquisition_space.get_subspace(tag)
-                    assert isinstance(_subspace, type(self._init_subspaces[index]))
+                    assert isinstance(_subspace, type(init_subspace))
                     subspace = _subspace
                     subspace.update(models, datasets)
 
@@ -1235,18 +1236,35 @@ class MultiTrustRegion(
         Initialize individual subpaces by calling the method of the UpdateableSearchSpaceType class.
         """
         mask = self.get_initialize_subspaces_mask(subspaces, models, datasets)
+        tf.debugging.assert_equal(
+            tf.shape(mask),
+            (len(subspaces),),
+            message="The mask for initializing subspaces should be of the same length as the "
+            "number of subspaces",
+        )
         for ix, subspace in enumerate(subspaces):
             if mask[ix]:
                 subspace.initialize(models, datasets)
 
     @abstractmethod
+    @check_shapes("return: [V]")
     def get_initialize_subspaces_mask(
         self,
         subspaces: Sequence[UpdateableSearchSpaceType],
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> TensorType:
-        """Get mask for subspaces that need to be initialized."""
+        """
+        Return a boolean mask for subspaces that should be initialized.
+        This method is called during the acquisition step to determine which subspaces should be
+        initialized and which should be updated. The subspaces corresponding to True values in the
+        mask will be re-initialized.
+
+        :param subspaces: The sequence of subspaces.
+        :param models: The model for each tag.
+        :param datasets: The dataset for each tag.
+        :return: A boolean mask of length V, where V is the number of subspaces.
+        """
         ...
 
 
@@ -1359,15 +1377,14 @@ class TrustRegionBox(Box, UpdateableSearchSpace):
 class MultiTrustRegionBox(MultiTrustRegion[ProbabilisticModelType, TrustRegionBox]):
     """Implements the :class:`MultiTrustRegion` *trust region* acquisition algorithm for a box."""
 
+    @inherit_check_shapes
     def get_initialize_subspaces_mask(
         self,
         subspaces: Sequence[TrustRegionBox],
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> TensorType:
-        """Get mask for subspaces that need to be initialized.
-        Initialize the subspaces that have non-unique locations.
-        """
+        # Initialize the subspaces that have non-unique locations.
         centres = tf.stack([subspace.location for subspace in subspaces])
         return tf.logical_not(get_unique_points_mask(centres, tolerance=1e-6))
 
