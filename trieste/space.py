@@ -23,6 +23,7 @@ import numpy as np
 import scipy.optimize as spo
 import tensorflow as tf
 import tensorflow_probability as tfp
+from check_shapes import check_shapes
 
 from .types import TensorType
 
@@ -1031,6 +1032,7 @@ class TaggedProductSearchSpace(CollectionSearchSpace):
         self._dimension = tf.cast(tf.reduce_sum(subspace_sizes), dtype=tf.int32)
 
     @property
+    @check_shapes("return: [D]")
     def lower(self) -> TensorType:
         """The lowest values taken by each space dimension, concatenated across subspaces."""
         lower_for_each_subspace = self.subspace_lower
@@ -1041,6 +1043,7 @@ class TaggedProductSearchSpace(CollectionSearchSpace):
         )
 
     @property
+    @check_shapes("return: [D]")
     def upper(self) -> TensorType:
         """The highest values taken by each space dimension, concatenated across subspaces."""
         upper_for_each_subspace = self.subspace_upper
@@ -1051,6 +1054,7 @@ class TaggedProductSearchSpace(CollectionSearchSpace):
         )
 
     @property
+    @check_shapes("return: []")
     def dimension(self) -> TensorType:
         """The number of inputs in this product search space."""
         return self._dimension
@@ -1108,6 +1112,7 @@ class TaggedProductSearchSpace(CollectionSearchSpace):
         ]
         return tf.reduce_all(in_each_subspace, axis=0)
 
+    @check_shapes("return: [num_samples, D]")
     def sample(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
         """
         Sample randomly from the space by sampling from each subspace
@@ -1151,7 +1156,7 @@ class TaggedMultiSearchSpace(CollectionSearchSpace):
 
     def __init__(self, spaces: Sequence[SearchSpace], tags: Optional[Sequence[str]] = None):
         r"""
-        Build a :class:`TaggedProductSearchSpace` from a list ``spaces`` of other spaces. If
+        Build a :class:`TaggedMultiSearchSpace` from a list ``spaces`` of other spaces. If
         ``tags`` are provided then they form the identifiers of the subspaces, otherwise the
         subspaces are labelled numerically.
 
@@ -1185,6 +1190,7 @@ class TaggedMultiSearchSpace(CollectionSearchSpace):
         super().__init__(spaces, tags)
 
     @property
+    @check_shapes("return: [V, D]")
     def lower(self) -> TensorType:
         """Returns the stacked lower bounds of all the subspaces.
 
@@ -1196,6 +1202,7 @@ class TaggedMultiSearchSpace(CollectionSearchSpace):
         return tf.stack(lower, axis=0) if lower else tf.constant([], dtype=DEFAULT_DTYPE)
 
     @property
+    @check_shapes("return: [V, D]")
     def upper(self) -> TensorType:
         """Returns the stacked upper bounds of all the subspaces.
 
@@ -1207,10 +1214,12 @@ class TaggedMultiSearchSpace(CollectionSearchSpace):
         return tf.stack(upper, axis=0) if upper else tf.constant([], dtype=DEFAULT_DTYPE)
 
     @property
+    @check_shapes("return: []")
     def dimension(self) -> TensorType:
         """The number of inputs in this search space."""
         return self.get_subspace(self.subspace_tags[0]).dimension
 
+    @check_shapes("return: [num_samples, V, D]")
     def sample(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
         """
         Sample randomly from the space by sampling from each subspace

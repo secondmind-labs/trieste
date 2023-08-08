@@ -1271,7 +1271,6 @@ def test_multi_trust_region_box_acquire_no_state() -> None:
         tf.constant([[0.5], [0.0], [1.0]], dtype=tf.float64),
     )
     datasets = {OBJECTIVE: dataset}
-    # models = {OBJECTIVE: svgp_model(dataset.query_points, dataset.observations)}
     model = QuadraticMeanAndRBFKernelWithSamplers(
         dataset=dataset, noise_variance=tf.constant(1.0, dtype=tf.float64)
     )
@@ -1299,6 +1298,31 @@ def test_multi_trust_region_box_acquire_no_state() -> None:
         assert subspace._kappa == 1e-3
         assert subspace._min_eps == 1e-1
         assert point in subspace
+
+
+def test_multi_trust_region_box_raises_on_mismatched_tags() -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    dataset = Dataset(
+        tf.constant([[0.0, 0.0], [1.0, 1.0]], dtype=tf.float64),
+        tf.constant([[0.0], [1.0]], dtype=tf.float64),
+    )
+    base_rule = EfficientGlobalOptimization(  # type: ignore[var-annotated]
+        builder=ParallelContinuousThompsonSampling(), num_query_points=2
+    )
+    subspaces = [TrustRegionBox(search_space) for _ in range(2)]
+    mtb = MultiTrustRegionBox(subspaces, base_rule)
+
+    state = MultiTrustRegionBox.State(
+        acquisition_space=TaggedMultiSearchSpace(subspaces, tags=["a", "b"])
+    )
+    state_func = mtb.acquire(
+        search_space,
+        {OBJECTIVE: QuadraticMeanAndRBFKernelWithSamplers(dataset)},
+        {OBJECTIVE: dataset},
+    )
+
+    with pytest.raises(AssertionError, match="The tags of the state acquisition space"):
+        _, _ = state_func(state)
 
 
 class TestTrustRegionBox(TrustRegionBox):

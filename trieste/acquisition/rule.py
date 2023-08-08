@@ -1113,7 +1113,12 @@ class UpdateableSearchSpace(SearchSpace):
         models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> None:
-        """Initialize the search space using the given models and datasets."""
+        """
+        Initialize the search space using the given models and datasets.
+
+        :param models: The model for each tag.
+        :param datasets: The dataset for each tag.
+        """
         ...
 
     @abstractmethod
@@ -1122,7 +1127,12 @@ class UpdateableSearchSpace(SearchSpace):
         models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> None:
-        """Update the search space using the given models and datasets."""
+        """
+        Update the search space using the given models and datasets.
+
+        :param models: The model for each tag.
+        :param datasets: The dataset for each tag.
+        """
         ...
 
 
@@ -1160,9 +1170,8 @@ class MultiTrustRegion(
     ):
         """
         :param init_subspaces: The initial search spaces for each trust region.
-        :param rule: The acquisition rule that defines how to search for a new query point in a
-            given search space. Defaults to :class:`EfficientGlobalOptimization` with default
-            arguments.
+        :param rule: The acquisition rule that defines how to search for a new query point in each
+            subspace. Defaults to :class:`EfficientGlobalOptimization` with default arguments.
         """
         if rule is None:
             rule = EfficientGlobalOptimization()
@@ -1184,9 +1193,12 @@ class MultiTrustRegion(
         def state_func(
             state: MultiTrustRegion.State | None,
         ) -> Tuple[MultiTrustRegion.State | None, TensorType]:
-            """If state is None, initialise the subspaces by picking new locations. Otherwise,
+            """
+            If state is None, initialize the subspaces by picking new locations. Otherwise,
             update the existing subspaces.
-            Initialize the subspaces if necessary, potentially looking at the entire group.
+
+            Re-initialize the subspaces if necessary, potentially looking at the entire group.
+
             Use the rule to acquire points from the acquisition space.
             """
             # If state is set, the tags should be the same as the tags of the acquisition space
@@ -1231,9 +1243,12 @@ class MultiTrustRegion(
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> None:
-        """Initialize subspaces if necessary.
+        """
+        Initialize subspaces if necessary.
         Get a mask of subspaces that need to be initialized using an abstract method.
         Initialize individual subpaces by calling the method of the UpdateableSearchSpaceType class.
+
+        This method can be overridden by subclasses to change this behaviour.
         """
         mask = self.get_initialize_subspaces_mask(subspaces, models, datasets)
         tf.debugging.assert_equal(
@@ -1324,7 +1339,10 @@ class TrustRegionBox(Box, UpdateableSearchSpace):
         models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> None:
-        """Initialize the box."""
+        """
+        Initialize the box by sampling a location from the global search space and setting the
+        bounds.
+        """
         dataset = get_value_for_tag(datasets)
 
         self.location = tf.squeeze(self.global_search_space.sample(1), axis=0)
@@ -1338,8 +1356,10 @@ class TrustRegionBox(Box, UpdateableSearchSpace):
         models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> None:
-        """Update this box, including centre/location, using the given dataset. If the size of the
-        box is less than the minimum size, initialize the box."""
+        """
+        Update this box, including centre/location, using the given dataset. If the size of the
+        box is less than the minimum size, re-initialize the box.
+        """
         dataset = get_value_for_tag(datasets)
 
         if tf.reduce_any(self._eps < self._min_eps):
@@ -1356,6 +1376,10 @@ class TrustRegionBox(Box, UpdateableSearchSpace):
 
         _, self.y_min = self.get_local_min(dataset)
 
+    @check_shapes(
+        "return[0]: [D]",
+        "return[1]: []",
+    )
     def get_local_min(self, dataset: Optional[Dataset]) -> Tuple[TensorType, TensorType]:
         """Calculate the local minimum of the box using the given dataset."""
         if dataset is None:
