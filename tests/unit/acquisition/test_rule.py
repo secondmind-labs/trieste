@@ -1416,11 +1416,14 @@ def test_multi_trust_region_box_state_deepcopy() -> None:
 
     state_copy = copy.deepcopy(state)
     assert state_copy is not state
+    assert state_copy.acquisition_space is not state.acquisition_space
+    assert state_copy.acquisition_space._spaces is not state.acquisition_space._spaces
     assert state_copy.acquisition_space.subspace_tags == state.acquisition_space.subspace_tags
 
     for subspace, subspace_copy in zip(
         state.acquisition_space._spaces.values(), state_copy.acquisition_space._spaces.values()
     ):
+        assert subspace is not subspace_copy
         assert isinstance(subspace, TrustRegionBox)
         assert isinstance(subspace_copy, TrustRegionBox)
         assert subspace._beta == subspace_copy._beta
