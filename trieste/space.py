@@ -478,9 +478,6 @@ class DiscreteSearchSpace(SearchSpace):
             return NotImplemented
         return bool(tf.reduce_all(tf.sort(self.points, 0) == tf.sort(other.points, 0)))
 
-    def __deepcopy__(self, memo: dict[int, object]) -> DiscreteSearchSpace:
-        return self
-
 
 class Box(SearchSpace):
     r"""
@@ -843,9 +840,6 @@ class Box(SearchSpace):
             and self._constraints == other._constraints
         )
 
-    def __deepcopy__(self, memo: dict[int, object]) -> Box:
-        return self
-
     def constraints_residuals(self, points: TensorType) -> TensorType:
         """
         Return residuals for all the constraints in this :class:`SearchSpace`.
@@ -1074,6 +1068,3 @@ class TaggedProductSearchSpace(SearchSpace):
         if not isinstance(other, TaggedProductSearchSpace):
             return NotImplemented
         return self._tags == other._tags and self._spaces == other._spaces
-
-    def __deepcopy__(self, memo: dict[int, object]) -> TaggedProductSearchSpace:
-        return self
