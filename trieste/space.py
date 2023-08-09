@@ -479,9 +479,6 @@ class DiscreteSearchSpace(SearchSpace):
             return NotImplemented
         return bool(tf.reduce_all(tf.sort(self.points, 0) == tf.sort(other.points, 0)))
 
-    def __deepcopy__(self, memo: dict[int, object]) -> DiscreteSearchSpace:
-        return self
-
 
 class Box(SearchSpace):
     r"""
@@ -844,9 +841,6 @@ class Box(SearchSpace):
             and self._constraints == other._constraints
         )
 
-    def __deepcopy__(self, memo: dict[int, object]) -> Box:
-        return self
-
     def constraints_residuals(self, points: TensorType) -> TensorType:
         """
         Return residuals for all the constraints in this :class:`SearchSpace`.
@@ -1137,9 +1131,6 @@ class TaggedProductSearchSpace(CollectionSearchSpace):
         """
         return TaggedProductSearchSpace(spaces=[self, other])
 
-    def __deepcopy__(self, memo: dict[int, object]) -> TaggedProductSearchSpace:
-        return self
-
 
 class TaggedMultiSearchSpace(CollectionSearchSpace):
     r"""
@@ -1273,6 +1264,3 @@ class TaggedMultiSearchSpace(CollectionSearchSpace):
         samples = tf.reshape(samples, [-1, self.dimension])  # Flatten the samples across subspaces.
         samples = tf.random.shuffle(samples)[:num_samples]  # Randomly pick num_samples points.
         return DiscreteSearchSpace(points=samples)
-
-    def __deepcopy__(self, memo: dict[int, object]) -> TaggedMultiSearchSpace:
-        return self
