@@ -1411,6 +1411,45 @@ class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, SingleObjecti
         return tf.logical_not(get_unique_points_mask(centres, tolerance=1e-6))
 
 
+class TREGOBox(TrustRegionBox):
+    """
+    A trust region box algorithm that alternates between regular EGO steps and local steps within a
+    trust region.
+    """
+
+    def __init__(
+        self,
+        global_search_space: SearchSpace,
+        beta: float = 0.7,
+        kappa: float = 1e-4,
+        min_eps: float = 1e-2,
+    ):
+        super().__init__(global_search_space, beta, kappa, min_eps)
+        self._is_global = False
+
+    @property
+    def eps(self) -> TensorType:
+        """The size of the search space."""
+        return self._eps
+
+    @eps.setter
+    def eps(self, eps: TensorType) -> None:
+        """Set the size of the search space."""
+        # Don't change the eps in global mode.
+        if not self._is_global:
+            self._eps = eps
+
+    def _update_bounds(self) -> None:
+        self._is_global = self._step_is_success or not self._is_global
+
+        # Use global bounds in global mode.
+        if self._is_global:
+            self._lower = self.global_search_space.lower
+            self._upper = self.global_search_space.upper
+        else:
+            super()._update_bounds()
+
+
 class TURBO(
     AcquisitionRule[
         types.State[Optional["TURBO.State"], TensorType], Box, TrainableSupportsGetKernel
