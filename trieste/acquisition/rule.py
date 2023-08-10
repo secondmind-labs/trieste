@@ -1321,6 +1321,16 @@ class TrustRegionBox(Box, UpdateableSearchSpace):
         """Set the location of the search space."""
         self._location = location
 
+    @property
+    def eps(self) -> TensorType:
+        """The size of the search space."""
+        return self._eps
+
+    @eps.setter
+    def eps(self, eps: TensorType) -> None:
+        """Set the size of the search space."""
+        self._eps = eps
+
     def _init_eps(self) -> None:
         global_lower = self.global_search_space.lower
         global_upper = self.global_search_space.upper
@@ -1328,10 +1338,10 @@ class TrustRegionBox(Box, UpdateableSearchSpace):
 
     def _update_bounds(self) -> None:
         self._lower = tf.reduce_max(
-            [self.global_search_space.lower, self.location - self._eps], axis=0
+            [self.global_search_space.lower, self.location - self.eps], axis=0
         )
         self._upper = tf.reduce_min(
-            [self.global_search_space.upper, self.location + self._eps], axis=0
+            [self.global_search_space.upper, self.location + self.eps], axis=0
         )
 
     def initialize(
@@ -1346,10 +1356,10 @@ class TrustRegionBox(Box, UpdateableSearchSpace):
         dataset = get_value_for_tag(datasets)
 
         self.location = tf.squeeze(self.global_search_space.sample(1), axis=0)
+        self._step_is_success = False
         self._init_eps()
         self._update_bounds()
-
-        _, self.y_min = self.get_local_min(dataset)
+        _, self._y_min = self.get_local_min(dataset)
 
     def update(
         self,
@@ -1362,7 +1372,7 @@ class TrustRegionBox(Box, UpdateableSearchSpace):
         """
         dataset = get_value_for_tag(datasets)
 
-        if tf.reduce_any(self._eps < self._min_eps):
+        if tf.reduce_any(self.eps < self._min_eps):
             self.initialize(models, datasets)
             return
 
@@ -1370,11 +1380,10 @@ class TrustRegionBox(Box, UpdateableSearchSpace):
         self.location = x_min
 
         tr_volume = tf.reduce_prod(self.upper - self.lower)
-        step_is_success = y_min < self.y_min - self._kappa * tr_volume
-        self._eps = self._eps / self._beta if step_is_success else self._eps * self._beta
+        self._step_is_success = y_min < self._y_min - self._kappa * tr_volume
+        self.eps = self.eps / self._beta if self._step_is_success else self.eps * self._beta
         self._update_bounds()
-
-        _, self.y_min = self.get_local_min(dataset)
+        self._y_min = y_min
 
     @check_shapes(
         "return[0]: [D]",

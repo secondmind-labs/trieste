@@ -1172,7 +1172,7 @@ def test_trust_region_box_initialize() -> None:
     npt.assert_array_compare(np.less_equal, search_space.lower, trb.lower)
     npt.assert_array_compare(np.less_equal, trb.upper, search_space.upper)
     npt.assert_array_compare(np.less_equal, trb.upper - trb.lower, 2 * exp_eps)
-    npt.assert_array_equal(trb.y_min, tf.constant([np.inf], dtype=tf.float64))
+    npt.assert_array_equal(trb._y_min, tf.constant([np.inf], dtype=tf.float64))
 
 
 # Update call initializes the box if eps is smaller than min_eps.
@@ -1221,46 +1221,57 @@ def test_trust_region_box_update_size(success: bool) -> None:
     datasets = {
         OBJECTIVE: Dataset(
             tf.constant([[0.5, 0.5], [0.0, 0.0], [1.0, 1.0]], dtype=tf.float64),
-            tf.constant([[0.5], [0.0], [1.0]], dtype=tf.float64),
+            tf.constant([[0.5], [0.3], [1.0]], dtype=tf.float64),
         )
     }
     trb = TrustRegionBox(search_space, min_eps=0.1)
     trb.initialize(datasets=datasets)
+
+    # Ensure there is at least one point captured in the box.
+    orig_point = trb.sample(1)
+    orig_min = tf.constant([[0.1]], dtype=tf.float64)
+    datasets[OBJECTIVE] = Dataset(
+        np.concatenate([datasets[OBJECTIVE].query_points, orig_point], axis=0),
+        np.concatenate([datasets[OBJECTIVE].observations, orig_min], axis=0),
+    )
+    trb.update(datasets=datasets)
+
     eps = trb._eps
 
     if success:
         # Sample a point from the box.
-        point = trb.sample(1)
+        new_point = trb.sample(1)
     else:
         # Pick point outside the box.
-        point = tf.constant([[1.2, 1.3]], dtype=tf.float64)
+        new_point = tf.constant([[1.2, 1.3]], dtype=tf.float64)
 
     # Add a new min point to the dataset.
+    new_min = tf.constant([[-0.1]], dtype=tf.float64)
     datasets[OBJECTIVE] = Dataset(
-        np.concatenate([datasets[OBJECTIVE].query_points, point], axis=0),
-        np.concatenate([datasets[OBJECTIVE].observations, [[-0.1]]], axis=0),
+        np.concatenate([datasets[OBJECTIVE].query_points, new_point], axis=0),
+        np.concatenate([datasets[OBJECTIVE].observations, new_min], axis=0),
     )
     # Update the box.
     trb.update(datasets=datasets)
 
     if success:
         # Check that the location is the new min point.
-        point = np.squeeze(point)
-        npt.assert_allclose(point, trb.location)
-        npt.assert_allclose(tf.constant([-0.1], dtype=tf.float64), trb.y_min)
-        # Check that the box is smaller by beta.
+        new_point = np.squeeze(new_point)
+        npt.assert_allclose(new_point, trb.location)
+        npt.assert_allclose(new_min, trb._y_min)
+        # Check that the box is larger by beta.
         npt.assert_allclose(eps / trb._beta, trb._eps)
     else:
         # Check that the location is the old min point.
-        point, y_min = trb.get_local_min(datasets[OBJECTIVE])
-        npt.assert_allclose(point, trb.location)
-        npt.assert_allclose(y_min, trb.y_min)
-        # Check that the box is larger by beta.
+        orig_point = np.squeeze(orig_point)
+        npt.assert_allclose(orig_point, trb.location)
+        npt.assert_allclose(orig_min, trb._y_min)
+        # Check that the box is smaller by beta.
         npt.assert_allclose(eps * trb._beta, trb._eps)
 
     # Check the new box bounds.
-    npt.assert_allclose(trb.lower, np.maximum(point - trb._eps, search_space.lower))
-    npt.assert_allclose(trb.upper, np.minimum(point + trb._eps, search_space.upper))
+    npt.assert_allclose(trb.lower, np.maximum(trb.location - trb._eps, search_space.lower))
+    npt.assert_allclose(trb.upper, np.minimum(trb.location + trb._eps, search_space.upper))
 
 
 # When state is None, acquire returns a multi search space of the correct type.
@@ -1398,7 +1409,7 @@ def test_multi_trust_region_box_acquire_with_state() -> None:
         [0.1, 0.1, 0.07],  # First two regions updated, third region initialized.
     ):
         assert point in subspace
-        npt.assert_array_equal(subspace.y_min, exp_obs)
+        npt.assert_array_equal(subspace._y_min, exp_obs)
         # Check the box was updated/initialized correctly.
         npt.assert_allclose(subspace._eps, exp_eps)
 
@@ -1431,7 +1442,7 @@ def test_multi_trust_region_box_state_deepcopy() -> None:
         assert subspace._min_eps == subspace_copy._min_eps
         npt.assert_array_equal(subspace._eps, subspace_copy._eps)
         npt.assert_array_equal(subspace._location, subspace_copy._location)
-        npt.assert_array_equal(subspace.y_min, subspace_copy.y_min)
+        npt.assert_array_equal(subspace._y_min, subspace_copy._y_min)
 
 
 def test_asynchronous_rule_state_pending_points() -> None:
