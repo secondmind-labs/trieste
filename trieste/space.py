@@ -1188,9 +1188,7 @@ class TaggedMultiSearchSpace(CollectionSearchSpace):
         :return: The lower bounds of shape [V, D], where V is the number of subspaces and D is
             the dimensionality of each subspace.
         """
-
-        lower = self.subspace_lower
-        return tf.stack(lower, axis=0) if lower else tf.constant([], dtype=DEFAULT_DTYPE)
+        return tf.stack(self.subspace_lower, axis=0)
 
     @property
     @check_shapes("return: [V, D]")
@@ -1200,9 +1198,7 @@ class TaggedMultiSearchSpace(CollectionSearchSpace):
         :return: The upper bounds of shape [V, D], where V is the number of subspaces and D is
             the dimensionality of each subspace.
         """
-
-        upper = self.subspace_upper
-        return tf.stack(upper, axis=0) if upper else tf.constant([], dtype=DEFAULT_DTYPE)
+        return tf.stack(self.subspace_upper, axis=0)
 
     @property
     @check_shapes("return: []")
