@@ -1297,6 +1297,11 @@ class TrustRegionBox(Box, UpdateableSearchSpace):
         Calculates the bounds of the box from the location/centre and global bounds.
 
         :param global_search_space: The global search space this search space lives in.
+        :param beta: The inverse of the trust region contraction factor.
+        :param kappa: Scales the threshold for the minimal improvement required for a step to be
+            considered a success.
+        :param min_eps: The minimal size of the search space. If the size of the search space is
+            smaller than this, the search space is reinitialized.
         """
 
         self._global_search_space = global_search_space
@@ -1311,30 +1316,10 @@ class TrustRegionBox(Box, UpdateableSearchSpace):
         """The global search space this search space lives in."""
         return self._global_search_space
 
-    @property
-    def location(self) -> TensorType:
-        """The location of the search space."""
-        return self._location
-
-    @location.setter
-    def location(self, location: TensorType) -> None:
-        """Set the location of the search space."""
-        self._location = location
-
-    @property
-    def eps(self) -> TensorType:
-        """The size of the search space."""
-        return self._eps
-
-    @eps.setter
-    def eps(self, eps: TensorType) -> None:
-        """Set the size of the search space."""
-        self._eps = eps
-
     def _init_eps(self) -> None:
         global_lower = self.global_search_space.lower
         global_upper = self.global_search_space.upper
-        self._eps = 0.5 * (global_upper - global_lower) / (5.0 ** (1.0 / global_lower.shape[-1]))
+        self.eps = 0.5 * (global_upper - global_lower) / (5.0 ** (1.0 / global_lower.shape[-1]))
 
     def _update_bounds(self) -> None:
         self._lower = tf.reduce_max(

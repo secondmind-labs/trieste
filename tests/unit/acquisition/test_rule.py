@@ -1166,7 +1166,7 @@ def test_trust_region_box_initialize() -> None:
     trb.initialize(datasets=datasets)
 
     exp_eps = 0.5 * (search_space.upper - search_space.lower) / 5.0 ** (1.0 / 2.0)
-    npt.assert_array_equal(trb._eps, exp_eps)
+    npt.assert_array_equal(trb.eps, exp_eps)
     npt.assert_array_compare(np.less_equal, search_space.lower, trb.location)
     npt.assert_array_compare(np.less_equal, trb.location, search_space.upper)
     npt.assert_array_compare(np.less_equal, search_space.lower, trb.lower)
@@ -1236,7 +1236,7 @@ def test_trust_region_box_update_size(success: bool) -> None:
     )
     trb.update(datasets=datasets)
 
-    eps = trb._eps
+    eps = trb.eps
 
     if success:
         # Sample a point from the box.
@@ -1260,18 +1260,18 @@ def test_trust_region_box_update_size(success: bool) -> None:
         npt.assert_allclose(new_point, trb.location)
         npt.assert_allclose(new_min, trb._y_min)
         # Check that the box is larger by beta.
-        npt.assert_allclose(eps / trb._beta, trb._eps)
+        npt.assert_allclose(eps / trb._beta, trb.eps)
     else:
         # Check that the location is the old min point.
         orig_point = np.squeeze(orig_point)
         npt.assert_allclose(orig_point, trb.location)
         npt.assert_allclose(orig_min, trb._y_min)
         # Check that the box is smaller by beta.
-        npt.assert_allclose(eps * trb._beta, trb._eps)
+        npt.assert_allclose(eps * trb._beta, trb.eps)
 
     # Check the new box bounds.
-    npt.assert_allclose(trb.lower, np.maximum(trb.location - trb._eps, search_space.lower))
-    npt.assert_allclose(trb.upper, np.minimum(trb.location + trb._eps, search_space.upper))
+    npt.assert_allclose(trb.lower, np.maximum(trb.location - trb.eps, search_space.lower))
+    npt.assert_allclose(trb.upper, np.minimum(trb.location + trb.eps, search_space.upper))
 
 
 # When state is None, acquire returns a multi search space of the correct type.
@@ -1357,7 +1357,7 @@ class TestTrustRegionBox(TrustRegionBox):
         ...
 
     def _init_eps(self) -> None:
-        self._eps = tf.constant(0.07, dtype=tf.float64)
+        self.eps = tf.constant(0.07, dtype=tf.float64)
 
 
 # Start with a defined state and dataset. Acquire should return an updated state.
@@ -1411,7 +1411,7 @@ def test_multi_trust_region_box_acquire_with_state() -> None:
         assert point in subspace
         npt.assert_array_equal(subspace._y_min, exp_obs)
         # Check the box was updated/initialized correctly.
-        npt.assert_allclose(subspace._eps, exp_eps)
+        npt.assert_allclose(subspace.eps, exp_eps)
 
 
 def test_multi_trust_region_box_state_deepcopy() -> None:
@@ -1440,8 +1440,8 @@ def test_multi_trust_region_box_state_deepcopy() -> None:
         assert subspace._beta == subspace_copy._beta
         assert subspace._kappa == subspace_copy._kappa
         assert subspace._min_eps == subspace_copy._min_eps
-        npt.assert_array_equal(subspace._eps, subspace_copy._eps)
-        npt.assert_array_equal(subspace._location, subspace_copy._location)
+        npt.assert_array_equal(subspace.eps, subspace_copy.eps)
+        npt.assert_array_equal(subspace.location, subspace_copy.location)
         npt.assert_array_equal(subspace._y_min, subspace_copy._y_min)
 
 
