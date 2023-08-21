@@ -24,12 +24,10 @@ from trieste.acquisition import AcquisitionFunction
 from trieste.acquisition.utils import (
     get_local_dataset,
     get_unique_points_mask,
-    get_value_for_tag,
     select_nth_output,
     split_acquisition_function,
 )
 from trieste.data import Dataset
-from trieste.observer import OBJECTIVE
 from trieste.space import Box, SearchSpaceType
 
 
@@ -132,20 +130,3 @@ def test_get_unique_points_mask(
 ) -> None:
     mask = get_unique_points_mask(points, tolerance)
     np.testing.assert_array_equal(mask, expected_mask)
-
-
-def test_get_value_for_tag_returns_none_if_mapping_is_none() -> None:
-    assert get_value_for_tag(None) is None
-
-
-def test_get_value_for_tag_raises_if_tag_not_in_mapping() -> None:
-    with pytest.raises(ValueError, match="tag 'baz' not found in mapping"):
-        get_value_for_tag({"foo": "bar"}, "baz")
-
-
-def test_get_value_for_tag_returns_value_for_default_tag() -> None:
-    assert get_value_for_tag({"foo": "bar", OBJECTIVE: "baz"}) == "baz"
-
-
-def test_get_value_for_tag_returns_value_for_specified_tag() -> None:
-    assert get_value_for_tag({"foo": "bar", OBJECTIVE: "baz"}, "foo") == "bar"

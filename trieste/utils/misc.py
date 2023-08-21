@@ -23,7 +23,8 @@ import tensorflow as tf
 from tensorflow.python.util import nest
 from typing_extensions import Final, final
 
-from ..types import TensorType
+from ..observer import OBJECTIVE
+from ..types import Tag, TensorType
 
 C = TypeVar("C", bound=Callable[..., object])
 """ A type variable bound to `typing.Callable`. """
@@ -213,6 +214,27 @@ def map_values(f: Callable[[U], V], mapping: Mapping[K, U]) -> Mapping[K, V]:
         applying ``f`` to each value in ``mapping``.
     """
     return {k: f(u) for k, u in mapping.items()}
+
+
+T = TypeVar("T")
+""" An unbound type variable. """
+
+
+def get_value_for_tag(mapping: Optional[Mapping[Tag, T]], tag: Tag = OBJECTIVE) -> Optional[T]:
+    """Return the value of a tag in a mapping.
+
+    :param mapping: A mapping from tags to values.
+    :param tag: A tag.
+    :return: The value of the tag in the mapping, or None if the mapping is None.
+    :raises ValueError: If the tag is not in the mapping and the mapping is not None.
+    """
+
+    if mapping is None:
+        return None
+    elif tag in mapping.keys():
+        return mapping[tag]
+    else:
+        raise ValueError(f"tag '{tag}' not found in mapping")
 
 
 class Timer:

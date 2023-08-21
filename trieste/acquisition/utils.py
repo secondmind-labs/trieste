@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import functools
-from typing import Mapping, Optional, Tuple, TypeVar, Union
+from typing import Tuple, Union
 
 import tensorflow as tf
 from check_shapes import check_shapes
 
 from ..data import Dataset
-from ..observer import OBJECTIVE
 from ..space import SearchSpaceType
-from ..types import Tag, TensorType
+from ..types import TensorType
 from .interface import AcquisitionFunction
 from .optimizer import AcquisitionOptimizer
 
@@ -172,24 +171,3 @@ def get_unique_points_mask(points: TensorType, tolerance: float = 1e-6) -> Tenso
         mask = tf.tensor_scatter_nd_update(mask, [[idx]], [is_unique_point])
 
     return mask
-
-
-T = TypeVar("T")
-""" An unbound type variable. """
-
-
-def get_value_for_tag(mapping: Optional[Mapping[Tag, T]], tag: Tag = OBJECTIVE) -> Optional[T]:
-    """Return the value of a tag in a mapping.
-
-    :param mapping: A mapping from tags to values.
-    :param tag: A tag.
-    :return: The value of the tag in the mapping, or None if the mapping is None.
-    :raises ValueError: If the tag is not in the mapping and the mapping is not None.
-    """
-
-    if mapping is None:
-        return None
-    elif tag in mapping.keys():
-        return mapping[tag]
-    else:
-        raise ValueError(f"tag '{tag}' not found in mapping")

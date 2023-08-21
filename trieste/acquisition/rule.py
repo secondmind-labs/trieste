@@ -50,6 +50,7 @@ from ..models.interfaces import (
 from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace, TaggedMultiSearchSpace
 from ..types import State, Tag, TensorType
+from ..utils.misc import get_value_for_tag
 from .function import (
     BatchMonteCarloExpectedImprovement,
     ExpectedImprovement,
@@ -72,7 +73,7 @@ from .optimizer import (
     batchify_vectorize,
 )
 from .sampler import ExactThompsonSampler, ThompsonSampler
-from .utils import get_local_dataset, get_unique_points_mask, get_value_for_tag, select_nth_output
+from .utils import get_local_dataset, get_unique_points_mask, select_nth_output
 
 ResultType = TypeVar("ResultType", covariant=True)
 """ Unbound covariant type variable. """
