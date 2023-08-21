@@ -17,7 +17,7 @@ import copy
 import itertools
 import operator
 from functools import reduce
-from typing import Container, List, Optional, Sequence, Type
+from typing import Any, Container, List, Optional, Sequence, Type
 
 import numpy.testing as npt
 import pytest
@@ -664,7 +664,11 @@ def test_box_deepcopy() -> None:
     npt.assert_allclose(box.upper, box_copy.upper)
 
 
-@pytest.mark.parametrize("search_space_type", [TaggedMultiSearchSpace, TaggedProductSearchSpace])
+@pytest.fixture(name="search_space_type", params=[TaggedMultiSearchSpace, TaggedProductSearchSpace])
+def _default_search_space_type_fixture(request: Any) -> Type[CollectionSearchSpace]:
+    return request.param
+
+
 def test_collection_space_raises_for_non_unqique_subspace_names(
     search_space_type: Type[CollectionSearchSpace],
 ) -> None:
@@ -674,7 +678,6 @@ def test_collection_space_raises_for_non_unqique_subspace_names(
         search_space_type(spaces=[space_A, space_B], tags=["A", "A"])
 
 
-@pytest.mark.parametrize("search_space_type", [TaggedMultiSearchSpace, TaggedProductSearchSpace])
 def test_collection_space_raises_for_length_mismatch_between_spaces_and_tags(
     search_space_type: Type[CollectionSearchSpace],
 ) -> None:
@@ -686,7 +689,6 @@ def test_collection_space_raises_for_length_mismatch_between_spaces_and_tags(
         search_space_type(spaces=[space_A, space_B], tags=["A", "B", "C"])
 
 
-@pytest.mark.parametrize("search_space_type", [TaggedMultiSearchSpace, TaggedProductSearchSpace])
 def test_collection_space_subspace_tags_attribute(
     search_space_type: Type[CollectionSearchSpace],
 ) -> None:
@@ -699,7 +701,6 @@ def test_collection_space_subspace_tags_attribute(
     npt.assert_array_equal(multi_space.subspace_tags, ["context", "decision"])
 
 
-@pytest.mark.parametrize("search_space_type", [TaggedMultiSearchSpace, TaggedProductSearchSpace])
 def test_collection_space_subspace_tags_default_behaviour(
     search_space_type: Type[CollectionSearchSpace],
 ) -> None:
@@ -710,7 +711,6 @@ def test_collection_space_subspace_tags_default_behaviour(
     npt.assert_array_equal(multi_space.subspace_tags, ["0", "1"])
 
 
-@pytest.mark.parametrize("search_space_type", [TaggedMultiSearchSpace, TaggedProductSearchSpace])
 def test_collection_space_get_subspace_raises_for_invalid_tag(
     search_space_type: Type[CollectionSearchSpace],
 ) -> None:
@@ -724,7 +724,6 @@ def test_collection_space_get_subspace_raises_for_invalid_tag(
         multi_space.get_subspace("dummy")
 
 
-@pytest.mark.parametrize("search_space_type", [TaggedMultiSearchSpace, TaggedProductSearchSpace])
 def test_collection_space_get_subspace(search_space_type: Type[CollectionSearchSpace]) -> None:
     space_A = Box([-1, -2], [2, 3])
     space_B = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]]))
@@ -846,7 +845,6 @@ def test_collection_space_contains_broadcasts(
         _ = points in collection_space
 
 
-@pytest.mark.parametrize("search_space_type", [TaggedMultiSearchSpace, TaggedProductSearchSpace])
 @pytest.mark.parametrize(
     "spaces",
     [
