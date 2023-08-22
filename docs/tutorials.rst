@@ -40,6 +40,7 @@ The following tutorials illustrate solving different types of optimization probl
    notebooks/qhsri-tutorial
    notebooks/multifidelity_modelling
    notebooks/rembo
+   notebooks/batch_trust_region
 
 Frequently asked questions
 --------------------------

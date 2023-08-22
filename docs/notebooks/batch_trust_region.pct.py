@@ -54,7 +54,7 @@ model = GaussianProcessRegression(gpflow_model)
 # %% [markdown]
 # ## Create the batch trust region acquisition rule
 #
-# We achieve Bayesian optimization with trust region by specifying `MultiTrustRegionBox` as the acquisition rule.
+# We achieve Bayesian optimization with trust region by specifying `BatchTrustRegionBox` as the acquisition rule.
 #
 # This rule requires an initial number `num_query_points` of sub-spaces (or trust regions) to be provided and performs optimization in parallel across all these sub-spaces. Each region contributes one query point, resulting in each acquisition step collecting `num_query_points` points overall. As the optimization process continues, the bounds of these sub-spaces are dynamically updated.
 #
@@ -66,14 +66,14 @@ model = GaussianProcessRegression(gpflow_model)
 num_query_points = 5
 
 init_subspaces = [
-    trieste.acquisition.rule.TrustRegionBox(search_space)
+    trieste.acquisition.rule.SingleObjectiveTRBox(search_space)
     for _ in range(num_query_points)
 ]
 base_rule = trieste.acquisition.rule.EfficientGlobalOptimization(  # type: ignore[var-annotated]
     builder=trieste.acquisition.ParallelContinuousThompsonSampling(),
     num_query_points=num_query_points,
 )
-acq_rule = trieste.acquisition.rule.MultiTrustRegionBox(
+acq_rule = trieste.acquisition.rule.BatchTrustRegionBox(
     init_subspaces, base_rule
 )
 
