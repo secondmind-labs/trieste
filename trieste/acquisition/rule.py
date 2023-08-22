@@ -1141,9 +1141,9 @@ UpdateableSearchSpaceType = TypeVar("UpdateableSearchSpaceType", bound=Updateabl
 """ A type variable bound to :class:`UpdateableSearchSpace`. """
 
 
-class MultiTrustRegion(
+class BatchTrustRegion(
     AcquisitionRule[
-        types.State[Optional["MultiTrustRegion.State"], TensorType],
+        types.State[Optional["BatchTrustRegion.State"], TensorType],
         SearchSpace,
         ProbabilisticModelType,
     ],
@@ -1155,17 +1155,17 @@ class MultiTrustRegion(
 
     @dataclass(frozen=True)
     class State:
-        """The acquisition state for the :class:`MultiTrustRegion` acquisition rule."""
+        """The acquisition state for the :class:`BatchTrustRegion` acquisition rule."""
 
         acquisition_space: TaggedMultiSearchSpace
         """ The search space. """
 
-        def __deepcopy__(self, memo: dict[int, object]) -> MultiTrustRegion.State:
+        def __deepcopy__(self, memo: dict[int, object]) -> BatchTrustRegion.State:
             acquisition_space_copy = copy.deepcopy(self.acquisition_space, memo)
-            return MultiTrustRegion.State(acquisition_space_copy)
+            return BatchTrustRegion.State(acquisition_space_copy)
 
     def __init__(
-        self: "MultiTrustRegion[ProbabilisticModelType, UpdateableSearchSpaceType]",
+        self: "BatchTrustRegion[ProbabilisticModelType, UpdateableSearchSpaceType]",
         init_subspaces: Sequence[UpdateableSearchSpaceType],
         rule: AcquisitionRule[TensorType, SearchSpace, ProbabilisticModelType] | None = None,
     ):
@@ -1192,8 +1192,8 @@ class MultiTrustRegion(
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> types.State[State | None, TensorType]:
         def state_func(
-            state: MultiTrustRegion.State | None,
-        ) -> Tuple[MultiTrustRegion.State | None, TensorType]:
+            state: BatchTrustRegion.State | None,
+        ) -> Tuple[BatchTrustRegion.State | None, TensorType]:
             """
             If state is None, initialize the subspaces by picking new locations. Otherwise,
             update the existing subspaces.
@@ -1209,7 +1209,7 @@ class MultiTrustRegion(
                     self._tags == state.acquisition_space.subspace_tags
                 ), f"""The tags of the state acquisition space
                     {state.acquisition_space.subspace_tags} should be the same as the tags of the
-                    MultiTrustRegion acquisition rule {self._tags}"""
+                    BatchTrustRegion acquisition rule {self._tags}"""
 
             subspaces = []
             for tag, init_subspace in zip(self._tags, self._init_subspaces):
@@ -1231,7 +1231,7 @@ class MultiTrustRegion(
             else:
                 acquisition_space = state.acquisition_space
 
-            state_ = MultiTrustRegion.State(acquisition_space)
+            state_ = BatchTrustRegion.State(acquisition_space)
             points = self._rule.acquire(acquisition_space, models, datasets=datasets)
 
             return state_, points
@@ -1284,7 +1284,7 @@ class MultiTrustRegion(
         ...
 
 
-class TrustRegionBox(Box, UpdateableSearchSpace):
+class SingleObjectiveTRBox(Box, UpdateableSearchSpace):
     """An updateable box search space for use with trust region acquisition rules."""
 
     def __init__(
@@ -1393,13 +1393,16 @@ class TrustRegionBox(Box, UpdateableSearchSpace):
         return tf.squeeze(x_min, axis=0), tf.squeeze(y_min)
 
 
-class MultiTrustRegionBox(MultiTrustRegion[ProbabilisticModelType, TrustRegionBox]):
-    """Implements the :class:`MultiTrustRegion` *trust region* acquisition algorithm for a box."""
+class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, SingleObjectiveTRBox]):
+    """
+    Implements the :class:`BatchTrustRegion` *trust region* acquisition algorithm for box regions.
+    This is intended to be used for single-objective optimization with batching.
+    """
 
     @inherit_check_shapes
     def get_initialize_subspaces_mask(
         self,
-        subspaces: Sequence[TrustRegionBox],
+        subspaces: Sequence[SingleObjectiveTRBox],
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> TensorType:

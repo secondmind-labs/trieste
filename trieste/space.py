@@ -993,6 +993,11 @@ class TaggedProductSearchSpace(CollectionSearchSpace):
     Product :class:`SearchSpace` consisting of a product of
     multiple :class:`SearchSpace`. This class provides functionality for
     accessing either the resulting combined search space or each individual space.
+    This class is useful for defining mixed search spaces, for example:
+
+        context_space = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]]))
+        decision_space = Box([-1, -2], [2, 3])
+        mixed_space = TaggedProductSearchSpace(spaces=[context_space, decision_space])
 
     Note that this class assumes that individual points in product spaces are
     represented with their inputs in the same order as specified when initializing
@@ -1143,6 +1148,10 @@ class TaggedMultiSearchSpace(CollectionSearchSpace):
 
     When accessing all subspaces at once from this class (e.g. `lower()`, `upper()`, `sample()`),
     the returned tensors have an extra dimension corresponding to the subspaces.
+
+    This class can be useful to represent a collection of search spaces that do not interact with
+    each other. For example, it is used to implement batch trust region rules in the
+    :class:`BatchTrustRegion` class.
     """
 
     def __init__(self, spaces: Sequence[SearchSpace], tags: Optional[Sequence[str]] = None):
