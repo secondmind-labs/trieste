@@ -27,7 +27,7 @@ from matplotlib.pyplot import cm
 import trieste
 from trieste.acquisition import ParallelContinuousThompsonSampling
 from trieste.acquisition.optimizer import automatic_optimizer_selector
-from trieste.acquisition.rule import MultiTrustRegionBox, TREGOBox, TrustRegion
+from trieste.acquisition.rule import BatchTrustRegionBox, TREGOBox, TrustRegion
 from trieste.acquisition.utils import split_acquisition_function_calls
 from trieste.ask_tell_optimization import AskTellOptimizer
 from trieste.experimental.plotting import plot_regret
@@ -61,7 +61,7 @@ gpflow_model1 = build_gpr(
     trainable_likelihood=False,
 )
 model1 = GaussianProcessRegression(gpflow_model1)
-acq_rule1 = MultiTrustRegionBox([TREGOBox(search_space)])  # type: ignore[var-annotated]
+acq_rule1 = BatchTrustRegionBox([TREGOBox(search_space)])  # type: ignore[var-annotated]
 ask_tell1 = AskTellOptimizer(
     search_space, initial_data, model1, acquisition_rule=acq_rule1
 )
