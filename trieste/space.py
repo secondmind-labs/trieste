@@ -544,7 +544,7 @@ class Box(SearchSpace):
 
             tf.debugging.assert_same_float_dtype([self._lower, self._upper])
 
-        tf.debugging.assert_less(self._lower, self._upper)
+        tf.debugging.assert_less_equal(self._lower, self._upper)
 
         self._dimension = tf.shape(self._upper)[-1]
 

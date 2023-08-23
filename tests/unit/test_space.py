@@ -348,13 +348,11 @@ def test_box_raises_if_bounds_have_invalid_dtypes(
 @pytest.mark.parametrize(
     "lower, upper",
     [
-        (tf.ones((3,)), tf.ones((3,))),  # all equal
         (tf.ones((3,)) + 1, tf.ones((3,))),  # lower all higher than upper
         (  # one lower higher than upper
             tf.constant([2.3, -0.1, 8.0]),
             tf.constant([3.0, -0.2, 8.0]),
         ),
-        (tf.constant([2.3, -0.1, 8.0]), tf.constant([3.0, -0.1, 8.0])),  # one lower equal to upper
     ],
 )
 def test_box_raises_if_any_lower_bound_is_not_less_than_upper_bound(
@@ -368,6 +366,7 @@ def test_box_raises_if_any_lower_bound_is_not_less_than_upper_bound(
     "space, dimension",
     [
         (Box([-1], [2]), 1),  # 1d
+        (Box([-1], [-1]), 1),  # still 1d (though width 0)
         (Box([-1, -2], [1.5, 2.5]), 2),  # 2d
         (Box([-1, -2, -3], [1.5, 2.5, 3.5]), 3),  # 3d
     ],
@@ -396,6 +395,26 @@ def test_box_contains_point(point: tf.Tensor) -> None:
     box = Box(tf.constant([-1.0, 0.0, -2.0]), tf.constant([2.0, 1.0, -0.5]))
     assert point in box
     assert box.contains(point)
+
+
+@pytest.mark.parametrize(
+    "lower,upper",
+    [
+        (tf.constant([]), tf.constant([])),
+        (tf.constant([0.0]), tf.constant([0.0])),
+        (tf.constant([-1.0, 0.0, -2.0]), tf.constant([2.0, 1.0, -0.5])),
+        (tf.constant([-1.0, 0.0, -2.0]), tf.constant([2.0, 1.0, -2.0])),
+    ],
+)
+def test_box_with_zero_width(lower: tf.Tensor, upper: tf.Tensor) -> None:
+    box = Box(lower, upper)
+    assert lower in box
+    assert upper in box
+    assert (lower + upper) / 2 in box
+    if box.dimension > 0:
+        assert lower - 1 not in box
+        assert upper + 1 not in box
+    assert tf.reduce_all(box.contains(box.sample(10)))
 
 
 @pytest.mark.parametrize(
