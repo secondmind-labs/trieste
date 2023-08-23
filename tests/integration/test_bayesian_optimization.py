@@ -201,6 +201,17 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                 id="TREGO",
             ),
             pytest.param(
+                20,
+                BatchTrustRegionBox(
+                    [TREGOBox(ScaledBranin.search_space) for _ in range(3)],
+                    EfficientGlobalOptimization(
+                        ParallelContinuousThompsonSampling(),
+                        num_query_points=3,
+                    ),
+                ),
+                id="TREGO/ParallelContinuousThompsonSampling",
+            ),
+            pytest.param(
                 15,
                 BatchTrustRegionBox(
                     [TREGOBox(ScaledBranin.search_space)],
