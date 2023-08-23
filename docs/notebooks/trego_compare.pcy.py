@@ -100,6 +100,14 @@ for step in range(num_steps):
         ask_tell1._acquisition_state.acquisition_space.get_subspace("0")._is_global,  # type: ignore
         ask_tell2._acquisition_state.is_global,  # type: ignore
     )
+    np.testing.assert_array_almost_equal(
+        ask_tell1._acquisition_state.acquisition_space.get_subspace("0").lower,  # type: ignore
+        ask_tell2._acquisition_state.acquisition_space.lower,  # type: ignore
+    )
+    np.testing.assert_array_almost_equal(
+        ask_tell1._acquisition_state.acquisition_space.get_subspace("0").upper,  # type: ignore
+        ask_tell2._acquisition_state.acquisition_space.upper,  # type: ignore
+    )
 
 # %%
 from trieste.experimental.plotting import plot_bo_points, plot_function_2d
