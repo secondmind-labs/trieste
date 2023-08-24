@@ -66,7 +66,7 @@ model = GaussianProcessRegression(gpflow_model)
 num_query_points = 5
 
 init_subspaces = [
-    trieste.acquisition.rule.SingleObjectiveTRBox(search_space)
+    trieste.acquisition.rule.SingleObjectiveTrustRegionBox(search_space)
     for _ in range(num_query_points)
 ]
 base_rule = trieste.acquisition.rule.EfficientGlobalOptimization(  # type: ignore[var-annotated]
