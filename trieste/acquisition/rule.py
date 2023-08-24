@@ -1284,7 +1284,7 @@ class BatchTrustRegion(
         ...
 
 
-class SingleObjectiveTRBox(Box, UpdateableSearchSpace):
+class SingleObjectiveTrustRegionBox(Box, UpdateableSearchSpace):
     """An updateable box search space for use with trust region acquisition rules."""
 
     def __init__(
@@ -1393,7 +1393,7 @@ class SingleObjectiveTRBox(Box, UpdateableSearchSpace):
         return tf.squeeze(x_min, axis=0), tf.squeeze(y_min)
 
 
-class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, SingleObjectiveTRBox]):
+class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, SingleObjectiveTrustRegionBox]):
     """
     Implements the :class:`BatchTrustRegion` *trust region* acquisition algorithm for box regions.
     This is intended to be used for single-objective optimization with batching.
@@ -1402,7 +1402,7 @@ class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, SingleObjecti
     @inherit_check_shapes
     def get_initialize_subspaces_mask(
         self,
-        subspaces: Sequence[SingleObjectiveTRBox],
+        subspaces: Sequence[SingleObjectiveTrustRegionBox],
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> TensorType:

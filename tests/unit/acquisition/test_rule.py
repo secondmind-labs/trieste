@@ -50,7 +50,7 @@ from trieste.acquisition.rule import (
     DiscreteThompsonSampling,
     EfficientGlobalOptimization,
     RandomSampling,
-    SingleObjectiveTRBox,
+    SingleObjectiveTrustRegionBox,
     TrustRegion,
 )
 from trieste.acquisition.sampler import (
@@ -1119,7 +1119,7 @@ def test_turbo_state_deepcopy() -> None:
 # get_local_min raises if dataset is None.
 def test_trust_region_box_get_local_min_raises_if_dataset_is_none() -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
-    trb = SingleObjectiveTRBox(search_space)
+    trb = SingleObjectiveTrustRegionBox(search_space)
     with pytest.raises(ValueError, match="dataset must be provided"):
         trb.get_local_min(None)
 
@@ -1131,7 +1131,7 @@ def test_trust_region_box_get_local_min() -> None:
         tf.constant([[0.1, 0.1], [0.5, 0.5], [0.3, 0.4], [0.8, 0.8], [0.4, 0.4]], dtype=tf.float64),
         tf.constant([[0.0], [0.5], [0.2], [0.1], [1.0]], dtype=tf.float64),
     )
-    trb = SingleObjectiveTRBox(search_space)
+    trb = SingleObjectiveTrustRegionBox(search_space)
     trb._lower = tf.constant([0.2, 0.2], dtype=tf.float64)
     trb._upper = tf.constant([0.7, 0.7], dtype=tf.float64)
     x_min, y_min = trb.get_local_min(dataset)
@@ -1147,7 +1147,7 @@ def test_trust_region_box_get_local_min_outside_search_space() -> None:
         tf.constant([[1.2, 1.3], [-0.4, -0.5]], dtype=tf.float64),
         tf.constant([[0.7], [0.9]], dtype=tf.float64),
     )
-    trb = SingleObjectiveTRBox(search_space)
+    trb = SingleObjectiveTrustRegionBox(search_space)
     x_min, y_min = trb.get_local_min(dataset)
     npt.assert_array_equal(x_min, tf.constant([1.2, 1.3], dtype=tf.float64))
     npt.assert_array_equal(y_min, tf.constant([np.inf], dtype=tf.float64))
@@ -1162,7 +1162,7 @@ def test_trust_region_box_initialize() -> None:
             tf.constant([[0.7], [0.9]], dtype=tf.float64),
         )
     }
-    trb = SingleObjectiveTRBox(search_space)
+    trb = SingleObjectiveTrustRegionBox(search_space)
     trb.initialize(datasets=datasets)
 
     exp_eps = 0.5 * (search_space.upper - search_space.lower) / 5.0 ** (1.0 / 2.0)
@@ -1184,7 +1184,7 @@ def test_trust_region_box_update_initialize() -> None:
             tf.constant([[0.7], [0.9]], dtype=tf.float64),
         )
     }
-    trb = SingleObjectiveTRBox(search_space, min_eps=0.5)
+    trb = SingleObjectiveTrustRegionBox(search_space, min_eps=0.5)
     trb.initialize(datasets=datasets)
     location = trb.location
 
@@ -1205,7 +1205,7 @@ def test_trust_region_box_update_no_initialize() -> None:
             tf.constant([[0.5], [0.0], [1.0]], dtype=tf.float64),
         )
     }
-    trb = SingleObjectiveTRBox(search_space, min_eps=0.1)
+    trb = SingleObjectiveTrustRegionBox(search_space, min_eps=0.1)
     trb.initialize(datasets=datasets)
     trb.location = tf.constant([0.5, 0.5], dtype=tf.float64)
     location = trb.location
@@ -1224,7 +1224,7 @@ def test_trust_region_box_update_size(success: bool) -> None:
             tf.constant([[0.5], [0.3], [1.0]], dtype=tf.float64),
         )
     }
-    trb = SingleObjectiveTRBox(search_space, min_eps=0.1)
+    trb = SingleObjectiveTrustRegionBox(search_space, min_eps=0.1)
     trb.initialize(datasets=datasets)
 
     # Ensure there is at least one point captured in the box.
@@ -1293,7 +1293,8 @@ def test_multi_trust_region_box_acquire_no_state() -> None:
         builder=ParallelContinuousThompsonSampling(), num_query_points=2
     )
     subspaces = [
-        SingleObjectiveTRBox(search_space, beta=0.1, kappa=1e-3, min_eps=1e-1) for _ in range(2)
+        SingleObjectiveTrustRegionBox(search_space, beta=0.1, kappa=1e-3, min_eps=1e-1)
+        for _ in range(2)
     ]
     mtb = BatchTrustRegionBox(subspaces, base_rule)
     state, points = mtb.acquire(search_space, models, datasets)(None)
@@ -1305,7 +1306,7 @@ def test_multi_trust_region_box_acquire_no_state() -> None:
     for index, (tag, point) in enumerate(zip(state.acquisition_space.subspace_tags, points)):
         subspace = state.acquisition_space.get_subspace(tag)
         assert subspace == subspaces[index]
-        assert isinstance(subspace, SingleObjectiveTRBox)
+        assert isinstance(subspace, SingleObjectiveTrustRegionBox)
         assert subspace.global_search_space == search_space
         assert subspace._beta == 0.1
         assert subspace._kappa == 1e-3
@@ -1322,7 +1323,7 @@ def test_multi_trust_region_box_raises_on_mismatched_tags() -> None:
     base_rule = EfficientGlobalOptimization(  # type: ignore[var-annotated]
         builder=ParallelContinuousThompsonSampling(), num_query_points=2
     )
-    subspaces = [SingleObjectiveTRBox(search_space) for _ in range(2)]
+    subspaces = [SingleObjectiveTrustRegionBox(search_space) for _ in range(2)]
     mtb = BatchTrustRegionBox(subspaces, base_rule)
 
     state = BatchTrustRegionBox.State(
@@ -1338,7 +1339,7 @@ def test_multi_trust_region_box_raises_on_mismatched_tags() -> None:
         _, _ = state_func(state)
 
 
-class TestTrustRegionBox(SingleObjectiveTRBox):
+class TestTrustRegionBox(SingleObjectiveTrustRegionBox):
     def __init__(
         self,
         fixed_location: TensorType,
@@ -1422,7 +1423,7 @@ def test_multi_trust_region_box_state_deepcopy() -> None:
         tf.constant([[0.25, 0.25], [0.5, 0.5], [0.75, 0.75]], dtype=tf.float64),
         tf.constant([[1.0], [1.0], [1.0]], dtype=tf.float64),
     )
-    subspaces = [SingleObjectiveTRBox(search_space, 0.07, 1e-5, 1e-3) for _ in range(3)]
+    subspaces = [SingleObjectiveTrustRegionBox(search_space, 0.07, 1e-5, 1e-3) for _ in range(3)]
     for _subspace in subspaces:
         _subspace.initialize(datasets={OBJECTIVE: dataset})
     state = BatchTrustRegionBox.State(acquisition_space=TaggedMultiSearchSpace(subspaces))
@@ -1437,8 +1438,8 @@ def test_multi_trust_region_box_state_deepcopy() -> None:
         state.acquisition_space._spaces.values(), state_copy.acquisition_space._spaces.values()
     ):
         assert subspace is not subspace_copy
-        assert isinstance(subspace, SingleObjectiveTRBox)
-        assert isinstance(subspace_copy, SingleObjectiveTRBox)
+        assert isinstance(subspace, SingleObjectiveTrustRegionBox)
+        assert isinstance(subspace_copy, SingleObjectiveTrustRegionBox)
         assert subspace._beta == subspace_copy._beta
         assert subspace._kappa == subspace_copy._kappa
         assert subspace._min_eps == subspace_copy._min_eps
