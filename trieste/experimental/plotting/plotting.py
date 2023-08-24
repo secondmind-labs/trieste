@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Callable, Optional, Sequence
+from typing import Callable, List, Optional, Sequence, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -234,7 +234,7 @@ def format_point_markers(
     m_init: str = "x",
     m_add: str = "o",
     c_pass: str = "tab:green",
-    c_fail: str = "tab:red",
+    c_fail: Union[str, List[str]] = "tab:red",
     c_best: str = "tab:purple",
 ) -> tuple[TensorType, TensorType]:
     """
@@ -275,7 +275,7 @@ def plot_bo_points(
     m_init: str = "x",
     m_add: str = "o",
     c_pass: str = "tab:green",
-    c_fail: str = "tab:red",
+    c_fail: Union[str, List[str]] = "tab:red",
     c_best: str = "tab:purple",
 ) -> None:
     """

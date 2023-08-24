@@ -21,3 +21,4 @@ jupytext
 gym[box2d]
 box2d
 box2d-kengz
+imageio
