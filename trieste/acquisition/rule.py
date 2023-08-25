@@ -1105,7 +1105,7 @@ class TrustRegion(
         return state_func
 
 
-class UpdateableSearchSpace(SearchSpace):
+class UpdatableTrustRegion(SearchSpace):
     """A search space that can be updated."""
 
     @abstractmethod
@@ -1137,8 +1137,8 @@ class UpdateableSearchSpace(SearchSpace):
         ...
 
 
-UpdateableSearchSpaceType = TypeVar("UpdateableSearchSpaceType", bound=UpdateableSearchSpace)
-""" A type variable bound to :class:`UpdateableSearchSpace`. """
+UpdatableTrustRegionType = TypeVar("UpdatableTrustRegionType", bound=UpdatableTrustRegion)
+""" A type variable bound to :class:`UpdatableTrustRegion`. """
 
 
 class BatchTrustRegion(
@@ -1147,7 +1147,7 @@ class BatchTrustRegion(
         SearchSpace,
         ProbabilisticModelType,
     ],
-    Generic[ProbabilisticModelType, UpdateableSearchSpaceType],
+    Generic[ProbabilisticModelType, UpdatableTrustRegionType],
 ):
     """Abstract class for multi trust region acquisition rules. These are batch algorithms where
     each query point is optimized in parallel, with its own separate trust region.
@@ -1165,8 +1165,8 @@ class BatchTrustRegion(
             return BatchTrustRegion.State(acquisition_space_copy)
 
     def __init__(
-        self: "BatchTrustRegion[ProbabilisticModelType, UpdateableSearchSpaceType]",
-        init_subspaces: Sequence[UpdateableSearchSpaceType],
+        self: "BatchTrustRegion[ProbabilisticModelType, UpdatableTrustRegionType]",
+        init_subspaces: Sequence[UpdatableTrustRegionType],
         rule: AcquisitionRule[TensorType, SearchSpace, ProbabilisticModelType] | None = None,
     ):
         """
@@ -1240,14 +1240,14 @@ class BatchTrustRegion(
 
     def maybe_initialize_subspaces(
         self,
-        subspaces: Sequence[UpdateableSearchSpaceType],
+        subspaces: Sequence[UpdatableTrustRegionType],
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> None:
         """
         Initialize subspaces if necessary.
         Get a mask of subspaces that need to be initialized using an abstract method.
-        Initialize individual subpaces by calling the method of the UpdateableSearchSpaceType class.
+        Initialize individual subpaces by calling the method of the UpdatableTrustRegionType class.
 
         This method can be overridden by subclasses to change this behaviour.
         """
@@ -1266,7 +1266,7 @@ class BatchTrustRegion(
     @check_shapes("return: [V]")
     def get_initialize_subspaces_mask(
         self,
-        subspaces: Sequence[UpdateableSearchSpaceType],
+        subspaces: Sequence[UpdatableTrustRegionType],
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> TensorType:
@@ -1284,8 +1284,8 @@ class BatchTrustRegion(
         ...
 
 
-class SingleObjectiveTrustRegionBox(Box, UpdateableSearchSpace):
-    """An updateable box search space for use with trust region acquisition rules."""
+class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
+    """An updatable box search space for use with trust region acquisition rules."""
 
     def __init__(
         self,
