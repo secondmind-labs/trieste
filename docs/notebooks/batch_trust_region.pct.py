@@ -230,7 +230,7 @@ for step, hist in enumerate(result.history + [result.final_result.unwrap()]):
 
 # Create and show the GIF.
 gif_file = io.BytesIO()
-imageio.mimsave(gif_file, frames, format="gif", loop=0, duration=5000)  # type: ignore
+imageio.mimsave(gif_file, frames, format="gif", loop=0, duration=5000)
 gif = IPython.display.HTML(
     '<img src="data:image/gif;base64,{0}"/>'.format(
         base64.b64encode(gif_file.getvalue()).decode()
