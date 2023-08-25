@@ -18,6 +18,7 @@ from collections.abc import Mapping
 from typing import Callable, Optional
 
 import gpflow
+import numpy as np
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
@@ -32,6 +33,7 @@ from trieste.acquisition import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
     NegativeLowerConfidenceBound,
+    ParallelContinuousThompsonSampling,
     SingleModelAcquisitionBuilder,
     SingleModelGreedyAcquisitionBuilder,
     VectorizedAcquisitionFunctionBuilder,
@@ -44,9 +46,11 @@ from trieste.acquisition.rule import (
     AsynchronousOptimization,
     AsynchronousRuleState,
     BatchHypervolumeSharpeRatioIndicator,
+    BatchTrustRegionBox,
     DiscreteThompsonSampling,
     EfficientGlobalOptimization,
     RandomSampling,
+    SingleObjectiveTrustRegionBox,
     TrustRegion,
 )
 from trieste.acquisition.sampler import (
@@ -59,7 +63,7 @@ from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.models.interfaces import TrainableSupportsGetKernel
 from trieste.observer import OBJECTIVE
-from trieste.space import Box
+from trieste.space import Box, SearchSpace, TaggedMultiSearchSpace
 from trieste.types import State, Tag, TensorType
 
 
@@ -1110,6 +1114,338 @@ def test_turbo_state_deepcopy() -> None:
     npt.assert_allclose(tr_state_copy.failure_counter, tr_state.failure_counter)
     npt.assert_allclose(tr_state_copy.success_counter, tr_state.success_counter)
     npt.assert_allclose(tr_state_copy.y_min, tr_state.y_min)
+
+
+# get_local_min raises if dataset is None.
+def test_trust_region_box_get_local_min_raises_if_dataset_is_none() -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    trb = SingleObjectiveTrustRegionBox(search_space)
+    with pytest.raises(ValueError, match="dataset must be provided"):
+        trb.get_local_min(None)
+
+
+# get_local_min picks the minimum x and y values from the dataset.
+def test_trust_region_box_get_local_min() -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    dataset = Dataset(
+        tf.constant([[0.1, 0.1], [0.5, 0.5], [0.3, 0.4], [0.8, 0.8], [0.4, 0.4]], dtype=tf.float64),
+        tf.constant([[0.0], [0.5], [0.2], [0.1], [1.0]], dtype=tf.float64),
+    )
+    trb = SingleObjectiveTrustRegionBox(search_space)
+    trb._lower = tf.constant([0.2, 0.2], dtype=tf.float64)
+    trb._upper = tf.constant([0.7, 0.7], dtype=tf.float64)
+    x_min, y_min = trb.get_local_min(dataset)
+    npt.assert_array_equal(x_min, tf.constant([0.3, 0.4], dtype=tf.float64))
+    npt.assert_array_equal(y_min, tf.constant([0.2], dtype=tf.float64))
+
+
+# get_local_min returns first x value and inf y value when points in dataset are outside the
+# search space.
+def test_trust_region_box_get_local_min_outside_search_space() -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    dataset = Dataset(
+        tf.constant([[1.2, 1.3], [-0.4, -0.5]], dtype=tf.float64),
+        tf.constant([[0.7], [0.9]], dtype=tf.float64),
+    )
+    trb = SingleObjectiveTrustRegionBox(search_space)
+    x_min, y_min = trb.get_local_min(dataset)
+    npt.assert_array_equal(x_min, tf.constant([1.2, 1.3], dtype=tf.float64))
+    npt.assert_array_equal(y_min, tf.constant([np.inf], dtype=tf.float64))
+
+
+# Initialize sets the box to a random location, and sets the eps and y_min values.
+def test_trust_region_box_initialize() -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    datasets = {
+        OBJECTIVE: Dataset(  # Points outside the search space should be ignored.
+            tf.constant([[1.2, 1.3], [-0.4, -0.5]], dtype=tf.float64),
+            tf.constant([[0.7], [0.9]], dtype=tf.float64),
+        )
+    }
+    trb = SingleObjectiveTrustRegionBox(search_space)
+    trb.initialize(datasets=datasets)
+
+    exp_eps = 0.5 * (search_space.upper - search_space.lower) / 5.0 ** (1.0 / 2.0)
+    npt.assert_array_equal(trb.eps, exp_eps)
+    npt.assert_array_compare(np.less_equal, search_space.lower, trb.location)
+    npt.assert_array_compare(np.less_equal, trb.location, search_space.upper)
+    npt.assert_array_compare(np.less_equal, search_space.lower, trb.lower)
+    npt.assert_array_compare(np.less_equal, trb.upper, search_space.upper)
+    npt.assert_array_compare(np.less_equal, trb.upper - trb.lower, 2 * exp_eps)
+    npt.assert_array_equal(trb._y_min, tf.constant([np.inf], dtype=tf.float64))
+
+
+# Update call initializes the box if eps is smaller than min_eps.
+def test_trust_region_box_update_initialize() -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    datasets = {
+        OBJECTIVE: Dataset(  # Points outside the search space should be ignored.
+            tf.constant([[1.2, 1.3], [-0.4, -0.5]], dtype=tf.float64),
+            tf.constant([[0.7], [0.9]], dtype=tf.float64),
+        )
+    }
+    trb = SingleObjectiveTrustRegionBox(search_space, min_eps=0.5)
+    trb.initialize(datasets=datasets)
+    location = trb.location
+
+    trb.update(datasets=datasets)
+    npt.assert_array_compare(np.not_equal, location, trb.location)
+    location = trb.location
+
+    trb.update(datasets=datasets)
+    npt.assert_array_compare(np.not_equal, location, trb.location)
+
+
+# Update call does not initialize the box if eps is larger than min_eps.
+def test_trust_region_box_update_no_initialize() -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    datasets = {
+        OBJECTIVE: Dataset(
+            tf.constant([[0.5, 0.5], [0.0, 0.0], [1.0, 1.0]], dtype=tf.float64),
+            tf.constant([[0.5], [0.0], [1.0]], dtype=tf.float64),
+        )
+    }
+    trb = SingleObjectiveTrustRegionBox(search_space, min_eps=0.1)
+    trb.initialize(datasets=datasets)
+    trb.location = tf.constant([0.5, 0.5], dtype=tf.float64)
+    location = trb.location
+
+    trb.update(datasets=datasets)
+    npt.assert_array_equal(location, trb.location)
+
+
+# Update shrinks/expands box on successful/unsuccessful step.
+@pytest.mark.parametrize("success", [True, False])
+def test_trust_region_box_update_size(success: bool) -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    datasets = {
+        OBJECTIVE: Dataset(
+            tf.constant([[0.5, 0.5], [0.0, 0.0], [1.0, 1.0]], dtype=tf.float64),
+            tf.constant([[0.5], [0.3], [1.0]], dtype=tf.float64),
+        )
+    }
+    trb = SingleObjectiveTrustRegionBox(search_space, min_eps=0.1)
+    trb.initialize(datasets=datasets)
+
+    # Ensure there is at least one point captured in the box.
+    orig_point = trb.sample(1)
+    orig_min = tf.constant([[0.1]], dtype=tf.float64)
+    datasets[OBJECTIVE] = Dataset(
+        np.concatenate([datasets[OBJECTIVE].query_points, orig_point], axis=0),
+        np.concatenate([datasets[OBJECTIVE].observations, orig_min], axis=0),
+    )
+    trb.update(datasets=datasets)
+
+    eps = trb.eps
+
+    if success:
+        # Sample a point from the box.
+        new_point = trb.sample(1)
+    else:
+        # Pick point outside the box.
+        new_point = tf.constant([[1.2, 1.3]], dtype=tf.float64)
+
+    # Add a new min point to the dataset.
+    new_min = tf.constant([[-0.1]], dtype=tf.float64)
+    datasets[OBJECTIVE] = Dataset(
+        np.concatenate([datasets[OBJECTIVE].query_points, new_point], axis=0),
+        np.concatenate([datasets[OBJECTIVE].observations, new_min], axis=0),
+    )
+    # Update the box.
+    trb.update(datasets=datasets)
+
+    if success:
+        # Check that the location is the new min point.
+        new_point = np.squeeze(new_point)
+        npt.assert_allclose(new_point, trb.location)
+        npt.assert_allclose(new_min, trb._y_min)
+        # Check that the box is larger by beta.
+        npt.assert_allclose(eps / trb._beta, trb.eps)
+    else:
+        # Check that the location is the old min point.
+        orig_point = np.squeeze(orig_point)
+        npt.assert_allclose(orig_point, trb.location)
+        npt.assert_allclose(orig_min, trb._y_min)
+        # Check that the box is smaller by beta.
+        npt.assert_allclose(eps * trb._beta, trb.eps)
+
+    # Check the new box bounds.
+    npt.assert_allclose(trb.lower, np.maximum(trb.location - trb.eps, search_space.lower))
+    npt.assert_allclose(trb.upper, np.minimum(trb.location + trb.eps, search_space.upper))
+
+
+# When state is None, acquire returns a multi search space of the correct type.
+def test_multi_trust_region_box_acquire_no_state() -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    dataset = Dataset(
+        tf.constant([[0.5, 0.5], [0.0, 0.0], [1.0, 1.0]], dtype=tf.float64),
+        tf.constant([[0.5], [0.0], [1.0]], dtype=tf.float64),
+    )
+    datasets = {OBJECTIVE: dataset}
+    model = QuadraticMeanAndRBFKernelWithSamplers(
+        dataset=dataset, noise_variance=tf.constant(1.0, dtype=tf.float64)
+    )
+    model.kernel = (
+        gpflow.kernels.RBF()
+    )  # need a gpflow kernel object for random feature decompositions
+    models = {OBJECTIVE: model}
+    base_rule = EfficientGlobalOptimization(  # type: ignore[var-annotated]
+        builder=ParallelContinuousThompsonSampling(), num_query_points=2
+    )
+    subspaces = [
+        SingleObjectiveTrustRegionBox(search_space, beta=0.1, kappa=1e-3, min_eps=1e-1)
+        for _ in range(2)
+    ]
+    mtb = BatchTrustRegionBox(subspaces, base_rule)
+    state, points = mtb.acquire(search_space, models, datasets)(None)
+
+    assert state is not None
+    assert isinstance(state.acquisition_space, TaggedMultiSearchSpace)
+    assert len(state.acquisition_space.subspace_tags) == 2
+
+    for index, (tag, point) in enumerate(zip(state.acquisition_space.subspace_tags, points)):
+        subspace = state.acquisition_space.get_subspace(tag)
+        assert subspace == subspaces[index]
+        assert isinstance(subspace, SingleObjectiveTrustRegionBox)
+        assert subspace.global_search_space == search_space
+        assert subspace._beta == 0.1
+        assert subspace._kappa == 1e-3
+        assert subspace._min_eps == 1e-1
+        assert point in subspace
+
+
+def test_multi_trust_region_box_raises_on_mismatched_tags() -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    dataset = Dataset(
+        tf.constant([[0.0, 0.0], [1.0, 1.0]], dtype=tf.float64),
+        tf.constant([[0.0], [1.0]], dtype=tf.float64),
+    )
+    base_rule = EfficientGlobalOptimization(  # type: ignore[var-annotated]
+        builder=ParallelContinuousThompsonSampling(), num_query_points=2
+    )
+    subspaces = [SingleObjectiveTrustRegionBox(search_space) for _ in range(2)]
+    mtb = BatchTrustRegionBox(subspaces, base_rule)
+
+    state = BatchTrustRegionBox.State(
+        acquisition_space=TaggedMultiSearchSpace(subspaces, tags=["a", "b"])
+    )
+    state_func = mtb.acquire(
+        search_space,
+        {OBJECTIVE: QuadraticMeanAndRBFKernelWithSamplers(dataset)},
+        {OBJECTIVE: dataset},
+    )
+
+    with pytest.raises(AssertionError, match="The tags of the state acquisition space"):
+        _, _ = state_func(state)
+
+
+class TestTrustRegionBox(SingleObjectiveTrustRegionBox):
+    def __init__(
+        self,
+        fixed_location: TensorType,
+        global_search_space: SearchSpace,
+        beta: float = 0.7,
+        kappa: float = 1e-4,
+        min_eps: float = 1e-2,
+    ):
+        super().__init__(global_search_space, beta, kappa, min_eps)
+        self._location = fixed_location
+
+    @property
+    def location(self) -> TensorType:
+        return self._location
+
+    @location.setter
+    def location(self, location: TensorType) -> None:
+        ...
+
+    def _init_eps(self) -> None:
+        self.eps = tf.constant(0.07, dtype=tf.float64)
+
+
+# Start with a defined state and dataset. Acquire should return an updated state.
+def test_multi_trust_region_box_acquire_with_state() -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    init_dataset = Dataset(
+        tf.constant([[0.25, 0.25], [0.5, 0.5], [0.75, 0.75]], dtype=tf.float64),
+        tf.constant([[1.0], [1.0], [1.0]], dtype=tf.float64),
+    )
+    model = QuadraticMeanAndRBFKernelWithSamplers(
+        dataset=init_dataset, noise_variance=tf.constant(1e-6, dtype=tf.float64)
+    )
+    model.kernel = (
+        gpflow.kernels.RBF()
+    )  # need a gpflow kernel object for random feature decompositions
+    models = {OBJECTIVE: model}
+    base_rule = EfficientGlobalOptimization(  # type: ignore[var-annotated]
+        builder=ParallelContinuousThompsonSampling(), num_query_points=3
+    )
+
+    # Third region is close to the first.
+    subspaces = [
+        TestTrustRegionBox(tf.constant([0.3, 0.3], dtype=tf.float64), search_space),
+        TestTrustRegionBox(tf.constant([0.7, 0.7], dtype=tf.float64), search_space),
+        TestTrustRegionBox(tf.constant([0.3, 0.3], dtype=tf.float64) + 1e-7, search_space),
+    ]
+    mtb = BatchTrustRegionBox(subspaces, base_rule)
+    state = BatchTrustRegionBox.State(acquisition_space=TaggedMultiSearchSpace(subspaces))
+    for subspace in subspaces:
+        subspace.initialize(datasets={OBJECTIVE: init_dataset})
+
+    dataset = Dataset(
+        init_dataset.query_points,
+        tf.constant([[0.1], [0.2], [0.3]], dtype=tf.float64),
+    )
+    state_func = mtb.acquire(search_space, models, {OBJECTIVE: dataset})
+    next_state, points = state_func(state)
+
+    assert next_state is not None
+    assert len(points) == 3
+    # The regions correspond to first, third and first points in the dataset.
+    # First two regions should be updated.
+    # The third region should be initialized and not updated, as it is too close to the first
+    # subspace.
+    for point, subspace, exp_obs, exp_eps in zip(
+        points,
+        subspaces,
+        [dataset.observations[0], dataset.observations[2], dataset.observations[0]],
+        [0.1, 0.1, 0.07],  # First two regions updated, third region initialized.
+    ):
+        assert point in subspace
+        npt.assert_array_equal(subspace._y_min, exp_obs)
+        # Check the box was updated/initialized correctly.
+        npt.assert_allclose(subspace.eps, exp_eps)
+
+
+def test_multi_trust_region_box_state_deepcopy() -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    dataset = Dataset(
+        tf.constant([[0.25, 0.25], [0.5, 0.5], [0.75, 0.75]], dtype=tf.float64),
+        tf.constant([[1.0], [1.0], [1.0]], dtype=tf.float64),
+    )
+    subspaces = [SingleObjectiveTrustRegionBox(search_space, 0.07, 1e-5, 1e-3) for _ in range(3)]
+    for _subspace in subspaces:
+        _subspace.initialize(datasets={OBJECTIVE: dataset})
+    state = BatchTrustRegionBox.State(acquisition_space=TaggedMultiSearchSpace(subspaces))
+
+    state_copy = copy.deepcopy(state)
+    assert state_copy is not state
+    assert state_copy.acquisition_space is not state.acquisition_space
+    assert state_copy.acquisition_space._spaces is not state.acquisition_space._spaces
+    assert state_copy.acquisition_space.subspace_tags == state.acquisition_space.subspace_tags
+
+    for subspace, subspace_copy in zip(
+        state.acquisition_space._spaces.values(), state_copy.acquisition_space._spaces.values()
+    ):
+        assert subspace is not subspace_copy
+        assert isinstance(subspace, SingleObjectiveTrustRegionBox)
+        assert isinstance(subspace_copy, SingleObjectiveTrustRegionBox)
+        assert subspace._beta == subspace_copy._beta
+        assert subspace._kappa == subspace_copy._kappa
+        assert subspace._min_eps == subspace_copy._min_eps
+        npt.assert_array_equal(subspace.eps, subspace_copy.eps)
+        npt.assert_array_equal(subspace.location, subspace_copy.location)
+        npt.assert_array_equal(subspace._y_min, subspace_copy._y_min)
 
 
 def test_asynchronous_rule_state_pending_points() -> None:

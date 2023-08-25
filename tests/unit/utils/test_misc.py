@@ -22,8 +22,18 @@ import pytest
 import tensorflow as tf
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, various_shapes
+from trieste.observer import OBJECTIVE
 from trieste.types import TensorType
-from trieste.utils.misc import Err, Ok, Timer, flatten_leading_dims, jit, shapes_equal, to_numpy
+from trieste.utils.misc import (
+    Err,
+    Ok,
+    Timer,
+    flatten_leading_dims,
+    get_value_for_tag,
+    jit,
+    shapes_equal,
+    to_numpy,
+)
 
 
 @pytest.mark.parametrize("apply", [True, False])
@@ -84,6 +94,23 @@ def test_err() -> None:
 
     assert Err(ValueError()).is_ok is False
     assert Err(ValueError()).is_err is True
+
+
+def test_get_value_for_tag_returns_none_if_mapping_is_none() -> None:
+    assert get_value_for_tag(None) is None
+
+
+def test_get_value_for_tag_raises_if_tag_not_in_mapping() -> None:
+    with pytest.raises(ValueError, match="tag 'baz' not found in mapping"):
+        get_value_for_tag({"foo": "bar"}, "baz")
+
+
+def test_get_value_for_tag_returns_value_for_default_tag() -> None:
+    assert get_value_for_tag({"foo": "bar", OBJECTIVE: "baz"}) == "baz"
+
+
+def test_get_value_for_tag_returns_value_for_specified_tag() -> None:
+    assert get_value_for_tag({"foo": "bar", OBJECTIVE: "baz"}, "foo") == "bar"
 
 
 def test_Timer() -> None:

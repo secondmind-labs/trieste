@@ -23,6 +23,7 @@ import tensorflow as tf
 from trieste.acquisition import AcquisitionFunction
 from trieste.acquisition.utils import (
     get_local_dataset,
+    get_unique_points_mask,
     select_nth_output,
     split_acquisition_function,
 )
@@ -97,3 +98,35 @@ def test_get_local_dataset_works() -> None:
 
     assert tf.shape(get_local_dataset(search_space_1, combined).query_points)[0] == 10
     assert tf.shape(get_local_dataset(search_space_2, combined).query_points)[0] == 20
+
+
+@pytest.mark.parametrize(
+    "points, tolerance, expected_mask",
+    [
+        (
+            tf.constant([[1.0, 1.0], [1.2, 1.1], [2.0, 2.0], [2.2, 2.2], [3.0, 3.0]]),
+            0.5,
+            tf.constant([True, False, True, False, True]),
+        ),
+        (
+            tf.constant([[1.0, 2.0], [2.0, 3.0], [1.0, 2.1]]),
+            0.2,
+            tf.constant([True, True, False]),
+        ),
+        (
+            tf.constant([[1.0], [2.0], [1.0], [3.0], [1.71], [1.699999], [3.29], [3.300001]]),
+            0.3,
+            tf.constant([True, True, False, True, False, True, False, True]),
+        ),
+        (
+            tf.constant([[1.0], [2.0], [1.0], [3.0], [1.699999], [1.71], [3.300001], [3.29]]),
+            0.3,
+            tf.constant([True, True, False, True, True, False, True, False]),
+        ),
+    ],
+)
+def test_get_unique_points_mask(
+    points: tf.Tensor, tolerance: float, expected_mask: tf.Tensor
+) -> None:
+    mask = get_unique_points_mask(points, tolerance)
+    np.testing.assert_array_equal(mask, expected_mask)

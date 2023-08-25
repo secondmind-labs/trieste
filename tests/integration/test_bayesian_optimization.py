@@ -50,8 +50,10 @@ from trieste.acquisition.rule import (
     AsynchronousOptimization,
     AsynchronousRuleState,
     BatchHypervolumeSharpeRatioIndicator,
+    BatchTrustRegionBox,
     DiscreteThompsonSampling,
     EfficientGlobalOptimization,
+    SingleObjectiveTrustRegionBox,
     TrustRegion,
 )
 from trieste.acquisition.sampler import ThompsonSamplerFromTrajectory
@@ -196,6 +198,17 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                 10,
                 TURBO(ScaledBranin.search_space, rule=DiscreteThompsonSampling(500, 3)),
                 id="Turbo",
+            ),
+            pytest.param(
+                10,
+                BatchTrustRegionBox(
+                    [SingleObjectiveTrustRegionBox(ScaledBranin.search_space) for _ in range(3)],
+                    EfficientGlobalOptimization(
+                        ParallelContinuousThompsonSampling(),
+                        num_query_points=3,
+                    ),
+                ),
+                id="BatchTrustRegionBox",
             ),
             pytest.param(15, DiscreteThompsonSampling(500, 5), id="DiscreteThompsonSampling"),
             pytest.param(

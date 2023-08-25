@@ -45,6 +45,7 @@ from trieste.space import (
     DiscreteSearchSpace,
     LinearConstraint,
     SearchSpace,
+    TaggedMultiSearchSpace,
     TaggedProductSearchSpace,
 )
 from trieste.types import TensorType
@@ -201,6 +202,40 @@ def test_optimize_continuous_raises_with_invalid_vectorized_batch_size(batch_siz
     acq_fn = _quadratic_sum([1.0])
     with pytest.raises(ValueError):
         generate_continuous_optimizer()(search_space, (acq_fn, batch_size))
+
+
+def test_optimize_continuous_raises_with_mismatch_multi_search_space() -> None:
+    space_A = Box([-1], [2])
+    space_B = Box([3], [4])
+    multi_space = TaggedMultiSearchSpace(spaces=[space_A, space_B])
+    acq_fn = _quadratic_sum([1.0])
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES, match="The batch shape of initial samples 2 must"):
+        generate_continuous_optimizer()(multi_space, acq_fn)
+
+
+def test_optimize_continuous_finds_points_in_multi_search_space_boxes() -> None:
+    # Test with non-overlapping grid of 2D boxes. Optimize them as a batch and check that each
+    # point is only in the corresponding box.
+    boxes = [Box([x, y], [x + 0.7, y + 0.7]) for x in range(-2, 2) for y in range(-2, 2)]
+    multi_space = TaggedMultiSearchSpace(spaces=boxes)
+    batch_size = len(boxes)
+
+    def target_function(x: TensorType) -> TensorType:  # [N, V, D] -> [N, V]
+        individual_func = [_quadratic_sum([1.0])(x[:, i : i + 1, :]) for i in range(batch_size)]
+        return tf.concat(individual_func, axis=-1)  # vectorize by repeating same function
+
+    optimizer = generate_continuous_optimizer()
+    optimizer = batchify_vectorize(optimizer, batch_size)
+    max_points = optimizer(multi_space, target_function)
+
+    # Ensure order of points is the same as the order of boxes and that each point is only in the
+    # corresponding box.
+    for i, point in enumerate(max_points):
+        for j, box in enumerate(boxes):
+            if i == j:
+                assert point in box
+            else:
+                assert point not in box
 
 
 @pytest.mark.parametrize("num_optimization_runs", [1, 10])

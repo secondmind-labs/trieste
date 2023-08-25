@@ -23,6 +23,7 @@ import numpy as np
 import scipy.optimize as spo
 import tensorflow as tf
 import tensorflow_probability as tfp
+from check_shapes import check_shapes
 
 from .types import TensorType
 
@@ -869,20 +870,18 @@ class Box(SearchSpace):
         return len(self._constraints) > 0
 
 
-class TaggedProductSearchSpace(SearchSpace):
+class CollectionSearchSpace(SearchSpace):
     r"""
-    Product :class:`SearchSpace` consisting of a product of
-    multiple :class:`SearchSpace`. This class provides functionality for
-    accessing either the resulting combined search space or each individual space.
+    An abstract :class:`SearchSpace` consisting of a collection of multiple :class:`SearchSpace`
+    objects, each with a unique tag. This class provides functionality for accessing each individual
+    space.
 
-    Note that this class assumes that individual points in product spaces are
-    represented with their inputs in the same order as specified when initializing
-    the space.
+    Note that the individual spaces are not combined in any way.
     """
 
     def __init__(self, spaces: Sequence[SearchSpace], tags: Optional[Sequence[str]] = None):
         r"""
-        Build a :class:`TaggedProductSearchSpace` from a list ``spaces`` of other spaces. If
+        Build a :class:`CollectionSearchSpace` from a list ``spaces`` of other spaces. If
         ``tags`` are provided then they form the identifiers of the subspaces, otherwise the
         subspaces are labelled numerically.
 
@@ -914,54 +913,36 @@ class TaggedProductSearchSpace(SearchSpace):
             )
 
         self._spaces = dict(zip(tags, spaces))
-
-        subspace_sizes = [space.dimension for space in spaces]
-
-        self._subspace_sizes_by_tag = {
-            tag: subspace_size for tag, subspace_size in zip(tags, subspace_sizes)
-        }
-
-        self._subspace_starting_indices = dict(zip(tags, tf.cumsum(subspace_sizes, exclusive=True)))
-
-        self._dimension = tf.cast(tf.reduce_sum(subspace_sizes), dtype=tf.int32)
         self._tags = tuple(tags)  # avoid accidental modification by users
 
     def __repr__(self) -> str:
-        """"""
-        return f"""TaggedProductSearchSpace(spaces =
+        return f"""{self.__class__.__name__}(spaces =
                 {[self.get_subspace(tag) for tag in self.subspace_tags]},
                 tags = {self.subspace_tags})
                 """
 
     @property
-    def lower(self) -> TensorType:
-        """The lowest values taken by each space dimension, concatenated across subspaces."""
-        lower_for_each_subspace = [self.get_subspace(tag).lower for tag in self.subspace_tags]
-        return (
-            tf.concat(lower_for_each_subspace, axis=-1)
-            if lower_for_each_subspace
-            else tf.constant([], dtype=DEFAULT_DTYPE)
-        )
+    def subspace_lower(self) -> Sequence[TensorType]:
+        """The lowest values taken by each space dimension, in the same order as specified when
+        initializing the space."""
+        return [self.get_subspace(tag).lower for tag in self.subspace_tags]
 
     @property
-    def upper(self) -> TensorType:
-        """The highest values taken by each space dimension, concatenated across subspaces."""
-        upper_for_each_subspace = [self.get_subspace(tag).upper for tag in self.subspace_tags]
-        return (
-            tf.concat(upper_for_each_subspace, axis=-1)
-            if upper_for_each_subspace
-            else tf.constant([], dtype=DEFAULT_DTYPE)
-        )
+    def subspace_upper(self) -> Sequence[TensorType]:
+        """The highest values taken by each space dimension, in the same order as specified when
+        initializing the space."""
+        return [self.get_subspace(tag).upper for tag in self.subspace_tags]
 
     @property
     def subspace_tags(self) -> tuple[str, ...]:
-        """Return the names of the subspaces contained in this product space."""
+        """Return the names of the subspaces contained in this space."""
         return self._tags
 
     @property
-    def dimension(self) -> TensorType:
-        """The number of inputs in this product search space."""
-        return self._dimension
+    def subspace_dimension(self) -> Sequence[TensorType]:
+        """The number of inputs in each subspace, in the same order as specified when initializing
+        the space."""
+        return [self.get_subspace(tag).dimension for tag in self.subspace_tags]
 
     def get_subspace(self, tag: str) -> SearchSpace:
         """
@@ -976,9 +957,106 @@ class TaggedProductSearchSpace(SearchSpace):
             message=f"""
                 Attempted to access a subspace that does not exist. This space only contains
                 subspaces with the tags {self.subspace_tags} but received {tag}.
-            """,
+                """,
         )
         return self._spaces[tag]
+
+    def subspace_sample(self, num_samples: int, seed: Optional[int] = None) -> Sequence[TensorType]:
+        """
+        Sample randomly from the space by sampling from each subspace
+        and returning the resulting samples in the same order as specified when initializing
+        the space.
+
+        :param num_samples: The number of points to sample from each subspace.
+        :param seed: Optional tf.random seed.
+        :return: ``num_samples`` i.i.d. random points, sampled uniformly,
+            from each search subspace with shape '[num_samples, D]' , where D is the search space
+            dimension.
+        """
+        tf.debugging.assert_non_negative(num_samples)
+        if seed is not None:  # ensure reproducibility
+            tf.random.set_seed(seed)
+        return [self._spaces[tag].sample(num_samples, seed=seed) for tag in self._tags]
+
+    def __eq__(self, other: object) -> bool:
+        """
+        :param other: A search space.
+        :return: Whether the search space is identical to this one.
+        """
+        if not isinstance(other, type(self)):
+            return NotImplemented
+        return self._tags == other._tags and self._spaces == other._spaces
+
+
+class TaggedProductSearchSpace(CollectionSearchSpace):
+    r"""
+    Product :class:`SearchSpace` consisting of a product of
+    multiple :class:`SearchSpace`. This class provides functionality for
+    accessing either the resulting combined search space or each individual space.
+    This class is useful for defining mixed search spaces, for example:
+
+        context_space = DiscreteSearchSpace(tf.constant([[-0.5, 0.5]]))
+        decision_space = Box([-1, -2], [2, 3])
+        mixed_space = TaggedProductSearchSpace(spaces=[context_space, decision_space])
+
+    Note that this class assumes that individual points in product spaces are
+    represented with their inputs in the same order as specified when initializing
+    the space.
+    """
+
+    def __init__(self, spaces: Sequence[SearchSpace], tags: Optional[Sequence[str]] = None):
+        r"""
+        Build a :class:`TaggedProductSearchSpace` from a list ``spaces`` of other spaces. If
+        ``tags`` are provided then they form the identifiers of the subspaces, otherwise the
+        subspaces are labelled numerically.
+
+        :param spaces: A sequence of :class:`SearchSpace` objects representing the space's subspaces
+        :param tags: An optional list of tags giving the unique identifiers of
+            the space's subspaces.
+        :raise ValueError (or tf.errors.InvalidArgumentError): If ``spaces`` has a different
+            length to ``tags`` when ``tags`` is provided or if ``tags`` contains duplicates.
+        """
+
+        super().__init__(spaces, tags)
+        subspace_sizes = self.subspace_dimension
+
+        self._subspace_sizes_by_tag = {
+            tag: subspace_size for tag, subspace_size in zip(self._tags, subspace_sizes)
+        }
+
+        self._subspace_starting_indices = dict(
+            zip(self._tags, tf.cumsum(subspace_sizes, exclusive=True))
+        )
+
+        self._dimension = tf.cast(tf.reduce_sum(subspace_sizes), dtype=tf.int32)
+
+    @property
+    @check_shapes("return: [D]")
+    def lower(self) -> TensorType:
+        """The lowest values taken by each space dimension, concatenated across subspaces."""
+        lower_for_each_subspace = self.subspace_lower
+        return (
+            tf.concat(lower_for_each_subspace, axis=-1)
+            if lower_for_each_subspace
+            else tf.constant([], dtype=DEFAULT_DTYPE)
+        )
+
+    @property
+    @check_shapes("return: [D]")
+    def upper(self) -> TensorType:
+        """The highest values taken by each space dimension, concatenated across subspaces."""
+        upper_for_each_subspace = self.subspace_upper
+        return (
+            tf.concat(upper_for_each_subspace, axis=-1)
+            if upper_for_each_subspace
+            else tf.constant([], dtype=DEFAULT_DTYPE)
+        )
+
+    @property
+    @check_shapes("return: []")
+    def dimension(self) -> TensorType:
+        """The number of inputs in this product search space."""
+        return self._dimension
 
     def fix_subspace(self, tag: str, values: TensorType) -> TaggedProductSearchSpace:
         """
@@ -1033,6 +1111,7 @@ class TaggedProductSearchSpace(SearchSpace):
         ]
         return tf.reduce_all(in_each_subspace, axis=0)
 
+    @check_shapes("return: [num_samples, D]")
     def sample(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
         """
         Sample randomly from the space by sampling from each subspace
@@ -1044,10 +1123,7 @@ class TaggedProductSearchSpace(SearchSpace):
             from this search space with shape '[num_samples, D]' , where D is the search space
             dimension.
         """
-        tf.debugging.assert_non_negative(num_samples)
-        if seed is not None:  # ensure reproducibility
-            tf.random.set_seed(seed)
-        subspace_samples = [self._spaces[tag].sample(num_samples, seed=seed) for tag in self._tags]
+        subspace_samples = self.subspace_sample(num_samples, seed)
         return tf.concat(subspace_samples, -1)
 
     def product(self, other: TaggedProductSearchSpace) -> TaggedProductSearchSpace:
@@ -1060,11 +1136,136 @@ class TaggedProductSearchSpace(SearchSpace):
         """
         return TaggedProductSearchSpace(spaces=[self, other])
 
-    def __eq__(self, other: object) -> bool:
+
+class TaggedMultiSearchSpace(CollectionSearchSpace):
+    r"""
+    A :class:`SearchSpace` made up of a collection of multiple :class:`SearchSpace` subspaces,
+    each with a unique tag. All subspaces must have the same dimensionality.
+
+    Each subspace is treated as an independent space and not combined in any way. This class
+    provides functionality for accessing all the subspaces at once by using the usual search space
+    methods, as well as for accessing individual subspaces.
+
+    When accessing all subspaces at once from this class (e.g. `lower()`, `upper()`, `sample()`),
+    the returned tensors have an extra dimension corresponding to the subspaces.
+
+    This class can be useful to represent a collection of search spaces that do not interact with
+    each other. For example, it is used to implement batch trust region rules in the
+    :class:`BatchTrustRegion` class.
+    """
+
+    def __init__(self, spaces: Sequence[SearchSpace], tags: Optional[Sequence[str]] = None):
+        r"""
+        Build a :class:`TaggedMultiSearchSpace` from a list ``spaces`` of other spaces. If
+        ``tags`` are provided then they form the identifiers of the subspaces, otherwise the
+        subspaces are labelled numerically.
+
+        :param spaces: A sequence of :class:`SearchSpace` objects representing the space's subspaces
+        :param tags: An optional list of tags giving the unique identifiers of
+            the space's subspaces.
+        :raise ValueError (or tf.errors.InvalidArgumentError): If ``spaces`` has a different
+            length to ``tags`` when ``tags`` is provided or if ``tags`` contains duplicates.
+        :raise ValueError (or tf.errors.InvalidArgumentError): If ``spaces`` has a different
+            dimension to each other.
         """
-        :param other: A search space.
-        :return: Whether the search space is identical to this one.
+
+        # At least one subspace is required.
+        tf.debugging.assert_greater(
+            len(spaces),
+            0,
+            message=f"""
+                At least one subspace is required but received {len(spaces)}.
+                """,
+        )
+
+        tf.debugging.assert_equal(
+            len(set([int(space.dimension) for space in spaces])),
+            1,
+            message=f"""
+                All subspaces must have the same dimension but received
+                {[int(space.dimension) for space in spaces]}.
+                """,
+        )
+
+        super().__init__(spaces, tags)
+
+    @property
+    @check_shapes("return: [V, D]")
+    def lower(self) -> TensorType:
+        """Returns the stacked lower bounds of all the subspaces.
+
+        :return: The lower bounds of shape [V, D], where V is the number of subspaces and D is
+            the dimensionality of each subspace.
         """
-        if not isinstance(other, TaggedProductSearchSpace):
-            return NotImplemented
-        return self._tags == other._tags and self._spaces == other._spaces
+        return tf.stack(self.subspace_lower, axis=0)
+
+    @property
+    @check_shapes("return: [V, D]")
+    def upper(self) -> TensorType:
+        """Returns the stacked upper bounds of all the subspaces.
+
+        :return: The upper bounds of shape [V, D], where V is the number of subspaces and D is
+            the dimensionality of each subspace.
+        """
+        return tf.stack(self.subspace_upper, axis=0)
+
+    @property
+    @check_shapes("return: []")
+    def dimension(self) -> TensorType:
+        """The number of inputs in this search space."""
+        return self.get_subspace(self.subspace_tags[0]).dimension
+
+    @check_shapes("return: [num_samples, V, D]")
+    def sample(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
+        """
+        Sample randomly from the space by sampling from each subspace
+        and returning the resulting samples stacked along the second axis in the same order as
+        specified when initializing the space.
+
+        :param num_samples: The number of points to sample from each subspace.
+        :param seed: Optional tf.random seed.
+        :return: ``num_samples`` i.i.d. random points, sampled uniformly,
+            from each search subspace with shape '[num_samples, V, D]' , where V is the number of
+            subspaces and D is the search space dimension.
+        """
+        return tf.stack(self.subspace_sample(num_samples, seed), axis=1)
+
+    def _contains(self, value: TensorType) -> TensorType:
+        """
+        Return `True` if ``value`` is a member of this search space, else `False`. A point
+        is a member if it is a member of any of the subspaces.
+
+        :param value: A point or points to check for membership of this :class:`SearchSpace`.
+        :return: A boolean array showing membership for each point in value.
+        """
+        return tf.reduce_any(
+            [self.get_subspace(tag)._contains(value) for tag in self.subspace_tags], axis=0
+        )
+
+    def product(self, other: TaggedMultiSearchSpace) -> TaggedMultiSearchSpace:
+        r"""
+        Return a bigger collection of two :class:`TaggedMultiSearchSpace`\ s, regenerating the
+        tags.
+
+        :param other: A search space of the same type as this search space.
+        :return: The product of this search space with the ``other``.
+        """
+        return TaggedMultiSearchSpace(
+            spaces=tuple(self._spaces.values()) + tuple(other._spaces.values())
+        )
+
+    def discretize(self, num_samples: int) -> DiscreteSearchSpace:
+        """
+        :param num_samples: The number of points in the :class:`DiscreteSearchSpace`.
+        :return: A discrete search space consisting of ``num_samples`` points sampled uniformly from
+            this search space.
+        :raise NotImplementedError: If this :class:`SearchSpace` has constraints.
+        """
+        if self.has_constraints:  # Constraints are not supported.
+            raise NotImplementedError(
+                "Discretization is currently not supported in the presence of constraints."
+            )
+        samples = self.sample(num_samples)  # Sample num_samples points from each subspace.
+        samples = tf.reshape(samples, [-1, self.dimension])  # Flatten the samples across subspaces.
+        samples = tf.random.shuffle(samples)[:num_samples]  # Randomly pick num_samples points.
+        return DiscreteSearchSpace(points=samples)

@@ -15,6 +15,7 @@ import functools
 from typing import Tuple, Union
 
 import tensorflow as tf
+from check_shapes import check_shapes
 
 from ..data import Dataset
 from ..space import SearchSpaceType
@@ -135,3 +136,38 @@ def get_local_dataset(local_space: SearchSpaceType, dataset: Dataset) -> Dataset
         observations=tf.boolean_mask(dataset.observations, is_in_region_mask),
     )
     return local_dataset
+
+
+@check_shapes(
+    "points: [n_points, ...]",
+    "return: [n_points]",
+)
+def get_unique_points_mask(points: TensorType, tolerance: float = 1e-6) -> TensorType:
+    """Find the boolean mask of unique points in a tensor, within a given tolerance.
+
+    Users can get the actual points with:
+
+        mask = get_unique_points_mask(points, tolerance)
+        unique_points = tf.boolean_mask(points, mask)
+
+    :param points: A tensor of points, with the first dimension being the number of points.
+    :param tolerance: The tolerance within which points are considered equal.
+    :return: A boolean mask for the unique points.
+    """
+
+    tolerance = tf.constant(tolerance, dtype=points.dtype)
+    n_points = tf.shape(points)[0]
+    mask = tf.zeros(shape=(n_points,), dtype=tf.bool)
+
+    for idx in tf.range(n_points):
+        # Pairwise distance with previous unique points.
+        used_points = tf.boolean_mask(points, mask)
+        distances = tf.norm(points[idx] - used_points, axis=-1)
+        # Find if there is any point within the tolerance.
+        min_distance = tf.reduce_min(distances)
+
+        # Update mask.
+        is_unique_point = min_distance >= tolerance
+        mask = tf.tensor_scatter_nd_update(mask, [[idx]], [is_unique_point])
+
+    return mask
