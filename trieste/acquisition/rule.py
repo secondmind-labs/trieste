@@ -1411,7 +1411,7 @@ class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, SingleObjecti
         return tf.logical_not(get_unique_points_mask(centres, tolerance=1e-6))
 
 
-class TREGOBox(SingleObjectiveTRBox):
+class TREGOBox(SingleObjectiveTrustRegionBox):
     """
     A trust region box algorithm that alternates between regular EGO steps and local steps within a
     trust region.
