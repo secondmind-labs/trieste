@@ -23,11 +23,15 @@ from gpflow.models import GPModel
 from matplotlib import cm
 from matplotlib.axes import Axes
 from matplotlib.collections import Collection
+from matplotlib.colors import rgb2hex
 from matplotlib.contour import ContourSet
 from matplotlib.figure import Figure
+from matplotlib.patches import Rectangle
 
 from trieste.acquisition import AcquisitionFunction
 from trieste.acquisition.multi_objective.dominance import non_dominated
+from trieste.bayesian_optimizer import FrozenRecord, Record, StateType
+from trieste.space import TaggedMultiSearchSpace
 from trieste.types import TensorType
 from trieste.utils import to_numpy
 
@@ -532,5 +536,81 @@ def plot_gp_2d(
             axx.set_ylabel(ylabel)
             axx.set_xlim(mins[0], maxs[0])
             axx.set_ylim(mins[1], maxs[1])
+
+    return fig, ax
+
+
+def plot_trust_region_history_2d(
+    obj_func: Callable[[TensorType], TensorType],
+    mins: TensorType,
+    maxs: TensorType,
+    history: Record[StateType] | FrozenRecord[StateType],
+    num_query_points: int,
+    num_init: Optional[int] = None,
+) -> tuple[Optional[Figure], Optional[Axes]]:
+    """
+    Plot the contour of the objective function, query points and the trust regions for a particular
+    step of the optimization process.
+
+    :param obj_func: the objective function that returns a n-array given a [n, d] array
+    :param mins: search space 2D lower bounds
+    :param maxs: search space 2D upper bounds
+    :param history: the optimization history for a particular step of the optimization process
+    :param num_query_points: number of query points in this step
+    :param num_init: initial number of BO points
+    :return: figure and axes
+    """
+
+    state = history.acquisition_state
+    if state is None:
+        # If state is None, then there is no trust region state to plot.
+        return None, None
+
+    # Plot objective contour.
+    fig, ax = plot_function_2d(
+        obj_func,
+        mins,
+        maxs,
+        grid_density=40,
+        contour=True,
+    )
+
+    query_points = history.dataset.query_points
+    new_points_mask = np.zeros(query_points.shape[0], dtype=bool)
+    new_points_mask[-num_query_points:] = True
+
+    assert hasattr(state, "acquisition_space")
+    acquisition_space = state.acquisition_space
+
+    colors = [rgb2hex(color) for color in cm.rainbow(np.linspace(0, 1, num_query_points))]
+
+    # Plot trust regions.
+    if isinstance(acquisition_space, TaggedMultiSearchSpace):
+        spaces = [acquisition_space.get_subspace(tag) for tag in acquisition_space.subspace_tags]
+    else:
+        spaces = [acquisition_space]
+    for i, space in enumerate(spaces):
+        lb = space.lower
+        ub = space.upper
+        ax[0, 0].add_patch(
+            Rectangle(
+                (lb[0], lb[1]),
+                ub[0] - lb[0],
+                ub[1] - lb[1],
+                facecolor=colors[i],
+                edgecolor=colors[i],
+                alpha=0.3,
+            )
+        )
+
+    # Plot new query points, using failure mask to color them.
+    plot_bo_points(
+        query_points,
+        ax[0, 0],
+        num_init,
+        mask_fail=new_points_mask,
+        c_pass="black",
+        c_fail=colors,
+    )
 
     return fig, ax

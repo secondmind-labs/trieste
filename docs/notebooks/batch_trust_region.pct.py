@@ -137,7 +137,7 @@ fig = add_bo_points_plotly(
 fig.show()
 
 # %% [markdown]
-# We can also visualize how each successive point compares with the current best by plotting regret.
+# Next we visualize how each successive point compares with the current best by plotting regret.
 # This plot shows the observations (crosses and dots), the current best (orange line), and the start of the optimization loop (blue line).
 
 # %%
@@ -157,7 +157,9 @@ ax.set_ylabel("Regret")
 ax.set_xlabel("# evaluations")
 
 # %% [markdown]
-# Next we visualize the progress of the optimization by plotting the trust regions at each step. The trust regions are shown as translucent boxes, with the current optimum point in each region shown in matching color.
+# We can also visualize the progress of the optimization by plotting the trust regions at each step.
+#
+# However, first we define some helper functions for plotting the trust regions.
 
 # %%
 import base64
@@ -165,78 +167,51 @@ import io
 
 import imageio
 import IPython
-from matplotlib.colors import rgb2hex
-from matplotlib.patches import Rectangle
-from matplotlib.pyplot import cm
 
-colors = [
-    rgb2hex(color) for color in cm.rainbow(np.linspace(0, 1, num_query_points))
-]
-frames = []
+from trieste.experimental.plotting import plot_trust_region_history_2d
 
-for step, hist in enumerate(result.history + [result.final_result.unwrap()]):
-    state = hist.acquisition_state
-    if state is None:
-        continue
 
-    # Plot branin contour.
-    fig, ax = plot_function_2d(
-        branin,
-        search_space.lower,
-        search_space.upper,
-        grid_density=40,
-        contour=True,
-    )
-
-    query_points = hist.dataset.query_points
-    new_points_mask = np.zeros(query_points.shape[0], dtype=bool)
-    new_points_mask[-num_query_points:] = True
-
-    assert isinstance(state, trieste.acquisition.rule.BatchTrustRegionBox.State)
-    acquisition_space = state.acquisition_space
-
-    # Plot trust regions.
-    for i, tag in enumerate(acquisition_space.subspace_tags):
-        lb = acquisition_space.get_subspace(tag).lower
-        ub = acquisition_space.get_subspace(tag).upper
-        ax[0, 0].add_patch(
-            Rectangle(
-                (lb[0], lb[1]),
-                ub[0] - lb[0],
-                ub[1] - lb[1],
-                facecolor=colors[i],
-                edgecolor=colors[i],
-                alpha=0.3,
-            )
-        )
-
-    # Plot new query points, using failure mask to color them.
-    plot_bo_points(
-        query_points,
-        ax[0, 0],
-        num_initial_data_points,
-        mask_fail=new_points_mask,
-        c_pass="black",
-        c_fail=colors,
-    )
-
-    fig.suptitle(f"step number {step}")
+def _fig_to_frame(fig: plt.Figure) -> np.ndarray:
     fig.canvas.draw()
     size_pix = fig.get_size_inches() * fig.dpi
     image = np.frombuffer(fig.canvas.tostring_rgb(), dtype="uint8")
-    frames.append(image.reshape(list(size_pix[::-1].astype(int)) + [3]))
-    plt.close(fig)
+    return image.reshape(list(size_pix[::-1].astype(int)) + [3])
 
 
-# Create and show the GIF.
-gif_file = io.BytesIO()
-imageio.mimsave(gif_file, frames, format="gif", loop=0, duration=5000)
-gif = IPython.display.HTML(
-    '<img src="data:image/gif;base64,{0}"/>'.format(
-        base64.b64encode(gif_file.getvalue()).decode()
+def _frames_to_gif(
+    frames: list[np.ndarray], duration=5000
+) -> IPython.display.HTML:
+    gif_file = io.BytesIO()
+    imageio.mimsave(gif_file, frames, format="gif", loop=0, duration=duration)
+    gif = IPython.display.HTML(
+        '<img src="data:image/gif;base64,{0}"/>'.format(
+            base64.b64encode(gif_file.getvalue()).decode()
+        )
     )
-)
-IPython.display.display(gif)
+    return gif
+
+
+# %% [markdown]
+# The trust regions are shown as translucent boxes, with the current optimum point in each region shown in matching color.
+
+# %%
+frames = []
+for step, hist in enumerate(result.history + [result.final_result.unwrap()]):
+    fig, _ = plot_trust_region_history_2d(
+        branin,
+        search_space.lower,
+        search_space.upper,
+        hist,
+        num_query_points,
+        num_initial_data_points,
+    )
+
+    if fig is not None:
+        fig.suptitle(f"step number {step}")
+        frames.append(_fig_to_frame(fig))
+        plt.close(fig)
+
+IPython.display.display(_frames_to_gif(frames))
 
 # %% [markdown]
 # ## LICENSE

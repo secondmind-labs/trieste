@@ -30,6 +30,7 @@ try:
         plot_mobo_history,
         plot_mobo_points_in_obj_space,
         plot_regret,
+        plot_trust_region_history_2d,
     )
     from .plotting_plotly import (
         add_bo_points_plotly,
