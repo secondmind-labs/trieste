@@ -545,7 +545,7 @@ def plot_trust_region_history_2d(
     mins: TensorType,
     maxs: TensorType,
     history: Record[StateType] | FrozenRecord[StateType],
-    num_query_points: int,
+    num_query_points: Optional[int] = None,
     num_init: Optional[int] = None,
 ) -> tuple[Optional[Figure], Optional[Axes]]:
     """
@@ -575,20 +575,23 @@ def plot_trust_region_history_2d(
         contour=True,
     )
 
-    query_points = history.dataset.query_points
-    new_points_mask = np.zeros(query_points.shape[0], dtype=bool)
-    new_points_mask[-num_query_points:] = True
-
     assert hasattr(state, "acquisition_space")
     acquisition_space = state.acquisition_space
 
-    colors = [rgb2hex(color) for color in cm.rainbow(np.linspace(0, 1, num_query_points))]
-
-    # Plot trust regions.
     if isinstance(acquisition_space, TaggedMultiSearchSpace):
         spaces = [acquisition_space.get_subspace(tag) for tag in acquisition_space.subspace_tags]
     else:
         spaces = [acquisition_space]
+
+    if num_query_points is None:
+        num_query_points = len(spaces)
+
+    query_points = history.dataset.query_points
+    new_points_mask = np.zeros(query_points.shape[0], dtype=bool)
+    new_points_mask[-num_query_points:] = True
+
+    # Plot trust regions.
+    colors = [rgb2hex(color) for color in cm.rainbow(np.linspace(0, 1, num_query_points))]
     for i, space in enumerate(spaces):
         lb = space.lower
         ub = space.upper
