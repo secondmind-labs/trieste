@@ -66,7 +66,7 @@ def build_model():
 # First we show how to run Bayesian optimization with the `TREGO` algorithm. This is a trust region
 # algorithm that alternates between regular EGO steps and local steps within one trust region.
 #
-# ### Create the rule and run the optimization loop
+# ### Create `TREGO` rule and run optimization loop
 #
 # We can run the Bayesian optimization loop by defining a `BayesianOptimizer` and calling its
 # `optimize` method with the trust region rule. Once the optimization loop is complete, the
@@ -244,7 +244,7 @@ plot_history(result)
 # trust region algorithm that uses local models and datasets to approximate the objective function
 # within one trust region.
 #
-# ### Create the rule and run the optimization loop
+# ### Create `TurBO` rule and run optimization loop
 #
 # This rule requires the specification of an aquisition base-rule for performing
 # optimization within the trust region; for our example we use `DiscreteThompsonSampling`.
