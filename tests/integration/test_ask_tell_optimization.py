@@ -28,8 +28,9 @@ from trieste.acquisition.rule import (
     AcquisitionRule,
     AsynchronousGreedy,
     AsynchronousRuleState,
+    BatchTrustRegionBox,
     EfficientGlobalOptimization,
-    TrustRegion,
+    TREGOBox,
 )
 from trieste.ask_tell_optimization import AskTellOptimizer
 from trieste.bayesian_optimizer import OptimizationResult, Record
@@ -57,8 +58,15 @@ OPTIMIZER_PARAMS = (
             lambda: EfficientGlobalOptimization(),
             id="EfficientGlobalOptimization/reload_state",
         ),
-        pytest.param(15, False, lambda: TrustRegion(), id="TrustRegion"),
-        pytest.param(16, True, lambda: TrustRegion(), id="TrustRegion/reload_state"),
+        pytest.param(
+            15, False, lambda: BatchTrustRegionBox(TREGOBox(ScaledBranin.search_space)), id="TREGO"
+        ),
+        pytest.param(
+            16,
+            True,
+            lambda: BatchTrustRegionBox(TREGOBox(ScaledBranin.search_space)),
+            id="TREGO/reload_state",
+        ),
         pytest.param(
             10,
             False,
@@ -96,7 +104,7 @@ def test_ask_tell_optimizer_finds_minima_of_the_scaled_branin_function(
     | Callable[
         [],
         AcquisitionRule[
-            State[TensorType, AsynchronousRuleState | TrustRegion.State],
+            State[TensorType, AsynchronousRuleState | BatchTrustRegionBox.State],
             Box,
             TrainableProbabilisticModel,
         ],
@@ -116,7 +124,7 @@ def test_ask_tell_optimizer_finds_minima_of_simple_quadratic(
     | Callable[
         [],
         AcquisitionRule[
-            State[TensorType, AsynchronousRuleState | TrustRegion.State],
+            State[TensorType, AsynchronousRuleState | BatchTrustRegionBox.State],
             Box,
             TrainableProbabilisticModel,
         ],
@@ -139,7 +147,7 @@ def _test_ask_tell_optimization_finds_minima(
     | Callable[
         [],
         AcquisitionRule[
-            State[TensorType, AsynchronousRuleState | TrustRegion.State],
+            State[TensorType, AsynchronousRuleState | BatchTrustRegionBox.State],
             Box,
             TrainableProbabilisticModel,
         ],
@@ -173,7 +181,7 @@ def _test_ask_tell_optimization_finds_minima(
 
                 if reload_state:
                     state: Record[
-                        None | State[TensorType, AsynchronousRuleState | TrustRegion.State]
+                        None | State[TensorType, AsynchronousRuleState | BatchTrustRegionBox.State]
                     ] = ask_tell.to_record()
                     written_state = pickle.dumps(state)
 
@@ -188,7 +196,7 @@ def _test_ask_tell_optimization_finds_minima(
                 ask_tell.tell(new_data_point)
 
     result: OptimizationResult[
-        None | State[TensorType, AsynchronousRuleState | TrustRegion.State]
+        None | State[TensorType, AsynchronousRuleState | BatchTrustRegionBox.State]
     ] = ask_tell.to_result()
     dataset = result.try_get_final_dataset()
 

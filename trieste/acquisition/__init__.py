@@ -101,10 +101,12 @@ from .rule import (
     AsynchronousGreedy,
     AsynchronousOptimization,
     BatchHypervolumeSharpeRatioIndicator,
+    BatchTrustRegionBox,
     DiscreteThompsonSampling,
     EfficientGlobalOptimization,
     RandomSampling,
-    TrustRegion,
+    SingleObjectiveTrustRegionBox,
+    TREGOBox,
 )
 from .sampler import (
     ExactThompsonSampler,

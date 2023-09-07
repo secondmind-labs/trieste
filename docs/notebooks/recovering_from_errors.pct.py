@@ -1,10 +1,11 @@
 # %% [markdown]
 # # Recovering from errors
 
+import random
+
 # %%
 import numpy as np
 import tensorflow as tf
-import random
 
 np.random.seed(1793)
 tf.random.set_seed(1793)
@@ -41,10 +42,10 @@ observer = FaultyBranin()
 
 # %% [markdown]
 # ## Set up the problem
-# We'll use the same set up as before, except for the acquisition rule, where we'll use `TrustRegion`. `TrustRegion` is stateful, and we'll need to account for its state to recover, so using this rule gives the reader a more comprehensive overview of how to recover.
+# We'll use the same set up as before, except for the acquisition rule, where we'll use `BatchTrustRegionBox`. `BatchTrustRegionBox` is stateful, and we'll need to account for its state to recover, so using this rule gives the reader a more comprehensive overview of how to recover.
 
 # %%
-from trieste.models.gpflow import build_gpr, GaussianProcessRegression
+from trieste.models.gpflow import GaussianProcessRegression, build_gpr
 
 search_space = trieste.space.Box(
     tf.cast([0.0, 0.0], tf.float64), tf.cast([1.0, 1.0], tf.float64)
@@ -54,7 +55,9 @@ initial_data = observer(search_space.sample(5))
 gpr = build_gpr(initial_data, search_space)
 model = GaussianProcessRegression(gpr)
 
-acquisition_rule = trieste.acquisition.rule.TrustRegion()
+acquisition_rule = trieste.acquisition.rule.BatchTrustRegionBox(  # type: ignore[var-annotated]
+    trieste.acquisition.rule.TREGOBox(search_space)
+)
 
 # %% [markdown]
 # ## Run the optimization loop
@@ -155,7 +158,10 @@ optimizer = split_acquisition_function_calls(
     automatic_optimizer_selector, split_size=10_000
 )
 query_rule = EfficientGlobalOptimization(optimizer=optimizer)
-acquisition_rule = trieste.acquisition.rule.TrustRegion(rule=query_rule)
+acquisition_rule = trieste.acquisition.rule.BatchTrustRegionBox(
+    trieste.acquisition.rule.TREGOBox(search_space),
+    rule=query_rule,
+)
 
 # %% [markdown]
 # ## LICENSE
