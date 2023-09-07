@@ -1,9 +1,9 @@
 # %% [markdown]
 # # Recovering from errors
 
+# %%
 import random
 
-# %%
 import numpy as np
 import tensorflow as tf
 
