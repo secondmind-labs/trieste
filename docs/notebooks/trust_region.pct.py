@@ -83,7 +83,7 @@ result = bo.optimize(
 dataset = result.try_get_final_dataset()
 
 # %% [markdown]
-# ### Visualizing the result
+# ### Visualizing `TREGO` results
 #
 # Let's take a look at where we queried the observer, the original query points (crosses), new
 # query points (dots) and the optimum point found (purple dot), and where they lie with respect to
@@ -227,7 +227,7 @@ result = bo.optimize(
 dataset = result.try_get_final_dataset()
 
 # %% [markdown]
-# ### Visualizing the result
+# ### Visualizing batch trust region results
 #
 # Next we visualize the results as before.
 
@@ -267,7 +267,7 @@ result = bo.optimize(
 dataset = result.try_get_final_dataset()
 
 # %% [markdown]
-# ### Visualizing the result
+# ### Visualizing `TurBO` results
 #
 # Here are the plots `TurBO`.
 
