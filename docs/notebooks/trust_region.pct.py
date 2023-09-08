@@ -248,6 +248,9 @@ plot_history(result)
 #
 # This rule requires the specification of an aquisition base-rule for performing
 # optimization within the trust region; for our example we use `DiscreteThompsonSampling`.
+#
+# Note that we switch off global model fitting by setting `fit_model=False`. This is because
+# `TurBO` uses a local model and fitting the global model would be redundant and wasteful.
 
 # %%
 acq_rule = trieste.acquisition.rule.TURBO(  # type: ignore[assignment]
