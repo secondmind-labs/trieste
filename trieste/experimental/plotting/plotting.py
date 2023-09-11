@@ -14,8 +14,10 @@
 
 from __future__ import annotations
 
+import io
 from typing import Callable, List, Optional, Sequence, Union
 
+import imageio
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
@@ -617,3 +619,29 @@ def plot_trust_region_history_2d(
     )
 
     return fig, ax
+
+
+def convert_figure_to_frame(fig: plt.Figure) -> TensorType:
+    """
+    Converts a matplotlib figure to an array of pixels.
+
+    :param fig: a matplotlib figure
+    :return: an array of pixels - a frame
+    """
+    fig.canvas.draw()
+    size_pix = fig.get_size_inches() * fig.dpi
+    image = np.frombuffer(fig.canvas.tostring_rgb(), dtype="uint8")
+    return image.reshape(list(size_pix[::-1].astype(int)) + [3])
+
+
+def convert_frames_to_gif(frames: Sequence[TensorType], duration: int = 5000) -> io.BytesIO:
+    """
+    Converts a sequence of frames (arrays of pixels) to a gif.
+
+    :param frames: sequence of frames
+    :param duration: duration of each frame in milliseconds
+    :return: gif file
+    """
+    gif_file = io.BytesIO()
+    imageio.mimsave(gif_file, frames, format="gif", loop=0, duration=duration)
+    return gif_file

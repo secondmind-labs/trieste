@@ -64,16 +64,22 @@ def build_model():
 # ## Trust region `TREGO` acquisition rule
 #
 # First we show how to run Bayesian optimization with the `TREGO` algorithm. This is a trust region
-# algorithm that alternates between regular EGO steps and local steps within one trust region.
+# algorithm that alternates between regular EGO steps and local steps within one trust region
+# (see <cite data-cite="diouane2022trego"/>).
 #
 # ### Create `TREGO` rule and run optimization loop
 #
 # We can run the Bayesian optimization loop by defining a `BayesianOptimizer` and calling its
 # `optimize` method with the trust region rule. Once the optimization loop is complete, the
 # optimizer will return one new query point for every step in the loop; that's 5 points in total.
+#
+# `TREGO` is a "meta" rule that applies a base-rule, either inside a trust region or the whole
+# space. The default base-rule is `EfficientGlobalOptimization`, but a different base-rule can be
+# provided as an argument to `TREGO`. Here we explicitly set it to make usage clear.
 
 # %%
-acq_rule = trieste.acquisition.rule.TrustRegion()
+base_rule = trieste.acquisition.rule.EfficientGlobalOptimization()  # type: ignore[var-annotated]
+acq_rule = trieste.acquisition.rule.TrustRegion(base_rule)
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 num_steps = 5
@@ -110,43 +116,25 @@ def plot_final_result(_dataset: trieste.data.Dataset) -> None:
 plot_final_result(dataset)
 
 # %% [markdown]
-# We can also visualize the progress of the optimization by plotting the trust regions at each step.
-# The trust regions are shown as translucent boxes, with the current optimum point in each region
-# shown in matching color.
+# We can also visualize the progress of the optimization by plotting the acquisition space at each
+# step. This space is either the full search space or the trust region, depending on the step, and
+# is shown as a translucent box; with the current optimum point in a region shown in matching
+# color.
 #
-# Note there is only one trust region in this plot, but the rule in the next section will show multiple trust
-# regions.
+# Note there is only one trust region in this plot, however the rule in the next section will show
+# multiple trust regions.
 
 # %%
 import base64
-import io
-from typing import List
 
-import imageio
 import IPython
 import matplotlib.pyplot as plt
 
-from trieste.experimental.plotting import plot_trust_region_history_2d
-
-
-def fig_to_frame(fig: plt.Figure) -> np.ndarray:
-    fig.canvas.draw()
-    size_pix = fig.get_size_inches() * fig.dpi
-    image = np.frombuffer(fig.canvas.tostring_rgb(), dtype="uint8")
-    return image.reshape(list(size_pix[::-1].astype(int)) + [3])
-
-
-def frames_to_gif(
-    frames: List[np.ndarray], duration=5000
-) -> IPython.display.HTML:
-    gif_file = io.BytesIO()
-    imageio.mimsave(gif_file, frames, format="gif", loop=0, duration=duration)
-    gif = IPython.display.HTML(
-        '<img src="data:image/gif;base64,{0}"/>'.format(
-            base64.b64encode(gif_file.getvalue()).decode()
-        )
-    )
-    return gif
+from trieste.experimental.plotting import (
+    convert_figure_to_frame,
+    convert_frames_to_gif,
+    plot_trust_region_history_2d,
+)
 
 
 def plot_history(result: trieste.bayesian_optimizer.OptimizationResult) -> None:
@@ -164,10 +152,16 @@ def plot_history(result: trieste.bayesian_optimizer.OptimizationResult) -> None:
 
         if fig is not None:
             fig.suptitle(f"step number {step}")
-            frames.append(fig_to_frame(fig))
+            frames.append(convert_figure_to_frame(fig))
             plt.close(fig)
 
-    IPython.display.display(frames_to_gif(frames))
+    gif_file = convert_frames_to_gif(frames)
+    gif = IPython.display.HTML(
+        '<img src="data:image/gif;base64,{0}"/>'.format(
+            base64.b64encode(gif_file.getvalue()).decode()
+        )
+    )
+    IPython.display.display(gif)
 
 
 plot_history(result)
@@ -188,9 +182,9 @@ plot_history(result)
 # points overall. As the optimization process continues, the bounds of these sub-spaces are
 # dynamically updated.
 #
-# In addition, this rule requires the specification of a batch aquisition base-rule for performing
-# optimization; for our example we use `EfficientGlobalOptimization` coupled with
-# `ParallelContinuousThompsonSampling`.
+# In addition, this is a "meta" rule that requires the specification of a batch aquisition
+# base-rule for performing optimization; for our example we use `EfficientGlobalOptimization`
+# coupled with the `ParallelContinuousThompsonSampling` acquisition function.
 #
 # Note: the number of sub-spaces/regions must match the number of batch query points.
 
@@ -246,7 +240,7 @@ plot_history(result)
 #
 # ### Create `TurBO` rule and run optimization loop
 #
-# This rule requires the specification of an aquisition base-rule for performing
+# As before, this meta-rule requires the specification of an aquisition base-rule for performing
 # optimization within the trust region; for our example we use `DiscreteThompsonSampling`.
 #
 # Note that we switch off global model fitting by setting `fit_model=False`. This is because

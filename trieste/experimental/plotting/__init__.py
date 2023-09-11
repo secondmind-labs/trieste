@@ -23,6 +23,8 @@ try:
         plot_objective_and_constraints,
     )
     from .plotting import (
+        convert_figure_to_frame,
+        convert_frames_to_gif,
         plot_acq_function_2d,
         plot_bo_points,
         plot_function_2d,
