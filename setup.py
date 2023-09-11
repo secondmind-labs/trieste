@@ -49,7 +49,7 @@ setup(
         "greenlet>=1.1.0",
     ],
     extras_require={
-        "plotting": ["seaborn", "plotly"],
+        "plotting": ["seaborn", "plotly", "imageio"],
         "qhsri": ["pymoo", "cvxpy"],
     },
 )

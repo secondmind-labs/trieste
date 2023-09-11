@@ -23,6 +23,8 @@ try:
         plot_objective_and_constraints,
     )
     from .plotting import (
+        convert_figure_to_frame,
+        convert_frames_to_gif,
         plot_acq_function_2d,
         plot_bo_points,
         plot_function_2d,
@@ -30,6 +32,7 @@ try:
         plot_mobo_history,
         plot_mobo_points_in_obj_space,
         plot_regret,
+        plot_trust_region_history_2d,
     )
     from .plotting_plotly import (
         add_bo_points_plotly,
