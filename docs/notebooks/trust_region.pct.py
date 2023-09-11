@@ -78,13 +78,14 @@ def build_model():
 # provided as an argument to `TREGO`. Here we explicitly set it to make usage clear.
 
 # %%
-base_rule = trieste.acquisition.rule.EfficientGlobalOptimization()  # type: ignore[var-annotated]
-acq_rule = trieste.acquisition.rule.TrustRegion(base_rule)
+trego_acq_rule = trieste.acquisition.rule.TrustRegion(
+    rule=trieste.acquisition.rule.EfficientGlobalOptimization()
+)
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 num_steps = 5
 result = bo.optimize(
-    num_steps, initial_data, build_model(), acq_rule, track_state=True
+    num_steps, initial_data, build_model(), trego_acq_rule, track_state=True
 )
 dataset = result.try_get_final_dataset()
 
@@ -199,7 +200,7 @@ base_rule = trieste.acquisition.rule.EfficientGlobalOptimization(  # type: ignor
     builder=trieste.acquisition.ParallelContinuousThompsonSampling(),
     num_query_points=num_query_points,
 )
-acq_rule = trieste.acquisition.rule.BatchTrustRegionBox(  # type: ignore[assignment]
+batch_acq_rule = trieste.acquisition.rule.BatchTrustRegionBox(
     init_subspaces, base_rule
 )
 
@@ -216,7 +217,7 @@ bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 num_steps = 5
 result = bo.optimize(
-    num_steps, initial_data, build_model(), acq_rule, track_state=True
+    num_steps, initial_data, build_model(), batch_acq_rule, track_state=True
 )
 dataset = result.try_get_final_dataset()
 
@@ -247,7 +248,7 @@ plot_history(result)
 # `TurBO` uses a local model and fitting the global model would be redundant and wasteful.
 
 # %%
-acq_rule = trieste.acquisition.rule.TURBO(  # type: ignore[assignment]
+turbo_acq_rule = trieste.acquisition.rule.TURBO(
     search_space, rule=trieste.acquisition.rule.DiscreteThompsonSampling(500, 3)
 )
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
@@ -257,7 +258,7 @@ result = bo.optimize(
     num_steps,
     initial_data,
     build_model(),
-    acq_rule,
+    turbo_acq_rule,
     track_state=True,
     fit_model=False,
 )
