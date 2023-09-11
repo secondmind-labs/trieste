@@ -176,7 +176,7 @@ plot_history(result)
 #
 # We achieve Bayesian optimization with trust regions by specifying `BatchTrustRegionBox` as the
 # acquisition rule.
-# 
+#
 # This rule needs an initial number `num_query_points` of sub-spaces (or trust regions) to be
 # provided and performs optimization in parallel across all these sub-spaces. Each region
 # contributes one query point, resulting in each acquisition step collecting `num_query_points`
