@@ -174,18 +174,21 @@ plot_history(result)
 #
 # ### Create the batch trust region acquisition rule
 #
-# We achieve Bayesian optimization with trust region by specifying `BatchTrustRegionBox` as the
+# We achieve Bayesian optimization with trust regions by specifying `BatchTrustRegionBox` as the
 # acquisition rule.
-#
+# 
 # This rule needs an initial number `num_query_points` of sub-spaces (or trust regions) to be
 # provided and performs optimization in parallel across all these sub-spaces. Each region
 # contributes one query point, resulting in each acquisition step collecting `num_query_points`
 # points overall. As the optimization process continues, the bounds of these sub-spaces are
-# dynamically updated.
+# dynamically updated. In this example, we create 5 `SingleObjectiveTrustRegionBox` regions. This
+# class encapsulates the behavior of a trust region in a single sub-space; being responsible for
+# maintaining its own state, initializing it, and updating it after each step.
 #
-# In addition, this is a "meta" rule that requires the specification of a batch aquisition
-# base-rule for performing optimization; for our example we use `EfficientGlobalOptimization`
-# coupled with the `ParallelContinuousThompsonSampling` acquisition function.
+# In addition, `BatchTrustRegionBox` is a "meta" rule that requires the specification of a
+# batch aquisition base-rule for performing optimization; for our example we use
+# `EfficientGlobalOptimization` coupled with the `ParallelContinuousThompsonSampling` acquisition
+# function.
 #
 # Note: the number of sub-spaces/regions must match the number of batch query points.
 
@@ -242,10 +245,12 @@ plot_history(result)
 # ### Create `TurBO` rule and run optimization loop
 #
 # As before, this meta-rule requires the specification of an aquisition base-rule for performing
-# optimization within the trust region; for our example we use `DiscreteThompsonSampling`.
+# optimization within the trust region; for our example we use the `DiscreteThompsonSampling` rule.
 #
-# Note that we switch off global model fitting by setting `fit_model=False`. This is because
-# `TurBO` uses a local model and fitting the global model would be redundant and wasteful.
+# Note that trieste maintains a global model that is, by default, automatically trained on each
+# iteration. However, this global model is unused for `TurBO`; which uses a local model instead.
+# As fitting the global model would be redundant and wasteful, we switch its training off by
+# setting `fit_model=False` in the `optimize` method.
 
 # %%
 turbo_acq_rule = trieste.acquisition.rule.TURBO(
