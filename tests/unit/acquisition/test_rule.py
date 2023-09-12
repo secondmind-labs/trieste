@@ -1274,6 +1274,41 @@ def test_trust_region_box_update_size(success: bool) -> None:
     npt.assert_allclose(trb.upper, np.minimum(trb.location + trb.eps, search_space.upper))
 
 
+# Check multi trust region works when no subspace is provided.
+@pytest.mark.parametrize(
+    "rule, exp_num_subspaces",
+    [
+        (EfficientGlobalOptimization(), 1),
+        (EfficientGlobalOptimization(ParallelContinuousThompsonSampling(), num_query_points=2), 2),
+        (RandomSampling(num_query_points=2), 1),
+    ],
+)
+def test_multi_trust_region_box_no_subspace(
+    rule: AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel],
+    exp_num_subspaces: int,
+) -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    mtb = BatchTrustRegionBox(rule=rule)
+    mtb.acquire(search_space, {})
+
+    assert mtb._tags is not None
+    assert mtb._init_subspaces is not None
+    assert len(mtb._init_subspaces) == exp_num_subspaces
+    for i, (subspace, tag) in enumerate(zip(mtb._init_subspaces, mtb._tags)):
+        assert isinstance(subspace, SingleObjectiveTrustRegionBox)
+        assert subspace.global_search_space == search_space
+        assert tag == f"{i}"
+
+
+# Check multi trust region works when a single subspace is provided.
+def test_multi_trust_region_box_single_subspace() -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    subspace = SingleObjectiveTrustRegionBox(search_space)
+    mtb = BatchTrustRegionBox(subspace)  # type: ignore[var-annotated]
+    assert mtb._init_subspaces == (subspace,)
+    assert mtb._tags == ("0",)
+
+
 # When state is None, acquire returns a multi search space of the correct type.
 def test_multi_trust_region_box_acquire_no_state() -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
