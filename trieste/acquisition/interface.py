@@ -18,7 +18,7 @@ the utility of evaluating sets of candidate points.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Callable, Generic, Mapping, Optional
+from typing import Any, Callable, Generic, Mapping, Optional
 
 from ..data import Dataset
 from ..models.interfaces import ProbabilisticModelType
@@ -67,6 +67,23 @@ class AcquisitionFunctionBuilder(Generic[ProbabilisticModelType], ABC):
         :return: An acquisition function.
         """
 
+    def prepare_acquisition_function_with_metadata(
+        self,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
+    ) -> AcquisitionFunction:
+        """
+        Prepare an acquisition function using additional metadata. By default, this is just
+        dropped, but you can override this method to use the metadata during acquisition.
+
+        :param models: The models for each tag.
+        :param datasets: The data from the observer (optional).
+        :param metadata: Metadata from the observer (optional).
+        :return: An acquisition function.
+        """
+        return self.prepare_acquisition_function(models, datasets=datasets)
+
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
@@ -74,7 +91,7 @@ class AcquisitionFunctionBuilder(Generic[ProbabilisticModelType], ABC):
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> AcquisitionFunction:
         """
-        Update an acquisition function. By default this generates a new acquisition function each
+        Update an acquisition function. By default, this generates a new acquisition function each
         time. However, if the function is decorated with `@tf.function`, then you can override
         this method to update its variables instead and avoid retracing the acquisition function on
         every optimization loop.
@@ -85,6 +102,25 @@ class AcquisitionFunctionBuilder(Generic[ProbabilisticModelType], ABC):
         :return: The updated acquisition function.
         """
         return self.prepare_acquisition_function(models, datasets=datasets)
+
+    def update_acquisition_function_with_metadata(
+        self,
+        function: AcquisitionFunction,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
+    ) -> AcquisitionFunction:
+        """
+        Update an acquisition function. By default, this is just
+        dropped, but you can override this method to use the metadata during acquisition.
+
+        :param function: The acquisition function to update.
+        :param models: The models for each tag.
+        :param datasets: The data from the observer (optional).
+        :param metadata: Metadata from the observer (optional).
+        :return: The updated acquisition function.
+        """
+        return self.update_acquisition_function(function, models, datasets=datasets)
 
 
 class SingleModelAcquisitionBuilder(Generic[ProbabilisticModelType], ABC):
@@ -115,6 +151,18 @@ class SingleModelAcquisitionBuilder(Generic[ProbabilisticModelType], ABC):
                     models[tag], dataset=None if datasets is None else datasets[tag]
                 )
 
+            def prepare_acquisition_function_with_metadata(
+                self,
+                models: Mapping[Tag, ProbabilisticModelType],
+                datasets: Optional[Mapping[Tag, Dataset]] = None,
+                metadata: Optional[Mapping[str, Any]] = None,
+            ) -> AcquisitionFunction:
+                return self.single_builder.prepare_acquisition_function_with_metadata(
+                    models[tag],
+                    dataset=None if datasets is None else datasets[tag],
+                    metadata=metadata,
+                )
+
             def update_acquisition_function(
                 self,
                 function: AcquisitionFunction,
@@ -123,6 +171,20 @@ class SingleModelAcquisitionBuilder(Generic[ProbabilisticModelType], ABC):
             ) -> AcquisitionFunction:
                 return self.single_builder.update_acquisition_function(
                     function, models[tag], dataset=None if datasets is None else datasets[tag]
+                )
+
+            def update_acquisition_function_with_metadata(
+                self,
+                function: AcquisitionFunction,
+                models: Mapping[Tag, ProbabilisticModelType],
+                datasets: Optional[Mapping[Tag, Dataset]] = None,
+                metadata: Optional[Mapping[str, Any]] = None,
+            ) -> AcquisitionFunction:
+                return self.single_builder.update_acquisition_function_with_metadata(
+                    function,
+                    models[tag],
+                    dataset=None if datasets is None else datasets[tag],
+                    metadata=metadata,
                 )
 
             def __repr__(self) -> str:
@@ -142,6 +204,20 @@ class SingleModelAcquisitionBuilder(Generic[ProbabilisticModelType], ABC):
         :return: An acquisition function.
         """
 
+    def prepare_acquisition_function_with_metadata(
+        self,
+        model: ProbabilisticModelType,
+        dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param model: The model.
+        :param dataset: The data to use to build the acquisition function (optional).
+        :param metadata: Metadata from the observer (optional).
+        :return: An acquisition function.
+        """
+        return self.prepare_acquisition_function(model, dataset=dataset)
+
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
@@ -155,6 +231,21 @@ class SingleModelAcquisitionBuilder(Generic[ProbabilisticModelType], ABC):
         :return: The updated acquisition function.
         """
         return self.prepare_acquisition_function(model, dataset=dataset)
+
+    def update_acquisition_function_with_metadata(
+        self,
+        function: AcquisitionFunction,
+        model: ProbabilisticModelType,
+        dataset: Optional[Dataset] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
+    ) -> AcquisitionFunction:
+        """
+        :param function: The acquisition function to update.
+        :param model: The model.
+        :param dataset: The data from the observer (optional).
+        :return: The updated acquisition function.
+        """
+        return self.update_acquisition_function(function, model, dataset=dataset)
 
 
 class GreedyAcquisitionFunctionBuilder(Generic[ProbabilisticModelType], ABC):
@@ -187,6 +278,20 @@ class GreedyAcquisitionFunctionBuilder(Generic[ProbabilisticModelType], ABC):
         :return: An acquisition function.
         """
 
+    def prepare_acquisition_function_with_metadata(
+        self,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+        pending_points: Optional[TensorType] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
+    ) -> AcquisitionFunction:
+        """
+        Same as prepare_acquisition_function but accepts additional metadata argument.
+        """
+        return self.prepare_acquisition_function(
+            models, datasets=datasets, pending_points=pending_points
+        )
+
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
@@ -213,6 +318,26 @@ class GreedyAcquisitionFunctionBuilder(Generic[ProbabilisticModelType], ABC):
         """
         return self.prepare_acquisition_function(
             models, datasets=datasets, pending_points=pending_points
+        )
+
+    def update_acquisition_function_with_metadata(
+        self,
+        function: AcquisitionFunction,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+        pending_points: Optional[TensorType] = None,
+        new_optimization_step: bool = True,
+        metadata: Optional[Mapping[str, Any]] = None,
+    ) -> AcquisitionFunction:
+        """
+        Same as update_acquisition_function but accepts additional metadata argument.
+        """
+        return self.update_acquisition_function(
+            function,
+            models,
+            datasets=datasets,
+            pending_points=pending_points,
+            new_optimization_step=new_optimization_step,
         )
 
 
@@ -247,6 +372,20 @@ class SingleModelGreedyAcquisitionBuilder(Generic[ProbabilisticModelType], ABC):
                     pending_points=pending_points,
                 )
 
+            def prepare_acquisition_function_with_metadata(
+                self,
+                models: Mapping[Tag, ProbabilisticModelType],
+                datasets: Optional[Mapping[Tag, Dataset]] = None,
+                pending_points: Optional[TensorType] = None,
+                metadata: Optional[Mapping[str, Any]] = None,
+            ) -> AcquisitionFunction:
+                return self.single_builder.prepare_acquisition_function_with_metadata(
+                    models[tag],
+                    dataset=None if datasets is None else datasets[tag],
+                    pending_points=pending_points,
+                    metadata=metadata,
+                )
+
             def update_acquisition_function(
                 self,
                 function: AcquisitionFunction,
@@ -261,6 +400,24 @@ class SingleModelGreedyAcquisitionBuilder(Generic[ProbabilisticModelType], ABC):
                     dataset=None if datasets is None else datasets[tag],
                     pending_points=pending_points,
                     new_optimization_step=new_optimization_step,
+                )
+
+            def update_acquisition_function_with_metadata(
+                self,
+                function: AcquisitionFunction,
+                models: Mapping[Tag, ProbabilisticModelType],
+                datasets: Optional[Mapping[Tag, Dataset]] = None,
+                pending_points: Optional[TensorType] = None,
+                new_optimization_step: bool = True,
+                metadata: Optional[Mapping[str, Any]] = None,
+            ) -> AcquisitionFunction:
+                return self.single_builder.update_acquisition_function_with_metadata(
+                    function,
+                    models[tag],
+                    dataset=None if datasets is None else datasets[tag],
+                    pending_points=pending_points,
+                    new_optimization_step=new_optimization_step,
+                    metadata=metadata,
                 )
 
             def __repr__(self) -> str:
@@ -282,6 +439,20 @@ class SingleModelGreedyAcquisitionBuilder(Generic[ProbabilisticModelType], ABC):
             where M is the number of pending points and D is the search space dimension.
         :return: An acquisition function.
         """
+
+    def prepare_acquisition_function_with_metadata(
+        self,
+        model: ProbabilisticModelType,
+        dataset: Optional[Dataset] = None,
+        pending_points: Optional[TensorType] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
+    ) -> AcquisitionFunction:
+        """
+        Same as prepare_acquisition_function but accepts additional metadata argument.
+        """
+        return self.prepare_acquisition_function(
+            model, dataset=dataset, pending_points=pending_points
+        )
 
     def update_acquisition_function(
         self,
@@ -306,6 +477,26 @@ class SingleModelGreedyAcquisitionBuilder(Generic[ProbabilisticModelType], ABC):
             model,
             dataset=dataset,
             pending_points=pending_points,
+        )
+
+    def update_acquisition_function_with_metadata(
+        self,
+        function: AcquisitionFunction,
+        model: ProbabilisticModelType,
+        dataset: Optional[Dataset] = None,
+        pending_points: Optional[TensorType] = None,
+        new_optimization_step: bool = True,
+        metadata: Optional[Mapping[str, Any]] = None,
+    ) -> AcquisitionFunction:
+        """
+        Same as prepare_acquisition_function but accepts additional metadata argument.
+        """
+        return self.update_acquisition_function(
+            function,
+            model,
+            dataset=dataset,
+            pending_points=pending_points,
+            new_optimization_step=new_optimization_step,
         )
 
 
@@ -349,6 +540,18 @@ class SingleModelVectorizedAcquisitionBuilder(
                     models[tag], dataset=None if datasets is None else datasets[tag]
                 )
 
+            def prepare_acquisition_function_with_metadata(
+                self,
+                models: Mapping[Tag, ProbabilisticModelType],
+                datasets: Optional[Mapping[Tag, Dataset]] = None,
+                metadata: Optional[Mapping[str, Any]] = None,
+            ) -> AcquisitionFunction:
+                return self.single_builder.prepare_acquisition_function_with_metadata(
+                    models[tag],
+                    dataset=None if datasets is None else datasets[tag],
+                    metadata=metadata,
+                )
+
             def update_acquisition_function(
                 self,
                 function: AcquisitionFunction,
@@ -357,6 +560,20 @@ class SingleModelVectorizedAcquisitionBuilder(
             ) -> AcquisitionFunction:
                 return self.single_builder.update_acquisition_function(
                     function, models[tag], dataset=None if datasets is None else datasets[tag]
+                )
+
+            def update_acquisition_function_with_metadata(
+                self,
+                function: AcquisitionFunction,
+                models: Mapping[Tag, ProbabilisticModelType],
+                datasets: Optional[Mapping[Tag, Dataset]] = None,
+                metadata: Optional[Mapping[str, Any]] = None,
+            ) -> AcquisitionFunction:
+                return self.single_builder.update_acquisition_function_with_metadata(
+                    function,
+                    models[tag],
+                    dataset=None if datasets is None else datasets[tag],
+                    metadata=metadata,
                 )
 
             def __repr__(self) -> str:
