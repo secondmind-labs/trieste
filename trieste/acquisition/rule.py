@@ -1055,13 +1055,13 @@ class BatchTrustRegion(
             points from the previous acquisition state.
         """
 
-        # Subspaces should be set by the time we call `acquire`.
-        assert self._tags is not None
-        assert self._init_subspaces is not None
-
         def state_func(
             state: BatchTrustRegion.State | None,
         ) -> Tuple[BatchTrustRegion.State | None, TensorType]:
+            # Subspaces should be set by the time we call `acquire`.
+            assert self._tags is not None
+            assert self._init_subspaces is not None
+
             # If state is set, the tags should be the same as the tags of the acquisition space
             # in the state.
             if state is not None:
