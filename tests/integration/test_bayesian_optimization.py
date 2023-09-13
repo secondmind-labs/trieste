@@ -50,11 +50,12 @@ from trieste.acquisition.rule import (
     AsynchronousOptimization,
     AsynchronousRuleState,
     BatchHypervolumeSharpeRatioIndicator,
+    BatchTrustRegion,
     BatchTrustRegionBox,
     DiscreteThompsonSampling,
     EfficientGlobalOptimization,
     SingleObjectiveTrustRegionBox,
-    TrustRegion,
+    TREGOBox,
 )
 from trieste.acquisition.sampler import ThompsonSamplerFromTrajectory
 from trieste.bayesian_optimizer import (
@@ -182,17 +183,33 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                 ),
                 id="MultipleOptimismNegativeLowerConfidenceBound",
             ),
-            pytest.param(20, TrustRegion(), id="TrustRegion"),
+            pytest.param(
+                20,
+                BatchTrustRegionBox(TREGOBox(ScaledBranin.search_space)),
+                id="TREGO",
+            ),
             pytest.param(
                 15,
-                TrustRegion(
+                BatchTrustRegionBox(
+                    TREGOBox(ScaledBranin.search_space),
                     EfficientGlobalOptimization(
                         MinValueEntropySearch(
                             ScaledBranin.search_space,
                         ).using(OBJECTIVE)
-                    )
+                    ),
                 ),
-                id="TrustRegion/MinValueEntropySearch",
+                id="TREGO/MinValueEntropySearch",
+            ),
+            pytest.param(
+                20,
+                BatchTrustRegionBox(
+                    [TREGOBox(ScaledBranin.search_space) for _ in range(3)],
+                    EfficientGlobalOptimization(
+                        ParallelContinuousThompsonSampling(),
+                        num_query_points=3,
+                    ),
+                ),
+                id="TREGO/ParallelContinuousThompsonSampling",
             ),
             pytest.param(
                 10,
@@ -252,7 +269,9 @@ def test_bayesian_optimizer_with_gpr_finds_minima_of_scaled_branin(
     num_steps: int,
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace, GaussianProcessRegression]
     | AcquisitionRule[
-        State[TensorType, AsynchronousRuleState | TrustRegion.State], Box, GaussianProcessRegression
+        State[TensorType, AsynchronousRuleState | BatchTrustRegion.State],
+        Box,
+        GaussianProcessRegression,
     ],
 ) -> None:
     _test_optimizer_finds_minimum(
@@ -266,7 +285,9 @@ def test_bayesian_optimizer_with_gpr_finds_minima_of_simple_quadratic(
     num_steps: int,
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace, GaussianProcessRegression]
     | AcquisitionRule[
-        State[TensorType, AsynchronousRuleState | TrustRegion.State], Box, GaussianProcessRegression
+        State[TensorType, AsynchronousRuleState | BatchTrustRegion.State],
+        Box,
+        GaussianProcessRegression,
     ],
 ) -> None:
     # for speed reasons we sometimes test with a simple quadratic defined on the same search space
@@ -537,7 +558,7 @@ def _test_optimizer_finds_minimum(
     num_steps: Optional[int],
     acquisition_rule: AcquisitionRule[TensorType, SearchSpace, TrainableProbabilisticModelType]
     | AcquisitionRule[
-        State[TensorType, AsynchronousRuleState | TrustRegion.State],
+        State[TensorType, AsynchronousRuleState | BatchTrustRegion.State],
         Box,
         TrainableProbabilisticModelType,
     ],

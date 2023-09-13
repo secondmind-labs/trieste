@@ -89,7 +89,7 @@ class AcquisitionRule(ABC, Generic[ResultType, SearchSpaceType, ProbabilisticMod
     An :class:`AcquisitionRule` can produce any value from the search space for this step, and the
     historic data and models. This value is typically a set of query points, either on its own as
     a `TensorType` (see e.g. :class:`EfficientGlobalOptimization`), or within some context
-    (see e.g. :class:`TrustRegion`). Indeed, to use an :class:`AcquisitionRule` in the main
+    (see e.g. :class:`BatchTrustRegion`). Indeed, to use an :class:`AcquisitionRule` in the main
     :class:`~trieste.bayesian_optimizer.BayesianOptimizer` Bayesian optimization loop, the rule
     must return either a `TensorType` or `State`-ful `TensorType`.
 
@@ -109,8 +109,8 @@ class AcquisitionRule(ABC, Generic[ResultType, SearchSpaceType, ProbabilisticMod
         """
         Return a value of type `T_co`. Typically this will be a set of query points, either on its
         own as a `TensorType` (see e.g. :class:`EfficientGlobalOptimization`), or within some
-        context (see e.g. :class:`TrustRegion`). We assume that this requires at least models, but
-        it may sometimes also need data.
+        context (see e.g. :class:`BatchTrustRegion`). We assume that this requires at least models,
+        but it may sometimes also need data.
 
         **Type hints:**
           - The search space must be a :class:`~trieste.space.SearchSpace`. The exact type of
@@ -941,170 +941,6 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
         return thompson_samples
 
 
-class TrustRegion(
-    AcquisitionRule[
-        types.State[Optional["TrustRegion.State"], TensorType], Box, ProbabilisticModelType
-    ]
-):
-    """Implements the *trust region* acquisition algorithm."""
-
-    @dataclass(frozen=True)
-    class State:
-        """The acquisition state for the :class:`TrustRegion` acquisition rule."""
-
-        acquisition_space: Box
-        """ The search space. """
-
-        eps: TensorType
-        """
-        The (maximum) vector from the current best point to each bound of the acquisition space.
-        """
-
-        y_min: TensorType
-        """ The minimum observed value. """
-
-        is_global: bool | TensorType
-        """
-        `True` if the search space was global, else `False` if it was local. May be a scalar boolean
-        `TensorType` instead of a `bool`.
-        """
-
-        def __deepcopy__(self, memo: dict[int, object]) -> TrustRegion.State:
-            box_copy = copy.deepcopy(self.acquisition_space, memo)
-            return TrustRegion.State(box_copy, self.eps, self.y_min, self.is_global)
-
-    @overload
-    def __init__(
-        self: "TrustRegion[ProbabilisticModel]",
-        rule: None = None,
-        beta: float = 0.7,
-        kappa: float = 1e-4,
-    ):
-        ...
-
-    @overload
-    def __init__(
-        self: "TrustRegion[ProbabilisticModelType]",
-        rule: AcquisitionRule[TensorType, Box, ProbabilisticModelType],
-        beta: float = 0.7,
-        kappa: float = 1e-4,
-    ):
-        ...
-
-    def __init__(
-        self,
-        rule: AcquisitionRule[TensorType, Box, ProbabilisticModelType] | None = None,
-        beta: float = 0.7,
-        kappa: float = 1e-4,
-    ):
-        """
-        :param rule: The acquisition rule that defines how to search for a new query point in a
-            given search space. Defaults to :class:`EfficientGlobalOptimization` with default
-            arguments.
-        :param beta: The inverse of the trust region contraction factor.
-        :param kappa: Scales the threshold for the minimal improvement required for a step to be
-            considered a success.
-        """
-        if rule is None:
-            rule = EfficientGlobalOptimization()
-
-        self._rule = rule
-        self._beta = beta
-        self._kappa = kappa
-
-    def __repr__(self) -> str:
-        """"""
-        return f"TrustRegion({self._rule!r}, {self._beta!r}, {self._kappa!r})"
-
-    def acquire(
-        self,
-        search_space: Box,
-        models: Mapping[Tag, ProbabilisticModelType],
-        datasets: Optional[Mapping[Tag, Dataset]] = None,
-    ) -> types.State[State | None, TensorType]:
-        """
-        Construct a local search space from ``search_space`` according the trust region algorithm,
-        and use that with the ``rule`` specified at :meth:`~TrustRegion.__init__` to find new
-        query points. Return a function that constructs these points given a previous trust region
-        state.
-
-        If no ``state`` is specified (it is `None`), ``search_space`` is used as the search space
-        for this step.
-
-        If a ``state`` is specified, and the new optimum improves over the previous optimum
-        by some threshold (that scales linearly with ``kappa``), the previous acquisition is
-        considered successful.
-
-        If the previous acquisition was successful, ``search_space`` is used as the new
-        search space. If the previous step was unsuccessful, the search space is changed to the
-        trust region if it was global, and vice versa.
-
-        If the previous acquisition was over the trust region, the size of the trust region is
-        modified. If the previous acquisition was successful, the size is increased by a factor
-        ``1 / beta``. Conversely, if it was unsuccessful, the size is reduced by the factor
-        ``beta``.
-
-        **Note:** The acquisition search space will never extend beyond the boundary of the
-        ``search_space``. For a local search, the actual search space will be the
-        intersection of the trust region and ``search_space``.
-
-        :param search_space: The local acquisition search space for *this step*.
-        :param models: The model for each tag.
-        :param datasets: The known observer query points and observations. Uses the data for key
-            `OBJECTIVE` to calculate the new trust region.
-        :return: A function that constructs the next acquisition state and the recommended query
-            points from the previous acquisition state.
-        :raise KeyError: If ``datasets`` does not contain the key `OBJECTIVE`.
-        """
-        if datasets is None or OBJECTIVE not in datasets.keys():
-            raise ValueError(f"""datasets must be provided and contain the key {OBJECTIVE}""")
-
-        dataset = datasets[OBJECTIVE]
-
-        global_lower = search_space.lower
-        global_upper = search_space.upper
-
-        y_min = tf.reduce_min(dataset.observations, axis=0)
-
-        def state_func(
-            state: TrustRegion.State | None,
-        ) -> tuple[TrustRegion.State | None, TensorType]:
-            if state is None:
-                eps = 0.5 * (global_upper - global_lower) / (5.0 ** (1.0 / global_lower.shape[-1]))
-                is_global = True
-            else:
-                tr_volume = tf.reduce_prod(
-                    state.acquisition_space.upper - state.acquisition_space.lower
-                )
-                step_is_success = y_min < state.y_min - self._kappa * tr_volume
-
-                eps = (
-                    state.eps
-                    if state.is_global
-                    else state.eps / self._beta
-                    if step_is_success
-                    else state.eps * self._beta
-                )
-
-                is_global = step_is_success or not state.is_global
-
-            if is_global:
-                acquisition_space = search_space
-            else:
-                xmin = dataset.query_points[tf.argmin(dataset.observations)[0], :]
-                acquisition_space = Box(
-                    tf.reduce_max([global_lower, xmin - eps], axis=0),
-                    tf.reduce_min([global_upper, xmin + eps], axis=0),
-                )
-
-            points = self._rule.acquire(acquisition_space, models, datasets=datasets)
-            state_ = TrustRegion.State(acquisition_space, eps, y_min, is_global)
-
-            return state_, points
-
-        return state_func
-
-
 class UpdatableTrustRegion(SearchSpace):
     """A search space that can be updated."""
 
@@ -1202,18 +1038,26 @@ class BatchTrustRegion(
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> types.State[State | None, TensorType]:
+        """
+        Use the ``rule`` specified at :meth:`~BatchTrustRegion.__init__` to find new
+        query points. Return a function that constructs these points given a previous trust region
+        state.
+
+        If state is None, initialize the subspaces by picking new locations. Otherwise,
+        update the existing subspaces.
+
+        Re-initialize the subspaces if necessary, potentially looking at the entire group.
+
+        :param search_space: The acquisition search space for *this step*.
+        :param models: The model for each tag.
+        :param datasets: The known observer query points and observations for each tag.
+        :return: A function that constructs the next acquisition state and the recommended query
+            points from the previous acquisition state.
+        """
+
         def state_func(
             state: BatchTrustRegion.State | None,
         ) -> Tuple[BatchTrustRegion.State | None, TensorType]:
-            """
-            If state is None, initialize the subspaces by picking new locations. Otherwise,
-            update the existing subspaces.
-
-            Re-initialize the subspaces if necessary, potentially looking at the entire group.
-
-            Use the rule to acquire points from the acquisition space.
-            """
-
             # Subspaces should be set by the time we call `acquire`.
             assert self._tags is not None
             assert self._init_subspaces is not None
@@ -1371,6 +1215,13 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
         """
         Update this box, including centre/location, using the given dataset. If the size of the
         box is less than the minimum size, re-initialize the box.
+
+        If the new optimum improves over the previous optimum by some threshold (that scales
+        linearly with ``kappa``), the previous acquisition is considered successful.
+
+        If the previous acquisition was successful, the size is increased by a factor
+        ``1 / beta``. Conversely, if it was unsuccessful, the size is reduced by the factor
+        ``beta``.
         """
         dataset = get_value_for_tag(datasets)
 
@@ -1411,7 +1262,7 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
 
 class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, SingleObjectiveTrustRegionBox]):
     """
-    Implements the :class:`BatchTrustRegion` *trust region* acquisition algorithm for box regions.
+    Implements the :class:`BatchTrustRegion` *trust region* acquisition rule for box regions.
     This is intended to be used for single-objective optimization with batching.
     """
 
@@ -1459,6 +1310,89 @@ class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, SingleObjecti
         # Initialize the subspaces that have non-unique locations.
         centres = tf.stack([subspace.location for subspace in subspaces])
         return tf.logical_not(get_unique_points_mask(centres, tolerance=1e-6))
+
+
+class TREGOBox(SingleObjectiveTrustRegionBox):
+    """
+    A box trust region algorithm that alternates between regular EGO steps and local steps within a
+    trust region. See :cite:`diouane2022trego` for details.
+
+    At construction, starts in global mode using ``global_search_space`` as the search space
+    for the first step. Subsequent re-initializations use the trust region as the search space for
+    the next step.
+
+    If the previous acquisition was successful, ``global_search_space`` is used as the new
+    search space. If the previous step was unsuccessful, the search space is changed to the
+    trust region if it was global, and vice versa.
+
+    If the previous acquisition was over the trust region, the size of the trust region is
+    modified.
+
+    **Note:** The acquisition search space will never extend beyond the boundary of the
+    ``global_search_space``. For a local search, the actual search space will be the
+    intersection of the trust region and ``global_search_space``.
+    """
+
+    def __init__(
+        self,
+        global_search_space: SearchSpace,
+        beta: float = 0.7,
+        kappa: float = 1e-4,
+        min_eps: float = 1e-2,
+    ):
+        super().__init__(global_search_space, beta, kappa, min_eps)
+        self._is_global = False
+        self._initialized = False
+
+    @property
+    def eps(self) -> TensorType:
+        """The size of the search space."""
+        return self._eps
+
+    @eps.setter
+    def eps(self, eps: TensorType) -> None:
+        """Set the size of the search space."""
+        # Don't change the eps in global mode.
+        if not self._is_global:
+            self._eps = eps
+
+    def _update_bounds(self) -> None:
+        self._is_global = self._step_is_success or not self._is_global
+
+        # Use global bounds in global mode.
+        if self._is_global:
+            self._lower = self.global_search_space.lower
+            self._upper = self.global_search_space.upper
+        else:
+            super()._update_bounds()
+
+    def initialize(
+        self,
+        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+    ) -> None:
+        # `True` if the search space is global, else `False` if it is local.
+        # May be a scalar boolean `TensorType` instead of a `bool`.
+        #
+        # Start in global mode at construction time. Use local mode for subsequent
+        # re-initializations. Note the calls to `_update_bounds` switch the mode, so the values
+        # here are inverted.
+        self._is_global = self._initialized
+        self._initialized = True
+
+        super().initialize(models, datasets)
+
+    @inherit_check_shapes
+    def get_local_min(self, dataset: Optional[Dataset]) -> Tuple[TensorType, TensorType]:
+        if dataset is None:
+            raise ValueError("""dataset must be provided""")
+
+        # Always return the global minimum.
+        ix = tf.argmin(dataset.observations)
+        x_min = tf.gather(dataset.query_points, ix)
+        y_min = tf.gather(dataset.observations, ix)
+
+        return tf.squeeze(x_min, axis=0), tf.squeeze(y_min)
 
 
 class TURBO(

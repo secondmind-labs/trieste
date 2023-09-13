@@ -73,13 +73,19 @@ def build_model():
 # `optimize` method with the trust region rule. Once the optimization loop is complete, the
 # optimizer will return one new query point for every step in the loop; that's 5 points in total.
 #
+# In order to create the `TREGO` rule, we use the `BatchTrustRegionBox` class. This class supports
+# multiple trust regions, but here we only need one region of type `TREGOBox`. The `TREGOBox` class
+# implements the `TREGO` algorithm inside a single trust region. Note: we cover batch trust regions in
+# more detail in the next section.
+#
 # `TREGO` is a "meta" rule that applies a base-rule, either inside a trust region or the whole
 # space. The default base-rule is `EfficientGlobalOptimization`, but a different base-rule can be
 # provided as an argument to `TREGO`. Here we explicitly set it to make usage clear.
 
 # %%
-trego_acq_rule = trieste.acquisition.rule.TrustRegion(
-    rule=trieste.acquisition.rule.EfficientGlobalOptimization()
+trego_acq_rule = trieste.acquisition.rule.BatchTrustRegionBox(
+    trieste.acquisition.rule.TREGOBox(search_space),
+    rule=trieste.acquisition.rule.EfficientGlobalOptimization(),
 )
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 

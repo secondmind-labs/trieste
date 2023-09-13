@@ -51,7 +51,7 @@ from trieste.acquisition.rule import (
     EfficientGlobalOptimization,
     RandomSampling,
     SingleObjectiveTrustRegionBox,
-    TrustRegion,
+    TREGOBox,
 )
 from trieste.acquisition.sampler import (
     ExactThompsonSampler,
@@ -544,13 +544,13 @@ def test_async_keeps_track_of_pending_points(
 @pytest.mark.parametrize(
     "models", [{}, {"foo": QuadraticMeanAndRBFKernel()}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}]
 )
-def test_trust_region_raises_for_missing_datasets_key(
+def test_trego_raises_for_missing_datasets_key(
     datasets: dict[Tag, Dataset], models: dict[Tag, ProbabilisticModel]
 ) -> None:
     search_space = Box([-1], [1])
-    rule = TrustRegion()
-    with pytest.raises(ValueError):
-        rule.acquire(search_space, models, datasets=datasets)
+    rule = BatchTrustRegionBox(TREGOBox(search_space))  # type: ignore[var-annotated]
+    with pytest.raises(ValueError, match="tag 'OBJECTIVE' not found"):
+        rule.acquire(search_space, models, datasets=datasets)(None)
 
 
 class _Midpoint(AcquisitionRule[TensorType, Box, ProbabilisticModel]):
@@ -560,7 +560,9 @@ class _Midpoint(AcquisitionRule[TensorType, Box, ProbabilisticModel]):
         models: Mapping[Tag, ProbabilisticModel],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> TensorType:
-        return (search_space.upper[None] + search_space.lower[None]) / 2
+        return tf.reshape(
+            (search_space.upper[None] + search_space.lower[None]) / 2, (-1, search_space.dimension)
+        )
 
 
 @pytest.mark.parametrize(
@@ -570,25 +572,47 @@ class _Midpoint(AcquisitionRule[TensorType, Box, ProbabilisticModel]):
         (_Midpoint(), [[-0.45, 1.15]]),
     ],
 )
-def test_trust_region_for_default_state(
-    rule: AcquisitionRule[TensorType, Box, ProbabilisticModel], expected_query_point: TensorType
+def test_trego_for_default_state(
+    rule: AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel],
+    expected_query_point: TensorType,
 ) -> None:
-    tr = TrustRegion(rule)
     dataset = Dataset(tf.constant([[0.1, 0.2]]), tf.constant([[0.012]]))
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
     search_space = Box(lower_bound, upper_bound)
+    tr = BatchTrustRegionBox(TREGOBox(search_space), rule)
 
     state, query_point = tr.acquire_single(
         search_space, QuadraticMeanAndRBFKernel(), dataset=dataset
     )(None)
 
     assert state is not None
+    subspace = state.acquisition_space.get_subspace("0")
+    assert isinstance(subspace, TREGOBox)
     npt.assert_array_almost_equal(query_point, expected_query_point, 5)
-    npt.assert_array_almost_equal(state.acquisition_space.lower, lower_bound)
-    npt.assert_array_almost_equal(state.acquisition_space.upper, upper_bound)
-    npt.assert_array_almost_equal(state.y_min, [0.012])
-    assert state.is_global
+    npt.assert_array_almost_equal(subspace.lower, lower_bound)
+    npt.assert_array_almost_equal(subspace.upper, upper_bound)
+    npt.assert_array_almost_equal(subspace._y_min, [0.012])
+    assert subspace._is_global
+
+
+def trego_create_state(
+    search_space: Box,
+    acquisition_space: Box,
+    dataset: Dataset,
+    eps: TensorType,
+    previous_y_min: TensorType,
+    is_global: bool,
+) -> BatchTrustRegionBox.State:
+    subspace = TREGOBox(search_space)
+    subspace.initialize(datasets={OBJECTIVE: dataset})
+    subspace._eps = eps
+    subspace._y_min = previous_y_min
+    subspace._is_global = is_global
+    subspace._lower = acquisition_space.lower
+    subspace._upper = acquisition_space.upper
+    subspace.location = (acquisition_space.lower + acquisition_space.upper) / 2
+    return BatchTrustRegionBox.State(TaggedMultiSearchSpace([subspace]))
 
 
 @pytest.mark.parametrize(
@@ -598,19 +622,22 @@ def test_trust_region_for_default_state(
         (_Midpoint(), [[-0.45, 1.15]]),
     ],
 )
-def test_trust_region_successful_global_to_global_trust_region_unchanged(
-    rule: AcquisitionRule[TensorType, Box, ProbabilisticModel], expected_query_point: TensorType
+def test_trego_successful_global_to_global_trust_region_unchanged(
+    rule: AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel],
+    expected_query_point: TensorType,
 ) -> None:
-    tr = TrustRegion(rule)
     dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.3]]))
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
     search_space = Box(lower_bound, upper_bound)
+    tr = BatchTrustRegionBox(TREGOBox(search_space), rule)
 
     eps = 0.5 * (search_space.upper - search_space.lower) / 10
     previous_y_min = dataset.observations[0]
     is_global = True
-    previous_state = TrustRegion.State(search_space, eps, previous_y_min, is_global)
+    previous_state = trego_create_state(
+        search_space, search_space, dataset, eps, previous_y_min, is_global
+    )
 
     current_state, query_point = tr.acquire(
         search_space,
@@ -619,11 +646,13 @@ def test_trust_region_successful_global_to_global_trust_region_unchanged(
     )(previous_state)
 
     assert current_state is not None
-    npt.assert_array_almost_equal(current_state.eps, previous_state.eps)
-    assert current_state.is_global
+    current_subspace = current_state.acquisition_space.get_subspace("0")
+    assert isinstance(current_subspace, TREGOBox)
+    npt.assert_array_almost_equal(current_subspace._eps, eps)
+    assert current_subspace._is_global
     npt.assert_array_almost_equal(query_point, expected_query_point, 5)
-    npt.assert_array_almost_equal(current_state.acquisition_space.lower, lower_bound)
-    npt.assert_array_almost_equal(current_state.acquisition_space.upper, upper_bound)
+    npt.assert_array_almost_equal(current_subspace.lower, lower_bound)
+    npt.assert_array_almost_equal(current_subspace.upper, upper_bound)
 
 
 @pytest.mark.parametrize(
@@ -633,20 +662,22 @@ def test_trust_region_successful_global_to_global_trust_region_unchanged(
         _Midpoint(),
     ],
 )
-def test_trust_region_for_unsuccessful_global_to_local_trust_region_unchanged(
-    rule: AcquisitionRule[TensorType, Box, ProbabilisticModel]
+def test_trego_for_unsuccessful_global_to_local_trust_region_unchanged(
+    rule: AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel]
 ) -> None:
-    tr = TrustRegion(rule)
     dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.5]]))
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
     search_space = Box(lower_bound, upper_bound)
+    tr = BatchTrustRegionBox(TREGOBox(search_space), rule)
 
     eps = 0.5 * (search_space.upper - search_space.lower) / 10
     previous_y_min = dataset.observations[0]
     is_global = True
     acquisition_space = search_space
-    previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
+    previous_state = trego_create_state(
+        search_space, acquisition_space, dataset, eps, previous_y_min, is_global
+    )
 
     current_state, query_point = tr.acquire(
         search_space,
@@ -655,10 +686,12 @@ def test_trust_region_for_unsuccessful_global_to_local_trust_region_unchanged(
     )(previous_state)
 
     assert current_state is not None
-    npt.assert_array_almost_equal(current_state.eps, previous_state.eps)
-    assert not current_state.is_global
-    npt.assert_array_less(lower_bound, current_state.acquisition_space.lower)
-    npt.assert_array_less(current_state.acquisition_space.upper, upper_bound)
+    current_subspace = current_state.acquisition_space.get_subspace("0")
+    assert isinstance(current_subspace, TREGOBox)
+    npt.assert_array_almost_equal(current_subspace._eps, eps)
+    assert not current_subspace._is_global
+    npt.assert_array_less(lower_bound, current_subspace.lower)
+    npt.assert_array_less(current_subspace.upper, upper_bound)
     assert query_point[0] in current_state.acquisition_space
 
 
@@ -669,20 +702,22 @@ def test_trust_region_for_unsuccessful_global_to_local_trust_region_unchanged(
         _Midpoint(),
     ],
 )
-def test_trust_region_for_successful_local_to_global_trust_region_increased(
-    rule: AcquisitionRule[TensorType, Box, ProbabilisticModel]
+def test_trego_for_successful_local_to_global_trust_region_increased(
+    rule: AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel]
 ) -> None:
-    tr = TrustRegion(rule)
     dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.3]]))
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
     search_space = Box(lower_bound, upper_bound)
+    tr = BatchTrustRegionBox(TREGOBox(search_space), rule)
 
     eps = 0.5 * (search_space.upper - search_space.lower) / 10
     previous_y_min = dataset.observations[0]
     is_global = False
     acquisition_space = Box(dataset.query_points[0] - eps, dataset.query_points[0] + eps)
-    previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
+    previous_state = trego_create_state(
+        search_space, acquisition_space, dataset, eps, previous_y_min, is_global
+    )
 
     current_state, _ = tr.acquire(
         search_space,
@@ -691,10 +726,12 @@ def test_trust_region_for_successful_local_to_global_trust_region_increased(
     )(previous_state)
 
     assert current_state is not None
-    npt.assert_array_less(previous_state.eps, current_state.eps)  # current TR larger than previous
-    assert current_state.is_global
-    npt.assert_array_almost_equal(current_state.acquisition_space.lower, lower_bound)
-    npt.assert_array_almost_equal(current_state.acquisition_space.upper, upper_bound)
+    current_subspace = current_state.acquisition_space.get_subspace("0")
+    assert isinstance(current_subspace, TREGOBox)
+    npt.assert_array_less(eps, current_subspace._eps)  # current TR larger than previous
+    assert current_subspace._is_global
+    npt.assert_array_almost_equal(current_subspace.lower, lower_bound)
+    npt.assert_array_almost_equal(current_subspace.upper, upper_bound)
 
 
 @pytest.mark.parametrize(
@@ -704,20 +741,22 @@ def test_trust_region_for_successful_local_to_global_trust_region_increased(
         _Midpoint(),
     ],
 )
-def test_trust_region_for_unsuccessful_local_to_global_trust_region_reduced(
-    rule: AcquisitionRule[TensorType, Box, ProbabilisticModel]
+def test_trego_for_unsuccessful_local_to_global_trust_region_reduced(
+    rule: AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel]
 ) -> None:
-    tr = TrustRegion(rule)
     dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.5]]))
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
     search_space = Box(lower_bound, upper_bound)
+    tr = BatchTrustRegionBox(TREGOBox(search_space), rule)
 
     eps = 0.5 * (search_space.upper - search_space.lower) / 10
     previous_y_min = dataset.observations[0]
     is_global = False
     acquisition_space = Box(dataset.query_points[0] - eps, dataset.query_points[0] + eps)
-    previous_state = TrustRegion.State(acquisition_space, eps, previous_y_min, is_global)
+    previous_state = trego_create_state(
+        search_space, acquisition_space, dataset, eps, previous_y_min, is_global
+    )
 
     current_state, _ = tr.acquire(
         search_space,
@@ -726,21 +765,35 @@ def test_trust_region_for_unsuccessful_local_to_global_trust_region_reduced(
     )(previous_state)
 
     assert current_state is not None
-    npt.assert_array_less(current_state.eps, previous_state.eps)  # current TR smaller than previous
-    assert current_state.is_global
-    npt.assert_array_almost_equal(current_state.acquisition_space.lower, lower_bound)
+    current_subspace = current_state.acquisition_space.get_subspace("0")
+    assert isinstance(current_subspace, TREGOBox)
+    npt.assert_array_less(current_subspace._eps, eps)  # current TR smaller than previous
+    assert current_subspace._is_global
+    npt.assert_array_almost_equal(current_subspace.lower, lower_bound)
+    npt.assert_array_almost_equal(current_subspace.upper, upper_bound)
 
 
-def test_trust_region_state_deepcopy() -> None:
-    tr_state = TrustRegion.State(
-        Box(tf.constant([1.2]), tf.constant([3.4])), tf.constant(5.6), tf.constant(7.8), False
+def test_trego_state_deepcopy() -> None:
+    dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.5]]))
+    search_space = Box(tf.constant([1.2]), tf.constant([3.4]))
+    tr_state = trego_create_state(
+        search_space,
+        search_space,
+        dataset,
+        tf.constant(5.6),
+        tf.constant(7.8),
+        False,
     )
     tr_state_copy = copy.deepcopy(tr_state)
-    npt.assert_allclose(tr_state_copy.acquisition_space.lower, tr_state.acquisition_space.lower)
-    npt.assert_allclose(tr_state_copy.acquisition_space.upper, tr_state.acquisition_space.upper)
-    npt.assert_allclose(tr_state_copy.eps, tr_state.eps)
-    npt.assert_allclose(tr_state_copy.y_min, tr_state.y_min)
-    assert tr_state_copy.is_global == tr_state.is_global
+    tr_subspace = tr_state.acquisition_space.get_subspace("0")
+    tr_subspace_copy = tr_state_copy.acquisition_space.get_subspace("0")
+    assert isinstance(tr_subspace, TREGOBox)
+    assert isinstance(tr_subspace_copy, TREGOBox)
+    npt.assert_allclose(tr_subspace_copy.lower, tr_subspace.lower)
+    npt.assert_allclose(tr_subspace_copy.upper, tr_subspace.upper)
+    npt.assert_allclose(tr_subspace_copy._eps, tr_subspace._eps)
+    npt.assert_allclose(tr_subspace_copy._y_min, tr_subspace._y_min)
+    assert tr_subspace_copy._is_global == tr_subspace._is_global
 
 
 @pytest.mark.parametrize("datasets", [{}, {"foo": empty_dataset([1], [1])}])
