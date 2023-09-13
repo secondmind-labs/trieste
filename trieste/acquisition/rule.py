@@ -1425,6 +1425,8 @@ class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, SingleObjecti
             # If no initial subspaces were provided, create N default subspaces, where N is the
             # number of query points in the base-rule.
             # Currently the detection for N is only implemented for EGO.
+            # Note: the reason we don't create the default subspaces in `__init__` is because we
+            # don't have the global search space at that point.
             if isinstance(self._rule, EfficientGlobalOptimization):
                 num_query_points = self._rule._num_query_points
             else:
