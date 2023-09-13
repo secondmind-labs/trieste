@@ -1315,7 +1315,7 @@ class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, SingleObjecti
 class TREGOBox(SingleObjectiveTrustRegionBox):
     """
     A box trust region algorithm that alternates between regular EGO steps and local steps within a
-    trust region.
+    trust region. See :cite:`diouane2022trego` for details.
 
     At construction, starts in global mode using ``global_search_space`` as the search space
     for the first step. Subsequent re-initializations use the trust region as the search space for
