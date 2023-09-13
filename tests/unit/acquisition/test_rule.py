@@ -1349,6 +1349,18 @@ def test_multi_trust_region_box_acquire_no_state() -> None:
         assert point in subspace
 
 
+def test_multi_trust_region_box_raises_on_mismatched_global_search_space() -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    base_rule = EfficientGlobalOptimization(  # type: ignore[var-annotated]
+        builder=ParallelContinuousThompsonSampling(), num_query_points=2
+    )
+    subspaces = [SingleObjectiveTrustRegionBox(search_space) for _ in range(2)]
+    mtb = BatchTrustRegionBox(subspaces, base_rule)
+
+    with pytest.raises(AssertionError, match="The global search space of the subspaces should "):
+        mtb.acquire(Box([0.0, 0.0], [2.0, 2.0]), {})
+
+
 def test_multi_trust_region_box_raises_on_mismatched_tags() -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     dataset = Dataset(

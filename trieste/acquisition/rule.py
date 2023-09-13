@@ -1435,6 +1435,16 @@ class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, SingleObjecti
             )
             self._tags = tuple([str(index) for index in range(len(self._init_subspaces))])
 
+        # Ensure passed in global search space is always the same as the search space passed to
+        # the subspaces.
+        for subspace in self._init_subspaces:
+            assert subspace.global_search_space == search_space, (
+                "The global search space of the subspaces should be the same as the "
+                "search space passed to the BatchTrustRegionBox acquisition rule. "
+                "If you want to change the global search space, you should recreate the rule. "
+                "Note: all subspaces should be initialized with the same global search space."
+            )
+
         return super().acquire(search_space, models, datasets)
 
     @inherit_check_shapes
