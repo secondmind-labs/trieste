@@ -1166,19 +1166,30 @@ class BatchTrustRegion(
 
     def __init__(
         self: "BatchTrustRegion[ProbabilisticModelType, UpdatableTrustRegionType]",
-        init_subspaces: Sequence[UpdatableTrustRegionType],
+        init_subspaces: Union[
+            None, UpdatableTrustRegionType, Sequence[UpdatableTrustRegionType]
+        ] = None,
         rule: AcquisitionRule[TensorType, SearchSpace, ProbabilisticModelType] | None = None,
     ):
         """
-        :param init_subspaces: The initial search spaces for each trust region.
+        :param init_subspaces: The initial search spaces for each trust region. If `None`, default
+            subspaces of type :class:`UpdatableTrustRegionType` will be created, with length
+            equal to the number of query points in the base `rule`.
         :param rule: The acquisition rule that defines how to search for a new query point in each
             subspace. Defaults to :class:`EfficientGlobalOptimization` with default arguments.
         """
         if rule is None:
             rule = EfficientGlobalOptimization()
 
-        self._init_subspaces = tuple(init_subspaces)
-        self._tags = tuple([str(index) for index in range(len(init_subspaces))])
+        # If init_subspaces are not provided, leave it to the subclasses to create them.
+        self._init_subspaces = None
+        self._tags = None
+        if init_subspaces is not None:
+            if not isinstance(init_subspaces, Sequence):
+                init_subspaces = [init_subspaces]
+            self._init_subspaces = tuple(init_subspaces)
+            self._tags = tuple([str(index) for index in range(len(init_subspaces))])
+
         self._rule = rule
 
     def __repr__(self) -> str:
@@ -1202,6 +1213,11 @@ class BatchTrustRegion(
 
             Use the rule to acquire points from the acquisition space.
             """
+
+            # Subspaces should be set by the time we call `acquire`.
+            assert self._tags is not None
+            assert self._init_subspaces is not None
+
             # If state is set, the tags should be the same as the tags of the acquisition space
             # in the state.
             if state is not None:
@@ -1398,6 +1414,40 @@ class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, SingleObjecti
     Implements the :class:`BatchTrustRegion` *trust region* acquisition algorithm for box regions.
     This is intended to be used for single-objective optimization with batching.
     """
+
+    def acquire(
+        self,
+        search_space: SearchSpace,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+    ) -> types.State[BatchTrustRegion.State | None, TensorType]:
+        if self._init_subspaces is None:
+            # If no initial subspaces were provided, create N default subspaces, where N is the
+            # number of query points in the base-rule.
+            # Currently the detection for N is only implemented for EGO.
+            # Note: the reason we don't create the default subspaces in `__init__` is because we
+            # don't have the global search space at that point.
+            if isinstance(self._rule, EfficientGlobalOptimization):
+                num_query_points = self._rule._num_query_points
+            else:
+                num_query_points = 1
+
+            self._init_subspaces = tuple(
+                [SingleObjectiveTrustRegionBox(search_space) for _ in range(num_query_points)]
+            )
+            self._tags = tuple([str(index) for index in range(len(self._init_subspaces))])
+
+        # Ensure passed in global search space is always the same as the search space passed to
+        # the subspaces.
+        for subspace in self._init_subspaces:
+            assert subspace.global_search_space == search_space, (
+                "The global search space of the subspaces should be the same as the "
+                "search space passed to the BatchTrustRegionBox acquisition rule. "
+                "If you want to change the global search space, you should recreate the rule. "
+                "Note: all subspaces should be initialized with the same global search space."
+            )
+
+        return super().acquire(search_space, models, datasets)
 
     @inherit_check_shapes
     def get_initialize_subspaces_mask(
