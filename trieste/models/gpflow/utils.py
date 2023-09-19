@@ -68,6 +68,10 @@ def randomize_hyperparameters(object: gpflow.Module) -> None:
             param.assign(sample)
         elif param.prior is not None:
             # handle constant priors for multi-dimensional parameters
+            # Use python conditionals here to avoid creating tensorflow `tf.cond` ops,
+            # i.e. using `len(param.shape)` instead of `tf.rank(param)`.
+            # Otherwise, tensorflow generates repeating random sequences for hyperparameters, see
+            # https://github.com/tensorflow/tensorflow/issues/61912.
             if param.prior.batch_shape == param.prior.event_shape == [] and len(param.shape) == 1:
                 sample = param.prior.sample(tf.shape(param))
             else:
