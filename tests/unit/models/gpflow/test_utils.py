@@ -218,14 +218,42 @@ def test_randomize_hyperparameters_samples_from_constraints_when_given_prior_and
 
 
 @random_seed
-def test_randomize_hyperparameters_samples_different_values_for_multi_dimensional_params() -> None:
+@pytest.mark.parametrize("compile", [False, True])
+def test_randomize_hyperparameters_generates_different_values_for_params(compile: bool) -> None:
+    dim = 2
+    kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[1.0] * dim)
+    model = gpflow.models.GPR(data=(tf.zeros((1, dim)), tf.zeros((1, 1))), kernel=kernel)
+    kernel.variance.prior = tfp.distributions.LogNormal(0.0, 2.0)
+    model.likelihood.variance.prior = tfp.distributions.LogNormal(0.0, 2.0)
+    model.kernel.lengthscales.prior = tfp.distributions.LogNormal(0.0, 2.0)
+
+    compiler = tf.function if compile else lambda x: x
+    compiler(randomize_hyperparameters)(model)
+
+    npt.assert_raises(AssertionError, npt.assert_allclose, kernel.lengthscales[0], kernel.variance)
+    npt.assert_raises(
+        AssertionError, npt.assert_allclose, kernel.lengthscales[0], model.likelihood.variance
+    )
+    npt.assert_raises(
+        AssertionError, npt.assert_allclose, kernel.variance, model.likelihood.variance
+    )
+
+
+@random_seed
+@pytest.mark.parametrize("compile", [False, True])
+def test_randomize_hyperparameters_samples_different_values_for_multi_dimensional_params(
+    compile: bool,
+) -> None:
     kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2, 0.2])
     upper = tf.cast([10.0] * 2, dtype=tf.float64)
     lower = upper / 100
     kernel.lengthscales = gpflow.Parameter(
         kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
     )
-    randomize_hyperparameters(kernel)
+
+    compiler = tf.function if compile else lambda x: x
+    compiler(randomize_hyperparameters)(kernel)
+
     npt.assert_raises(
         AssertionError, npt.assert_allclose, kernel.lengthscales[0], kernel.lengthscales[1]
     )
