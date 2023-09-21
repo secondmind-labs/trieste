@@ -199,15 +199,15 @@ plot_history(result)
 # Note: the number of sub-spaces/regions must match the number of batch query points.
 
 # %%
-num_query_points = 5
+num_query_points = 6
 
 init_subspaces = [
-    trieste.acquisition.rule.SingleObjectiveTrustRegionBox(search_space)
-    for _ in range(num_query_points)
+    trieste.acquisition.rule.SingleObjectiveTrustRegionBox(search_space, i)
+    for i in range(num_query_points)
 ]
 base_rule = trieste.acquisition.rule.EfficientGlobalOptimization(  # type: ignore[var-annotated]
     builder=trieste.acquisition.ParallelContinuousThompsonSampling(),
-    num_query_points=num_query_points,
+    #num_query_points=num_query_points,
 )
 batch_acq_rule = trieste.acquisition.rule.BatchTrustRegionBox(
     init_subspaces, base_rule
@@ -226,7 +226,12 @@ bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 num_steps = 5
 result = bo.optimize(
-    num_steps, initial_data, build_model(), batch_acq_rule, track_state=True
+    #num_steps, initial_data, build_model(), batch_acq_rule, track_state=True
+    num_steps,
+    initial_data,
+    trieste.acquisition.utils.copy_to_local_models(build_model(), 2),
+    batch_acq_rule,
+    track_state=True,
 )
 dataset = result.try_get_final_dataset()
 

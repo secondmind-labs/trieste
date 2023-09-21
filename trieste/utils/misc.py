@@ -16,7 +16,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from time import perf_counter
 from types import TracebackType
-from typing import Any, Callable, Generic, Mapping, NoReturn, Optional, Tuple, Type, TypeVar
+from typing import Any, Callable, Generic, Mapping, NoReturn, Optional, Sequence, Tuple, Type, TypeVar, Union
 
 import numpy as np
 import tensorflow as tf
@@ -220,21 +220,26 @@ T = TypeVar("T")
 """ An unbound type variable. """
 
 
-def get_value_for_tag(mapping: Optional[Mapping[Tag, T]], tag: Tag = OBJECTIVE) -> Optional[T]:
-    """Return the value of a tag in a mapping.
+def get_value_for_tag(
+    mapping: Optional[Mapping[Tag, T]], tags: Union[Tag, Sequence[Tag]] = OBJECTIVE
+) -> Optional[T]:
+    """Return the value from a mapping for the first tag found from a sequence of tags.
 
     :param mapping: A mapping from tags to values.
-    :param tag: A tag.
+    :param tags: A tag or a sequence of tags. Sequence is searched in order.
     :return: The value of the tag in the mapping, or None if the mapping is None.
-    :raises ValueError: If the tag is not in the mapping and the mapping is not None.
+    :raises ValueError: If none of the tags are in the mapping and the mapping is not None.
     """
+
+    if isinstance(tags, Tag):
+        tags = [tags]
 
     if mapping is None:
         return None
-    elif tag in mapping.keys():
-        return mapping[tag]
+    elif matched_tags := sorted(set(tags) & set(mapping.keys()), key = tags.index):
+        return mapping[matched_tags[0]]
     else:
-        raise ValueError(f"tag '{tag}' not found in mapping")
+        raise ValueError(f"none of the tags '{tags}' found in mapping")
 
 
 class Timer:

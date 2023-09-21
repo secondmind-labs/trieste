@@ -57,10 +57,12 @@ from . import logging
 from .acquisition.rule import TURBO, AcquisitionRule, EfficientGlobalOptimization
 from .data import Dataset
 from .models import SupportsCovarianceWithTopFidelity, TrainableProbabilisticModel
+from .objectives.utils import mk_batch_observer
 from .observer import OBJECTIVE, Observer
 from .space import SearchSpace
 from .types import State, Tag, TensorType
 from .utils import Err, Ok, Result, Timer
+from .utils.misc import get_value_for_tag
 
 StateType = TypeVar("StateType")
 """ Unbound type variable. """
@@ -96,18 +98,22 @@ class Record(Generic[StateType]):
     @property
     def dataset(self) -> Dataset:
         """The dataset when there is just one dataset."""
-        if len(self.datasets) == 1:
-            return next(iter(self.datasets.values()))
+        # Ignore local datasets.
+        datasets = dict(filter(lambda item: "__" not in item[0], self.datasets.items()))
+        if len(datasets) == 1:
+            return next(iter(datasets.values()))
         else:
-            raise ValueError(f"Expected a single dataset, found {len(self.datasets)}")
+            raise ValueError(f"Expected a single dataset, found {len(datasets)}")
 
     @property
     def model(self) -> TrainableProbabilisticModel:
         """The model when there is just one dataset."""
-        if len(self.models) == 1:
-            return next(iter(self.models.values()))
+        # Ignore local models.
+        models = dict(filter(lambda item: "__" not in item[0], self.models.items()))
+        if len(models) == 1:
+            return next(iter(models.values()))
         else:
-            raise ValueError(f"Expected a single model, found {len(self.models)}")
+            raise ValueError(f"Expected a single model, found {len(models)}")
 
     def save(self, path: Path | str) -> FrozenRecord[StateType]:
         """Save the record to disk. Will overwrite any existing file at the same path."""
@@ -226,6 +232,8 @@ class OptimizationResult(Generic[StateType]):
         :raise ValueError: If the optimization was not a single dataset run.
         """
         datasets = self.try_get_final_datasets()
+        # Ignore local datasets.
+        datasets = dict(filter(lambda item: "__" not in item[0], datasets.items()))
         if len(datasets) == 1:
             return next(iter(datasets.values()))
         else:
@@ -269,6 +277,8 @@ class OptimizationResult(Generic[StateType]):
         :raise ValueError: If the optimization was not a single model run.
         """
         models = self.try_get_final_models()
+        # Ignore local models.
+        models = dict(filter(lambda item: "__" not in item[0], models.items()))
         if len(models) == 1:
             return next(iter(models.values()))
         else:
@@ -627,6 +637,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         """
         if isinstance(datasets, Dataset):
             datasets = {OBJECTIVE: datasets}
+        if not isinstance(models, Mapping):
             models = {OBJECTIVE: models}  # type: ignore[dict-item]
 
         # reassure the type checker that everything is tagged
@@ -636,10 +647,13 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         if num_steps < 0:
             raise ValueError(f"num_steps must be at least 0, got {num_steps}")
 
-        if datasets.keys() != models.keys():
+        # Get set of dataset keys, ignoring suffix starting with double underscore.
+        datasets_keys = {tag.split("__")[0] for tag in datasets.keys()}
+        models_keys = {tag.split("__")[0] for tag in models.keys()}
+        if datasets_keys != models_keys:
             raise ValueError(
-                f"datasets and models should contain the same keys. Got {datasets.keys()} and"
-                f" {models.keys()} respectively."
+                f"datasets and models should contain the same keys. Got {datasets_keys} and"
+                f" {models_keys} respectively."
             )
 
         if not datasets:
@@ -717,7 +731,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                 if step == 1 and fit_model and fit_initial_model:
                     with Timer() as initial_model_fitting_timer:
                         for tag, model in models.items():
-                            dataset = datasets[tag]
+                            tags = [tag, tag.split("__")[0]]  # Prefer local dataset if available.
+                            dataset = get_value_for_tag(datasets, tags)
                             model.update(dataset)
                             model.optimize_and_save_result(dataset)
                     if summary_writer:
@@ -738,7 +753,14 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         else:
                             query_points = points_or_stateful
 
-                    observer_output = self._observer(query_points)
+                    observer = self._observer
+                    # If query_points are rank 3, then use a batched observer.
+                    if tf.rank(query_points) == 3:
+                        num_objective_models = len(
+                            [tag for tag in models if tag.split("__")[0] == OBJECTIVE]
+                        )
+                        observer = mk_batch_observer(observer, num_objective_models, OBJECTIVE)
+                    observer_output = observer(query_points)
 
                     tagged_output = (
                         observer_output
@@ -746,11 +768,23 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         else {OBJECTIVE: observer_output}
                     )
 
-                    datasets = {tag: datasets[tag] + tagged_output[tag] for tag in tagged_output}
+                    # Account for the case where there may be an initial dataset that is not tagged
+                    # per region. In this case, only the global dataset will exist in datasets. We
+                    # want to copy this initial dataset to all the regions.
+                    #
+                    # If a tag from tagged_output does not exist in datasets, then add it to
+                    # datasets by copying the dataset from datasets with the same tag-prefix.
+                    # Otherwise keep the existing dataset from datasets.
+                    datasets = {
+                        tag: get_value_for_tag(datasets, [tag, tag.split("__")[0]]) + tagged_output[tag]
+                        for tag in tagged_output
+                    }
+
                     with Timer() as model_fitting_timer:
                         if fit_model:
                             for tag, model in models.items():
-                                dataset = datasets[tag]
+                                tags = [tag, tag.split("__")[0]]  # Prefer local dataset if available.
+                                dataset = get_value_for_tag(datasets, tags)
                                 model.update(dataset)
                                 model.optimize_and_save_result(dataset)
 

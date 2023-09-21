@@ -18,12 +18,13 @@ from objective functions, appropriately formatted for usage with the toolbox.
 """
 
 from __future__ import annotations
+import tensorflow as tf
 
 from collections.abc import Callable
-from typing import Optional, overload
+from typing import Mapping, Optional, Union, overload
 
 from ..data import Dataset
-from ..observer import MultiObserver, Observer, SingleObserver
+from ..observer import OBJECTIVE, MultiObserver, Observer, SingleObserver
 from ..types import Tag, TensorType
 
 
@@ -57,3 +58,51 @@ def mk_multi_observer(**kwargs: Callable[[TensorType], TensorType]) -> MultiObse
     :return: An multi-observer returning the data from ``kwargs``.
     """
     return lambda qp: {key: Dataset(qp, objective(qp)) for key, objective in kwargs.items()}
+
+
+def mk_batch_observer(
+    objective_or_observer: Union[Callable[[TensorType], TensorType], SingleObserver],
+    batch_size: int,
+    key: Optional[Tag] = None,
+) -> Observer:
+    """
+    Create an observer that returns the data from ``objective`` or an existing ``observer``
+    separately for each query point in a batch.
+
+    :param objective_or_observer: An objective or an existing observer designed to be used with a
+        single data set and model.
+    :param batch_size: The batch size of the observer.
+    :param key: An optional key to use to access the data from the observer result.
+    :return: A multi-observer across the batch dimension of query points, returning the data from
+        ``objective``. If ``key`` is provided, the observer will be a mapping. Otherwise, it will
+        return a single dataset.
+    """
+
+    def _observer(qps: TensorType) -> Mapping[Tag, Dataset]:
+        assert tf.rank(qps) == 3, (
+            f"query points must be rank 3 for batch observer, got {tf.rank(qps)}"
+        )
+
+        # Call objective with rank 2 query points by flattening batch dimension.
+        # Some objectives might only expect rank 2 query points, so this is safer.
+        qps = tf.reshape(qps, [-1, qps.shape[-1]])
+        obs_or_dataset = objective_or_observer(qps)
+
+        if not isinstance(obs_or_dataset, Dataset):
+            obs_or_dataset = Dataset(qps, obs_or_dataset)
+
+        if key is None:
+            # Always use rank 2 shape as models (e.g. GPR) expect this, so return as is.
+            return obs_or_dataset
+        else:
+            # Include overall dataset and per batch dataset.
+            obs = obs_or_dataset.observations
+            qps = tf.reshape(qps, [-1, batch_size, qps.shape[-1]])
+            obs = tf.reshape(obs, [-1, batch_size, obs.shape[-1]])
+            datasets = {
+                OBJECTIVE: obs_or_dataset,
+                **{f"{key}__{i}": Dataset(qps[:, i], obs[:, i]) for i in range(batch_size)}
+            }
+            return datasets
+
+    return _observer

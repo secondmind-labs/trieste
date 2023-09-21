@@ -972,6 +972,30 @@ class UpdatableTrustRegion(SearchSpace):
         """
         ...
 
+    def select_model(
+        self, models: Optional[Mapping[Tag, ProbabilisticModelType]]
+    ) -> Optional[ProbabilisticModelType]:
+        """
+        Select a single model belonging to this region. This is an optional method that is
+        only required if the region is used with single model acquisition functions.
+
+        :param models: The model for each tag.
+        :return: The model belonging to this region.
+        """
+        # By default return the OBJECTIVE model.
+        return get_value_for_tag(models, OBJECTIVE)
+
+    def select_dataset(self, datasets: Optional[Mapping[Tag, Dataset]]) -> Optional[Dataset]:
+        """
+        Select a single dataset belonging to this region. This is an optional method that is
+        only required if the region is used with single model acquisition functions.
+
+        :param datasets: The datasets for each tag.
+        :return: The dataset belonging to this region.
+        """
+        # By default return the OBJECTIVE dataset.
+        return get_value_for_tag(datasets, OBJECTIVE)
+
 
 UpdatableTrustRegionType = TypeVar("UpdatableTrustRegionType", bound=UpdatableTrustRegion)
 """ A type variable bound to :class:`UpdatableTrustRegion`. """
@@ -1055,10 +1079,21 @@ class BatchTrustRegion(
             points from the previous acquisition state.
         """
 
+        # Subspaces should be set by the time we call `acquire`.
+        assert self._tags is not None
+        assert self._init_subspaces is not None
+
+        num_subspaces = len(self._tags)
+        num_objective_models = len([tag for tag in models if tag.split("__")[0] == OBJECTIVE])
+        assert num_subspaces % num_objective_models == 0, (
+            f"The number of subspaces {num_subspaces} should be a multiple of the number of "
+            f"objective models {num_objective_models}"
+        )
+
         def state_func(
             state: BatchTrustRegion.State | None,
         ) -> Tuple[BatchTrustRegion.State | None, TensorType]:
-            # Subspaces should be set by the time we call `acquire`.
+            # Check again to keep mypy happy.
             assert self._tags is not None
             assert self._init_subspaces is not None
 
@@ -1092,9 +1127,35 @@ class BatchTrustRegion(
                 acquisition_space = state.acquisition_space
 
             state_ = BatchTrustRegion.State(acquisition_space)
-            points = self._rule.acquire(acquisition_space, models, datasets=datasets)
 
-            return state_, points
+            # If the base rule is a single model acquisition rule, but we have multiple models,
+            # run the base rule sequentially for each subspace.
+            # Otherwise, run the base rule once with all models and datasets.
+            if isinstance(self._rule, EfficientGlobalOptimization) and hasattr(
+                self._rule._builder, "single_builder"
+            ) and (len(models) > 1 or OBJECTIVE not in models):
+                points = []
+                #for tag, model in models.items():
+                #    global_tag, index_tag = tag.split("__")
+                #    tags = [tag, global_tag]  # Prefer local dataset if available.
+                #    dataset = get_value_for_tag(datasets, tags)
+                for subspace in subspaces:
+                    model = subspace.select_model(models)
+                    dataset = subspace.select_dataset(datasets)
+                    points.append(
+                        self._rule.acquire(
+                            subspace,
+                            # Using default tag, as that is what single model acquisition builders
+                            # expect.
+                            {OBJECTIVE: model},
+                            {OBJECTIVE: dataset},
+                        )
+                    )
+                points = tf.concat(points, axis=0)
+            else:
+                points = self._rule.acquire(acquisition_space, models, datasets=datasets)
+
+            return state_, tf.reshape(points, [-1, len(subspaces), points.shape[-1]])
 
         return state_func
 
@@ -1150,6 +1211,7 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
     def __init__(
         self,
         global_search_space: SearchSpace,
+        index: Optional[int] = None,
         beta: float = 0.7,
         kappa: float = 1e-4,
         min_eps: float = 1e-2,
@@ -1166,6 +1228,7 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
         """
 
         self._global_search_space = global_search_space
+        self._index = index
         self._beta = beta
         self._kappa = kappa
         self._min_eps = min_eps
@@ -1199,13 +1262,13 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
         Initialize the box by sampling a location from the global search space and setting the
         bounds.
         """
-        dataset = get_value_for_tag(datasets)
+        dataset = self.select_dataset(datasets)
 
         self.location = tf.squeeze(self.global_search_space.sample(1), axis=0)
         self._step_is_success = False
         self._init_eps()
         self._update_bounds()
-        _, self._y_min = self.get_local_min(dataset)
+        _, self._y_min = self.get_dataset_min(dataset)
 
     def update(
         self,
@@ -1223,13 +1286,13 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
         ``1 / beta``. Conversely, if it was unsuccessful, the size is reduced by the factor
         ``beta``.
         """
-        dataset = get_value_for_tag(datasets)
+        dataset = self.select_dataset(datasets)
 
         if tf.reduce_any(self.eps < self._min_eps):
             self.initialize(models, datasets)
             return
 
-        x_min, y_min = self.get_local_min(dataset)
+        x_min, y_min = self.get_dataset_min(dataset)
         self.location = x_min
 
         tr_volume = tf.reduce_prod(self.upper - self.lower)
@@ -1238,24 +1301,55 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
         self._update_bounds()
         self._y_min = y_min
 
+    def select_model(
+        self, models: Optional[Mapping[Tag, ProbabilisticModelType]]
+    ) -> Optional[ProbabilisticModelType]:
+        # Select the model belonging to this box. Note there isn't necessarily a one-to-one
+        # mapping between regions and models.
+        if self._index is None:
+            tags = OBJECTIVE  # If no index, then pick the global dataset.
+        else:
+            num_objective_models = len([tag for tag in models if tag.split("__")[0] == OBJECTIVE])
+            index = self._index % num_objective_models
+            tags = [f"{OBJECTIVE}__{index}", OBJECTIVE]  # Prefer local dataset if available.
+        return get_value_for_tag(models, tags)
+
+    def select_dataset(self, datasets: Optional[Mapping[Tag, Dataset]]) -> Optional[Dataset]:
+        # Select the dataset belonging to this box. Note there isn't necessarily a one-to-one
+        # mapping between regions and datasets.
+        # There are two possible ways local datasets can
+        # be stored; either with a specific tag, or as a specific slice of the global dataset.
+        if self._index is None:
+            tags = OBJECTIVE  # If no index, then pick the global dataset.
+        else:
+            num_objective_datasets = len([tag for tag in datasets if tag.split("__")[0] == OBJECTIVE])
+            index = self._index % num_objective_datasets
+            tags = [f"{OBJECTIVE}__{index}", OBJECTIVE]  # Prefer local dataset if available.
+        return get_value_for_tag(datasets, tags)
+
+        ## If dataset is greater than rank 2, dimension 1 is the batch dimension. Select the slice
+        ## corresponding to this box.
+        ## Note: it is possible that this is already a local dataset from the previous step. However,
+        ## to keep the code general, we make no distinction between local and global datasets here;
+        ## as this is not an expected use case.
+        #if self._index is not None and dataset is not None and tf.rank(dataset.observations) > 2:
+        #    dataset = Dataset(dataset.query_points[:, self._index, ...], dataset.observations[:, self._index, ...])
+        #return dataset
+
     @check_shapes(
         "return[0]: [D]",
         "return[1]: []",
     )
-    def get_local_min(self, dataset: Optional[Dataset]) -> Tuple[TensorType, TensorType]:
-        """Calculate the local minimum of the box using the given dataset."""
+    def get_dataset_min(self, dataset: Optional[Dataset]) -> Tuple[TensorType, TensorType]:
+        """Calculate the minimum of the box using the given dataset."""
         if dataset is None:
             raise ValueError("""dataset must be provided""")
 
-        in_tr = self.contains(dataset.query_points)
-        in_tr_obs = tf.where(
-            tf.expand_dims(in_tr, axis=-1),
-            dataset.observations,
-            tf.constant(np.inf, dtype=dataset.observations.dtype),
-        )
-        ix = tf.argmin(in_tr_obs)
+        # Note the behaviour here depends on the dataset passed in, which could be the global
+        # dataset or the local dataset.
+        ix = tf.argmin(dataset.observations)
         x_min = tf.gather(dataset.query_points, ix)
-        y_min = tf.gather(in_tr_obs, ix)
+        y_min = tf.gather(dataset.observations, ix)
 
         return tf.squeeze(x_min, axis=0), tf.squeeze(y_min)
 
@@ -1284,7 +1378,7 @@ class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, SingleObjecti
                 num_query_points = 1
 
             self._init_subspaces = tuple(
-                [SingleObjectiveTrustRegionBox(search_space) for _ in range(num_query_points)]
+                [SingleObjectiveTrustRegionBox(search_space, i) for i in range(num_query_points)]
             )
             self._tags = tuple([str(index) for index in range(len(self._init_subspaces))])
 
@@ -1336,11 +1430,12 @@ class TREGOBox(SingleObjectiveTrustRegionBox):
     def __init__(
         self,
         global_search_space: SearchSpace,
+        index: Optional[int] = None,
         beta: float = 0.7,
         kappa: float = 1e-4,
         min_eps: float = 1e-2,
     ):
-        super().__init__(global_search_space, beta, kappa, min_eps)
+        super().__init__(global_search_space, index, beta, kappa, min_eps)
         self._is_global = False
         self._initialized = False
 
@@ -1381,18 +1476,6 @@ class TREGOBox(SingleObjectiveTrustRegionBox):
         self._initialized = True
 
         super().initialize(models, datasets)
-
-    @inherit_check_shapes
-    def get_local_min(self, dataset: Optional[Dataset]) -> Tuple[TensorType, TensorType]:
-        if dataset is None:
-            raise ValueError("""dataset must be provided""")
-
-        # Always return the global minimum.
-        ix = tf.argmin(dataset.observations)
-        x_min = tf.gather(dataset.query_points, ix)
-        y_min = tf.gather(dataset.observations, ix)
-
-        return tf.squeeze(x_min, axis=0), tf.squeeze(y_min)
 
 
 class TURBO(
