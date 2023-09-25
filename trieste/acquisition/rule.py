@@ -990,7 +990,7 @@ class UpdatableTrustRegion(SearchSpace):
         Select a single dataset belonging to this region. This is an optional method that is
         only required if the region is used with single model acquisition functions.
 
-        :param datasets: The datasets for each tag.
+        :param datasets: The dataset for each tag.
         :return: The dataset belonging to this region.
         """
         # By default return the OBJECTIVE dataset.
@@ -1128,17 +1128,13 @@ class BatchTrustRegion(
 
             state_ = BatchTrustRegion.State(acquisition_space)
 
-            # If the base rule is a single model acquisition rule, but we have multiple models,
-            # run the base rule sequentially for each subspace.
+            # If the base rule is a single model acquisition rule, but we have (multiple) local
+            # models, run the base rule sequentially for each subspace.
             # Otherwise, run the base rule once with all models and datasets.
             if isinstance(self._rule, EfficientGlobalOptimization) and hasattr(
                 self._rule._builder, "single_builder"
             ) and (len(models) > 1 or OBJECTIVE not in models):
                 points = []
-                #for tag, model in models.items():
-                #    global_tag, index_tag = tag.split("__")
-                #    tags = [tag, global_tag]  # Prefer local dataset if available.
-                #    dataset = get_value_for_tag(datasets, tags)
                 for subspace in subspaces:
                     model = subspace.select_model(models)
                     dataset = subspace.select_dataset(datasets)
@@ -1153,7 +1149,7 @@ class BatchTrustRegion(
                     )
                 points = tf.concat(points, axis=0)
             else:
-                points = self._rule.acquire(acquisition_space, models, datasets=datasets)
+                points = self._rule.acquire(acquisition_space, models, datasets)
 
             return state_, tf.reshape(points, [-1, len(subspaces), points.shape[-1]])
 
@@ -1307,18 +1303,16 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
         # Select the model belonging to this box. Note there isn't necessarily a one-to-one
         # mapping between regions and models.
         if self._index is None:
-            tags = OBJECTIVE  # If no index, then pick the global dataset.
+            tags = OBJECTIVE  # If no index, then pick the global model.
         else:
             num_objective_models = len([tag for tag in models if tag.split("__")[0] == OBJECTIVE])
             index = self._index % num_objective_models
-            tags = [f"{OBJECTIVE}__{index}", OBJECTIVE]  # Prefer local dataset if available.
+            tags = [f"{OBJECTIVE}__{index}", OBJECTIVE]  # Prefer local model if available.
         return get_value_for_tag(models, tags)
 
     def select_dataset(self, datasets: Optional[Mapping[Tag, Dataset]]) -> Optional[Dataset]:
         # Select the dataset belonging to this box. Note there isn't necessarily a one-to-one
         # mapping between regions and datasets.
-        # There are two possible ways local datasets can
-        # be stored; either with a specific tag, or as a specific slice of the global dataset.
         if self._index is None:
             tags = OBJECTIVE  # If no index, then pick the global dataset.
         else:
@@ -1326,15 +1320,6 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
             index = self._index % num_objective_datasets
             tags = [f"{OBJECTIVE}__{index}", OBJECTIVE]  # Prefer local dataset if available.
         return get_value_for_tag(datasets, tags)
-
-        ## If dataset is greater than rank 2, dimension 1 is the batch dimension. Select the slice
-        ## corresponding to this box.
-        ## Note: it is possible that this is already a local dataset from the previous step. However,
-        ## to keep the code general, we make no distinction between local and global datasets here;
-        ## as this is not an expected use case.
-        #if self._index is not None and dataset is not None and tf.rank(dataset.observations) > 2:
-        #    dataset = Dataset(dataset.query_points[:, self._index, ...], dataset.observations[:, self._index, ...])
-        #return dataset
 
     @check_shapes(
         "return[0]: [D]",

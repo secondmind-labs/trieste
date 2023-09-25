@@ -32,6 +32,7 @@ from tests.util.models.gpflow.models import (
 from trieste.acquisition import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
+    MultipleOptimismNegativeLowerConfidenceBound,
     NegativeLowerConfidenceBound,
     ParallelContinuousThompsonSampling,
     SingleModelAcquisitionBuilder,
@@ -1444,12 +1445,15 @@ class TestTrustRegionBox(SingleObjectiveTrustRegionBox):
         self,
         fixed_location: TensorType,
         global_search_space: SearchSpace,
+        index: Optional[int] = None,
         beta: float = 0.7,
         kappa: float = 1e-4,
         min_eps: float = 1e-2,
+        init_eps: float = 0.07,
     ):
-        super().__init__(global_search_space, beta, kappa, min_eps)
+        super().__init__(global_search_space, index, beta, kappa, min_eps)
         self._location = fixed_location
+        self._init_eps_val = init_eps
 
     @property
     def location(self) -> TensorType:
@@ -1460,7 +1464,7 @@ class TestTrustRegionBox(SingleObjectiveTrustRegionBox):
         ...
 
     def _init_eps(self) -> None:
-        self.eps = tf.constant(0.07, dtype=tf.float64)
+        self.eps = tf.constant(self._init_eps_val, dtype=tf.float64)
 
 
 # Start with a defined state and dataset. Acquire should return an updated state.
@@ -1515,6 +1519,75 @@ def test_multi_trust_region_box_acquire_with_state() -> None:
         npt.assert_array_equal(subspace._y_min, exp_obs)
         # Check the box was updated/initialized correctly.
         npt.assert_allclose(subspace.eps, exp_eps)
+
+
+# Define a test case with multiple local models and multiple regions
+@pytest.mark.parametrize("num_local_models", [0, 1, 2])
+@pytest.mark.parametrize("num_regions", [2, 4])
+@pytest.mark.parametrize("num_query_points_per_region", [1, 2])
+def test_batch_trust_region_box_with_multiple_models_and_regions(
+    num_local_models: int, num_regions: int, num_query_points_per_region: int
+):
+    search_space = Box([0.0, 0.0], [6.0, 6.0])
+    base_shift = tf.constant([2.0, 2.0], dtype=tf.float64)  # Common base shift for all regions.
+    eps = 0.9
+    subspaces = [TestTrustRegionBox(base_shift+i, search_space, i, init_eps=eps) for i in range(num_regions)]
+
+    # Define the models and acquisition functions for each region
+    noise_variance = tf.constant(1e-6, dtype=tf.float64)
+    kernel_variance = tf.constant(1e-3, dtype=tf.float64)
+    kernel_lengthscale = tf.constant(0.1, dtype=tf.float64)
+    if num_local_models == 0:
+        x_shift = tf.constant([0.0, 0.0], dtype=tf.float64)
+        init_datasets = {OBJECTIVE: Dataset(
+            x_shift, tf.constant([[0.0]], dtype=tf.float64)
+        )}
+        models = {OBJECTIVE: QuadraticMeanAndRBFKernelWithSamplers(
+            init_datasets[OBJECTIVE], x_shift=x_shift, kernel_amplitude=kernel_variance, noise_variance=noise_variance
+        )}
+    else:
+        # Dataset per model, one point at the center/minimum of the region.
+        init_datasets = {}
+        models = {}
+        for i in range(num_local_models):
+            tag = OBJECTIVE + f"__{i}"
+            shift = base_shift + i
+            query_points = tf.stack([
+                shift - [eps, eps],
+                shift - [eps, 0.0] + [0.0, eps],
+                shift,
+                shift + [eps, eps],
+                shift - [0.0, eps] + [eps, 0.0],
+            ])
+            observations = tf.constant([[eps**2], [eps**2], [0.0], [eps**2], [eps**2]], dtype=tf.float64)
+            init_datasets[tag] = Dataset(query_points, observations)
+            models[tag] = QuadraticMeanAndRBFKernelWithSamplers(
+                init_datasets[tag], x_shift=base_shift+i, kernel_amplitude=kernel_variance, noise_variance=noise_variance
+            )
+
+    for model in models.values():
+        model.kernel = (
+            gpflow.kernels.RBF(
+                variance=kernel_variance,
+                lengthscales=kernel_lengthscale,
+            )
+        )  # need a gpflow kernel object for random feature decompositions
+
+    if num_local_models == 0:
+        # Global model; acquire in parallel.
+        num_query_points = num_regions * num_query_points_per_region
+    else:
+        # Local models; acquire sequentially.
+        num_query_points = num_query_points_per_region
+    base_rule = EfficientGlobalOptimization(  # type: ignore[var-annotated]
+        #builder=ParallelContinuousThompsonSampling(), num_query_points=num_query_points
+        builder=MultipleOptimismNegativeLowerConfidenceBound(search_space), num_query_points=num_query_points
+    )
+
+    mtb = BatchTrustRegionBox(subspaces, base_rule)
+    _, points = mtb.acquire(search_space, models, init_datasets)(None)
+
+    tf.debugging.assert_shapes([(points, [num_query_points_per_region, num_regions, 2])])
 
 
 def test_multi_trust_region_box_state_deepcopy() -> None:
