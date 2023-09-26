@@ -209,16 +209,19 @@ def test_optimize_continuous_raises_with_mismatch_multi_search_space() -> None:
     space_B = Box([3], [4])
     multi_space = TaggedMultiSearchSpace(spaces=[space_A, space_B])
     acq_fn = _quadratic_sum([1.0])
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES, match="The batch shape of initial samples 2 must"):
+    with pytest.raises(
+        TF_DEBUGGING_ERROR_TYPES, match="The vectorization of the target function 1 must be "
+    ):
         generate_continuous_optimizer()(multi_space, acq_fn)
 
 
-def test_optimize_continuous_finds_points_in_multi_search_space_boxes() -> None:
+@pytest.mark.parametrize("points_per_box", [1, 2, 3, 5])
+def test_optimize_continuous_finds_points_in_multi_search_space_boxes(points_per_box: int) -> None:
     # Test with non-overlapping grid of 2D boxes. Optimize them as a batch and check that each
-    # point is only in the corresponding box.
+    # point is only in the corresponding box (with potentially multiple points per box).
     boxes = [Box([x, y], [x + 0.7, y + 0.7]) for x in range(-2, 2) for y in range(-2, 2)]
     multi_space = TaggedMultiSearchSpace(spaces=boxes)
-    batch_size = len(boxes)
+    batch_size = len(boxes) * points_per_box
 
     def target_function(x: TensorType) -> TensorType:  # [N, V, D] -> [N, V]
         individual_func = [_quadratic_sum([1.0])(x[:, i : i + 1, :]) for i in range(batch_size)]
@@ -232,7 +235,7 @@ def test_optimize_continuous_finds_points_in_multi_search_space_boxes() -> None:
     # corresponding box.
     for i, point in enumerate(max_points):
         for j, box in enumerate(boxes):
-            if i == j:
+            if i % len(boxes) == j:
                 assert point in box
             else:
                 assert point not in box
