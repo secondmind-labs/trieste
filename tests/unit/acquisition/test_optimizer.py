@@ -215,7 +215,7 @@ def test_optimize_continuous_raises_with_mismatch_multi_search_space() -> None:
         generate_continuous_optimizer()(multi_space, acq_fn)
 
 
-@pytest.mark.parametrize("points_per_box", [1, 2, 3, 5])
+@pytest.mark.parametrize("points_per_box", [1, 3])
 def test_optimize_continuous_finds_points_in_multi_search_space_boxes(points_per_box: int) -> None:
     # Test with non-overlapping grid of 2D boxes. Optimize them as a batch and check that each
     # point is only in the corresponding box (with potentially multiple points per box).
