@@ -196,7 +196,11 @@ plot_history(result)
 # `EfficientGlobalOptimization` coupled with the `ParallelContinuousThompsonSampling` acquisition
 # function.
 #
-# Note: the number of sub-spaces/regions must match the number of batch query points.
+# Note: in this example the number of sub-spaces/regions is equal to the number of batch query
+# points in the base-rule. This results in each region contributing one query point to the overall
+# batch. However, it is possible to generate multiple query points from each region by setting
+# `num_query_points` to be a multiple `Q` of the number of regions. In this case, each region will
+# contribute `Q` query points to the overall batch.
 
 # %%
 num_query_points = 6

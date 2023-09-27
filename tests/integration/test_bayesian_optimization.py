@@ -477,7 +477,7 @@ def test_bayesian_optimizer_with_dgp_finds_minima_of_simple_quadratic(
             marks=pytest.mark.skip(reason="too fragile"),
         ),
         pytest.param(
-            30,
+            60,
             EfficientGlobalOptimization(
                 ParallelContinuousThompsonSampling(),
                 num_query_points=4,
