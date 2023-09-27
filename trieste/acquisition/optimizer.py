@@ -252,19 +252,21 @@ def generate_continuous_optimizer(
         candidates = space.sample(num_initial_samples)
         if tf.rank(candidates) == 3:
             # If samples is a tensor of rank 3, then it is a batch of samples. In this case
-            # the length of the second dimension must be equal to the vectorization of the target
-            # function.
+            # the vectorization of the target function must be a multiple of the length of the
+            # second (batch) dimension.
+            remainder = V % tf.shape(candidates)[1]
             tf.debugging.assert_equal(
-                tf.shape(candidates)[1],
-                V,
+                remainder,
+                tf.cast(0, dtype=remainder.dtype),
                 message=(
                     f"""
-                    The batch shape of initial samples {tf.shape(candidates)[1]} must be equal to
-                    the vectorization of the target function {V}.
+                    The vectorization of the target function {V} must be a multiple of the batch
+                    shape of initial samples {tf.shape(candidates)[1]}.
                     """
                 ),
             )
-            tiled_candidates = candidates  # [num_initial_samples, V, D]
+            multiple = V // tf.shape(candidates)[1]
+            tiled_candidates = tf.tile(candidates, [1, multiple, 1])  # [num_initial_samples, V, D]
         else:
             tf.debugging.assert_rank(
                 candidates,
@@ -325,19 +327,23 @@ def generate_continuous_optimizer(
             random_points = space.sample(num_recovery_runs)
             if tf.rank(random_points) == 3:
                 # If samples is a tensor of rank 3, then it is a batch of samples. In this case
-                # the length of the second dimension must be equal to the vectorization of the
-                # target function.
+                # the vectorization of the target function must be a multiple of the length of the
+                # second (batch) dimension.
+                remainder = V % tf.shape(random_points)[1]
                 tf.debugging.assert_equal(
-                    tf.shape(random_points)[1],
-                    V,
+                    remainder,
+                    tf.cast(0, dtype=remainder.dtype),
                     message=(
                         f"""
-                        The batch shape of random samples {tf.shape(random_points)[1]} must be
-                        equal to the vectorization of the target function {V}.
+                        The vectorization of the target function {V} must be a multiple of the batch
+                        shape of random samples {tf.shape(random_points)[1]}.
                         """
                     ),
                 )
-                tiled_random_points = random_points  # [num_recovery_runs, V, D]
+                multiple = V // tf.shape(random_points)[1]
+                tiled_random_points = tf.tile(
+                    random_points, [1, multiple, 1]  # [num_recovery_runs, V, D]
+                )
             else:
                 tf.debugging.assert_rank(
                     random_points,
@@ -497,19 +503,21 @@ def _perform_parallel_continuous_optimization(
             spo.Bounds(lower, upper)
             for lower, upper in zip(space.subspace_lower, space.subspace_upper)
         ]
-        # If bounds is a sequence of tensors, stack them into a single tensor. In this case
-        # the length of the sequence must be equal to the vectorization of the target function.
+        # The bounds is a sequence of tensors, stack them into a single tensor. In this case
+        # the vectorization of the target function must be a multple of the length of the sequence.
+        remainder = V % len(bounds)
         tf.debugging.assert_equal(
-            len(bounds),
-            V,
+            remainder,
+            tf.cast(0, dtype=remainder.dtype),
             message=(
                 f"""
-                The length of bounds sequence {len(bounds)} must be equal to the
-                vectorization of the target function {V}.
+                The vectorization of the target function {V} must be a multiple of the length
+                of the bounds sequence {len(bounds)}.
                 """
             ),
         )
-        bounds = bounds * num_optimization_runs_per_function
+        multiple = V // len(bounds)
+        bounds = bounds * multiple * num_optimization_runs_per_function
     else:
         bounds = [spo.Bounds(space.lower, space.upper)] * num_optimization_runs
 
