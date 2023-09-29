@@ -1084,11 +1084,22 @@ class BatchTrustRegion(
         assert self._init_subspaces is not None
 
         num_subspaces = len(self._tags)
-        num_objective_models = len([tag for tag in models if tag.split("__")[0] == OBJECTIVE])
+        num_objective_models = len([tag for tag in models if "__" in tag and tag.split("__")[0] == OBJECTIVE])
+        num_objective_models = max(num_objective_models, 1)
         assert num_subspaces % num_objective_models == 0, (
             f"The number of subspaces {num_subspaces} should be a multiple of the number of "
             f"objective models {num_objective_models}"
         )
+
+        # If the base rule is a single model acquisition rule, but we have (multiple) local
+        # models, run the (deepcopied) base rule sequentially for each subspace.
+        # Otherwise, run the base rule as is, once with all models and datasets.
+        # Note: this should only trigger on the first call to `acquire`, as after that `self._rule`
+        # will be a list of rules.
+        if isinstance(self._rule, EfficientGlobalOptimization) and hasattr(
+            self._rule._builder, "single_builder"
+        ) and (num_objective_models > 1 or OBJECTIVE not in models):
+            self._rule = [copy.deepcopy(self._rule) for _ in range(num_subspaces)]
 
         def state_func(
             state: BatchTrustRegion.State | None,
@@ -1128,18 +1139,15 @@ class BatchTrustRegion(
 
             state_ = BatchTrustRegion.State(acquisition_space)
 
-            # If the base rule is a single model acquisition rule, but we have (multiple) local
-            # models, run the base rule sequentially for each subspace.
-            # Otherwise, run the base rule once with all models and datasets.
-            if isinstance(self._rule, EfficientGlobalOptimization) and hasattr(
-                self._rule._builder, "single_builder"
-            ) and (len(models) > 1 or OBJECTIVE not in models):
+            # If the base rule is a sequence, run it sequentially for each subspace.
+            # See earlier comments.
+            if isinstance(self._rule, Sequence):
                 points = []
-                for subspace in subspaces:
+                for subspace, rule in zip(subspaces, self._rule):
                     model = subspace.select_model(models)
                     dataset = subspace.select_dataset(datasets)
                     points.append(
-                        self._rule.acquire(
+                        rule.acquire(
                             subspace,
                             # Using default tag, as that is what single model acquisition builders
                             # expect.
@@ -1147,7 +1155,7 @@ class BatchTrustRegion(
                             {OBJECTIVE: dataset},
                         )
                     )
-                points = tf.concat(points, axis=0)
+                points = tf.stack(points, axis=1)
             else:
                 points = self._rule.acquire(acquisition_space, models, datasets)
 
@@ -1305,7 +1313,8 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
         if self._index is None:
             tags = OBJECTIVE  # If no index, then pick the global model.
         else:
-            num_objective_models = len([tag for tag in models if tag.split("__")[0] == OBJECTIVE])
+            num_objective_models = len([tag for tag in models if "__" in tag and tag.split("__")[0] == OBJECTIVE])
+            num_objective_models = max(num_objective_models, 1)
             index = self._index % num_objective_models
             tags = [f"{OBJECTIVE}__{index}", OBJECTIVE]  # Prefer local model if available.
         return get_value_for_tag(models, tags)
@@ -1316,7 +1325,8 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
         if self._index is None:
             tags = OBJECTIVE  # If no index, then pick the global dataset.
         else:
-            num_objective_datasets = len([tag for tag in datasets if tag.split("__")[0] == OBJECTIVE])
+            num_objective_datasets = len([tag for tag in datasets if "__" in tag and tag.split("__")[0] == OBJECTIVE])
+            num_objective_datasets = max(num_objective_datasets, 1)
             index = self._index % num_objective_datasets
             tags = [f"{OBJECTIVE}__{index}", OBJECTIVE]  # Prefer local dataset if available.
         return get_value_for_tag(datasets, tags)

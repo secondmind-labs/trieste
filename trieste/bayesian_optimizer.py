@@ -757,8 +757,9 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     # If query_points are rank 3, then use a batched observer.
                     if tf.rank(query_points) == 3:
                         num_objective_models = len(
-                            [tag for tag in models if tag.split("__")[0] == OBJECTIVE]
+                            [tag for tag in models if "__" in tag and tag.split("__")[0] == OBJECTIVE]
                         )
+                        num_objective_models = max(num_objective_models, 1)
                         observer = mk_batch_observer(observer, num_objective_models, OBJECTIVE)
                     observer_output = observer(query_points)
 

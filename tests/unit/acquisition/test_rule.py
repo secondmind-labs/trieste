@@ -22,6 +22,7 @@ import numpy as np
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
+import tensorflow_probability as tfp
 
 from tests.util.misc import empty_dataset, quadratic, random_seed
 from tests.util.models.gpflow.models import (
@@ -1523,10 +1524,11 @@ def test_multi_trust_region_box_acquire_with_state() -> None:
 
 # Define a test case with multiple local models and multiple regions
 @pytest.mark.parametrize("num_local_models", [0, 1, 2])
+@pytest.mark.parametrize("use_global_dataset", [True, False])
 @pytest.mark.parametrize("num_regions", [2, 4])
 @pytest.mark.parametrize("num_query_points_per_region", [1, 2])
 def test_batch_trust_region_box_with_multiple_models_and_regions(
-    num_local_models: int, num_regions: int, num_query_points_per_region: int
+    num_local_models: int, use_global_dataset: bool, num_regions: int, num_query_points_per_region: int
 ):
     search_space = Box([0.0, 0.0], [6.0, 6.0])
     base_shift = tf.constant([2.0, 2.0], dtype=tf.float64)  # Common base shift for all regions.
@@ -1537,41 +1539,66 @@ def test_batch_trust_region_box_with_multiple_models_and_regions(
     noise_variance = tf.constant(1e-6, dtype=tf.float64)
     kernel_variance = tf.constant(1e-3, dtype=tf.float64)
     kernel_lengthscale = tf.constant(0.1, dtype=tf.float64)
-    if num_local_models == 0:
-        x_shift = tf.constant([0.0, 0.0], dtype=tf.float64)
-        init_datasets = {OBJECTIVE: Dataset(
-            x_shift, tf.constant([[0.0]], dtype=tf.float64)
-        )}
-        models = {OBJECTIVE: QuadraticMeanAndRBFKernelWithSamplers(
-            init_datasets[OBJECTIVE], x_shift=x_shift, kernel_amplitude=kernel_variance, noise_variance=noise_variance
-        )}
-    else:
-        # Dataset per model, one point at the center/minimum of the region.
-        init_datasets = {}
-        models = {}
-        for i in range(num_local_models):
+    #if num_local_models == 0:
+    #    x_shift = tf.constant([0.0, 0.0], dtype=tf.float64)
+    #    init_datasets = {OBJECTIVE: Dataset(
+    #        x_shift, tf.constant([[0.0]], dtype=tf.float64)
+    #    )}
+    #    models = {OBJECTIVE: QuadraticMeanAndRBFKernelWithSamplers(
+    #        init_datasets[OBJECTIVE], x_shift=x_shift, kernel_amplitude=kernel_variance, noise_variance=noise_variance
+    #    )}
+    #else:
+    # Dataset per model, one point at the center/minimum of the region.
+    global_dataset = Dataset(
+        tf.constant([[0.0, 0.0]], dtype=tf.float64),
+        tf.constant([[1.0]], dtype=tf.float64),
+    )
+    init_datasets = {OBJECTIVE: global_dataset}
+    models = {}
+    r = range(1) if num_local_models == 0 else range(num_local_models)
+    for i in r:
+        if num_local_models == 0:
+            tag = OBJECTIVE
+            num_models = 1
+        else:
             tag = OBJECTIVE + f"__{i}"
-            shift = base_shift + i
-            query_points = tf.stack([
-                shift - [eps, eps],
-                shift - [eps, 0.0] + [0.0, eps],
-                shift,
-                shift + [eps, eps],
-                shift - [0.0, eps] + [eps, 0.0],
-            ])
-            observations = tf.constant([[eps**2], [eps**2], [0.0], [eps**2], [eps**2]], dtype=tf.float64)
-            init_datasets[tag] = Dataset(query_points, observations)
-            models[tag] = QuadraticMeanAndRBFKernelWithSamplers(
-                init_datasets[tag], x_shift=base_shift+i, kernel_amplitude=kernel_variance, noise_variance=noise_variance
-            )
+            num_models = num_local_models
 
-    for model in models.values():
-        model.kernel = (
-            gpflow.kernels.RBF(
-                variance=kernel_variance,
-                lengthscales=kernel_lengthscale,
-            )
-        )  # need a gpflow kernel object for random feature decompositions
+        num_regions_per_model = num_regions // num_models
+        query_points = tf.stack([base_shift+j
+                   for j in range(i, num_regions, num_models)])
+        observations = tf.constant([0.0] * num_regions_per_model, dtype=tf.float64)[:, None]
+        #shift = base_shift + i
+        #query_points = tf.stack([
+        #    shift - [eps, 0.0] + [0.0, eps],
+        #    shift,
+        #    shift + [eps, eps],
+        #    shift - [0.0, eps] + [eps, 0.0],
+        #])
+        #observations = tf.constant([[eps**2], [eps**2], [0.0], [eps**2], [eps**2]], dtype=tf.float64)
+        if not use_global_dataset:
+            init_datasets[tag] = Dataset(query_points, observations)
+        #models[tag] = QuadraticMeanAndRBFKernelWithSamplers(
+        #    init_datasets[tag], x_shift=base_shift+i, kernel_amplitude=kernel_variance, noise_variance=noise_variance
+        #)
+        #models[tag] = QuadraticMeanAndRBFKernel(
+        #    x_shift=base_shift+i, kernel_amplitude=kernel_variance, noise_variance=noise_variance
+        #)
+        kernel = tfp.math.psd_kernels.ExponentiatedQuadratic(kernel_variance)
+        mean_function = lambda x, i=i: tf.reduce_prod(tf.stack([quadratic(x - tf.cast(base_shift+j, dtype=x.dtype))
+                   for j in range(i, num_regions, num_models)]),
+                      axis=0)
+        #mean_function = lambda x, i=i: quadratic(x - tf.cast(base_shift+i, dtype=x.dtype))
+        models[tag] = GaussianProcess([mean_function], [kernel], noise_variance)
+        models[tag]._exp_dataset = global_dataset if use_global_dataset else init_datasets[tag]
+
+    #for model in models.values():
+    #    model.kernel = (
+    #        gpflow.kernels.RBF(
+    #            variance=kernel_variance,
+    #            lengthscales=kernel_lengthscale,
+    #        )
+    #    )  # need a gpflow kernel object for random feature decompositions
 
     if num_local_models == 0:
         # Global model; acquire in parallel.
@@ -1579,15 +1606,31 @@ def test_batch_trust_region_box_with_multiple_models_and_regions(
     else:
         # Local models; acquire sequentially.
         num_query_points = num_query_points_per_region
+
+    class TestMultipleOptimismNegativeLowerConfidenceBound(MultipleOptimismNegativeLowerConfidenceBound):
+        # Override the prepare_acquisition_function method to check that the dataset is correct.
+        def prepare_acquisition_function(
+            self,
+            model: ProbabilisticModel,
+            dataset: Optional[Dataset] = None,
+        ) -> AcquisitionFunction:
+            assert dataset is model._exp_dataset
+            return super().prepare_acquisition_function(model, dataset)
+
     base_rule = EfficientGlobalOptimization(  # type: ignore[var-annotated]
         #builder=ParallelContinuousThompsonSampling(), num_query_points=num_query_points
-        builder=MultipleOptimismNegativeLowerConfidenceBound(search_space), num_query_points=num_query_points
+        builder=TestMultipleOptimismNegativeLowerConfidenceBound(search_space), num_query_points=num_query_points
     )
 
     mtb = BatchTrustRegionBox(subspaces, base_rule)
     _, points = mtb.acquire(search_space, models, init_datasets)(None)
 
-    tf.debugging.assert_shapes([(points, [num_query_points_per_region, num_regions, 2])])
+    npt.assert_array_equal(points.shape, [num_query_points_per_region, num_regions, 2])
+
+    # Each region should find the minimum of its local model, which will be the center of the region.
+    exp_points = tf.stack([base_shift+i for i in range(num_regions)])
+    exp_points = tf.tile(exp_points[None, :, :], [num_query_points_per_region, 1, 1])
+    npt.assert_allclose(points, exp_points)
 
 
 def test_multi_trust_region_box_state_deepcopy() -> None:
