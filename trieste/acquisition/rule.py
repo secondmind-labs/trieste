@@ -148,6 +148,20 @@ class AcquisitionRule(ABC, Generic[ResultType, SearchSpaceType, ProbabilisticMod
             datasets=None if dataset is None else {OBJECTIVE: dataset},
         )
 
+    def update_datasets(
+        self, datasets: Mapping[Tag, Dataset], new_datasets: Mapping[Tag, Dataset]
+    ) -> Mapping[Tag, Dataset]:
+        """
+        Update the datasets with new datasets.
+
+        :param datasets: The current datasets.
+        :param new_datasets: The new datasets.
+        :return: The updated datasets.
+        """
+        # By default, we just add the new datasets to the old ones.
+        datasets = {tag: datasets[tag] + new_datasets[tag] for tag in new_datasets}
+        return datasets
+
 
 class EfficientGlobalOptimization(
     AcquisitionRule[TensorType, SearchSpaceType, ProbabilisticModelType]
@@ -1207,6 +1221,30 @@ class BatchTrustRegion(
         :return: A boolean mask of length V, where V is the number of subspaces.
         """
         ...
+
+    def update_datasets(
+        self, datasets: Mapping[Tag, Dataset], new_datasets: Mapping[Tag, Dataset]
+    ) -> Mapping[Tag, Dataset]:
+        # Account for the case where there may be an initial dataset that is not tagged
+        # per region. In this case, only the global dataset will exist in datasets. We
+        # want to copy this initial dataset to all the regions.
+        #
+        # If a tag from tagged_output does not exist in datasets, then add it to
+        # datasets by copying the dataset from datasets with the same tag-prefix.
+        # Otherwise keep the existing dataset from datasets.
+        datasets = {
+            tag: get_value_for_tag(datasets, [tag, tag.split("__")[0]]) + new_datasets[tag]
+            for tag in new_datasets
+        }
+
+        #for tag in new_datasets:
+        #    dataset = get_value_for_tag(datasets, [tag, tag.split("__")[0]]) + new_datasets[tag]
+        #    in_tr = self.contains(dataset.query_points)
+        #    in_qps = tf.boolean_mask(dataset.query_points, in_tr)
+        #    in_obs = tf.boolean_mask(dataset.observations, in_tr)
+        #    datasets[tag] = Dataset(in_qps, in_obs)
+
+        return datasets
 
 
 class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):

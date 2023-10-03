@@ -769,17 +769,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         else {OBJECTIVE: observer_output}
                     )
 
-                    # Account for the case where there may be an initial dataset that is not tagged
-                    # per region. In this case, only the global dataset will exist in datasets. We
-                    # want to copy this initial dataset to all the regions.
-                    #
-                    # If a tag from tagged_output does not exist in datasets, then add it to
-                    # datasets by copying the dataset from datasets with the same tag-prefix.
-                    # Otherwise keep the existing dataset from datasets.
-                    datasets = {
-                        tag: get_value_for_tag(datasets, [tag, tag.split("__")[0]]) + tagged_output[tag]
-                        for tag in tagged_output
-                    }
+                    datasets = acquisition_rule.update_datasets(datasets, tagged_output)
 
                     with Timer() as model_fitting_timer:
                         if fit_model:

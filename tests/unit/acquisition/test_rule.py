@@ -24,7 +24,7 @@ import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from tests.util.misc import empty_dataset, quadratic, random_seed
+from tests.util.misc import empty_dataset, mk_dataset, quadratic, random_seed
 from tests.util.models.gpflow.models import (
     GaussianProcess,
     QuadraticMeanAndRBFKernel,
@@ -64,6 +64,7 @@ from trieste.acquisition.sampler import (
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.models.interfaces import TrainableSupportsGetKernel
+from trieste.objectives.utils import mk_batch_observer
 from trieste.observer import OBJECTIVE
 from trieste.space import Box, SearchSpace, TaggedMultiSearchSpace
 from trieste.types import State, Tag, TensorType
@@ -1631,6 +1632,41 @@ def test_batch_trust_region_box_with_multiple_models_and_regions(
     exp_points = tf.stack([base_shift+i for i in range(num_regions)])
     exp_points = tf.tile(exp_points[None, :, :], [num_query_points_per_region, 1, 1])
     npt.assert_allclose(points, exp_points)
+
+
+@pytest.mark.parametrize(
+    "datasets, exp_num_points",
+    [
+        ({OBJECTIVE: mk_dataset([[0.0], [1.0], [2.0]], [[1.0], [1.0], [1.0]])}, 2),
+        ({OBJECTIVE: mk_dataset([[0.0], [1.0], [0.3], [2.0], [0.7], [1.7]], [[1.0], [1.0], [1.0], [1.0], [1.0], [1.0]])}, 3),
+        (
+            {
+                'OBJECTIVE__0': mk_dataset([[0.0]], [[1.0]]),
+                'OBJECTIVE__1': mk_dataset([[1.0]], [[1.0]]),
+                'OBJECTIVE__2': mk_dataset([[2.0]], [[1.0]]),
+            },
+            2,
+        ),
+    ],
+)
+def test_multi_trust_region_box_updated_datasets_are_in_regions(
+    datasets: Mapping[Tag, Dataset], exp_num_points: int
+):
+    search_space = Box([0.0], [3.0])
+    # Non-overlapping regions.
+    subspaces = [TestTrustRegionBox(tf.constant([i], dtype=tf.float64), search_space, i, init_eps=0.4) for i in range(3)]
+    models = {OBJECTIVE: QuadraticMeanAndRBFKernel()}
+    base_rule = EfficientGlobalOptimization(  # type: ignore[var-annotated]
+        builder=MultipleOptimismNegativeLowerConfidenceBound(search_space), num_query_points=3
+    )
+    rule = BatchTrustRegionBox(subspaces, base_rule)
+    _, points = rule.acquire(search_space, models, datasets)(None)
+    observer = mk_batch_observer(quadratic, 3, OBJECTIVE)
+    new_data = observer(points)
+    datasets = rule.update_datasets(datasets, new_data)
+    for i, subspace in enumerate(subspaces):
+        assert datasets[f"OBJECTIVE__{i}"].query_points.shape[0] == exp_num_points
+        assert datasets[f"OBJECTIVE__{i}"].query_points in subspace
 
 
 def test_multi_trust_region_box_state_deepcopy() -> None:
