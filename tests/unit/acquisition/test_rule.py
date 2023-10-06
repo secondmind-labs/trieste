@@ -1641,6 +1641,7 @@ def test_batch_trust_region_box_with_multiple_models_and_regions(
         ),
         (
             {
+                OBJECTIVE: mk_dataset([[-1.0]], [[-1.0]]),  # Should be ignored.
                 "OBJECTIVE__0": mk_dataset([[0.0]], [[1.0]]),
                 "OBJECTIVE__1": mk_dataset([[1.0]], [[1.0]]),
                 "OBJECTIVE__2": mk_dataset([[2.0]], [[1.0]]),
@@ -1658,7 +1659,7 @@ def test_multi_trust_region_box_updated_datasets_are_in_regions(
     # Non-overlapping regions.
     subspaces = [
         TestTrustRegionBox(tf.constant([i], dtype=tf.float64), search_space, i, init_eps=0.4)
-        for i in range(3)
+        for i in range(num_local_models)
     ]
     models = copy_to_local_models(QuadraticMeanAndRBFKernel(), num_local_models)
     base_rule = EfficientGlobalOptimization(  # type: ignore[var-annotated]
@@ -1671,12 +1672,22 @@ def test_multi_trust_region_box_updated_datasets_are_in_regions(
     new_data = observer(points)
     assert not isinstance(new_data, Dataset)
     datasets = rule.update_datasets(datasets, new_data)
+
+    # Check local datasets.
     for i, subspace in enumerate(subspaces):
         assert (
             datasets[f"OBJECTIVE__{i}"].query_points.shape[0]
             == exp_num_init_points + num_query_points_per_region
         )
         assert np.all(subspace.contains(datasets[f"OBJECTIVE__{i}"].query_points))
+
+    # Check global dataset.
+    assert datasets[OBJECTIVE].query_points.shape[0] == num_local_models * (
+        exp_num_init_points + num_query_points_per_region
+    )
+    # Each point should be in at least one region.
+    for point in datasets[OBJECTIVE].query_points:
+        assert any(subspace.contains(point) for subspace in subspaces)
 
 
 def test_multi_trust_region_box_state_deepcopy() -> None:

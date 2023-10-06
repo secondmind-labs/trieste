@@ -73,7 +73,7 @@ from .optimizer import (
     batchify_vectorize,
 )
 from .sampler import ExactThompsonSampler, ThompsonSampler
-from .utils import get_local_dataset, get_unique_points_mask, select_nth_output
+from .utils import get_local_dataset, get_unique_points_mask, select_nth_output, stack_datasets
 
 ResultType = TypeVar("ResultType", covariant=True)
 """ Unbound covariant type variable. """
@@ -167,16 +167,12 @@ class AcquisitionRule(ABC, Generic[ResultType, SearchSpaceType, ProbabilisticMod
         # Otherwise keep the existing dataset from datasets.
         # TODO: this could mean that when we have a global model, the global dataset
         #   can contain multiple copies of the initial dataset.
-        # datasets = {
-        #    tag: get_value_for_tag(datasets, [tag, tag.split("__")[0]])[1] + new_datasets[tag]
-        #    for tag in new_datasets
-        # }
-        datasets = {}
+        updated_datasets = {}
         for tag in new_datasets:
             _, dataset = get_value_for_tag(datasets, [tag, LocalTag.from_tag(tag).global_tag])
             assert dataset is not None
-            datasets[tag] = dataset + new_datasets[tag]
-        return datasets
+            updated_datasets[tag] = dataset + new_datasets[tag]
+        return updated_datasets
 
 
 class EfficientGlobalOptimization(
@@ -1270,11 +1266,27 @@ class BatchTrustRegion(
             used_masks[tag] = tf.logical_or(used_masks[tag], in_region)
 
         filtered_datasets = {}
+        global_tags = []  # Global datasets to re-generate.
         for tag, used_mask in used_masks.items():
             filtered_datasets[tag] = Dataset(
                 tf.boolean_mask(datasets[tag].query_points, used_mask),
                 tf.boolean_mask(datasets[tag].observations, used_mask),
             )
+
+            ltag = LocalTag.from_tag(tag)
+            if ltag.is_local and ltag.global_tag not in global_tags:
+                global_tags.append(ltag.global_tag)
+
+        # Include global datasets.
+        for gtag in global_tags:
+            # Create global dataset from local datasets. This is done by stacking the local
+            # datasets.
+            local_datasets = [
+                value
+                for tag, value in filtered_datasets.items()
+                if (ltag := LocalTag.from_tag(tag)).is_local and ltag.global_tag == gtag
+            ]
+            filtered_datasets[gtag] = stack_datasets(local_datasets)
 
         return filtered_datasets
 

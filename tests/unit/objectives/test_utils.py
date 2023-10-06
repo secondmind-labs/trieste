@@ -86,11 +86,15 @@ def test_mk_batch_observer(
     else:
         assert isinstance(ys, dict)
         if batch_size == 1:
-            assert ys.keys() == {key}
-            npt.assert_array_equal(ys[key].query_points, x_[:, 0])
-            npt.assert_array_equal(ys[key].observations, x_[:, 0])
+            exp_keys = {key}
         else:
-            assert ys.keys() == {f"{key}__{i}" for i in range(batch_size)}
+            exp_keys = {f"{key}__{i}" for i in range(batch_size)}
+            exp_keys.add(key)
+
+        assert ys.keys() == exp_keys
+        npt.assert_array_equal(ys[key].query_points, tf.reshape(x_, [-1, 1]))
+        npt.assert_array_equal(ys[key].observations, tf.reshape(x_, [-1, 1]))
+        if batch_size > 1:
             for i in range(batch_size):
                 npt.assert_array_equal(ys[f"{key}__{i}"].query_points, x_[:, i])
                 npt.assert_array_equal(ys[f"{key}__{i}"].observations, x_[:, i])

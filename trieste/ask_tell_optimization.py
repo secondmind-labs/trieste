@@ -32,7 +32,6 @@ import warnings
 
 from . import logging
 from .acquisition.rule import TURBO, AcquisitionRule, EfficientGlobalOptimization
-from .acquisition.utils import stack_datasets
 from .bayesian_optimizer import (
     FrozenRecord,
     OptimizationResult,
@@ -44,12 +43,11 @@ from .bayesian_optimizer import (
 )
 from .data import Dataset
 from .models import TrainableProbabilisticModel
-from .objectives.utils import mk_batch_observer
 from .observer import OBJECTIVE
 from .space import SearchSpace
 from .types import State, Tag, TensorType
 from .utils import Ok, Timer
-from .utils.misc import LocalTag, get_value_for_tag, get_values_for_tag_prefix
+from .utils.misc import LocalTag, get_value_for_tag
 
 StateType = TypeVar("StateType")
 """ Unbound type variable. """
@@ -237,18 +235,9 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         if fit_model:
             with Timer() as initial_model_fitting_timer:
                 for tag, model in self._models.items():
-                    if LocalTag.from_tag(tag).is_local or tag in datasets:
-                        tags = [
-                            tag,
-                            LocalTag.from_tag(tag).global_tag,
-                        ]  # Prefer local dataset if available.
-                        _, dataset = get_value_for_tag(datasets, tags)
-                    else:
-                        # Global model. If global dataset does not exist, create
-                        # one by concatenating all the local datasets.
-                        dataset = stack_datasets(
-                            get_values_for_tag_prefix(datasets, tag)
-                        )
+                    # Prefer local dataset if available.
+                    tags = [tag, LocalTag.from_tag(tag).global_tag]
+                    _, dataset = get_value_for_tag(datasets, tags)
                     assert dataset is not None
                     model.update(dataset)
                     model.optimize_and_save_result(dataset)
@@ -457,18 +446,9 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
 
         with Timer() as model_fitting_timer:
             for tag, model in self._models.items():
-                if LocalTag.from_tag(tag).is_local or tag in self._datasets:
-                    tags = [
-                        tag,
-                        LocalTag.from_tag(tag).global_tag,
-                    ]  # Prefer local dataset if available.
-                    _, dataset = get_value_for_tag(self._datasets, tags)
-                else:
-                    # Global model. If global dataset does not exist, create
-                    # one by concatenating all the local datasets.
-                    dataset = stack_datasets(
-                        get_values_for_tag_prefix(self._datasets, tag)
-                    )
+                # Prefer local dataset if available.
+                tags = [tag, LocalTag.from_tag(tag).global_tag]
+                _, dataset = get_value_for_tag(self._datasets, tags)
                 assert dataset is not None
                 model.update(dataset)
                 model.optimize_and_save_result(dataset)

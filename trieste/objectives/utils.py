@@ -106,12 +106,13 @@ def mk_batch_observer(
                 # If batch size is 1, just return the dataset as is, i.e. use the global dataset.
                 return {key: obs_or_dataset}
             else:
-                # Include per batch dataset.
+                # Include overall dataset and per batch dataset.
                 obs = obs_or_dataset.observations
                 qps = tf.reshape(qps, [-1, batch_size, qps.shape[-1]])
                 obs = tf.reshape(obs, [-1, batch_size, obs.shape[-1]])
                 datasets: Mapping[Tag, Dataset] = {
-                    **{LocalTag(key, i): Dataset(qps[:, i], obs[:, i]) for i in range(batch_size)}
+                    key: obs_or_dataset,
+                    **{LocalTag(key, i): Dataset(qps[:, i], obs[:, i]) for i in range(batch_size)},
                 }
                 return datasets
 

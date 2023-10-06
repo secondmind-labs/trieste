@@ -252,6 +252,7 @@ def test_bayesian_optimizer_creates_correct_datasets_for_rank3_points(
             LocalTag(OBJECTIVE, i): mk_dataset([[0.5 + i], [1.5 + i]], [[0.25], [0.35]])
             for i in range(batch_size)
         }
+        init_data[OBJECTIVE] = mk_dataset([[0.5], [1.5]], [[0.25], [0.35]])
 
     query_points = tf.reshape(
         tf.constant(range(batch_size * num_query_points_per_batch), tf.float64),
@@ -266,11 +267,7 @@ def test_bayesian_optimizer_creates_correct_datasets_for_rank3_points(
 
         def update(self, dataset: Dataset) -> None:
             if use_global_model:
-                if use_global_init_dataset:
-                    exp_init_qps = init_data[OBJECTIVE].query_points
-                else:
-                    exp_init_qps = tf.stack([data.query_points for data in init_data.values()], 1)
-                    exp_init_qps = tf.reshape(exp_init_qps, [-1, 1])
+                exp_init_qps = init_data[OBJECTIVE].query_points
             else:
                 if use_global_init_dataset:
                     exp_init_qps = init_data[OBJECTIVE].query_points
@@ -283,12 +280,7 @@ def test_bayesian_optimizer_creates_correct_datasets_for_rank3_points(
             else:
                 # Subsequent model training.
                 if use_global_model:
-                    if use_global_init_dataset:
-                        _exp_init_qps = tf.tile(exp_init_qps[:, None], [1, batch_size, 1])
-                    else:
-                        _exp_init_qps = tf.reshape(exp_init_qps, (-1, batch_size, 1))
-                    exp_qps = tf.concat([_exp_init_qps, query_points], 0)
-                    exp_qps = tf.reshape(exp_qps, [-1, 1])
+                    exp_qps = tf.concat([exp_init_qps, tf.reshape(query_points, [-1, 1])], 0)
                 else:
                     index = LocalTag.from_tag(self._tag).local_index
                     exp_qps = tf.concat([exp_init_qps, query_points[:, index]], 0)

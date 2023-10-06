@@ -21,7 +21,6 @@ from typing import (
     Any,
     Callable,
     Generic,
-    List,
     Mapping,
     NoReturn,
     Optional,
@@ -281,42 +280,35 @@ class LocalTag:
         else:
             return self.global_tag
 
+    def __repr__(self) -> str:
+        """Return the local tag."""
+        return f"LocalTag({self.global_tag}, {self.local_index})"
+
     def __str__(self) -> str:
         """Return the local tag."""
         return str(self.tag)
 
     def __hash__(self) -> int:
-        """Return the hash of the local tag."""
+        """Return the hash of the overall tag."""
         return hash(self.tag)
 
     def __eq__(self, other: object) -> bool:
         """Return True if the local tag is equal to the other object."""
-        return isinstance(other, LocalTag) and self.tag == other.tag
+        return hash(self) == hash(other)
 
     @staticmethod
-    def from_tag(tag: Tag) -> LocalTag:
+    def from_tag(tag: Union[Tag, LocalTag]) -> LocalTag:
         """Return a LocalTag from a given tag."""
-        tag = str(tag)
-        if "__" in tag:
-            global_tag, _local_index = tag.split("__")
-            local_index = int(_local_index)
+        if isinstance(tag, LocalTag):
+            return tag
         else:
-            global_tag, local_index = tag, None
-        return LocalTag(global_tag, local_index)
-
-
-def get_values_for_tag_prefix(mapping: Mapping[Tag, T], tag_prefix: Tag = OBJECTIVE) -> List[T]:
-    """
-    Return a mapping from tags to values for all tags in ``mapping`` that start with ``tag_prefix``.
-
-    :param mapping: A mapping from tags to values.
-    :param tag_prefix: A tag prefix.
-    :return: A list of values from ``mapping`` for all tags in ``mapping`` that start with
-        ``tag_prefix``.
-    """
-    return [
-        value for tag, value in mapping.items() if LocalTag.from_tag(tag).global_tag == tag_prefix
-    ]
+            tag = str(tag)
+            if "__" in tag:
+                global_tag, _local_index = tag.split("__")
+                local_index = int(_local_index)
+            else:
+                global_tag, local_index = tag, None
+            return LocalTag(global_tag, local_index)
 
 
 class Timer:
