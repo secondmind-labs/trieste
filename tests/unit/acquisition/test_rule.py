@@ -1193,22 +1193,8 @@ def test_trust_region_box_get_dataset_min() -> None:
     trb._lower = tf.constant([0.2, 0.2], dtype=tf.float64)
     trb._upper = tf.constant([0.7, 0.7], dtype=tf.float64)
     x_min, y_min = trb.get_dataset_min(dataset)
-    npt.assert_array_equal(x_min, tf.constant([0.3, 0.4], dtype=tf.float64))
-    npt.assert_array_equal(y_min, tf.constant([0.2], dtype=tf.float64))
-
-
-# get_dataset_min returns first x value and inf y value when points in dataset are outside the
-# search space.
-def test_trust_region_box_get_dataset_min_outside_search_space() -> None:
-    search_space = Box([0.0, 0.0], [1.0, 1.0])
-    dataset = Dataset(
-        tf.constant([[1.2, 1.3], [-0.4, -0.5]], dtype=tf.float64),
-        tf.constant([[0.7], [0.9]], dtype=tf.float64),
-    )
-    trb = SingleObjectiveTrustRegionBox(search_space)
-    x_min, y_min = trb.get_dataset_min(dataset)
-    npt.assert_array_equal(x_min, tf.constant([1.2, 1.3], dtype=tf.float64))
-    npt.assert_array_equal(y_min, tf.constant([np.inf], dtype=tf.float64))
+    npt.assert_array_equal(x_min, tf.constant([0.1, 0.1], dtype=tf.float64))
+    npt.assert_array_equal(y_min, tf.constant([0.0], dtype=tf.float64))
 
 
 # Initialize sets the box to a random location, and sets the eps and y_min values.
@@ -1619,8 +1605,8 @@ def test_batch_trust_region_box_with_multiple_models_and_regions(
 
     npt.assert_array_equal(points.shape, [num_query_points_per_region, num_regions, 2])
 
-    # Each region should find the minimum of its local model, which will be the center of the
-    # region.
+    # Each region should find the minimum of its local model, which will be the center of
+    # the region.
     exp_points = tf.stack([base_shift + i for i in range(num_regions)])
     exp_points = tf.tile(exp_points[None, :, :], [num_query_points_per_region, 1, 1])
     npt.assert_allclose(points, exp_points)
@@ -1688,6 +1674,15 @@ def test_multi_trust_region_box_updated_datasets_are_in_regions(
     # Each point should be in at least one region.
     for point in datasets[OBJECTIVE].query_points:
         assert any(subspace.contains(point) for subspace in subspaces)
+    # Global dataset should be the concatenation of all local datasets.
+    exp_query_points = tf.reshape(
+        tf.stack(
+            [datasets[f"OBJECTIVE__{i}"].query_points for i in range(num_local_models)],
+            axis=1,
+        ),
+        [-1, 1],
+    )
+    npt.assert_array_almost_equal(datasets[OBJECTIVE].query_points, exp_query_points)
 
 
 def test_multi_trust_region_box_state_deepcopy() -> None:

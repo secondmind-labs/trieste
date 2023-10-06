@@ -1024,6 +1024,18 @@ class UpdatableTrustRegion(SearchSpace):
         # By default return the OBJECTIVE dataset.
         return get_value_for_tag(datasets, OBJECTIVE)
 
+    def get_dataset_filter_mask(self, dataset: Dataset) -> tf.Tensor:
+        """
+        Return a boolean mask that can be used to filter out points from the given dataset that
+        do not belong to this region.
+
+        :param dataset: The dataset to filter.
+        :return: A boolean mask that can be used to filter the given dataset. A value of `True`
+            indicates that the corresponding point should be kept.
+        """
+        # By default return a mask that filters nothing.
+        return tf.ones(tf.shape(dataset.query_points)[:-1], dtype=tf.bool)
+
 
 UpdatableTrustRegionType = TypeVar("UpdatableTrustRegionType", bound=UpdatableTrustRegion)
 """ A type variable bound to :class:`UpdatableTrustRegion`. """
@@ -1260,9 +1272,7 @@ class BatchTrustRegion(
         for subspace in self._init_subspaces:
             tag, space_dataset = subspace.select_dataset(datasets)
             assert space_dataset is not None
-            in_region = subspace.contains(space_dataset.query_points)
-            # Assign slice of used_masks on axis 1 at index from values in
-            # in_region, i.e. ued_mask[index] = in_region
+            in_region = subspace.get_dataset_filter_mask(space_dataset)
             used_masks[tag] = tf.logical_or(used_masks[tag], in_region)
 
         filtered_datasets = {}
@@ -1412,6 +1422,10 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
             ]  # Prefer local dataset if available.
         return get_value_for_tag(datasets, tags)
 
+    def get_dataset_filter_mask(self, dataset: Dataset) -> tf.Tensor:
+        # Only keep points that are in the box.
+        return self.contains(dataset.query_points)
+
     @check_shapes(
         "return[0]: [D]",
         "return[1]: []",
@@ -1552,6 +1566,10 @@ class TREGOBox(SingleObjectiveTrustRegionBox):
         self._initialized = True
 
         super().initialize(models, datasets)
+
+    def get_dataset_filter_mask(self, dataset: Dataset) -> tf.Tensor:
+        # Don't filter out any points from the dataset.
+        return tf.ones(tf.shape(dataset.query_points)[:-1], dtype=tf.bool)
 
 
 class TURBO(
