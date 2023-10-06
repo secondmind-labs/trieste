@@ -32,6 +32,7 @@ import warnings
 
 from . import logging
 from .acquisition.rule import TURBO, AcquisitionRule, EfficientGlobalOptimization
+from .acquisition.utils import stack_datasets
 from .bayesian_optimizer import (
     FrozenRecord,
     OptimizationResult,
@@ -43,10 +44,12 @@ from .bayesian_optimizer import (
 )
 from .data import Dataset
 from .models import TrainableProbabilisticModel
+from .objectives.utils import mk_batch_observer
 from .observer import OBJECTIVE
 from .space import SearchSpace
 from .types import State, Tag, TensorType
 from .utils import Ok, Timer
+from .utils.misc import LocalTag, get_value_for_tag, get_values_for_tag_prefix
 
 StateType = TypeVar("StateType")
 """ Unbound type variable. """
@@ -188,16 +191,19 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
 
         if isinstance(datasets, Dataset):
             datasets = {OBJECTIVE: datasets}
-            models = {OBJECTIVE: models}  # type: ignore[dict-item]
+        if not isinstance(models, Mapping):
+            models = {OBJECTIVE: models}
 
         # reassure the type checker that everything is tagged
-        datasets = cast(Dict[Tag, Dataset], datasets)
         models = cast(Dict[Tag, TrainableProbabilisticModelType], models)
 
-        if datasets.keys() != models.keys():
+        # Get set of dataset and model keys, ignoring any local tag index.
+        datasets_keys = {LocalTag.from_tag(tag).global_tag for tag in datasets.keys()}
+        models_keys = {LocalTag.from_tag(tag).global_tag for tag in models.keys()}
+        if datasets_keys != models_keys:
             raise ValueError(
-                f"datasets and models should contain the same keys. Got {datasets.keys()} and"
-                f" {models.keys()} respectively."
+                f"datasets and models should contain the same keys. Got {datasets_keys} and"
+                f" {models_keys} respectively."
             )
 
         self._datasets = datasets
@@ -231,7 +237,19 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         if fit_model:
             with Timer() as initial_model_fitting_timer:
                 for tag, model in self._models.items():
-                    dataset = datasets[tag]
+                    if LocalTag.from_tag(tag).is_local or tag in datasets:
+                        tags = [
+                            tag,
+                            LocalTag.from_tag(tag).global_tag,
+                        ]  # Prefer local dataset if available.
+                        _, dataset = get_value_for_tag(datasets, tags)
+                    else:
+                        # Global model. If global dataset does not exist, create
+                        # one by concatenating all the local datasets.
+                        dataset = stack_datasets(
+                            get_values_for_tag_prefix(datasets, tag)
+                        )
+                    assert dataset is not None
                     model.update(dataset)
                     model.optimize_and_save_result(dataset)
 
@@ -256,10 +274,14 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
     @property
     def dataset(self) -> Dataset:
         """The current dataset when there is just one dataset."""
-        if len(self.datasets) == 1:
-            return next(iter(self.datasets.values()))
+        # Ignore local datasets.
+        datasets: Mapping[Tag, Dataset] = dict(
+            filter(lambda item: not LocalTag.from_tag(item[0]).is_local, self.datasets.items())
+        )
+        if len(datasets) == 1:
+            return next(iter(datasets.values()))
         else:
-            raise ValueError(f"Expected a single dataset, found {len(self.datasets)}")
+            raise ValueError(f"Expected a single dataset, found {len(datasets)}")
 
     @property
     def models(self) -> Mapping[Tag, TrainableProbabilisticModelType]:
@@ -279,10 +301,14 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
     @property
     def model(self) -> TrainableProbabilisticModel:
         """The current model when there is just one model."""
-        if len(self.models) == 1:
-            return next(iter(self.models.values()))
+        # Ignore local models.
+        models: Mapping[Tag, TrainableProbabilisticModel] = dict(
+            filter(lambda item: not LocalTag.from_tag(item[0]).is_local, self.models.items())
+        )
+        if len(models) == 1:
+            return next(iter(models.values()))
         else:
-            raise ValueError(f"Expected a single model, found {len(self.models)}")
+            raise ValueError(f"Expected a single model, found {len(models)}")
 
     @model.setter
     def model(self, model: TrainableProbabilisticModelType) -> None:
@@ -427,12 +453,23 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
                 f"match dataset keys {self._datasets.keys()}"
             )
 
-        for tag in self._datasets:
-            self._datasets[tag] += new_data[tag]
+        self._datasets = self._acquisition_rule.update_datasets(self._datasets, new_data)
 
         with Timer() as model_fitting_timer:
             for tag, model in self._models.items():
-                dataset = self._datasets[tag]
+                if LocalTag.from_tag(tag).is_local or tag in self._datasets:
+                    tags = [
+                        tag,
+                        LocalTag.from_tag(tag).global_tag,
+                    ]  # Prefer local dataset if available.
+                    _, dataset = get_value_for_tag(self._datasets, tags)
+                else:
+                    # Global model. If global dataset does not exist, create
+                    # one by concatenating all the local datasets.
+                    dataset = stack_datasets(
+                        get_values_for_tag_prefix(self._datasets, tag)
+                    )
+                assert dataset is not None
                 model.update(dataset)
                 model.optimize_and_save_result(dataset)
 

@@ -55,6 +55,7 @@ except ModuleNotFoundError:
 
 from . import logging
 from .acquisition.rule import TURBO, AcquisitionRule, EfficientGlobalOptimization
+from .acquisition.utils import stack_datasets
 from .data import Dataset
 from .models import SupportsCovarianceWithTopFidelity, TrainableProbabilisticModel
 from .objectives.utils import mk_batch_observer
@@ -62,7 +63,7 @@ from .observer import OBJECTIVE, Observer
 from .space import SearchSpace
 from .types import State, Tag, TensorType
 from .utils import Err, Ok, Result, Timer
-from .utils.misc import get_value_for_tag
+from .utils.misc import LocalTag, get_value_for_tag, get_values_for_tag_prefix
 
 StateType = TypeVar("StateType")
 """ Unbound type variable. """
@@ -99,7 +100,9 @@ class Record(Generic[StateType]):
     def dataset(self) -> Dataset:
         """The dataset when there is just one dataset."""
         # Ignore local datasets.
-        datasets = dict(filter(lambda item: "__" not in item[0], self.datasets.items()))
+        datasets: Mapping[Tag, Dataset] = dict(
+            filter(lambda item: not LocalTag.from_tag(item[0]).is_local, self.datasets.items())
+        )
         if len(datasets) == 1:
             return next(iter(datasets.values()))
         else:
@@ -109,7 +112,9 @@ class Record(Generic[StateType]):
     def model(self) -> TrainableProbabilisticModel:
         """The model when there is just one dataset."""
         # Ignore local models.
-        models = dict(filter(lambda item: "__" not in item[0], self.models.items()))
+        models: Mapping[Tag, TrainableProbabilisticModel] = dict(
+            filter(lambda item: not LocalTag.from_tag(item[0]).is_local, self.models.items())
+        )
         if len(models) == 1:
             return next(iter(models.values()))
         else:
@@ -233,7 +238,9 @@ class OptimizationResult(Generic[StateType]):
         """
         datasets = self.try_get_final_datasets()
         # Ignore local datasets.
-        datasets = dict(filter(lambda item: "__" not in item[0], datasets.items()))
+        datasets = dict(
+            filter(lambda item: not LocalTag.from_tag(item[0]).is_local, datasets.items())
+        )
         if len(datasets) == 1:
             return next(iter(datasets.values()))
         else:
@@ -278,7 +285,7 @@ class OptimizationResult(Generic[StateType]):
         """
         models = self.try_get_final_models()
         # Ignore local models.
-        models = dict(filter(lambda item: "__" not in item[0], models.items()))
+        models = dict(filter(lambda item: not LocalTag.from_tag(item[0]).is_local, models.items()))
         if len(models) == 1:
             return next(iter(models.values()))
         else:
@@ -638,7 +645,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         if isinstance(datasets, Dataset):
             datasets = {OBJECTIVE: datasets}
         if not isinstance(models, Mapping):
-            models = {OBJECTIVE: models}  # type: ignore[dict-item]
+            models = {OBJECTIVE: models}
 
         # reassure the type checker that everything is tagged
         datasets = cast(Dict[Tag, Dataset], datasets)
@@ -647,9 +654,9 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         if num_steps < 0:
             raise ValueError(f"num_steps must be at least 0, got {num_steps}")
 
-        # Get set of dataset keys, ignoring suffix starting with double underscore.
-        datasets_keys = {tag.split("__")[0] for tag in datasets.keys()}
-        models_keys = {tag.split("__")[0] for tag in models.keys()}
+        # Get set of dataset and model keys, ignoring any local tag index.
+        datasets_keys = {LocalTag.from_tag(tag).global_tag for tag in datasets.keys()}
+        models_keys = {LocalTag.from_tag(tag).global_tag for tag in models.keys()}
         if datasets_keys != models_keys:
             raise ValueError(
                 f"datasets and models should contain the same keys. Got {datasets_keys} and"
@@ -731,8 +738,17 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                 if step == 1 and fit_model and fit_initial_model:
                     with Timer() as initial_model_fitting_timer:
                         for tag, model in models.items():
-                            tags = [tag, tag.split("__")[0]]  # Prefer local dataset if available.
-                            dataset = get_value_for_tag(datasets, tags)
+                            if LocalTag.from_tag(tag).is_local or tag in datasets:
+                                tags = [
+                                    tag,
+                                    LocalTag.from_tag(tag).global_tag,
+                                ]  # Prefer local dataset if available.
+                                _, dataset = get_value_for_tag(datasets, tags)
+                            else:
+                                # Global model. If global dataset does not exist, create
+                                # one by concatenating all the local datasets.
+                                dataset = stack_datasets(get_values_for_tag_prefix(datasets, tag))
+                            assert dataset is not None
                             model.update(dataset)
                             model.optimize_and_save_result(dataset)
                     if summary_writer:
@@ -756,11 +772,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     observer = self._observer
                     # If query_points are rank 3, then use a batched observer.
                     if tf.rank(query_points) == 3:
-                        num_objective_models = len(
-                            [tag for tag in models if "__" in tag and tag.split("__")[0] == OBJECTIVE]
-                        )
-                        num_objective_models = max(num_objective_models, 1)
-                        observer = mk_batch_observer(observer, num_objective_models, OBJECTIVE)
+                        observer = mk_batch_observer(observer, OBJECTIVE)
                     observer_output = observer(query_points)
 
                     tagged_output = (
@@ -774,8 +786,19 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     with Timer() as model_fitting_timer:
                         if fit_model:
                             for tag, model in models.items():
-                                tags = [tag, tag.split("__")[0]]  # Prefer local dataset if available.
-                                dataset = get_value_for_tag(datasets, tags)
+                                if LocalTag.from_tag(tag).is_local or tag in datasets:
+                                    tags = [
+                                        tag,
+                                        LocalTag.from_tag(tag).global_tag,
+                                    ]  # Prefer local dataset if available.
+                                    _, dataset = get_value_for_tag(datasets, tags)
+                                else:
+                                    # Global model. If global dataset does not exist, create
+                                    # one by concatenating all the local datasets.
+                                    dataset = stack_datasets(
+                                        get_values_for_tag_prefix(datasets, tag)
+                                    )
+                                assert dataset is not None
                                 model.update(dataset)
                                 model.optimize_and_save_result(dataset)
 

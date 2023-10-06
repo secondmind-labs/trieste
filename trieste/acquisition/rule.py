@@ -50,7 +50,7 @@ from ..models.interfaces import (
 from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace, TaggedMultiSearchSpace
 from ..types import State, Tag, TensorType
-from ..utils.misc import get_value_for_tag
+from ..utils.misc import LocalTag, get_value_for_tag
 from .function import (
     BatchMonteCarloExpectedImprovement,
     ExpectedImprovement,
@@ -158,8 +158,24 @@ class AcquisitionRule(ABC, Generic[ResultType, SearchSpaceType, ProbabilisticMod
         :param new_datasets: The new datasets.
         :return: The updated datasets.
         """
-        # By default, we just add the new datasets to the old ones.
-        datasets = {tag: datasets[tag] + new_datasets[tag] for tag in new_datasets}
+        # Account for the case where there may be an initial dataset that is not tagged
+        # per region. In this case, only the global dataset will exist in datasets. We
+        # want to copy this initial dataset to all the regions.
+        #
+        # If a tag from tagged_output does not exist in datasets, then add it to
+        # datasets by copying the dataset from datasets with the same tag-prefix.
+        # Otherwise keep the existing dataset from datasets.
+        # TODO: this could mean that when we have a global model, the global dataset
+        #   can contain multiple copies of the initial dataset.
+        # datasets = {
+        #    tag: get_value_for_tag(datasets, [tag, tag.split("__")[0]])[1] + new_datasets[tag]
+        #    for tag in new_datasets
+        # }
+        datasets = {}
+        for tag in new_datasets:
+            _, dataset = get_value_for_tag(datasets, [tag, LocalTag.from_tag(tag).global_tag])
+            assert dataset is not None
+            datasets[tag] = dataset + new_datasets[tag]
         return datasets
 
 
@@ -988,7 +1004,7 @@ class UpdatableTrustRegion(SearchSpace):
 
     def select_model(
         self, models: Optional[Mapping[Tag, ProbabilisticModelType]]
-    ) -> Optional[ProbabilisticModelType]:
+    ) -> Tuple[Optional[Tag], Optional[ProbabilisticModelType]]:
         """
         Select a single model belonging to this region. This is an optional method that is
         only required if the region is used with single model acquisition functions.
@@ -999,7 +1015,9 @@ class UpdatableTrustRegion(SearchSpace):
         # By default return the OBJECTIVE model.
         return get_value_for_tag(models, OBJECTIVE)
 
-    def select_dataset(self, datasets: Optional[Mapping[Tag, Dataset]]) -> Optional[Dataset]:
+    def select_dataset(
+        self, datasets: Optional[Mapping[Tag, Dataset]]
+    ) -> Tuple[Optional[Tag], Optional[Dataset]]:
         """
         Select a single dataset belonging to this region. This is an optional method that is
         only required if the region is used with single model acquisition functions.
@@ -1065,6 +1083,9 @@ class BatchTrustRegion(
             self._tags = tuple([str(index) for index in range(len(init_subspaces))])
 
         self._rule = rule
+        self._rules: Optional[
+            Sequence[AcquisitionRule[TensorType, SearchSpace, ProbabilisticModelType]]
+        ] = None
 
     def __repr__(self) -> str:
         """"""
@@ -1098,11 +1119,17 @@ class BatchTrustRegion(
         assert self._init_subspaces is not None
 
         num_subspaces = len(self._tags)
-        num_objective_models = len([tag for tag in models if "__" in tag and tag.split("__")[0] == OBJECTIVE])
-        num_objective_models = max(num_objective_models, 1)
-        assert num_subspaces % num_objective_models == 0, (
+        self.num_local_models = len(
+            [
+                tag
+                for tag in models
+                if (ltag := LocalTag.from_tag(tag)).is_local and ltag.global_tag == OBJECTIVE
+            ]
+        )
+        self.num_local_models = max(self.num_local_models, 1)
+        assert num_subspaces % self.num_local_models == 0, (
             f"The number of subspaces {num_subspaces} should be a multiple of the number of "
-            f"objective models {num_objective_models}"
+            f"local objective models {self.num_local_models}"
         )
 
         # If the base rule is a single model acquisition rule, but we have (multiple) local
@@ -1110,10 +1137,12 @@ class BatchTrustRegion(
         # Otherwise, run the base rule as is, once with all models and datasets.
         # Note: this should only trigger on the first call to `acquire`, as after that `self._rule`
         # will be a list of rules.
-        if isinstance(self._rule, EfficientGlobalOptimization) and hasattr(
-            self._rule._builder, "single_builder"
-        ) and (num_objective_models > 1 or OBJECTIVE not in models):
-            self._rule = [copy.deepcopy(self._rule) for _ in range(num_subspaces)]
+        if (
+            isinstance(self._rule, EfficientGlobalOptimization)
+            and hasattr(self._rule._builder, "single_builder")
+            and (self.num_local_models > 1 or OBJECTIVE not in models)
+        ):
+            self._rules = [copy.deepcopy(self._rule) for _ in range(num_subspaces)]
 
         def state_func(
             state: BatchTrustRegion.State | None,
@@ -1155,21 +1184,20 @@ class BatchTrustRegion(
 
             # If the base rule is a sequence, run it sequentially for each subspace.
             # See earlier comments.
-            if isinstance(self._rule, Sequence):
-                points = []
-                for subspace, rule in zip(subspaces, self._rule):
-                    model = subspace.select_model(models)
-                    dataset = subspace.select_dataset(datasets)
-                    points.append(
-                        rule.acquire(
-                            subspace,
-                            # Using default tag, as that is what single model acquisition builders
-                            # expect.
-                            {OBJECTIVE: model},
-                            {OBJECTIVE: dataset},
-                        )
-                    )
-                points = tf.stack(points, axis=1)
+            if self._rules is not None:
+                _points = []
+                for subspace, rule in zip(subspaces, self._rules):
+                    _, _model = subspace.select_model(models)
+                    _, _dataset = subspace.select_dataset(datasets)
+                    assert _model is not None
+                    # Using default tag, as that is what single model acquisition builders expect.
+                    model = {OBJECTIVE: _model}
+                    if _dataset is None:
+                        dataset = None
+                    else:
+                        dataset = {OBJECTIVE: _dataset}
+                    _points.append(rule.acquire(subspace, model, dataset))
+                points = tf.stack(_points, axis=1)
             else:
                 points = self._rule.acquire(acquisition_space, models, datasets)
 
@@ -1225,26 +1253,30 @@ class BatchTrustRegion(
     def update_datasets(
         self, datasets: Mapping[Tag, Dataset], new_datasets: Mapping[Tag, Dataset]
     ) -> Mapping[Tag, Dataset]:
-        # Account for the case where there may be an initial dataset that is not tagged
-        # per region. In this case, only the global dataset will exist in datasets. We
-        # want to copy this initial dataset to all the regions.
-        #
-        # If a tag from tagged_output does not exist in datasets, then add it to
-        # datasets by copying the dataset from datasets with the same tag-prefix.
-        # Otherwise keep the existing dataset from datasets.
-        datasets = {
-            tag: get_value_for_tag(datasets, [tag, tag.split("__")[0]]) + new_datasets[tag]
-            for tag in new_datasets
+        datasets = super().update_datasets(datasets, new_datasets)
+
+        used_masks = {
+            tag: tf.zeros(dataset.query_points.shape[:-1], dtype=tf.bool)
+            for tag, dataset in datasets.items()
         }
+        # TODO: using init_subspaces here is a bit of a hack, but it works for now.
+        assert self._init_subspaces is not None
+        for subspace in self._init_subspaces:
+            tag, space_dataset = subspace.select_dataset(datasets)
+            assert space_dataset is not None
+            in_region = subspace.contains(space_dataset.query_points)
+            # Assign slice of used_masks on axis 1 at index from values in
+            # in_region, i.e. ued_mask[index] = in_region
+            used_masks[tag] = tf.logical_or(used_masks[tag], in_region)
 
-        #for tag in new_datasets:
-        #    dataset = get_value_for_tag(datasets, [tag, tag.split("__")[0]]) + new_datasets[tag]
-        #    in_tr = self.contains(dataset.query_points)
-        #    in_qps = tf.boolean_mask(dataset.query_points, in_tr)
-        #    in_obs = tf.boolean_mask(dataset.observations, in_tr)
-        #    datasets[tag] = Dataset(in_qps, in_obs)
+        filtered_datasets = {}
+        for tag, used_mask in used_masks.items():
+            filtered_datasets[tag] = Dataset(
+                tf.boolean_mask(datasets[tag].query_points, used_mask),
+                tf.boolean_mask(datasets[tag].observations, used_mask),
+            )
 
-        return datasets
+        return filtered_datasets
 
 
 class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
@@ -1304,7 +1336,7 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
         Initialize the box by sampling a location from the global search space and setting the
         bounds.
         """
-        dataset = self.select_dataset(datasets)
+        _, dataset = self.select_dataset(datasets)
 
         self.location = tf.squeeze(self.global_search_space.sample(1), axis=0)
         self._step_is_success = False
@@ -1328,7 +1360,7 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
         ``1 / beta``. Conversely, if it was unsuccessful, the size is reduced by the factor
         ``beta``.
         """
-        dataset = self.select_dataset(datasets)
+        _, dataset = self.select_dataset(datasets)
 
         if tf.reduce_any(self.eps < self._min_eps):
             self.initialize(models, datasets)
@@ -1345,28 +1377,27 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
 
     def select_model(
         self, models: Optional[Mapping[Tag, ProbabilisticModelType]]
-    ) -> Optional[ProbabilisticModelType]:
+    ) -> Tuple[Optional[Tag], Optional[ProbabilisticModelType]]:
         # Select the model belonging to this box. Note there isn't necessarily a one-to-one
         # mapping between regions and models.
         if self._index is None:
-            tags = OBJECTIVE  # If no index, then pick the global model.
+            tags = [OBJECTIVE]  # If no index, then pick the global model.
         else:
-            num_objective_models = len([tag for tag in models if "__" in tag and tag.split("__")[0] == OBJECTIVE])
-            num_objective_models = max(num_objective_models, 1)
-            index = self._index % num_objective_models
-            tags = [f"{OBJECTIVE}__{index}", OBJECTIVE]  # Prefer local model if available.
+            tags = [LocalTag(OBJECTIVE, self._index), OBJECTIVE]  # Prefer local model if available.
         return get_value_for_tag(models, tags)
 
-    def select_dataset(self, datasets: Optional[Mapping[Tag, Dataset]]) -> Optional[Dataset]:
+    def select_dataset(
+        self, datasets: Optional[Mapping[Tag, Dataset]]
+    ) -> Tuple[Optional[Tag], Optional[Dataset]]:
         # Select the dataset belonging to this box. Note there isn't necessarily a one-to-one
         # mapping between regions and datasets.
         if self._index is None:
-            tags = OBJECTIVE  # If no index, then pick the global dataset.
+            tags = [OBJECTIVE]  # If no index, then pick the global dataset.
         else:
-            num_objective_datasets = len([tag for tag in datasets if "__" in tag and tag.split("__")[0] == OBJECTIVE])
-            num_objective_datasets = max(num_objective_datasets, 1)
-            index = self._index % num_objective_datasets
-            tags = [f"{OBJECTIVE}__{index}", OBJECTIVE]  # Prefer local dataset if available.
+            tags = [
+                LocalTag(OBJECTIVE, self._index),
+                OBJECTIVE,
+            ]  # Prefer local dataset if available.
         return get_value_for_tag(datasets, tags)
 
     @check_shapes(

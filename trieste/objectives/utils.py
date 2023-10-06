@@ -18,14 +18,17 @@ from objective functions, appropriately formatted for usage with the toolbox.
 """
 
 from __future__ import annotations
-import tensorflow as tf
 
 from collections.abc import Callable
 from typing import Mapping, Optional, Union, overload
 
+import tensorflow as tf
+from check_shapes import check_shapes
+
 from ..data import Dataset
-from ..observer import OBJECTIVE, MultiObserver, Observer, SingleObserver
+from ..observer import MultiObserver, Observer, SingleObserver
 from ..types import Tag, TensorType
+from ..utils.misc import LocalTag
 
 
 @overload
@@ -62,7 +65,6 @@ def mk_multi_observer(**kwargs: Callable[[TensorType], TensorType]) -> MultiObse
 
 def mk_batch_observer(
     objective_or_observer: Union[Callable[[TensorType], TensorType], SingleObserver],
-    batch_size: int,
     key: Optional[Tag] = None,
 ) -> Observer:
     """
@@ -71,38 +73,46 @@ def mk_batch_observer(
 
     :param objective_or_observer: An objective or an existing observer designed to be used with a
         single data set and model.
-    :param batch_size: The batch size of the observer.
     :param key: An optional key to use to access the data from the observer result.
     :return: A multi-observer across the batch dimension of query points, returning the data from
         ``objective``. If ``key`` is provided, the observer will be a mapping. Otherwise, it will
         return a single dataset.
+    :raise ValueError (or tf.errors.InvalidArgumentError): If the query points are not rank 3.
+    :raise ValueError (or tf.errors.InvalidArgumentError): If ``objective_or_observer`` is a
+        multi-observer.
     """
 
+    @check_shapes("qps: [n_points, batch_size, n_dims]")
+    # Note that the return type is not correct, but that is what mypy is happy with. It should be
+    # Mapping[Tag, Dataset] if key is not None, otherwise Dataset.
+    # One solution is to create two separate functions, but that will result in some duplicate code.
     def _observer(qps: TensorType) -> Mapping[Tag, Dataset]:
-        assert tf.rank(qps) == 3, (
-            f"query points must be rank 3 for batch observer, got {tf.rank(qps)}"
-        )
-
         # Call objective with rank 2 query points by flattening batch dimension.
         # Some objectives might only expect rank 2 query points, so this is safer.
+        batch_size = qps.shape[1]
         qps = tf.reshape(qps, [-1, qps.shape[-1]])
         obs_or_dataset = objective_or_observer(qps)
 
-        if not isinstance(obs_or_dataset, Dataset):
+        if isinstance(obs_or_dataset, Mapping):
+            raise ValueError("mk_batch_observer does not support multi-observers")
+        elif not isinstance(obs_or_dataset, Dataset):
             obs_or_dataset = Dataset(qps, obs_or_dataset)
 
         if key is None:
             # Always use rank 2 shape as models (e.g. GPR) expect this, so return as is.
             return obs_or_dataset
         else:
-            # Include overall dataset and per batch dataset.
-            obs = obs_or_dataset.observations
-            qps = tf.reshape(qps, [-1, batch_size, qps.shape[-1]])
-            obs = tf.reshape(obs, [-1, batch_size, obs.shape[-1]])
-            datasets = {
-                OBJECTIVE: obs_or_dataset,
-                **{f"{key}__{i}": Dataset(qps[:, i], obs[:, i]) for i in range(batch_size)}
-            }
-            return datasets
+            if batch_size == 1:
+                # If batch size is 1, just return the dataset as is, i.e. use the global dataset.
+                return {key: obs_or_dataset}
+            else:
+                # Include per batch dataset.
+                obs = obs_or_dataset.observations
+                qps = tf.reshape(qps, [-1, batch_size, qps.shape[-1]])
+                obs = tf.reshape(obs, [-1, batch_size, obs.shape[-1]])
+                datasets: Mapping[Tag, Dataset] = {
+                    **{LocalTag(key, i): Dataset(qps[:, i], obs[:, i]) for i in range(batch_size)}
+                }
+                return datasets
 
     return _observer

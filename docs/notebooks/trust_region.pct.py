@@ -211,7 +211,7 @@ init_subspaces = [
 ]
 base_rule = trieste.acquisition.rule.EfficientGlobalOptimization(  # type: ignore[var-annotated]
     builder=trieste.acquisition.ParallelContinuousThompsonSampling(),
-    #num_query_points=num_query_points,
+    # num_query_points=num_query_points,
 )
 batch_acq_rule = trieste.acquisition.rule.BatchTrustRegionBox(
     init_subspaces, base_rule
@@ -230,9 +230,9 @@ bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 num_steps = 5
 result = bo.optimize(
-    #num_steps, initial_data, build_model(), batch_acq_rule, track_state=True
+    # num_steps, initial_data, build_model(), batch_acq_rule, track_state=True
     num_steps,
-    initial_data,
+    {trieste.observer.OBJECTIVE: initial_data},
     trieste.acquisition.utils.copy_to_local_models(build_model(), 2),
     batch_acq_rule,
     track_state=True,

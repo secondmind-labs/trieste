@@ -97,20 +97,26 @@ def test_err() -> None:
 
 
 def test_get_value_for_tag_returns_none_if_mapping_is_none() -> None:
-    assert get_value_for_tag(None) is None
+    assert get_value_for_tag(None) == (None, None)
 
 
 def test_get_value_for_tag_raises_if_tag_not_in_mapping() -> None:
-    with pytest.raises(ValueError, match="tag 'baz' not found in mapping"):
+    with pytest.raises(ValueError, match="none of the tags '\['baz'\]' found in mapping"):
         get_value_for_tag({"foo": "bar"}, "baz")
 
 
 def test_get_value_for_tag_returns_value_for_default_tag() -> None:
-    assert get_value_for_tag({"foo": "bar", OBJECTIVE: "baz"}) == "baz"
+    assert get_value_for_tag({"foo": "bar", OBJECTIVE: "baz"}) == (OBJECTIVE, "baz")
 
 
 def test_get_value_for_tag_returns_value_for_specified_tag() -> None:
-    assert get_value_for_tag({"foo": "bar", OBJECTIVE: "baz"}, "foo") == "bar"
+    assert get_value_for_tag({"foo": "bar", OBJECTIVE: "baz"}, "foo") == ("foo", "bar")
+
+
+def test_get_value_for_tag_returns_first_matching_tag() -> None:
+    assert get_value_for_tag(
+        {"foo": "bar", OBJECTIVE: "baz", "qux": "quux", "bar": "baz"}, ["far", "qux", "foo"]
+    ) == ("qux", "quux")
 
 
 def test_Timer() -> None:

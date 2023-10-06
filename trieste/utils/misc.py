@@ -14,9 +14,23 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from time import perf_counter
 from types import TracebackType
-from typing import Any, Callable, Generic, Mapping, NoReturn, Optional, Sequence, Tuple, Type, TypeVar, Union
+from typing import (
+    Any,
+    Callable,
+    Generic,
+    List,
+    Mapping,
+    NoReturn,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import numpy as np
 import tensorflow as tf
@@ -222,12 +236,13 @@ T = TypeVar("T")
 
 def get_value_for_tag(
     mapping: Optional[Mapping[Tag, T]], tags: Union[Tag, Sequence[Tag]] = OBJECTIVE
-) -> Optional[T]:
+) -> Tuple[Optional[Tag], Optional[T]]:
     """Return the value from a mapping for the first tag found from a sequence of tags.
 
     :param mapping: A mapping from tags to values.
     :param tags: A tag or a sequence of tags. Sequence is searched in order.
-    :return: The value of the tag in the mapping, or None if the mapping is None.
+    :return: The chosen tag and value of the tag in the mapping, or None for each if the mapping is
+        None.
     :raises ValueError: If none of the tags are in the mapping and the mapping is not None.
     """
 
@@ -235,11 +250,73 @@ def get_value_for_tag(
         tags = [tags]
 
     if mapping is None:
-        return None
-    elif matched_tags := sorted(set(tags) & set(mapping.keys()), key = tags.index):
-        return mapping[matched_tags[0]]
+        return None, None
+    elif matched_tags := sorted(set(tags) & set(mapping.keys()), key=tags.index):
+        return matched_tags[0], mapping[matched_tags[0]]
     else:
         raise ValueError(f"none of the tags '{tags}' found in mapping")
+
+
+@dataclass(frozen=True)
+class LocalTag:
+    """Manage a tag for a local model or dataset."""
+
+    global_tag: Tag
+    local_index: Optional[int]
+
+    def __post_init__(self) -> None:
+        if self.is_local and (self.local_index is None or self.local_index < 0):
+            raise ValueError("local index must be non-negative")
+
+    @property
+    def is_local(self) -> bool:
+        """Return True if the tag is a local tag."""
+        return self.local_index is not None
+
+    @property
+    def tag(self) -> Tag:
+        """The local tag."""
+        if self.is_local:
+            return f"{self.global_tag}__{self.local_index}"
+        else:
+            return self.global_tag
+
+    def __str__(self) -> str:
+        """Return the local tag."""
+        return str(self.tag)
+
+    def __hash__(self) -> int:
+        """Return the hash of the local tag."""
+        return hash(self.tag)
+
+    def __eq__(self, other: object) -> bool:
+        """Return True if the local tag is equal to the other object."""
+        return isinstance(other, LocalTag) and self.tag == other.tag
+
+    @staticmethod
+    def from_tag(tag: Tag) -> LocalTag:
+        """Return a LocalTag from a given tag."""
+        tag = str(tag)
+        if "__" in tag:
+            global_tag, _local_index = tag.split("__")
+            local_index = int(_local_index)
+        else:
+            global_tag, local_index = tag, None
+        return LocalTag(global_tag, local_index)
+
+
+def get_values_for_tag_prefix(mapping: Mapping[Tag, T], tag_prefix: Tag = OBJECTIVE) -> List[T]:
+    """
+    Return a mapping from tags to values for all tags in ``mapping`` that start with ``tag_prefix``.
+
+    :param mapping: A mapping from tags to values.
+    :param tag_prefix: A tag prefix.
+    :return: A list of values from ``mapping`` for all tags in ``mapping`` that start with
+        ``tag_prefix``.
+    """
+    return [
+        value for tag, value in mapping.items() if LocalTag.from_tag(tag).global_tag == tag_prefix
+    ]
 
 
 class Timer:
