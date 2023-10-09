@@ -554,7 +554,7 @@ def test_trego_raises_for_missing_datasets_key(
 ) -> None:
     search_space = Box([-1], [1])
     rule = BatchTrustRegionBox(TREGOBox(search_space))  # type: ignore[var-annotated]
-    with pytest.raises(ValueError, match="tag 'OBJECTIVE' not found"):
+    with pytest.raises(ValueError, match="none of the tags '.LocalTag.OBJECTIVE, 0., "):
         rule.acquire(search_space, models, datasets=datasets)(None)
 
 
@@ -594,7 +594,7 @@ def test_trego_for_default_state(
     assert state is not None
     subspace = state.acquisition_space.get_subspace("0")
     assert isinstance(subspace, TREGOBox)
-    npt.assert_array_almost_equal(query_point, expected_query_point, 5)
+    npt.assert_array_almost_equal(query_point, [expected_query_point], 5)
     npt.assert_array_almost_equal(subspace.lower, lower_bound)
     npt.assert_array_almost_equal(subspace.upper, upper_bound)
     npt.assert_array_almost_equal(subspace._y_min, [0.012])
@@ -655,7 +655,7 @@ def test_trego_successful_global_to_global_trust_region_unchanged(
     assert isinstance(current_subspace, TREGOBox)
     npt.assert_array_almost_equal(current_subspace._eps, eps)
     assert current_subspace._is_global
-    npt.assert_array_almost_equal(query_point, expected_query_point, 5)
+    npt.assert_array_almost_equal(query_point, [expected_query_point], 5)
     npt.assert_array_almost_equal(current_subspace.lower, lower_bound)
     npt.assert_array_almost_equal(current_subspace.upper, upper_bound)
 
@@ -697,7 +697,7 @@ def test_trego_for_unsuccessful_global_to_local_trust_region_unchanged(
     assert not current_subspace._is_global
     npt.assert_array_less(lower_bound, current_subspace.lower)
     npt.assert_array_less(current_subspace.upper, upper_bound)
-    assert query_point[0] in current_state.acquisition_space
+    assert query_point[0][0] in current_state.acquisition_space
 
 
 @pytest.mark.parametrize(
@@ -776,6 +776,27 @@ def test_trego_for_unsuccessful_local_to_global_trust_region_reduced(
     assert current_subspace._is_global
     npt.assert_array_almost_equal(current_subspace.lower, lower_bound)
     npt.assert_array_almost_equal(current_subspace.upper, upper_bound)
+
+
+def test_trego_always_uses_global_dataset() -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    dataset = Dataset(
+        tf.constant([[0.1, 0.2], [-0.1, -0.2], [1.1, 2.3]]), tf.constant([[0.4], [0.5], [0.6]])
+    )
+    tr = BatchTrustRegionBox(TREGOBox(search_space))  # type: ignore[var-annotated]
+    new_data = Dataset(
+        tf.constant([[0.5, -0.2], [0.7, 0.2], [1.1, 0.3], [0.5, 0.5]]),
+        tf.constant([[0.7], [0.8], [0.9], [1.0]]),
+    )
+    updated_datasets = tr.update_datasets({"OBJECTIVE__0": dataset}, {"OBJECTIVE__0": new_data})
+
+    # Both the local and global datasets should match.
+    assert updated_datasets.keys() == {"OBJECTIVE", "OBJECTIVE__0"}
+    # Updated dataset should contain all the points, including ones outside the search space.
+    exp_dataset = dataset + new_data
+    for key in updated_datasets.keys():
+        npt.assert_array_equal(exp_dataset.query_points, updated_datasets[key].query_points)
+        npt.assert_array_equal(exp_dataset.observations, updated_datasets[key].observations)
 
 
 def test_trego_state_deepcopy() -> None:
@@ -1193,8 +1214,8 @@ def test_trust_region_box_get_dataset_min() -> None:
     trb._lower = tf.constant([0.2, 0.2], dtype=tf.float64)
     trb._upper = tf.constant([0.7, 0.7], dtype=tf.float64)
     x_min, y_min = trb.get_dataset_min(dataset)
-    npt.assert_array_equal(x_min, tf.constant([0.1, 0.1], dtype=tf.float64))
-    npt.assert_array_equal(y_min, tf.constant([0.0], dtype=tf.float64))
+    npt.assert_array_equal(x_min, tf.constant([0.3, 0.4], dtype=tf.float64))
+    npt.assert_array_equal(y_min, tf.constant([0.2], dtype=tf.float64))
 
 
 # Initialize sets the box to a random location, and sets the eps and y_min values.
@@ -1382,7 +1403,7 @@ def test_multi_trust_region_box_acquire_no_state() -> None:
     assert isinstance(state.acquisition_space, TaggedMultiSearchSpace)
     assert len(state.acquisition_space.subspace_tags) == 2
 
-    for index, (tag, point) in enumerate(zip(state.acquisition_space.subspace_tags, points)):
+    for index, (tag, point) in enumerate(zip(state.acquisition_space.subspace_tags, points[0])):
         subspace = state.acquisition_space.get_subspace(tag)
         assert subspace == subspaces[index]
         assert isinstance(subspace, SingleObjectiveTrustRegionBox)
@@ -1435,13 +1456,12 @@ class TestTrustRegionBox(SingleObjectiveTrustRegionBox):
         self,
         fixed_location: TensorType,
         global_search_space: SearchSpace,
-        index: Optional[int] = None,
         beta: float = 0.7,
         kappa: float = 1e-4,
         min_eps: float = 1e-2,
         init_eps: float = 0.07,
     ):
-        super().__init__(global_search_space, index, beta, kappa, min_eps)
+        super().__init__(global_search_space, beta, kappa, min_eps)
         self._location = fixed_location
         self._init_eps_val = init_eps
 
@@ -1494,13 +1514,13 @@ def test_multi_trust_region_box_acquire_with_state() -> None:
     next_state, points = state_func(state)
 
     assert next_state is not None
-    assert len(points) == 3
+    assert points.shape == [1, 3, 2]
     # The regions correspond to first, third and first points in the dataset.
     # First two regions should be updated.
     # The third region should be initialized and not updated, as it is too close to the first
     # subspace.
     for point, subspace, exp_obs, exp_eps in zip(
-        points,
+        points[0],
         subspaces,
         [dataset.observations[0], dataset.observations[2], dataset.observations[0]],
         [0.1, 0.1, 0.07],  # First two regions updated, third region initialized.
@@ -1516,7 +1536,7 @@ def test_multi_trust_region_box_acquire_with_state() -> None:
 @pytest.mark.parametrize("use_global_dataset", [True, False])
 @pytest.mark.parametrize("num_regions", [2, 4])
 @pytest.mark.parametrize("num_query_points_per_region", [1, 2])
-def test_batch_trust_region_box_with_multiple_models_and_regions(
+def test_multi_trust_region_box_with_multiple_models_and_regions(
     use_global_model: bool,
     use_global_dataset: bool,
     num_regions: int,
@@ -1526,8 +1546,7 @@ def test_batch_trust_region_box_with_multiple_models_and_regions(
     base_shift = tf.constant([2.0, 2.0], dtype=tf.float64)  # Common base shift for all regions.
     eps = 0.9
     subspaces = [
-        TestTrustRegionBox(base_shift + i, search_space, i, init_eps=eps)
-        for i in range(num_regions)
+        TestTrustRegionBox(base_shift + i, search_space, init_eps=eps) for i in range(num_regions)
     ]
 
     # Define the models and acquisition functions for each region
@@ -1644,7 +1663,7 @@ def test_multi_trust_region_box_updated_datasets_are_in_regions(
     search_space = Box([0.0], [3.0])
     # Non-overlapping regions.
     subspaces = [
-        TestTrustRegionBox(tf.constant([i], dtype=tf.float64), search_space, i, init_eps=0.4)
+        TestTrustRegionBox(tf.constant([i], dtype=tf.float64), search_space, init_eps=0.4)
         for i in range(num_local_models)
     ]
     models = copy_to_local_models(QuadraticMeanAndRBFKernel(), num_local_models)
@@ -1675,12 +1694,8 @@ def test_multi_trust_region_box_updated_datasets_are_in_regions(
     for point in datasets[OBJECTIVE].query_points:
         assert any(subspace.contains(point) for subspace in subspaces)
     # Global dataset should be the concatenation of all local datasets.
-    exp_query_points = tf.reshape(
-        tf.stack(
-            [datasets[f"OBJECTIVE__{i}"].query_points for i in range(num_local_models)],
-            axis=1,
-        ),
-        [-1, 1],
+    exp_query_points = tf.concat(
+        [datasets[f"OBJECTIVE__{i}"].query_points for i in range(num_local_models)], axis=0
     )
     npt.assert_array_almost_equal(datasets[OBJECTIVE].query_points, exp_query_points)
 

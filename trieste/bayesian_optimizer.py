@@ -778,10 +778,9 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     with Timer() as model_fitting_timer:
                         if fit_model:
                             for tag, model in models.items():
-                                # Prefer local dataset if available.
-                                tags = [tag, LocalTag.from_tag(tag).global_tag]
-                                _, dataset = get_value_for_tag(datasets, tags)
-                                assert dataset is not None
+                                # Always use the matching dataset to the model. If the model is
+                                # local, then the dataset should be too by this stage.
+                                dataset = datasets[tag]
                                 model.update(dataset)
                                 model.optimize_and_save_result(dataset)
 
@@ -959,7 +958,7 @@ def write_summary_observations(
     observation_plot_dfs: MutableMapping[Tag, pd.DataFrame],
 ) -> None:
     """Write TensorBoard summary for the current step observations."""
-    for tag in datasets:
+    for tag in models:
         with tf.name_scope(f"{tag}.model"):
             models[tag].log(datasets[tag])
 

@@ -13,7 +13,7 @@
 # limitations under the License.
 import copy
 import functools
-from typing import Mapping, Sequence, Tuple, Union
+from typing import Mapping, Tuple, Union
 
 import tensorflow as tf
 from check_shapes import check_shapes
@@ -155,25 +155,6 @@ def copy_to_local_models(
     :return: A mapping of the local models.
     """
     return {f"{key}__{i}": copy.deepcopy(global_model) for i in range(num_local_models)}
-
-
-def stack_datasets(datasets: Sequence[Dataset]) -> Dataset:
-    """
-    Stack a sequence of datasets along a new second batch axis.
-
-    :param datasets: A sequence of datasets.
-    :return: A dataset whose query points and observations are the stack of the query points
-        and observations in ``datasets`` along the second axis.
-    :raise ValueError: If ``datasets`` is empty.
-    :raise InvalidArgumentError: If the shapes of the query points in ``datasets`` differ in any
-        but the first dimension. The same applies for observations.
-    """
-    if not datasets:
-        raise ValueError("datasets must be non-empty")
-
-    qps = tf.stack([dataset.query_points for dataset in datasets], axis=1)
-    obs = tf.stack([dataset.observations for dataset in datasets], axis=1)
-    return Dataset(tf.reshape(qps, [-1, qps.shape[-1]]), tf.reshape(obs, [-1, obs.shape[-1]]))
 
 
 @check_shapes(

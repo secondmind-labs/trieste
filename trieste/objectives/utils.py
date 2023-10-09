@@ -102,18 +102,14 @@ def mk_batch_observer(
             # Always use rank 2 shape as models (e.g. GPR) expect this, so return as is.
             return obs_or_dataset
         else:
-            if batch_size == 1:
-                # If batch size is 1, just return the dataset as is, i.e. use the global dataset.
-                return {key: obs_or_dataset}
-            else:
-                # Include overall dataset and per batch dataset.
-                obs = obs_or_dataset.observations
-                qps = tf.reshape(qps, [-1, batch_size, qps.shape[-1]])
-                obs = tf.reshape(obs, [-1, batch_size, obs.shape[-1]])
-                datasets: Mapping[Tag, Dataset] = {
-                    key: obs_or_dataset,
-                    **{LocalTag(key, i): Dataset(qps[:, i], obs[:, i]) for i in range(batch_size)},
-                }
-                return datasets
+            # Include overall dataset and per batch dataset.
+            obs = obs_or_dataset.observations
+            qps = tf.reshape(qps, [-1, batch_size, qps.shape[-1]])
+            obs = tf.reshape(obs, [-1, batch_size, obs.shape[-1]])
+            datasets: Mapping[Tag, Dataset] = {
+                key: obs_or_dataset,
+                **{LocalTag(key, i): Dataset(qps[:, i], obs[:, i]) for i in range(batch_size)},
+            }
+            return datasets
 
     return _observer

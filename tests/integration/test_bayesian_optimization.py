@@ -58,6 +58,7 @@ from trieste.acquisition.rule import (
     TREGOBox,
 )
 from trieste.acquisition.sampler import ThompsonSamplerFromTrajectory
+from trieste.acquisition.utils import copy_to_local_models
 from trieste.bayesian_optimizer import (
     BayesianOptimizer,
     FrozenRecord,
@@ -98,12 +99,13 @@ except ImportError:  # pragma: no cover (tested but not by coverage)
 # (regenerating is necessary as some of the acquisition rules are stateful).
 def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
     return (
-        "num_steps, acquisition_rule",
+        "num_steps, acquisition_rule, num_models",
         [
-            pytest.param(20, EfficientGlobalOptimization(), id="EfficientGlobalOptimization"),
+            pytest.param(20, EfficientGlobalOptimization(), 1, id="EfficientGlobalOptimization"),
             pytest.param(
                 30,
                 EfficientGlobalOptimization(AugmentedExpectedImprovement().using(OBJECTIVE)),
+                1,
                 id="AugmentedExpectedImprovement",
             ),
             pytest.param(
@@ -112,6 +114,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                     MonteCarloExpectedImprovement(int(1e3)).using(OBJECTIVE),
                     generate_continuous_optimizer(100),
                 ),
+                1,
                 id="MonteCarloExpectedImprovement",
             ),
             pytest.param(
@@ -122,6 +125,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                         min_value_sampler=ThompsonSamplerFromTrajectory(sample_min_value=True),
                     ).using(OBJECTIVE)
                 ),
+                1,
                 id="MinValueEntropySearch",
             ),
             pytest.param(
@@ -130,6 +134,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                     BatchExpectedImprovement(sample_size=100).using(OBJECTIVE),
                     num_query_points=3,
                 ),
+                1,
                 id="BatchExpectedImprovement",
             ),
             pytest.param(
@@ -138,10 +143,11 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                     BatchMonteCarloExpectedImprovement(sample_size=500).using(OBJECTIVE),
                     num_query_points=3,
                 ),
+                1,
                 id="BatchMonteCarloExpectedImprovement",
             ),
             pytest.param(
-                12, AsynchronousOptimization(num_query_points=3), id="AsynchronousOptimization"
+                12, AsynchronousOptimization(num_query_points=3), 1, id="AsynchronousOptimization"
             ),
             pytest.param(
                 15,
@@ -151,6 +157,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                     ).using(OBJECTIVE),
                     num_query_points=3,
                 ),
+                1,
                 id="LocalPenalization",
             ),
             pytest.param(
@@ -161,6 +168,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                     ).using(OBJECTIVE),
                     num_query_points=3,
                 ),
+                1,
                 id="LocalPenalization/AsynchronousGreedy",
             ),
             pytest.param(
@@ -171,6 +179,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                     ).using(OBJECTIVE),
                     num_query_points=2,
                 ),
+                1,
                 id="GIBBON",
             ),
             pytest.param(
@@ -181,11 +190,13 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                     ).using(OBJECTIVE),
                     num_query_points=3,
                 ),
+                1,
                 id="MultipleOptimismNegativeLowerConfidenceBound",
             ),
             pytest.param(
                 20,
                 BatchTrustRegionBox(TREGOBox(ScaledBranin.search_space)),
+                1,
                 id="TREGO",
             ),
             pytest.param(
@@ -198,6 +209,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                         ).using(OBJECTIVE)
                     ),
                 ),
+                1,
                 id="TREGO/MinValueEntropySearch",
             ),
             pytest.param(
@@ -209,11 +221,13 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                         num_query_points=3,
                     ),
                 ),
+                1,
                 id="TREGO/ParallelContinuousThompsonSampling",
             ),
             pytest.param(
                 10,
                 TURBO(ScaledBranin.search_space, rule=DiscreteThompsonSampling(500, 3)),
+                1,
                 id="Turbo",
             ),
             pytest.param(
@@ -225,15 +239,29 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                         num_query_points=3,
                     ),
                 ),
+                1,
                 id="BatchTrustRegionBox",
             ),
-            pytest.param(15, DiscreteThompsonSampling(500, 5), id="DiscreteThompsonSampling"),
+            pytest.param(
+                10,
+                BatchTrustRegionBox(
+                    [SingleObjectiveTrustRegionBox(ScaledBranin.search_space) for _ in range(3)],
+                    EfficientGlobalOptimization(
+                        ParallelContinuousThompsonSampling(),
+                        num_query_points=2,
+                    ),
+                ),
+                3,
+                id="BatchTrustRegionBox/LocalModels",
+            ),
+            pytest.param(15, DiscreteThompsonSampling(500, 5), 1, id="DiscreteThompsonSampling"),
             pytest.param(
                 15,
                 EfficientGlobalOptimization(
                     Fantasizer(),
                     num_query_points=3,
                 ),
+                1,
                 id="Fantasizer",
             ),
             pytest.param(
@@ -242,6 +270,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                     GreedyContinuousThompsonSampling(),
                     num_query_points=5,
                 ),
+                1,
                 id="GreedyContinuousThompsonSampling",
             ),
             pytest.param(
@@ -250,11 +279,13 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                     ParallelContinuousThompsonSampling(),
                     num_query_points=5,
                 ),
+                1,
                 id="ParallelContinuousThompsonSampling",
             ),
             pytest.param(
                 15,
                 BatchHypervolumeSharpeRatioIndicator() if pymoo else None,
+                1,
                 id="BatchHypevolumeSharpeRatioIndicator",
                 marks=pytest.mark.qhsri,
             ),
@@ -273,9 +304,14 @@ def test_bayesian_optimizer_with_gpr_finds_minima_of_scaled_branin(
         Box,
         GaussianProcessRegression,
     ],
+    num_models: int,
 ) -> None:
     _test_optimizer_finds_minimum(
-        GaussianProcessRegression, num_steps, acquisition_rule, optimize_branin=True
+        GaussianProcessRegression,
+        num_steps,
+        acquisition_rule,
+        optimize_branin=True,
+        num_models=num_models,
     )
 
 
@@ -289,10 +325,13 @@ def test_bayesian_optimizer_with_gpr_finds_minima_of_simple_quadratic(
         Box,
         GaussianProcessRegression,
     ],
+    num_models: int,
 ) -> None:
     # for speed reasons we sometimes test with a simple quadratic defined on the same search space
     # branin; currently assume that every rule should be able to solve this in 6 steps
-    _test_optimizer_finds_minimum(GaussianProcessRegression, min(num_steps, 6), acquisition_rule)
+    _test_optimizer_finds_minimum(
+        GaussianProcessRegression, min(num_steps, 6), acquisition_rule, num_models=num_models
+    )
 
 
 @random_seed
@@ -565,6 +604,7 @@ def _test_optimizer_finds_minimum(
     optimize_branin: bool = False,
     model_args: Optional[Mapping[str, Any]] = None,
     check_regret: bool = False,
+    num_models: int = 1,
 ) -> None:
     model_args = model_args or {}
 
@@ -647,13 +687,19 @@ def _test_optimizer_finds_minimum(
     else:
         raise ValueError(f"Unsupported model_type '{model_type}'")
 
+    models = cast(TrainableProbabilisticModelType, model)
+
+    if num_models > 1:
+        initial_data = {OBJECTIVE: initial_data}
+        models = copy_to_local_models(models, num_models)
+
     with tempfile.TemporaryDirectory() as tmpdirname:
         summary_writer = tf.summary.create_file_writer(tmpdirname)
         with tensorboard_writer(summary_writer):
             result = BayesianOptimizer(observer, search_space).optimize(
                 num_steps or 2,
                 initial_data,
-                cast(TrainableProbabilisticModelType, model),
+                models,
                 acquisition_rule,
                 track_state=True,
                 track_path=Path(tmpdirname) / "history",

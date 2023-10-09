@@ -106,7 +106,9 @@ dataset = result.try_get_final_dataset()
 from trieste.experimental.plotting import plot_bo_points, plot_function_2d
 
 
-def plot_final_result(_dataset: trieste.data.Dataset) -> None:
+def plot_final_result(
+    _dataset: trieste.data.Dataset, num_init_points=num_initial_data_points
+) -> None:
     arg_min_idx = tf.squeeze(tf.argmin(_dataset.observations, axis=0))
     query_points = _dataset.query_points.numpy()
     _, ax = plot_function_2d(
@@ -117,7 +119,7 @@ def plot_final_result(_dataset: trieste.data.Dataset) -> None:
         contour=True,
     )
 
-    plot_bo_points(query_points, ax[0, 0], num_initial_data_points, arg_min_idx)
+    plot_bo_points(query_points, ax[0, 0], num_init_points, arg_min_idx)
 
 
 plot_final_result(dataset)
@@ -144,7 +146,10 @@ from trieste.experimental.plotting import (
 )
 
 
-def plot_history(result: trieste.bayesian_optimizer.OptimizationResult) -> None:
+def plot_history(
+    result: trieste.bayesian_optimizer.OptimizationResult,
+    num_init_points=num_initial_data_points,
+) -> None:
     frames = []
     for step, hist in enumerate(
         result.history + [result.final_result.unwrap()]
@@ -154,7 +159,7 @@ def plot_history(result: trieste.bayesian_optimizer.OptimizationResult) -> None:
             search_space.lower,
             search_space.upper,
             hist,
-            num_init=num_initial_data_points,
+            num_init=num_init_points,
         )
 
         if fig is not None:
@@ -203,15 +208,15 @@ plot_history(result)
 # contribute `Q` query points to the overall batch.
 
 # %%
-num_query_points = 6
+num_query_points = 5
 
 init_subspaces = [
-    trieste.acquisition.rule.SingleObjectiveTrustRegionBox(search_space, i)
-    for i in range(num_query_points)
+    trieste.acquisition.rule.SingleObjectiveTrustRegionBox(search_space)
+    for _ in range(num_query_points)
 ]
 base_rule = trieste.acquisition.rule.EfficientGlobalOptimization(  # type: ignore[var-annotated]
     builder=trieste.acquisition.ParallelContinuousThompsonSampling(),
-    # num_query_points=num_query_points,
+    num_query_points=num_query_points,
 )
 batch_acq_rule = trieste.acquisition.rule.BatchTrustRegionBox(
     init_subspaces, base_rule
@@ -230,12 +235,7 @@ bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 
 num_steps = 5
 result = bo.optimize(
-    # num_steps, initial_data, build_model(), batch_acq_rule, track_state=True
-    num_steps,
-    {trieste.observer.OBJECTIVE: initial_data},
-    trieste.acquisition.utils.copy_to_local_models(build_model(), 2),
-    batch_acq_rule,
-    track_state=True,
+    num_steps, initial_data, build_model(), batch_acq_rule, track_state=True
 )
 dataset = result.try_get_final_dataset()
 
@@ -245,10 +245,48 @@ dataset = result.try_get_final_dataset()
 # We visualize the results as before.
 
 # %%
-plot_final_result(dataset)
+plot_final_result(dataset, num_init_points=0)
 
 # %%
-plot_history(result)
+plot_history(result, num_init_points=0)
+
+# %% [markdown]
+# ## TEST
+
+# %%
+num_query_points = 5
+
+init_subspaces = [
+    trieste.acquisition.rule.SingleObjectiveTrustRegionBox(search_space)
+    for _ in range(num_query_points)
+]
+base_rule = trieste.acquisition.rule.EfficientGlobalOptimization(
+    builder=trieste.acquisition.ParallelContinuousThompsonSampling(),
+    num_query_points=1,
+)
+batch_acq_rule = trieste.acquisition.rule.BatchTrustRegionBox(
+    init_subspaces, base_rule
+)
+
+bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+
+num_steps = 5
+result = bo.optimize(
+    num_steps,
+    {trieste.observer.OBJECTIVE: initial_data},
+    trieste.acquisition.utils.copy_to_local_models(
+        build_model(), num_query_points
+    ),
+    batch_acq_rule,
+    track_state=True,
+)
+dataset = result.try_get_final_dataset()
+
+# %%
+plot_final_result(dataset, num_init_points=0)
+
+# %%
+plot_history(result, num_init_points=0)
 
 # %% [markdown]
 # ## Trust region `TurBO` acquisition rule

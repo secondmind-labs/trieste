@@ -446,10 +446,9 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
 
         with Timer() as model_fitting_timer:
             for tag, model in self._models.items():
-                # Prefer local dataset if available.
-                tags = [tag, LocalTag.from_tag(tag).global_tag]
-                _, dataset = get_value_for_tag(self._datasets, tags)
-                assert dataset is not None
+                # Always use the matching dataset to the model. If the model is
+                # local, then the dataset should be too by this stage.
+                dataset = self._datasets[tag]
                 model.update(dataset)
                 model.optimize_and_save_result(dataset)
 
