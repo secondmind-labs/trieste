@@ -19,10 +19,11 @@ import tensorflow as tf
 from check_shapes import check_shapes
 
 from ..data import Dataset
-from ..models.interfaces import ProbabilisticModel
+from ..models import ProbabilisticModelType
 from ..observer import OBJECTIVE
 from ..space import SearchSpaceType
 from ..types import Tag, TensorType
+from ..utils.misc import LocalTag
 from .interface import AcquisitionFunction
 from .optimizer import AcquisitionOptimizer
 
@@ -142,10 +143,10 @@ def get_local_dataset(local_space: SearchSpaceType, dataset: Dataset) -> Dataset
 
 
 def copy_to_local_models(
-    global_model: ProbabilisticModel,
+    global_model: ProbabilisticModelType,
     num_local_models: int,
     key: Tag = OBJECTIVE,
-) -> Mapping[Tag, ProbabilisticModel]:
+) -> Mapping[Tag, ProbabilisticModelType]:
     """
     Helper method to copy a global model to local models.
 
@@ -154,7 +155,7 @@ def copy_to_local_models(
     :param key: The tag prefix for the local models.
     :return: A mapping of the local models.
     """
-    return {f"{key}__{i}": copy.deepcopy(global_model) for i in range(num_local_models)}
+    return {LocalTag(key, i).tag: copy.deepcopy(global_model) for i in range(num_local_models)}
 
 
 @check_shapes(

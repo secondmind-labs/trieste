@@ -1681,10 +1681,10 @@ def test_multi_trust_region_box_updated_datasets_are_in_regions(
     # Check local datasets.
     for i, subspace in enumerate(subspaces):
         assert (
-            datasets[f"OBJECTIVE__{i}"].query_points.shape[0]
+            datasets[LocalTag(OBJECTIVE, i)].query_points.shape[0]
             == exp_num_init_points + num_query_points_per_region
         )
-        assert np.all(subspace.contains(datasets[f"OBJECTIVE__{i}"].query_points))
+        assert np.all(subspace.contains(datasets[LocalTag(OBJECTIVE, i)].query_points))
 
     # Check global dataset.
     assert datasets[OBJECTIVE].query_points.shape[0] == num_local_models * (
@@ -1695,7 +1695,7 @@ def test_multi_trust_region_box_updated_datasets_are_in_regions(
         assert any(subspace.contains(point) for subspace in subspaces)
     # Global dataset should be the concatenation of all local datasets.
     exp_query_points = tf.concat(
-        [datasets[f"OBJECTIVE__{i}"].query_points for i in range(num_local_models)], axis=0
+        [datasets[LocalTag(OBJECTIVE, i)].query_points for i in range(num_local_models)], axis=0
     )
     npt.assert_array_almost_equal(datasets[OBJECTIVE].query_points, exp_query_points)
 
