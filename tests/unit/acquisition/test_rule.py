@@ -1218,6 +1218,20 @@ def test_trust_region_box_get_dataset_min() -> None:
     npt.assert_array_equal(y_min, tf.constant([0.2], dtype=tf.float64))
 
 
+# get_dataset_min returns first x value and inf y value when points in dataset are outside the
+# search space.
+def test_trust_region_box_get_dataset_min_outside_search_space() -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    dataset = Dataset(
+        tf.constant([[1.2, 1.3], [-0.4, -0.5]], dtype=tf.float64),
+        tf.constant([[0.7], [0.9]], dtype=tf.float64),
+    )
+    trb = SingleObjectiveTrustRegionBox(search_space)
+    x_min, y_min = trb.get_dataset_min(dataset)
+    npt.assert_array_equal(x_min, tf.constant([1.2, 1.3], dtype=tf.float64))
+    npt.assert_array_equal(y_min, tf.constant([np.inf], dtype=tf.float64))
+
+
 # Initialize sets the box to a random location, and sets the eps and y_min values.
 def test_trust_region_box_initialize() -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])

@@ -26,7 +26,6 @@ import tensorflow as tf
 from _pytest.mark import ParameterSet
 
 from tests.util.misc import random_seed
-from trieste.data import Dataset
 from trieste.acquisition import (
     GIBBON,
     AcquisitionFunctionClass,
@@ -87,7 +86,7 @@ from trieste.objectives import ScaledBranin, SimpleQuadratic
 from trieste.objectives.utils import mk_observer
 from trieste.observer import OBJECTIVE
 from trieste.space import Box, SearchSpace
-from trieste.types import State, Tag, TensorType
+from trieste.types import State, TensorType
 
 try:
     import pymoo
@@ -690,7 +689,7 @@ def _test_optimizer_finds_minimum(
 
     model = cast(TrainableProbabilisticModelType, model)
     models = copy_to_local_models(model, num_models) if num_models > 1 else {OBJECTIVE: model}
-    dataset: Mapping[Tag, Dataset] = {OBJECTIVE: initial_data}
+    dataset = {OBJECTIVE: initial_data}
 
     with tempfile.TemporaryDirectory() as tmpdirname:
         summary_writer = tf.summary.create_file_writer(tmpdirname)

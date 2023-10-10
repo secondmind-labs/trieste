@@ -259,7 +259,7 @@ def test_bayesian_optimizer_creates_correct_datasets_for_rank3_points(
         (num_query_points_per_batch, batch_size, 1),
     )
 
-    class DatasetChecker(_PseudoTrainableQuadratic):
+    class DatasetChecker(QuadraticMeanAndRBFKernel, PseudoTrainableProbModel):
         def __init__(self) -> None:
             super().__init__()
             self.update_count = 0

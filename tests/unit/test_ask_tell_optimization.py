@@ -15,19 +15,28 @@ from __future__ import annotations
 
 from typing import Mapping, Optional
 
+import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
 from tests.util.misc import FixedAcquisitionRule, assert_datasets_allclose, mk_dataset
-from tests.util.models.gpflow.models import GaussianProcess, PseudoTrainableProbModel, rbf
+from tests.util.models.gpflow.models import (
+    GaussianProcess,
+    PseudoTrainableProbModel,
+    QuadraticMeanAndRBFKernel,
+    rbf,
+)
 from trieste.acquisition.rule import AcquisitionRule
+from trieste.acquisition.utils import copy_to_local_models
 from trieste.ask_tell_optimization import AskTellOptimizer
 from trieste.bayesian_optimizer import OptimizationResult, Record
 from trieste.data import Dataset
 from trieste.models.interfaces import ProbabilisticModel, TrainableProbabilisticModel
+from trieste.objectives.utils import mk_batch_observer
 from trieste.observer import OBJECTIVE
 from trieste.space import Box
 from trieste.types import State, Tag, TensorType
+from trieste.utils.misc import LocalTag
 
 # tags
 TAG1: Tag = "1"
@@ -427,3 +436,72 @@ def test_ask_tell_optimizer_for_uncopyable_model(
     with pytest.raises(NotImplementedError):
         ask_tell.to_result()
     assert ask_tell.to_result(copy=False).final_result.is_ok
+
+
+@pytest.mark.parametrize("use_global_model", [True, False])
+@pytest.mark.parametrize("use_global_init_dataset", [True, False])
+@pytest.mark.parametrize("num_query_points_per_batch", [1, 2])
+def test_ask_tell_optimizer_creates_correct_datasets_for_rank3_points(
+    use_global_model: bool, use_global_init_dataset: bool, num_query_points_per_batch: int
+) -> None:
+    batch_size = 4
+    if use_global_init_dataset:
+        init_data = {OBJECTIVE: mk_dataset([[0.5], [1.5]], [[0.25], [0.35]])}
+    else:
+        init_data = {
+            LocalTag(OBJECTIVE, i): mk_dataset([[0.5 + i], [1.5 + i]], [[0.25], [0.35]])
+            for i in range(batch_size)
+        }
+        init_data[OBJECTIVE] = mk_dataset([[0.5], [1.5]], [[0.25], [0.35]])
+
+    query_points = tf.reshape(
+        tf.constant(range(batch_size * num_query_points_per_batch), tf.float64),
+        (num_query_points_per_batch, batch_size, 1),
+    )
+
+    class DatasetChecker(QuadraticMeanAndRBFKernel, PseudoTrainableProbModel):
+        def __init__(self) -> None:
+            super().__init__()
+            self.update_count = 0
+            self._tag = OBJECTIVE
+
+        def update(self, dataset: Dataset) -> None:
+            if use_global_model:
+                exp_init_qps = init_data[OBJECTIVE].query_points
+            else:
+                if use_global_init_dataset:
+                    exp_init_qps = init_data[OBJECTIVE].query_points
+                else:
+                    exp_init_qps = init_data[self._tag].query_points
+
+            if self.update_count == 0:
+                # Initial model training.
+                exp_qps = exp_init_qps
+            else:
+                # Subsequent model training.
+                if use_global_model:
+                    exp_qps = tf.concat([exp_init_qps, tf.reshape(query_points, [-1, 1])], 0)
+                else:
+                    index = LocalTag.from_tag(self._tag).local_index
+                    exp_qps = tf.concat([exp_init_qps, query_points[:, index]], 0)
+
+            npt.assert_array_equal(exp_qps, dataset.query_points)
+            self.update_count += 1
+
+    search_space = Box([-1], [1])
+
+    model = DatasetChecker()
+    if use_global_model:
+        models = {OBJECTIVE: model}
+    else:
+        models = copy_to_local_models(model, batch_size)  # type: ignore[assignment]
+    for tag, model in models.items():
+        model._tag = tag
+
+    observer = mk_batch_observer(lambda x: Dataset(x, x), OBJECTIVE)
+    rule = FixedAcquisitionRule(query_points)
+    ask_tell = AskTellOptimizer(search_space, init_data, models, rule)
+
+    points = ask_tell.ask()
+    new_data = observer(points)
+    ask_tell.tell(new_data)

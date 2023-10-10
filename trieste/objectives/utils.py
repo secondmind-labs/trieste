@@ -77,7 +77,6 @@ def mk_batch_observer(
     :return: A multi-observer across the batch dimension of query points, returning the data from
         ``objective``. If ``key`` is provided, the observer will be a mapping. Otherwise, it will
         return a single dataset.
-    :raise ValueError (or tf.errors.InvalidArgumentError): If the query points are not rank 3.
     :raise ValueError (or tf.errors.InvalidArgumentError): If ``objective_or_observer`` is a
         multi-observer.
     """

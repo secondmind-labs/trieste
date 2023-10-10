@@ -436,7 +436,11 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         if isinstance(new_data, Dataset):
             new_data = {OBJECTIVE: new_data}
 
-        if self._datasets.keys() != new_data.keys():
+        # The datasets must have the same keys as the existing datasets. Only exception is if
+        # the existing datasets are all global, in which case the dataset will be appropriately
+        # updated below for the next iteration.
+        datasets_indices = {LocalTag.from_tag(tag).local_index for tag in self._datasets.keys()}
+        if self._datasets.keys() != new_data.keys() and datasets_indices != {None}:
             raise ValueError(
                 f"new_data keys {new_data.keys()} doesn't "
                 f"match dataset keys {self._datasets.keys()}"

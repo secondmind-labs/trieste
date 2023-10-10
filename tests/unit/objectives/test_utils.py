@@ -21,6 +21,7 @@ from trieste.data import Dataset
 from trieste.objectives.utils import mk_batch_observer, mk_multi_observer, mk_observer
 from trieste.observer import SingleObserver
 from trieste.types import Tag, TensorType
+from trieste.utils.misc import LocalTag
 
 
 def test_mk_observer() -> None:
@@ -85,12 +86,12 @@ def test_mk_batch_observer(
         npt.assert_array_equal(ys.observations, tf.reshape(x_, [-1, 1]))
     else:
         assert isinstance(ys, dict)
-        exp_keys = {f"{key}__{i}" for i in range(batch_size)}
-        exp_keys.add(str(key))
+        exp_keys = {LocalTag(key, i).tag for i in range(batch_size)}
+        exp_keys.add(key)
 
         assert ys.keys() == exp_keys
         npt.assert_array_equal(ys[key].query_points, tf.reshape(x_, [-1, 1]))
         npt.assert_array_equal(ys[key].observations, tf.reshape(x_, [-1, 1]))
         for i in range(batch_size):
-            npt.assert_array_equal(ys[f"{key}__{i}"].query_points, x_[:, i])
-            npt.assert_array_equal(ys[f"{key}__{i}"].observations, x_[:, i])
+            npt.assert_array_equal(ys[LocalTag(key, i)].query_points, x_[:, i])
+            npt.assert_array_equal(ys[LocalTag(key, i)].observations, x_[:, i])

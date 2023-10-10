@@ -23,22 +23,24 @@ import pytest
 import tensorflow as tf
 
 from tests.util.misc import random_seed
-from trieste.acquisition import LocalPenalization
+from trieste.acquisition import LocalPenalization, ParallelContinuousThompsonSampling
 from trieste.acquisition.rule import (
     AcquisitionRule,
     AsynchronousGreedy,
     AsynchronousRuleState,
     BatchTrustRegionBox,
     EfficientGlobalOptimization,
+    SingleObjectiveTrustRegionBox,
     TREGOBox,
 )
+from trieste.acquisition.utils import copy_to_local_models
 from trieste.ask_tell_optimization import AskTellOptimizer
 from trieste.bayesian_optimizer import OptimizationResult, Record
 from trieste.logging import set_step_number, tensorboard_writer
 from trieste.models import TrainableProbabilisticModel
 from trieste.models.gpflow import GaussianProcessRegression, build_gpr
 from trieste.objectives import ScaledBranin, SimpleQuadratic
-from trieste.objectives.utils import mk_observer
+from trieste.objectives.utils import mk_batch_observer, mk_observer
 from trieste.observer import OBJECTIVE
 from trieste.space import Box, SearchSpace
 from trieste.types import State, TensorType
@@ -47,25 +49,57 @@ from trieste.types import State, TensorType
 # We use a copy of these for a quicker test against a simple quadratic function
 # (copying is necessary as some of the acquisition rules are stateful).
 OPTIMIZER_PARAMS = (
-    "num_steps, reload_state, acquisition_rule_fn",
+    "num_steps, reload_state, acquisition_rule_fn, num_models",
     [
         pytest.param(
-            20, False, lambda: EfficientGlobalOptimization(), id="EfficientGlobalOptimization"
+            20, False, lambda: EfficientGlobalOptimization(), 1, id="EfficientGlobalOptimization"
         ),
         pytest.param(
             20,
             True,
             lambda: EfficientGlobalOptimization(),
+            1,
             id="EfficientGlobalOptimization/reload_state",
         ),
         pytest.param(
-            15, False, lambda: BatchTrustRegionBox(TREGOBox(ScaledBranin.search_space)), id="TREGO"
+            15,
+            False,
+            lambda: BatchTrustRegionBox(TREGOBox(ScaledBranin.search_space)),
+            1,
+            id="TREGO",
         ),
         pytest.param(
             16,
             True,
             lambda: BatchTrustRegionBox(TREGOBox(ScaledBranin.search_space)),
+            1,
             id="TREGO/reload_state",
+        ),
+        pytest.param(
+            10,
+            False,
+            lambda: BatchTrustRegionBox(
+                [SingleObjectiveTrustRegionBox(ScaledBranin.search_space) for _ in range(3)],
+                EfficientGlobalOptimization(
+                    ParallelContinuousThompsonSampling(),
+                    num_query_points=3,
+                ),
+            ),
+            1,
+            id="BatchTrustRegionBox",
+        ),
+        pytest.param(
+            10,
+            False,
+            lambda: BatchTrustRegionBox(
+                [SingleObjectiveTrustRegionBox(ScaledBranin.search_space) for _ in range(3)],
+                EfficientGlobalOptimization(
+                    ParallelContinuousThompsonSampling(),
+                    num_query_points=2,
+                ),
+            ),
+            3,
+            id="BatchTrustRegionBox/LocalModels",
         ),
         pytest.param(
             10,
@@ -76,6 +110,7 @@ OPTIMIZER_PARAMS = (
                 ).using(OBJECTIVE),
                 num_query_points=3,
             ),
+            1,
             id="LocalPenalization",
         ),
         pytest.param(
@@ -86,6 +121,7 @@ OPTIMIZER_PARAMS = (
                     ScaledBranin.search_space,
                 ).using(OBJECTIVE),
             ),
+            1,
             id="LocalPenalization/AsynchronousGreedy",
         ),
     ],
@@ -109,8 +145,11 @@ def test_ask_tell_optimizer_finds_minima_of_the_scaled_branin_function(
             TrainableProbabilisticModel,
         ],
     ],
+    num_models: int,
 ) -> None:
-    _test_ask_tell_optimization_finds_minima(True, num_steps, reload_state, acquisition_rule_fn)
+    _test_ask_tell_optimization_finds_minima(
+        True, num_steps, reload_state, acquisition_rule_fn, num_models
+    )
 
 
 @random_seed
@@ -129,11 +168,12 @@ def test_ask_tell_optimizer_finds_minima_of_simple_quadratic(
             TrainableProbabilisticModel,
         ],
     ],
+    num_models: int,
 ) -> None:
     # for speed reasons we sometimes test with a simple quadratic defined on the same search space
     # branin; currently assume that every rule should be able to solve this in 5 steps
     _test_ask_tell_optimization_finds_minima(
-        False, min(num_steps, 5), reload_state, acquisition_rule_fn
+        False, min(num_steps, 5), reload_state, acquisition_rule_fn, num_models
     )
 
 
@@ -152,6 +192,7 @@ def _test_ask_tell_optimization_finds_minima(
             TrainableProbabilisticModel,
         ],
     ],
+    num_models: int,
 ) -> None:
     # For the case when optimization state is saved and reload on each iteration
     # we need to use new acquisition function object to imitate real life usage
@@ -160,17 +201,22 @@ def _test_ask_tell_optimization_finds_minima(
     search_space = ScaledBranin.search_space
     initial_query_points = search_space.sample(5)
     observer = mk_observer(ScaledBranin.objective if optimize_branin else SimpleQuadratic.objective)
+    batch_observer = mk_batch_observer(observer, OBJECTIVE)
     initial_data = observer(initial_query_points)
 
     model = GaussianProcessRegression(
         build_gpr(initial_data, search_space, likelihood_variance=1e-7)
     )
+    models = copy_to_local_models(model, num_models) if num_models > 1 else {OBJECTIVE: model}
+    initial_dataset = {OBJECTIVE: initial_data}
 
     with tempfile.TemporaryDirectory() as tmpdirname:
         summary_writer = tf.summary.create_file_writer(tmpdirname)
         with tensorboard_writer(summary_writer):
             set_step_number(0)
-            ask_tell = AskTellOptimizer(search_space, initial_data, model, acquisition_rule_fn())
+            ask_tell = AskTellOptimizer(
+                search_space, initial_dataset, models, acquisition_rule_fn()
+            )
 
             for i in range(1, num_steps + 1):
                 # two scenarios are tested here, depending on `reload_state` parameter
@@ -185,7 +231,11 @@ def _test_ask_tell_optimization_finds_minima(
                     ] = ask_tell.to_record()
                     written_state = pickle.dumps(state)
 
-                new_data_point = observer(new_point)
+                # If query points are rank 3, then use a batched observer.
+                if tf.rank(new_point) == 3:
+                    new_data_point = batch_observer(new_point)
+                else:
+                    new_data_point = observer(new_point)
 
                 if reload_state:
                     state = pickle.loads(written_state)
