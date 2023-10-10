@@ -911,7 +911,11 @@ def write_summary_initial_model_fit(
     """Write TensorBoard summary for the model fitting to the initial data."""
     for tag, model in models.items():
         with tf.name_scope(f"{tag}.model"):
-            model.log(datasets[tag])
+            # Prefer local dataset if available.
+            tags = [tag, LocalTag.from_tag(tag).global_tag]
+            _, dataset = get_value_for_tag(datasets, tags)
+            assert dataset is not None
+            model.log(dataset)
     logging.scalar(
         "wallclock/model_fitting",
         model_fitting_timer.time,
