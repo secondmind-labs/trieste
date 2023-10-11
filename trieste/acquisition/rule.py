@@ -158,13 +158,19 @@ class AcquisitionRule(ABC, Generic[ResultType, SearchSpaceType, ProbabilisticMod
         :param new_datasets: The new datasets.
         :return: The updated datasets.
         """
-        # Account for the case where there may be an initial dataset that is not tagged
-        # per region. In this case, only the global dataset will exist in datasets. We
-        # want to copy this initial dataset to all the regions.
-        #
+        # In order to support local datasets, account for the case where there may be an initial
+        # dataset that is not tagged per region. In this case, only the global dataset will exist
+        # in datasets. We want to copy this initial dataset to all the regions.
         # If a tag from tagged_output does not exist in datasets, then add it to
-        # datasets by copying the dataset from datasets with the same tag-prefix.
-        # Otherwise keep the existing dataset from datasets.
+        # datasets by copying the data from datasets with the same global tag. Otherwise keep the
+        # existing data from datasets.
+        #
+        # Note: this replication of initial data can potentially cause an issue when a global model
+        # is being used with local datasets, as the points may be repeated. This will only be an
+        # issue if two regions overlap and both contain that initial data-point -- as filtering
+        # (in BatchTrustRegion) would otherwise remove duplicates. The main way to avoid the issue
+        # in this scenario is to provide local initial datasets, instead of a global initial
+        # dataset.
         updated_datasets = {}
         for tag in new_datasets:
             _, dataset = get_value_for_tag(datasets, [tag, LocalTag.from_tag(tag).global_tag])

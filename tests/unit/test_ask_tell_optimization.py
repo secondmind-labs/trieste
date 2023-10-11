@@ -500,7 +500,7 @@ def test_ask_tell_optimizer_creates_correct_datasets_for_rank3_points(
     for tag, model in models.items():
         model._tag = tag
 
-    observer = mk_batch_observer(lambda x: Dataset(x, x), OBJECTIVE)
+    observer = mk_batch_observer(lambda x: Dataset(x, x))
     rule = FixedAcquisitionRule(query_points)
     ask_tell = AskTellOptimizer(search_space, init_data, models, rule)
 

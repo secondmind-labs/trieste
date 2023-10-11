@@ -26,7 +26,7 @@ import tensorflow as tf
 from check_shapes import check_shapes
 
 from ..data import Dataset
-from ..observer import MultiObserver, Observer, SingleObserver
+from ..observer import OBJECTIVE, MultiObserver, Observer, SingleObserver
 from ..types import Tag, TensorType
 from ..utils.misc import LocalTag
 
@@ -64,21 +64,18 @@ def mk_multi_observer(**kwargs: Callable[[TensorType], TensorType]) -> MultiObse
 
 
 def mk_batch_observer(
-    objective_or_observer: Union[Callable[[TensorType], TensorType], SingleObserver],
-    key: Optional[Tag] = None,
+    objective_or_observer: Union[Callable[[TensorType], TensorType], Observer],
+    default_key: Tag = OBJECTIVE,
 ) -> Observer:
     """
     Create an observer that returns the data from ``objective`` or an existing ``observer``
     separately for each query point in a batch.
 
-    :param objective_or_observer: An objective or an existing observer designed to be used with a
-        single data set and model.
-    :param key: An optional key to use to access the data from the observer result.
+    :param objective_or_observer: An objective or an existing observer.
+    :param default_key: The default key to use if ``objective_or_observer`` is an objective or
+        does not return a mapping.
     :return: A multi-observer across the batch dimension of query points, returning the data from
-        ``objective``. If ``key`` is provided, the observer will be a mapping. Otherwise, it will
-        return a single dataset.
-    :raise ValueError (or tf.errors.InvalidArgumentError): If ``objective_or_observer`` is a
-        multi-observer.
+        ``objective_or_observer``.
     """
 
     @check_shapes("qps: [n_points, batch_size, n_dims]")
@@ -92,23 +89,26 @@ def mk_batch_observer(
         qps = tf.reshape(qps, [-1, qps.shape[-1]])
         obs_or_dataset = objective_or_observer(qps)
 
-        if isinstance(obs_or_dataset, Mapping):
-            raise ValueError("mk_batch_observer does not support multi-observers")
-        elif not isinstance(obs_or_dataset, Dataset):
+        if not isinstance(obs_or_dataset, (Mapping, Dataset)):
+            # Just a single observation, so wrap in a dataset.
             obs_or_dataset = Dataset(qps, obs_or_dataset)
 
-        if key is None:
-            # Always use rank 2 shape as models (e.g. GPR) expect this, so return as is.
-            return obs_or_dataset
-        else:
+        if isinstance(obs_or_dataset, Dataset):
+            # Convert to a mapping with a default key.
+            obs_or_dataset = {default_key: obs_or_dataset}
+
+        datasets = {}
+        for key, dataset in obs_or_dataset.items():
             # Include overall dataset and per batch dataset.
-            obs = obs_or_dataset.observations
+            obs = dataset.observations
             qps = tf.reshape(qps, [-1, batch_size, qps.shape[-1]])
             obs = tf.reshape(obs, [-1, batch_size, obs.shape[-1]])
-            datasets: Mapping[Tag, Dataset] = {
-                key: obs_or_dataset,
+            _datasets = {
+                key: dataset,
                 **{LocalTag(key, i): Dataset(qps[:, i], obs[:, i]) for i in range(batch_size)},
             }
-            return datasets
+            datasets.update(_datasets)
+
+        return datasets
 
     return _observer

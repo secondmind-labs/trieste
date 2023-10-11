@@ -764,7 +764,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     observer = self._observer
                     # If query_points are rank 3, then use a batched observer.
                     if tf.rank(query_points) == 3:
-                        observer = mk_batch_observer(observer, OBJECTIVE)
+                        observer = mk_batch_observer(observer)
                     observer_output = observer(query_points)
 
                     tagged_output = (

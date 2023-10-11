@@ -1699,7 +1699,7 @@ def test_multi_trust_region_box_updated_datasets_are_in_regions(
     )
     rule = BatchTrustRegionBox(subspaces, base_rule)
     _, points = rule.acquire(search_space, models, datasets)(None)
-    observer = mk_batch_observer(quadratic, OBJECTIVE)
+    observer = mk_batch_observer(quadratic)
     new_data = observer(points)
     assert not isinstance(new_data, Dataset)
     datasets = rule.update_datasets(datasets, new_data)

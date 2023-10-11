@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Callable, Union
+from typing import Callable, Sequence, Union
 
 import numpy.testing as npt
 import pytest
@@ -19,7 +19,7 @@ import tensorflow as tf
 
 from trieste.data import Dataset
 from trieste.objectives.utils import mk_batch_observer, mk_multi_observer, mk_observer
-from trieste.observer import SingleObserver
+from trieste.observer import Observer
 from trieste.types import Tag, TensorType
 from trieste.utils.misc import LocalTag
 
@@ -58,40 +58,49 @@ def test_mk_multi_observer() -> None:
     npt.assert_array_equal(ys["bar"].observations, x_ - 1)
 
 
-def test_mk_batch_observer_raises_on_multi_observer() -> None:
-    observer = mk_batch_observer(mk_multi_observer(foo=lambda x: x + 1, bar=lambda x: x - 1))
-    with pytest.raises(ValueError, match="mk_batch_observer does not support multi-observers"):
-        observer(tf.constant([[[3.0]]]))
-
-
-@pytest.mark.parametrize("input_objective", [lambda x: x, lambda x: Dataset(x, x)])
+@pytest.mark.parametrize(
+    "input_objective, keys",
+    [
+        (lambda x: x, ["baz"]),
+        (lambda x: Dataset(x, x), ["baz"]),
+        (mk_multi_observer(foo=lambda x: x + 1, bar=lambda x: x - 1), ["foo", "bar"]),
+    ],
+)
 @pytest.mark.parametrize("batch_size", [1, 2, 3])
 @pytest.mark.parametrize("num_query_points_per_batch", [1, 2])
-@pytest.mark.parametrize("key", [None, "bar"])
 def test_mk_batch_observer(
-    input_objective: Union[Callable[[TensorType], TensorType], SingleObserver],
+    input_objective: Union[Callable[[TensorType], TensorType], Observer],
+    keys: Sequence[Tag],
     batch_size: int,
     num_query_points_per_batch: int,
-    key: Tag,
 ) -> None:
     x_ = tf.reshape(
         tf.constant(range(batch_size * num_query_points_per_batch), tf.float64),
         (num_query_points_per_batch, batch_size, 1),
     )
-    ys = mk_batch_observer(input_objective, key)(x_)
+    ys = mk_batch_observer(input_objective, "baz")(x_)
 
-    if key is None:
-        assert isinstance(ys, Dataset)
-        npt.assert_array_equal(ys.query_points, tf.reshape(x_, [-1, 1]))
-        npt.assert_array_equal(ys.observations, tf.reshape(x_, [-1, 1]))
-    else:
-        assert isinstance(ys, dict)
-        exp_keys = {LocalTag(key, i).tag for i in range(batch_size)}
+    assert isinstance(ys, dict)
+
+    # Check keys.
+    exp_keys = set()
+    for key in keys:
+        exp_keys.update({LocalTag(key, i).tag for i in range(batch_size)})
         exp_keys.add(key)
+    assert ys.keys() == exp_keys
 
-        assert ys.keys() == exp_keys
+    # Check datasets.
+    for key in keys:
+        # Different observers (in parameterize above) return different observation values.
+        if key == "foo":
+            exp_o = x_ + 1
+        elif key == "bar":
+            exp_o = x_ - 1
+        else:
+            exp_o = x_
+
         npt.assert_array_equal(ys[key].query_points, tf.reshape(x_, [-1, 1]))
-        npt.assert_array_equal(ys[key].observations, tf.reshape(x_, [-1, 1]))
+        npt.assert_array_equal(ys[key].observations, tf.reshape(exp_o, [-1, 1]))
         for i in range(batch_size):
             npt.assert_array_equal(ys[LocalTag(key, i)].query_points, x_[:, i])
-            npt.assert_array_equal(ys[LocalTag(key, i)].observations, x_[:, i])
+            npt.assert_array_equal(ys[LocalTag(key, i)].observations, exp_o[:, i])

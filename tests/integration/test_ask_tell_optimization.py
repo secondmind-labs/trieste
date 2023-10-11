@@ -201,7 +201,7 @@ def _test_ask_tell_optimization_finds_minima(
     search_space = ScaledBranin.search_space
     initial_query_points = search_space.sample(5)
     observer = mk_observer(ScaledBranin.objective if optimize_branin else SimpleQuadratic.objective)
-    batch_observer = mk_batch_observer(observer, OBJECTIVE)
+    batch_observer = mk_batch_observer(observer)
     initial_data = observer(initial_query_points)
 
     model = GaussianProcessRegression(
