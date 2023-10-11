@@ -438,6 +438,8 @@ def test_ask_tell_optimizer_for_uncopyable_model(
     assert ask_tell.to_result(copy=False).final_result.is_ok
 
 
+# Check that the correct dataset is routed to the model.
+# Note: this test is almost identical to the one in test_bayesian_optimizer.py.
 @pytest.mark.parametrize("use_global_model", [True, False])
 @pytest.mark.parametrize("use_global_init_dataset", [True, False])
 @pytest.mark.parametrize("num_query_points_per_batch", [1, 2])

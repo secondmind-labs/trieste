@@ -1545,7 +1545,18 @@ def test_multi_trust_region_box_acquire_with_state() -> None:
         npt.assert_allclose(subspace.eps, exp_eps)
 
 
-# Define a test case with multiple local models and multiple regions
+# Test case with multiple local models and multiple regions for batch trust regions.
+# It checks that the correct model is passed to each region, and that the correct dataset is
+# passed to each instance of the base rule (note: the base rule is deep-copied for each region).
+# This is done by mapping each region to a model. For each region the model has a local quadratic
+# shape with the minimum at the center of the region. The overal model is creating by creating
+# a product of all regions using that model. The end expected result is that each region should find
+# its center after optimization. If the wrong model is being used by a region, then instead it would
+# find one of its boundaries.
+# Note that the implementation of this test is more general than strictly required. It can support
+# fewer models than regions (as long as the number of regions is a multiple of the number of
+# models). However, currently trieste only supports either a global model or a one to one mapping
+# between models and regions.
 @pytest.mark.parametrize("use_global_model", [True, False])
 @pytest.mark.parametrize("use_global_dataset", [True, False])
 @pytest.mark.parametrize("num_regions", [2, 4])
@@ -1591,6 +1602,7 @@ def test_multi_trust_region_box_with_multiple_models_and_regions(
 
         kernel = tfp.math.psd_kernels.ExponentiatedQuadratic(kernel_variance)
 
+        # Overall mean function is a product of local mean functions.
         def mean_function(x: TensorType, i: int = i) -> TensorType:
             return tf.reduce_prod(
                 tf.stack(
@@ -1602,7 +1614,6 @@ def test_multi_trust_region_box_with_multiple_models_and_regions(
                 axis=0,
             )
 
-        # mean_function = lambda x, i=i: quadratic(x - tf.cast(base_shift+i, dtype=x.dtype))
         models[tag] = GaussianProcess([mean_function], [kernel], noise_variance)
         models[tag]._exp_dataset = (  # type: ignore[attr-defined]
             global_dataset if use_global_dataset else init_datasets[tag]
@@ -1628,7 +1639,6 @@ def test_multi_trust_region_box_with_multiple_models_and_regions(
             return super().prepare_acquisition_function(model, dataset)
 
     base_rule = EfficientGlobalOptimization(  # type: ignore[var-annotated]
-        # builder=ParallelContinuousThompsonSampling(), num_query_points=num_query_points
         builder=TestMultipleOptimismNegativeLowerConfidenceBound(search_space),
         num_query_points=num_query_points,
     )
@@ -1645,6 +1655,8 @@ def test_multi_trust_region_box_with_multiple_models_and_regions(
     npt.assert_allclose(points, exp_points)
 
 
+# This test ensures that the datasets for each region are updated correctly. The datasets should
+# contain filtered data, i.e. only points in the respective regions.
 @pytest.mark.parametrize(
     "datasets, exp_num_init_points",
     [

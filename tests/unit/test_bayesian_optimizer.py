@@ -238,6 +238,8 @@ def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> Non
     assert observer.call_count == steps
 
 
+# Check that the correct dataset is routed to the model.
+# Note: this test is almost identical to the one in test_ask_tell_optimization.py.
 @pytest.mark.parametrize("use_global_model", [True, False])
 @pytest.mark.parametrize("use_global_init_dataset", [True, False])
 @pytest.mark.parametrize("num_query_points_per_batch", [1, 2])
