@@ -250,10 +250,12 @@ def get_value_for_tag(
 
     if mapping is None:
         return None, None
-    elif matched_tags := sorted(set(tags) & set(mapping.keys()), key=tags.index):
-        return matched_tags[0], mapping[matched_tags[0]]
     else:
-        raise ValueError(f"none of the tags '{tags}' found in mapping")
+        matched_tags = sorted(set(tags) & set(mapping.keys()), key=tags.index)
+        if matched_tags:
+            return matched_tags[0], mapping[matched_tags[0]]
+        else:
+            raise ValueError(f"none of the tags '{tags}' found in mapping")
 
 
 @dataclass(frozen=True)

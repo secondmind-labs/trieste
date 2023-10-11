@@ -1140,28 +1140,25 @@ class BatchTrustRegion(
         assert self._init_subspaces is not None
 
         num_subspaces = len(self._tags)
-        self.num_local_models = len(
-            [
-                tag
-                for tag in models
-                if (ltag := LocalTag.from_tag(tag)).is_local and ltag.global_tag == OBJECTIVE
-            ]
-        )
-        self.num_local_models = max(self.num_local_models, 1)
-        assert num_subspaces % self.num_local_models == 0, (
-            f"The number of subspaces {num_subspaces} should be a multiple of the number of "
-            f"local objective models {self.num_local_models}"
+        num_local_models = 0
+        for tag in models:
+            ltag = LocalTag.from_tag(tag)
+            if ltag.is_local and ltag.global_tag == OBJECTIVE:
+                num_local_models += 1
+        assert num_local_models in [0, num_subspaces], (
+            f"When using local models, the number of subspaces {num_subspaces} should be equal to "
+            f"the number of local objective models {num_local_models}"
         )
 
-        # If the base rule is a single model acquisition rule, but we have (multiple) local
+        # If the base rule is a single model acquisition rule, but we have local
         # models, run the (deepcopied) base rule sequentially for each subspace.
         # Otherwise, run the base rule as is, once with all models and datasets.
-        # Note: this should only trigger on the first call to `acquire`, as after that `self._rule`
-        # will be a list of rules.
+        # Note: this should only trigger on the first call to `acquire`, as after that we will
+        # have a list of rules in `self._rules`.
         if (
             isinstance(self._rule, EfficientGlobalOptimization)
             and hasattr(self._rule._builder, "single_builder")
-            and (self.num_local_models > 1 or OBJECTIVE not in models)
+            and (num_local_models > 0 or OBJECTIVE not in models)
         ):
             self._rules = [copy.deepcopy(self._rule) for _ in range(num_subspaces)]
 
