@@ -1213,7 +1213,7 @@ def test_trust_region_box_get_dataset_min() -> None:
     trb = SingleObjectiveTrustRegionBox(search_space)
     trb._lower = tf.constant([0.2, 0.2], dtype=tf.float64)
     trb._upper = tf.constant([0.7, 0.7], dtype=tf.float64)
-    x_min, y_min = trb.get_dataset_min(dataset)
+    x_min, y_min = trb.get_dataset_min({"foo": dataset})
     npt.assert_array_equal(x_min, tf.constant([0.3, 0.4], dtype=tf.float64))
     npt.assert_array_equal(y_min, tf.constant([0.2], dtype=tf.float64))
 
@@ -1227,7 +1227,7 @@ def test_trust_region_box_get_dataset_min_outside_search_space() -> None:
         tf.constant([[0.7], [0.9]], dtype=tf.float64),
     )
     trb = SingleObjectiveTrustRegionBox(search_space)
-    x_min, y_min = trb.get_dataset_min(dataset)
+    x_min, y_min = trb.get_dataset_min({"foo": dataset})
     npt.assert_array_equal(x_min, tf.constant([1.2, 1.3], dtype=tf.float64))
     npt.assert_array_equal(y_min, tf.constant([np.inf], dtype=tf.float64))
 
