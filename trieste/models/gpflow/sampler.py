@@ -100,7 +100,9 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
         :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
         """
         super().__init__(sample_size, model)
-        self._eps: Optional[tf.Variable] = None
+        self._eps = tf.Variable(
+            tf.zeros(shape=(sample_size, 0), dtype=tf.float64), shape=(sample_size, None), dtype=tf.float64
+        )
         self._qmc = qmc
         self._qmc_skip = qmc_skip
 
@@ -140,9 +142,6 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
                     [self._sample_size, tf.shape(mean)[-1]], dtype=tf.float64
                 )
             return normal_samples  # [S, L]
-
-        if self._eps is None:
-            self._eps = tf.Variable(sample_eps())
 
         tf.cond(
             self._initialized,
