@@ -165,8 +165,6 @@ class AcquisitionRule(ABC, Generic[ResultType, SearchSpaceType, ProbabilisticMod
         # If a tag from tagged_output does not exist in datasets, then add it to
         # datasets by copying the dataset from datasets with the same tag-prefix.
         # Otherwise keep the existing dataset from datasets.
-        # TODO: this could mean that when we have a global model, the global dataset
-        #   can contain multiple copies of the initial dataset.
         updated_datasets = {}
         for tag in new_datasets:
             _, dataset = get_value_for_tag(datasets, [tag, LocalTag.from_tag(tag).global_tag])
@@ -1273,12 +1271,16 @@ class BatchTrustRegion(
     ) -> Mapping[Tag, Dataset]:
         datasets = super().update_datasets(datasets, new_datasets)
 
+        # Filter out points that are not in any of the subspaces. This is done by creating a mask
+        # for each local dataset that is True for points that are in any subspace.
         used_masks = {
             tag: tf.zeros(dataset.query_points.shape[:-1], dtype=tf.bool)
             for tag, dataset in datasets.items()
             if LocalTag.from_tag(tag).is_local
         }
-        # TODO: using init_subspaces here is a bit of a hack, but it works for now.
+        # Using init_subspaces here relies on the users not creating new subspaces after
+        # initialization. This is a reasonable assumption for now, however a better solution would
+        # be to remove this assumption.
         assert self._init_subspaces is not None
         for subspace in self._init_subspaces:
             tag, in_region = subspace.get_dataset_filter_mask(datasets)
