@@ -180,7 +180,7 @@ def test_ask_tell_optimizer_copies_state(
     ask_tell.tell(new_data)
     state_end: Record[None] = ask_tell.to_record(copy=copy)
 
-    assert_datasets_allclose(state_start.dataset, init_dataset if copy else init_dataset + new_data)
+    assert_datasets_allclose(state_start.dataset, init_dataset)
     assert_datasets_allclose(state_end.dataset, init_dataset + new_data)
     assert state_start.model is not model if copy else state_start.model is model
 
