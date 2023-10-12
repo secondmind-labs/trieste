@@ -33,9 +33,11 @@ from matplotlib.patches import Rectangle
 from trieste.acquisition import AcquisitionFunction
 from trieste.acquisition.multi_objective.dominance import non_dominated
 from trieste.bayesian_optimizer import FrozenRecord, Record, StateType
+from trieste.observer import OBJECTIVE
 from trieste.space import TaggedMultiSearchSpace
 from trieste.types import TensorType
 from trieste.utils import to_numpy
+from trieste.utils.misc import LocalTag
 
 
 def create_grid(
@@ -588,9 +590,24 @@ def plot_trust_region_history_2d(
     if num_query_points is None:
         num_query_points = len(spaces)
 
-    query_points = history.dataset.query_points
-    new_points_mask = np.zeros(query_points.shape[0], dtype=bool)
-    new_points_mask[-num_query_points:] = True
+    query_points = history.dataset.query_points  # All query points.
+
+    # If there are local datasets, use them to generate the colors for the query points.
+    # Otherwise, use the global dataset and assume the last `num_query_points` points are new.
+    if len(history.datasets) > 1:
+        # Expect there to be an objective dataset for each subspace.
+        datasets = [history.datasets[LocalTag(OBJECTIVE, i)] for i in range(len(spaces))]
+        _new_points_mask = [
+            np.zeros(dataset.query_points.shape[0], dtype=bool) for dataset in datasets
+        ]
+        # Last point in each dataset is the new point.
+        for mask in _new_points_mask:
+            mask[-1] = True
+        # Concatenate the masks.
+        new_points_mask = np.concatenate(_new_points_mask)
+    else:
+        new_points_mask = np.zeros(query_points.shape[0], dtype=bool)
+        new_points_mask[-num_query_points:] = True
 
     # Plot trust regions.
     colors = [rgb2hex(color) for color in cm.rainbow(np.linspace(0, 1, num_query_points))]
