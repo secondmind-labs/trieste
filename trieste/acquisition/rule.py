@@ -30,6 +30,7 @@ from typing import (
     Generic,
     Optional,
     Sequence,
+    Set,
     Tuple,
     TypeVar,
     Union,
@@ -1018,6 +1019,23 @@ class UpdatableTrustRegion(SearchSpace):
         """
         ...
 
+    def _get_tags(self, tags: Set[Tag]) -> Tuple[Set[Tag], Set[Tag]]:
+        # Separate tags into local (matching index) and global tags (without matching
+        # local tag).
+        local_gtags = set()
+        global_tags = set()
+        for tag in tags:
+            ltag = LocalTag.from_tag(tag)
+            if not ltag.is_local:
+                global_tags.add(tag)
+            elif ltag.local_index == self.index:
+                local_gtags.add(ltag.global_tag)
+
+        # Only keep global tags that don't have a matching local tag.
+        global_tags = global_tags.difference(local_gtags)
+
+        return local_gtags, global_tags
+
     def select_models(
         self, models: Optional[Mapping[Tag, ProbabilisticModelType]]
     ) -> Optional[Mapping[Tag, ProbabilisticModelType]]:
@@ -1027,8 +1045,25 @@ class UpdatableTrustRegion(SearchSpace):
         :param models: The model for each tag.
         :return: The models belonging to this region.
         """
-        # By default return all the models.
-        return models
+        if models is None:
+            _models = {}
+        elif self.index is None:
+            # If no index, then return the global models.
+            _models = {
+                tag: model for tag, model in models.items() if not LocalTag.from_tag(tag).is_local
+            }
+        else:
+            # Prefer matching local model for each tag, otherwise select the global model.
+            local_gtags, global_tags = self._get_tags(set(models))
+
+            _models = {}
+            for tag in local_gtags:
+                ltag = LocalTag(tag, self.index)
+                _models[ltag] = models[ltag]
+            for tag in global_tags:
+                _models[tag] = models[tag]
+
+        return _models if _models else None
 
     def select_datasets(
         self, datasets: Optional[Mapping[Tag, Dataset]]
@@ -1039,8 +1074,27 @@ class UpdatableTrustRegion(SearchSpace):
         :param datasets: The dataset for each tag.
         :return: The datasets belonging to this region.
         """
-        # By default return all the datasets.
-        return datasets
+        if datasets is None:
+            _datasets = {}
+        elif self.index is None:
+            # If no index, then return the global datasets.
+            _datasets = {
+                tag: dataset
+                for tag, dataset in datasets.items()
+                if not LocalTag.from_tag(tag).is_local
+            }
+        else:
+            # Prefer matching local dataset for each tag, otherwise select the global dataset.
+            local_gtags, global_tags = self._get_tags(set(datasets))
+
+            _datasets = {}
+            for tag in local_gtags:
+                ltag = LocalTag(tag, self.index)
+                _datasets[ltag] = datasets[ltag]
+            for tag in global_tags:
+                _datasets[tag] = datasets[tag]
+
+        return _datasets if _datasets else None
 
     def get_datasets_filter_mask(
         self, datasets: Optional[Mapping[Tag, Dataset]]
@@ -1059,9 +1113,9 @@ class UpdatableTrustRegion(SearchSpace):
         if datasets is None:
             return None
         else:
-            # By default return a mask that filters nothing.
+            # Only keep points that are in the box.
             return {
-                tag: tf.ones(tf.shape(dataset.query_points)[:-1], dtype=tf.bool)
+                tag: self.contains(dataset.query_points)
                 for tag, dataset in datasets.items()
                 if LocalTag.from_tag(tag).local_index == self.index
             }
@@ -1172,7 +1226,7 @@ class BatchTrustRegion(
         num_subspaces = len(self._tags)
         assert _num_local_models in [0, num_subspaces], (
             f"When using local models, the number of subspaces {num_subspaces} should be equal to "
-            f"the number of local objective models {_num_local_models}"
+            f"the number of local models {_num_local_models}"
         )
 
         # If we have local models, run the (deepcopied) base rule sequentially for each subspace.
@@ -1402,13 +1456,13 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
         Initialize the box by sampling a location from the global search space and setting the
         bounds.
         """
-        dataset = self.select_datasets(datasets)
+        datasets = self.select_datasets(datasets)
 
         self.location = tf.squeeze(self.global_search_space.sample(1), axis=0)
         self._step_is_success = False
         self._init_eps()
         self._update_bounds()
-        _, self._y_min = self.get_dataset_min(dataset)
+        _, self._y_min = self.get_dataset_min(datasets)
 
     def update(
         self,
@@ -1426,13 +1480,13 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
         ``1 / beta``. Conversely, if it was unsuccessful, the size is reduced by the factor
         ``beta``.
         """
-        dataset = self.select_datasets(datasets)
+        datasets = self.select_datasets(datasets)
 
         if tf.reduce_any(self.eps < self._min_eps):
             self.initialize(models, datasets)
             return
 
-        x_min, y_min = self.get_dataset_min(dataset)
+        x_min, y_min = self.get_dataset_min(datasets)
         self.location = x_min
 
         tr_volume = tf.reduce_prod(self.upper - self.lower)
@@ -1440,46 +1494,6 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
         self.eps = self.eps / self._beta if self._step_is_success else self.eps * self._beta
         self._update_bounds()
         self._y_min = y_min
-
-    def select_models(
-        self, models: Optional[Mapping[Tag, ProbabilisticModelType]]
-    ) -> Optional[Mapping[Tag, ProbabilisticModelType]]:
-        # Select the model belonging to this box.
-        if self.index is None:
-            tags = [OBJECTIVE]  # If no index, then pick the global model.
-        else:
-            tags = [LocalTag(OBJECTIVE, self.index), OBJECTIVE]  # Prefer local model if available.
-        tag, model = get_value_for_tag(models, tags)
-        return {tag: model} if model is not None else None
-
-    def select_datasets(
-        self, datasets: Optional[Mapping[Tag, Dataset]]
-    ) -> Optional[Mapping[Tag, Dataset]]:
-        # Select the dataset belonging to this box.
-        if self.index is None:
-            tags = [OBJECTIVE]  # If no index, then pick the global dataset.
-        else:
-            tags = [
-                LocalTag(OBJECTIVE, self.index),
-                OBJECTIVE,
-            ]  # Prefer local dataset if available.
-        tag, dataset = get_value_for_tag(datasets, tags)
-        return {tag: dataset} if dataset is not None else None
-
-    def get_datasets_filter_mask(
-        self, datasets: Optional[Mapping[Tag, Dataset]]
-    ) -> Optional[Mapping[Tag, tf.Tensor]]:
-        # Only select the region datasets for filtering. Don't directly filter the global dataset.
-        assert self.index is not None, "the index should be set for filtering local datasets"
-        if datasets is None:
-            return None
-        else:
-            # Only keep points that are in the box.
-            return {
-                tag: self.contains(dataset.query_points)
-                for tag, dataset in datasets.items()
-                if LocalTag.from_tag(tag).local_index == self.index
-            }
 
     @check_shapes(
         "return[0]: [D]",
@@ -1489,9 +1503,13 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
         self, datasets: Optional[Mapping[Tag, Dataset]]
     ) -> Tuple[TensorType, TensorType]:
         """Calculate the minimum of the box using the given dataset."""
-        if datasets is None:
-            raise ValueError("""dataset must be provided""")
-        dataset = next(iter(datasets.values()))  # Expect only one dataset.
+        if (
+            datasets is None
+            or len(datasets) != 1
+            or LocalTag.from_tag(next(iter(datasets))).global_tag != OBJECTIVE
+        ):
+            raise ValueError("""a single OBJECTIVE dataset must be provided""")
+        dataset = next(iter(datasets.values()))
 
         in_tr = self.contains(dataset.query_points)
         in_tr_obs = tf.where(
@@ -1633,18 +1651,30 @@ class TREGOBox(SingleObjectiveTrustRegionBox):
     def get_datasets_filter_mask(
         self, datasets: Optional[Mapping[Tag, Dataset]]
     ) -> Optional[Mapping[Tag, tf.Tensor]]:
-        # Don't filter out any points from the dataset by bypassing the
-        # SingleObjectiveTrustRegionBox method.
-        return super(SingleObjectiveTrustRegionBox, self).get_datasets_filter_mask(datasets)
+        # Only select the region datasets for filtering. Don't directly filter the global dataset.
+        assert self.index is not None, "the index should be set for filtering local datasets"
+        if datasets is None:
+            return None
+        else:
+            # Don't filter out any points from the dataset. Always keep the entire dataset.
+            return {
+                tag: tf.ones(tf.shape(dataset.query_points)[:-1], dtype=tf.bool)
+                for tag, dataset in datasets.items()
+                if LocalTag.from_tag(tag).local_index == self.index
+            }
 
     @inherit_check_shapes
     def get_dataset_min(
         self, datasets: Optional[Mapping[Tag, Dataset]]
     ) -> Tuple[TensorType, TensorType]:
         """Calculate the minimum of the box using the given dataset."""
-        if datasets is None:
-            raise ValueError("""dataset must be provided""")
-        dataset = next(iter(datasets.values()))  # Expect only one dataset.
+        if (
+            datasets is None
+            or len(datasets) != 1
+            or LocalTag.from_tag(next(iter(datasets))).global_tag != OBJECTIVE
+        ):
+            raise ValueError("""a single OBJECTIVE dataset must be provided""")
+        dataset = next(iter(datasets.values()))
 
         # Always return the global minimum.
         ix = tf.argmin(dataset.observations)

@@ -545,16 +545,23 @@ def test_async_keeps_track_of_pending_points(
     npt.assert_allclose(state.pending_points, tf.concat([point2, point3], axis=0))
 
 
-@pytest.mark.parametrize("datasets", [{}, {"foo": empty_dataset([1], [1])}])
+@pytest.mark.parametrize(
+    "datasets",
+    [
+        {},
+        {"foo": empty_dataset([1], [1])},
+        {OBJECTIVE: empty_dataset([1], [1]), "foo": empty_dataset([1], [1])},
+    ],
+)
 @pytest.mark.parametrize(
     "models", [{}, {"foo": QuadraticMeanAndRBFKernel()}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}]
 )
 def test_trego_raises_for_missing_datasets_key(
-    datasets: dict[Tag, Dataset], models: dict[Tag, ProbabilisticModel]
+    datasets: Mapping[Tag, Dataset], models: dict[Tag, ProbabilisticModel]
 ) -> None:
     search_space = Box([-1], [1])
     rule = BatchTrustRegionBox(TREGOBox(search_space))  # type: ignore[var-annotated]
-    with pytest.raises(ValueError, match="none of the tags '.LocalTag.OBJECTIVE, 0., "):
+    with pytest.raises(ValueError, match="a single OBJECTIVE dataset must be provided"):
         rule.acquire(search_space, models, datasets=datasets)(None)
 
 
@@ -1195,12 +1202,21 @@ def test_turbo_state_deepcopy() -> None:
     npt.assert_allclose(tr_state_copy.y_min, tr_state.y_min)
 
 
-# get_dataset_min raises if dataset is None.
-def test_trust_region_box_get_dataset_min_raises_if_dataset_is_none() -> None:
+@pytest.mark.parametrize(
+    "datasets",
+    [
+        {},
+        {"foo": empty_dataset([1], [1])},
+        {OBJECTIVE: empty_dataset([1], [1]), "foo": empty_dataset([1], [1])},
+    ],
+)
+def test_trust_region_box_get_dataset_min_raises_if_dataset_is_faulty(
+    datasets: Mapping[Tag, Dataset]
+) -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     trb = SingleObjectiveTrustRegionBox(search_space)
-    with pytest.raises(ValueError, match="dataset must be provided"):
-        trb.get_dataset_min(None)
+    with pytest.raises(ValueError, match="a single OBJECTIVE dataset must be provided"):
+        trb.get_dataset_min(datasets)
 
 
 # get_dataset_min picks the minimum x and y values from the dataset.
@@ -1213,7 +1229,7 @@ def test_trust_region_box_get_dataset_min() -> None:
     trb = SingleObjectiveTrustRegionBox(search_space)
     trb._lower = tf.constant([0.2, 0.2], dtype=tf.float64)
     trb._upper = tf.constant([0.7, 0.7], dtype=tf.float64)
-    x_min, y_min = trb.get_dataset_min({"foo": dataset})
+    x_min, y_min = trb.get_dataset_min({OBJECTIVE: dataset})
     npt.assert_array_equal(x_min, tf.constant([0.3, 0.4], dtype=tf.float64))
     npt.assert_array_equal(y_min, tf.constant([0.2], dtype=tf.float64))
 
@@ -1227,7 +1243,7 @@ def test_trust_region_box_get_dataset_min_outside_search_space() -> None:
         tf.constant([[0.7], [0.9]], dtype=tf.float64),
     )
     trb = SingleObjectiveTrustRegionBox(search_space)
-    x_min, y_min = trb.get_dataset_min({"foo": dataset})
+    x_min, y_min = trb.get_dataset_min({OBJECTIVE: dataset})
     npt.assert_array_equal(x_min, tf.constant([1.2, 1.3], dtype=tf.float64))
     npt.assert_array_equal(y_min, tf.constant([np.inf], dtype=tf.float64))
 
