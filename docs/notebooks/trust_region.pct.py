@@ -242,7 +242,9 @@ dataset = result.try_get_final_dataset()
 # %% [markdown]
 # ### Visualizing batch trust region results
 #
-# We visualize the results as before.
+# We visualize the results as before. However, please note that the initial query points (crosses) are
+# not highlighted in these plots. On each iteration, the batch trust region rule filters out points
+# that are not in the regions anymore; so there isn't an easy way to track the initial points.
 
 # %%
 plot_final_result(dataset, num_init_points=0)
