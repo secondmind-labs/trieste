@@ -101,7 +101,9 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
         """
         super().__init__(sample_size, model)
         self._eps = tf.Variable(
-            tf.zeros(shape=(sample_size, 0), dtype=tf.float64), shape=(sample_size, None), dtype=tf.float64
+            tf.zeros(shape=(sample_size, 0), dtype=tf.float64),
+            shape=(sample_size, None),
+            dtype=tf.float64,
         )
         self._qmc = qmc
         self._qmc_skip = qmc_skip
