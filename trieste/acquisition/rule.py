@@ -1698,6 +1698,137 @@ class TREGOBox(SingleObjectiveTrustRegionBox):
         return tf.squeeze(x_min, axis=0), tf.squeeze(y_min)
 
 
+class TURBOBox(Box, UpdatableTrustRegion):
+    """Implements the TURBO algorithm as detailed in :cite:`eriksson2019scalable`."""
+
+    def __init__(
+        self,
+        global_search_space: SearchSpace,
+        L_min: Optional[float] = None,
+        L_init: Optional[float] = None,
+        L_max: Optional[float] = None,
+        success_tolerance: int = 3,
+        failure_tolerance: Optional[int] = None,
+    ):
+        """
+        Note that the optional parameters are set by a heuristic if not given by the user.
+
+        :param global_search_space: The global search space.
+        :param L_min: Minimum allowed length of the trust region.
+        :param L_init: Initial length of the trust region.
+        :param L_max: Maximum allowed length of the trust region.
+        :param success_tolerance: Number of consecutive successes before changing region size.
+        :param failure tolerance: Number of consecutive failures before changing region size.
+        """
+
+        if not success_tolerance > 0:
+            raise ValueError(
+                f"success tolerance must be an integer greater than 0, got {success_tolerance}"
+            )
+        if not failure_tolerance > 0:
+            raise ValueError(
+                f"success tolerance must be an integer greater than 0, got {failure_tolerance}"
+            )
+
+        search_space_max_width = tf.reduce_max(global_search_space.upper - global_search_space.lower)
+        if L_min is None:
+            L_min = (0.5**7) * search_space_max_width
+        if L_init is None:
+            L_init = 0.8 * search_space_max_width
+        if L_max is None:
+            L_max = 1.6 * search_space_max_width
+
+        if L_min <= 0:
+            raise ValueError(f"L_min must be postive, got {L_min}")
+        if L_init <= 0:
+            raise ValueError(f"L_init must be postive, got {L_init}")
+        if L_max <= 0:
+            raise ValueError(f"L_max must be postive, got {L_max}")
+
+        self.L_min = L_min
+        self.L_init = L_init
+        self.L_max = L_max
+        self.L = L_init
+        self.success_tolerance = success_tolerance
+        self.failure_tolerance = (
+            failure_tolerance
+            if failure_tolerance is not None
+            else global_search_space.dimension
+        )
+
+        self.success_counter = 0
+        self.failure_counter = 0
+
+        super().__init__(global_search_space.lower, global_search_space.upper)
+        super(Box, self).__init__()
+
+    def initialize(
+        self,
+        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+    ) -> None:
+        self.L, self.failure_counter, self.success_counter = self.L_init, 0, 0
+
+        datasets = self.select_datasets(datasets)
+        _, self.y_min = self.get_dataset_min(datasets)
+
+    def update(
+        self,
+        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+    ) -> None:
+        datasets = self.select_datasets(datasets)
+        x_min, y_min = self.get_dataset_min(datasets)
+
+        models = self.select_models(models)
+
+        step_is_success = y_min < self.y_min - 1e-10  # maybe make this stronger?
+        self.failure_counter = (
+            0 if step_is_success else self.failure_counter + 1
+        )  # update or reset counter
+        self.success_counter = (
+            self.success_counter + 1 if step_is_success else 0
+        )  # update or reset counter
+        if self.success_counter == self.success_tolerance:
+            L *= 2.0  # make region bigger
+            success_counter = 0
+        elif self.failure_counter == self.failure_tolerance:
+            L *= 0.5  # make region smaller
+            self.failure_counter = 0
+
+        self.L = tf.minimum(self.L, self.L_max)
+        if self.L < self.L_min:  # if gets too small then start again
+            self.L, self.failure_counter, self.success_counter = self.L_init, 0, 0
+
+    @check_shapes(
+        "return[0]: [D]",
+        "return[1]: []",
+    )
+    def get_dataset_min(
+        self, datasets: Optional[Mapping[Tag, Dataset]]
+    ) -> Tuple[TensorType, TensorType]:
+        """Calculate the minimum of the box using the given dataset."""
+        if (
+            datasets is None
+            or len(datasets) != 1
+            or LocalTag.from_tag(next(iter(datasets))).global_tag != OBJECTIVE
+        ):
+            raise ValueError("""a single OBJECTIVE dataset must be provided""")
+        dataset = next(iter(datasets.values()))
+
+        in_tr = self.contains(dataset.query_points)
+        in_tr_obs = tf.where(
+            tf.expand_dims(in_tr, axis=-1),
+            dataset.observations,
+            tf.constant(np.inf, dtype=dataset.observations.dtype),
+        )
+        ix = tf.argmin(in_tr_obs)
+        x_min = tf.gather(dataset.query_points, ix)
+        y_min = tf.gather(in_tr_obs, ix)
+
+        return tf.squeeze(x_min, axis=0), tf.squeeze(y_min)
+
+
 class TURBO(
     AcquisitionRule[
         types.State[Optional["TURBO.State"], TensorType], Box, TrainableSupportsGetKernel
