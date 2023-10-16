@@ -18,6 +18,7 @@ import unittest
 from typing import Any, Callable, List, Tuple, Type
 from unittest.mock import MagicMock
 
+import gpflow
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
@@ -30,6 +31,7 @@ from tests.util.models.gpflow.models import (
     GaussianProcess,
     QuadraticMeanAndRBFKernel,
     QuadraticMeanAndRBFKernelWithSamplers,
+    gpr_model,
     quadratic_mean_rbf_kernel_model,
     rbf,
     svgp_model,
@@ -39,6 +41,7 @@ from trieste.data import Dataset
 from trieste.models.gpflow import (
     BatchReparametrizationSampler,
     DecoupledTrajectorySampler,
+    GaussianProcessRegression,
     IndependentReparametrizationSampler,
     RandomFourierFeatureTrajectorySampler,
     SparseVariational,
@@ -600,6 +603,56 @@ def test_rff_trajectory_update_trajectory_updates_and_doesnt_retrace(
         )  # two samples should be different
 
     assert trajectory.__call__._get_tracing_count() == 1  # type: ignore
+
+
+@pytest.mark.parametrize(
+    "sampler_type", [RandomFourierFeatureTrajectorySampler, DecoupledTrajectorySampler]
+)
+@pytest.mark.parametrize(
+    "num_dimensions, active_dims",
+    [
+        (2, [0]),
+        (2, [1]),
+        (5, [1, 4]),
+        (5, [3, 2, 0]),
+    ],
+)
+@random_seed
+def test_trajectory_sampler_respects_active_dims(
+    sampler_type: Type[RandomFourierFeatureTrajectorySampler],
+    num_dimensions: int,
+    active_dims: List[int],
+) -> None:
+    # Test that the trajectory sampler respects the active_dims setting in a GPflow model.
+    num_points = 10
+    query_points = tf.random.uniform((num_points, num_dimensions), dtype=tf.float64)
+    dataset = Dataset(query_points, quadratic(query_points))
+
+    model = GaussianProcessRegression(gpr_model(dataset.query_points, dataset.observations))
+    model.model.kernel = gpflow.kernels.Matern52(active_dims=active_dims)
+
+    num_active_dims = len(active_dims)
+    active_dims_mask = tf.scatter_nd(
+        tf.expand_dims(active_dims, -1), [True] * num_active_dims, (num_dimensions,)
+    )
+    x_rnd = tf.random.uniform((num_points, num_dimensions), dtype=tf.float64)
+    x_fix = tf.constant(0.5, shape=(num_points, num_dimensions), dtype=tf.float64)
+    # We vary values only on the irrelevant dimensions.
+    x_test = tf.where(active_dims_mask, x_fix, x_rnd)
+
+    batch_size = 2
+    x_test_with_batching = tf.expand_dims(x_test, -2)
+    x_test_with_batching = tf.tile(x_test_with_batching, [1, batch_size, 1])  # [N, B, D]
+    trajectory_sampler = sampler_type(model)
+    trajectory = trajectory_sampler.get_trajectory()
+
+    model_eval = trajectory(x_test_with_batching)
+    assert model_eval.shape == (num_points, batch_size, 1)
+    # The output should be constant since data only varies on irrelevant dimensions.
+    npt.assert_array_almost_equal(
+        tf.math.reduce_std(model_eval, axis=0),
+        tf.constant(0.0, shape=(batch_size, 1), dtype=tf.float64),
+    )
 
 
 @pytest.mark.parametrize("num_features", [0, -2])

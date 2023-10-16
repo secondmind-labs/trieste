@@ -328,9 +328,9 @@ def _get_kernel_function(kernel: Kernel) -> Callable[[TensorType, TensorType], t
     # Select between a multioutput kernel and a single-output kernel.
     def K(X: TensorType, X2: Optional[TensorType] = None) -> tf.Tensor:
         if _is_multioutput_kernel(kernel):
-            return kernel.K(X, X2, full_output_cov=False)  # [L, M, M]
+            return kernel(X, X2, full_cov=True, full_output_cov=False)  # [L, M, M]
         else:
-            return tf.expand_dims(kernel.K(X, X2), axis=0)  # [1, M, M]
+            return tf.expand_dims(kernel(X, X2), axis=0)  # [1, M, M]
 
     return K
 
@@ -781,6 +781,7 @@ class ResampleableRandomFourierFeatureFunctions(RandomFourierFeaturesCosine):
             dummy_X = model.get_inducing_variables()[0][0:1, :]
         else:
             dummy_X = model.get_internal_data().query_points[0:1, :]
+        dummy_X = self.kernel.slice(dummy_X, None)[0]  # Keep only the active dims from the kernel.
 
         # Always build the weights and biases. This is important for saving the trajectory (using
         # tf.saved_model.save) before it has been used.
@@ -792,6 +793,13 @@ class ResampleableRandomFourierFeatureFunctions(RandomFourierFeaturesCosine):
         """
         self.b.assign(self._bias_init(tf.shape(self.b), dtype=self._dtype))
         self.W.assign(self._weights_init(tf.shape(self.W), dtype=self._dtype))
+
+    def call(self, x: TensorType) -> TensorType:  # [N, D] -> [N, F] or [L, N, F]
+        """
+        Evaluate the basis functions at ``x``
+        """
+        x = self.kernel.slice(x, None)[0]  # Keep only the active dims from the kernel.
+        return super().call(x)  # [N, F] or [L, N, F]
 
 
 class ResampleableDecoupledFeatureFunctions(ResampleableRandomFourierFeatureFunctions):
