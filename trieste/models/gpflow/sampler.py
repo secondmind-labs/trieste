@@ -795,6 +795,9 @@ class ResampleableRandomFourierFeatureFunctions(RandomFourierFeaturesCosine):
         self.W.assign(self._weights_init(tf.shape(self.W), dtype=self._dtype))
 
     def call(self, x: TensorType) -> TensorType:  # [N, D] -> [N, F] or [L, N, F]
+        """
+        Evaluate the basis functions at ``x``
+        """
         x = self.kernel.slice(x, None)[0]  # Keep only the active dims from the kernel.
         return super().call(x)  # [N, F] or [L, N, F]
 
