@@ -988,8 +988,13 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
 class UpdatableTrustRegion(SearchSpace):
     """A search space that can be updated."""
 
-    def __init__(self) -> None:
-        self.index: Optional[int] = None
+    def __init__(self, region_index: Optional[int] = None) -> None:
+        """
+        :param region_index: The index of the region in a multi-region search space. This is used to
+            identify the local models and datasets to use for acquisition. If `None`, the
+            global models and datasets are used.
+        """
+        self.region_index = region_index
 
     @abstractmethod
     def initialize(
@@ -1028,7 +1033,7 @@ class UpdatableTrustRegion(SearchSpace):
             ltag = LocalTag.from_tag(tag)
             if not ltag.is_local:
                 global_tags.add(tag)
-            elif ltag.local_index == self.index:
+            elif ltag.local_index == self.region_index:
                 local_gtags.add(ltag.global_tag)
 
         # Only keep global tags that don't have a matching local tag.
@@ -1047,7 +1052,7 @@ class UpdatableTrustRegion(SearchSpace):
         """
         if models is None:
             _models = {}
-        elif self.index is None:
+        elif self.region_index is None:
             # If no index, then return the global models.
             _models = {
                 tag: model for tag, model in models.items() if not LocalTag.from_tag(tag).is_local
@@ -1058,7 +1063,7 @@ class UpdatableTrustRegion(SearchSpace):
 
             _models = {}
             for tag in local_gtags:
-                ltag = LocalTag(tag, self.index)
+                ltag = LocalTag(tag, self.region_index)
                 _models[ltag] = models[ltag]
             for tag in global_tags:
                 _models[tag] = models[tag]
@@ -1076,7 +1081,7 @@ class UpdatableTrustRegion(SearchSpace):
         """
         if datasets is None:
             _datasets = {}
-        elif self.index is None:
+        elif self.region_index is None:
             # If no index, then return the global datasets.
             _datasets = {
                 tag: dataset
@@ -1089,7 +1094,7 @@ class UpdatableTrustRegion(SearchSpace):
 
             _datasets = {}
             for tag in local_gtags:
-                ltag = LocalTag(tag, self.index)
+                ltag = LocalTag(tag, self.region_index)
                 _datasets[ltag] = datasets[ltag]
             for tag in global_tags:
                 _datasets[tag] = datasets[tag]
@@ -1109,7 +1114,9 @@ class UpdatableTrustRegion(SearchSpace):
             corresponding point should be kept.
         """
         # Only select the region datasets for filtering. Don't directly filter the global dataset.
-        assert self.index is not None, "the index should be set for filtering local datasets"
+        assert (
+            self.region_index is not None
+        ), "the region_index should be set for filtering local datasets"
         if datasets is None:
             return None
         else:
@@ -1117,7 +1124,7 @@ class UpdatableTrustRegion(SearchSpace):
             return {
                 tag: self.contains(dataset.query_points)
                 for tag, dataset in datasets.items()
-                if LocalTag.from_tag(tag).local_index == self.index
+                if LocalTag.from_tag(tag).local_index == self.region_index
             }
 
 
@@ -1173,7 +1180,7 @@ class BatchTrustRegion(
                 init_subspaces = [init_subspaces]
             self._init_subspaces = tuple(init_subspaces)
             for index, subspace in enumerate(self._init_subspaces):
-                subspace.index = index
+                subspace.region_index = index  # Override the index.
             self._tags = tuple([str(index) for index in range(len(init_subspaces))])
 
         self._rule = rule
@@ -1409,6 +1416,7 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
         beta: float = 0.7,
         kappa: float = 1e-4,
         min_eps: float = 1e-2,
+        region_index: Optional[int] = None,
     ):
         """
         Calculates the bounds of the box from the location/centre and global bounds.
@@ -1419,6 +1427,9 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
             considered a success.
         :param min_eps: The minimal size of the search space. If the size of the search space is
             smaller than this, the search space is reinitialized.
+        :param region_index: The index of the region in a multi-region search space. This is used to
+            identify the local models and datasets to use for acquisition. If `None`, the
+            global models and datasets are used.
         """
 
         self._global_search_space = global_search_space
@@ -1427,7 +1438,7 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
         self._min_eps = min_eps
 
         super().__init__(global_search_space.lower, global_search_space.upper)
-        super(Box, self).__init__()
+        super(Box, self).__init__(region_index)
 
     @property
     def global_search_space(self) -> SearchSpace:
@@ -1551,7 +1562,7 @@ class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, SingleObjecti
                 [SingleObjectiveTrustRegionBox(search_space) for _ in range(num_query_points)]
             )
             for index, subspace in enumerate(self._init_subspaces):
-                subspace.index = index
+                subspace.region_index = index  # Override the index.
             self._tags = tuple([str(index) for index in range(len(self._init_subspaces))])
 
         # Ensure passed in global search space is always the same as the search space passed to
@@ -1605,8 +1616,9 @@ class TREGOBox(SingleObjectiveTrustRegionBox):
         beta: float = 0.7,
         kappa: float = 1e-4,
         min_eps: float = 1e-2,
+        region_index: Optional[int] = None,
     ):
-        super().__init__(global_search_space, beta, kappa, min_eps)
+        super().__init__(global_search_space, beta, kappa, min_eps, region_index)
         self._is_global = False
         self._initialized = False
 
@@ -1652,7 +1664,9 @@ class TREGOBox(SingleObjectiveTrustRegionBox):
         self, datasets: Optional[Mapping[Tag, Dataset]]
     ) -> Optional[Mapping[Tag, tf.Tensor]]:
         # Only select the region datasets for filtering. Don't directly filter the global dataset.
-        assert self.index is not None, "the index should be set for filtering local datasets"
+        assert (
+            self.region_index is not None
+        ), "the region_index should be set for filtering local datasets"
         if datasets is None:
             return None
         else:
@@ -1660,7 +1674,7 @@ class TREGOBox(SingleObjectiveTrustRegionBox):
             return {
                 tag: tf.ones(tf.shape(dataset.query_points)[:-1], dtype=tf.bool)
                 for tag, dataset in datasets.items()
-                if LocalTag.from_tag(tag).local_index == self.index
+                if LocalTag.from_tag(tag).local_index == self.region_index
             }
 
     @inherit_check_shapes
