@@ -266,8 +266,8 @@ class LocalTag:
     local_index: Optional[int]
 
     def __post_init__(self) -> None:
-        if self.is_local and (self.local_index is None or self.local_index < 0):
-            raise ValueError("local index must be non-negative")
+        if self.local_index is not None and self.local_index < 0:
+            raise ValueError(f"local index must be non-negative, got {self.local_index}")
 
     @property
     def is_local(self) -> bool:
