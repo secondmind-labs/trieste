@@ -79,9 +79,6 @@ def mk_batch_observer(
     """
 
     @check_shapes("qps: [n_points, batch_size, n_dims]")
-    # Note that the return type is not correct, but that is what mypy is happy with. It should be
-    # Mapping[Tag, Dataset] if key is not None, otherwise Dataset.
-    # One solution is to create two separate functions, but that will result in some duplicate code.
     def _observer(qps: TensorType) -> Mapping[Tag, Dataset]:
         # Call objective with rank 2 query points by flattening batch dimension.
         # Some objectives might only expect rank 2 query points, so this is safer.
