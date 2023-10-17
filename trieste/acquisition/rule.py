@@ -985,7 +985,7 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
         return thompson_samples
 
 
-class UpdatableTrustRegion(SearchSpace):
+class UpdatableTrustRegion(SearchSpace, Generic[ProbabilisticModelType]):
     """A search space that can be updated."""
 
     def __init__(self, region_index: Optional[int] = None) -> None:
@@ -1128,7 +1128,9 @@ class UpdatableTrustRegion(SearchSpace):
             }
 
 
-UpdatableTrustRegionType = TypeVar("UpdatableTrustRegionType", bound=UpdatableTrustRegion)
+UpdatableTrustRegionType = TypeVar(
+    "UpdatableTrustRegionType", bound=UpdatableTrustRegion[ProbabilisticModel]
+)
 """ A type variable bound to :class:`UpdatableTrustRegion`. """
 
 
@@ -1407,7 +1409,7 @@ class BatchTrustRegion(
         return filtered_datasets
 
 
-class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
+class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion[ProbabilisticModelType]):
     """An updatable box search space for use with trust region acquisition rules."""
 
     def __init__(
@@ -1535,7 +1537,9 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
         return tf.squeeze(x_min, axis=0), tf.squeeze(y_min)
 
 
-class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, SingleObjectiveTrustRegionBox]):
+class BatchTrustRegionBox(
+    BatchTrustRegion[ProbabilisticModelType, SingleObjectiveTrustRegionBox[ProbabilisticModel]]
+):
     """
     Implements the :class:`BatchTrustRegion` *trust region* acquisition rule for box regions.
     This is intended to be used for single-objective optimization with batching.
@@ -1559,7 +1563,10 @@ class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, SingleObjecti
                 num_query_points = 1
 
             self._init_subspaces = tuple(
-                [SingleObjectiveTrustRegionBox(search_space) for _ in range(num_query_points)]
+                [
+                    SingleObjectiveTrustRegionBox[ProbabilisticModelType](search_space)
+                    for _ in range(num_query_points)
+                ]
             )
             for index, subspace in enumerate(self._init_subspaces):
                 subspace.region_index = index  # Override the index.
@@ -1580,7 +1587,7 @@ class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, SingleObjecti
     @inherit_check_shapes
     def get_initialize_subspaces_mask(
         self,
-        subspaces: Sequence[SingleObjectiveTrustRegionBox],
+        subspaces: Sequence[SingleObjectiveTrustRegionBox[ProbabilisticModelType]],
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> TensorType:
@@ -1589,7 +1596,7 @@ class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, SingleObjecti
         return tf.logical_not(get_unique_points_mask(centres, tolerance=1e-6))
 
 
-class TREGOBox(SingleObjectiveTrustRegionBox):
+class TREGOBox(SingleObjectiveTrustRegionBox[ProbabilisticModelType]):
     """
     A box trust region algorithm that alternates between regular EGO steps and local steps within a
     trust region. See :cite:`diouane2022trego` for details.
@@ -1698,7 +1705,7 @@ class TREGOBox(SingleObjectiveTrustRegionBox):
         return tf.squeeze(x_min, axis=0), tf.squeeze(y_min)
 
 
-class TURBOBox(Box, UpdatableTrustRegion):
+class TURBOBox(Box, UpdatableTrustRegion[TrainableSupportsGetKernel]):
     """Implements the TURBO algorithm as detailed in :cite:`eriksson2019scalable`."""
 
     def __init__(
@@ -1721,16 +1728,9 @@ class TURBOBox(Box, UpdatableTrustRegion):
         :param failure tolerance: Number of consecutive failures before changing region size.
         """
 
-        if not success_tolerance > 0:
-            raise ValueError(
-                f"success tolerance must be an integer greater than 0, got {success_tolerance}"
-            )
-        if not failure_tolerance > 0:
-            raise ValueError(
-                f"success tolerance must be an integer greater than 0, got {failure_tolerance}"
-            )
-
-        search_space_max_width = tf.reduce_max(global_search_space.upper - global_search_space.lower)
+        search_space_max_width = tf.reduce_max(
+            global_search_space.upper - global_search_space.lower
+        )
         if L_min is None:
             L_min = (0.5**7) * search_space_max_width
         if L_init is None:
@@ -1751,36 +1751,81 @@ class TURBOBox(Box, UpdatableTrustRegion):
         self.L = L_init
         self.success_tolerance = success_tolerance
         self.failure_tolerance = (
-            failure_tolerance
-            if failure_tolerance is not None
-            else global_search_space.dimension
+            failure_tolerance if failure_tolerance is not None else global_search_space.dimension
         )
 
         self.success_counter = 0
         self.failure_counter = 0
 
+        if not self.success_tolerance > 0:
+            raise ValueError(
+                f"success tolerance must be an integer greater than 0, got {self.success_tolerance}"
+            )
+        if not self.failure_tolerance > 0:
+            raise ValueError(
+                f"success tolerance must be an integer greater than 0, got {self.failure_tolerance}"
+            )
+
+        self._global_search_space = global_search_space
+
         super().__init__(global_search_space.lower, global_search_space.upper)
         super(Box, self).__init__()
 
+    @property
+    def global_search_space(self) -> SearchSpace:
+        """The global search space this search space lives in."""
+        return self._global_search_space
+
+    def _set_tr_width(
+        self, models: Optional[Mapping[Tag, TrainableSupportsGetKernel]] = None
+    ) -> None:
+        # Set the width of the trust region based on the local model.
+        if (
+            models is None
+            or len(models) != 1
+            or LocalTag.from_tag(next(iter(models))).global_tag != OBJECTIVE
+        ):
+            raise ValueError("""a single OBJECTIVE model must be provided""")
+        model = next(iter(models.values()))
+
+        lengthscales = (
+            model.get_kernel().lengthscales
+        )  # stretch region according to model lengthscales
+        self.tr_width = (
+            lengthscales
+            * self.L
+            / tf.reduce_prod(lengthscales) ** (1.0 / self.global_search_space.dimension)
+        )  # keep volume fixed
+
+    def _update_bounds(self) -> None:
+        self._lower = tf.reduce_max(
+            [self.global_search_space.lower, self.location - self.tr_width / 2.0], axis=0
+        )
+        self._upper = tf.reduce_min(
+            [self.global_search_space.upper, self.location + self.tr_width / 2.0], axis=0
+        )
+
     def initialize(
         self,
-        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
+        models: Optional[Mapping[Tag, TrainableSupportsGetKernel]] = None,
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> None:
-        self.L, self.failure_counter, self.success_counter = self.L_init, 0, 0
-
         datasets = self.select_datasets(datasets)
         _, self.y_min = self.get_dataset_min(datasets)
 
+        self.L, self.failure_counter, self.success_counter = self.L_init, 0, 0
+
+        models = self.select_models(models)
+        self._set_tr_width(models)
+        self._update_bounds()
+
     def update(
         self,
-        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
+        models: Optional[Mapping[Tag, TrainableSupportsGetKernel]] = None,
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> None:
         datasets = self.select_datasets(datasets)
         x_min, y_min = self.get_dataset_min(datasets)
-
-        models = self.select_models(models)
 
         step_is_success = y_min < self.y_min - 1e-10  # maybe make this stronger?
         self.failure_counter = (
@@ -1790,15 +1835,19 @@ class TURBOBox(Box, UpdatableTrustRegion):
             self.success_counter + 1 if step_is_success else 0
         )  # update or reset counter
         if self.success_counter == self.success_tolerance:
-            L *= 2.0  # make region bigger
+            self.L *= 2.0  # make region bigger
             success_counter = 0
         elif self.failure_counter == self.failure_tolerance:
-            L *= 0.5  # make region smaller
+            self.L *= 0.5  # make region smaller
             self.failure_counter = 0
 
         self.L = tf.minimum(self.L, self.L_max)
         if self.L < self.L_min:  # if gets too small then start again
             self.L, self.failure_counter, self.success_counter = self.L_init, 0, 0
+
+        models = self.select_models(models)
+        self._set_tr_width(models)
+        self._update_bounds()
 
     @check_shapes(
         "return[0]: [D]",
