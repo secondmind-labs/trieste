@@ -985,7 +985,7 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
         return thompson_samples
 
 
-class UpdatableTrustRegion(SearchSpace, Generic[ProbabilisticModelType]):
+class UpdatableTrustRegion(SearchSpace):
     """A search space that can be updated."""
 
     def __init__(self, region_index: Optional[int] = None) -> None:
@@ -1128,9 +1128,7 @@ class UpdatableTrustRegion(SearchSpace, Generic[ProbabilisticModelType]):
             }
 
 
-UpdatableTrustRegionType = TypeVar(
-    "UpdatableTrustRegionType", bound=UpdatableTrustRegion[ProbabilisticModel]
-)
+UpdatableTrustRegionType = TypeVar("UpdatableTrustRegionType", bound=UpdatableTrustRegion)
 """ A type variable bound to :class:`UpdatableTrustRegion`. """
 
 
@@ -1409,7 +1407,7 @@ class BatchTrustRegion(
         return filtered_datasets
 
 
-class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion[ProbabilisticModelType]):
+class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
     """An updatable box search space for use with trust region acquisition rules."""
 
     def __init__(
@@ -1537,9 +1535,7 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion[ProbabilisticModel
         return tf.squeeze(x_min, axis=0), tf.squeeze(y_min)
 
 
-class BatchTrustRegionBox(
-    BatchTrustRegion[ProbabilisticModelType, SingleObjectiveTrustRegionBox[ProbabilisticModel]]
-):
+class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, SingleObjectiveTrustRegionBox]):
     """
     Implements the :class:`BatchTrustRegion` *trust region* acquisition rule for box regions.
     This is intended to be used for single-objective optimization with batching.
@@ -1563,10 +1559,7 @@ class BatchTrustRegionBox(
                 num_query_points = 1
 
             self._init_subspaces = tuple(
-                [
-                    SingleObjectiveTrustRegionBox[ProbabilisticModelType](search_space)
-                    for _ in range(num_query_points)
-                ]
+                [SingleObjectiveTrustRegionBox(search_space) for _ in range(num_query_points)]
             )
             for index, subspace in enumerate(self._init_subspaces):
                 subspace.region_index = index  # Override the index.
@@ -1587,7 +1580,7 @@ class BatchTrustRegionBox(
     @inherit_check_shapes
     def get_initialize_subspaces_mask(
         self,
-        subspaces: Sequence[SingleObjectiveTrustRegionBox[ProbabilisticModelType]],
+        subspaces: Sequence[SingleObjectiveTrustRegionBox],
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> TensorType:
@@ -1596,7 +1589,7 @@ class BatchTrustRegionBox(
         return tf.logical_not(get_unique_points_mask(centres, tolerance=1e-6))
 
 
-class TREGOBox(SingleObjectiveTrustRegionBox[ProbabilisticModelType]):
+class TREGOBox(SingleObjectiveTrustRegionBox):
     """
     A box trust region algorithm that alternates between regular EGO steps and local steps within a
     trust region. See :cite:`diouane2022trego` for details.
@@ -1705,7 +1698,7 @@ class TREGOBox(SingleObjectiveTrustRegionBox[ProbabilisticModelType]):
         return tf.squeeze(x_min, axis=0), tf.squeeze(y_min)
 
 
-class TURBOBox(Box, UpdatableTrustRegion[TrainableSupportsGetKernel]):
+class TURBOBox(Box, UpdatableTrustRegion):
     """Implements the TURBO algorithm as detailed in :cite:`eriksson2019scalable`."""
 
     def __init__(
@@ -1776,9 +1769,7 @@ class TURBOBox(Box, UpdatableTrustRegion[TrainableSupportsGetKernel]):
         """The global search space this search space lives in."""
         return self._global_search_space
 
-    def _set_tr_width(
-        self, models: Optional[Mapping[Tag, TrainableSupportsGetKernel]] = None
-    ) -> None:
+    def _set_tr_width(self, models: Optional[Mapping[Tag, ProbabilisticModelType]] = None) -> None:
         # Set the width of the trust region based on the local model.
         if (
             models is None
@@ -1787,6 +1778,9 @@ class TURBOBox(Box, UpdatableTrustRegion[TrainableSupportsGetKernel]):
         ):
             raise ValueError("""a single OBJECTIVE model must be provided""")
         model = next(iter(models.values()))
+        assert isinstance(
+            model, TrainableSupportsGetKernel
+        ), f"the model should be of type TrainableSupportsGetKernel, got {type(model)}"
 
         lengthscales = (
             model.get_kernel().lengthscales
@@ -1794,7 +1788,7 @@ class TURBOBox(Box, UpdatableTrustRegion[TrainableSupportsGetKernel]):
         self.tr_width = (
             lengthscales
             * self.L
-            / tf.reduce_prod(lengthscales) ** (1.0 / self.global_search_space.dimension)
+            / tf.reduce_prod(lengthscales) ** (1.0 / self.global_search_space.lower.shape[-1])
         )  # keep volume fixed
 
     def _update_bounds(self) -> None:
@@ -1807,11 +1801,12 @@ class TURBOBox(Box, UpdatableTrustRegion[TrainableSupportsGetKernel]):
 
     def initialize(
         self,
-        models: Optional[Mapping[Tag, TrainableSupportsGetKernel]] = None,
+        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> None:
-        datasets = self.select_datasets(datasets)
-        _, self.y_min = self.get_dataset_min(datasets)
+        datasets = self.select_unfiltered_datasets(datasets)
+        x_min, self.y_min = self.get_dataset_min(datasets)
+        self.location: TensorType = x_min
 
         self.L, self.failure_counter, self.success_counter = self.L_init, 0, 0
 
@@ -1821,11 +1816,12 @@ class TURBOBox(Box, UpdatableTrustRegion[TrainableSupportsGetKernel]):
 
     def update(
         self,
-        models: Optional[Mapping[Tag, TrainableSupportsGetKernel]] = None,
+        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> None:
-        datasets = self.select_datasets(datasets)
+        datasets = self.select_unfiltered_datasets(datasets)
         x_min, y_min = self.get_dataset_min(datasets)
+        self.location = x_min
 
         step_is_success = y_min < self.y_min - 1e-10  # maybe make this stronger?
         self.failure_counter = (
@@ -1836,7 +1832,7 @@ class TURBOBox(Box, UpdatableTrustRegion[TrainableSupportsGetKernel]):
         )  # update or reset counter
         if self.success_counter == self.success_tolerance:
             self.L *= 2.0  # make region bigger
-            success_counter = 0
+            self.success_counter = 0
         elif self.failure_counter == self.failure_tolerance:
             self.L *= 0.5  # make region smaller
             self.failure_counter = 0
@@ -1848,6 +1844,26 @@ class TURBOBox(Box, UpdatableTrustRegion[TrainableSupportsGetKernel]):
         models = self.select_models(models)
         self._set_tr_width(models)
         self._update_bounds()
+        self.y_min = y_min
+
+    def select_unfiltered_datasets(
+        self, datasets: Optional[Mapping[Tag, Dataset]]
+    ) -> Optional[Mapping[Tag, Dataset]]:
+        return super().select_datasets(datasets)
+
+    def filter_datasets(
+        self, datasets: Optional[Mapping[Tag, Dataset]]
+    ) -> Optional[Mapping[Tag, Dataset]]:
+        if datasets is None:
+            return None
+        else:
+            return {tag: get_local_dataset(self, dataset) for tag, dataset in datasets.items()}
+
+    def select_datasets(
+        self, datasets: Optional[Mapping[Tag, Dataset]]
+    ) -> Optional[Mapping[Tag, Dataset]]:
+        datasets = self.select_unfiltered_datasets(datasets)
+        return self.filter_datasets(datasets)
 
     @check_shapes(
         "return[0]: [D]",
@@ -1865,15 +1881,10 @@ class TURBOBox(Box, UpdatableTrustRegion[TrainableSupportsGetKernel]):
             raise ValueError("""a single OBJECTIVE dataset must be provided""")
         dataset = next(iter(datasets.values()))
 
-        in_tr = self.contains(dataset.query_points)
-        in_tr_obs = tf.where(
-            tf.expand_dims(in_tr, axis=-1),
-            dataset.observations,
-            tf.constant(np.inf, dtype=dataset.observations.dtype),
-        )
-        ix = tf.argmin(in_tr_obs)
+        # Dataset is already filtered to only contain points in this region.
+        ix = tf.argmin(dataset.observations)
         x_min = tf.gather(dataset.query_points, ix)
-        y_min = tf.gather(in_tr_obs, ix)
+        y_min = tf.gather(dataset.observations, ix)
 
         return tf.squeeze(x_min, axis=0), tf.squeeze(y_min)
 
@@ -2080,6 +2091,10 @@ class TURBO(
                 if L < self._L_min:  # if gets too small then start again
                     L, failure_counter, success_counter = self._L_init, 0, 0
 
+                local_dataset = get_local_dataset(state.acquisition_space, dataset)
+                local_model.update(local_dataset)
+                local_model.optimize(local_dataset)
+
             # build region with volume according to length L but stretched according to lengthscales
             xmin = dataset.query_points[tf.argmin(dataset.observations)[0], :]  # centre of region
             lengthscales = (
@@ -2095,16 +2110,28 @@ class TURBO(
 
             # fit the local model using just data from the trust region
             local_dataset = get_local_dataset(acquisition_space, dataset)
-            local_model.update(local_dataset)
-            local_model.optimize(local_dataset)
+            # local_model.update(local_dataset)
+            # local_model.optimize(local_dataset)
 
             # use local model and local dataset to choose next query point(s)
             points = self._rule.acquire_single(acquisition_space, local_model, local_dataset)
             state_ = TURBO.State(acquisition_space, L, failure_counter, success_counter, y_min)
 
+            self._state = state_
+
             return state_, points
 
         return state_func
+
+    def update_datasets(
+        self, datasets: Mapping[Tag, Dataset], new_datasets: Mapping[Tag, Dataset]
+    ) -> Mapping[Tag, Dataset]:
+        updated_datasets = {}
+        for tag, dataset in new_datasets.items():
+            updated_datasets[tag] = get_local_dataset(
+                self._state.acquisition_space, datasets[tag] + dataset
+            )
+        return updated_datasets
 
 
 class BatchHypervolumeSharpeRatioIndicator(
