@@ -1407,7 +1407,35 @@ class BatchTrustRegion(
         return filtered_datasets
 
 
-class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
+class UpdatableTrustRegionBox(Box, UpdatableTrustRegion):
+    """
+    A simple updatable box search space with a centre location and an associated global search
+    space.
+    """
+
+    def __init__(
+        self,
+        global_search_space: SearchSpace,
+        region_index: Optional[int] = None,
+    ):
+        """
+        :param global_search_space: The global search space this search space lives in.
+        :param region_index: The index of the region in a multi-region search space. This is used to
+            identify the local models and datasets to use for acquisition. If `None`, the
+            global models and datasets are used.
+        """
+        super().__init__(global_search_space.lower, global_search_space.upper)
+        super(Box, self).__init__(region_index)
+        self._global_search_space = global_search_space
+        self.location = tf.squeeze(global_search_space.sample(1), axis=0)
+
+    @property
+    def global_search_space(self) -> SearchSpace:
+        """The global search space this search space lives in."""
+        return self._global_search_space
+
+
+class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox):
     """An updatable box search space for use with trust region acquisition rules."""
 
     def __init__(
@@ -1431,19 +1459,10 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
             identify the local models and datasets to use for acquisition. If `None`, the
             global models and datasets are used.
         """
-
-        self._global_search_space = global_search_space
+        super().__init__(global_search_space, region_index)
         self._beta = beta
         self._kappa = kappa
         self._min_eps = min_eps
-
-        super().__init__(global_search_space.lower, global_search_space.upper)
-        super(Box, self).__init__(region_index)
-
-    @property
-    def global_search_space(self) -> SearchSpace:
-        """The global search space this search space lives in."""
-        return self._global_search_space
 
     def _init_eps(self) -> None:
         global_lower = self.global_search_space.lower
@@ -1535,7 +1554,7 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
         return tf.squeeze(x_min, axis=0), tf.squeeze(y_min)
 
 
-class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, SingleObjectiveTrustRegionBox]):
+class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, UpdatableTrustRegionBox]):
     """
     Implements the :class:`BatchTrustRegion` *trust region* acquisition rule for box regions.
     This is intended to be used for single-objective optimization with batching.
@@ -1558,9 +1577,10 @@ class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, SingleObjecti
             else:
                 num_query_points = 1
 
-            self._init_subspaces = tuple(
+            init_subspaces: Tuple[UpdatableTrustRegionBox, ...] = tuple(
                 [SingleObjectiveTrustRegionBox(search_space) for _ in range(num_query_points)]
             )
+            self._init_subspaces = init_subspaces
             for index, subspace in enumerate(self._init_subspaces):
                 subspace.region_index = index  # Override the index.
             self._tags = tuple([str(index) for index in range(len(self._init_subspaces))])
@@ -1580,7 +1600,7 @@ class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, SingleObjecti
     @inherit_check_shapes
     def get_initialize_subspaces_mask(
         self,
-        subspaces: Sequence[SingleObjectiveTrustRegionBox],
+        subspaces: Sequence[UpdatableTrustRegionBox],
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> TensorType:
@@ -1698,7 +1718,7 @@ class TREGOBox(SingleObjectiveTrustRegionBox):
         return tf.squeeze(x_min, axis=0), tf.squeeze(y_min)
 
 
-class TURBOBox(Box, UpdatableTrustRegion):
+class TURBOBox(UpdatableTrustRegionBox):
     """Implements the TURBO algorithm as detailed in :cite:`eriksson2019scalable`."""
 
     def __init__(
@@ -1709,6 +1729,7 @@ class TURBOBox(Box, UpdatableTrustRegion):
         L_max: Optional[float] = None,
         success_tolerance: int = 3,
         failure_tolerance: Optional[int] = None,
+        region_index: Optional[int] = None,
     ):
         """
         Note that the optional parameters are set by a heuristic if not given by the user.
@@ -1719,7 +1740,11 @@ class TURBOBox(Box, UpdatableTrustRegion):
         :param L_max: Maximum allowed length of the trust region.
         :param success_tolerance: Number of consecutive successes before changing region size.
         :param failure tolerance: Number of consecutive failures before changing region size.
+        :param region_index: The index of the region in a multi-region search space. This is used to
+            identify the local models and datasets to use for acquisition. If `None`, the
+            global models and datasets are used.
         """
+        super().__init__(global_search_space, region_index)
 
         search_space_max_width = tf.reduce_max(
             global_search_space.upper - global_search_space.lower
@@ -1758,16 +1783,6 @@ class TURBOBox(Box, UpdatableTrustRegion):
             raise ValueError(
                 f"success tolerance must be an integer greater than 0, got {self.failure_tolerance}"
             )
-
-        self._global_search_space = global_search_space
-
-        super().__init__(global_search_space.lower, global_search_space.upper)
-        super(Box, self).__init__()
-
-    @property
-    def global_search_space(self) -> SearchSpace:
-        """The global search space this search space lives in."""
-        return self._global_search_space
 
     def _set_tr_width(self, models: Optional[Mapping[Tag, ProbabilisticModelType]] = None) -> None:
         # Set the width of the trust region based on the local model.
