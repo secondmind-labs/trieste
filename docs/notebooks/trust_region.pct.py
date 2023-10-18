@@ -106,9 +106,7 @@ dataset = result.try_get_final_dataset()
 from trieste.experimental.plotting import plot_bo_points, plot_function_2d
 
 
-def plot_final_result(
-    _dataset: trieste.data.Dataset, num_init_points=num_initial_data_points
-) -> None:
+def plot_final_result(_dataset: trieste.data.Dataset) -> None:
     arg_min_idx = tf.squeeze(tf.argmin(_dataset.observations, axis=0))
     query_points = _dataset.query_points.numpy()
     _, ax = plot_function_2d(
@@ -119,7 +117,7 @@ def plot_final_result(
         contour=True,
     )
 
-    plot_bo_points(query_points, ax[0, 0], num_init_points, arg_min_idx)
+    plot_bo_points(query_points, ax[0, 0], num_initial_data_points, arg_min_idx)
 
 
 plot_final_result(dataset)
@@ -146,10 +144,7 @@ from trieste.experimental.plotting import (
 )
 
 
-def plot_history(
-    result: trieste.bayesian_optimizer.OptimizationResult,
-    num_init_points=num_initial_data_points,
-) -> None:
+def plot_history(result: trieste.bayesian_optimizer.OptimizationResult) -> None:
     frames = []
     for step, hist in enumerate(
         result.history + [result.final_result.unwrap()]
@@ -159,7 +154,7 @@ def plot_history(
             search_space.lower,
             search_space.upper,
             hist,
-            num_init=num_init_points,
+            num_init=num_initial_data_points,
         )
 
         if fig is not None:
@@ -242,15 +237,13 @@ dataset = result.try_get_final_dataset()
 # %% [markdown]
 # ### Visualizing batch trust region results
 #
-# We visualize the results as before. However, please note that the initial query points (crosses) are
-# not highlighted in these plots. On each iteration, the batch trust region rule filters out points
-# that are not in the regions anymore; so there isn't an easy way to track the initial points.
+# We visualize the results as before.
 
 # %%
-plot_final_result(dataset, num_init_points=0)
+plot_final_result(dataset)
 
 # %%
-plot_history(result, num_init_points=0)
+plot_history(result)
 
 # %% [markdown]
 # ## TEST
@@ -285,10 +278,10 @@ result = bo.optimize(
 dataset = result.try_get_final_dataset()
 
 # %%
-plot_final_result(dataset, num_init_points=0)
+plot_final_result(dataset)
 
 # %%
-plot_history(result, num_init_points=0)
+plot_history(result)
 
 # %% [markdown]
 # ## Trust region `TurBO` acquisition rule

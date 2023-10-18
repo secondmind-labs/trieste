@@ -646,6 +646,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         if not isinstance(models, Mapping):
             models = {OBJECTIVE: models}
 
+        filtered_datasets = datasets
         # reassure the type checker that everything is tagged
         datasets = cast(Dict[Tag, Dataset], datasets)
         models = cast(Dict[Tag, TrainableProbabilisticModelType], models)
@@ -754,7 +755,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                 with Timer() as total_step_wallclock_timer:
                     with Timer() as query_point_generation_timer:
                         points_or_stateful = acquisition_rule.acquire(
-                            self._search_space, models, datasets=datasets
+                            self._search_space, models, datasets=filtered_datasets
                         )
                         if callable(points_or_stateful):
                             acquisition_state, query_points = points_or_stateful(acquisition_state)
@@ -773,14 +774,23 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         else {OBJECTIVE: observer_output}
                     )
 
-                    datasets = acquisition_rule.update_datasets(datasets, tagged_output)
+                    # See explanation in ask_tell_optimization.tell().
+                    updated_datasets = {}
+                    for tag, new_dataset in tagged_output.items():
+                        _, old_dataset = get_value_for_tag(
+                            datasets, [tag, LocalTag.from_tag(tag).global_tag]
+                        )
+                        assert old_dataset is not None
+                        updated_datasets[tag] = old_dataset + new_dataset
+                    datasets = updated_datasets
+                    filtered_datasets = acquisition_rule.filter_datasets(updated_datasets)
 
                     with Timer() as model_fitting_timer:
                         if fit_model:
                             for tag, model in models.items():
                                 # Always use the matching dataset to the model. If the model is
                                 # local, then the dataset should be too by this stage.
-                                dataset = datasets[tag]
+                                dataset = filtered_datasets[tag]
                                 model.update(dataset)
                                 model.optimize_and_save_result(dataset)
 

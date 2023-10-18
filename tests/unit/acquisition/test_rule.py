@@ -69,7 +69,7 @@ from trieste.objectives.utils import mk_batch_observer
 from trieste.observer import OBJECTIVE
 from trieste.space import Box, SearchSpace, TaggedMultiSearchSpace
 from trieste.types import State, Tag, TensorType
-from trieste.utils.misc import LocalTag
+from trieste.utils.misc import LocalTag, get_value_for_tag
 
 
 def _line_search_maximize(
@@ -795,7 +795,7 @@ def test_trego_always_uses_global_dataset() -> None:
         tf.constant([[0.5, -0.2], [0.7, 0.2], [1.1, 0.3], [0.5, 0.5]]),
         tf.constant([[0.7], [0.8], [0.9], [1.0]]),
     )
-    updated_datasets = tr.update_datasets({"OBJECTIVE__0": dataset}, {"OBJECTIVE__0": new_data})
+    updated_datasets = tr.filter_datasets({"OBJECTIVE__0": dataset + new_data})
 
     # Both the local and global datasets should match.
     assert updated_datasets.keys() == {"OBJECTIVE", "OBJECTIVE__0"}
@@ -1695,6 +1695,15 @@ def test_multi_trust_region_box_with_multiple_models_and_regions(
             },
             1,
         ),
+        (
+            {
+                OBJECTIVE: mk_dataset([[-1.0]], [[-1.0]]),  # Should be ignored.
+                "OBJECTIVE__0": mk_dataset([[0.0], [1.0]], [[1.0], [1.0]]),
+                "OBJECTIVE__1": mk_dataset([[2.0], [1.0]], [[1.0], [1.0]]),
+                "OBJECTIVE__2": mk_dataset([[2.0], [3.0]], [[1.0], [1.0]]),
+            },
+            1,
+        ),
     ],
 )
 @pytest.mark.parametrize("num_query_points_per_region", [1, 2])
@@ -1718,7 +1727,13 @@ def test_multi_trust_region_box_updated_datasets_are_in_regions(
     observer = mk_batch_observer(quadratic)
     new_data = observer(points)
     assert not isinstance(new_data, Dataset)
-    datasets = rule.update_datasets(datasets, new_data)
+
+    updated_datasets = {}
+    for tag in new_data:
+        _, dataset = get_value_for_tag(datasets, [tag, LocalTag.from_tag(tag).global_tag])
+        assert dataset is not None
+        updated_datasets[tag] = dataset + new_data[tag]
+    datasets = rule.filter_datasets(updated_datasets)
 
     # Check local datasets.
     for i, subspace in enumerate(subspaces):
