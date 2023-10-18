@@ -205,6 +205,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
             )
 
         self._datasets = datasets
+        self._filtered_datasets = datasets
         self._models = models
 
         self._query_plot_dfs: dict[int, pd.DataFrame] = {}
@@ -405,7 +406,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
 
         with Timer() as query_point_generation_timer:
             points_or_stateful = self._acquisition_rule.acquire(
-                self._search_space, self._models, datasets=self._datasets
+                self._search_space, self._models, datasets=self._filtered_datasets
             )
 
         if callable(points_or_stateful):
@@ -446,13 +447,34 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
                 f"match dataset keys {self._datasets.keys()}"
             )
 
-        self._datasets = self._acquisition_rule.update_datasets(self._datasets, new_data)
+        # In order to support local datasets, account for the case where there may be an initial
+        # dataset that is not tagged per region. In this case, only the global dataset will exist
+        # in datasets. We want to copy this initial dataset to all the regions.
+        # If a tag from tagged_output does not exist in datasets, then add it to
+        # datasets by copying the data from datasets with the same global tag. Otherwise keep the
+        # existing data from datasets.
+        #
+        # Note: this replication of initial data can potentially cause an issue when a global model
+        # is being used with local datasets, as the points may be repeated. This will only be an
+        # issue if two regions overlap and both contain that initial data-point -- as filtering
+        # (in BatchTrustRegion) would otherwise remove duplicates. The main way to avoid the issue
+        # in this scenario is to provide local initial datasets, instead of a global initial
+        # dataset.
+        updated_datasets = {}
+        for tag, new_dataset in new_data.items():
+            _, old_dataset = get_value_for_tag(
+                self._datasets, [tag, LocalTag.from_tag(tag).global_tag]
+            )
+            assert old_dataset is not None
+            updated_datasets[tag] = old_dataset + new_dataset
+        self._datasets = updated_datasets
+        self._filtered_datasets = self._acquisition_rule.filter_datasets(updated_datasets)
 
         with Timer() as model_fitting_timer:
             for tag, model in self._models.items():
                 # Always use the matching dataset to the model. If the model is
                 # local, then the dataset should be too by this stage.
-                dataset = self._datasets[tag]
+                dataset = self._filtered_datasets[tag]
                 model.update(dataset)
                 model.optimize_and_save_result(dataset)
 

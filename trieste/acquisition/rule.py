@@ -64,7 +64,7 @@ from ..models.interfaces import (
 from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace, TaggedMultiSearchSpace
 from ..types import State, Tag, TensorType
-from ..utils.misc import LocalTag, get_value_for_tag
+from ..utils.misc import LocalTag
 from .function import (
     BatchMonteCarloExpectedImprovement,
     ExpectedImprovement,
@@ -162,35 +162,15 @@ class AcquisitionRule(ABC, Generic[ResultType, SearchSpaceType, ProbabilisticMod
             datasets=None if dataset is None else {OBJECTIVE: dataset},
         )
 
-    def update_datasets(
-        self, datasets: Mapping[Tag, Dataset], new_datasets: Mapping[Tag, Dataset]
-    ) -> Mapping[Tag, Dataset]:
+    def filter_datasets(self, datasets: Mapping[Tag, Dataset]) -> Mapping[Tag, Dataset]:
         """
-        Update the datasets with new datasets.
+        Filter the datasets.
 
-        :param datasets: The current datasets.
-        :param new_datasets: The new datasets.
-        :return: The updated datasets.
+        :param datasets: The datasets to filter.
+        :return: The filtered datasets.
         """
-        # In order to support local datasets, account for the case where there may be an initial
-        # dataset that is not tagged per region. In this case, only the global dataset will exist
-        # in datasets. We want to copy this initial dataset to all the regions.
-        # If a tag from tagged_output does not exist in datasets, then add it to
-        # datasets by copying the data from datasets with the same global tag. Otherwise keep the
-        # existing data from datasets.
-        #
-        # Note: this replication of initial data can potentially cause an issue when a global model
-        # is being used with local datasets, as the points may be repeated. This will only be an
-        # issue if two regions overlap and both contain that initial data-point -- as filtering
-        # (in BatchTrustRegion) would otherwise remove duplicates. The main way to avoid the issue
-        # in this scenario is to provide local initial datasets, instead of a global initial
-        # dataset.
-        updated_datasets = {}
-        for tag in new_datasets:
-            _, dataset = get_value_for_tag(datasets, [tag, LocalTag.from_tag(tag).global_tag])
-            assert dataset is not None
-            updated_datasets[tag] = dataset + new_datasets[tag]
-        return updated_datasets
+        # No filtering by default.
+        return datasets
 
 
 class EfficientGlobalOptimization(
@@ -1353,11 +1333,7 @@ class BatchTrustRegion(
         """
         ...
 
-    def update_datasets(
-        self, datasets: Mapping[Tag, Dataset], new_datasets: Mapping[Tag, Dataset]
-    ) -> Mapping[Tag, Dataset]:
-        datasets = super().update_datasets(datasets, new_datasets)
-
+    def filter_datasets(self, datasets: Mapping[Tag, Dataset]) -> Mapping[Tag, Dataset]:
         # Filter out points that are not in any of the subspaces. This is done by creating a mask
         # for each local dataset that is True for points that are in any subspace.
         used_masks = {
@@ -1365,9 +1341,12 @@ class BatchTrustRegion(
             for tag, dataset in datasets.items()
             if LocalTag.from_tag(tag).is_local
         }
+
+        # Global datasets to re-generate.
+        global_tags = {LocalTag.from_tag(tag).global_tag for tag in used_masks}
+
         # Using init_subspaces here relies on the users not creating new subspaces after
-        # initialization. This is a reasonable assumption for now, however a better solution would
-        # be to remove this assumption.
+        # initialization. This is a reasonable assumption for now.
         assert self._init_subspaces is not None
         for subspace in self._init_subspaces:
             in_region_masks = subspace.get_datasets_filter_mask(datasets)
@@ -1378,16 +1357,11 @@ class BatchTrustRegion(
                     used_masks[tag] = tf.logical_or(used_masks[tag], in_region)
 
         filtered_datasets = {}
-        global_tags = []  # Global datasets to re-generate.
         for tag, used_mask in used_masks.items():
             filtered_datasets[tag] = Dataset(
                 tf.boolean_mask(datasets[tag].query_points, used_mask),
                 tf.boolean_mask(datasets[tag].observations, used_mask),
             )
-
-            ltag = LocalTag.from_tag(tag)
-            if ltag.global_tag not in global_tags:
-                global_tags.append(ltag.global_tag)
 
         # Include global datasets.
         for gtag in global_tags:
