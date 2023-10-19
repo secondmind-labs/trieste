@@ -246,21 +246,35 @@ plot_final_result(dataset)
 plot_history(result)
 
 # %% [markdown]
-# ## TEST
+# ## Trust region `TurBO` acquisition rule
+#
+# Finally, we show how to run Bayesian optimization with the `TurBO` algorithm. This is a
+# trust region algorithm that uses local models and datasets to approximate the objective function
+# within their respective trust regions.
+#
+# ### Create `TurBO` rule and run optimization loop
+#
+# As before, this meta-rule requires the specification of an aquisition base-rule for performing
+# optimization within the trust regions; for our example we use the `DiscreteThompsonSampling` rule.
+#
+# We create 2 `TurBO` trust regions and associated local models by initially copying the global model
+# (using `copy_to_local_models`).
+#
+# The optimizer will return `num_query_points` new query points for each region in every step of the
+# loop. With 5 steps and 2 regions, that's 30 points in total.
 
 # %%
-num_query_points = 5
+num_regions = 2
+num_query_points = 3
 
-init_subspaces = [
-    trieste.acquisition.rule.SingleObjectiveTrustRegionBox(search_space)
-    for _ in range(num_query_points)
+turbo_subspaces = [
+    trieste.acquisition.rule.TURBOBox(search_space) for _ in range(num_regions)
 ]
-base_rule = trieste.acquisition.rule.EfficientGlobalOptimization(
-    builder=trieste.acquisition.ParallelContinuousThompsonSampling(),
-    num_query_points=1,
+dts_rule = trieste.acquisition.rule.DiscreteThompsonSampling(
+    500, num_query_points
 )
-batch_acq_rule = trieste.acquisition.rule.BatchTrustRegionBox(
-    init_subspaces, base_rule
+turbo_acq_rule = trieste.acquisition.rule.BatchTrustRegionBox(
+    turbo_subspaces, dts_rule
 )
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
@@ -269,51 +283,9 @@ num_steps = 5
 result = bo.optimize(
     num_steps,
     {trieste.observer.OBJECTIVE: initial_data},
-    trieste.acquisition.utils.copy_to_local_models(
-        build_model(), num_query_points
-    ),
-    batch_acq_rule,
-    track_state=True,
-)
-dataset = result.try_get_final_dataset()
-
-# %%
-plot_final_result(dataset)
-
-# %%
-plot_history(result)
-
-# %% [markdown]
-# ## Trust region `TurBO` acquisition rule
-#
-# Finally, we show how to run Bayesian optimization with the `TurBO` algorithm. This is a
-# trust region algorithm that uses local models and datasets to approximate the objective function
-# within one trust region.
-#
-# ### Create `TurBO` rule and run optimization loop
-#
-# As before, this meta-rule requires the specification of an aquisition base-rule for performing
-# optimization within the trust region; for our example we use the `DiscreteThompsonSampling` rule.
-#
-# Note that trieste maintains a global model that is, by default, automatically trained on each
-# iteration. However, this global model is unused for `TurBO`; which uses a local model instead.
-# As fitting the global model would be redundant and wasteful, we switch its training off by
-# setting `fit_model=False` in the `optimize` method.
-
-# %%
-turbo_acq_rule = trieste.acquisition.rule.TURBO(
-    search_space, rule=trieste.acquisition.rule.DiscreteThompsonSampling(500, 3)
-)
-bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-
-num_steps = 5
-result = bo.optimize(
-    num_steps,
-    initial_data,
-    build_model(),
+    trieste.acquisition.utils.copy_to_local_models(build_model(), num_regions),
     turbo_acq_rule,
     track_state=True,
-    fit_model=False,
 )
 dataset = result.try_get_final_dataset()
 
