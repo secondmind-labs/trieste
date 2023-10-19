@@ -560,9 +560,9 @@ def test_trego_raises_for_missing_datasets_key(
     datasets: Mapping[Tag, Dataset], models: dict[Tag, ProbabilisticModel]
 ) -> None:
     search_space = Box([-1], [1])
-    rule = BatchTrustRegionBox(TREGOBox(search_space))  # type: ignore[var-annotated]
+    subspace = TREGOBox(search_space)
     with pytest.raises(ValueError, match="a single OBJECTIVE dataset must be provided"):
-        rule.acquire(search_space, models, datasets=datasets)(None)
+        subspace.update(models, datasets)
 
 
 class _Midpoint(AcquisitionRule[TensorType, Box, ProbabilisticModel]):
@@ -594,9 +594,9 @@ def test_trego_for_default_state(
     search_space = Box(lower_bound, upper_bound)
     tr = BatchTrustRegionBox(TREGOBox(search_space), rule)
 
-    state, query_point = tr.acquire_single(
-        search_space, QuadraticMeanAndRBFKernel(), dataset=dataset
-    )(None)
+    model = QuadraticMeanAndRBFKernel()
+    state, query_point = tr.acquire_single(search_space, model, dataset=dataset)(None)
+    tr.update_and_filter({OBJECTIVE: model}, {OBJECTIVE: dataset})
 
     assert state is not None
     subspace = state.acquisition_space.get_subspace("0")
@@ -651,11 +651,13 @@ def test_trego_successful_global_to_global_trust_region_unchanged(
         search_space, search_space, dataset, eps, previous_y_min, is_global
     )
 
+    model = {OBJECTIVE: QuadraticMeanAndRBFKernel()}
     current_state, query_point = tr.acquire(
         search_space,
-        {OBJECTIVE: QuadraticMeanAndRBFKernel()},
+        model,
         datasets={OBJECTIVE: dataset},
     )(previous_state)
+    tr.update_and_filter(model, {OBJECTIVE: dataset})
 
     assert current_state is not None
     current_subspace = current_state.acquisition_space.get_subspace("0")
@@ -690,12 +692,15 @@ def test_trego_for_unsuccessful_global_to_local_trust_region_unchanged(
     previous_state = trego_create_state(
         search_space, acquisition_space, dataset, eps, previous_y_min, is_global
     )
+    previous_state_copy = copy.deepcopy(previous_state)
 
+    model = {OBJECTIVE: QuadraticMeanAndRBFKernel()}
     current_state, query_point = tr.acquire(
         search_space,
-        {OBJECTIVE: QuadraticMeanAndRBFKernel()},
+        model,
         datasets={OBJECTIVE: dataset},
     )(previous_state)
+    tr.update_and_filter(model, {OBJECTIVE: dataset})
 
     assert current_state is not None
     current_subspace = current_state.acquisition_space.get_subspace("0")
@@ -704,7 +709,7 @@ def test_trego_for_unsuccessful_global_to_local_trust_region_unchanged(
     assert not current_subspace._is_global
     npt.assert_array_less(lower_bound, current_subspace.lower)
     npt.assert_array_less(current_subspace.upper, upper_bound)
-    assert query_point[0][0] in current_state.acquisition_space
+    assert query_point[0][0] in previous_state_copy.acquisition_space
 
 
 @pytest.mark.parametrize(
@@ -731,11 +736,13 @@ def test_trego_for_successful_local_to_global_trust_region_increased(
         search_space, acquisition_space, dataset, eps, previous_y_min, is_global
     )
 
+    model = {OBJECTIVE: QuadraticMeanAndRBFKernel()}
     current_state, _ = tr.acquire(
         search_space,
-        {OBJECTIVE: QuadraticMeanAndRBFKernel()},
+        model,
         datasets={OBJECTIVE: dataset},
     )(previous_state)
+    tr.update_and_filter(model, {OBJECTIVE: dataset})
 
     assert current_state is not None
     current_subspace = current_state.acquisition_space.get_subspace("0")
@@ -770,11 +777,13 @@ def test_trego_for_unsuccessful_local_to_global_trust_region_reduced(
         search_space, acquisition_space, dataset, eps, previous_y_min, is_global
     )
 
+    model = {OBJECTIVE: QuadraticMeanAndRBFKernel()}
     current_state, _ = tr.acquire(
         search_space,
-        {OBJECTIVE: QuadraticMeanAndRBFKernel()},
+        model,
         datasets={OBJECTIVE: dataset},
     )(previous_state)
+    tr.update_and_filter(model, {OBJECTIVE: dataset})
 
     assert current_state is not None
     current_subspace = current_state.acquisition_space.get_subspace("0")
@@ -795,7 +804,9 @@ def test_trego_always_uses_global_dataset() -> None:
         tf.constant([[0.5, -0.2], [0.7, 0.2], [1.1, 0.3], [0.5, 0.5]]),
         tf.constant([[0.7], [0.8], [0.9], [1.0]]),
     )
-    updated_datasets = tr.filter_datasets({"OBJECTIVE__0": dataset + new_data})
+    updated_datasets = tr.update_and_filter(
+        {"OBJECTIVE__0": QuadraticMeanAndRBFKernel()}, {"OBJECTIVE__0": dataset + new_data}
+    )
 
     # Both the local and global datasets should match.
     assert updated_datasets.keys() == {"OBJECTIVE", "OBJECTIVE__0"}
@@ -1426,6 +1437,7 @@ def test_multi_trust_region_box_acquire_no_state() -> None:
         SingleObjectiveTrustRegionBox(search_space, beta=0.1, kappa=1e-3, min_eps=1e-1)
         for _ in range(2)
     ]
+    prev_subspaces = [copy.deepcopy(subspace) for subspace in subspaces]
     mtb = BatchTrustRegionBox(subspaces, base_rule)
     state, points = mtb.acquire(search_space, models, datasets)(None)
 
@@ -1441,7 +1453,7 @@ def test_multi_trust_region_box_acquire_no_state() -> None:
         assert subspace._beta == 0.1
         assert subspace._kappa == 1e-3
         assert subspace._min_eps == 1e-1
-        assert point in subspace
+        assert point in prev_subspaces[index]
 
 
 def test_multi_trust_region_box_raises_on_mismatched_global_search_space() -> None:
@@ -1491,9 +1503,9 @@ class TestTrustRegionBox(SingleObjectiveTrustRegionBox):
         min_eps: float = 1e-2,
         init_eps: float = 0.07,
     ):
-        super().__init__(global_search_space, beta, kappa, min_eps)
         self._location = fixed_location
         self._init_eps_val = init_eps
+        super().__init__(global_search_space, beta, kappa, min_eps)
 
     @property
     def location(self) -> TensorType:
@@ -1542,6 +1554,7 @@ def test_multi_trust_region_box_acquire_with_state() -> None:
     )
     state_func = mtb.acquire(search_space, models, {OBJECTIVE: dataset})
     next_state, points = state_func(state)
+    mtb.update_and_filter(models, {OBJECTIVE: dataset})
 
     assert next_state is not None
     assert points.shape == [1, 3, 2]
@@ -1733,7 +1746,7 @@ def test_multi_trust_region_box_updated_datasets_are_in_regions(
         _, dataset = get_value_for_tag(datasets, [tag, LocalTag.from_tag(tag).global_tag])
         assert dataset is not None
         updated_datasets[tag] = dataset + new_data[tag]
-    datasets = rule.filter_datasets(updated_datasets)
+    datasets = rule.update_and_filter(models, updated_datasets)
 
     # Check local datasets.
     for i, subspace in enumerate(subspaces):

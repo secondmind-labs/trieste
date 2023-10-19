@@ -783,7 +783,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         assert old_dataset is not None
                         updated_datasets[tag] = old_dataset + new_dataset
                     datasets = updated_datasets
-                    filtered_datasets = acquisition_rule.filter_datasets(updated_datasets)
+                    filtered_datasets = acquisition_rule.update_and_filter(models, updated_datasets)
 
                     with Timer() as model_fitting_timer:
                         if fit_model:

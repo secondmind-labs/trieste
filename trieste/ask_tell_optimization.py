@@ -468,7 +468,9 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
             assert old_dataset is not None
             updated_datasets[tag] = old_dataset + new_dataset
         self._datasets = updated_datasets
-        self._filtered_datasets = self._acquisition_rule.filter_datasets(updated_datasets)
+        self._filtered_datasets = self._acquisition_rule.update_and_filter(
+            self._models, updated_datasets
+        )
 
         with Timer() as model_fitting_timer:
             for tag, model in self._models.items():
