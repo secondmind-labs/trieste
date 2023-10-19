@@ -616,7 +616,7 @@ def trego_create_state(
     previous_y_min: TensorType,
     is_global: bool,
 ) -> BatchTrustRegionBox.State:
-    subspace = TREGOBox(search_space)
+    subspace = TREGOBox(search_space, region_index=0)
     subspace.initialize(datasets={OBJECTIVE: dataset})
     subspace._eps = eps
     subspace._y_min = previous_y_min
@@ -1398,9 +1398,9 @@ def test_multi_trust_region_box_no_subspace(
     mtb.acquire(search_space, {})
 
     assert mtb._tags is not None
-    assert mtb._init_subspaces is not None
-    assert len(mtb._init_subspaces) == exp_num_subspaces
-    for i, (subspace, tag) in enumerate(zip(mtb._init_subspaces, mtb._tags)):
+    assert mtb._subspaces is not None
+    assert len(mtb._subspaces) == exp_num_subspaces
+    for i, (subspace, tag) in enumerate(zip(mtb._subspaces, mtb._tags)):
         assert isinstance(subspace, SingleObjectiveTrustRegionBox)
         assert subspace.global_search_space == search_space
         assert tag == f"{i}"
@@ -1411,7 +1411,7 @@ def test_multi_trust_region_box_single_subspace() -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     subspace = SingleObjectiveTrustRegionBox(search_space)
     mtb = BatchTrustRegionBox(subspace)  # type: ignore[var-annotated]
-    assert mtb._init_subspaces == (subspace,)
+    assert mtb._subspaces == (subspace,)
     assert mtb._tags == ("0",)
 
 
@@ -1440,6 +1440,7 @@ def test_multi_trust_region_box_acquire_no_state() -> None:
     prev_subspaces = [copy.deepcopy(subspace) for subspace in subspaces]
     mtb = BatchTrustRegionBox(subspaces, base_rule)
     state, points = mtb.acquire(search_space, models, datasets)(None)
+    mtb.update_and_filter(models, datasets)
 
     assert state is not None
     assert isinstance(state.acquisition_space, TaggedMultiSearchSpace)
@@ -1483,11 +1484,13 @@ def test_multi_trust_region_box_raises_on_mismatched_tags() -> None:
     state = BatchTrustRegionBox.State(
         acquisition_space=TaggedMultiSearchSpace(subspaces, tags=["a", "b"])
     )
+    models = {OBJECTIVE: QuadraticMeanAndRBFKernelWithSamplers(dataset)}
     state_func = mtb.acquire(
         search_space,
-        {OBJECTIVE: QuadraticMeanAndRBFKernelWithSamplers(dataset)},
+        models,
         {OBJECTIVE: dataset},
     )
+    mtb.update_and_filter(models, {OBJECTIVE: dataset})
 
     with pytest.raises(AssertionError, match="The tags of the state acquisition space"):
         _, _ = state_func(state)
@@ -1674,6 +1677,7 @@ def test_multi_trust_region_box_with_multiple_models_and_regions(
 
     mtb = BatchTrustRegionBox(subspaces, base_rule)
     _, points = mtb.acquire(search_space, models, init_datasets)(None)
+    mtb.update_and_filter(models, init_datasets)
 
     npt.assert_array_equal(points.shape, [num_query_points_per_region, num_regions, 2])
 

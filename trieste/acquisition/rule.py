@@ -1156,13 +1156,13 @@ class BatchTrustRegion(
             rule = EfficientGlobalOptimization()
 
         # If init_subspaces are not provided, leave it to the subclasses to create them.
-        self._init_subspaces = None
+        self._subspaces = None
         self._tags = None
         if init_subspaces is not None:
             if not isinstance(init_subspaces, Sequence):
                 init_subspaces = [init_subspaces]
-            self._init_subspaces = tuple(init_subspaces)
-            for index, subspace in enumerate(self._init_subspaces):
+            self._subspaces = tuple(init_subspaces)
+            for index, subspace in enumerate(self._subspaces):
                 subspace.region_index = index  # Override the index.
             self._tags = tuple([str(index) for index in range(len(init_subspaces))])
 
@@ -1173,7 +1173,7 @@ class BatchTrustRegion(
 
     def __repr__(self) -> str:
         """"""
-        return f"""{self.__class__.__name__}({self._init_subspaces!r}, {self._rule!r})"""
+        return f"""{self.__class__.__name__}({self._subspaces!r}, {self._rule!r})"""
 
     def acquire(
         self,
@@ -1200,7 +1200,7 @@ class BatchTrustRegion(
 
         # Subspaces should be set by the time we call `acquire`.
         assert self._tags is not None
-        assert self._init_subspaces is not None
+        assert self._subspaces is not None
 
         num_local_models: Dict[Tag, int] = defaultdict(int)
         for tag in models:
@@ -1231,7 +1231,7 @@ class BatchTrustRegion(
         ) -> Tuple[BatchTrustRegion.State | None, TensorType]:
             # Check again to keep mypy happy.
             assert self._tags is not None
-            assert self._init_subspaces is not None
+            assert self._subspaces is not None
 
             # If state is set, the tags should be the same as the tags of the acquisition space
             # in the state.
@@ -1243,15 +1243,16 @@ class BatchTrustRegion(
                     BatchTrustRegion acquisition rule {self._tags}"""
 
             if state is None:
-                subspaces = list(self._init_subspaces)
+                subspaces = list(self._subspaces)
                 acquisition_space = TaggedMultiSearchSpace(subspaces, self._tags)
             else:
                 subspaces = []
-                for tag, init_subspace in zip(self._tags, self._init_subspaces):
+                for tag, init_subspace in zip(self._tags, self._subspaces):
                     subspace = state.acquisition_space.get_subspace(tag)
                     assert isinstance(subspace, type(init_subspace))
                     subspaces.append(subspace)
                 acquisition_space = state.acquisition_space
+                self._subspaces = tuple(subspaces)
 
             # If the base rule is a sequence, run it sequentially for each subspace.
             # See earlier comments.
@@ -1330,10 +1331,10 @@ class BatchTrustRegion(
         self, models: Mapping[Tag, ProbabilisticModelType], datasets: Mapping[Tag, Dataset]
     ) -> Mapping[Tag, Dataset]:
         # Update subspaces with the latest datasets.
-        assert self._init_subspaces is not None
-        for subspace in self._init_subspaces:
+        assert self._subspaces is not None
+        for subspace in self._subspaces:
             subspace.update(models, datasets)
-        self.maybe_initialize_subspaces(self._init_subspaces, models, datasets)
+        self.maybe_initialize_subspaces(self._subspaces, models, datasets)
 
         # Filter out points that are not in any of the subspaces. This is done by creating a mask
         # for each local dataset that is True for points that are in any subspace.
@@ -1346,10 +1347,7 @@ class BatchTrustRegion(
         # Global datasets to re-generate.
         global_tags = {LocalTag.from_tag(tag).global_tag for tag in used_masks}
 
-        # Using init_subspaces here relies on the users not creating new subspaces after
-        # initialization. This is a reasonable assumption for now.
-        assert self._init_subspaces is not None
-        for subspace in self._init_subspaces:
+        for subspace in self._subspaces:
             in_region_masks = subspace.get_datasets_filter_mask(datasets)
             if in_region_masks is not None:
                 for tag, in_region in in_region_masks.items():
@@ -1547,7 +1545,7 @@ class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, UpdatableTrus
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> types.State[BatchTrustRegion.State | None, TensorType]:
-        if self._init_subspaces is None:
+        if self._subspaces is None:
             # If no initial subspaces were provided, create N default subspaces, where N is the
             # number of query points in the base-rule.
             # Currently the detection for N is only implemented for EGO.
@@ -1561,14 +1559,14 @@ class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, UpdatableTrus
             init_subspaces: Tuple[UpdatableTrustRegionBox, ...] = tuple(
                 [SingleObjectiveTrustRegionBox(search_space) for _ in range(num_query_points)]
             )
-            self._init_subspaces = init_subspaces
-            for index, subspace in enumerate(self._init_subspaces):
+            self._subspaces = init_subspaces
+            for index, subspace in enumerate(self._subspaces):
                 subspace.region_index = index  # Override the index.
-            self._tags = tuple([str(index) for index in range(len(self._init_subspaces))])
+            self._tags = tuple([str(index) for index in range(len(self._subspaces))])
 
         # Ensure passed in global search space is always the same as the search space passed to
         # the subspaces.
-        for subspace in self._init_subspaces:
+        for subspace in self._subspaces:
             assert subspace.global_search_space == search_space, (
                 "The global search space of the subspaces should be the same as the "
                 "search space passed to the BatchTrustRegionBox acquisition rule. "
