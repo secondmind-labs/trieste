@@ -34,7 +34,7 @@ acquisition function should take. Additionally, acquisition functions and builde
 are designed to minimize the objective function. For example, we do not provide an implementation of
 UCB.
 """
-from . import optimizer, rule
+from . import optimizer, rule, multi_objective
 from .combination import Product, Reducer, Sum
 from .function import (
     GIBBON,
@@ -82,6 +82,9 @@ from .function import (
     predictive_variance,
     probability_below_threshold,
     soft_local_penalizer,
+    RandomScalarization,
+    random_scalarization,
+    hippo_penalizer,
 )
 from .interface import (
     AcquisitionFunction,
