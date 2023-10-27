@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import math
 import unittest
+from pathlib import Path
 from typing import Any, Callable, List, Tuple, Type
 from unittest.mock import MagicMock
 
@@ -938,6 +939,27 @@ def test_qmc_samples_shapes(num_samples: int, n_sample_dim: int) -> None:
     samples = qmc_normal_samples(num_samples=num_samples, n_sample_dim=n_sample_dim)
     expected_samples_shape = (num_samples, n_sample_dim)
     assert samples.shape == expected_samples_shape
+
+
+def test_qmc_samples__save_as_tf_function(tmp_path: Path) -> None:
+    def get_samples():
+        return qmc_normal_samples(
+            num_samples=tf.constant(5),
+            n_sample_dim=tf.constant(2),
+        )
+
+    module = tf.Module()
+    module.get_samples = tf.function(
+        get_samples,
+        input_signature=[],
+        autograph=False,
+    )
+
+    save_path = Path(tmp_path / "qmc_sampler")
+    tf.saved_model.save(module, str(save_path))
+    loaded_module = tf.saved_model.load(str(save_path))
+    samples = loaded_module.get_samples()
+    assert samples.shape == (5, 2)
 
 
 @pytest.mark.parametrize(

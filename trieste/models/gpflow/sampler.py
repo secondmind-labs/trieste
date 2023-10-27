@@ -56,21 +56,24 @@ def qmc_normal_samples(
     sample has dimension `n_sample_dim`.
     """
 
-    if num_samples == 0 or n_sample_dim == 0:
-        return tf.zeros(shape=(num_samples, n_sample_dim), dtype=tf.float64)
+    def _qmc_normal_samples() -> tf.Tensor:
+        sobol_samples = tf.math.sobol_sample(
+            dim=n_sample_dim,
+            num_results=num_samples,
+            dtype=tf.float64,
+            skip=skip,
+        )
+        dist = tfp.distributions.Normal(
+            loc=tf.constant(0.0, dtype=tf.float64),
+            scale=tf.constant(1.0, dtype=tf.float64),
+        )
+        return dist.quantile(sobol_samples)
 
-    sobol_samples = tf.math.sobol_sample(
-        dim=n_sample_dim,
-        num_results=num_samples,
-        dtype=tf.float64,
-        skip=skip,
+    normal_samples = tf.cond(
+        tf.logical_or(num_samples == 0, n_sample_dim == 0),
+        true_fn=lambda: tf.zeros(shape=(num_samples, n_sample_dim), dtype=tf.float64),
+        false_fn=_qmc_normal_samples,
     )
-
-    dist = tfp.distributions.Normal(
-        loc=tf.constant(0.0, dtype=tf.float64),
-        scale=tf.constant(1.0, dtype=tf.float64),
-    )
-    normal_samples = dist.quantile(sobol_samples)
     return normal_samples
 
 
