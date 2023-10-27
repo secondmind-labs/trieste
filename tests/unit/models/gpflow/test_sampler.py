@@ -941,12 +941,16 @@ def test_qmc_samples_shapes(num_samples: int, n_sample_dim: int) -> None:
     assert samples.shape == expected_samples_shape
 
 
-def test_qmc_samples__save_as_tf_function(tmp_path: Path) -> None:
+@pytest.mark.parametrize("decorate_with_tf_function", [True, False])
+def test_qmc_samples__save_as_tf_function(tmp_path: Path, decorate_with_tf_function: bool) -> None:
     def get_samples() -> tf.Tensor:
         return qmc_normal_samples(
             num_samples=tf.constant(5),
             n_sample_dim=tf.constant(2),
         )
+
+    if decorate_with_tf_function:
+        get_samples = tf.function(get_samples)
 
     module = tf.Module()
     module.get_samples = tf.function(
