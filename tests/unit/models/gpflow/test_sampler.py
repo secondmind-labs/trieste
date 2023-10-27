@@ -942,7 +942,7 @@ def test_qmc_samples_shapes(num_samples: int, n_sample_dim: int) -> None:
 
 
 def test_qmc_samples__save_as_tf_function(tmp_path: Path) -> None:
-    def get_samples():
+    def get_samples() -> tf.Tensor:
         return qmc_normal_samples(
             num_samples=tf.constant(5),
             n_sample_dim=tf.constant(2),
