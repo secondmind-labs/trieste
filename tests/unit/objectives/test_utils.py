@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Callable, Sequence, Union
+from typing import Callable, Sequence, Set, Union
 
 import numpy.testing as npt
 import pytest
@@ -21,7 +21,7 @@ from trieste.data import Dataset
 from trieste.objectives.utils import mk_batch_observer, mk_multi_observer, mk_observer
 from trieste.observer import Observer
 from trieste.types import Tag, TensorType
-from trieste.utils.misc import LocalTag
+from trieste.utils.misc import LocalizedTag
 
 
 def test_mk_observer() -> None:
@@ -83,9 +83,9 @@ def test_mk_batch_observer(
     assert isinstance(ys, dict)
 
     # Check keys.
-    exp_keys = set()
+    exp_keys: Set[Union[Tag, LocalizedTag]] = set()
     for key in keys:
-        exp_keys.update({LocalTag(key, i).tag for i in range(batch_size)})
+        exp_keys.update({LocalizedTag(key, i) for i in range(batch_size)})
         exp_keys.add(key)
     assert ys.keys() == exp_keys
 
@@ -102,5 +102,5 @@ def test_mk_batch_observer(
         npt.assert_array_equal(ys[key].query_points, tf.reshape(x_, [-1, 1]))
         npt.assert_array_equal(ys[key].observations, tf.reshape(exp_o, [-1, 1]))
         for i in range(batch_size):
-            npt.assert_array_equal(ys[LocalTag(key, i)].query_points, x_[:, i])
-            npt.assert_array_equal(ys[LocalTag(key, i)].observations, exp_o[:, i])
+            npt.assert_array_equal(ys[LocalizedTag(key, i)].query_points, x_[:, i])
+            npt.assert_array_equal(ys[LocalizedTag(key, i)].observations, exp_o[:, i])

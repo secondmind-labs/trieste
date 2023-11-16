@@ -47,7 +47,7 @@ from .observer import OBJECTIVE
 from .space import SearchSpace
 from .types import State, Tag, TensorType
 from .utils import Ok, Timer
-from .utils.misc import LocalTag, get_value_for_tag
+from .utils.misc import LocalizedTag, get_value_for_tag
 
 StateType = TypeVar("StateType")
 """ Unbound type variable. """
@@ -196,8 +196,8 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         models = cast(Dict[Tag, TrainableProbabilisticModelType], models)
 
         # Get set of dataset and model keys, ignoring any local tag index.
-        datasets_keys = {LocalTag.from_tag(tag).global_tag for tag in datasets.keys()}
-        models_keys = {LocalTag.from_tag(tag).global_tag for tag in models.keys()}
+        datasets_keys = {LocalizedTag.from_tag(tag).global_tag for tag in datasets.keys()}
+        models_keys = {LocalizedTag.from_tag(tag).global_tag for tag in models.keys()}
         if datasets_keys != models_keys:
             raise ValueError(
                 f"datasets and models should contain the same keys. Got {datasets_keys} and"
@@ -237,8 +237,8 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
             with Timer() as initial_model_fitting_timer:
                 for tag, model in self._models.items():
                     # Prefer local dataset if available.
-                    tags = [tag, LocalTag.from_tag(tag).global_tag]
-                    _, dataset = get_value_for_tag(datasets, tags)
+                    tags = [tag, LocalizedTag.from_tag(tag).global_tag]
+                    _, dataset = get_value_for_tag(datasets, *tags)
                     assert dataset is not None
                     model.update(dataset)
                     model.optimize_and_save_result(dataset)
@@ -266,7 +266,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         """The current dataset when there is just one dataset."""
         # Ignore local datasets.
         datasets: Mapping[Tag, Dataset] = dict(
-            filter(lambda item: not LocalTag.from_tag(item[0]).is_local, self.datasets.items())
+            filter(lambda item: not LocalizedTag.from_tag(item[0]).is_local, self.datasets.items())
         )
         if len(datasets) == 1:
             return next(iter(datasets.values()))
@@ -293,7 +293,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         """The current model when there is just one model."""
         # Ignore local models.
         models: Mapping[Tag, TrainableProbabilisticModel] = dict(
-            filter(lambda item: not LocalTag.from_tag(item[0]).is_local, self.models.items())
+            filter(lambda item: not LocalizedTag.from_tag(item[0]).is_local, self.models.items())
         )
         if len(models) == 1:
             return next(iter(models.values()))
@@ -440,7 +440,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         # The datasets must have the same keys as the existing datasets. Only exception is if
         # the existing datasets are all global, in which case the dataset will be appropriately
         # updated below for the next iteration.
-        datasets_indices = {LocalTag.from_tag(tag).local_index for tag in self._datasets.keys()}
+        datasets_indices = {LocalizedTag.from_tag(tag).local_index for tag in self._datasets.keys()}
         if self._datasets.keys() != new_data.keys() and datasets_indices != {None}:
             raise ValueError(
                 f"new_data keys {new_data.keys()} doesn't "
@@ -463,7 +463,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         updated_datasets = {}
         for tag, new_dataset in new_data.items():
             _, old_dataset = get_value_for_tag(
-                self._datasets, [tag, LocalTag.from_tag(tag).global_tag]
+                self._datasets, *[tag, LocalizedTag.from_tag(tag).global_tag]
             )
             assert old_dataset is not None
             updated_datasets[tag] = old_dataset + new_dataset

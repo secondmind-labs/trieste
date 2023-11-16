@@ -23,7 +23,7 @@ from ..models import ProbabilisticModelType
 from ..observer import OBJECTIVE
 from ..space import SearchSpaceType
 from ..types import Tag, TensorType
-from ..utils.misc import LocalTag
+from ..utils.misc import LocalizedTag
 from .interface import AcquisitionFunction
 from .optimizer import AcquisitionOptimizer
 
@@ -155,7 +155,7 @@ def copy_to_local_models(
     :param key: The tag prefix for the local models.
     :return: A mapping of the local models.
     """
-    return {LocalTag(key, i).tag: copy.deepcopy(global_model) for i in range(num_local_models)}
+    return {LocalizedTag(key, i): copy.deepcopy(global_model) for i in range(num_local_models)}
 
 
 @check_shapes(

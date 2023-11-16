@@ -17,19 +17,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from time import perf_counter
 from types import TracebackType
-from typing import (
-    Any,
-    Callable,
-    Generic,
-    Mapping,
-    NoReturn,
-    Optional,
-    Sequence,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-)
+from typing import Any, Callable, Generic, Mapping, NoReturn, Optional, Tuple, Type, TypeVar, Union
 
 import numpy as np
 import tensorflow as tf
@@ -234,7 +222,7 @@ T = TypeVar("T")
 
 
 def get_value_for_tag(
-    mapping: Optional[Mapping[Tag, T]], tags: Union[Tag, Sequence[Tag]] = OBJECTIVE
+    mapping: Optional[Mapping[Tag, T]], *tags: Tag
 ) -> Tuple[Optional[Tag], Optional[T]]:
     """Return the value from a mapping for the first tag found from a sequence of tags.
 
@@ -245,25 +233,27 @@ def get_value_for_tag(
     :raises ValueError: If none of the tags are in the mapping and the mapping is not None.
     """
 
-    if isinstance(tags, Tag):
-        tags = [tags]
+    if not tags:
+        tags = (OBJECTIVE,)
 
     if mapping is None:
         return None, None
     else:
-        matched_tags = sorted(set(tags) & set(mapping.keys()), key=tags.index)
-        if matched_tags:
-            return matched_tags[0], mapping[matched_tags[0]]
-        else:
+        matched_tag = next((tag for tag in tags if tag in mapping), None)
+        if matched_tag is None:
             raise ValueError(f"none of the tags '{tags}' found in mapping")
+        return matched_tag, mapping[matched_tag]
 
 
 @dataclass(frozen=True)
-class LocalTag:
-    """Manage a tag for a local model or dataset."""
+class LocalizedTag:
+    """Manage a tag for a local model or dataset. These have a global tag and a local index."""
 
     global_tag: Tag
+    """ The global portion of the tag. """
+
     local_index: Optional[int]
+    """ The local index of the tag. """
 
     def __post_init__(self) -> None:
         if self.local_index is not None and self.local_index < 0:
@@ -274,43 +264,13 @@ class LocalTag:
         """Return True if the tag is a local tag."""
         return self.local_index is not None
 
-    @property
-    def tag(self) -> Tag:
-        """The local tag."""
-        if self.is_local:
-            return f"{self.global_tag}__{self.local_index}"
-        else:
-            return self.global_tag
-
-    def __repr__(self) -> str:
-        """Return the local tag."""
-        return f"LocalTag({self.global_tag}, {self.local_index})"
-
-    def __str__(self) -> str:
-        """Return the local tag."""
-        return str(self.tag)
-
-    def __hash__(self) -> int:
-        """Return the hash of the overall tag."""
-        return hash(self.tag)
-
-    def __eq__(self, other: object) -> bool:
-        """Return True if the local tag is equal to the other object."""
-        return hash(self) == hash(other)
-
     @staticmethod
-    def from_tag(tag: Union[Tag, LocalTag]) -> LocalTag:
-        """Return a LocalTag from a given tag."""
-        if isinstance(tag, LocalTag):
+    def from_tag(tag: Union[Tag, LocalizedTag]) -> LocalizedTag:
+        """Return a LocalizedTag from a given tag."""
+        if isinstance(tag, LocalizedTag):
             return tag
         else:
-            tag = str(tag)
-            if "__" in tag:
-                global_tag, _local_index = tag.split("__")
-                local_index = int(_local_index)
-            else:
-                global_tag, local_index = tag, None
-            return LocalTag(global_tag, local_index)
+            return LocalizedTag(tag, None)
 
 
 class Timer:

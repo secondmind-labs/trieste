@@ -69,7 +69,7 @@ from trieste.objectives.utils import mk_batch_observer
 from trieste.observer import OBJECTIVE
 from trieste.space import Box, SearchSpace, TaggedMultiSearchSpace
 from trieste.types import State, Tag, TensorType
-from trieste.utils.misc import LocalTag, get_value_for_tag
+from trieste.utils.misc import LocalizedTag, get_value_for_tag
 
 
 def _line_search_maximize(
@@ -795,10 +795,10 @@ def test_trego_always_uses_global_dataset() -> None:
         tf.constant([[0.5, -0.2], [0.7, 0.2], [1.1, 0.3], [0.5, 0.5]]),
         tf.constant([[0.7], [0.8], [0.9], [1.0]]),
     )
-    updated_datasets = tr.filter_datasets({"OBJECTIVE__0": dataset + new_data})
+    updated_datasets = tr.filter_datasets({LocalizedTag(OBJECTIVE, 0): dataset + new_data})
 
     # Both the local and global datasets should match.
-    assert updated_datasets.keys() == {"OBJECTIVE", "OBJECTIVE__0"}
+    assert updated_datasets.keys() == {OBJECTIVE, LocalizedTag(OBJECTIVE, 0)}
     # Updated dataset should contain all the points, including ones outside the search space.
     exp_dataset = dataset + new_data
     for key in updated_datasets.keys():
@@ -1606,7 +1606,7 @@ def test_multi_trust_region_box_with_multiple_models_and_regions(
             tag = OBJECTIVE
             num_models = 1
         else:
-            tag = LocalTag(OBJECTIVE, i)
+            tag = LocalizedTag(OBJECTIVE, i)
             num_models = num_regions
 
         num_regions_per_model = num_regions // num_models
@@ -1689,18 +1689,18 @@ def test_multi_trust_region_box_with_multiple_models_and_regions(
         (
             {
                 OBJECTIVE: mk_dataset([[-1.0]], [[-1.0]]),  # Should be ignored.
-                "OBJECTIVE__0": mk_dataset([[0.0]], [[1.0]]),
-                "OBJECTIVE__1": mk_dataset([[1.0]], [[1.0]]),
-                "OBJECTIVE__2": mk_dataset([[2.0]], [[1.0]]),
+                LocalizedTag(OBJECTIVE, 0): mk_dataset([[0.0]], [[1.0]]),
+                LocalizedTag(OBJECTIVE, 1): mk_dataset([[1.0]], [[1.0]]),
+                LocalizedTag(OBJECTIVE, 2): mk_dataset([[2.0]], [[1.0]]),
             },
             1,
         ),
         (
             {
                 OBJECTIVE: mk_dataset([[-1.0]], [[-1.0]]),  # Should be ignored.
-                "OBJECTIVE__0": mk_dataset([[0.0], [1.0]], [[1.0], [1.0]]),
-                "OBJECTIVE__1": mk_dataset([[2.0], [1.0]], [[1.0], [1.0]]),
-                "OBJECTIVE__2": mk_dataset([[2.0], [3.0]], [[1.0], [1.0]]),
+                LocalizedTag(OBJECTIVE, 0): mk_dataset([[0.0], [1.0]], [[1.0], [1.0]]),
+                LocalizedTag(OBJECTIVE, 1): mk_dataset([[2.0], [1.0]], [[1.0], [1.0]]),
+                LocalizedTag(OBJECTIVE, 2): mk_dataset([[2.0], [3.0]], [[1.0], [1.0]]),
             },
             1,
         ),
@@ -1730,7 +1730,7 @@ def test_multi_trust_region_box_updated_datasets_are_in_regions(
 
     updated_datasets = {}
     for tag in new_data:
-        _, dataset = get_value_for_tag(datasets, [tag, LocalTag.from_tag(tag).global_tag])
+        _, dataset = get_value_for_tag(datasets, *[tag, LocalizedTag.from_tag(tag).global_tag])
         assert dataset is not None
         updated_datasets[tag] = dataset + new_data[tag]
     datasets = rule.filter_datasets(updated_datasets)
@@ -1738,10 +1738,10 @@ def test_multi_trust_region_box_updated_datasets_are_in_regions(
     # Check local datasets.
     for i, subspace in enumerate(subspaces):
         assert (
-            datasets[LocalTag(OBJECTIVE, i)].query_points.shape[0]
+            datasets[LocalizedTag(OBJECTIVE, i)].query_points.shape[0]
             == exp_num_init_points + num_query_points_per_region
         )
-        assert np.all(subspace.contains(datasets[LocalTag(OBJECTIVE, i)].query_points))
+        assert np.all(subspace.contains(datasets[LocalizedTag(OBJECTIVE, i)].query_points))
 
     # Check global dataset.
     assert datasets[OBJECTIVE].query_points.shape[0] == num_local_models * (
@@ -1752,7 +1752,7 @@ def test_multi_trust_region_box_updated_datasets_are_in_regions(
         assert any(subspace.contains(point) for subspace in subspaces)
     # Global dataset should be the concatenation of all local datasets.
     exp_query_points = tf.concat(
-        [datasets[LocalTag(OBJECTIVE, i)].query_points for i in range(num_local_models)], axis=0
+        [datasets[LocalizedTag(OBJECTIVE, i)].query_points for i in range(num_local_models)], axis=0
     )
     npt.assert_array_almost_equal(datasets[OBJECTIVE].query_points, exp_query_points)
 
