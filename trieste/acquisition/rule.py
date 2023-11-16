@@ -64,7 +64,7 @@ from ..models.interfaces import (
 from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace, TaggedMultiSearchSpace
 from ..types import State, Tag, TensorType
-from ..utils.misc import LocalTag
+from ..utils.misc import LocalizedTag
 from .function import (
     BatchMonteCarloExpectedImprovement,
     ExpectedImprovement,
@@ -1013,7 +1013,7 @@ class UpdatableTrustRegion(SearchSpace):
         local_gtags = set()
         global_tags = set()
         for tag in tags:
-            ltag = LocalTag.from_tag(tag)
+            ltag = LocalizedTag.from_tag(tag)
             if not ltag.is_local:
                 global_tags.add(tag)
             elif ltag.local_index == self.region_index:
@@ -1038,7 +1038,9 @@ class UpdatableTrustRegion(SearchSpace):
         elif self.region_index is None:
             # If no index, then return the global models.
             _models = {
-                tag: model for tag, model in models.items() if not LocalTag.from_tag(tag).is_local
+                tag: model
+                for tag, model in models.items()
+                if not LocalizedTag.from_tag(tag).is_local
             }
         else:
             # Prefer matching local model for each tag, otherwise select the global model.
@@ -1046,7 +1048,7 @@ class UpdatableTrustRegion(SearchSpace):
 
             _models = {}
             for tag in local_gtags:
-                ltag = LocalTag(tag, self.region_index)
+                ltag = LocalizedTag(tag, self.region_index)
                 _models[ltag] = models[ltag]
             for tag in global_tags:
                 _models[tag] = models[tag]
@@ -1069,7 +1071,7 @@ class UpdatableTrustRegion(SearchSpace):
             _datasets = {
                 tag: dataset
                 for tag, dataset in datasets.items()
-                if not LocalTag.from_tag(tag).is_local
+                if not LocalizedTag.from_tag(tag).is_local
             }
         else:
             # Prefer matching local dataset for each tag, otherwise select the global dataset.
@@ -1077,7 +1079,7 @@ class UpdatableTrustRegion(SearchSpace):
 
             _datasets = {}
             for tag in local_gtags:
-                ltag = LocalTag(tag, self.region_index)
+                ltag = LocalizedTag(tag, self.region_index)
                 _datasets[ltag] = datasets[ltag]
             for tag in global_tags:
                 _datasets[tag] = datasets[tag]
@@ -1107,7 +1109,7 @@ class UpdatableTrustRegion(SearchSpace):
             return {
                 tag: self.contains(dataset.query_points)
                 for tag, dataset in datasets.items()
-                if LocalTag.from_tag(tag).local_index == self.region_index
+                if LocalizedTag.from_tag(tag).local_index == self.region_index
             }
 
 
@@ -1204,7 +1206,7 @@ class BatchTrustRegion(
 
         num_local_models: Dict[Tag, int] = defaultdict(int)
         for tag in models:
-            ltag = LocalTag.from_tag(tag)
+            ltag = LocalizedTag.from_tag(tag)
             if ltag.is_local:
                 num_local_models[ltag.global_tag] += 1
         num_local_models_vals = set(num_local_models.values())
@@ -1265,11 +1267,12 @@ class BatchTrustRegion(
                     # Remap all local tags to global ones. One reason is that single model
                     # acquisition builders expect OBJECTIVE to exist.
                     _models = {
-                        LocalTag.from_tag(tag).global_tag: model for tag, model in _models.items()
+                        LocalizedTag.from_tag(tag).global_tag: model
+                        for tag, model in _models.items()
                     }
                     if _datasets is not None:
                         _datasets = {
-                            LocalTag.from_tag(tag).global_tag: dataset
+                            LocalizedTag.from_tag(tag).global_tag: dataset
                             for tag, dataset in _datasets.items()
                         }
                     _points.append(rule.acquire(subspace, _models, _datasets))
@@ -1341,17 +1344,17 @@ class BatchTrustRegion(
         used_masks = {
             tag: tf.zeros(dataset.query_points.shape[:-1], dtype=tf.bool)
             for tag, dataset in datasets.items()
-            if LocalTag.from_tag(tag).is_local
+            if LocalizedTag.from_tag(tag).is_local
         }
 
         # Global datasets to re-generate.
-        global_tags = {LocalTag.from_tag(tag).global_tag for tag in used_masks}
+        global_tags = {LocalizedTag.from_tag(tag).global_tag for tag in used_masks}
 
         for subspace in self._subspaces:
             in_region_masks = subspace.get_datasets_filter_mask(datasets)
             if in_region_masks is not None:
                 for tag, in_region in in_region_masks.items():
-                    ltag = LocalTag.from_tag(tag)
+                    ltag = LocalizedTag.from_tag(tag)
                     assert ltag.is_local, f"can only filter local tags, got {tag}"
                     used_masks[tag] = tf.logical_or(used_masks[tag], in_region)
 
@@ -1369,7 +1372,7 @@ class BatchTrustRegion(
             local_datasets = [
                 value
                 for tag, value in filtered_datasets.items()
-                if LocalTag.from_tag(tag).global_tag == gtag
+                if LocalizedTag.from_tag(tag).global_tag == gtag
             ]
             # Note there is no ordering assumption for the local datasets. They are simply
             # concatenated and information about which local dataset they came from is lost.
@@ -1515,7 +1518,7 @@ class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox):
         if (
             datasets is None
             or len(datasets) != 1
-            or LocalTag.from_tag(next(iter(datasets))).global_tag != OBJECTIVE
+            or LocalizedTag.from_tag(next(iter(datasets))).global_tag != OBJECTIVE
         ):
             raise ValueError("""a single OBJECTIVE dataset must be provided""")
         dataset = next(iter(datasets.values()))
@@ -1671,7 +1674,7 @@ class TREGOBox(SingleObjectiveTrustRegionBox):
             return {
                 tag: tf.ones(tf.shape(dataset.query_points)[:-1], dtype=tf.bool)
                 for tag, dataset in datasets.items()
-                if LocalTag.from_tag(tag).local_index == self.region_index
+                if LocalizedTag.from_tag(tag).local_index == self.region_index
             }
 
     @inherit_check_shapes
@@ -1682,7 +1685,7 @@ class TREGOBox(SingleObjectiveTrustRegionBox):
         if (
             datasets is None
             or len(datasets) != 1
-            or LocalTag.from_tag(next(iter(datasets))).global_tag != OBJECTIVE
+            or LocalizedTag.from_tag(next(iter(datasets))).global_tag != OBJECTIVE
         ):
             raise ValueError("""a single OBJECTIVE dataset must be provided""")
         dataset = next(iter(datasets.values()))

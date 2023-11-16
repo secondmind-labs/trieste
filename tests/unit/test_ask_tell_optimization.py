@@ -36,7 +36,7 @@ from trieste.objectives.utils import mk_batch_observer
 from trieste.observer import OBJECTIVE
 from trieste.space import Box
 from trieste.types import State, Tag, TensorType
-from trieste.utils.misc import LocalTag
+from trieste.utils.misc import LocalizedTag
 
 # tags
 TAG1: Tag = "1"
@@ -451,7 +451,7 @@ def test_ask_tell_optimizer_creates_correct_datasets_for_rank3_points(
         init_data = {OBJECTIVE: mk_dataset([[0.5], [1.5]], [[0.25], [0.35]])}
     else:
         init_data = {
-            LocalTag(OBJECTIVE, i): mk_dataset([[0.5 + i], [1.5 + i]], [[0.25], [0.35]])
+            LocalizedTag(OBJECTIVE, i): mk_dataset([[0.5 + i], [1.5 + i]], [[0.25], [0.35]])
             for i in range(batch_size)
         }
         init_data[OBJECTIVE] = mk_dataset([[0.5], [1.5]], [[0.25], [0.35]])
@@ -484,7 +484,7 @@ def test_ask_tell_optimizer_creates_correct_datasets_for_rank3_points(
                 if use_global_model:
                     exp_qps = tf.concat([exp_init_qps, tf.reshape(query_points, [-1, 1])], 0)
                 else:
-                    index = LocalTag.from_tag(self._tag).local_index
+                    index = LocalizedTag.from_tag(self._tag).local_index
                     exp_qps = tf.concat([exp_init_qps, query_points[:, index]], 0)
 
             npt.assert_array_equal(exp_qps, dataset.query_points)

@@ -37,7 +37,7 @@ from trieste.observer import OBJECTIVE
 from trieste.space import TaggedMultiSearchSpace
 from trieste.types import TensorType
 from trieste.utils import to_numpy
-from trieste.utils.misc import LocalTag
+from trieste.utils.misc import LocalizedTag
 
 
 def create_grid(
@@ -597,7 +597,7 @@ def plot_trust_region_history_2d(
     # Otherwise, use the global dataset and assume the last `num_query_points` points are new.
     if len(history.datasets) > 1:
         # Expect there to be an objective dataset for each subspace.
-        datasets = [history.datasets[LocalTag(OBJECTIVE, i)] for i in range(len(spaces))]
+        datasets = [history.datasets[LocalizedTag(OBJECTIVE, i)] for i in range(len(spaces))]
 
         _new_points_mask = [
             np.zeros(dataset.query_points.shape[0], dtype=bool) for dataset in datasets

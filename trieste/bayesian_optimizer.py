@@ -62,7 +62,7 @@ from .observer import OBJECTIVE, Observer
 from .space import SearchSpace
 from .types import State, Tag, TensorType
 from .utils import Err, Ok, Result, Timer
-from .utils.misc import LocalTag, get_value_for_tag
+from .utils.misc import LocalizedTag, get_value_for_tag
 
 StateType = TypeVar("StateType")
 """ Unbound type variable. """
@@ -100,7 +100,7 @@ class Record(Generic[StateType]):
         """The dataset when there is just one dataset."""
         # Ignore local datasets.
         datasets: Mapping[Tag, Dataset] = dict(
-            filter(lambda item: not LocalTag.from_tag(item[0]).is_local, self.datasets.items())
+            filter(lambda item: not LocalizedTag.from_tag(item[0]).is_local, self.datasets.items())
         )
         if len(datasets) == 1:
             return next(iter(datasets.values()))
@@ -112,7 +112,7 @@ class Record(Generic[StateType]):
         """The model when there is just one dataset."""
         # Ignore local models.
         models: Mapping[Tag, TrainableProbabilisticModel] = dict(
-            filter(lambda item: not LocalTag.from_tag(item[0]).is_local, self.models.items())
+            filter(lambda item: not LocalizedTag.from_tag(item[0]).is_local, self.models.items())
         )
         if len(models) == 1:
             return next(iter(models.values()))
@@ -238,7 +238,7 @@ class OptimizationResult(Generic[StateType]):
         datasets = self.try_get_final_datasets()
         # Ignore local datasets.
         datasets = dict(
-            filter(lambda item: not LocalTag.from_tag(item[0]).is_local, datasets.items())
+            filter(lambda item: not LocalizedTag.from_tag(item[0]).is_local, datasets.items())
         )
         if len(datasets) == 1:
             return next(iter(datasets.values()))
@@ -284,7 +284,9 @@ class OptimizationResult(Generic[StateType]):
         """
         models = self.try_get_final_models()
         # Ignore local models.
-        models = dict(filter(lambda item: not LocalTag.from_tag(item[0]).is_local, models.items()))
+        models = dict(
+            filter(lambda item: not LocalizedTag.from_tag(item[0]).is_local, models.items())
+        )
         if len(models) == 1:
             return next(iter(models.values()))
         else:
@@ -655,8 +657,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             raise ValueError(f"num_steps must be at least 0, got {num_steps}")
 
         # Get set of dataset and model keys, ignoring any local tag index.
-        datasets_keys = {LocalTag.from_tag(tag).global_tag for tag in datasets.keys()}
-        models_keys = {LocalTag.from_tag(tag).global_tag for tag in models.keys()}
+        datasets_keys = {LocalizedTag.from_tag(tag).global_tag for tag in datasets.keys()}
+        models_keys = {LocalizedTag.from_tag(tag).global_tag for tag in models.keys()}
         if datasets_keys != models_keys:
             raise ValueError(
                 f"datasets and models should contain the same keys. Got {datasets_keys} and"
@@ -739,8 +741,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     with Timer() as initial_model_fitting_timer:
                         for tag, model in models.items():
                             # Prefer local dataset if available.
-                            tags = [tag, LocalTag.from_tag(tag).global_tag]
-                            _, dataset = get_value_for_tag(datasets, tags)
+                            tags = [tag, LocalizedTag.from_tag(tag).global_tag]
+                            _, dataset = get_value_for_tag(datasets, *tags)
                             assert dataset is not None
                             model.update(dataset)
                             model.optimize_and_save_result(dataset)
@@ -778,7 +780,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     updated_datasets = {}
                     for tag, new_dataset in tagged_output.items():
                         _, old_dataset = get_value_for_tag(
-                            datasets, [tag, LocalTag.from_tag(tag).global_tag]
+                            datasets, *[tag, LocalizedTag.from_tag(tag).global_tag]
                         )
                         assert old_dataset is not None
                         updated_datasets[tag] = old_dataset + new_dataset
@@ -922,8 +924,8 @@ def write_summary_initial_model_fit(
     for tag, model in models.items():
         with tf.name_scope(f"{tag}.model"):
             # Prefer local dataset if available.
-            tags = [tag, LocalTag.from_tag(tag).global_tag]
-            _, dataset = get_value_for_tag(datasets, tags)
+            tags = [tag, LocalizedTag.from_tag(tag).global_tag]
+            _, dataset = get_value_for_tag(datasets, *tags)
             assert dataset is not None
             model.log(dataset)
     logging.scalar(

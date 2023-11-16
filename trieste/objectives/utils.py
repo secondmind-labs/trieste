@@ -28,7 +28,7 @@ from check_shapes import check_shapes
 from ..data import Dataset
 from ..observer import OBJECTIVE, MultiObserver, Observer, SingleObserver
 from ..types import Tag, TensorType
-from ..utils.misc import LocalTag
+from ..utils.misc import LocalizedTag
 
 
 @overload
@@ -83,12 +83,12 @@ def mk_batch_observer(
         # Call objective with rank 2 query points by flattening batch dimension.
         # Some objectives might only expect rank 2 query points, so this is safer.
         batch_size = qps.shape[1]
-        qps = tf.reshape(qps, [-1, qps.shape[-1]])
-        obs_or_dataset = objective_or_observer(qps)
+        flat_qps = tf.reshape(qps, [-1, qps.shape[-1]])
+        obs_or_dataset = objective_or_observer(flat_qps)
 
         if not isinstance(obs_or_dataset, (Mapping, Dataset)):
             # Just a single observation, so wrap in a dataset.
-            obs_or_dataset = Dataset(qps, obs_or_dataset)
+            obs_or_dataset = Dataset(flat_qps, obs_or_dataset)
 
         if isinstance(obs_or_dataset, Dataset):
             # Convert to a mapping with a default key.
@@ -97,14 +97,12 @@ def mk_batch_observer(
         datasets = {}
         for key, dataset in obs_or_dataset.items():
             # Include overall dataset and per batch dataset.
-            obs = dataset.observations
-            qps = tf.reshape(qps, [-1, batch_size, qps.shape[-1]])
-            obs = tf.reshape(obs, [-1, batch_size, obs.shape[-1]])
-            _datasets = {
-                key: dataset,
-                **{LocalTag(key, i): Dataset(qps[:, i], obs[:, i]) for i in range(batch_size)},
-            }
-            datasets.update(_datasets)
+            flat_obs = dataset.observations
+            qps = tf.reshape(flat_qps, [-1, batch_size, flat_qps.shape[-1]])
+            obs = tf.reshape(flat_obs, [-1, batch_size, flat_obs.shape[-1]])
+            datasets[key] = dataset
+            for i in range(batch_size):
+                datasets[LocalizedTag(key, i)] = Dataset(qps[:, i], obs[:, i])
 
         return datasets
 
