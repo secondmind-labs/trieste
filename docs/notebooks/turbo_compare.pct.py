@@ -17,18 +17,22 @@
 # %%
 # from aim.ext.tensorboard_tracker import Run
 from datetime import datetime
+from typing import Mapping
 
 import numpy as np
 import tensorflow as tf
 from matplotlib import pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib.pyplot import cm
-from typing import Mapping
 
 import trieste
-from trieste.acquisition import DiscreteThompsonSampling, EfficientGlobalOptimization, ParallelContinuousThompsonSampling
+from trieste.acquisition import (
+    DiscreteThompsonSampling,
+    EfficientGlobalOptimization,
+    ParallelContinuousThompsonSampling,
+)
 from trieste.acquisition.optimizer import automatic_optimizer_selector
-from trieste.acquisition.rule import BatchTrustRegionBox, TURBOBox, TURBO
+from trieste.acquisition.rule import TURBO, BatchTrustRegionBox, TURBOBox
 from trieste.acquisition.utils import copy_to_local_models
 from trieste.ask_tell_optimization import AskTellOptimizer
 from trieste.experimental.plotting import plot_regret
@@ -36,8 +40,8 @@ from trieste.experimental.plotting.plotting import create_grid
 from trieste.logging import pyplot
 from trieste.models.gpflow import GaussianProcessRegression, build_gpr
 from trieste.objectives import Hartmann6, ScaledBranin
-from trieste.observer import OBJECTIVE
 from trieste.objectives.utils import mk_batch_observer
+from trieste.observer import OBJECTIVE
 from trieste.types import TensorType
 
 # %%
@@ -64,11 +68,13 @@ gpflow_model1 = build_gpr(
     likelihood_variance=1e-4,
     trainable_likelihood=False,
 )
-model1 = copy_to_local_models(GaussianProcessRegression(gpflow_model1), num_query_points)
+model1 = copy_to_local_models(
+    GaussianProcessRegression(gpflow_model1), num_query_points
+)
 acq_rule1 = BatchTrustRegionBox(  # type: ignore[var-annotated]
     TURBOBox(search_space),
-    #rule=DiscreteThompsonSampling(tf.minimum(100 * search_space.dimension, 5_000), 1)
-    #rule=DiscreteThompsonSampling(500, num_query_points)
+    # rule=DiscreteThompsonSampling(tf.minimum(100 * search_space.dimension, 5_000), 1)
+    # rule=DiscreteThompsonSampling(500, num_query_points)
 )
 ask_tell1 = AskTellOptimizer(
     search_space, initial_data, model1, acquisition_rule=acq_rule1
@@ -82,7 +88,7 @@ gpflow_model2 = build_gpr(
     trainable_likelihood=False,
 )
 model2 = GaussianProcessRegression(gpflow_model2)
-#acq_rule2 = TURBO(search_space, rule=DiscreteThompsonSampling(500, num_query_points))
+# acq_rule2 = TURBO(search_space, rule=DiscreteThompsonSampling(500, num_query_points))
 acq_rule2 = TURBO(search_space, rule=EfficientGlobalOptimization())
 ask_tell2 = AskTellOptimizer(
     search_space, initial_data, model2, acquisition_rule=acq_rule2
@@ -90,18 +96,20 @@ ask_tell2 = AskTellOptimizer(
 
 # %%
 np.testing.assert_array_almost_equal(
-    ask_tell1.models['OBJECTIVE__0'].get_kernel().lengthscales,
-    ask_tell2.models['OBJECTIVE'].get_kernel().lengthscales,
+    ask_tell1.models["OBJECTIVE__0"].get_kernel().lengthscales,
+    ask_tell2.models["OBJECTIVE"].get_kernel().lengthscales,
 )
 
 # %%
 from tests.util.misc import empty_dataset
 
 new_points1 = ask_tell1.ask()
-ask_tell1.tell({
-    'OBJECTIVE': empty_dataset([2], [1]),
-    'OBJECTIVE__0': empty_dataset([2], [1])
-})
+ask_tell1.tell(
+    {
+        "OBJECTIVE": empty_dataset([2], [1]),
+        "OBJECTIVE__0": empty_dataset([2], [1]),
+    }
+)
 assert ask_tell1._acquisition_state is not None
 assert ask_tell2._acquisition_state is not None
 ask_tell1._acquisition_state.acquisition_space.get_subspace("0").success_counter = 0  # type: ignore
@@ -111,7 +119,9 @@ ask_tell1._acquisition_state.acquisition_space.get_subspace("0").failure_counter
 for step in range(num_steps):
     print(f"step number {step}")
 
-    lengthscales1 = tf.constant(ask_tell1.models['OBJECTIVE__0'].get_kernel().lengthscales)
+    lengthscales1 = tf.constant(
+        ask_tell1.models["OBJECTIVE__0"].get_kernel().lengthscales
+    )
     L1 = ask_tell1._acquisition_state.acquisition_space.get_subspace("0").L  # type: ignore
     success_counter1 = ask_tell1._acquisition_state.acquisition_space.get_subspace("0").success_counter  # type: ignore
     failure_counter1 = ask_tell1._acquisition_state.acquisition_space.get_subspace("0").failure_counter  # type: ignore
@@ -131,7 +141,7 @@ for step in range(num_steps):
 
     np.testing.assert_array_almost_equal(
         lengthscales1,
-        ask_tell2._acquisition_rule._local_models['OBJECTIVE'].get_kernel().lengthscales,  # type: ignore
+        ask_tell2._acquisition_rule._local_models["OBJECTIVE"].get_kernel().lengthscales,  # type: ignore
     )
 
     assert ask_tell1._acquisition_state is not None

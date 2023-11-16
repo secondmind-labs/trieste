@@ -1774,7 +1774,7 @@ class TURBOBox(UpdatableTrustRegionBox):
         if (
             models is None
             or len(models) != 1
-            or LocalTag.from_tag(next(iter(models))).global_tag != OBJECTIVE
+            or LocalizedTag.from_tag(next(iter(models))).global_tag != OBJECTIVE
         ):
             raise ValueError("""a single OBJECTIVE model must be provided""")
         model = next(iter(models.values()))
@@ -1881,7 +1881,7 @@ class TURBOBox(UpdatableTrustRegionBox):
         if (
             datasets is None
             or len(datasets) != 1
-            or LocalTag.from_tag(next(iter(datasets))).global_tag != OBJECTIVE
+            or LocalizedTag.from_tag(next(iter(datasets))).global_tag != OBJECTIVE
         ):
             raise ValueError("""a single OBJECTIVE dataset must be provided""")
         dataset = next(iter(datasets.values()))
