@@ -15,6 +15,10 @@
 # ---
 
 # %%
+import os
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Silence TensorFlow warnings.
+
 # from aim.ext.tensorboard_tracker import Run
 from datetime import datetime
 from typing import Mapping
@@ -43,6 +47,7 @@ from trieste.objectives import Hartmann6, ScaledBranin
 from trieste.objectives.utils import mk_batch_observer
 from trieste.observer import OBJECTIVE
 from trieste.types import TensorType
+from trieste.utils.misc import LocalizedTag
 
 # %%
 np.random.seed(179)
@@ -54,7 +59,7 @@ search_space = ScaledBranin.search_space
 
 num_initial_data_points = 6
 num_query_points = 1
-num_steps = 10
+num_steps = 20
 
 initial_query_points = search_space.sample(num_initial_data_points)
 observer = trieste.objectives.utils.mk_observer(branin)
@@ -73,6 +78,7 @@ model1 = copy_to_local_models(
 )
 acq_rule1 = BatchTrustRegionBox(  # type: ignore[var-annotated]
     TURBOBox(search_space),
+    rule=EfficientGlobalOptimization()
     # rule=DiscreteThompsonSampling(tf.minimum(100 * search_space.dimension, 5_000), 1)
     # rule=DiscreteThompsonSampling(500, num_query_points)
 )
@@ -96,31 +102,27 @@ ask_tell2 = AskTellOptimizer(
 
 # %%
 np.testing.assert_array_almost_equal(
-    ask_tell1.models["OBJECTIVE__0"].get_kernel().lengthscales,
-    ask_tell2.models["OBJECTIVE"].get_kernel().lengthscales,
+    ask_tell1.models[LocalizedTag(OBJECTIVE, 0)].get_kernel().lengthscales,
+    ask_tell2.models[OBJECTIVE].get_kernel().lengthscales,
 )
 
 # %%
 from tests.util.misc import empty_dataset
 
-new_points1 = ask_tell1.ask()
+_ = ask_tell1.ask()
 ask_tell1.tell(
     {
-        "OBJECTIVE": empty_dataset([2], [1]),
-        "OBJECTIVE__0": empty_dataset([2], [1]),
+        OBJECTIVE: empty_dataset([2], [1]),
+        LocalizedTag(OBJECTIVE, 0): empty_dataset([2], [1]),
     }
 )
-assert ask_tell1._acquisition_state is not None
-assert ask_tell2._acquisition_state is not None
-ask_tell1._acquisition_state.acquisition_space.get_subspace("0").success_counter = 0  # type: ignore
-ask_tell1._acquisition_state.acquisition_space.get_subspace("0").failure_counter = 0  # type: ignore
 
 # %%
 for step in range(num_steps):
-    print(f"step number {step}")
+    print(f"step number {step+1}")
 
     lengthscales1 = tf.constant(
-        ask_tell1.models["OBJECTIVE__0"].get_kernel().lengthscales
+        ask_tell1.models[LocalizedTag(OBJECTIVE, 0)].get_kernel().lengthscales
     )
     L1 = ask_tell1._acquisition_state.acquisition_space.get_subspace("0").L  # type: ignore
     success_counter1 = ask_tell1._acquisition_state.acquisition_space.get_subspace("0").success_counter  # type: ignore
@@ -141,7 +143,7 @@ for step in range(num_steps):
 
     np.testing.assert_array_almost_equal(
         lengthscales1,
-        ask_tell2._acquisition_rule._local_models["OBJECTIVE"].get_kernel().lengthscales,  # type: ignore
+        ask_tell2._acquisition_rule._local_models[OBJECTIVE].get_kernel().lengthscales,  # type: ignore
     )
 
     assert ask_tell1._acquisition_state is not None
