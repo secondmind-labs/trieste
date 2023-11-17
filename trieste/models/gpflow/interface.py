@@ -41,6 +41,7 @@ from ..utils import (
     write_summary_kernel_parameters,
     write_summary_likelihood_parameters,
 )
+from .optimizer import ScipyOptimizer
 from .sampler import BatchReparametrizationSampler
 
 
@@ -57,10 +58,10 @@ class GPflowPredictor(
     def __init__(self, optimizer: Optimizer | None = None):
         """
         :param optimizer: The optimizer with which to train the model. Defaults to
-            :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
+            :class:`~trieste.models.gpflow.optimizers.ScipyOptimizer`
         """
         if optimizer is None:
-            optimizer = Optimizer(gpflow.optimizers.Scipy(), compile=True)
+            optimizer = ScipyOptimizer(compile=True)
 
         self._optimizer = optimizer
         self._posterior: Optional[BasePosterior] = None
