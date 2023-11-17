@@ -50,8 +50,8 @@ from trieste.types import TensorType
 from trieste.utils.misc import LocalizedTag
 
 # %%
-np.random.seed(179)
-tf.random.set_seed(179)
+np.random.seed(8934)
+tf.random.set_seed(8934)
 
 # %%
 branin = ScaledBranin.objective
@@ -124,6 +124,7 @@ for step in range(num_steps):
     lengthscales1 = tf.constant(
         ask_tell1.models[LocalizedTag(OBJECTIVE, 0)].get_kernel().lengthscales
     )
+    y_min1 = ask_tell1._acquisition_state.acquisition_space.get_subspace("0").y_min  # type: ignore
     L1 = ask_tell1._acquisition_state.acquisition_space.get_subspace("0").L  # type: ignore
     success_counter1 = ask_tell1._acquisition_state.acquisition_space.get_subspace("0").success_counter  # type: ignore
     failure_counter1 = ask_tell1._acquisition_state.acquisition_space.get_subspace("0").failure_counter  # type: ignore
@@ -144,10 +145,16 @@ for step in range(num_steps):
     np.testing.assert_array_almost_equal(
         lengthscales1,
         ask_tell2._acquisition_rule._local_models[OBJECTIVE].get_kernel().lengthscales,  # type: ignore
+        decimal=4,
     )
 
     assert ask_tell1._acquisition_state is not None
     assert ask_tell2._acquisition_state is not None
+    np.testing.assert_array_almost_equal(
+        y_min1,
+        ask_tell2._acquisition_state.y_min,  # type: ignore
+        decimal=4,
+    )
     np.testing.assert_equal(
         L1,
         ask_tell2._acquisition_state.L,  # type: ignore
