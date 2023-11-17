@@ -1154,9 +1154,6 @@ class BatchTrustRegion(
         :param rule: The acquisition rule that defines how to search for a new query point in each
             subspace. Defaults to :class:`EfficientGlobalOptimization` with default arguments.
         """
-        if rule is None:
-            rule = EfficientGlobalOptimization()
-
         # If init_subspaces are not provided, leave it to the subclasses to create them.
         self._subspaces = None
         self._tags = None
@@ -1203,6 +1200,17 @@ class BatchTrustRegion(
         # Subspaces should be set by the time we call `acquire`.
         assert self._tags is not None
         assert self._subspaces is not None
+
+        # Implement heuristic defaults for the rule if not specified by the user.
+        if self._rule is None:
+            # Use first subspace to determine the type of the base rule.
+            if isinstance(self._subspaces[0], TURBOBox):
+                # Default to Thompson sampling with batches of size 1.
+                self._rule = DiscreteThompsonSampling(
+                    tf.minimum(100 * search_space.dimension, 5_000), 1
+                )
+            else:
+                self._rule = EfficientGlobalOptimization()
 
         num_local_models: Dict[Tag, int] = defaultdict(int)
         for tag in models:
@@ -1403,6 +1411,7 @@ class UpdatableTrustRegionBox(Box, UpdatableTrustRegion):
         super().__init__(global_search_space.lower, global_search_space.upper)
         super(Box, self).__init__(region_index)
         self._global_search_space = global_search_space
+        # Random initial location in the global search space.
         self.location = tf.squeeze(global_search_space.sample(1), axis=0)
 
     @property
@@ -1804,6 +1813,7 @@ class TURBOBox(UpdatableTrustRegionBox):
         models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> None:
+        # Use the full dataset to determine the best point.
         datasets = self.select_unfiltered_datasets(datasets)
         x_min, self.y_min = self.get_dataset_min(datasets)
         self.location: TensorType = x_min
@@ -1824,6 +1834,7 @@ class TURBOBox(UpdatableTrustRegionBox):
             self.initialize(models, datasets)
             return
 
+        # Use the full dataset to determine the best point.
         datasets = self.select_unfiltered_datasets(datasets)
         x_min, y_min = self.get_dataset_min(datasets)
         self.location = x_min
@@ -1854,19 +1865,31 @@ class TURBOBox(UpdatableTrustRegionBox):
     def select_unfiltered_datasets(
         self, datasets: Optional[Mapping[Tag, Dataset]]
     ) -> Optional[Mapping[Tag, Dataset]]:
+        # Select dataset belonging to this region, without any filtering.
         return super().select_datasets(datasets)
 
     def filter_datasets(
         self, datasets: Optional[Mapping[Tag, Dataset]]
     ) -> Optional[Mapping[Tag, Dataset]]:
-        if datasets is None:
+        # Filter datasets to only contain points in this region.
+        in_region_masks = self.get_datasets_filter_mask(datasets)
+        if in_region_masks is None:
             return None
         else:
-            return {tag: get_local_dataset(self, dataset) for tag, dataset in datasets.items()}
+            return {
+                tag: Dataset(
+                    tf.boolean_mask(dataset.query_points, in_region_masks[tag]),
+                    tf.boolean_mask(dataset.observations, in_region_masks[tag]),
+                )
+                if tag in in_region_masks
+                else dataset
+                for tag, dataset in datasets.items()
+            }
 
     def select_datasets(
         self, datasets: Optional[Mapping[Tag, Dataset]]
     ) -> Optional[Mapping[Tag, Dataset]]:
+        # Filter the dataset for acquisition to only contain points in this region.
         datasets = self.select_unfiltered_datasets(datasets)
         return self.filter_datasets(datasets)
 
@@ -1886,7 +1909,6 @@ class TURBOBox(UpdatableTrustRegionBox):
             raise ValueError("""a single OBJECTIVE dataset must be provided""")
         dataset = next(iter(datasets.values()))
 
-        # Dataset is already filtered to only contain points in this region.
         ix = tf.argmin(dataset.observations)
         x_min = tf.gather(dataset.query_points, ix)
         y_min = tf.gather(dataset.observations, ix)
