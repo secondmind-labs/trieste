@@ -48,6 +48,7 @@ def split_acquisition_function(
         if length == 0:
             return fn(x)
 
+        # Use int64 to calculate the input tensor size, otherwise we can overflow for large tensors.
         elements_per_block = tf.size(x, out_type=tf.int64) / length
         blocks_per_batch = tf.cast(tf.math.ceil(split_size / elements_per_block), tf.int32)
 
