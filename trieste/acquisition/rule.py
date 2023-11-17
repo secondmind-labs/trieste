@@ -1775,7 +1775,8 @@ class TURBOBox(UpdatableTrustRegionBox):
 
         self._initialized = False
         self.y_min = np.inf
-        self.tr_width = self.L / 1.0 ** (1.0 / self.global_search_space.lower.shape[-1])
+        # Initialise to the full global search space.
+        self.tr_width = global_search_space.upper - global_search_space.lower
         self._update_bounds()
 
     def _set_tr_width(self, models: Optional[Mapping[Tag, ProbabilisticModelType]] = None) -> None:
@@ -1814,7 +1815,7 @@ class TURBOBox(UpdatableTrustRegionBox):
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> None:
         # Use the full dataset to determine the best point.
-        datasets = self.select_unfiltered_datasets(datasets)
+        datasets = self.select_datasets(datasets)
         x_min, self.y_min = self.get_dataset_min(datasets)
         self.location: TensorType = x_min
 
@@ -1835,7 +1836,7 @@ class TURBOBox(UpdatableTrustRegionBox):
             return
 
         # Use the full dataset to determine the best point.
-        datasets = self.select_unfiltered_datasets(datasets)
+        datasets = self.select_datasets(datasets)
         x_min, y_min = self.get_dataset_min(datasets)
         self.location = x_min
 
@@ -1861,37 +1862,6 @@ class TURBOBox(UpdatableTrustRegionBox):
         models = self.select_models(models)
         self._set_tr_width(models)
         self._update_bounds()
-
-    def select_unfiltered_datasets(
-        self, datasets: Optional[Mapping[Tag, Dataset]]
-    ) -> Optional[Mapping[Tag, Dataset]]:
-        # Select dataset belonging to this region, without any filtering.
-        return super().select_datasets(datasets)
-
-    def filter_datasets(
-        self, datasets: Optional[Mapping[Tag, Dataset]]
-    ) -> Optional[Mapping[Tag, Dataset]]:
-        # Filter datasets to only contain points in this region.
-        in_region_masks = self.get_datasets_filter_mask(datasets)
-        if in_region_masks is None:
-            return None
-        else:
-            return {
-                tag: Dataset(
-                    tf.boolean_mask(dataset.query_points, in_region_masks[tag]),
-                    tf.boolean_mask(dataset.observations, in_region_masks[tag]),
-                )
-                if tag in in_region_masks
-                else dataset
-                for tag, dataset in datasets.items()
-            }
-
-    def select_datasets(
-        self, datasets: Optional[Mapping[Tag, Dataset]]
-    ) -> Optional[Mapping[Tag, Dataset]]:
-        # Filter the dataset for acquisition to only contain points in this region.
-        datasets = self.select_unfiltered_datasets(datasets)
-        return self.filter_datasets(datasets)
 
     @check_shapes(
         "return[0]: [D]",
