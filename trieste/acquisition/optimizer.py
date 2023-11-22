@@ -192,6 +192,9 @@ def generate_continuous_optimizer(
     If all `num_optimization_runs` optimizations fail to converge then we run
     `num_recovery_runs` additional runs starting from random locations (also ran in parallel).
 
+    **Note:** using a large number of `num_initial_samples` and `num_optimization_runs` with a
+    high-dimensional search space can consume a large amount of CPU memory (RAM).
+
     :param num_initial_samples: The size of the random sample used to find the starting point(s) of
         the optimization.
     :param num_optimization_runs: The number of separate optimizations to run.
