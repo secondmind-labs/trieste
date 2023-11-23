@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import copy
 import tempfile
 from collections.abc import Mapping
 from pathlib import Path
@@ -302,7 +303,7 @@ def test_bayesian_optimizer_creates_correct_datasets_for_rank3_points(
 
     optimizer = BayesianOptimizer(lambda x: Dataset(x, x), search_space)
     rule = FixedAcquisitionRule(query_points)
-    optimizer.optimize(1, init_data, models, rule).final_result.unwrap()
+    optimizer.optimize(1, copy.deepcopy(init_data), models, rule).final_result.unwrap()
 
 
 @pytest.mark.parametrize("mode", ["early", "fail", "full"])

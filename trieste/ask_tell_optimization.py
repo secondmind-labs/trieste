@@ -47,7 +47,7 @@ from .observer import OBJECTIVE
 from .space import SearchSpace
 from .types import State, Tag, TensorType
 from .utils import Ok, Timer
-from .utils.misc import LocalizedTag, get_value_for_tag
+from .utils.misc import LocalizedTag, get_value_for_tag, ignoring_local_tags
 
 StateType = TypeVar("StateType")
 """ Unbound type variable. """
@@ -195,7 +195,8 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         # reassure the type checker that everything is tagged
         models = cast(Dict[Tag, TrainableProbabilisticModelType], models)
 
-        # Get set of dataset and model keys, ignoring any local tag index.
+        # Get set of dataset and model keys, ignoring any local tag index. That is, only the
+        # global tag part is considered.
         datasets_keys = {LocalizedTag.from_tag(tag).global_tag for tag in datasets.keys()}
         models_keys = {LocalizedTag.from_tag(tag).global_tag for tag in models.keys()}
         if datasets_keys != models_keys:
@@ -265,9 +266,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
     def dataset(self) -> Dataset:
         """The current dataset when there is just one dataset."""
         # Ignore local datasets.
-        datasets: Mapping[Tag, Dataset] = dict(
-            filter(lambda item: not LocalizedTag.from_tag(item[0]).is_local, self.datasets.items())
-        )
+        datasets: Mapping[Tag, Dataset] = ignoring_local_tags(self.datasets)
         if len(datasets) == 1:
             return next(iter(datasets.values()))
         else:
@@ -292,9 +291,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
     def model(self) -> TrainableProbabilisticModel:
         """The current model when there is just one model."""
         # Ignore local models.
-        models: Mapping[Tag, TrainableProbabilisticModel] = dict(
-            filter(lambda item: not LocalizedTag.from_tag(item[0]).is_local, self.models.items())
-        )
+        models: Mapping[Tag, TrainableProbabilisticModel] = ignoring_local_tags(self.models)
         if len(models) == 1:
             return next(iter(models.values()))
         else:
@@ -460,15 +457,19 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         # (in BatchTrustRegion) would otherwise remove duplicates. The main way to avoid the issue
         # in this scenario is to provide local initial datasets, instead of a global initial
         # dataset.
-        updated_datasets = {}
-        for tag, new_dataset in new_data.items():
-            _, old_dataset = get_value_for_tag(
-                self._datasets, *[tag, LocalizedTag.from_tag(tag).global_tag]
-            )
-            assert old_dataset is not None
-            updated_datasets[tag] = old_dataset + new_dataset
-        self._datasets = updated_datasets
-        self._filtered_datasets = self._acquisition_rule.filter_datasets(updated_datasets)
+        sorted_tags = sorted(  # We need to process the local tags first, then the global tags.
+            new_data, key=lambda tag: not LocalizedTag.from_tag(tag).is_local
+        )
+        for tag in sorted_tags:
+            new_dataset = new_data[tag]
+            if tag in self._datasets:
+                self._datasets[tag] += new_dataset
+            else:
+                global_tag = LocalizedTag.from_tag(tag).global_tag
+                if global_tag not in self._datasets:
+                    raise ValueError(f"global tag '{global_tag}' not found in dataset")
+                self._datasets[tag] = self._datasets[global_tag] + new_dataset
+        self._filtered_datasets = self._acquisition_rule.filter_datasets(self._datasets)
 
         with Timer() as model_fitting_timer:
             for tag, model in self._models.items():

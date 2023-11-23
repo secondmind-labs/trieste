@@ -227,7 +227,8 @@ def get_value_for_tag(
     """Return the value from a mapping for the first tag found from a sequence of tags.
 
     :param mapping: A mapping from tags to values.
-    :param tags: A tag or a sequence of tags. Sequence is searched in order.
+    :param tags: A tag or a sequence of tags. Sequence is searched in order. If no tags are
+        provided, the default tag OBJECTIVE is used.
     :return: The chosen tag and value of the tag in the mapping, or None for each if the mapping is
         None.
     :raises ValueError: If none of the tags are in the mapping and the mapping is not None.
@@ -271,6 +272,16 @@ class LocalizedTag:
             return tag
         else:
             return LocalizedTag(tag, None)
+
+
+def ignoring_local_tags(mapping: Mapping[Tag, T]) -> Mapping[Tag, T]:
+    """
+    Filter out local tags from a mapping, returning a new mapping with only global tags.
+
+    :param mapping: A mapping from tags to values.
+    :return: A new mapping with only global tags.
+    """
+    return {k: v for k, v in mapping.items() if not LocalizedTag.from_tag(k).is_local}
 
 
 class Timer:

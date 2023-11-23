@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Optional
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -22,6 +22,7 @@ import tensorflow as tf
 
 from trieste.acquisition import AcquisitionFunction
 from trieste.acquisition.utils import (
+    copy_to_local_models,
     get_local_dataset,
     get_unique_points_mask,
     select_nth_output,
@@ -29,6 +30,8 @@ from trieste.acquisition.utils import (
 )
 from trieste.data import Dataset
 from trieste.space import Box, SearchSpaceType
+from trieste.types import Tag
+from trieste.utils.misc import LocalizedTag
 
 
 @pytest.mark.parametrize(
@@ -98,6 +101,18 @@ def test_get_local_dataset_works() -> None:
 
     assert tf.shape(get_local_dataset(search_space_1, combined).query_points)[0] == 10
     assert tf.shape(get_local_dataset(search_space_2, combined).query_points)[0] == 20
+
+
+@pytest.mark.parametrize("num_local_models", [1, 3])
+@pytest.mark.parametrize("key", [None, "a"])
+def test_copy_to_local_models(num_local_models: int, key: Optional[Tag]) -> None:
+    global_model = MagicMock()
+    local_models = copy_to_local_models(global_model, num_local_models=num_local_models, key=key)
+    assert len(local_models) == num_local_models
+    for i, (k, m) in enumerate(local_models.items()):
+        assert k == LocalizedTag(key, i)
+        assert isinstance(m, MagicMock)
+        assert m is not global_model
 
 
 @pytest.mark.parametrize(

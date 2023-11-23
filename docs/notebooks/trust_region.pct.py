@@ -246,44 +246,6 @@ plot_final_result(dataset)
 plot_history(result)
 
 # %% [markdown]
-# ## TEST
-
-# %%
-num_query_points = 5
-
-init_subspaces = [
-    trieste.acquisition.rule.SingleObjectiveTrustRegionBox(search_space)
-    for _ in range(num_query_points)
-]
-base_rule = trieste.acquisition.rule.EfficientGlobalOptimization(
-    builder=trieste.acquisition.ParallelContinuousThompsonSampling(),
-    num_query_points=1,
-)
-batch_acq_rule = trieste.acquisition.rule.BatchTrustRegionBox(
-    init_subspaces, base_rule
-)
-
-bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
-
-num_steps = 5
-result = bo.optimize(
-    num_steps,
-    {trieste.observer.OBJECTIVE: initial_data},
-    trieste.acquisition.utils.copy_to_local_models(
-        build_model(), num_query_points
-    ),
-    batch_acq_rule,
-    track_state=True,
-)
-dataset = result.try_get_final_dataset()
-
-# %%
-plot_final_result(dataset)
-
-# %%
-plot_history(result)
-
-# %% [markdown]
 # ## Trust region `TurBO` acquisition rule
 #
 # Finally, we show how to run Bayesian optimization with the `TurBO` algorithm. This is a
