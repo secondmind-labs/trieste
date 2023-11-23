@@ -18,13 +18,54 @@ This module registers the GPflow specific loss functions.
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
 
 import tensorflow as tf
 from gpflow.models import ExternalDataTrainingLossMixin, InternalDataTrainingLossMixin
 from tensorflow.python.data.ops.iterator_ops import OwnedIterator as DatasetOwnedIterator
 
-from ..optimizer import LossClosure, TrainingData, create_loss_function
+from gpflow.base import Module
+from gpflow.optimizers import Scipy
+from .utils import get_parameter_bounds
+from ..optimizer import LossClosure, Optimizer, TrainingData, create_loss_function
+from ...data import Dataset
+
+
+@dataclass
+class ScipyOptimizer(Optimizer):
+    optimizer: Any = field(default_factory=Scipy)
+    minimize_args: dict[str, Any] = field(default_factory=lambda: {})
+    compile: bool = True
+
+    def optimize(self, model: Module, dataset: Dataset) -> None:
+        # TODO: Check for edge-cases. For example, if Scipy filters out unused
+        #  variables then `bounds` may be indexed incorrectly...
+        loss_fn = self.create_loss(model, dataset)
+        bounds = []
+        variables = []
+        for param in model.trainable_parameters:
+            bound = get_parameter_bounds(param, unconstrained=True)
+            bounds.append(tf.transpose(tf.reshape(bound, (2, -1))))
+            variables.append(param.unconstrained_variable)
+
+        for var in model.trainable_variables:
+            if var not in variables:
+                variables.append(var)
+                if bounds:
+                    bound = tf.tile(
+                        tf.cast([[-float("inf")], [float("inf")]], var.dtype),
+                        (tf.size(var), 1)
+                    )
+                    bounds.append(bound)
+                    variables.append(var)
+
+        return self.optimizer.minimize(
+            closure=loss_fn,
+            variables=variables,
+            bounds=tf.concat(bounds, axis=0) if bounds else None,  # n x 2
+            **self.minimize_args,
+        )
 
 
 @create_loss_function.register

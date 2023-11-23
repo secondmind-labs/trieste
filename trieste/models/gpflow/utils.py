@@ -26,6 +26,8 @@ from ...utils import DEFAULTS
 from ..optimizer import BatchOptimizer, Optimizer
 from .interface import GPflowPredictor
 
+GetDistributionSupport = gpflow.utilities.Dispatcher("get_distribution_support")
+
 
 def assert_data_is_compatible(new_data: Dataset, existing_data: Dataset) -> None:
     """
@@ -76,7 +78,11 @@ def randomize_hyperparameters(object: gpflow.Module) -> None:
                 sample = param.prior.sample(tf.shape(param))
             else:
                 sample = param.prior.sample()
-            param.assign(sample)
+
+            if param.prior_on is gpflow.base.PriorOn.UNCONSTRAINED:
+                param.unconstrained_variable.assign(sample)
+            else:
+                param.assign(sample)
 
 
 def squeeze_hyperparameters(
@@ -151,6 +157,42 @@ def check_optimizer(optimizer: Union[BatchOptimizer, Optimizer]) -> None:
                 however received {optimizer}.
                 """
             )
+
+
+def get_distribution_support(distribution: tfp.distributions.Distribution) -> tf.Tensor:
+    return GetDistributionSupport(distribution)
+
+
+@GetDistributionSupport.register(tfp.distributions.Distribution)
+def _(distribution):
+    # TODO: Edge-cases...
+    shape = distribution.batch_shape.concatenate(distribution.event_shape)
+    dtype = distribution.dtype
+    probs = tf.stack([tf.zeros(shape, dtype), tf.ones(shape, dtype)])
+    return distribution.quantile(probs)
+
+
+def get_parameter_bounds(
+    param: gpflow.Parameter, unconstrained: bool = False
+) -> tf.Tensor:
+    shape = tf.shape(param)
+    if param.prior is None:
+        infty = tf.cast(float("inf"), param.dtype)
+        bounds = tf.stack([tf.fill(shape, -infty), tf.fill(shape, infty)])
+        is_unconstrained = True
+    else:
+        bounds = get_distribution_support(param.prior)
+        is_unconstrained = param.prior_on is gpflow.base.PriorOn.UNCONSTRAINED
+
+    # Check whether `bounds` are in the desired space
+    if param.transform is not None:
+        if unconstrained and not is_unconstrained:
+            bounds = param.transform.inverse(bounds)
+        elif is_unconstrained and not unconstrained:
+            bounds = param.transform.forward(bounds)
+
+    # Return bounds as (2, *param.shape)
+    return tf.stack([tf.broadcast_to(bound, shape) for bound in bounds])
 
 
 def _covariance_between_points_for_variational_models(
