@@ -14,12 +14,11 @@
 
 from __future__ import annotations
 
-from typing import Tuple, Union, Optional
+from typing import Tuple, Union
 
 import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
-from gpflow.base import TensorData
 
 from ...data import Dataset
 from ...types import TensorType
