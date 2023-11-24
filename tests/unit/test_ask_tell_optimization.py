@@ -438,6 +438,46 @@ def test_ask_tell_optimizer_for_uncopyable_model(
     assert ask_tell.to_result(copy=False).final_result.is_ok
 
 
+class DatasetChecker(QuadraticMeanAndRBFKernel, PseudoTrainableProbModel):
+    def __init__(
+        self,
+        use_global_model: bool,
+        use_global_init_dataset: bool,
+        init_data: Mapping[Tag, Dataset],
+        query_points: TensorType,
+    ) -> None:
+        super().__init__()
+        self.update_count = 0
+        self._tag = OBJECTIVE
+        self.use_global_model = use_global_model
+        self.use_global_init_dataset = use_global_init_dataset
+        self.init_data = init_data
+        self.query_points = query_points
+
+    def update(self, dataset: Dataset) -> None:
+        if self.use_global_model:
+            exp_init_qps = self.init_data[OBJECTIVE].query_points
+        else:
+            if self.use_global_init_dataset:
+                exp_init_qps = self.init_data[OBJECTIVE].query_points
+            else:
+                exp_init_qps = self.init_data[self._tag].query_points
+
+        if self.update_count == 0:
+            # Initial model training.
+            exp_qps = exp_init_qps
+        else:
+            # Subsequent model training.
+            if self.use_global_model:
+                exp_qps = tf.concat([exp_init_qps, tf.reshape(self.query_points, [-1, 1])], 0)
+            else:
+                index = LocalizedTag.from_tag(self._tag).local_index
+                exp_qps = tf.concat([exp_init_qps, self.query_points[:, index]], 0)
+
+        npt.assert_array_equal(exp_qps, dataset.query_points)
+        self.update_count += 1
+
+
 # Check that the correct dataset is routed to the model.
 # Note: this test is almost identical to the one in test_bayesian_optimizer.py.
 @pytest.mark.parametrize("use_global_model", [True, False])
@@ -461,38 +501,9 @@ def test_ask_tell_optimizer_creates_correct_datasets_for_rank3_points(
         (num_query_points_per_batch, batch_size, 1),
     )
 
-    class DatasetChecker(QuadraticMeanAndRBFKernel, PseudoTrainableProbModel):
-        def __init__(self) -> None:
-            super().__init__()
-            self.update_count = 0
-            self._tag = OBJECTIVE
-
-        def update(self, dataset: Dataset) -> None:
-            if use_global_model:
-                exp_init_qps = init_data[OBJECTIVE].query_points
-            else:
-                if use_global_init_dataset:
-                    exp_init_qps = init_data[OBJECTIVE].query_points
-                else:
-                    exp_init_qps = init_data[self._tag].query_points
-
-            if self.update_count == 0:
-                # Initial model training.
-                exp_qps = exp_init_qps
-            else:
-                # Subsequent model training.
-                if use_global_model:
-                    exp_qps = tf.concat([exp_init_qps, tf.reshape(query_points, [-1, 1])], 0)
-                else:
-                    index = LocalizedTag.from_tag(self._tag).local_index
-                    exp_qps = tf.concat([exp_init_qps, query_points[:, index]], 0)
-
-            npt.assert_array_equal(exp_qps, dataset.query_points)
-            self.update_count += 1
-
     search_space = Box([-1], [1])
 
-    model = DatasetChecker()
+    model = DatasetChecker(use_global_model, use_global_init_dataset, init_data, query_points)
     if use_global_model:
         models = {OBJECTIVE: model}
     else:

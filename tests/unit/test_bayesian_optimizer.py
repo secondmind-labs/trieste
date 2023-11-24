@@ -23,6 +23,7 @@ import pytest
 import tensorflow as tf
 from check_shapes import inherit_check_shapes
 
+from tests.unit.test_ask_tell_optimization import DatasetChecker
 from tests.util.misc import (
     FixedAcquisitionRule,
     assert_datasets_allclose,
@@ -261,38 +262,9 @@ def test_bayesian_optimizer_creates_correct_datasets_for_rank3_points(
         (num_query_points_per_batch, batch_size, 1),
     )
 
-    class DatasetChecker(QuadraticMeanAndRBFKernel, PseudoTrainableProbModel):
-        def __init__(self) -> None:
-            super().__init__()
-            self.update_count = 0
-            self._tag = OBJECTIVE
-
-        def update(self, dataset: Dataset) -> None:
-            if use_global_model:
-                exp_init_qps = init_data[OBJECTIVE].query_points
-            else:
-                if use_global_init_dataset:
-                    exp_init_qps = init_data[OBJECTIVE].query_points
-                else:
-                    exp_init_qps = init_data[self._tag].query_points
-
-            if self.update_count == 0:
-                # Initial model training.
-                exp_qps = exp_init_qps
-            else:
-                # Subsequent model training.
-                if use_global_model:
-                    exp_qps = tf.concat([exp_init_qps, tf.reshape(query_points, [-1, 1])], 0)
-                else:
-                    index = LocalizedTag.from_tag(self._tag).local_index
-                    exp_qps = tf.concat([exp_init_qps, query_points[:, index]], 0)
-
-            npt.assert_array_equal(exp_qps, dataset.query_points)
-            self.update_count += 1
-
     search_space = Box([-1], [1])
 
-    model = DatasetChecker()
+    model = DatasetChecker(use_global_model, use_global_init_dataset, init_data, query_points)
     if use_global_model:
         models = {OBJECTIVE: model}
     else:

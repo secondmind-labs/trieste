@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Callable, Sequence, Set, Union
+from typing import Callable, Mapping, Set, Union
 
 import numpy.testing as npt
 import pytest
@@ -59,18 +59,21 @@ def test_mk_multi_observer() -> None:
 
 
 @pytest.mark.parametrize(
-    "input_objective, keys",
+    "input_objective, exp_o_call",
     [
-        (lambda x: x, ["baz"]),
-        (lambda x: Dataset(x, x), ["baz"]),
-        (mk_multi_observer(foo=lambda x: x + 1, bar=lambda x: x - 1), ["foo", "bar"]),
+        (lambda x: x, {"baz": lambda x: x}),
+        (lambda x: Dataset(x, x), {"baz": lambda x: x}),
+        (
+            mk_multi_observer(foo=lambda x: x + 1, bar=lambda x: x - 1),
+            {"foo": lambda x: x + 1, "bar": lambda x: x - 1},
+        ),
     ],
 )
 @pytest.mark.parametrize("batch_size", [1, 2, 3])
 @pytest.mark.parametrize("num_query_points_per_batch", [1, 2])
 def test_mk_batch_observer(
     input_objective: Union[Callable[[TensorType], TensorType], Observer],
-    keys: Sequence[Tag],
+    exp_o_call: Mapping[Tag, Callable[[TensorType], TensorType]],
     batch_size: int,
     num_query_points_per_batch: int,
 ) -> None:
@@ -84,20 +87,15 @@ def test_mk_batch_observer(
 
     # Check keys.
     exp_keys: Set[Union[Tag, LocalizedTag]] = set()
-    for key in keys:
+    for key in exp_o_call:
         exp_keys.update({LocalizedTag(key, i) for i in range(batch_size)})
         exp_keys.add(key)
     assert ys.keys() == exp_keys
 
     # Check datasets.
-    for key in keys:
-        # Different observers (in parameterize above) return different observation values.
-        if key == "foo":
-            exp_o = x_ + 1
-        elif key == "bar":
-            exp_o = x_ - 1
-        else:
-            exp_o = x_
+    for key, call in exp_o_call.items():
+        # Get expected observations.
+        exp_o = call(x_)
 
         npt.assert_array_equal(ys[key].query_points, tf.reshape(x_, [-1, 1]))
         npt.assert_array_equal(ys[key].observations, tf.reshape(exp_o, [-1, 1]))
