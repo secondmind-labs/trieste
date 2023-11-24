@@ -13,7 +13,6 @@
 # limitations under the License.
 from __future__ import annotations
 
-import copy
 from typing import Mapping, Optional
 
 import numpy.testing as npt
@@ -503,7 +502,7 @@ def test_ask_tell_optimizer_creates_correct_datasets_for_rank3_points(
 
     observer = mk_batch_observer(lambda x: Dataset(x, x))
     rule = FixedAcquisitionRule(query_points)
-    ask_tell = AskTellOptimizer(search_space, copy.deepcopy(init_data), models, rule)
+    ask_tell = AskTellOptimizer(search_space, init_data, models, rule)
 
     points = ask_tell.ask()
     new_data = observer(points)

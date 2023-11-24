@@ -187,6 +187,9 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         if not datasets or not models:
             raise ValueError("dicts of datasets and models must be populated.")
 
+        # Copy the dataset so we don't change the one provided by the user.
+        datasets = deepcopy(datasets)
+
         if isinstance(datasets, Dataset):
             datasets = {OBJECTIVE: datasets}
         if not isinstance(models, Mapping):

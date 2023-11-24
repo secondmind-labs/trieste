@@ -635,6 +635,9 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             - ``datasets`` or ``models`` are empty
             - the default `acquisition_rule` is used and the tags are not `OBJECTIVE`.
         """
+        # Copy the dataset so we don't change the one provided by the user.
+        datasets = copy.deepcopy(datasets)
+
         if isinstance(datasets, Dataset):
             datasets = {OBJECTIVE: datasets}
         if not isinstance(models, Mapping):
