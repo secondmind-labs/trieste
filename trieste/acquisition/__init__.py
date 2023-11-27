@@ -96,7 +96,6 @@ from .interface import (
     VectorizedAcquisitionFunctionBuilder,
 )
 from .rule import (
-    TURBO,
     AcquisitionRule,
     AsynchronousGreedy,
     AsynchronousOptimization,
@@ -107,6 +106,7 @@ from .rule import (
     RandomSampling,
     SingleObjectiveTrustRegionBox,
     TREGOBox,
+    TURBOBox,
 )
 from .sampler import (
     ExactThompsonSampler,

@@ -28,10 +28,8 @@ try:
 except ModuleNotFoundError:
     pd = None
 
-import warnings
-
 from . import logging
-from .acquisition.rule import TURBO, AcquisitionRule, EfficientGlobalOptimization
+from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from .bayesian_optimizer import (
     FrozenRecord,
     OptimizationResult,
@@ -230,14 +228,6 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
             )
         else:
             self._acquisition_rule = acquisition_rule
-
-        if (fit_model) and isinstance(acquisition_rule, TURBO):
-            warnings.warn(
-                """
-                Are you sure you want to keep fitting the global model even though you
-                are using TURBO which uses local models? This is a waste of computation.
-                """
-            )
 
         if fit_model:
             with Timer() as initial_model_fitting_timer:

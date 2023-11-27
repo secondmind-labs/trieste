@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import copy
 import traceback
-import warnings
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
@@ -54,7 +53,7 @@ except ModuleNotFoundError:
     sns = None
 
 from . import logging
-from .acquisition.rule import TURBO, AcquisitionRule, EfficientGlobalOptimization
+from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
 from .data import Dataset
 from .models import SupportsCovarianceWithTopFidelity, TrainableProbabilisticModel
 from .objectives.utils import mk_batch_observer
@@ -663,15 +662,6 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
         if not datasets:
             raise ValueError("dicts of datasets and models must be populated.")
-
-        if fit_model and isinstance(acquisition_rule, TURBO):
-            warnings.warn(
-                """
-                Are you sure you want to keep fitting the global model even though you
-                are using TURBO which has only local models? This is a waste of computation.
-                Consider setting 'fit_model'='False'.
-                """
-            )
 
         if acquisition_rule is None:
             if datasets.keys() != {OBJECTIVE}:
