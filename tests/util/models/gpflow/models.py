@@ -164,6 +164,9 @@ class GaussianProcessWithoutNoise(GaussianMarginal, SupportsPredictJoint, HasRep
     ) -> ReparametrizationSampler[GaussianProcessWithoutNoise]:
         return IndependentReparametrizationSampler(num_samples, self)
 
+    def log(self, dataset: Optional[Dataset] = None) -> None:
+        return
+
 
 class GaussianProcessWithSamplers(GaussianProcess, HasReparamSampler):
     """A (static) Gaussian process over a vector random variable with independent reparam sampler"""
