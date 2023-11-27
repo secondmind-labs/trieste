@@ -145,6 +145,29 @@ def test_randomize_hyperparameters_randomizes_kernel_parameters_with_priors(
 
 @random_seed
 @pytest.mark.parametrize("compile", [False, True])
+def test_randomize_hyperparameters_randomizes_kernel_parameters_with_unconstrained_priors(
+    dim: int, compile: bool
+) -> None:
+    kernel = gpflow.kernels.RBF(variance=1.0, lengthscales=[0.2] * dim)
+    kernel.lengthscales = gpflow.Parameter(kernel.lengthscales, transform=tfp.bijectors.Exp())
+    kernel.lengthscales.prior = tfp.distributions.Uniform(
+        tf.math.log(tf.constant(0.01, dtype=tf.float64)),
+        tf.math.log(tf.constant(10.0, dtype=tf.float64)),
+    )
+    kernel.lengthscales.prior_on = gpflow.base.PriorOn.UNCONSTRAINED
+
+    compiler = tf.function if compile else lambda x: x
+    compiler(randomize_hyperparameters)(kernel)
+
+    npt.assert_allclose(1.0, kernel.variance)
+    npt.assert_array_equal(dim, kernel.lengthscales.shape)
+    npt.assert_array_less(kernel.lengthscales, [10.0] * dim)
+    npt.assert_raises(AssertionError, npt.assert_allclose, [0.2] * dim, kernel.lengthscales)
+    assert len(np.unique(kernel.lengthscales)) == dim
+
+
+@random_seed
+@pytest.mark.parametrize("compile", [False, True])
 def test_randomize_hyperparameters_randomizes_kernel_parameters_with_const_priors(
     dim: int, compile: bool
 ) -> None:
@@ -207,13 +230,13 @@ def test_randomize_hyperparameters_samples_from_constraints_when_given_prior_and
     kernel.lengthscales = gpflow.Parameter(
         kernel.lengthscales, transform=tfp.bijectors.Sigmoid(low=lower, high=upper)
     )
-    kernel.lengthscales.prior = tfp.distributions.Uniform(low=10.0, high=100.0)
+    kernel.lengthscales.prior = tfp.distributions.Uniform(low=lower, high=upper / 2)
 
     kernel.variance.prior = tfp.distributions.LogNormal(loc=np.float64(-2.0), scale=np.float64(1.0))
 
     randomize_hyperparameters(kernel)
 
-    npt.assert_array_less(kernel.lengthscales, [0.5] * dim)
+    npt.assert_array_less(kernel.lengthscales, [0.25] * dim)
     npt.assert_raises(AssertionError, npt.assert_allclose, [0.2] * dim, kernel.lengthscales)
 
 
