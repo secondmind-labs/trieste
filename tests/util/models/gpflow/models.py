@@ -121,6 +121,9 @@ class GaussianProcess(
         ]
         return tf.concat(covs, axis=-3)
 
+    def log(self, dataset: Optional[Dataset] = None) -> None:
+        return
+
 
 class GaussianProcessWithoutNoise(GaussianMarginal, SupportsPredictJoint, HasReparamSampler):
     """A (static) Gaussian process over a vector random variable with independent reparam sampler

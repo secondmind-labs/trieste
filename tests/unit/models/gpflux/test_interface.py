@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+from typing import Optional
+
 import gpflow
 import numpy.testing as npt
 import pytest
@@ -68,6 +70,9 @@ class _QuadraticPredictor(GPfluxPredictor):
         return samples
 
     def update(self, dataset: Dataset) -> None:
+        return
+
+    def log(self, dataset: Optional[Dataset] = None) -> None:
         return
 
 

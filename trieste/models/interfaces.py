@@ -84,13 +84,14 @@ class ProbabilisticModel(Protocol):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def log(self, dataset: Optional[Dataset] = None) -> None:
         """
         Log model-specific information at a given optimization step.
 
         :param dataset: Optional data that can be used to log additional data-based model summaries.
         """
-        return
+        raise NotImplementedError
 
 
 @runtime_checkable

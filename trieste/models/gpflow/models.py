@@ -1659,6 +1659,9 @@ class MultifidelityAutoregressive(
 
         return f_var
 
+    def log(self, dataset: Optional[Dataset] = None) -> None:
+        return
+
 
 class MultifidelityNonlinearAutoregressive(
     TrainableProbabilisticModel, SupportsPredictY, SupportsCovarianceWithTopFidelity
@@ -2033,3 +2036,6 @@ class MultifidelityNonlinearAutoregressive(
         cov = tfp.stats.covariance(signal_sample, max_fidelity_sample)[:, :, 0]
 
         return cov
+
+    def log(self, dataset: Optional[Dataset] = None) -> None:
+        return
