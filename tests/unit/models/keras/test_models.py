@@ -42,6 +42,7 @@ from trieste.models.keras import (
     sample_with_replacement,
 )
 from trieste.models.optimizer import KerasOptimizer, TrainingData
+from trieste.models.utils import get_module_with_variables
 from trieste.types import TensorType
 
 _ENSEMBLE_SIZE = 3
@@ -568,7 +569,7 @@ def test_deep_ensemble_tf_saved_model() -> None:
         trajectory = trajectory_sampler.get_trajectory()
 
         # generate client model with predict and sample methods
-        module = model.get_module_with_variables(trajectory_sampler, trajectory)
+        module = get_module_with_variables(model, trajectory_sampler, trajectory)
         module.predict = tf.function(
             model.predict, input_signature=[tf.TensorSpec(shape=[None, 3], dtype=tf.float64)]
         )

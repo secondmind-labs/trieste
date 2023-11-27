@@ -25,7 +25,6 @@ from typing_extensions import Protocol, runtime_checkable
 from ..data import Dataset
 from ..types import TensorType
 from ..utils import DEFAULTS
-from ..utils.misc import get_variables
 
 ProbabilisticModelType = TypeVar(
     "ProbabilisticModelType", bound="ProbabilisticModel", contravariant=True
@@ -92,19 +91,6 @@ class ProbabilisticModel(Protocol):
         :param dataset: Optional data that can be used to log additional data-based model summaries.
         """
         return
-
-    def get_module_with_variables(self, *dependencies: Any) -> tf.Module:
-        """
-        Return a fresh module with the model's variables attached, which can then be extended
-        with methods and saved using tf.saved_model.
-
-        :param dependencies: Dependent objects whose variables should also be included.
-        """
-        module = tf.Module()
-        module.saved_variables = get_variables(self)
-        for dependency in dependencies:
-            module.saved_variables += get_variables(dependency)
-        return module
 
 
 @runtime_checkable

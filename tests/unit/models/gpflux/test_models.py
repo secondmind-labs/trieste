@@ -50,6 +50,7 @@ from trieste.logging import step_number, tensorboard_writer
 from trieste.models.gpflux import DeepGaussianProcess
 from trieste.models.interfaces import HasTrajectorySampler
 from trieste.models.optimizer import KerasOptimizer
+from trieste.models.utils import get_module_with_variables
 from trieste.types import TensorType
 
 
@@ -395,7 +396,7 @@ def test_deepgp_tf_saved_model() -> None:
         trajectory = trajectory_sampler.get_trajectory()
 
         # generate client model with predict and sample methods
-        module = model.get_module_with_variables(trajectory_sampler, trajectory)
+        module = get_module_with_variables(model, trajectory_sampler, trajectory)
         module.predict = tf.function(
             model.predict, input_signature=[tf.TensorSpec(shape=[None, 1], dtype=tf.float64)]
         )
