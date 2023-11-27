@@ -53,7 +53,8 @@ def assert_data_is_compatible(new_data: Dataset, existing_data: Dataset) -> None
 def randomize_hyperparameters(object: gpflow.Module) -> None:
     """
     Sets hyperparameters to random samples from their prior distributions or (for Sigmoid
-    constraints with no priors) their constrained domains.
+    constraints with no priors) their constrained domains. Note that it is up to the caller
+    to ensure that the prior, if defined, is compatible with the transform.
 
     :param object: Any gpflow Module.
     """
