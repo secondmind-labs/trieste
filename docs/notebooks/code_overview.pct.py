@@ -198,12 +198,13 @@ from trieste.acquisition import (
     AcquisitionFunction,
     SingleModelAcquisitionBuilder,
 )
+from trieste.models.interfaces import SupportsPredictY
 from trieste.data import Dataset
 
 
-class ProbabilityOfValidity(SingleModelAcquisitionBuilder[ProbabilisticModel]):
+class ProbabilityOfValidity(SingleModelAcquisitionBuilder[SupportsPredictY]):
     def prepare_acquisition_function(
-        self, model: ProbabilisticModel, dataset: Optional[Dataset] = None
+        self, model: SupportsPredictY, dataset: Optional[Dataset] = None
     ) -> AcquisitionFunction:
         def acquisition(at: TensorType) -> TensorType:
             mean, _ = model.predict_y(tf.squeeze(at, -2))
@@ -217,9 +218,9 @@ class ProbabilityOfValidity(SingleModelAcquisitionBuilder[ProbabilisticModel]):
 
 
 # %%
-class ProbabilityOfValidity2(SingleModelAcquisitionBuilder[ProbabilisticModel]):
+class ProbabilityOfValidity2(SingleModelAcquisitionBuilder[SupportsPredictY]):
     def prepare_acquisition_function(
-        self, model: ProbabilisticModel, dataset: Optional[Dataset] = None
+        self, model: SupportsPredictY, dataset: Optional[Dataset] = None
     ) -> AcquisitionFunction:
         @tf.function
         def acquisition(at: TensorType) -> TensorType:
@@ -231,7 +232,7 @@ class ProbabilityOfValidity2(SingleModelAcquisitionBuilder[ProbabilisticModel]):
     def update_acquisition_function(
         self,
         function: AcquisitionFunction,
-        model: ProbabilisticModel,
+        model: SupportsPredictY,
         dataset: Optional[Dataset] = None,
     ) -> AcquisitionFunction:
         return function  # no need to update anything

@@ -33,6 +33,7 @@ from ..interfaces import (
     SupportsGetKernel,
     SupportsGetObservationNoise,
     SupportsPredictJoint,
+    SupportsPredictY,
     TrainableProbabilisticModel,
 )
 from ..optimizer import Optimizer
@@ -48,6 +49,7 @@ class GPflowPredictor(
     SupportsPredictJoint,
     SupportsGetKernel,
     SupportsGetObservationNoise,
+    SupportsPredictY,
     HasReparamSampler,
     TrainableProbabilisticModel,
     ABC,

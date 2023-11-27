@@ -85,28 +85,6 @@ class ProbabilisticModel(Protocol):
         """
         raise NotImplementedError
 
-    @check_shapes(
-        "query_points: [broadcast batch..., D]",
-        "return[0]: [batch..., E...]",
-        "return[1]: [batch..., E...]",
-    )
-    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        """
-        Return the mean and variance of the independent marginal distributions at each point in
-        ``query_points`` for the observations, including noise contributions.
-
-        Note that this is not supported by all models.
-
-        :param query_points: The points at which to make predictions, of shape [..., D].
-        :return: The mean and variance of the independent marginal distributions at each point in
-            ``query_points``. For a predictive distribution with event shape E, the mean and
-            variance will both have shape [...] + E.
-        """
-        pass  # (required so that mypy doesn't think this method is abstract)
-        raise NotImplementedError(
-            f"Model {self!r} does not support predicting observations, just the latent function"
-        )
-
     def log(self, dataset: Optional[Dataset] = None) -> None:
         """
         Log model-specific information at a given optimization step.
@@ -186,6 +164,29 @@ class SupportsPredictJoint(ProbabilisticModel, Protocol):
         :return: The mean and covariance of the joint marginal distribution at each batch of points
             in ``query_points``. For a predictive distribution with event shape E, the mean will
             have shape [..., B] + E, and the covariance shape [...] + E + [B, B].
+        """
+        raise NotImplementedError
+
+
+@runtime_checkable
+class SupportsPredictY(ProbabilisticModel, Protocol):
+    """A probabilistic model that supports predict_y."""
+
+    @abstractmethod
+    @check_shapes(
+        "query_points: [broadcast batch..., D]",
+        "return[0]: [batch..., E...]",
+        "return[1]: [batch..., E...]",
+    )
+    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        """
+        Return the mean and variance of the independent marginal distributions at each point in
+        ``query_points`` for the observations, including noise contributions.
+
+        :param query_points: The points at which to make predictions, of shape [..., D].
+        :return: The mean and variance of the independent marginal distributions at each point in
+            ``query_points``. For a predictive distribution with event shape E, the mean and
+            variance will both have shape [...] + E.
         """
         raise NotImplementedError
 
@@ -421,18 +422,6 @@ class ModelStack(ProbabilisticModel, Generic[ProbabilisticModelType]):
         samples = [model.sample(query_points, num_samples) for model in self._models]
         return tf.concat(samples, axis=-1)
 
-    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        r"""
-        :param query_points: The points at which to make predictions, of shape [..., D].
-        :return: The predictions from all the wrapped models, concatenated along the event axis in
-            the same order as they appear in :meth:`__init__`. If the wrapped models have predictive
-            distributions with event shapes [:math:`E_i`], the mean and variance will both have
-            shape [..., :math:`\sum_i E_i`].
-        :raise NotImplementedError: If any of the models don't implement predict_y.
-        """
-        means, vars_ = zip(*[model.predict_y(query_points) for model in self._models])
-        return tf.concat(means, axis=-1), tf.concat(vars_, axis=-1)
-
     def log(self, dataset: Optional[Dataset] = None) -> None:
         """
         Log model-specific information at a given optimization step.
@@ -542,6 +531,26 @@ class PredictJointModelStack(ModelStack[SupportsPredictJoint], SupportsPredictJo
         return tf.concat(means, axis=-1), tf.concat(covs, axis=-3)
 
 
+class PredictYModelStack(ModelStack[SupportsPredictY], SupportsPredictY):
+    r"""
+    A :class:`PredictJointModelStack` is a wrapper around a number of
+    :class:`SupportsPredictY`\ s.
+    It delegates :meth:`predict_y` to each model.
+    """
+
+    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        r"""
+        :param query_points: The points at which to make predictions, of shape [..., D].
+        :return: The predictions from all the wrapped models, concatenated along the event axis in
+            the same order as they appear in :meth:`__init__`. If the wrapped models have predictive
+            distributions with event shapes [:math:`E_i`], the mean and variance will both have
+            shape [..., :math:`\sum_i E_i`].
+        :raise NotImplementedError: If any of the models don't implement predict_y.
+        """
+        means, vars_ = zip(*[model.predict_y(query_points) for model in self._models])
+        return tf.concat(means, axis=-1), tf.concat(vars_, axis=-1)
+
+
 # It's useful, though a bit ugly, to define the stack constructors for some model type combinations
 class TrainableSupportsPredictJoint(TrainableProbabilisticModel, SupportsPredictJoint, Protocol):
     """A model that is both trainable and supports predict_joint."""
@@ -553,6 +562,34 @@ class TrainablePredictJointModelStack(
     TrainableModelStack, PredictJointModelStack, ModelStack[TrainableSupportsPredictJoint]
 ):
     """A stack of models that are both trainable and support predict_joint."""
+
+    pass
+
+
+class TrainableSupportsPredictY(TrainableProbabilisticModel, SupportsPredictY, Protocol):
+    """A model that is both trainable and supports predict_y."""
+
+    pass
+
+
+class TrainablePredictYModelStack(
+    TrainableModelStack, PredictYModelStack, ModelStack[TrainableSupportsPredictY]
+):
+    """A stack of models that are both trainable and support predict_y."""
+
+    pass
+
+
+class SupportsPredictJointPredictY(SupportsPredictJoint, SupportsPredictY, Protocol):
+    """A model that supports both predict_joint and predict_y."""
+
+    pass
+
+
+class PredictJointPredictYModelStack(
+    PredictJointModelStack, PredictYModelStack, ModelStack[SupportsPredictJointPredictY]
+):
+    """A stack of models that support both predict_joint and predict_y."""
 
     pass
 

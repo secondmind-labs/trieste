@@ -46,6 +46,7 @@ from ..interfaces import (
     SupportsCovarianceWithTopFidelity,
     SupportsGetInducingVariables,
     SupportsGetInternalData,
+    SupportsPredictY,
     TrainableProbabilisticModel,
     TrajectorySampler,
 )
@@ -1369,7 +1370,9 @@ class VariationalGaussianProcess(
         )
 
 
-class MultifidelityAutoregressive(TrainableProbabilisticModel, SupportsCovarianceWithTopFidelity):
+class MultifidelityAutoregressive(
+    TrainableProbabilisticModel, SupportsPredictY, SupportsCovarianceWithTopFidelity
+):
     r"""
     A :class:`TrainableProbabilisticModel` implementation of the model
     from :cite:`Kennedy2000`. This is a multi-fidelity model that works with an
@@ -1658,7 +1661,7 @@ class MultifidelityAutoregressive(TrainableProbabilisticModel, SupportsCovarianc
 
 
 class MultifidelityNonlinearAutoregressive(
-    TrainableProbabilisticModel, SupportsCovarianceWithTopFidelity
+    TrainableProbabilisticModel, SupportsPredictY, SupportsCovarianceWithTopFidelity
 ):
     r"""
     A :class:`TrainableProbabilisticModel` implementation of the model from

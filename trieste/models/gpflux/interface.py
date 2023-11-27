@@ -21,11 +21,11 @@ from check_shapes import inherit_check_shapes
 from gpflow.base import Module
 
 from ...types import TensorType
-from ..interfaces import SupportsGetObservationNoise
+from ..interfaces import SupportsGetObservationNoise, SupportsPredictY
 from ..optimizer import KerasOptimizer
 
 
-class GPfluxPredictor(SupportsGetObservationNoise, ABC):
+class GPfluxPredictor(SupportsGetObservationNoise, SupportsPredictY, ABC):
     """
     A trainable wrapper for a GPflux deep Gaussian process model. The code assumes subclasses
     will use the Keras `fit` method for training, and so they should provide access to both a
