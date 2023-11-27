@@ -20,13 +20,12 @@ from __future__ import annotations
 import copy
 import math
 from abc import ABC, abstractmethod
-from collections import defaultdict
+from collections import Counter
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import (
     Any,
     Callable,
-    Dict,
     Generic,
     Optional,
     Sequence,
@@ -94,6 +93,9 @@ ResultType = TypeVar("ResultType", covariant=True)
 
 SearchSpaceType = TypeVar("SearchSpaceType", bound=SearchSpace, contravariant=True)
 """ Contravariant type variable bound to :class:`~trieste.space.SearchSpace`. """
+
+T = TypeVar("T")
+""" Unbound type variable. """
 
 
 class AcquisitionRule(ABC, Generic[ResultType, SearchSpaceType, ProbabilisticModelType]):
@@ -166,7 +168,9 @@ class AcquisitionRule(ABC, Generic[ResultType, SearchSpaceType, ProbabilisticMod
         self, models: Mapping[Tag, ProbabilisticModelType], datasets: Mapping[Tag, Dataset]
     ) -> Mapping[Tag, Dataset]:
         """
-        Update internal state (if required) and filter the post-acquisition datasets.
+        Update internal state (if required) and filter the post-acquisition datasets before they
+        are used for model training. For example, this can be used to remove points from the
+        post-acquisition datasets that are no longer in the search space.
 
         :param models: The model for each tag.
         :param datasets: The updated datasets after previous acquisition step.
@@ -1020,71 +1024,38 @@ class UpdatableTrustRegion(SearchSpace):
                 local_gtags.add(ltag.global_tag)
 
         # Only keep global tags that don't have a matching local tag.
-        global_tags = global_tags.difference(local_gtags)
+        global_tags -= local_gtags
 
         return local_gtags, global_tags
 
-    def select_models(
-        self, models: Optional[Mapping[Tag, ProbabilisticModelType]]
-    ) -> Optional[Mapping[Tag, ProbabilisticModelType]]:
+    def select_in_region(self, mapping: Optional[Mapping[Tag, T]]) -> Optional[Mapping[Tag, T]]:
         """
-        Select models belonging to this region for acquisition.
+        Select items belonging to this region for acquisition.
 
-        :param models: The model for each tag.
-        :return: The models belonging to this region.
+        :param mapping: The mapping of items for each tag.
+        :return: The items belonging to this region (or `None` if there aren't any).
         """
-        if models is None:
-            _models = {}
+        if mapping is None:
+            _mapping = {}
         elif self.region_index is None:
-            # If no index, then return the global models.
-            _models = {
-                tag: model
-                for tag, model in models.items()
+            # If no index, then return the global items.
+            _mapping = {
+                tag: item
+                for tag, item in mapping.items()
                 if not LocalizedTag.from_tag(tag).is_local
             }
         else:
-            # Prefer matching local model for each tag, otherwise select the global model.
-            local_gtags, global_tags = self._get_tags(set(models))
+            # Prefer matching local item for each tag, otherwise select the global item.
+            local_gtags, global_tags = self._get_tags(set(mapping))
 
-            _models = {}
+            _mapping = {}
             for tag in local_gtags:
                 ltag = LocalizedTag(tag, self.region_index)
-                _models[ltag] = models[ltag]
+                _mapping[ltag] = mapping[ltag]
             for tag in global_tags:
-                _models[tag] = models[tag]
+                _mapping[tag] = mapping[tag]
 
-        return _models if _models else None
-
-    def select_datasets(
-        self, datasets: Optional[Mapping[Tag, Dataset]]
-    ) -> Optional[Mapping[Tag, Dataset]]:
-        """
-        Select datasets belonging to this region for acquisition.
-
-        :param datasets: The dataset for each tag.
-        :return: The datasets belonging to this region.
-        """
-        if datasets is None:
-            _datasets = {}
-        elif self.region_index is None:
-            # If no index, then return the global datasets.
-            _datasets = {
-                tag: dataset
-                for tag, dataset in datasets.items()
-                if not LocalizedTag.from_tag(tag).is_local
-            }
-        else:
-            # Prefer matching local dataset for each tag, otherwise select the global dataset.
-            local_gtags, global_tags = self._get_tags(set(datasets))
-
-            _datasets = {}
-            for tag in local_gtags:
-                ltag = LocalizedTag(tag, self.region_index)
-                _datasets[ltag] = datasets[ltag]
-            for tag in global_tags:
-                _datasets[tag] = datasets[tag]
-
-        return _datasets if _datasets else None
+        return _mapping if _mapping else None
 
     def get_datasets_filter_mask(
         self, datasets: Optional[Mapping[Tag, Dataset]]
@@ -1166,6 +1137,8 @@ class BatchTrustRegion(
             self._tags = tuple([str(index) for index in range(len(init_subspaces))])
 
         self._rule = rule
+        # The rules for each subspace. These are only used when we have local models to run the
+        # base rule sequentially for each subspace. Theses are set in `acquire`.
         self._rules: Optional[
             Sequence[AcquisitionRule[TensorType, SearchSpace, ProbabilisticModelType]]
         ] = None
@@ -1212,16 +1185,16 @@ class BatchTrustRegion(
             else:
                 self._rule = EfficientGlobalOptimization()
 
-        num_local_models: Dict[Tag, int] = defaultdict(int)
-        for tag in models:
-            ltag = LocalizedTag.from_tag(tag)
-            if ltag.is_local:
-                num_local_models[ltag.global_tag] += 1
+        num_local_models = Counter(
+            LocalizedTag.from_tag(tag).global_tag
+            for tag in models
+            if LocalizedTag.from_tag(tag).is_local
+        )
         num_local_models_vals = set(num_local_models.values())
         assert (
             len(num_local_models_vals) <= 1
         ), f"The number of local models should be the same for all tags, got {num_local_models}"
-        _num_local_models = 0 if len(num_local_models_vals) == 0 else num_local_models_vals.pop()
+        _num_local_models = sum(num_local_models_vals)
 
         num_subspaces = len(self._tags)
         assert _num_local_models in [0, num_subspaces], (
@@ -1233,7 +1206,7 @@ class BatchTrustRegion(
         # Otherwise, run the base rule as is, once with all models and datasets.
         # Note: this should only trigger on the first call to `acquire`, as after that we will
         # have a list of rules in `self._rules`.
-        if _num_local_models > 0:
+        if _num_local_models > 0 and self._rules is None:
             self._rules = [copy.deepcopy(self._rule) for _ in range(num_subspaces)]
 
         def state_func(
@@ -1269,8 +1242,8 @@ class BatchTrustRegion(
             if self._rules is not None:
                 _points = []
                 for subspace, rule in zip(subspaces, self._rules):
-                    _models = subspace.select_models(models)
-                    _datasets = subspace.select_datasets(datasets)
+                    _models = subspace.select_in_region(models)
+                    _datasets = subspace.select_in_region(datasets)
                     assert _models is not None
                     # Remap all local tags to global ones. One reason is that single model
                     # acquisition builders expect OBJECTIVE to exist.
@@ -1477,7 +1450,7 @@ class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox):
         Initialize the box by sampling a location from the global search space and setting the
         bounds.
         """
-        datasets = self.select_datasets(datasets)
+        datasets = self.select_in_region(datasets)
 
         self.location = tf.squeeze(self.global_search_space.sample(1), axis=0)
         self._step_is_success = False
@@ -1506,7 +1479,7 @@ class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox):
             self.initialize(models, datasets)
             return
 
-        datasets = self.select_datasets(datasets)
+        datasets = self.select_in_region(datasets)
         x_min, y_min = self.get_dataset_min(datasets)
         self.location = x_min
 
@@ -1815,13 +1788,13 @@ class TURBOBox(UpdatableTrustRegionBox):
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> None:
         # Use the full dataset to determine the best point.
-        datasets = self.select_datasets(datasets)
+        datasets = self.select_in_region(datasets)
         x_min, self.y_min = self.get_dataset_min(datasets)
         self.location: TensorType = x_min
 
         self.L, self.failure_counter, self.success_counter = self.L_init, 0, 0
 
-        models = self.select_models(models)
+        models = self.select_in_region(models)
         self._set_tr_width(models)
         self._update_bounds()
         self._initialized = True
@@ -1836,7 +1809,7 @@ class TURBOBox(UpdatableTrustRegionBox):
             return
 
         # Use the full dataset to determine the best point.
-        datasets = self.select_datasets(datasets)
+        datasets = self.select_in_region(datasets)
         x_min, y_min = self.get_dataset_min(datasets)
         self.location = x_min
 
@@ -1859,7 +1832,7 @@ class TURBOBox(UpdatableTrustRegionBox):
         if self.L < self.L_min:  # if gets too small then start again
             self.L, self.failure_counter, self.success_counter = self.L_init, 0, 0
 
-        models = self.select_models(models)
+        models = self.select_in_region(models)
         self._set_tr_width(models)
         self._update_bounds()
 
