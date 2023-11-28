@@ -23,6 +23,8 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Dict, Generic, Mapping, TypeVar, cast, overload
 
+from .models.utils import optimize_model_and_save_result
+
 try:
     import pandas as pd
 except ModuleNotFoundError:
@@ -233,7 +235,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
                 for tag, model in self._models.items():
                     dataset = datasets[tag]
                     model.update(dataset)
-                    model.optimize_and_save_result(dataset)
+                    optimize_model_and_save_result(model, dataset)
 
             summary_writer = logging.get_tensorboard_writer()
             if summary_writer:
@@ -434,7 +436,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
             for tag, model in self._models.items():
                 dataset = self._datasets[tag]
                 model.update(dataset)
-                model.optimize_and_save_result(dataset)
+                optimize_model_and_save_result(model, dataset)
 
         summary_writer = logging.get_tensorboard_writer()
         if summary_writer:

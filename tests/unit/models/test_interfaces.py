@@ -40,6 +40,7 @@ from trieste.models.interfaces import (
     TrainableSupportsPredictJoint,
     TrainableSupportsPredictJointHasReparamSampler,
 )
+from trieste.models.utils import get_last_optimization_result, optimize_model_and_save_result
 from trieste.types import TensorType
 
 
@@ -177,8 +178,8 @@ def test_model_stack_training() -> None:
     stack = TrainableModelStack((model01, 2), (model2, 1), (model3, 1))
     data = Dataset(tf.random.uniform([5, 7, 3]), tf.random.uniform([5, 7, 4]))
     stack.update(data)
-    stack.optimize_and_save_result(data)
-    assert stack.last_optimization_result == [None] * 3
+    optimize_model_and_save_result(stack, data)
+    assert get_last_optimization_result(stack) == [None] * 3
 
 
 def test_model_stack_reparam_sampler_raises_for_submodels_without_reparam_sampler() -> None:

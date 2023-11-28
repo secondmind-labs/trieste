@@ -50,7 +50,11 @@ from trieste.logging import step_number, tensorboard_writer
 from trieste.models.gpflux import DeepGaussianProcess
 from trieste.models.interfaces import HasTrajectorySampler
 from trieste.models.optimizer import KerasOptimizer
-from trieste.models.utils import get_module_with_variables
+from trieste.models.utils import (
+    get_last_optimization_result,
+    get_module_with_variables,
+    optimize_model_and_save_result,
+)
 from trieste.types import TensorType
 
 
@@ -298,10 +302,11 @@ def test_deep_gaussian_process_with_lr_scheduler(
     optimizer = KerasOptimizer(tf.optimizers.Adam(lr_schedule), fit_args)
     model = DeepGaussianProcess(two_layer_model(x), optimizer)
 
-    model.optimize_and_save_result(Dataset(x, y))
+    optimize_model_and_save_result(model, Dataset(x, y))
 
-    assert model.last_optimization_result is not None
-    assert len(model.last_optimization_result.history["loss"]) == epochs
+    optimization_result = get_last_optimization_result(model)
+    assert optimization_result is not None
+    assert len(optimization_result.history["loss"]) == epochs
 
 
 def test_deep_gaussian_process_default_optimizer_is_correct(

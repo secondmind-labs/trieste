@@ -118,22 +118,6 @@ class TrainableProbabilisticModel(ProbabilisticModel, Protocol):
         """
         raise NotImplementedError
 
-    def optimize_and_save_result(self, dataset: Dataset) -> None:
-        """
-        Optimize the model objective and save the optimization result in
-        ``last_optimization_result``.
-
-        :param dataset: The data with which to train the model.
-        """
-        setattr(self, "_last_optimization_result", self.optimize(dataset))
-
-    @property
-    def last_optimization_result(self) -> Optional[Any]:
-        """
-        The last saved (optimizer-specific) optimization result.
-        """
-        return getattr(self, "_last_optimization_result")
-
 
 @runtime_checkable
 class SupportsPredictJoint(ProbabilisticModel, Protocol):

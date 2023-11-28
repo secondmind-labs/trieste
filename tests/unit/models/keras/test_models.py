@@ -42,7 +42,11 @@ from trieste.models.keras import (
     sample_with_replacement,
 )
 from trieste.models.optimizer import KerasOptimizer, TrainingData
-from trieste.models.utils import get_module_with_variables
+from trieste.models.utils import (
+    get_last_optimization_result,
+    get_module_with_variables,
+    optimize_model_and_save_result,
+)
 from trieste.types import TensorType
 
 _ENSEMBLE_SIZE = 3
@@ -216,10 +220,11 @@ def test_deep_ensemble_resets_lr_with_lr_schedule() -> None:
 
     npt.assert_allclose(model.model.optimizer.lr.numpy(), init_lr, rtol=1e-6)
 
-    model.optimize_and_save_result(example_data)
+    optimize_model_and_save_result(model, example_data)
 
-    assert model.last_optimization_result is not None
-    npt.assert_allclose(model.last_optimization_result.history["lr"], [0.5, 0.25])
+    optimization_result = get_last_optimization_result(model)
+    assert optimization_result is not None
+    npt.assert_allclose(optimization_result.history["lr"], [0.5, 0.25])
     npt.assert_allclose(model.model.optimizer.lr.numpy(), init_lr, rtol=1e-6)
 
 
