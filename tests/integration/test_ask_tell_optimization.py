@@ -16,7 +16,7 @@ from __future__ import annotations
 import copy
 import pickle
 import tempfile
-from typing import Callable, Tuple
+from typing import Callable, Tuple, Union
 
 import numpy.testing as npt
 import pytest
@@ -124,17 +124,17 @@ OPTIMIZER_PARAMS = (
 )
 
 
-AcquisitionRuleFunction = (
-    Callable[[], AcquisitionRule[TensorType, SearchSpace, TrainableProbabilisticModel]]
-    | Callable[
+AcquisitionRuleFunction = Union[
+    Callable[[], AcquisitionRule[TensorType, SearchSpace, TrainableProbabilisticModel]],
+    Callable[
         [],
         AcquisitionRule[
-            State[TensorType, AsynchronousRuleState | BatchTrustRegionBox.State],
+            State[TensorType, Union[AsynchronousRuleState, BatchTrustRegionBox.State]],
             Box,
             TrainableProbabilisticModel,
         ],
-    ]
-)
+    ],
+]
 
 
 @random_seed

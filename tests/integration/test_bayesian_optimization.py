@@ -16,7 +16,7 @@ from __future__ import annotations
 import tempfile
 from functools import partial
 from pathlib import Path
-from typing import Any, List, Mapping, Optional, Tuple, Type, cast
+from typing import Any, List, Mapping, Optional, Tuple, Type, Union, cast
 
 import dill
 import gpflow
@@ -280,14 +280,14 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
     )
 
 
-AcquisitionRuleType = (
-    AcquisitionRule[TensorType, SearchSpace, TrainableProbabilisticModelType]
-    | AcquisitionRule[
-        State[TensorType, AsynchronousRuleState | BatchTrustRegion.State],
+AcquisitionRuleType = Union[
+    AcquisitionRule[TensorType, SearchSpace, TrainableProbabilisticModelType],
+    AcquisitionRule[
+        State[TensorType, Union[AsynchronousRuleState, BatchTrustRegion.State]],
         Box,
         TrainableProbabilisticModelType,
-    ]
-)
+    ],
+]
 
 
 @random_seed
