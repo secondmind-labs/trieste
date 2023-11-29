@@ -1075,7 +1075,7 @@ class UpdatableTrustRegion(SearchSpace):
         if datasets is None:
             return None
         else:
-            # Only keep points that are in the box.
+            # Only keep points that are in the region.
             return {
                 tag: self.contains(dataset.query_points)
                 for tag, dataset in datasets.items()

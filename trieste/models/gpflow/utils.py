@@ -52,21 +52,14 @@ def assert_data_is_compatible(new_data: Dataset, existing_data: Dataset) -> None
 
 def randomize_hyperparameters(object: gpflow.Module) -> None:
     """
-    Sets hyperparameters to random samples from their constrained domains or (if not constraints
-    are available) their prior distributions.
+    Sets hyperparameters to random samples from their prior distributions or (for Sigmoid
+    constraints with no priors) their constrained domains. Note that it is up to the caller
+    to ensure that the prior, if defined, is compatible with the transform.
 
     :param object: Any gpflow Module.
     """
     for param in object.trainable_parameters:
-        if isinstance(param.bijector, tfp.bijectors.Sigmoid):
-            sample = tf.random.uniform(
-                param.bijector.low.shape,
-                minval=param.bijector.low,
-                maxval=param.bijector.high,
-                dtype=param.bijector.low.dtype,
-            )
-            param.assign(sample)
-        elif param.prior is not None:
+        if param.prior is not None:
             # handle constant priors for multi-dimensional parameters
             # Use python conditionals here to avoid creating tensorflow `tf.cond` ops,
             # i.e. using `len(param.shape)` instead of `tf.rank(param)`.
@@ -76,6 +69,18 @@ def randomize_hyperparameters(object: gpflow.Module) -> None:
                 sample = param.prior.sample(tf.shape(param))
             else:
                 sample = param.prior.sample()
+            if param.prior_on is gpflow.base.PriorOn.UNCONSTRAINED:
+                param.unconstrained_variable.assign(sample)
+            else:
+                param.assign(sample)
+
+        elif isinstance(param.bijector, tfp.bijectors.Sigmoid):
+            sample = tf.random.uniform(
+                param.bijector.low.shape,
+                minval=param.bijector.low,
+                maxval=param.bijector.high,
+                dtype=param.bijector.low.dtype,
+            )
             param.assign(sample)
 
 

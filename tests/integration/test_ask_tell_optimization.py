@@ -16,7 +16,7 @@ from __future__ import annotations
 import copy
 import pickle
 import tempfile
-from typing import Callable
+from typing import Callable, Tuple, Union
 
 import numpy.testing as npt
 import pytest
@@ -49,30 +49,27 @@ from trieste.types import State, TensorType
 # We use a copy of these for a quicker test against a simple quadratic function
 # (copying is necessary as some of the acquisition rules are stateful).
 OPTIMIZER_PARAMS = (
-    "num_steps, reload_state, acquisition_rule_fn, num_models",
+    "num_steps, reload_state, acquisition_rule_fn",
     [
         pytest.param(
-            20, False, lambda: EfficientGlobalOptimization(), 1, id="EfficientGlobalOptimization"
+            20, False, lambda: EfficientGlobalOptimization(), id="EfficientGlobalOptimization"
         ),
         pytest.param(
             20,
             True,
             lambda: EfficientGlobalOptimization(),
-            1,
             id="EfficientGlobalOptimization/reload_state",
         ),
         pytest.param(
             15,
             False,
             lambda: BatchTrustRegionBox(TREGOBox(ScaledBranin.search_space)),
-            1,
             id="TREGO",
         ),
         pytest.param(
             16,
             True,
             lambda: BatchTrustRegionBox(TREGOBox(ScaledBranin.search_space)),
-            1,
             id="TREGO/reload_state",
         ),
         pytest.param(
@@ -85,20 +82,21 @@ OPTIMIZER_PARAMS = (
                     num_query_points=3,
                 ),
             ),
-            1,
             id="BatchTrustRegionBox",
         ),
         pytest.param(
             10,
             False,
-            lambda: BatchTrustRegionBox(
-                [SingleObjectiveTrustRegionBox(ScaledBranin.search_space) for _ in range(3)],
-                EfficientGlobalOptimization(
-                    ParallelContinuousThompsonSampling(),
-                    num_query_points=2,
+            (
+                lambda: BatchTrustRegionBox(
+                    [SingleObjectiveTrustRegionBox(ScaledBranin.search_space) for _ in range(3)],
+                    EfficientGlobalOptimization(
+                        ParallelContinuousThompsonSampling(),
+                        num_query_points=2,
+                    ),
                 ),
+                3,
             ),
-            3,
             id="BatchTrustRegionBox/LocalModels",
         ),
         pytest.param(
@@ -110,7 +108,6 @@ OPTIMIZER_PARAMS = (
                 ).using(OBJECTIVE),
                 num_query_points=3,
             ),
-            1,
             id="LocalPenalization",
         ),
         pytest.param(
@@ -121,11 +118,23 @@ OPTIMIZER_PARAMS = (
                     ScaledBranin.search_space,
                 ).using(OBJECTIVE),
             ),
-            1,
             id="LocalPenalization/AsynchronousGreedy",
         ),
     ],
 )
+
+
+AcquisitionRuleFunction = Union[
+    Callable[[], AcquisitionRule[TensorType, SearchSpace, TrainableProbabilisticModel]],
+    Callable[
+        [],
+        AcquisitionRule[
+            State[TensorType, Union[AsynchronousRuleState, BatchTrustRegionBox.State]],
+            Box,
+            TrainableProbabilisticModel,
+        ],
+    ],
+]
 
 
 @random_seed
@@ -134,22 +143,9 @@ OPTIMIZER_PARAMS = (
 def test_ask_tell_optimizer_finds_minima_of_the_scaled_branin_function(
     num_steps: int,
     reload_state: bool,
-    acquisition_rule_fn: Callable[
-        [], AcquisitionRule[TensorType, SearchSpace, TrainableProbabilisticModel]
-    ]
-    | Callable[
-        [],
-        AcquisitionRule[
-            State[TensorType, AsynchronousRuleState | BatchTrustRegionBox.State],
-            Box,
-            TrainableProbabilisticModel,
-        ],
-    ],
-    num_models: int,
+    acquisition_rule_fn: AcquisitionRuleFunction | Tuple[AcquisitionRuleFunction, int],
 ) -> None:
-    _test_ask_tell_optimization_finds_minima(
-        True, num_steps, reload_state, acquisition_rule_fn, num_models
-    )
+    _test_ask_tell_optimization_finds_minima(True, num_steps, reload_state, acquisition_rule_fn)
 
 
 @random_seed
@@ -157,23 +153,12 @@ def test_ask_tell_optimizer_finds_minima_of_the_scaled_branin_function(
 def test_ask_tell_optimizer_finds_minima_of_simple_quadratic(
     num_steps: int,
     reload_state: bool,
-    acquisition_rule_fn: Callable[
-        [], AcquisitionRule[TensorType, SearchSpace, TrainableProbabilisticModel]
-    ]
-    | Callable[
-        [],
-        AcquisitionRule[
-            State[TensorType, AsynchronousRuleState | BatchTrustRegionBox.State],
-            Box,
-            TrainableProbabilisticModel,
-        ],
-    ],
-    num_models: int,
+    acquisition_rule_fn: AcquisitionRuleFunction | Tuple[AcquisitionRuleFunction, int],
 ) -> None:
     # for speed reasons we sometimes test with a simple quadratic defined on the same search space
     # branin; currently assume that every rule should be able to solve this in 5 steps
     _test_ask_tell_optimization_finds_minima(
-        False, min(num_steps, 5), reload_state, acquisition_rule_fn, num_models
+        False, min(num_steps, 5), reload_state, acquisition_rule_fn
     )
 
 
@@ -181,18 +166,7 @@ def _test_ask_tell_optimization_finds_minima(
     optimize_branin: bool,
     num_steps: int,
     reload_state: bool,
-    acquisition_rule_fn: Callable[
-        [], AcquisitionRule[TensorType, SearchSpace, TrainableProbabilisticModel]
-    ]
-    | Callable[
-        [],
-        AcquisitionRule[
-            State[TensorType, AsynchronousRuleState | BatchTrustRegionBox.State],
-            Box,
-            TrainableProbabilisticModel,
-        ],
-    ],
-    num_models: int,
+    acquisition_rule_fn: AcquisitionRuleFunction | Tuple[AcquisitionRuleFunction, int],
 ) -> None:
     # For the case when optimization state is saved and reload on each iteration
     # we need to use new acquisition function object to imitate real life usage
@@ -203,6 +177,11 @@ def _test_ask_tell_optimization_finds_minima(
     observer = mk_observer(ScaledBranin.objective if optimize_branin else SimpleQuadratic.objective)
     batch_observer = mk_batch_observer(observer)
     initial_data = observer(initial_query_points)
+
+    if isinstance(acquisition_rule_fn, tuple):
+        acquisition_rule_fn, num_models = acquisition_rule_fn
+    else:
+        num_models = 1
 
     model = GaussianProcessRegression(
         build_gpr(initial_data, search_space, likelihood_variance=1e-7)
