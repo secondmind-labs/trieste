@@ -159,6 +159,29 @@ def copy_to_local_models(
     return {LocalizedTag(key, i): copy.deepcopy(global_model) for i in range(num_local_models)}
 
 
+def add_local_datasets(
+    datasets: Mapping[Tag, Dataset],
+    num_local_datasets: int,
+) -> Mapping[Tag, Dataset]:
+    """
+    Helper method to add local datasets if they do not already exist, by copying global datasets.
+
+    :param datasets: The original datasets.
+    :param num_local_datasets: The number of local datasets to add per global tag.
+    :return: The updated mapping of datasets.
+    """
+    updated_datasets = {}
+    for tag in datasets:
+        updated_datasets[tag] = datasets[tag]
+        ltag = LocalizedTag.from_tag(tag)
+        if not ltag.is_local:
+            for i in range(num_local_datasets):
+                target_ltag = LocalizedTag(ltag.global_tag, i)
+                if target_ltag not in datasets:
+                    updated_datasets[target_ltag] = datasets[tag]
+    return updated_datasets
+
+
 @check_shapes(
     "points: [n_points, ...]",
     "return: [n_points]",

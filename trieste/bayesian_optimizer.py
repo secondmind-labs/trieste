@@ -54,6 +54,7 @@ except ModuleNotFoundError:
 
 from . import logging
 from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
+from .acquisition.utils import add_local_datasets
 from .data import Dataset
 from .models import SupportsCovarianceWithTopFidelity, TrainableProbabilisticModel
 from .objectives.utils import mk_batch_observer
@@ -690,6 +691,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     num_steps,
                 )
 
+        tracked_acquisition_state = copy.deepcopy(acquisition_state)
+
         for step in range(start_step + 1, num_steps + 1):
             logging.set_step_number(step)
 
@@ -703,12 +706,11 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         if track_path is None:
                             datasets_copy = copy.deepcopy(datasets)
                             models_copy = copy.deepcopy(models)
-                            acquisition_state_copy = copy.deepcopy(acquisition_state)
-                            record = Record(datasets_copy, models_copy, acquisition_state_copy)
+                            record = Record(datasets_copy, models_copy, tracked_acquisition_state)
                             history.append(record)
                         else:
                             track_path = Path(track_path)
-                            record = Record(datasets, models, acquisition_state)
+                            record = Record(datasets, models, tracked_acquisition_state)
                             file_name = OptimizationResult.step_filename(step, num_steps)
                             history.append(record.save(track_path / file_name))
                     except Exception as e:
@@ -723,22 +725,30 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                             "will be available."
                         ) from e
 
-                if step == 1 and fit_model and fit_initial_model:
-                    with Timer() as initial_model_fitting_timer:
-                        for tag, model in models.items():
-                            # Prefer local dataset if available.
-                            tags = [tag, LocalizedTag.from_tag(tag).global_tag]
-                            _, dataset = get_value_for_tag(datasets, *tags)
-                            assert dataset is not None
-                            model.update(dataset)
-                            model.optimize_and_save_result(dataset)
-                    if summary_writer:
-                        logging.set_step_number(0)
-                        with summary_writer.as_default(step=0):
-                            write_summary_initial_model_fit(
-                                datasets, models, initial_model_fitting_timer
-                            )
-                        logging.set_step_number(step)
+                if step == 1:
+                    # See explanation in AskTellOptimizer.__init__().
+                    if hasattr(acquisition_rule, "num_subspaces"):
+                        datasets = add_local_datasets(datasets, acquisition_rule.num_subspaces)
+                        # Reassure the type checker that we can update the datasets.
+                        datasets = cast(Dict[Tag, Dataset], datasets)
+                    filtered_datasets = acquisition_rule.update_and_filter(models, datasets)
+
+                    if fit_model and fit_initial_model:
+                        with Timer() as initial_model_fitting_timer:
+                            for tag, model in models.items():
+                                # Prefer local dataset if available.
+                                tags = [tag, LocalizedTag.from_tag(tag).global_tag]
+                                _, dataset = get_value_for_tag(filtered_datasets, *tags)
+                                assert dataset is not None
+                                model.update(dataset)
+                                model.optimize_and_save_result(dataset)
+                        if summary_writer:
+                            logging.set_step_number(0)
+                            with summary_writer.as_default(step=0):
+                                write_summary_initial_model_fit(
+                                    datasets, models, initial_model_fitting_timer
+                                )
+                            logging.set_step_number(step)
 
                 with Timer() as total_step_wallclock_timer:
                     with Timer() as query_point_generation_timer:
@@ -749,6 +759,10 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                             acquisition_state, query_points = points_or_stateful(acquisition_state)
                         else:
                             query_points = points_or_stateful
+
+                    # Save acquisition state for tracking immediately after acquisition. Some rules,
+                    # such as BatchTrustRegion, may mutate the state in `update_and_filter` below.
+                    tracked_acquisition_state = copy.deepcopy(acquisition_state)
 
                     observer = self._observer
                     # If query_points are rank 3, then use a batched observer.
@@ -762,20 +776,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         else {OBJECTIVE: observer_output}
                     )
 
-                    # See explanation in ask_tell_optimization.tell().
-                    # We need to process the local tags first, then the global tags.
-                    sorted_tags = sorted(
-                        tagged_output, key=lambda tag: not LocalizedTag.from_tag(tag).is_local
-                    )
-                    for tag in sorted_tags:
-                        new_dataset = tagged_output[tag]
-                        if tag in datasets:
-                            datasets[tag] += new_dataset
-                        else:
-                            global_tag = LocalizedTag.from_tag(tag).global_tag
-                            if global_tag not in datasets:
-                                raise ValueError(f"global tag '{global_tag}' not found in dataset")
-                            datasets[tag] = datasets[global_tag] + new_dataset
+                    for tag, new_dataset in tagged_output.items():
+                        datasets[tag] += new_dataset
                     filtered_datasets = acquisition_rule.update_and_filter(models, datasets)
 
                     with Timer() as model_fitting_timer:
@@ -830,7 +832,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
         tf.print("Optimization completed without errors", output_stream=absl.logging.INFO)
 
-        record = Record(datasets, models, acquisition_state)
+        record = Record(datasets, models, tracked_acquisition_state)
         result = OptimizationResult(Ok(record), history)
         if track_state and track_path is not None:
             result.save_result(Path(track_path) / OptimizationResult.RESULTS_FILENAME)

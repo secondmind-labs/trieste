@@ -563,7 +563,7 @@ def plot_trust_region_history_2d(
     :param mins: search space 2D lower bounds
     :param maxs: search space 2D upper bounds
     :param history: the optimization history for a particular step of the optimization process
-    :param num_query_points: number of query points in this step
+    :param num_query_points: total number of query points in this step
     :param num_init: initial number of BO points
     :return: figure and axes
     """
@@ -590,21 +590,28 @@ def plot_trust_region_history_2d(
     else:
         spaces = [acquisition_space]
 
+    num_spaces = len(spaces)  # Assum  # Assume one query point per subspace.
     if num_query_points is None:
-        num_query_points = len(spaces)
+        num_query_points = num_spaces  # Assume one query point per subspace.
+
+    assert num_query_points % num_spaces == 0, (
+        f"Number of query points ({num_query_points}) must be a multiple of the number of "
+        f"spaces ({num_spaces})."
+    )
+    num_query_points_per_space = num_query_points // num_spaces
 
     # If there are local datasets, use them to generate the colors for the query points.
     # Otherwise, use the global dataset and assume the last `num_query_points` points are new.
     if len(history.datasets) > 1:
         # Expect there to be an objective dataset for each subspace.
-        datasets = [history.datasets[LocalizedTag(OBJECTIVE, i)] for i in range(len(spaces))]
+        datasets = [history.datasets[LocalizedTag(OBJECTIVE, i)] for i in range(num_spaces)]
 
         _new_points_mask = [
             np.zeros(dataset.query_points.shape[0], dtype=bool) for dataset in datasets
         ]
-        # Last point in each dataset is the new point.
+        # New points in each dataset are at the end.
         for mask in _new_points_mask:
-            mask[-1] = True
+            mask[-num_query_points_per_space:] = True
         # Concatenate the masks.
         new_points_mask = np.concatenate(_new_points_mask)
 
@@ -626,7 +633,7 @@ def plot_trust_region_history_2d(
         new_points_mask[-num_query_points:] = True
 
     # Plot trust regions.
-    colors = [rgb2hex(color) for color in cm.rainbow(np.linspace(0, 1, num_query_points))]
+    space_colors = [rgb2hex(color) for color in cm.rainbow(np.linspace(0, 1, num_spaces))]
     for i, space in enumerate(spaces):
         lb = space.lower
         ub = space.upper
@@ -635,20 +642,27 @@ def plot_trust_region_history_2d(
                 (lb[0], lb[1]),
                 ub[0] - lb[0],
                 ub[1] - lb[1],
-                facecolor=colors[i],
-                edgecolor=colors[i],
+                facecolor=space_colors[i],
+                edgecolor=space_colors[i],
                 alpha=0.3,
             )
         )
 
     # Plot new query points, using failure mask to color them.
+    point_colors = (
+        np.reshape(
+            space_colors * num_query_points_per_space, [num_query_points_per_space, num_spaces]
+        )
+        .flatten("F")
+        .tolist()
+    )
     plot_bo_points(
         query_points,
         ax[0, 0],
         num_init,
         mask_fail=new_points_mask,
         c_pass="black",
-        c_fail=colors,
+        c_fail=point_colors,
     )
 
     return fig, ax

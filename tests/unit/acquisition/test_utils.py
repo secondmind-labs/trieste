@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any, Mapping, Optional
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -22,6 +22,7 @@ import tensorflow as tf
 
 from trieste.acquisition import AcquisitionFunction
 from trieste.acquisition.utils import (
+    add_local_datasets,
     copy_to_local_models,
     get_local_dataset,
     get_unique_points_mask,
@@ -113,6 +114,56 @@ def test_copy_to_local_models(num_local_models: int, key: Optional[Tag]) -> None
         assert k == LocalizedTag(key, i)
         assert isinstance(m, MagicMock)
         assert m is not global_model
+
+
+@pytest.mark.parametrize(
+    "datasets, num_other_datasets",
+    [
+        ({"a": Dataset(tf.constant([[1.0, 2.0]]), tf.constant([[3.0]]))}, 0),
+        (
+            {
+                "a": Dataset(tf.constant([[1.0, 2.0]]), tf.constant([[3.0]])),
+                "b": Dataset(tf.constant([[3.0, 7.0], [3.0, 4.0]]), tf.constant([[5.0], [6.0]])),
+            },
+            0,
+        ),
+        (
+            {
+                "a": Dataset(tf.constant([[1.0, 2.0]]), tf.constant([[3.0]])),
+                "b": Dataset(tf.constant([[3.0, 7.0], [3.0, 4.0]]), tf.constant([[5.0], [6.0]])),
+                LocalizedTag("a", 0): Dataset(tf.constant([[0.0]]), tf.constant([[0.0]])),
+            },
+            0,
+        ),
+        (
+            {
+                "a": Dataset(tf.constant([[1.0, 2.0]]), tf.constant([[3.0]])),
+                "b": Dataset(tf.constant([[3.0, 7.0], [3.0, 4.0]]), tf.constant([[5.0], [6.0]])),
+                LocalizedTag("c", 2): Dataset(tf.constant([[0.0]]), tf.constant([[0.0]])),
+            },
+            1,
+        ),
+    ],
+)
+@pytest.mark.parametrize("num_local_datasets", [1, 3])
+def test_add_local_datasets(
+    datasets: Mapping[Tag, Dataset], num_other_datasets: int, num_local_datasets: int
+) -> None:
+    original_datasets = dict(datasets).copy()
+    global_tags = {t for t in original_datasets if not LocalizedTag.from_tag(t).is_local}
+    num_global_datasets = len(global_tags)
+
+    datasets = add_local_datasets(datasets, num_local_datasets)
+    assert len(datasets) == num_global_datasets * (1 + num_local_datasets) + num_other_datasets
+
+    for global_tag in global_tags:
+        assert datasets[global_tag] is original_datasets[global_tag]
+        for i in range(num_local_datasets):
+            ltag = LocalizedTag(global_tag, i)
+            if ltag in original_datasets:
+                assert datasets[ltag] is original_datasets[ltag]
+            else:
+                assert datasets[ltag] is original_datasets[global_tag]
 
 
 @pytest.mark.parametrize(

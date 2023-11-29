@@ -125,11 +125,10 @@ plot_final_result(dataset)
 # %% [markdown]
 # We can also visualize the progress of the optimization by plotting the acquisition space at each
 # step. This space is either the full search space or the trust region, depending on the step, and
-# is shown as a translucent box; with the current optimum point in a region shown in matching
-# color.
+# is shown as a translucent box. The new query points per region are plotted in matching color.
 #
-# Note there is only one trust region in this plot, however the rule in the next section will show
-# multiple trust regions.
+# Note there is only one trust region in this plot, however the rules in the following sections will
+# show multiple trust regions.
 
 # %%
 import base64
@@ -144,7 +143,10 @@ from trieste.experimental.plotting import (
 )
 
 
-def plot_history(result: trieste.bayesian_optimizer.OptimizationResult) -> None:
+def plot_history(
+    result: trieste.bayesian_optimizer.OptimizationResult,
+    num_query_points: int | None = None,
+) -> None:
     frames = []
     for step, hist in enumerate(
         result.history + [result.final_result.unwrap()]
@@ -154,6 +156,7 @@ def plot_history(result: trieste.bayesian_optimizer.OptimizationResult) -> None:
             search_space.lower,
             search_space.upper,
             hist,
+            num_query_points=num_query_points,
             num_init=num_initial_data_points,
         )
 
@@ -298,7 +301,7 @@ dataset = result.try_get_final_dataset()
 plot_final_result(dataset)
 
 # %%
-plot_history(result)
+plot_history(result, num_regions * num_query_points)
 
 # %% [markdown]
 # ## LICENSE

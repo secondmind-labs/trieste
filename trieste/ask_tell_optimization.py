@@ -30,6 +30,7 @@ except ModuleNotFoundError:
 
 from . import logging
 from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
+from .acquisition.utils import add_local_datasets
 from .bayesian_optimizer import (
     FrozenRecord,
     OptimizationResult,
@@ -193,8 +194,6 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         if not isinstance(models, Mapping):
             models = {OBJECTIVE: models}
 
-        self._filtered_datasets = datasets
-
         # reassure the type checker that everything is tagged
         datasets = cast(Dict[Tag, Dataset], datasets)
         models = cast(Dict[Tag, TrainableProbabilisticModelType], models)
@@ -229,12 +228,33 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         else:
             self._acquisition_rule = acquisition_rule
 
+        # In order to support local datasets, account for the case where there may be an initial
+        # dataset that is not tagged per region. In this case, only the global dataset will
+        # exist in datasets. We want to copy this initial dataset to all the regions.
+        # Copy the global dataset if the local version for the subspace is not available.
+        #
+        # Only applies to a subset of acquisition rules, i.e. ones that have subspaces and
+        # hence use local datasets.
+        #
+        # Note: this replication of initial data can potentially cause an issue when a global
+        # model is being used with local datasets, as the points may be repeated. This will only
+        # be an issue if two regions overlap and both contain that initial data-point -- as
+        # filtering below would otherwise remove duplicates. The main way to avoid the issue in
+        # this scenario is to provide local initial datasets, instead of a global initial
+        # dataset.
+        if hasattr(self._acquisition_rule, "num_subspaces"):
+            datasets = add_local_datasets(self._datasets, self._acquisition_rule.num_subspaces)
+            self._datasets = cast(Dict[Tag, Dataset], datasets)
+        self._filtered_datasets = self._acquisition_rule.update_and_filter(
+            self._models, self._datasets
+        )
+
         if fit_model:
             with Timer() as initial_model_fitting_timer:
                 for tag, model in self._models.items():
                     # Prefer local dataset if available.
                     tags = [tag, LocalizedTag.from_tag(tag).global_tag]
-                    _, dataset = get_value_for_tag(datasets, *tags)
+                    _, dataset = get_value_for_tag(self._filtered_datasets, *tags)
                     assert dataset is not None
                     model.update(dataset)
                     model.optimize_and_save_result(dataset)
@@ -439,31 +459,8 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
                 f"match dataset keys {self._datasets.keys()}"
             )
 
-        # In order to support local datasets, account for the case where there may be an initial
-        # dataset that is not tagged per region. In this case, only the global dataset will exist
-        # in datasets. We want to copy this initial dataset to all the regions.
-        # If a tag from tagged_output does not exist in datasets, then add it to
-        # datasets by copying the data from datasets with the same global tag. Otherwise keep the
-        # existing data from datasets.
-        #
-        # Note: this replication of initial data can potentially cause an issue when a global model
-        # is being used with local datasets, as the points may be repeated. This will only be an
-        # issue if two regions overlap and both contain that initial data-point -- as filtering
-        # (in BatchTrustRegion) would otherwise remove duplicates. The main way to avoid the issue
-        # in this scenario is to provide local initial datasets, instead of a global initial
-        # dataset.
-        sorted_tags = sorted(  # We need to process the local tags first, then the global tags.
-            new_data, key=lambda tag: not LocalizedTag.from_tag(tag).is_local
-        )
-        for tag in sorted_tags:
-            new_dataset = new_data[tag]
-            if tag in self._datasets:
-                self._datasets[tag] += new_dataset
-            else:
-                global_tag = LocalizedTag.from_tag(tag).global_tag
-                if global_tag not in self._datasets:
-                    raise ValueError(f"global tag '{global_tag}' not found in dataset")
-                self._datasets[tag] = self._datasets[global_tag] + new_dataset
+        for tag, new_dataset in new_data.items():
+            self._datasets[tag] += new_dataset
         self._filtered_datasets = self._acquisition_rule.update_and_filter(
             self._models, self._datasets
         )

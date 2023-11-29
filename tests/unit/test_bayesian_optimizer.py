@@ -274,6 +274,7 @@ def test_bayesian_optimizer_creates_correct_datasets_for_rank3_points(
 
     optimizer = BayesianOptimizer(lambda x: Dataset(x, x), search_space)
     rule = FixedAcquisitionRule(query_points)
+    rule.num_subspaces = batch_size  # type: ignore[attr-defined]
     optimizer.optimize(1, init_data, models, rule).final_result.unwrap()
 
 

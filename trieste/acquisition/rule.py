@@ -1146,6 +1146,12 @@ class BatchTrustRegion(
         """"""
         return f"""{self.__class__.__name__}({self._subspaces!r}, {self._rule!r})"""
 
+    @property
+    def num_subspaces(self) -> int:
+        """The number of subspaces."""
+        assert self._subspaces is not None, "the subspaces have not been initialized"
+        return len(self._subspaces)
+
     def acquire(
         self,
         search_space: SearchSpace,
@@ -1551,7 +1557,7 @@ class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, UpdatableTrus
             self._subspaces = init_subspaces
             for index, subspace in enumerate(self._subspaces):
                 subspace.region_index = index  # Override the index.
-            self._tags = tuple([str(index) for index in range(len(self._subspaces))])
+            self._tags = tuple([str(index) for index in range(self.num_subspaces)])
 
         # Ensure passed in global search space is always the same as the search space passed to
         # the subspaces.
@@ -1752,7 +1758,7 @@ class TURBOBox(UpdatableTrustRegionBox):
 
         self._initialized = False
         self.y_min = np.inf
-        # Initialise to the full global search space.
+        # Initialise to the full global search space size.
         self.tr_width = global_search_space.upper - global_search_space.lower
         self._update_bounds()
 

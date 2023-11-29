@@ -398,7 +398,7 @@ def test_ask_tell_optimizer_tell_validates_keys(
     ask_tell = AskTellOptimizer(
         search_space, dataset_with_key_1, model_with_key_1, acquisition_rule
     )
-    with pytest.raises(ValueError):
+    with pytest.raises(KeyError, match=str(TAG2)):
         ask_tell.tell(new_data_with_key_2)
 
 
@@ -513,6 +513,7 @@ def test_ask_tell_optimizer_creates_correct_datasets_for_rank3_points(
 
     observer = mk_batch_observer(lambda x: Dataset(x, x))
     rule = FixedAcquisitionRule(query_points)
+    rule.num_subspaces = batch_size  # type: ignore[attr-defined]
     ask_tell = AskTellOptimizer(search_space, init_data, models, rule)
 
     points = ask_tell.ask()
