@@ -13,7 +13,7 @@
 # limitations under the License.
 import copy
 import functools
-from typing import Mapping, Tuple, Union
+from typing import Dict, Mapping, Tuple, Union
 
 import tensorflow as tf
 from check_shapes import check_shapes
@@ -159,10 +159,10 @@ def copy_to_local_models(
     return {LocalizedTag(key, i): copy.deepcopy(global_model) for i in range(num_local_models)}
 
 
-def add_local_datasets(
+def with_local_datasets(
     datasets: Mapping[Tag, Dataset],
     num_local_datasets: int,
-) -> Mapping[Tag, Dataset]:
+) -> Dict[Tag, Dataset]:
     """
     Helper method to add local datasets if they do not already exist, by copying global datasets.
 

@@ -132,6 +132,7 @@ plot_final_result(dataset)
 
 # %%
 import base64
+from typing import Optional
 
 import IPython
 import matplotlib.pyplot as plt
@@ -145,7 +146,7 @@ from trieste.experimental.plotting import (
 
 def plot_history(
     result: trieste.bayesian_optimizer.OptimizationResult,
-    num_query_points: int | None = None,
+    num_query_points: Optional[int] = None,
 ) -> None:
     frames = []
     for step, hist in enumerate(

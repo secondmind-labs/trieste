@@ -22,12 +22,12 @@ import tensorflow as tf
 
 from trieste.acquisition import AcquisitionFunction
 from trieste.acquisition.utils import (
-    add_local_datasets,
     copy_to_local_models,
     get_local_dataset,
     get_unique_points_mask,
     select_nth_output,
     split_acquisition_function,
+    with_local_datasets,
 )
 from trieste.data import Dataset
 from trieste.space import Box, SearchSpaceType
@@ -146,14 +146,14 @@ def test_copy_to_local_models(num_local_models: int, key: Optional[Tag]) -> None
     ],
 )
 @pytest.mark.parametrize("num_local_datasets", [1, 3])
-def test_add_local_datasets(
+def test_with_local_datasets(
     datasets: Mapping[Tag, Dataset], num_other_datasets: int, num_local_datasets: int
 ) -> None:
     original_datasets = dict(datasets).copy()
     global_tags = {t for t in original_datasets if not LocalizedTag.from_tag(t).is_local}
     num_global_datasets = len(global_tags)
 
-    datasets = add_local_datasets(datasets, num_local_datasets)
+    datasets = with_local_datasets(datasets, num_local_datasets)
     assert len(datasets) == num_global_datasets * (1 + num_local_datasets) + num_other_datasets
 
     for global_tag in global_tags:

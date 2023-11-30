@@ -26,7 +26,7 @@ from tests.util.models.gpflow.models import (
     QuadraticMeanAndRBFKernel,
     rbf,
 )
-from trieste.acquisition.rule import AcquisitionRule
+from trieste.acquisition.rule import AcquisitionRule, LocalDatasetsAcquisitionRule
 from trieste.acquisition.utils import copy_to_local_models
 from trieste.ask_tell_optimization import AskTellOptimizer
 from trieste.bayesian_optimizer import OptimizationResult, Record
@@ -34,7 +34,7 @@ from trieste.data import Dataset
 from trieste.models.interfaces import ProbabilisticModel, TrainableProbabilisticModel
 from trieste.objectives.utils import mk_batch_observer
 from trieste.observer import OBJECTIVE
-from trieste.space import Box
+from trieste.space import Box, SearchSpace
 from trieste.types import State, Tag, TensorType
 from trieste.utils.misc import LocalizedTag
 
@@ -478,6 +478,19 @@ class DatasetChecker(QuadraticMeanAndRBFKernel, PseudoTrainableProbModel):
         self.update_count += 1
 
 
+class LocalDatasetsFixedAcquisitionRule(
+    FixedAcquisitionRule,
+    LocalDatasetsAcquisitionRule[TensorType, SearchSpace, ProbabilisticModel],
+):
+    def __init__(self, query_points: TensorType, num_local_datasets: int) -> None:
+        super().__init__(query_points)
+        self._num_local_datasets = num_local_datasets
+
+    @property
+    def num_local_datasets(self) -> int:
+        return self._num_local_datasets
+
+
 # Check that the correct dataset is routed to the model.
 # Note: this test is almost identical to the one in test_bayesian_optimizer.py.
 @pytest.mark.parametrize("use_global_model", [True, False])
@@ -512,8 +525,7 @@ def test_ask_tell_optimizer_creates_correct_datasets_for_rank3_points(
         model._tag = tag
 
     observer = mk_batch_observer(lambda x: Dataset(x, x))
-    rule = FixedAcquisitionRule(query_points)
-    rule.num_subspaces = batch_size  # type: ignore[attr-defined]
+    rule = LocalDatasetsFixedAcquisitionRule(query_points, batch_size)
     ask_tell = AskTellOptimizer(search_space, init_data, models, rule)
 
     points = ask_tell.ask()

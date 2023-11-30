@@ -29,8 +29,12 @@ except ModuleNotFoundError:
     pd = None
 
 from . import logging
-from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
-from .acquisition.utils import add_local_datasets
+from .acquisition.rule import (
+    AcquisitionRule,
+    EfficientGlobalOptimization,
+    LocalDatasetsAcquisitionRule,
+)
+from .acquisition.utils import with_local_datasets
 from .bayesian_optimizer import (
     FrozenRecord,
     OptimizationResult,
@@ -242,9 +246,10 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         # filtering below would otherwise remove duplicates. The main way to avoid the issue in
         # this scenario is to provide local initial datasets, instead of a global initial
         # dataset.
-        if hasattr(self._acquisition_rule, "num_subspaces"):
-            datasets = add_local_datasets(self._datasets, self._acquisition_rule.num_subspaces)
-            self._datasets = cast(Dict[Tag, Dataset], datasets)
+        if isinstance(self._acquisition_rule, LocalDatasetsAcquisitionRule):
+            self._datasets = with_local_datasets(
+                self._datasets, self._acquisition_rule.num_local_datasets
+            )
         self._filtered_datasets = self._acquisition_rule.update_and_filter(
             self._models, self._datasets
         )

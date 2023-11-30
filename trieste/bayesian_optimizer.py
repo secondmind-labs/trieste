@@ -53,8 +53,12 @@ except ModuleNotFoundError:
     sns = None
 
 from . import logging
-from .acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
-from .acquisition.utils import add_local_datasets
+from .acquisition.rule import (
+    AcquisitionRule,
+    EfficientGlobalOptimization,
+    LocalDatasetsAcquisitionRule,
+)
+from .acquisition.utils import with_local_datasets
 from .data import Dataset
 from .models import SupportsCovarianceWithTopFidelity, TrainableProbabilisticModel
 from .objectives.utils import mk_batch_observer
@@ -727,10 +731,10 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
                 if step == 1:
                     # See explanation in AskTellOptimizer.__init__().
-                    if hasattr(acquisition_rule, "num_subspaces"):
-                        datasets = add_local_datasets(datasets, acquisition_rule.num_subspaces)
-                        # Reassure the type checker that we can update the datasets.
-                        datasets = cast(Dict[Tag, Dataset], datasets)
+                    if isinstance(acquisition_rule, LocalDatasetsAcquisitionRule):
+                        datasets = with_local_datasets(
+                            datasets, acquisition_rule.num_local_datasets
+                        )
                     filtered_datasets = acquisition_rule.update_and_filter(models, datasets)
 
                     if fit_model and fit_initial_model:
