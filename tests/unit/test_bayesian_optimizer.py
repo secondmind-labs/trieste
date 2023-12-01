@@ -491,6 +491,9 @@ def test_bayesian_optimizer_optimize_is_noop_for_zero_steps() -> None:
         def optimize(self, dataset: Dataset) -> NoReturn:
             assert False
 
+        def log(self, dataset: Optional[Dataset] = None) -> None:
+            return
+
     class _UnusableRule(AcquisitionRule[NoReturn, Box, ProbabilisticModel]):
         def acquire(
             self,
