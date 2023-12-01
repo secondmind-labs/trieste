@@ -504,7 +504,7 @@ class PredictJointModelStack(ModelStack[SupportsPredictJoint], SupportsPredictJo
 
 class PredictYModelStack(ModelStack[SupportsPredictY], SupportsPredictY):
     r"""
-    A :class:`PredictJointModelStack` is a wrapper around a number of
+    A :class:`PredictYModelStack` is a wrapper around a number of
     :class:`SupportsPredictY`\ s.
     It delegates :meth:`predict_y` to each model.
     """
