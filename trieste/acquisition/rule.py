@@ -1134,7 +1134,11 @@ class BatchTrustRegion(
             subspaces of type :class:`UpdatableTrustRegionType` will be created, with length
             equal to the number of query points in the base `rule`.
         :param rule: The acquisition rule that defines how to search for a new query point in each
-            subspace. Defaults to :class:`EfficientGlobalOptimization` with default arguments.
+            subspace.
+
+            If `None`, defaults to :class:`~trieste.acquisition.DiscreteThompsonSampling` with
+            a batch size of 1 for `TURBOBox` subspaces, and
+            :class:`~trieste.acquisition.EfficientGlobalOptimization` otherwise.
         """
         # If init_subspaces are not provided, leave it to the subclasses to create them.
         self._subspaces = None
@@ -1402,11 +1406,20 @@ class UpdatableTrustRegionBox(Box, UpdatableTrustRegion):
             identify the local models and datasets to use for acquisition. If `None`, the
             global models and datasets are used.
         """
-        super().__init__(global_search_space.lower, global_search_space.upper)
-        super(Box, self).__init__(region_index)
+        Box.__init__(self, global_search_space.lower, global_search_space.upper)
+        UpdatableTrustRegion.__init__(self, region_index)
         self._global_search_space = global_search_space
         # Random initial location in the global search space.
         self.location = tf.squeeze(global_search_space.sample(1), axis=0)
+
+    @property
+    def location(self) -> TensorType:
+        """The centre of the box."""
+        return self._location
+
+    @location.setter
+    def location(self, location: TensorType) -> None:
+        self._location = location
 
     @property
     def global_search_space(self) -> SearchSpace:

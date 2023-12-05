@@ -590,7 +590,7 @@ def plot_trust_region_history_2d(
     else:
         spaces = [acquisition_space]
 
-    num_spaces = len(spaces)  # Assum  # Assume one query point per subspace.
+    num_spaces = len(spaces)
     if num_query_points is None:
         num_query_points = num_spaces  # Assume one query point per subspace.
 
