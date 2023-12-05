@@ -695,7 +695,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     num_steps,
                 )
 
-        tracked_acquisition_state = copy.deepcopy(acquisition_state)
+        if track_state:
+            tracked_acquisition_state = copy.deepcopy(acquisition_state)
 
         for step in range(start_step + 1, num_steps + 1):
             logging.set_step_number(step)
@@ -766,7 +767,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
                     # Save acquisition state for tracking immediately after acquisition. Some rules,
                     # such as BatchTrustRegion, may mutate the state in `update_and_filter` below.
-                    tracked_acquisition_state = copy.deepcopy(acquisition_state)
+                    if track_state:
+                        tracked_acquisition_state = copy.deepcopy(acquisition_state)
 
                     observer = self._observer
                     # If query_points are rank 3, then use a batched observer.
@@ -836,7 +838,10 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
         tf.print("Optimization completed without errors", output_stream=absl.logging.INFO)
 
-        record = Record(datasets, models, tracked_acquisition_state)
+        if track_state:
+            record = Record(datasets, models, tracked_acquisition_state)
+        else:
+            record = Record(datasets, models, acquisition_state)
         result = OptimizationResult(Ok(record), history)
         if track_state and track_path is not None:
             result.save_result(Path(track_path) / OptimizationResult.RESULTS_FILENAME)
