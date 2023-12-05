@@ -767,6 +767,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
                     # Save acquisition state for tracking immediately after acquisition. Some rules,
                     # such as BatchTrustRegion, may mutate the state in `update_and_filter` below.
+                    # We copy here to keep a record of the region used to compute the query point,
+                    # before the region is updated.
                     if track_state:
                         tracked_acquisition_state = copy.deepcopy(acquisition_state)
 
