@@ -592,15 +592,19 @@ def test_trego_for_default_state(
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
     search_space = Box(lower_bound, upper_bound)
-    tr = BatchTrustRegionBox(TREGOBox(search_space), rule)
+    subspace = TREGOBox(search_space)
+    tr = BatchTrustRegionBox(subspace, rule)
 
     model = QuadraticMeanAndRBFKernel()
     state, query_point = tr.acquire_single(search_space, model, dataset=dataset)(None)
-    tr.update_and_filter({OBJECTIVE: model}, {OBJECTIVE: dataset})
+    tr.filter_datasets({OBJECTIVE: model}, {OBJECTIVE: dataset})
 
     assert state is not None
-    subspace = state.acquisition_space.get_subspace("0")
-    assert isinstance(subspace, TREGOBox)
+    ret_subspace = state.acquisition_space.get_subspace("0")
+    assert isinstance(ret_subspace, TREGOBox)
+    npt.assert_array_almost_equal(ret_subspace.lower, lower_bound)
+    npt.assert_array_almost_equal(ret_subspace.upper, upper_bound)
+
     npt.assert_array_almost_equal(query_point, [expected_query_point], 5)
     npt.assert_array_almost_equal(subspace.lower, lower_bound)
     npt.assert_array_almost_equal(subspace.upper, upper_bound)
@@ -608,14 +612,14 @@ def test_trego_for_default_state(
     assert subspace._is_global
 
 
-def trego_create_state(
+def trego_create_subspace(
     search_space: Box,
     acquisition_space: Box,
     dataset: Dataset,
     eps: TensorType,
     previous_y_min: TensorType,
     is_global: bool,
-) -> BatchTrustRegionBox.State:
+) -> TREGOBox:
     subspace = TREGOBox(search_space, region_index=0)
     subspace.initialize(datasets={OBJECTIVE: dataset})
     subspace._eps = eps
@@ -624,7 +628,7 @@ def trego_create_state(
     subspace._lower = acquisition_space.lower
     subspace._upper = acquisition_space.upper
     subspace.location = (acquisition_space.lower + acquisition_space.upper) / 2
-    return BatchTrustRegionBox.State(TaggedMultiSearchSpace([subspace]))
+    return subspace
 
 
 @pytest.mark.parametrize(
@@ -642,31 +646,34 @@ def test_trego_successful_global_to_global_trust_region_unchanged(
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
     search_space = Box(lower_bound, upper_bound)
-    tr = BatchTrustRegionBox(TREGOBox(search_space), rule)
-
     eps = 0.5 * (search_space.upper - search_space.lower) / 10
     previous_y_min = dataset.observations[0]
     is_global = True
-    previous_state = trego_create_state(
+    subspace = trego_create_subspace(
         search_space, search_space, dataset, eps, previous_y_min, is_global
     )
+    tr = BatchTrustRegionBox(subspace, rule)
 
+    previous_state = BatchTrustRegionBox.State(TaggedMultiSearchSpace([subspace]))
     model = {OBJECTIVE: QuadraticMeanAndRBFKernel()}
     current_state, query_point = tr.acquire(
         search_space,
         model,
         datasets={OBJECTIVE: dataset},
     )(previous_state)
-    tr.update_and_filter(model, {OBJECTIVE: dataset})
+    tr.filter_datasets(model, {OBJECTIVE: dataset})
 
     assert current_state is not None
     current_subspace = current_state.acquisition_space.get_subspace("0")
     assert isinstance(current_subspace, TREGOBox)
-    npt.assert_array_almost_equal(current_subspace._eps, eps)
-    assert current_subspace._is_global
-    npt.assert_array_almost_equal(query_point, [expected_query_point], 5)
     npt.assert_array_almost_equal(current_subspace.lower, lower_bound)
     npt.assert_array_almost_equal(current_subspace.upper, upper_bound)
+
+    npt.assert_array_almost_equal(subspace._eps, eps)
+    assert subspace._is_global
+    npt.assert_array_almost_equal(query_point, [expected_query_point], 5)
+    npt.assert_array_almost_equal(subspace.lower, lower_bound)
+    npt.assert_array_almost_equal(subspace.upper, upper_bound)
 
 
 @pytest.mark.parametrize(
@@ -683,33 +690,37 @@ def test_trego_for_unsuccessful_global_to_local_trust_region_unchanged(
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
     search_space = Box(lower_bound, upper_bound)
-    tr = BatchTrustRegionBox(TREGOBox(search_space), rule)
-
     eps = 0.5 * (search_space.upper - search_space.lower) / 10
     previous_y_min = dataset.observations[0]
     is_global = True
     acquisition_space = search_space
-    previous_state = trego_create_state(
+    subspace = trego_create_subspace(
         search_space, acquisition_space, dataset, eps, previous_y_min, is_global
     )
-    previous_state_copy = copy.deepcopy(previous_state)
+    tr = BatchTrustRegionBox(subspace, rule)
 
+    previous_subspace_copy = copy.deepcopy(subspace)
+
+    previous_state = BatchTrustRegionBox.State(TaggedMultiSearchSpace([subspace]))
     model = {OBJECTIVE: QuadraticMeanAndRBFKernel()}
     current_state, query_point = tr.acquire(
         search_space,
         model,
         datasets={OBJECTIVE: dataset},
     )(previous_state)
-    tr.update_and_filter(model, {OBJECTIVE: dataset})
+    tr.filter_datasets(model, {OBJECTIVE: dataset})
 
     assert current_state is not None
     current_subspace = current_state.acquisition_space.get_subspace("0")
     assert isinstance(current_subspace, TREGOBox)
-    npt.assert_array_almost_equal(current_subspace._eps, eps)
-    assert not current_subspace._is_global
-    npt.assert_array_less(lower_bound, current_subspace.lower)
-    npt.assert_array_less(current_subspace.upper, upper_bound)
-    assert query_point[0][0] in previous_state_copy.acquisition_space
+    npt.assert_array_almost_equal(current_subspace.lower, acquisition_space.lower)
+    npt.assert_array_almost_equal(current_subspace.upper, acquisition_space.upper)
+
+    npt.assert_array_almost_equal(subspace._eps, eps)
+    assert not subspace._is_global
+    npt.assert_array_less(lower_bound, subspace.lower)
+    npt.assert_array_less(subspace.upper, upper_bound)
+    assert query_point[0][0] in previous_subspace_copy
 
 
 @pytest.mark.parametrize(
@@ -726,31 +737,34 @@ def test_trego_for_successful_local_to_global_trust_region_increased(
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
     search_space = Box(lower_bound, upper_bound)
-    tr = BatchTrustRegionBox(TREGOBox(search_space), rule)
-
     eps = 0.5 * (search_space.upper - search_space.lower) / 10
     previous_y_min = dataset.observations[0]
     is_global = False
     acquisition_space = Box(dataset.query_points[0] - eps, dataset.query_points[0] + eps)
-    previous_state = trego_create_state(
+    subspace = trego_create_subspace(
         search_space, acquisition_space, dataset, eps, previous_y_min, is_global
     )
+    tr = BatchTrustRegionBox(subspace, rule)
 
+    previous_state = BatchTrustRegionBox.State(TaggedMultiSearchSpace([subspace]))
     model = {OBJECTIVE: QuadraticMeanAndRBFKernel()}
     current_state, _ = tr.acquire(
         search_space,
         model,
         datasets={OBJECTIVE: dataset},
     )(previous_state)
-    tr.update_and_filter(model, {OBJECTIVE: dataset})
+    tr.filter_datasets(model, {OBJECTIVE: dataset})
 
     assert current_state is not None
     current_subspace = current_state.acquisition_space.get_subspace("0")
     assert isinstance(current_subspace, TREGOBox)
-    npt.assert_array_less(eps, current_subspace._eps)  # current TR larger than previous
-    assert current_subspace._is_global
-    npt.assert_array_almost_equal(current_subspace.lower, lower_bound)
-    npt.assert_array_almost_equal(current_subspace.upper, upper_bound)
+    npt.assert_array_almost_equal(current_subspace.lower, acquisition_space.lower)
+    npt.assert_array_almost_equal(current_subspace.upper, acquisition_space.upper)
+
+    npt.assert_array_less(eps, subspace._eps)  # current TR larger than previous
+    assert subspace._is_global
+    npt.assert_array_almost_equal(subspace.lower, lower_bound)
+    npt.assert_array_almost_equal(subspace.upper, upper_bound)
 
 
 @pytest.mark.parametrize(
@@ -767,31 +781,34 @@ def test_trego_for_unsuccessful_local_to_global_trust_region_reduced(
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
     search_space = Box(lower_bound, upper_bound)
-    tr = BatchTrustRegionBox(TREGOBox(search_space), rule)
-
     eps = 0.5 * (search_space.upper - search_space.lower) / 10
     previous_y_min = dataset.observations[0]
     is_global = False
     acquisition_space = Box(dataset.query_points[0] - eps, dataset.query_points[0] + eps)
-    previous_state = trego_create_state(
+    subspace = trego_create_subspace(
         search_space, acquisition_space, dataset, eps, previous_y_min, is_global
     )
+    tr = BatchTrustRegionBox(subspace, rule)
 
+    previous_state = BatchTrustRegionBox.State(TaggedMultiSearchSpace([subspace]))
     model = {OBJECTIVE: QuadraticMeanAndRBFKernel()}
     current_state, _ = tr.acquire(
         search_space,
         model,
         datasets={OBJECTIVE: dataset},
     )(previous_state)
-    tr.update_and_filter(model, {OBJECTIVE: dataset})
+    tr.filter_datasets(model, {OBJECTIVE: dataset})
 
     assert current_state is not None
     current_subspace = current_state.acquisition_space.get_subspace("0")
     assert isinstance(current_subspace, TREGOBox)
-    npt.assert_array_less(current_subspace._eps, eps)  # current TR smaller than previous
-    assert current_subspace._is_global
-    npt.assert_array_almost_equal(current_subspace.lower, lower_bound)
-    npt.assert_array_almost_equal(current_subspace.upper, upper_bound)
+    npt.assert_array_almost_equal(current_subspace.lower, acquisition_space.lower)
+    npt.assert_array_almost_equal(current_subspace.upper, acquisition_space.upper)
+
+    npt.assert_array_less(subspace._eps, eps)  # current TR smaller than previous
+    assert subspace._is_global
+    npt.assert_array_almost_equal(subspace.lower, lower_bound)
+    npt.assert_array_almost_equal(subspace.upper, upper_bound)
 
 
 def test_trego_always_uses_global_dataset() -> None:
@@ -804,7 +821,7 @@ def test_trego_always_uses_global_dataset() -> None:
         tf.constant([[0.5, -0.2], [0.7, 0.2], [1.1, 0.3], [0.5, 0.5]]),
         tf.constant([[0.7], [0.8], [0.9], [1.0]]),
     )
-    updated_datasets = tr.update_and_filter(
+    updated_datasets = tr.filter_datasets(
         {LocalizedTag(OBJECTIVE, 0): QuadraticMeanAndRBFKernel()},
         {LocalizedTag(OBJECTIVE, 0): dataset + new_data},
     )
@@ -821,7 +838,7 @@ def test_trego_always_uses_global_dataset() -> None:
 def test_trego_state_deepcopy() -> None:
     dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.5]]))
     search_space = Box(tf.constant([1.2]), tf.constant([3.4]))
-    tr_state = trego_create_state(
+    subspace = trego_create_subspace(
         search_space,
         search_space,
         dataset,
@@ -829,6 +846,7 @@ def test_trego_state_deepcopy() -> None:
         tf.constant(7.8),
         False,
     )
+    tr_state = BatchTrustRegionBox.State(TaggedMultiSearchSpace([subspace]))
     tr_state_copy = copy.deepcopy(tr_state)
     tr_subspace = tr_state.acquisition_space.get_subspace("0")
     tr_subspace_copy = tr_state_copy.acquisition_space.get_subspace("0")
@@ -940,7 +958,9 @@ def test_turbo_for_default_state() -> None:
     lower_bound = tf.constant([0.0, 0.0], dtype=tf.float64)
     upper_bound = tf.constant([1.0, 1.0], dtype=tf.float64)
     search_space = Box(lower_bound, upper_bound)
-    tr = BatchTrustRegionBox(TURBOBox(search_space), rule=DiscreteThompsonSampling(100, 1))
+    orig_region = TURBOBox(search_space)
+    region = copy.deepcopy(orig_region)
+    tr = BatchTrustRegionBox(region, rule=DiscreteThompsonSampling(100, 1))
     model = QuadraticMeanAndRBFKernelWithSamplers(
         dataset, noise_variance=tf.constant(1e-5, dtype=tf.float64)
     )
@@ -948,11 +968,13 @@ def test_turbo_for_default_state() -> None:
         lengthscales=tf.constant([4.0, 1.0], dtype=tf.float64), variance=1e-5
     )  # need a gpflow kernel for TURBOBox
     state, query_point = tr.acquire_single(search_space, model, dataset=dataset)(None)
-    tr.update_and_filter({OBJECTIVE: model}, {OBJECTIVE: dataset})
+    tr.filter_datasets({OBJECTIVE: model}, {OBJECTIVE: dataset})
 
     assert state is not None
-    region = state.acquisition_space.get_subspace("0")
-    assert isinstance(region, TURBOBox)
+    state_region = state.acquisition_space.get_subspace("0")
+    assert isinstance(state_region, TURBOBox)
+    npt.assert_array_almost_equal(state_region.lower, orig_region.lower)
+    npt.assert_array_almost_equal(state_region.upper, orig_region.upper)
     npt.assert_array_almost_equal(region.lower, lower_bound)
     npt.assert_array_almost_equal(region.upper, tf.constant([0.8, 0.2], dtype=tf.float64))
     npt.assert_array_almost_equal(region.y_min, [0.012])
@@ -961,14 +983,14 @@ def test_turbo_for_default_state() -> None:
     assert region.failure_counter == 0
 
 
-def turbo_create_state(
+def turbo_create_region(
     search_space: Box,
     acquisition_space: Box,
     L: float,
     failure_counter: int,
     success_counter: int,
     previous_y_min: TensorType,
-) -> BatchTrustRegionBox.State:
+) -> TURBOBox:
     subspace = TURBOBox(search_space, region_index=0)
     subspace._lower = acquisition_space.lower
     subspace._upper = acquisition_space.upper
@@ -977,7 +999,7 @@ def turbo_create_state(
     subspace.success_counter = success_counter
     subspace.y_min = previous_y_min
     subspace._initialized = True
-    return BatchTrustRegionBox.State(TaggedMultiSearchSpace([subspace]))
+    return subspace
 
 
 def test_turbo_doesnt_change_size_unless_needed() -> None:
@@ -995,13 +1017,14 @@ def test_turbo_doesnt_change_size_unless_needed() -> None:
     lower_bound = tf.constant([0.0, 0.0], dtype=tf.float64)
     upper_bound = tf.constant([1.0, 1.0], dtype=tf.float64)
     search_space = Box(lower_bound, upper_bound)
-    tr = BatchTrustRegionBox(TURBOBox(search_space))  # type: ignore[var-annotated]
+    orig_region = TURBOBox(search_space)
+    tr = BatchTrustRegionBox(orig_region)  # type: ignore[var-annotated]
 
     # success but not enough to trigger size change
     previous_y_min = dataset.observations[0] + 2.0  # force success
     for failure_counter in [0, 1]:
         for success_counter in [0, 1]:
-            previous_state = turbo_create_state(
+            region = turbo_create_region(
                 search_space,
                 search_space,
                 tf.constant(0.8, dtype=tf.float64),
@@ -1009,16 +1032,18 @@ def test_turbo_doesnt_change_size_unless_needed() -> None:
                 success_counter,
                 previous_y_min,
             )
+            previous_state = BatchTrustRegionBox.State(TaggedMultiSearchSpace([region]))
+            tr._subspaces = (region,)
             current_state, _ = tr.acquire(
                 search_space,
                 models,
                 datasets={OBJECTIVE: dataset},
             )(previous_state)
-            tr.update_and_filter(models, {OBJECTIVE: dataset})
+            tr.filter_datasets(models, {OBJECTIVE: dataset})
 
             assert current_state is not None
-            region = current_state.acquisition_space.get_subspace("0")
-            assert isinstance(region, TURBOBox)
+            state_region = current_state.acquisition_space.get_subspace("0")
+            assert isinstance(state_region, TURBOBox)
             npt.assert_array_almost_equal(region.L, tf.cast(0.8, dtype=tf.float64))
             npt.assert_array_almost_equal(region.lower, lower_bound)
             npt.assert_array_almost_equal(region.upper, tf.constant([0.8, 0.2], dtype=tf.float64))
@@ -1028,7 +1053,7 @@ def test_turbo_doesnt_change_size_unless_needed() -> None:
     # failure but not enough to trigger size change
     previous_y_min = dataset.observations[0]  # force failure
     for success_counter in [0, 1, 2]:
-        previous_state = turbo_create_state(
+        region = turbo_create_region(
             search_space,
             search_space,
             tf.constant(0.8, dtype=tf.float64),
@@ -1036,16 +1061,18 @@ def test_turbo_doesnt_change_size_unless_needed() -> None:
             success_counter,
             previous_y_min,
         )
+        previous_state = BatchTrustRegionBox.State(TaggedMultiSearchSpace([region]))
+        tr._subspaces = (region,)
         current_state, _ = tr.acquire(
             search_space,
             models,
             datasets={OBJECTIVE: dataset},
         )(previous_state)
-        tr.update_and_filter(models, {OBJECTIVE: dataset})
+        tr.filter_datasets(models, {OBJECTIVE: dataset})
 
         assert current_state is not None
-        region = current_state.acquisition_space.get_subspace("0")
-        assert isinstance(region, TURBOBox)
+        state_region = current_state.acquisition_space.get_subspace("0")
+        assert isinstance(state_region, TURBOBox)
         npt.assert_array_almost_equal(region.L, tf.cast(0.8, dtype=tf.float64))
         npt.assert_array_almost_equal(region.lower, lower_bound)
         npt.assert_array_almost_equal(region.upper, tf.constant([0.8, 0.2], dtype=tf.float64))
@@ -1068,14 +1095,13 @@ def test_turbo_does_change_size_correctly_when_needed() -> None:
     lower_bound = tf.constant([0.0, 0.0], dtype=tf.float64)
     upper_bound = tf.constant([1.0, 1.0], dtype=tf.float64)
     search_space = Box(lower_bound, upper_bound)
-    tr = BatchTrustRegionBox(  # type: ignore[var-annotated]
-        TURBOBox(search_space, failure_tolerance=2, region_index=0)
-    )
+    orig_region = TURBOBox(search_space, failure_tolerance=2, region_index=0)
+    tr = BatchTrustRegionBox(orig_region)  # type: ignore[var-annotated]
 
     # hits success limit
     previous_y_min = dataset.observations[0] + 2.0  # force success
     for failure_counter in [0, 1]:
-        previous_state = turbo_create_state(
+        region = turbo_create_region(
             search_space,
             search_space,
             tf.constant(0.8, dtype=tf.float64),
@@ -1083,16 +1109,18 @@ def test_turbo_does_change_size_correctly_when_needed() -> None:
             2,
             previous_y_min,
         )
+        previous_state = BatchTrustRegionBox.State(TaggedMultiSearchSpace([region]))
+        tr._subspaces = (region,)
         current_state, _ = tr.acquire(
             search_space,
             models,
             datasets={OBJECTIVE: dataset},
         )(previous_state)
-        tr.update_and_filter(models, {OBJECTIVE: dataset})
+        tr.filter_datasets(models, {OBJECTIVE: dataset})
 
         assert current_state is not None
-        region = current_state.acquisition_space.get_subspace("0")
-        assert isinstance(region, TURBOBox)
+        state_region = current_state.acquisition_space.get_subspace("0")
+        assert isinstance(state_region, TURBOBox)
         npt.assert_array_almost_equal(region.L, tf.cast(1.6, dtype=tf.float64))
         npt.assert_array_almost_equal(region.lower, lower_bound)
         npt.assert_array_almost_equal(region.upper, tf.constant([1.0, 0.4], dtype=tf.float64))
@@ -1101,7 +1129,7 @@ def test_turbo_does_change_size_correctly_when_needed() -> None:
     # hits failure limit
     previous_y_min = dataset.observations[0]  # force failure
     for success_counter in [0, 1, 2]:
-        previous_state = turbo_create_state(
+        region = turbo_create_region(
             search_space,
             search_space,
             tf.constant(0.8, dtype=tf.float64),
@@ -1109,16 +1137,18 @@ def test_turbo_does_change_size_correctly_when_needed() -> None:
             success_counter,
             previous_y_min,
         )
+        previous_state = BatchTrustRegionBox.State(TaggedMultiSearchSpace([region]))
+        tr._subspaces = (region,)
         current_state, _ = tr.acquire(
             search_space,
             models,
             datasets={OBJECTIVE: dataset},
         )(previous_state)
-        tr.update_and_filter(models, {OBJECTIVE: dataset})
+        tr.filter_datasets(models, {OBJECTIVE: dataset})
 
         assert current_state is not None
-        region = current_state.acquisition_space.get_subspace("0")
-        assert isinstance(region, TURBOBox)
+        state_region = current_state.acquisition_space.get_subspace("0")
+        assert isinstance(state_region, TURBOBox)
         npt.assert_array_almost_equal(region.L, tf.cast(0.4, dtype=tf.float64))
         npt.assert_array_almost_equal(region.lower, lower_bound)
         npt.assert_array_almost_equal(region.upper, tf.constant([0.4, 0.1], dtype=tf.float64))
@@ -1141,7 +1171,8 @@ def test_turbo_restarts_tr_when_too_small() -> None:
     lower_bound = tf.constant([0.0, 0.0], dtype=tf.float64)
     upper_bound = tf.constant([1.0, 1.0], dtype=tf.float64)
     search_space = Box(lower_bound, upper_bound)
-    tr = BatchTrustRegionBox(TURBOBox(search_space, region_index=0))  # type: ignore[var-annotated]
+    orig_region = TURBOBox(search_space, region_index=0)
+    tr = BatchTrustRegionBox(orig_region)  # type: ignore[var-annotated]
 
     # first check what happens if L is too small from the start
     previous_y_min = dataset.observations[0]
@@ -1149,19 +1180,21 @@ def test_turbo_restarts_tr_when_too_small() -> None:
     success_counter = 1
     L = tf.constant(1e-10, dtype=tf.float64)
     previous_search_space = Box(lower_bound / 2.0, upper_bound / 5.0)
-    previous_state = turbo_create_state(
+    region = turbo_create_region(
         search_space, previous_search_space, L, failure_counter, success_counter, previous_y_min
     )
+    previous_state = BatchTrustRegionBox.State(TaggedMultiSearchSpace([region]))
+    tr._subspaces = (region,)
     current_state, _ = tr.acquire(
         search_space,
         models,
         datasets={OBJECTIVE: dataset},
     )(previous_state)
-    tr.update_and_filter(models, {OBJECTIVE: dataset})
+    tr.filter_datasets(models, {OBJECTIVE: dataset})
 
     assert current_state is not None
-    region = current_state.acquisition_space.get_subspace("0")
-    assert isinstance(region, TURBOBox)
+    state_region = current_state.acquisition_space.get_subspace("0")
+    assert isinstance(state_region, TURBOBox)
     npt.assert_array_almost_equal(region.L, tf.cast(0.8, dtype=tf.float64))
     npt.assert_array_almost_equal(region.lower, lower_bound)
     npt.assert_array_almost_equal(region.upper, tf.constant([0.8, 0.2], dtype=tf.float64))
@@ -1169,19 +1202,21 @@ def test_turbo_restarts_tr_when_too_small() -> None:
     assert region.failure_counter == 0
 
     # secondly check what happens if L is too small after triggering decreasing the region
-    previous_state = turbo_create_state(
+    region = turbo_create_region(
         search_space, previous_search_space, 0.5**6 - 0.1, 1, success_counter, previous_y_min
     )
+    previous_state = BatchTrustRegionBox.State(TaggedMultiSearchSpace([region]))
+    tr._subspaces = (region,)
     current_state, _ = tr.acquire(
         search_space,
         models,
         datasets={OBJECTIVE: dataset},
     )(previous_state)
-    tr.update_and_filter(models, {OBJECTIVE: dataset})
+    tr.filter_datasets(models, {OBJECTIVE: dataset})
 
     assert current_state is not None
-    region = current_state.acquisition_space.get_subspace("0")
-    assert isinstance(region, TURBOBox)
+    state_region = current_state.acquisition_space.get_subspace("0")
+    assert isinstance(state_region, TURBOBox)
     npt.assert_array_almost_equal(region.L, tf.cast(0.8, dtype=tf.float64))
     npt.assert_array_almost_equal(region.lower, lower_bound)
     npt.assert_array_almost_equal(region.upper, tf.constant([0.8, 0.2], dtype=tf.float64))
@@ -1191,7 +1226,8 @@ def test_turbo_restarts_tr_when_too_small() -> None:
 
 def test_turbo_state_deepcopy() -> None:
     search_space = Box(tf.constant([1.2]), tf.constant([3.4]))
-    tr_state = turbo_create_state(search_space, search_space, 0.8, 0, 0, tf.constant(7.8))
+    subspace = turbo_create_region(search_space, search_space, 0.8, 0, 0, tf.constant(7.8))
+    tr_state = BatchTrustRegionBox.State(TaggedMultiSearchSpace([subspace]))
     tr_state_copy = copy.deepcopy(tr_state)
     tr_subspace = tr_state.acquisition_space.get_subspace("0")
     tr_subspace_copy = tr_state_copy.acquisition_space.get_subspace("0")
@@ -1432,7 +1468,7 @@ def test_multi_trust_region_box_acquire_no_state() -> None:
     prev_subspaces = [copy.deepcopy(subspace) for subspace in subspaces]
     mtb = BatchTrustRegionBox(subspaces, base_rule)
     state, points = mtb.acquire(search_space, models, datasets)(None)
-    mtb.update_and_filter(models, datasets)
+    mtb.filter_datasets(models, datasets)
 
     assert state is not None
     assert isinstance(state.acquisition_space, TaggedMultiSearchSpace)
@@ -1440,9 +1476,9 @@ def test_multi_trust_region_box_acquire_no_state() -> None:
 
     for index, (tag, point) in enumerate(zip(state.acquisition_space.subspace_tags, points[0])):
         subspace = state.acquisition_space.get_subspace(tag)
-        assert subspace == subspaces[index]
         assert isinstance(subspace, SingleObjectiveTrustRegionBox)
         assert subspace.global_search_space == search_space
+        assert subspace.region_index == index
         assert subspace._beta == 0.1
         assert subspace._kappa == 1e-3
         assert subspace._min_eps == 1e-1
@@ -1482,7 +1518,7 @@ def test_multi_trust_region_box_raises_on_mismatched_tags() -> None:
         models,
         {OBJECTIVE: dataset},
     )
-    mtb.update_and_filter(models, {OBJECTIVE: dataset})
+    mtb.filter_datasets(models, {OBJECTIVE: dataset})
 
     with pytest.raises(AssertionError, match="The tags of the state acquisition space"):
         _, _ = state_func(state)
@@ -1549,7 +1585,7 @@ def test_multi_trust_region_box_acquire_with_state() -> None:
     )
     state_func = mtb.acquire(search_space, models, {OBJECTIVE: dataset})
     next_state, points = state_func(state)
-    mtb.update_and_filter(models, {OBJECTIVE: dataset})
+    mtb.filter_datasets(models, {OBJECTIVE: dataset})
 
     assert next_state is not None
     assert points.shape == [1, 3, 2]
@@ -1669,7 +1705,7 @@ def test_multi_trust_region_box_with_multiple_models_and_regions(
 
     mtb = BatchTrustRegionBox(subspaces, base_rule)
     _, points = mtb.acquire(search_space, models, init_datasets)(None)
-    mtb.update_and_filter(models, init_datasets)
+    mtb.filter_datasets(models, init_datasets)
 
     npt.assert_array_equal(points.shape, [num_query_points_per_region, num_regions, 2])
 
@@ -1742,7 +1778,7 @@ def test_multi_trust_region_box_updated_datasets_are_in_regions(
         _, dataset = get_value_for_tag(datasets, *[tag, LocalizedTag.from_tag(tag).global_tag])
         assert dataset is not None
         updated_datasets[tag] = dataset + new_data[tag]
-    datasets = rule.update_and_filter(models, updated_datasets)
+    datasets = rule.filter_datasets(models, updated_datasets)
 
     # Check local datasets.
     for i, subspace in enumerate(subspaces):

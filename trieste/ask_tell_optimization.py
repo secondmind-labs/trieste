@@ -250,7 +250,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
             self._datasets = with_local_datasets(
                 self._datasets, self._acquisition_rule.num_local_datasets
             )
-        self._filtered_datasets = self._acquisition_rule.update_and_filter(
+        self._filtered_datasets = self._acquisition_rule.filter_datasets(
             self._models, self._datasets
         )
 
@@ -466,7 +466,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
 
         for tag, new_dataset in new_data.items():
             self._datasets[tag] += new_dataset
-        self._filtered_datasets = self._acquisition_rule.update_and_filter(
+        self._filtered_datasets = self._acquisition_rule.filter_datasets(
             self._models, self._datasets
         )
 

@@ -163,13 +163,14 @@ class AcquisitionRule(ABC, Generic[ResultType, SearchSpaceType, ProbabilisticMod
             datasets=None if dataset is None else {OBJECTIVE: dataset},
         )
 
-    def update_and_filter(
+    def filter_datasets(
         self, models: Mapping[Tag, ProbabilisticModelType], datasets: Mapping[Tag, Dataset]
     ) -> Mapping[Tag, Dataset]:
         """
-        Update internal state (if required) and filter the post-acquisition datasets before they
-        are used for model training. For example, this can be used to remove points from the
-        post-acquisition datasets that are no longer in the search space.
+        Filter the post-acquisition datasets before they are used for model training. For example,
+        this can be used to remove points from the post-acquisition datasets that are no longer in
+        the search space.
+        Some rules may also update their internal state.
 
         :param models: The model for each tag.
         :param datasets: The updated datasets after previous acquisition step.
@@ -1109,6 +1110,11 @@ class BatchTrustRegion(
 ):
     """Abstract class for multi trust region acquisition rules. These are batch algorithms where
     each query point is optimized in parallel, with its own separate trust region.
+
+    Note: to restart or continue an optimization with this rule, either the same instance of the
+    rule must be used, or a new instance must be created with the subspaces from a previous
+    state. This is because the internal state of the rule cannot be restored directly from a state
+    object.
     """
 
     @dataclass(frozen=True)
@@ -1250,23 +1256,15 @@ class BatchTrustRegion(
                     {state.acquisition_space.subspace_tags} should be the same as the tags of the
                     BatchTrustRegion acquisition rule {self._tags}"""
 
-            if state is None:
-                subspaces = list(self._subspaces)
-                acquisition_space = TaggedMultiSearchSpace(subspaces, self._tags)
-            else:
-                subspaces = []
-                for tag, init_subspace in zip(self._tags, self._subspaces):
-                    subspace = state.acquisition_space.get_subspace(tag)
-                    assert isinstance(subspace, type(init_subspace))
-                    subspaces.append(subspace)
-                acquisition_space = state.acquisition_space
-                self._subspaces = tuple(subspaces)
+            # Never use the subspaces from the passed in state, as we may have modified the
+            # subspaces in filter_datasets.
+            acquisition_space = TaggedMultiSearchSpace(self._subspaces, self._tags)
 
             # If the base rule is a sequence, run it sequentially for each subspace.
             # See earlier comments.
             if self._rules is not None:
                 _points = []
-                for subspace, rule in zip(subspaces, self._rules):
+                for subspace, rule in zip(self._subspaces, self._rules):
                     _models = subspace.select_in_region(models)
                     _datasets = subspace.select_in_region(datasets)
                     assert _models is not None
@@ -1286,8 +1284,9 @@ class BatchTrustRegion(
             else:
                 points = self._rule.acquire(acquisition_space, models, datasets)
 
-            state_ = BatchTrustRegion.State(acquisition_space)
-            return state_, tf.reshape(points, [-1, len(subspaces), points.shape[-1]])
+            # We may modify the regions in filter_datasets later, so return a copy.
+            state_ = BatchTrustRegion.State(copy.deepcopy(acquisition_space))
+            return state_, tf.reshape(points, [-1, len(self._subspaces), points.shape[-1]])
 
         return state_func
 
@@ -1336,7 +1335,7 @@ class BatchTrustRegion(
         """
         ...
 
-    def update_and_filter(
+    def filter_datasets(
         self, models: Mapping[Tag, ProbabilisticModelType], datasets: Mapping[Tag, Dataset]
     ) -> Mapping[Tag, Dataset]:
         # Update subspaces with the latest datasets.

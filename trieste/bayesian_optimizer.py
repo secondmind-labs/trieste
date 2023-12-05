@@ -695,9 +695,6 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     num_steps,
                 )
 
-        if track_state:
-            tracked_acquisition_state = copy.deepcopy(acquisition_state)
-
         for step in range(start_step + 1, num_steps + 1):
             logging.set_step_number(step)
 
@@ -711,11 +708,12 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         if track_path is None:
                             datasets_copy = copy.deepcopy(datasets)
                             models_copy = copy.deepcopy(models)
-                            record = Record(datasets_copy, models_copy, tracked_acquisition_state)
+                            acquisition_state_copy = copy.deepcopy(acquisition_state)
+                            record = Record(datasets_copy, models_copy, acquisition_state_copy)
                             history.append(record)
                         else:
                             track_path = Path(track_path)
-                            record = Record(datasets, models, tracked_acquisition_state)
+                            record = Record(datasets, models, acquisition_state)
                             file_name = OptimizationResult.step_filename(step, num_steps)
                             history.append(record.save(track_path / file_name))
                     except Exception as e:
@@ -736,7 +734,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         datasets = with_local_datasets(
                             datasets, acquisition_rule.num_local_datasets
                         )
-                    filtered_datasets = acquisition_rule.update_and_filter(models, datasets)
+                    filtered_datasets = acquisition_rule.filter_datasets(models, datasets)
 
                     if fit_model and fit_initial_model:
                         with Timer() as initial_model_fitting_timer:
@@ -765,13 +763,6 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         else:
                             query_points = points_or_stateful
 
-                    # Save acquisition state for tracking immediately after acquisition. Some rules,
-                    # such as BatchTrustRegion, may mutate the state in `update_and_filter` below.
-                    # We copy here to keep a record of the region used to compute the query point,
-                    # before the region is updated.
-                    if track_state:
-                        tracked_acquisition_state = copy.deepcopy(acquisition_state)
-
                     observer = self._observer
                     # If query_points are rank 3, then use a batched observer.
                     if tf.rank(query_points) == 3:
@@ -786,7 +777,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
                     for tag, new_dataset in tagged_output.items():
                         datasets[tag] += new_dataset
-                    filtered_datasets = acquisition_rule.update_and_filter(models, datasets)
+                    filtered_datasets = acquisition_rule.filter_datasets(models, datasets)
 
                     with Timer() as model_fitting_timer:
                         if fit_model:
@@ -840,10 +831,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
         tf.print("Optimization completed without errors", output_stream=absl.logging.INFO)
 
-        if track_state:
-            record = Record(datasets, models, tracked_acquisition_state)
-        else:
-            record = Record(datasets, models, acquisition_state)
+        record = Record(datasets, models, acquisition_state)
         result = OptimizationResult(Ok(record), history)
         if track_state and track_path is not None:
             result.save_result(Path(track_path) / OptimizationResult.RESULTS_FILENAME)
