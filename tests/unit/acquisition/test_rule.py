@@ -823,7 +823,7 @@ def test_trego_always_uses_global_dataset() -> None:
     )
     updated_datasets = tr.filter_datasets(
         {LocalizedTag(OBJECTIVE, 0): QuadraticMeanAndRBFKernel()},
-        {LocalizedTag(OBJECTIVE, 0): dataset + new_data},
+        {OBJECTIVE: dataset + new_data, LocalizedTag(OBJECTIVE, 0): dataset + new_data},
     )
 
     # Both the local and global datasets should match.
@@ -1778,28 +1778,24 @@ def test_multi_trust_region_box_updated_datasets_are_in_regions(
         _, dataset = get_value_for_tag(datasets, *[tag, LocalizedTag.from_tag(tag).global_tag])
         assert dataset is not None
         updated_datasets[tag] = dataset + new_data[tag]
-    datasets = rule.filter_datasets(models, updated_datasets)
+    filtered_datasets = rule.filter_datasets(models, updated_datasets)
 
     # Check local datasets.
     for i, subspace in enumerate(subspaces):
         assert (
-            datasets[LocalizedTag(OBJECTIVE, i)].query_points.shape[0]
+            filtered_datasets[LocalizedTag(OBJECTIVE, i)].query_points.shape[0]
             == exp_num_init_points + num_query_points_per_region
         )
-        assert np.all(subspace.contains(datasets[LocalizedTag(OBJECTIVE, i)].query_points))
+        assert np.all(subspace.contains(filtered_datasets[LocalizedTag(OBJECTIVE, i)].query_points))
 
     # Check global dataset.
-    assert datasets[OBJECTIVE].query_points.shape[0] == num_local_models * (
-        exp_num_init_points + num_query_points_per_region
+    assert filtered_datasets[OBJECTIVE].query_points.shape[0] == (
+        datasets[OBJECTIVE].query_points.shape[0] + num_local_models * num_query_points_per_region
     )
-    # Each point should be in at least one region.
-    for point in datasets[OBJECTIVE].query_points:
-        assert any(subspace.contains(point) for subspace in subspaces)
-    # Global dataset should be the concatenation of all local datasets.
-    exp_query_points = tf.concat(
-        [datasets[LocalizedTag(OBJECTIVE, i)].query_points for i in range(num_local_models)], axis=0
+    # Global dataset should be the unfiltered full dataset.
+    npt.assert_array_almost_equal(
+        filtered_datasets[OBJECTIVE].query_points, updated_datasets[OBJECTIVE].query_points
     )
-    npt.assert_array_almost_equal(datasets[OBJECTIVE].query_points, exp_query_points)
 
 
 def test_multi_trust_region_box_state_deepcopy() -> None:

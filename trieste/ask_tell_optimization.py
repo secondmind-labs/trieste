@@ -239,13 +239,6 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         #
         # Only applies to a subset of acquisition rules, i.e. ones that have subspaces and
         # hence use local datasets.
-        #
-        # Note: this replication of initial data can potentially cause an issue when a global
-        # model is being used with local datasets, as the points may be repeated. This will only
-        # be an issue if two regions overlap and both contain that initial data-point -- as
-        # filtering below would otherwise remove duplicates. The main way to avoid the issue in
-        # this scenario is to provide local initial datasets, instead of a global initial
-        # dataset.
         if isinstance(self._acquisition_rule, LocalDatasetsAcquisitionRule):
             self._datasets = with_local_datasets(
                 self._datasets, self._acquisition_rule.num_local_datasets

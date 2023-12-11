@@ -1352,9 +1352,6 @@ class BatchTrustRegion(
             if LocalizedTag.from_tag(tag).is_local
         }
 
-        # Global datasets to re-generate.
-        global_tags = {LocalizedTag.from_tag(tag).global_tag for tag in used_masks}
-
         for subspace in self._subspaces:
             in_region_masks = subspace.get_datasets_filter_mask(datasets)
             if in_region_masks is not None:
@@ -1370,20 +1367,10 @@ class BatchTrustRegion(
                 tf.boolean_mask(datasets[tag].observations, used_mask),
             )
 
-        # Include global datasets.
-        for gtag in global_tags:
-            # Create global dataset from local datasets. This is done by concatenating the local
-            # datasets.
-            local_datasets = [
-                value
-                for tag, value in filtered_datasets.items()
-                if LocalizedTag.from_tag(tag).global_tag == gtag
-            ]
-            # Note there is no ordering assumption for the local datasets. They are simply
-            # concatenated and information about which local dataset they came from is lost.
-            qps = tf.concat([dataset.query_points for dataset in local_datasets], axis=0)
-            obs = tf.concat([dataset.observations for dataset in local_datasets], axis=0)
-            filtered_datasets[gtag] = Dataset(qps, obs)
+        # Include global datasets unmodified.
+        for tag, dataset in datasets.items():
+            if not LocalizedTag.from_tag(tag).is_local:
+                filtered_datasets[tag] = dataset
 
         return filtered_datasets
 
