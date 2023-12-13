@@ -271,7 +271,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                 id="ParallelContinuousThompsonSampling",
             ),
             pytest.param(
-                15,
+                20,
                 BatchHypervolumeSharpeRatioIndicator() if pymoo else None,
                 id="BatchHypevolumeSharpeRatioIndicator",
                 marks=pytest.mark.qhsri,

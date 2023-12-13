@@ -36,9 +36,11 @@ from trieste.data import Dataset
 from trieste.models import TrainableModelStack, TrainableProbabilisticModel
 from trieste.models.interfaces import (
     TrainablePredictJointReparamModelStack,
+    TrainablePredictYModelStack,
     TrainableSupportsPredictJoint,
     TrainableSupportsPredictJointHasReparamSampler,
 )
+from trieste.models.utils import get_last_optimization_result, optimize_model_and_save_result
 from trieste.types import TensorType
 
 
@@ -114,28 +116,11 @@ def test_model_stack_predict_joint() -> None:
     npt.assert_allclose(cov[..., 3:, :, :], cov3)
 
 
-def test_model_missing_predict_y() -> None:
-    model = _QuadraticModel([-1.0], [0.1])
-    x_predict = tf.constant([[0]], gpflow.default_float())
-    with pytest.raises(NotImplementedError):
-        model.predict_y(x_predict)
-
-
-def test_model_stack_missing_predict_y() -> None:
-    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
-    model1 = gpr_model(x, fnc_3x_plus_10(x))
-    model2 = _QuadraticModel([1.0], [2.0])
-    stack = TrainableModelStack((model1, 1), (model2, 1))
-    x_predict = tf.constant([[0]], gpflow.default_float())
-    with pytest.raises(NotImplementedError):
-        stack.predict_y(x_predict)
-
-
 def test_model_stack_predict_y() -> None:
     x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     model1 = gpr_model(x, fnc_3x_plus_10(x))
     model2 = sgpr_model(x, fnc_2sin_x_over_3(x))
-    stack = TrainableModelStack((model1, 1), (model2, 1))
+    stack = TrainablePredictYModelStack((model1, 1), (model2, 1))
     mean, variance = stack.predict_y(x)
     npt.assert_allclose(mean[:, 0:1], model1.predict_y(x)[0])
     npt.assert_allclose(mean[:, 1:2], model2.predict_y(x)[0])
@@ -193,8 +178,8 @@ def test_model_stack_training() -> None:
     stack = TrainableModelStack((model01, 2), (model2, 1), (model3, 1))
     data = Dataset(tf.random.uniform([5, 7, 3]), tf.random.uniform([5, 7, 4]))
     stack.update(data)
-    stack.optimize_and_save_result(data)
-    assert stack.last_optimization_result == [None] * 3
+    optimize_model_and_save_result(stack, data)
+    assert get_last_optimization_result(stack) == [None] * 3
 
 
 def test_model_stack_reparam_sampler_raises_for_submodels_without_reparam_sampler() -> None:

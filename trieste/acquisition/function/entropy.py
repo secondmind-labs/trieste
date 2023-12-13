@@ -29,6 +29,7 @@ from ...models.interfaces import (
     HasTrajectorySampler,
     SupportsCovarianceWithTopFidelity,
     SupportsGetObservationNoise,
+    SupportsPredictY,
 )
 from ...space import SearchSpace
 from ...types import TensorType
@@ -623,10 +624,19 @@ class gibbon_repulsion_term(UpdatablePenalizationFunction):
         return repulsion_weight * repulsion
 
 
+@runtime_checkable
+class SupportsCovarianceWithTopFidelityPredictY(
+    SupportsCovarianceWithTopFidelity, SupportsPredictY, Protocol
+):
+    """A model that is both multifidelity and supports predict_y."""
+
+    pass
+
+
 MUMBOModelType = TypeVar(
-    "MUMBOModelType", bound=SupportsCovarianceWithTopFidelity, contravariant=True
+    "MUMBOModelType", bound=SupportsCovarianceWithTopFidelityPredictY, contravariant=True
 )
-""" Type variable bound to :class:`~trieste.models.SupportsCovarianceWithTopFidelity`. """
+""" Type variable bound to :class:`~trieste.models.SupportsCovarianceWithTopFidelityPredictY`. """
 
 
 class MUMBO(MinValueEntropySearch[MUMBOModelType]):
@@ -645,7 +655,7 @@ class MUMBO(MinValueEntropySearch[MUMBOModelType]):
 
     @overload
     def __init__(
-        self: "MUMBO[SupportsCovarianceWithTopFidelity]",
+        self: "MUMBO[SupportsCovarianceWithTopFidelityPredictY]",
         search_space: SearchSpace,
         num_samples: int = 5,
         grid_size: int = 1000,

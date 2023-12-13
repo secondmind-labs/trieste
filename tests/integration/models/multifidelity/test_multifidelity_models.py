@@ -11,6 +11,7 @@ from trieste.data import (
     check_and_extract_fidelity_query_points,
     split_dataset_by_fidelity,
 )
+from trieste.models import TrainableProbabilisticModel
 from trieste.models.gpflow import GaussianProcessRegression
 from trieste.models.gpflow.builders import (
     build_gpr,
@@ -119,7 +120,7 @@ def test_multifidelity_nonlinear_autoregressive_results_better_than_linear() -> 
     observer = mk_observer(noisy_nonlinear_multifidelity)
     initial_data = observer(initial_sample)
 
-    nonlinear_model = MultifidelityNonlinearAutoregressive(
+    nonlinear_model: TrainableProbabilisticModel = MultifidelityNonlinearAutoregressive(
         build_multifidelity_nonlinear_autoregressive_models(
             initial_data, n_fidelities, input_search_space
         )

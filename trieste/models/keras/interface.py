@@ -22,6 +22,7 @@ import tensorflow_probability as tfp
 from check_shapes import inherit_check_shapes
 from typing_extensions import Protocol, runtime_checkable
 
+from ...data import Dataset
 from ...types import TensorType
 from ..interfaces import ProbabilisticModel
 from ..optimizer import KerasOptimizer
@@ -75,6 +76,9 @@ class KerasPredictor(ProbabilisticModel, ABC):
             such subclasses should overwrite this method.
             """
         )
+
+    def log(self, dataset: Optional[Dataset] = None) -> None:
+        return
 
 
 @runtime_checkable

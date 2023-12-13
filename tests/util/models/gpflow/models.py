@@ -47,6 +47,7 @@ from trieste.models.interfaces import (
     SupportsGetKernel,
     SupportsGetObservationNoise,
     SupportsPredictJoint,
+    SupportsPredictY,
 )
 from trieste.models.optimizer import Optimizer
 from trieste.types import TensorType
@@ -120,6 +121,9 @@ class GaussianProcess(
         ]
         return tf.concat(covs, axis=-3)
 
+    def log(self, dataset: Optional[Dataset] = None) -> None:
+        return
+
 
 class GaussianProcessWithoutNoise(GaussianMarginal, SupportsPredictJoint, HasReparamSampler):
     """A (static) Gaussian process over a vector random variable with independent reparam sampler
@@ -159,6 +163,9 @@ class GaussianProcessWithoutNoise(GaussianMarginal, SupportsPredictJoint, HasRep
         self: GaussianProcessWithoutNoise, num_samples: int
     ) -> ReparametrizationSampler[GaussianProcessWithoutNoise]:
         return IndependentReparametrizationSampler(num_samples, self)
+
+    def log(self, dataset: Optional[Dataset] = None) -> None:
+        return
 
 
 class GaussianProcessWithSamplers(GaussianProcess, HasReparamSampler):
@@ -259,7 +266,7 @@ class QuadraticMeanAndRBFKernelWithSamplers(
 
 
 class MultiFidelityQuadraticMeanAndRBFKernel(
-    QuadraticMeanAndRBFKernel, SupportsCovarianceWithTopFidelity
+    QuadraticMeanAndRBFKernel, SupportsPredictY, SupportsCovarianceWithTopFidelity
 ):
     r"""
     A Gaussian process with scalar quadratic mean, an RBF kernel and
@@ -293,7 +300,7 @@ class MultiFidelityQuadraticMeanAndRBFKernel(
 
 
 class MultiFidelityQuadraticMeanAndRBFKernelWithSamplers(
-    QuadraticMeanAndRBFKernelWithSamplers, SupportsCovarianceWithTopFidelity
+    QuadraticMeanAndRBFKernelWithSamplers, SupportsPredictY, SupportsCovarianceWithTopFidelity
 ):
     r"""
     A Gaussian process with scalar quadratic mean, an RBF kernel and
@@ -322,6 +329,12 @@ class MultiFidelityQuadraticMeanAndRBFKernelWithSamplers(
     def covariance_with_top_fidelity(self, x: TensorType) -> TensorType:
         mean, _ = self.predict(x)
         return tf.ones_like(mean, dtype=mean.dtype)  # dummy covariances of correct shape
+
+    @inherit_check_shapes
+    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        fmean, fvar = self.predict(query_points)
+        yvar = fvar + tf.constant(1.0, dtype=fmean.dtype)  # dummy noise variance
+        return fmean, yvar
 
 
 class QuadraticMeanAndRBFKernelWithBatchSamplers(

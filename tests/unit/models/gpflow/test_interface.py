@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Optional
 
 import gpflow
 import numpy.testing as npt
@@ -35,6 +35,9 @@ class _QuadraticPredictor(GPflowPredictor):
         self.optimizer.optimize(self.model, dataset)
 
     def update(self, dataset: Dataset) -> None:
+        return
+
+    def log(self, dataset: Optional[Dataset] = None) -> None:
         return
 
 
