@@ -1010,8 +1010,8 @@ class UpdatableTrustRegion(SearchSpace):
     def _get_tags(self, tags: Set[Tag]) -> Tuple[Set[Tag], Set[Tag]]:
         # Separate tags into local (matching index) and global tags (without matching
         # local tag).
-        local_gtags = set()
-        global_tags = set()
+        local_gtags = set()  # Set of global part of all local tags.
+        global_tags = set()  # Set of all global tags.
         for tag in tags:
             ltag = LocalizedTag.from_tag(tag)
             if not ltag.is_local:
