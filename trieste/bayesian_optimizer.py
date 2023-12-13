@@ -44,6 +44,7 @@ import tensorflow as tf
 from scipy.spatial.distance import pdist
 
 from .acquisition.multi_objective import non_dominated
+from .models.utils import optimize_model_and_save_result
 
 try:
     import pandas as pd
@@ -744,7 +745,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                                 _, dataset = get_value_for_tag(filtered_datasets, *tags)
                                 assert dataset is not None
                                 model.update(dataset)
-                                model.optimize_and_save_result(dataset)
+                                optimize_model_and_save_result(model, dataset)
                         if summary_writer:
                             logging.set_step_number(0)
                             with summary_writer.as_default(step=0):
@@ -786,7 +787,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                                 # local, then the dataset should be too by this stage.
                                 dataset = filtered_datasets[tag]
                                 model.update(dataset)
-                                model.optimize_and_save_result(dataset)
+                                optimize_model_and_save_result(model, dataset)
 
                 if summary_writer:
                     with summary_writer.as_default(step=step):

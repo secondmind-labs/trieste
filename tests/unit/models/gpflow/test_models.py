@@ -84,6 +84,7 @@ from trieste.models.gpflow.sampler import (
     RandomFourierFeatureTrajectorySampler,
 )
 from trieste.models.optimizer import BatchOptimizer, DatasetTransformer, Optimizer
+from trieste.models.utils import get_last_optimization_result, optimize_model_and_save_result
 from trieste.space import Box
 from trieste.types import TensorType
 from trieste.utils import DEFAULTS
@@ -150,13 +151,14 @@ def test_gpflow_wrappers_default_optimize(
         args = {}
 
     loss = internal_model.training_loss(**args)
-    model.optimize_and_save_result(Dataset(*data))
+    optimize_model_and_save_result(model, Dataset(*data))
 
     new_loss = internal_model.training_loss(**args)
     assert new_loss < loss
     if not isinstance(internal_model, SVGP):
-        assert model.last_optimization_result is not None
-        npt.assert_allclose(new_loss, model.last_optimization_result.fun)
+        optimization_result = get_last_optimization_result(model)
+        assert optimization_result is not None
+        npt.assert_allclose(new_loss, optimization_result.fun)
 
 
 def test_gpflow_wrappers_ref_optimize(gpflow_interface_factory: ModelFactoryType) -> None:

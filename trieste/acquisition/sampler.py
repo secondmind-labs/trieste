@@ -26,7 +26,7 @@ import tensorflow_probability as tfp
 from scipy.optimize import bisect
 
 from ..models import ProbabilisticModel
-from ..models.interfaces import HasTrajectorySampler, ProbabilisticModelType
+from ..models.interfaces import HasTrajectorySampler, ProbabilisticModelType, SupportsPredictY
 from ..types import TensorType
 from .utils import select_nth_output
 
@@ -174,9 +174,9 @@ class GumbelSampler(ThompsonSampler[ProbabilisticModel]):
         tf.debugging.assert_positive(sample_size)
         tf.debugging.assert_shapes([(at, ["N", None])])
 
-        try:
+        if isinstance(model, SupportsPredictY):
             fmean, fvar = model.predict_y(at)
-        except NotImplementedError:
+        else:
             fmean, fvar = model.predict(at)
 
         fsd = tf.math.sqrt(fvar)

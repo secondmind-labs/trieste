@@ -39,6 +39,7 @@ from trieste.models.gpflow import (
 )
 from trieste.models.interfaces import HasTrajectorySampler
 from trieste.models.optimizer import BatchOptimizer, Optimizer
+from trieste.models.utils import get_module_with_variables
 from trieste.types import TensorType
 
 
@@ -92,7 +93,7 @@ def test_gaussian_process_tf_saved_model(gpflow_interface_factory: ModelFactoryT
         trajectory = trajectory_sampler.get_trajectory()
 
         # generate client model with predict and sample methods
-        module = model.get_module_with_variables(trajectory_sampler, trajectory)
+        module = get_module_with_variables(model, trajectory_sampler, trajectory)
         module.predict = tf.function(
             model.predict, input_signature=[tf.TensorSpec(shape=[None, 1], dtype=tf.float64)]
         )

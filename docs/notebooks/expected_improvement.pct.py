@@ -299,7 +299,9 @@ saved_result.try_get_final_model().model  # type: ignore
 
 # %%
 # save the model to a given path, exporting just the predict method
-module = result.try_get_final_model().get_module_with_variables()
+from trieste.models.utils import get_module_with_variables
+
+module = get_module_with_variables(result.try_get_final_model())
 module.predict = tf.function(
     model.predict,
     input_signature=[tf.TensorSpec(shape=[None, 2], dtype=tf.float64)],

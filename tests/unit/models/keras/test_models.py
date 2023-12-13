@@ -42,6 +42,11 @@ from trieste.models.keras import (
     sample_with_replacement,
 )
 from trieste.models.optimizer import KerasOptimizer, TrainingData
+from trieste.models.utils import (
+    get_last_optimization_result,
+    get_module_with_variables,
+    optimize_model_and_save_result,
+)
 from trieste.types import TensorType
 
 _ENSEMBLE_SIZE = 3
@@ -215,10 +220,11 @@ def test_deep_ensemble_resets_lr_with_lr_schedule() -> None:
 
     npt.assert_allclose(model.model.optimizer.lr.numpy(), init_lr, rtol=1e-6)
 
-    model.optimize_and_save_result(example_data)
+    optimize_model_and_save_result(model, example_data)
 
-    assert model.last_optimization_result is not None
-    npt.assert_allclose(model.last_optimization_result.history["lr"], [0.5, 0.25])
+    optimization_result = get_last_optimization_result(model)
+    assert optimization_result is not None
+    npt.assert_allclose(optimization_result.history["lr"], [0.5, 0.25])
     npt.assert_allclose(model.model.optimizer.lr.numpy(), init_lr, rtol=1e-6)
 
 
@@ -568,7 +574,7 @@ def test_deep_ensemble_tf_saved_model() -> None:
         trajectory = trajectory_sampler.get_trajectory()
 
         # generate client model with predict and sample methods
-        module = model.get_module_with_variables(trajectory_sampler, trajectory)
+        module = get_module_with_variables(model, trajectory_sampler, trajectory)
         module.predict = tf.function(
             model.predict, input_signature=[tf.TensorSpec(shape=[None, 3], dtype=tf.float64)]
         )

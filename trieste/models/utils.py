@@ -18,13 +18,16 @@ This module contains auxiliary objects and functions that are used by multiple m
 
 from __future__ import annotations
 
+from typing import Any, Optional
+
 import gpflow
 import tensorflow as tf
 from gpflow.utilities.traversal import _merge_leaf_components, leaf_components
 
 from .. import logging
 from ..data import Dataset
-from .interfaces import ProbabilisticModel
+from ..utils.misc import get_variables
+from .interfaces import ProbabilisticModel, TrainableProbabilisticModel
 
 
 def write_summary_data_based_metrics(
@@ -102,3 +105,35 @@ def write_summary_likelihood_parameters(
     for k, v in likelihood_components.items():
         if v.trainable:
             logging.scalar(f"{prefix}likelihood.{k}", v)
+
+
+def get_module_with_variables(model: ProbabilisticModel, *dependencies: Any) -> tf.Module:
+    """
+    Return a fresh module with a model's variables attached, which can then be extended
+    with methods and saved using tf.saved_model.
+
+    :param model: Model to extract variables from.
+    :param dependencies: Dependent objects whose variables should also be included.
+    """
+    module = tf.Module()
+    module.saved_variables = get_variables(model)
+    for dependency in dependencies:
+        module.saved_variables += get_variables(dependency)
+    return module
+
+
+def optimize_model_and_save_result(model: TrainableProbabilisticModel, dataset: Dataset) -> None:
+    """
+    Optimize the model objective and save the (optimizer-specific) optimization result
+    in the model object. To access it, use ``get_last_optimization_result``.
+
+    :param dataset: The data with which to train the model.
+    """
+    setattr(model, "_last_optimization_result", model.optimize(dataset))
+
+
+def get_last_optimization_result(model: TrainableProbabilisticModel) -> Optional[Any]:
+    """
+    The last saved (optimizer-specific) optimization result.
+    """
+    return getattr(model, "_last_optimization_result")

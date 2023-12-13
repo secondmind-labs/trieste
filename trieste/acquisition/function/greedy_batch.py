@@ -28,9 +28,12 @@ from ...data import Dataset
 from ...models import FastUpdateModel, ModelStack, ProbabilisticModel
 from ...models.interfaces import (
     PredictJointModelStack,
+    PredictJointPredictYModelStack,
+    PredictYModelStack,
     SupportsGetKernel,
     SupportsGetObservationNoise,
     SupportsPredictJoint,
+    SupportsPredictY,
 )
 from ...observer import OBJECTIVE
 from ...space import SearchSpace
@@ -385,17 +388,24 @@ class hard_local_penalizer(local_penalizer):
 
 @runtime_checkable
 class FantasizerModelType(
-    FastUpdateModel, SupportsPredictJoint, SupportsGetKernel, SupportsGetObservationNoise, Protocol
+    FastUpdateModel,
+    SupportsPredictJoint,
+    SupportsPredictY,
+    SupportsGetKernel,
+    SupportsGetObservationNoise,
+    Protocol,
 ):
     """The model requirements for the Fantasizer acquisition function."""
 
     pass
 
 
-class FantasizerModelStack(PredictJointModelStack, ModelStack[FantasizerModelType]):
+class FantasizerModelStack(
+    PredictJointModelStack, PredictYModelStack, ModelStack[FantasizerModelType]
+):
     """
     A stack of models :class:`FantasizerModelType` models. Note that this delegates predict_joint
-    but none of the other methods.
+    and predict_y but none of the other methods.
     """
 
     pass
@@ -605,7 +615,7 @@ def _generate_fantasized_data(
 
 def _generate_fantasized_model(
     model: FantasizerModelOrStack, fantasized_data: Dataset
-) -> _fantasized_model | PredictJointModelStack:
+) -> _fantasized_model | PredictJointPredictYModelStack:
     if isinstance(model, ModelStack):
         observations = tf.split(fantasized_data.observations, model._event_sizes, axis=-1)
         fmods = []
@@ -616,12 +626,14 @@ def _generate_fantasized_model(
                     event_size,
                 )
             )
-        return PredictJointModelStack(*fmods)
+        return PredictJointPredictYModelStack(*fmods)
     else:
         return _fantasized_model(model, fantasized_data)
 
 
-class _fantasized_model(SupportsPredictJoint, SupportsGetKernel, SupportsGetObservationNoise):
+class _fantasized_model(
+    SupportsPredictJoint, SupportsGetKernel, SupportsGetObservationNoise, SupportsPredictY
+):
     """
     Creates a new model from an existing one and additional data.
     This new model posterior is conditioned on both current model data and the additional one.
