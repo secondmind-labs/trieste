@@ -17,7 +17,13 @@
 # %% [markdown]
 # # Trust region Bayesian optimization
 #
-# We will demonstrate three trust region Bayesian optimization algorithms in this tutorial.
+# This notebook guides you through practical examples of trust region Bayesian optimization,
+# illustrating algorithms like TREGO <cite data-cite="diouane2022trego"/> and TuRBO
+# <cite data-cite="eriksson2019scalable"/> that could be beneficial for optimizing high-dimensional
+# spaces. Trust region approaches adaptively constrain the search space to "trustworthy" regions where
+# the model's predictions are deemed reliable. Trieste provides a flexible framework for implementing
+# custom algorithms by encapsulating the behavior of rules and regions into separate abstract classes,
+# `BatchTrustRegion` and `UpdatableTrustRegion` respectively.
 
 # %%
 import numpy as np
@@ -63,9 +69,9 @@ def build_model():
 # %% [markdown]
 # ## Trust region `TREGO` acquisition rule
 #
-# First we show how to run Bayesian optimization with the `TREGO` algorithm. This is a trust region
-# algorithm that alternates between regular EGO steps and local steps within one trust region
-# (see <cite data-cite="diouane2022trego"/>).
+# First we demonstrate how to run Bayesian optimization with the `TREGO` algorithm, which alternates
+# between regular EGO steps and local steps within one trust region (see
+# <cite data-cite="diouane2022trego"/>).
 #
 # ### Create `TREGO` rule and run optimization loop
 #
@@ -73,14 +79,15 @@ def build_model():
 # `optimize` method with the trust region rule. Once the optimization loop is complete, the
 # optimizer will return one new query point for every step in the loop; that's 5 points in total.
 #
-# In order to create the `TREGO` rule, we use the `BatchTrustRegionBox` class. This class supports
-# multiple trust regions, but here we only need one region of type `TREGOBox`. The `TREGOBox` class
-# implements the `TREGO` algorithm inside a single trust region. Note: we cover batch trust regions in
-# more detail in the next section.
+# The trust region rule is created by instantiating the concrete `BatchTrustRegionBox` class. This
+# is a "meta" rule that manages the acquisition from potentially multiple regions by applying a
+# base-rule to each region. The default base-rule is `EfficientGlobalOptimization`, but a different
+# base-rule can be provided as an argument to `BatchTrustRegionBox`. Here we explicitly set it to
+# make usage clear.
 #
-# `TREGO` is a "meta" rule that applies a base-rule, either inside a trust region or the whole
-# space. The default base-rule is `EfficientGlobalOptimization`, but a different base-rule can be
-# provided as an argument to `TREGO`. Here we explicitly set it to make usage clear.
+# The regions themselves are implemented as separate classes. In this example we use a single
+# instance of the `TREGOBox` class, which is responsible for managing initialization and update of
+# the one region of the `TREGO` algorithm.
 
 # %%
 trego_acq_rule = trieste.acquisition.rule.BatchTrustRegionBox(
@@ -250,18 +257,18 @@ plot_final_result(dataset)
 plot_history(result)
 
 # %% [markdown]
-# ## Trust region `TurBO` acquisition rule
+# ## Trust region `TuRBO` acquisition rule
 #
-# Finally, we show how to run Bayesian optimization with the `TurBO` algorithm. This is a
+# Finally, we show how to run Bayesian optimization with the `TuRBO` algorithm. This is a
 # trust region algorithm that uses local models and datasets to approximate the objective function
-# within their respective trust regions.
+# within their respective trust regions (see <cite data-cite="eriksson2019scalable"/>).
 #
-# ### Create `TurBO` rule and run optimization loop
+# ### Create `TuRBO` rule and run optimization loop
 #
 # As before, this meta-rule requires the specification of an aquisition base-rule for performing
 # optimization within the trust regions; for our example we use the `DiscreteThompsonSampling` rule.
 #
-# We create 2 `TurBO` trust regions and associated local models by initially copying the global model
+# We create 2 `TuRBO` trust regions and associated local models by initially copying the global model
 # (using `copy_to_local_models`).
 #
 # The optimizer will return `num_query_points` new query points for each region in every step of the
@@ -294,7 +301,7 @@ result = bo.optimize(
 dataset = result.try_get_final_dataset()
 
 # %% [markdown]
-# ### Visualizing `TurBO` results
+# ### Visualizing `TuRBO` results
 #
 # We display the results as earlier.
 
