@@ -20,10 +20,21 @@
 # This notebook guides you through practical examples of trust region Bayesian optimization,
 # illustrating algorithms like TREGO <cite data-cite="diouane2022trego"/> and TuRBO
 # <cite data-cite="eriksson2019scalable"/> that could be beneficial for optimizing high-dimensional
-# spaces. Trust region approaches adaptively constrain the search space to "trustworthy" regions where
-# the model's predictions are deemed reliable. Trieste provides a flexible framework for implementing
-# custom algorithms by encapsulating the behavior of rules and regions into separate abstract classes,
-# `BatchTrustRegion` and `UpdatableTrustRegion` respectively.
+# spaces. Trieste provides a flexible framework for implementing custom algorithms by encapsulating
+# the behavior of rules and regions into separate abstract classes, `BatchTrustRegion` and
+# `UpdatableTrustRegion` respectively.
+#
+# Trust region optimization is a general strategy used in optimization problems where the solution
+# space is navigated by fitting a localized model, such as a quadratic approximation, around
+# the current point estimate and then using this model to take an optimization step. The region
+# where this approximation is considered trustworthy is the "trust region". Within this region, the
+# algorithm deems the model's predictions to be reliable enough to base decisions on. After each
+# step, the performance of the actual function is evaluated and the trust region is adjusted
+# accordingly -- typically expanded if the model was predictive or contracted if it wasn't.
+#
+# In trust region Bayesian optimization, a probabilistic model, often a Gaussian Process,
+# replaces simpler models like quadratics to inform the optimization. This model can be applied
+# globally across the entire search space or adjusted to accommodate local regions.
 
 # %%
 import numpy as np
@@ -80,14 +91,15 @@ def build_model():
 # optimizer will return one new query point for every step in the loop; that's 5 points in total.
 #
 # The trust region rule is created by instantiating the concrete `BatchTrustRegionBox` class. This
-# is a "meta" rule that manages the acquisition from potentially multiple regions by applying a
+# is a "meta" rule that manages the acquisition from multiple possible regions by applying a
 # base-rule to each region. The default base-rule is `EfficientGlobalOptimization`, but a different
 # base-rule can be provided as an argument to `BatchTrustRegionBox`. Here we explicitly set it to
 # make usage clear.
 #
-# The regions themselves are implemented as separate classes. In this example we use a single
-# instance of the `TREGOBox` class, which is responsible for managing initialization and update of
-# the one region of the `TREGO` algorithm.
+# The regions themselves are implemented as separate classes. The `TREGO` algorithm in this example
+# requires a single region that alternates between the full search space and the trust region. This
+# is achieved by creating one instance of the `TREGOBox` class, which is responsible for managing
+# the state, initialization and update of the region.
 
 # %%
 trego_acq_rule = trieste.acquisition.rule.BatchTrustRegionBox(
@@ -107,7 +119,7 @@ dataset = result.try_get_final_dataset()
 #
 # Let's take a look at where we queried the observer, the original query points (crosses), new
 # query points (dots) and the optimum point found (purple dot), and where they lie with respect to
-# the contours of the Branin.
+# the contours of the Branin function.
 
 # %%
 from trieste.experimental.plotting import plot_bo_points, plot_function_2d
@@ -187,36 +199,33 @@ plot_history(result)
 # %% [markdown]
 # ## Batch trust region rule
 #
-# Next we demonstrate how to run Bayesian optimization with the batch trust region rule.
+# Next we demonstrate how to run Bayesian optimization in a parallel batch with 5 regions.
 #
 # ### Create the batch trust region acquisition rule
 #
-# We achieve Bayesian optimization with trust regions by specifying `BatchTrustRegionBox` as the
-# acquisition rule.
-#
-# This rule needs an initial number `num_query_points` of sub-spaces (or trust regions) to be
-# provided and performs optimization in parallel across all these sub-spaces. Each region
-# contributes one query point, resulting in each acquisition step collecting `num_query_points`
-# points overall. As the optimization process continues, the bounds of these sub-spaces are
-# dynamically updated. In this example, we create 5 `SingleObjectiveTrustRegionBox` regions. This
-# class encapsulates the behavior of a trust region in a single sub-space; being responsible for
+# Multiple trust regions are created by providing a list of regions to the `BatchTrustRegionBox`
+# rule constructor. In this example, we create 5 `SingleObjectiveTrustRegionBox` regions. This
+# class encapsulates the behavior of a trust region in a single region; being responsible for
 # maintaining its own state, initializing it, and updating it after each step.
+# Each region contributes one query point, resulting in each acquisition step collecting 5
+# points overall. As the optimization process continues, the bounds of these regions are
+# dynamically updated.
 #
-# In addition, `BatchTrustRegionBox` is a "meta" rule that requires the specification of a
-# batch aquisition base-rule for performing optimization; for our example we use
-# `EfficientGlobalOptimization` coupled with the `ParallelContinuousThompsonSampling` acquisition
-# function.
+# In order to perform parallel acquisition across multiple regions with `BatchTrustRegionBox` "meta"
+# rule, we need to specify a batch base-rule that supports parallel optimization. For our example
+# we use `EfficientGlobalOptimization` coupled with the `ParallelContinuousThompsonSampling`
+# acquisition function. The batch size is controlled by the `num_query_points` argument.
 #
-# Note: in this example the number of sub-spaces/regions is equal to the number of batch query
+# Note: in this example the number of regions is equal to the number of batch query
 # points in the base-rule. This results in each region contributing one query point to the overall
 # batch. However, it is possible to generate multiple query points from each region by setting
-# `num_query_points` to be a multiple `Q` of the number of regions. In this case, each region will
+# `num_query_points` to be a multiple `Q` of the number of regions. In that case, each region will
 # contribute `Q` query points to the overall batch.
 
 # %%
 num_query_points = 5
 
-init_subspaces = [
+init_regions = [
     trieste.acquisition.rule.SingleObjectiveTrustRegionBox(search_space)
     for _ in range(num_query_points)
 ]
@@ -225,7 +234,7 @@ base_rule = trieste.acquisition.rule.EfficientGlobalOptimization(  # type: ignor
     num_query_points=num_query_points,
 )
 batch_acq_rule = trieste.acquisition.rule.BatchTrustRegionBox(
-    init_subspaces, base_rule
+    init_regions, base_rule
 )
 
 # %% [markdown]
@@ -268,24 +277,28 @@ plot_history(result)
 # As before, this meta-rule requires the specification of an aquisition base-rule for performing
 # optimization within the trust regions; for our example we use the `DiscreteThompsonSampling` rule.
 #
-# We create 2 `TuRBO` trust regions and associated local models by initially copying the global model
-# (using `copy_to_local_models`).
+# This base-rule does not support parallel optimization, and acquisition is performed sequentially
+# across each region. Hence, the number of query points per region is controlled directly by the
+# `num_query_points` argument. This is in contrast to the batched trust region in the previous
+# section, where the number of query points per region was `num_query_points / num_regions`.
 #
-# The optimizer will return `num_query_points` new query points for each region in every step of the
-# loop. With 5 steps and 2 regions, that's 30 points in total.
+# We create 2 `TuRBO` trust regions and associated local models by initially copying the global
+# model (using `copy_to_local_models`). The optimizer will return `num_query_points` new query
+# points for each region in every step of the loop. With 5 steps and 2 regions, that's 30 points in
+# total.
 
 # %%
 num_regions = 2
 num_query_points = 3
 
-turbo_subspaces = [
+turbo_regions = [
     trieste.acquisition.rule.TURBOBox(search_space) for _ in range(num_regions)
 ]
 dts_rule = trieste.acquisition.rule.DiscreteThompsonSampling(
-    500, num_query_points
+    num_search_space_samples=500, num_query_points=num_query_points
 )
 turbo_acq_rule = trieste.acquisition.rule.BatchTrustRegionBox(
-    turbo_subspaces, dts_rule
+    turbo_regions, dts_rule
 )
 
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
