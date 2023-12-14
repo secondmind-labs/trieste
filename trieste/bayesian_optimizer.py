@@ -58,10 +58,12 @@ from . import logging
 from .acquisition.rule import TURBO, AcquisitionRule, EfficientGlobalOptimization
 from .data import Dataset
 from .models import SupportsCovarianceWithTopFidelity, TrainableProbabilisticModel
+from .objectives.utils import mk_batch_observer
 from .observer import OBJECTIVE, Observer
 from .space import SearchSpace
 from .types import State, Tag, TensorType
 from .utils import Err, Ok, Result, Timer
+from .utils.misc import LocalizedTag, get_value_for_tag, ignoring_local_tags
 
 StateType = TypeVar("StateType")
 """ Unbound type variable. """
@@ -97,18 +99,22 @@ class Record(Generic[StateType]):
     @property
     def dataset(self) -> Dataset:
         """The dataset when there is just one dataset."""
-        if len(self.datasets) == 1:
-            return next(iter(self.datasets.values()))
+        # Ignore local datasets.
+        datasets: Mapping[Tag, Dataset] = ignoring_local_tags(self.datasets)
+        if len(datasets) == 1:
+            return next(iter(datasets.values()))
         else:
-            raise ValueError(f"Expected a single dataset, found {len(self.datasets)}")
+            raise ValueError(f"Expected a single dataset, found {len(datasets)}")
 
     @property
     def model(self) -> TrainableProbabilisticModel:
         """The model when there is just one dataset."""
-        if len(self.models) == 1:
-            return next(iter(self.models.values()))
+        # Ignore local models.
+        models: Mapping[Tag, TrainableProbabilisticModel] = ignoring_local_tags(self.models)
+        if len(models) == 1:
+            return next(iter(models.values()))
         else:
-            raise ValueError(f"Expected a single model, found {len(self.models)}")
+            raise ValueError(f"Expected a single model, found {len(models)}")
 
     def save(self, path: Path | str) -> FrozenRecord[StateType]:
         """Save the record to disk. Will overwrite any existing file at the same path."""
@@ -227,6 +233,8 @@ class OptimizationResult(Generic[StateType]):
         :raise ValueError: If the optimization was not a single dataset run.
         """
         datasets = self.try_get_final_datasets()
+        # Ignore local datasets.
+        datasets = ignoring_local_tags(datasets)
         if len(datasets) == 1:
             return next(iter(datasets.values()))
         else:
@@ -270,6 +278,8 @@ class OptimizationResult(Generic[StateType]):
         :raise ValueError: If the optimization was not a single model run.
         """
         models = self.try_get_final_models()
+        # Ignore local models.
+        models = ignoring_local_tags(models)
         if len(models) == 1:
             return next(iter(models.values()))
         else:
@@ -626,10 +636,15 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             - ``datasets`` or ``models`` are empty
             - the default `acquisition_rule` is used and the tags are not `OBJECTIVE`.
         """
+        # Copy the dataset so we don't change the one provided by the user.
+        datasets = copy.deepcopy(datasets)
+
         if isinstance(datasets, Dataset):
             datasets = {OBJECTIVE: datasets}
-            models = {OBJECTIVE: models}  # type: ignore[dict-item]
+        if not isinstance(models, Mapping):
+            models = {OBJECTIVE: models}
 
+        filtered_datasets = datasets
         # reassure the type checker that everything is tagged
         datasets = cast(Dict[Tag, Dataset], datasets)
         models = cast(Dict[Tag, TrainableProbabilisticModelType], models)
@@ -637,10 +652,14 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         if num_steps < 0:
             raise ValueError(f"num_steps must be at least 0, got {num_steps}")
 
-        if datasets.keys() != models.keys():
+        # Get set of dataset and model keys, ignoring any local tag index. That is, only the
+        # global tag part is considered.
+        datasets_keys = {LocalizedTag.from_tag(tag).global_tag for tag in datasets.keys()}
+        models_keys = {LocalizedTag.from_tag(tag).global_tag for tag in models.keys()}
+        if datasets_keys != models_keys:
             raise ValueError(
-                f"datasets and models should contain the same keys. Got {datasets.keys()} and"
-                f" {models.keys()} respectively."
+                f"datasets and models should contain the same keys. Got {datasets_keys} and"
+                f" {models_keys} respectively."
             )
 
         if not datasets:
@@ -718,7 +737,10 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                 if step == 1 and fit_model and fit_initial_model:
                     with Timer() as initial_model_fitting_timer:
                         for tag, model in models.items():
-                            dataset = datasets[tag]
+                            # Prefer local dataset if available.
+                            tags = [tag, LocalizedTag.from_tag(tag).global_tag]
+                            _, dataset = get_value_for_tag(datasets, *tags)
+                            assert dataset is not None
                             model.update(dataset)
                             optimize_model_and_save_result(model, dataset)
                     if summary_writer:
@@ -732,14 +754,18 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                 with Timer() as total_step_wallclock_timer:
                     with Timer() as query_point_generation_timer:
                         points_or_stateful = acquisition_rule.acquire(
-                            self._search_space, models, datasets=datasets
+                            self._search_space, models, datasets=filtered_datasets
                         )
                         if callable(points_or_stateful):
                             acquisition_state, query_points = points_or_stateful(acquisition_state)
                         else:
                             query_points = points_or_stateful
 
-                    observer_output = self._observer(query_points)
+                    observer = self._observer
+                    # If query_points are rank 3, then use a batched observer.
+                    if tf.rank(query_points) == 3:
+                        observer = mk_batch_observer(observer)
+                    observer_output = observer(query_points)
 
                     tagged_output = (
                         observer_output
@@ -747,11 +773,28 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         else {OBJECTIVE: observer_output}
                     )
 
-                    datasets = {tag: datasets[tag] + tagged_output[tag] for tag in tagged_output}
+                    # See explanation in ask_tell_optimization.tell().
+                    # We need to process the local tags first, then the global tags.
+                    sorted_tags = sorted(
+                        tagged_output, key=lambda tag: not LocalizedTag.from_tag(tag).is_local
+                    )
+                    for tag in sorted_tags:
+                        new_dataset = tagged_output[tag]
+                        if tag in datasets:
+                            datasets[tag] += new_dataset
+                        else:
+                            global_tag = LocalizedTag.from_tag(tag).global_tag
+                            if global_tag not in datasets:
+                                raise ValueError(f"global tag '{global_tag}' not found in dataset")
+                            datasets[tag] = datasets[global_tag] + new_dataset
+                    filtered_datasets = acquisition_rule.filter_datasets(datasets)
+
                     with Timer() as model_fitting_timer:
                         if fit_model:
                             for tag, model in models.items():
-                                dataset = datasets[tag]
+                                # Always use the matching dataset to the model. If the model is
+                                # local, then the dataset should be too by this stage.
+                                dataset = filtered_datasets[tag]
                                 model.update(dataset)
                                 optimize_model_and_save_result(model, dataset)
 
@@ -882,7 +925,11 @@ def write_summary_initial_model_fit(
     """Write TensorBoard summary for the model fitting to the initial data."""
     for tag, model in models.items():
         with tf.name_scope(f"{tag}.model"):
-            model.log(datasets[tag])
+            # Prefer local dataset if available.
+            tags = [tag, LocalizedTag.from_tag(tag).global_tag]
+            _, dataset = get_value_for_tag(datasets, *tags)
+            assert dataset is not None
+            model.log(dataset)
     logging.scalar(
         "wallclock/model_fitting",
         model_fitting_timer.time,
@@ -929,7 +976,7 @@ def write_summary_observations(
     observation_plot_dfs: MutableMapping[Tag, pd.DataFrame],
 ) -> None:
     """Write TensorBoard summary for the current step observations."""
-    for tag in datasets:
+    for tag in models:
         with tf.name_scope(f"{tag}.model"):
             models[tag].log(datasets[tag])
 

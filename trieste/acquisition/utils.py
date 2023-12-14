@@ -11,15 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import copy
 import functools
-from typing import Tuple, Union
+from typing import Mapping, Tuple, Union
 
 import tensorflow as tf
 from check_shapes import check_shapes
 
 from ..data import Dataset
+from ..models import ProbabilisticModelType
+from ..observer import OBJECTIVE
 from ..space import SearchSpaceType
-from ..types import TensorType
+from ..types import Tag, TensorType
+from ..utils.misc import LocalizedTag
 from .interface import AcquisitionFunction
 from .optimizer import AcquisitionOptimizer
 
@@ -137,6 +141,22 @@ def get_local_dataset(local_space: SearchSpaceType, dataset: Dataset) -> Dataset
         observations=tf.boolean_mask(dataset.observations, is_in_region_mask),
     )
     return local_dataset
+
+
+def copy_to_local_models(
+    global_model: ProbabilisticModelType,
+    num_local_models: int,
+    key: Tag = OBJECTIVE,
+) -> Mapping[Tag, ProbabilisticModelType]:
+    """
+    Helper method to copy a global model to local models.
+
+    :param global_model: The global model.
+    :param num_local_models: The number of local models to create.
+    :param key: The tag prefix for the local models.
+    :return: A mapping of the local models.
+    """
+    return {LocalizedTag(key, i): copy.deepcopy(global_model) for i in range(num_local_models)}
 
 
 @check_shapes(

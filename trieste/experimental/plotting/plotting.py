@@ -33,9 +33,11 @@ from matplotlib.patches import Rectangle
 from trieste.acquisition import AcquisitionFunction
 from trieste.acquisition.multi_objective.dominance import non_dominated
 from trieste.bayesian_optimizer import FrozenRecord, Record, StateType
+from trieste.observer import OBJECTIVE
 from trieste.space import TaggedMultiSearchSpace
 from trieste.types import TensorType
 from trieste.utils import to_numpy
+from trieste.utils.misc import LocalizedTag
 
 
 def create_grid(
@@ -234,7 +236,7 @@ def plot_acq_function_2d(
 
 def format_point_markers(
     num_pts: int,
-    num_init: Optional[int] = None,
+    num_init: Optional[Union[int, TensorType]] = None,
     idx_best: Optional[TensorType] = None,
     mask_fail: Optional[TensorType] = None,
     m_init: str = "x",
@@ -247,7 +249,7 @@ def format_point_markers(
     Prepares point marker styles according to some BO factors.
 
     :param num_pts: total number of BO points
-    :param num_init: initial number of BO points
+    :param num_init: initial number of BO points; can also be a mask
     :param idx_best: index of the best BO point(s)
     :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)
     :param m_init: marker for the initial BO points
@@ -262,7 +264,10 @@ def format_point_markers(
     col_pts = np.repeat(c_pass, num_pts)
     col_pts = col_pts.astype("<U15")
     mark_pts = np.repeat(m_init, num_pts)
-    mark_pts[num_init:] = m_add
+    if isinstance(num_init, int):
+        mark_pts[num_init:] = m_add
+    else:
+        mark_pts[np.where(~num_init)] = m_add
     if mask_fail is not None:
         col_pts[np.where(mask_fail)] = c_fail
     if idx_best is not None:
@@ -274,7 +279,7 @@ def format_point_markers(
 def plot_bo_points(
     pts: TensorType,
     ax: Axes,
-    num_init: Optional[int] = None,
+    num_init: Optional[Union[int, TensorType]] = None,
     idx_best: Optional[int] = None,
     mask_fail: Optional[TensorType] = None,
     obs_values: Optional[TensorType] = None,
@@ -290,7 +295,7 @@ def plot_bo_points(
 
     :param pts: [N, 2] x inputs
     :param ax: a plt axes object
-    :param num_init: initial number of BO points
+    :param num_init: initial number of BO points; can also be a mask
     :param idx_best: index of the best BO point
     :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)
     :param obs_values: optional [N] outputs (for 3d plots)
@@ -588,9 +593,37 @@ def plot_trust_region_history_2d(
     if num_query_points is None:
         num_query_points = len(spaces)
 
-    query_points = history.dataset.query_points
-    new_points_mask = np.zeros(query_points.shape[0], dtype=bool)
-    new_points_mask[-num_query_points:] = True
+    # If there are local datasets, use them to generate the colors for the query points.
+    # Otherwise, use the global dataset and assume the last `num_query_points` points are new.
+    if len(history.datasets) > 1:
+        # Expect there to be an objective dataset for each subspace.
+        datasets = [history.datasets[LocalizedTag(OBJECTIVE, i)] for i in range(len(spaces))]
+
+        _new_points_mask = [
+            np.zeros(dataset.query_points.shape[0], dtype=bool) for dataset in datasets
+        ]
+        # Last point in each dataset is the new point.
+        for mask in _new_points_mask:
+            mask[-1] = True
+        # Concatenate the masks.
+        new_points_mask = np.concatenate(_new_points_mask)
+
+        if num_init is not None:
+            _num_init_mask = [
+                np.zeros(dataset.query_points.shape[0], dtype=bool) for dataset in datasets
+            ]
+            # First num_init points in each dataset are the init points.
+            for mask in _num_init_mask:
+                mask[:num_init] = True
+            # Concatenate the masks.
+            num_init = np.concatenate(_num_init_mask)
+
+        # Get the overall query points.
+        query_points = np.concatenate([dataset.query_points for dataset in datasets])
+    else:
+        query_points = history.dataset.query_points  # All query points.
+        new_points_mask = np.zeros(query_points.shape[0], dtype=bool)
+        new_points_mask[-num_query_points:] = True
 
     # Plot trust regions.
     colors = [rgb2hex(color) for color in cm.rainbow(np.linspace(0, 1, num_query_points))]

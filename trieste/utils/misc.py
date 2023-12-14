@@ -14,9 +14,10 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from time import perf_counter
 from types import TracebackType
-from typing import Any, Callable, Generic, Mapping, NoReturn, Optional, Tuple, Type, TypeVar
+from typing import Any, Callable, Generic, Mapping, NoReturn, Optional, Tuple, Type, TypeVar, Union
 
 import numpy as np
 import tensorflow as tf
@@ -220,21 +221,67 @@ T = TypeVar("T")
 """ An unbound type variable. """
 
 
-def get_value_for_tag(mapping: Optional[Mapping[Tag, T]], tag: Tag = OBJECTIVE) -> Optional[T]:
-    """Return the value of a tag in a mapping.
+def get_value_for_tag(
+    mapping: Optional[Mapping[Tag, T]], *tags: Tag
+) -> Tuple[Optional[Tag], Optional[T]]:
+    """Return the value from a mapping for the first tag found from a sequence of tags.
 
     :param mapping: A mapping from tags to values.
-    :param tag: A tag.
-    :return: The value of the tag in the mapping, or None if the mapping is None.
-    :raises ValueError: If the tag is not in the mapping and the mapping is not None.
+    :param tags: A tag or a sequence of tags. Sequence is searched in order. If no tags are
+        provided, the default tag OBJECTIVE is used.
+    :return: The chosen tag and value of the tag in the mapping, or None for each if the mapping is
+        None.
+    :raises ValueError: If none of the tags are in the mapping and the mapping is not None.
     """
 
+    if not tags:
+        tags = (OBJECTIVE,)
+
     if mapping is None:
-        return None
-    elif tag in mapping.keys():
-        return mapping[tag]
+        return None, None
     else:
-        raise ValueError(f"tag '{tag}' not found in mapping")
+        matched_tag = next((tag for tag in tags if tag in mapping), None)
+        if matched_tag is None:
+            raise ValueError(f"none of the tags '{tags}' found in mapping")
+        return matched_tag, mapping[matched_tag]
+
+
+@dataclass(frozen=True)
+class LocalizedTag:
+    """Manage a tag for a local model or dataset. These have a global tag and a local index."""
+
+    global_tag: Tag
+    """ The global portion of the tag. """
+
+    local_index: Optional[int]
+    """ The local index of the tag. """
+
+    def __post_init__(self) -> None:
+        if self.local_index is not None and self.local_index < 0:
+            raise ValueError(f"local index must be non-negative, got {self.local_index}")
+
+    @property
+    def is_local(self) -> bool:
+        """Return True if the tag is a local tag."""
+        return self.local_index is not None
+
+    @staticmethod
+    def from_tag(tag: Union[Tag, LocalizedTag]) -> LocalizedTag:
+        """Return a LocalizedTag from a given tag."""
+        if isinstance(tag, LocalizedTag):
+            return tag
+        else:
+            return LocalizedTag(tag, None)
+
+
+def ignoring_local_tags(mapping: Mapping[Tag, T]) -> Mapping[Tag, T]:
+    """
+    Filter out local tags from a mapping, returning a new mapping with only global tags.
+
+    :param mapping: A mapping from tags to values.
+    :return: A new mapping with only global tags.
+    """
+    return {k: v for k, v in mapping.items() if not LocalizedTag.from_tag(k).is_local}
 
 
 class Timer:

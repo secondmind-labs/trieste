@@ -49,6 +49,7 @@ from .observer import OBJECTIVE
 from .space import SearchSpace
 from .types import State, Tag, TensorType
 from .utils import Ok, Timer
+from .utils.misc import LocalizedTag, get_value_for_tag, ignoring_local_tags
 
 StateType = TypeVar("StateType")
 """ Unbound type variable. """
@@ -188,18 +189,28 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         if not datasets or not models:
             raise ValueError("dicts of datasets and models must be populated.")
 
+        # Copy the dataset so we don't change the one provided by the user.
+        datasets = deepcopy(datasets)
+
         if isinstance(datasets, Dataset):
             datasets = {OBJECTIVE: datasets}
-            models = {OBJECTIVE: models}  # type: ignore[dict-item]
+        if not isinstance(models, Mapping):
+            models = {OBJECTIVE: models}
+
+        self._filtered_datasets = datasets
 
         # reassure the type checker that everything is tagged
         datasets = cast(Dict[Tag, Dataset], datasets)
         models = cast(Dict[Tag, TrainableProbabilisticModelType], models)
 
-        if datasets.keys() != models.keys():
+        # Get set of dataset and model keys, ignoring any local tag index. That is, only the
+        # global tag part is considered.
+        datasets_keys = {LocalizedTag.from_tag(tag).global_tag for tag in datasets.keys()}
+        models_keys = {LocalizedTag.from_tag(tag).global_tag for tag in models.keys()}
+        if datasets_keys != models_keys:
             raise ValueError(
-                f"datasets and models should contain the same keys. Got {datasets.keys()} and"
-                f" {models.keys()} respectively."
+                f"datasets and models should contain the same keys. Got {datasets_keys} and"
+                f" {models_keys} respectively."
             )
 
         self._datasets = datasets
@@ -233,7 +244,10 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         if fit_model:
             with Timer() as initial_model_fitting_timer:
                 for tag, model in self._models.items():
-                    dataset = datasets[tag]
+                    # Prefer local dataset if available.
+                    tags = [tag, LocalizedTag.from_tag(tag).global_tag]
+                    _, dataset = get_value_for_tag(datasets, *tags)
+                    assert dataset is not None
                     model.update(dataset)
                     optimize_model_and_save_result(model, dataset)
 
@@ -258,10 +272,12 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
     @property
     def dataset(self) -> Dataset:
         """The current dataset when there is just one dataset."""
-        if len(self.datasets) == 1:
-            return next(iter(self.datasets.values()))
+        # Ignore local datasets.
+        datasets: Mapping[Tag, Dataset] = ignoring_local_tags(self.datasets)
+        if len(datasets) == 1:
+            return next(iter(datasets.values()))
         else:
-            raise ValueError(f"Expected a single dataset, found {len(self.datasets)}")
+            raise ValueError(f"Expected a single dataset, found {len(datasets)}")
 
     @property
     def models(self) -> Mapping[Tag, TrainableProbabilisticModelType]:
@@ -281,10 +297,12 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
     @property
     def model(self) -> TrainableProbabilisticModel:
         """The current model when there is just one model."""
-        if len(self.models) == 1:
-            return next(iter(self.models.values()))
+        # Ignore local models.
+        models: Mapping[Tag, TrainableProbabilisticModel] = ignoring_local_tags(self.models)
+        if len(models) == 1:
+            return next(iter(models.values()))
         else:
-            raise ValueError(f"Expected a single model, found {len(self.models)}")
+            raise ValueError(f"Expected a single model, found {len(models)}")
 
     @model.setter
     def model(self, model: TrainableProbabilisticModelType) -> None:
@@ -392,7 +410,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
 
         with Timer() as query_point_generation_timer:
             points_or_stateful = self._acquisition_rule.acquire(
-                self._search_space, self._models, datasets=self._datasets
+                self._search_space, self._models, datasets=self._filtered_datasets
             )
 
         if callable(points_or_stateful):
@@ -423,18 +441,48 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         if isinstance(new_data, Dataset):
             new_data = {OBJECTIVE: new_data}
 
-        if self._datasets.keys() != new_data.keys():
+        # The datasets must have the same keys as the existing datasets. Only exception is if
+        # the existing datasets are all global, in which case the dataset will be appropriately
+        # updated below for the next iteration.
+        datasets_indices = {LocalizedTag.from_tag(tag).local_index for tag in self._datasets.keys()}
+        if self._datasets.keys() != new_data.keys() and datasets_indices != {None}:
             raise ValueError(
                 f"new_data keys {new_data.keys()} doesn't "
                 f"match dataset keys {self._datasets.keys()}"
             )
 
-        for tag in self._datasets:
-            self._datasets[tag] += new_data[tag]
+        # In order to support local datasets, account for the case where there may be an initial
+        # dataset that is not tagged per region. In this case, only the global dataset will exist
+        # in datasets. We want to copy this initial dataset to all the regions.
+        # If a tag from tagged_output does not exist in datasets, then add it to
+        # datasets by copying the data from datasets with the same global tag. Otherwise keep the
+        # existing data from datasets.
+        #
+        # Note: this replication of initial data can potentially cause an issue when a global model
+        # is being used with local datasets, as the points may be repeated. This will only be an
+        # issue if two regions overlap and both contain that initial data-point -- as filtering
+        # (in BatchTrustRegion) would otherwise remove duplicates. The main way to avoid the issue
+        # in this scenario is to provide local initial datasets, instead of a global initial
+        # dataset.
+        sorted_tags = sorted(  # We need to process the local tags first, then the global tags.
+            new_data, key=lambda tag: not LocalizedTag.from_tag(tag).is_local
+        )
+        for tag in sorted_tags:
+            new_dataset = new_data[tag]
+            if tag in self._datasets:
+                self._datasets[tag] += new_dataset
+            else:
+                global_tag = LocalizedTag.from_tag(tag).global_tag
+                if global_tag not in self._datasets:
+                    raise ValueError(f"global tag '{global_tag}' not found in dataset")
+                self._datasets[tag] = self._datasets[global_tag] + new_dataset
+        self._filtered_datasets = self._acquisition_rule.filter_datasets(self._datasets)
 
         with Timer() as model_fitting_timer:
             for tag, model in self._models.items():
-                dataset = self._datasets[tag]
+                # Always use the matching dataset to the model. If the model is
+                # local, then the dataset should be too by this stage.
+                dataset = self._filtered_datasets[tag]
                 model.update(dataset)
                 optimize_model_and_save_result(model, dataset)
 

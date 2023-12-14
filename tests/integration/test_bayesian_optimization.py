@@ -1,4 +1,4 @@
-# Copyright 2021 The Trieste Contributors
+# Copyright 2021 The Trieste Contrib_fnutors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@ from __future__ import annotations
 import tempfile
 from functools import partial
 from pathlib import Path
-from typing import Any, List, Mapping, Optional, Tuple, Type, cast
+from typing import Any, List, Mapping, Optional, Tuple, Type, Union, cast
 
 import dill
 import gpflow
@@ -58,6 +58,7 @@ from trieste.acquisition.rule import (
     TREGOBox,
 )
 from trieste.acquisition.sampler import ThompsonSamplerFromTrajectory
+from trieste.acquisition.utils import copy_to_local_models
 from trieste.bayesian_optimizer import (
     BayesianOptimizer,
     FrozenRecord,
@@ -227,6 +228,23 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                 ),
                 id="BatchTrustRegionBox",
             ),
+            pytest.param(
+                10,
+                (
+                    BatchTrustRegionBox(
+                        [
+                            SingleObjectiveTrustRegionBox(ScaledBranin.search_space)
+                            for _ in range(3)
+                        ],
+                        EfficientGlobalOptimization(
+                            ParallelContinuousThompsonSampling(),
+                            num_query_points=2,
+                        ),
+                    ),
+                    3,
+                ),
+                id="BatchTrustRegionBox/LocalModels",
+            ),
             pytest.param(15, DiscreteThompsonSampling(500, 5), id="DiscreteThompsonSampling"),
             pytest.param(
                 15,
@@ -262,20 +280,29 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
     )
 
 
+AcquisitionRuleType = Union[
+    AcquisitionRule[TensorType, SearchSpace, TrainableProbabilisticModelType],
+    AcquisitionRule[
+        State[TensorType, Union[AsynchronousRuleState, BatchTrustRegion.State]],
+        Box,
+        TrainableProbabilisticModelType,
+    ],
+]
+
+
 @random_seed
 @pytest.mark.slow  # to run this, add --runslow yes to the pytest command
 @pytest.mark.parametrize(*GPR_OPTIMIZER_PARAMS())
 def test_bayesian_optimizer_with_gpr_finds_minima_of_scaled_branin(
     num_steps: int,
-    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, GaussianProcessRegression]
-    | AcquisitionRule[
-        State[TensorType, AsynchronousRuleState | BatchTrustRegion.State],
-        Box,
-        GaussianProcessRegression,
-    ],
+    acquisition_rule: AcquisitionRuleType[GaussianProcessRegression]
+    | Tuple[AcquisitionRuleType[GaussianProcessRegression], int],
 ) -> None:
     _test_optimizer_finds_minimum(
-        GaussianProcessRegression, num_steps, acquisition_rule, optimize_branin=True
+        GaussianProcessRegression,
+        num_steps,
+        acquisition_rule,
+        optimize_branin=True,
     )
 
 
@@ -283,12 +310,8 @@ def test_bayesian_optimizer_with_gpr_finds_minima_of_scaled_branin(
 @pytest.mark.parametrize(*GPR_OPTIMIZER_PARAMS())
 def test_bayesian_optimizer_with_gpr_finds_minima_of_simple_quadratic(
     num_steps: int,
-    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, GaussianProcessRegression]
-    | AcquisitionRule[
-        State[TensorType, AsynchronousRuleState | BatchTrustRegion.State],
-        Box,
-        GaussianProcessRegression,
-    ],
+    acquisition_rule: AcquisitionRuleType[GaussianProcessRegression]
+    | Tuple[AcquisitionRuleType[GaussianProcessRegression], int],
 ) -> None:
     # for speed reasons we sometimes test with a simple quadratic defined on the same search space
     # branin; currently assume that every rule should be able to solve this in 6 steps
@@ -556,12 +579,8 @@ def test_bayesian_optimizer_with_PCTS_and_deep_ensemble_finds_minima_of_simple_q
 def _test_optimizer_finds_minimum(
     model_type: Type[TrainableProbabilisticModelType],
     num_steps: Optional[int],
-    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, TrainableProbabilisticModelType]
-    | AcquisitionRule[
-        State[TensorType, AsynchronousRuleState | BatchTrustRegion.State],
-        Box,
-        TrainableProbabilisticModelType,
-    ],
+    acquisition_rule: AcquisitionRuleType[TrainableProbabilisticModelType]
+    | Tuple[AcquisitionRuleType[TrainableProbabilisticModelType], int],
     optimize_branin: bool = False,
     model_args: Optional[Mapping[str, Any]] = None,
     check_regret: bool = False,
@@ -589,6 +608,11 @@ def _test_optimizer_finds_minimum(
     initial_query_points = search_space.sample(num_initial_query_points)
     observer = mk_observer(ScaledBranin.objective if optimize_branin else SimpleQuadratic.objective)
     initial_data = observer(initial_query_points)
+
+    if isinstance(acquisition_rule, tuple):
+        acquisition_rule, num_models = acquisition_rule
+    else:
+        num_models = 1
 
     model: TrainableProbabilisticModel  # (really TPMType, but that's too complicated for mypy)
 
@@ -647,13 +671,17 @@ def _test_optimizer_finds_minimum(
     else:
         raise ValueError(f"Unsupported model_type '{model_type}'")
 
+    model = cast(TrainableProbabilisticModelType, model)
+    models = copy_to_local_models(model, num_models) if num_models > 1 else {OBJECTIVE: model}
+    dataset = {OBJECTIVE: initial_data}
+
     with tempfile.TemporaryDirectory() as tmpdirname:
         summary_writer = tf.summary.create_file_writer(tmpdirname)
         with tensorboard_writer(summary_writer):
             result = BayesianOptimizer(observer, search_space).optimize(
                 num_steps or 2,
-                initial_data,
-                cast(TrainableProbabilisticModelType, model),
+                dataset,
+                models,
                 acquisition_rule,
                 track_state=True,
                 track_path=Path(tmpdirname) / "history",

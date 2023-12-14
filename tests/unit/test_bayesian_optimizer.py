@@ -23,6 +23,7 @@ import pytest
 import tensorflow as tf
 from check_shapes import inherit_check_shapes
 
+from tests.unit.test_ask_tell_optimization import DatasetChecker
 from tests.util.misc import (
     FixedAcquisitionRule,
     assert_datasets_allclose,
@@ -38,6 +39,7 @@ from tests.util.models.gpflow.models import (
     rbf,
 )
 from trieste.acquisition.rule import AcquisitionRule
+from trieste.acquisition.utils import copy_to_local_models
 from trieste.bayesian_optimizer import BayesianOptimizer, FrozenRecord, OptimizationResult, Record
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel, TrainableProbabilisticModel
@@ -45,6 +47,7 @@ from trieste.observer import OBJECTIVE, Observer
 from trieste.space import Box, SearchSpace
 from trieste.types import State, Tag, TensorType
 from trieste.utils import Err, Ok
+from trieste.utils.misc import LocalizedTag
 
 # tags
 FOO: Tag = "foo"
@@ -234,6 +237,44 @@ def test_bayesian_optimizer_calls_observer_once_per_iteration(steps: int) -> Non
     optimizer.optimize(steps, data, _PseudoTrainableQuadratic()).final_result.unwrap()
 
     assert observer.call_count == steps
+
+
+# Check that the correct dataset is routed to the model.
+# Note: this test is almost identical to the one in test_ask_tell_optimization.py.
+@pytest.mark.parametrize("use_global_model", [True, False])
+@pytest.mark.parametrize("use_global_init_dataset", [True, False])
+@pytest.mark.parametrize("num_query_points_per_batch", [1, 2])
+def test_bayesian_optimizer_creates_correct_datasets_for_rank3_points(
+    use_global_model: bool, use_global_init_dataset: bool, num_query_points_per_batch: int
+) -> None:
+    batch_size = 4
+    if use_global_init_dataset:
+        init_data = {OBJECTIVE: mk_dataset([[0.5], [1.5]], [[0.25], [0.35]])}
+    else:
+        init_data = {
+            LocalizedTag(OBJECTIVE, i): mk_dataset([[0.5 + i], [1.5 + i]], [[0.25], [0.35]])
+            for i in range(batch_size)
+        }
+        init_data[OBJECTIVE] = mk_dataset([[0.5], [1.5]], [[0.25], [0.35]])
+
+    query_points = tf.reshape(
+        tf.constant(range(batch_size * num_query_points_per_batch), tf.float64),
+        (num_query_points_per_batch, batch_size, 1),
+    )
+
+    search_space = Box([-1], [1])
+
+    model = DatasetChecker(use_global_model, use_global_init_dataset, init_data, query_points)
+    if use_global_model:
+        models = {OBJECTIVE: model}
+    else:
+        models = copy_to_local_models(model, batch_size)  # type: ignore[assignment]
+    for tag, model in models.items():
+        model._tag = tag
+
+    optimizer = BayesianOptimizer(lambda x: Dataset(x, x), search_space)
+    rule = FixedAcquisitionRule(query_points)
+    optimizer.optimize(1, init_data, models, rule).final_result.unwrap()
 
 
 @pytest.mark.parametrize("mode", ["early", "fail", "full"])

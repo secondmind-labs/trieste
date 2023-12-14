@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 from time import sleep
-from typing import Any
+from typing import Any, Optional, Union
 
 import numpy as np
 import numpy.testing as npt
@@ -23,9 +23,10 @@ import tensorflow as tf
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, various_shapes
 from trieste.observer import OBJECTIVE
-from trieste.types import TensorType
+from trieste.types import Tag, TensorType
 from trieste.utils.misc import (
     Err,
+    LocalizedTag,
     Ok,
     Timer,
     flatten_leading_dims,
@@ -97,20 +98,56 @@ def test_err() -> None:
 
 
 def test_get_value_for_tag_returns_none_if_mapping_is_none() -> None:
-    assert get_value_for_tag(None) is None
+    assert get_value_for_tag(None) == (None, None)
 
 
 def test_get_value_for_tag_raises_if_tag_not_in_mapping() -> None:
-    with pytest.raises(ValueError, match="tag 'baz' not found in mapping"):
+    with pytest.raises(ValueError, match="none of the tags '.'baz',.' found in mapping"):
         get_value_for_tag({"foo": "bar"}, "baz")
 
 
 def test_get_value_for_tag_returns_value_for_default_tag() -> None:
-    assert get_value_for_tag({"foo": "bar", OBJECTIVE: "baz"}) == "baz"
+    assert get_value_for_tag({"foo": "bar", OBJECTIVE: "baz"}) == (OBJECTIVE, "baz")
 
 
 def test_get_value_for_tag_returns_value_for_specified_tag() -> None:
-    assert get_value_for_tag({"foo": "bar", OBJECTIVE: "baz"}, "foo") == "bar"
+    assert get_value_for_tag({"foo": "bar", OBJECTIVE: "baz"}, "foo") == ("foo", "bar")
+
+
+def test_get_value_for_tag_returns_first_matching_tag() -> None:
+    assert get_value_for_tag(
+        {"foo": "bar", OBJECTIVE: "baz", "qux": "quux", "bar": "baz"}, *["far", "qux", "foo"]
+    ) == ("qux", "quux")
+
+
+@pytest.mark.parametrize("tag_name", ["test_tag_1", "test_tag_2"])
+@pytest.mark.parametrize("tag_index", [0, 2, None])
+def test_localized_tag_creation(tag_name: str, tag_index: Optional[int]) -> None:
+    tag = LocalizedTag(tag_name, tag_index)
+    is_local = True if tag_index is not None else False
+    # Ensure a duplicate tag is equal.
+    tag2 = LocalizedTag(tag_name, tag_index)
+
+    assert tag.is_local == is_local
+    assert tag.global_tag == tag_name
+    assert tag.local_index == tag_index
+    assert tag == tag2
+    assert hash(tag) == hash(tag2)
+    assert repr(tag) == f"LocalizedTag(global_tag='{tag_name}', local_index={tag_index})"
+
+
+@pytest.mark.parametrize(
+    "tag, exp_tag",
+    [
+        ("test_tag_1", LocalizedTag("test_tag_1", None)),
+        (LocalizedTag("test_tag_1", 3), LocalizedTag("test_tag_1", 3)),
+        (LocalizedTag("test_tag", None), LocalizedTag("test_tag", None)),
+    ],
+)
+def test_localized_tag_from_tag(tag: Union[Tag, LocalizedTag], exp_tag: LocalizedTag) -> None:
+    ltag = LocalizedTag.from_tag(tag)
+    assert ltag.global_tag == exp_tag.global_tag
+    assert ltag.local_index == exp_tag.local_index
 
 
 def test_Timer() -> None:

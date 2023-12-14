@@ -20,11 +20,14 @@ from objective functions, appropriately formatted for usage with the toolbox.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Optional, overload
+from typing import Mapping, Optional, Union, overload
+
+from check_shapes import check_shapes
 
 from ..data import Dataset
-from ..observer import MultiObserver, Observer, SingleObserver
+from ..observer import OBJECTIVE, MultiObserver, Observer, SingleObserver
 from ..types import Tag, TensorType
+from ..utils.misc import LocalizedTag, flatten_leading_dims
 
 
 @overload
@@ -57,3 +60,49 @@ def mk_multi_observer(**kwargs: Callable[[TensorType], TensorType]) -> MultiObse
     :return: An multi-observer returning the data from ``kwargs``.
     """
     return lambda qp: {key: Dataset(qp, objective(qp)) for key, objective in kwargs.items()}
+
+
+def mk_batch_observer(
+    objective_or_observer: Union[Callable[[TensorType], TensorType], Observer],
+    default_key: Tag = OBJECTIVE,
+) -> Observer:
+    """
+    Create an observer that returns the data from ``objective`` or an existing ``observer``
+    separately for each query point in a batch.
+
+    :param objective_or_observer: An objective or an existing observer.
+    :param default_key: The default key to use if ``objective_or_observer`` is an objective or
+        does not return a mapping.
+    :return: A multi-observer across the batch dimension of query points, returning the data from
+        ``objective_or_observer``.
+    """
+
+    @check_shapes("qps: [n_points, batch_size, n_dims]")
+    def _observer(qps: TensorType) -> Mapping[Tag, Dataset]:
+        # Call objective with rank 2 query points by flattening batch dimension.
+        # Some objectives might only expect rank 2 query points, so this is safer.
+        batch_size = qps.shape[1]
+        flat_qps, unflatten = flatten_leading_dims(qps)
+        obs_or_dataset = objective_or_observer(flat_qps)
+
+        if not isinstance(obs_or_dataset, (Mapping, Dataset)):
+            # Just a single observation, so wrap in a dataset.
+            obs_or_dataset = Dataset(flat_qps, obs_or_dataset)
+
+        if isinstance(obs_or_dataset, Dataset):
+            # Convert to a mapping with a default key.
+            obs_or_dataset = {default_key: obs_or_dataset}
+
+        datasets = {}
+        for key, dataset in obs_or_dataset.items():
+            # Include overall dataset and per batch dataset.
+            flat_obs = dataset.observations
+            qps = unflatten(flat_qps)
+            obs = unflatten(flat_obs)
+            datasets[key] = dataset
+            for i in range(batch_size):
+                datasets[LocalizedTag(key, i)] = Dataset(qps[:, i], obs[:, i])
+
+        return datasets
+
+    return _observer

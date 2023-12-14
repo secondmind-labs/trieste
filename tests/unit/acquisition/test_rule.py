@@ -22,8 +22,9 @@ import numpy as np
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
+import tensorflow_probability as tfp
 
-from tests.util.misc import empty_dataset, quadratic, random_seed
+from tests.util.misc import empty_dataset, mk_dataset, quadratic, random_seed
 from tests.util.models.gpflow.models import (
     GaussianProcess,
     QuadraticMeanAndRBFKernel,
@@ -32,6 +33,7 @@ from tests.util.models.gpflow.models import (
 from trieste.acquisition import (
     AcquisitionFunction,
     AcquisitionFunctionBuilder,
+    MultipleOptimismNegativeLowerConfidenceBound,
     NegativeLowerConfidenceBound,
     ParallelContinuousThompsonSampling,
     SingleModelAcquisitionBuilder,
@@ -59,12 +61,15 @@ from trieste.acquisition.sampler import (
     ThompsonSampler,
     ThompsonSamplerFromTrajectory,
 )
+from trieste.acquisition.utils import copy_to_local_models
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.models.interfaces import TrainableSupportsGetKernel
+from trieste.objectives.utils import mk_batch_observer
 from trieste.observer import OBJECTIVE
 from trieste.space import Box, SearchSpace, TaggedMultiSearchSpace
 from trieste.types import State, Tag, TensorType
+from trieste.utils.misc import LocalizedTag, get_value_for_tag
 
 
 def _line_search_maximize(
@@ -540,16 +545,23 @@ def test_async_keeps_track_of_pending_points(
     npt.assert_allclose(state.pending_points, tf.concat([point2, point3], axis=0))
 
 
-@pytest.mark.parametrize("datasets", [{}, {"foo": empty_dataset([1], [1])}])
+@pytest.mark.parametrize(
+    "datasets",
+    [
+        {},
+        {"foo": empty_dataset([1], [1])},
+        {OBJECTIVE: empty_dataset([1], [1]), "foo": empty_dataset([1], [1])},
+    ],
+)
 @pytest.mark.parametrize(
     "models", [{}, {"foo": QuadraticMeanAndRBFKernel()}, {OBJECTIVE: QuadraticMeanAndRBFKernel()}]
 )
 def test_trego_raises_for_missing_datasets_key(
-    datasets: dict[Tag, Dataset], models: dict[Tag, ProbabilisticModel]
+    datasets: Mapping[Tag, Dataset], models: dict[Tag, ProbabilisticModel]
 ) -> None:
     search_space = Box([-1], [1])
     rule = BatchTrustRegionBox(TREGOBox(search_space))  # type: ignore[var-annotated]
-    with pytest.raises(ValueError, match="tag 'OBJECTIVE' not found"):
+    with pytest.raises(ValueError, match="a single OBJECTIVE dataset must be provided"):
         rule.acquire(search_space, models, datasets=datasets)(None)
 
 
@@ -589,7 +601,7 @@ def test_trego_for_default_state(
     assert state is not None
     subspace = state.acquisition_space.get_subspace("0")
     assert isinstance(subspace, TREGOBox)
-    npt.assert_array_almost_equal(query_point, expected_query_point, 5)
+    npt.assert_array_almost_equal(query_point, [expected_query_point], 5)
     npt.assert_array_almost_equal(subspace.lower, lower_bound)
     npt.assert_array_almost_equal(subspace.upper, upper_bound)
     npt.assert_array_almost_equal(subspace._y_min, [0.012])
@@ -650,7 +662,7 @@ def test_trego_successful_global_to_global_trust_region_unchanged(
     assert isinstance(current_subspace, TREGOBox)
     npt.assert_array_almost_equal(current_subspace._eps, eps)
     assert current_subspace._is_global
-    npt.assert_array_almost_equal(query_point, expected_query_point, 5)
+    npt.assert_array_almost_equal(query_point, [expected_query_point], 5)
     npt.assert_array_almost_equal(current_subspace.lower, lower_bound)
     npt.assert_array_almost_equal(current_subspace.upper, upper_bound)
 
@@ -692,7 +704,7 @@ def test_trego_for_unsuccessful_global_to_local_trust_region_unchanged(
     assert not current_subspace._is_global
     npt.assert_array_less(lower_bound, current_subspace.lower)
     npt.assert_array_less(current_subspace.upper, upper_bound)
-    assert query_point[0] in current_state.acquisition_space
+    assert query_point[0][0] in current_state.acquisition_space
 
 
 @pytest.mark.parametrize(
@@ -771,6 +783,27 @@ def test_trego_for_unsuccessful_local_to_global_trust_region_reduced(
     assert current_subspace._is_global
     npt.assert_array_almost_equal(current_subspace.lower, lower_bound)
     npt.assert_array_almost_equal(current_subspace.upper, upper_bound)
+
+
+def test_trego_always_uses_global_dataset() -> None:
+    search_space = Box([0.0, 0.0], [1.0, 1.0])
+    dataset = Dataset(
+        tf.constant([[0.1, 0.2], [-0.1, -0.2], [1.1, 2.3]]), tf.constant([[0.4], [0.5], [0.6]])
+    )
+    tr = BatchTrustRegionBox(TREGOBox(search_space))  # type: ignore[var-annotated]
+    new_data = Dataset(
+        tf.constant([[0.5, -0.2], [0.7, 0.2], [1.1, 0.3], [0.5, 0.5]]),
+        tf.constant([[0.7], [0.8], [0.9], [1.0]]),
+    )
+    updated_datasets = tr.filter_datasets({LocalizedTag(OBJECTIVE, 0): dataset + new_data})
+
+    # Both the local and global datasets should match.
+    assert updated_datasets.keys() == {OBJECTIVE, LocalizedTag(OBJECTIVE, 0)}
+    # Updated dataset should contain all the points, including ones outside the search space.
+    exp_dataset = dataset + new_data
+    for key in updated_datasets.keys():
+        npt.assert_array_equal(exp_dataset.query_points, updated_datasets[key].query_points)
+        npt.assert_array_equal(exp_dataset.observations, updated_datasets[key].observations)
 
 
 def test_trego_state_deepcopy() -> None:
@@ -1169,16 +1202,25 @@ def test_turbo_state_deepcopy() -> None:
     npt.assert_allclose(tr_state_copy.y_min, tr_state.y_min)
 
 
-# get_local_min raises if dataset is None.
-def test_trust_region_box_get_local_min_raises_if_dataset_is_none() -> None:
+@pytest.mark.parametrize(
+    "datasets",
+    [
+        {},
+        {"foo": empty_dataset([1], [1])},
+        {OBJECTIVE: empty_dataset([1], [1]), "foo": empty_dataset([1], [1])},
+    ],
+)
+def test_trust_region_box_get_dataset_min_raises_if_dataset_is_faulty(
+    datasets: Mapping[Tag, Dataset]
+) -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     trb = SingleObjectiveTrustRegionBox(search_space)
-    with pytest.raises(ValueError, match="dataset must be provided"):
-        trb.get_local_min(None)
+    with pytest.raises(ValueError, match="a single OBJECTIVE dataset must be provided"):
+        trb.get_dataset_min(datasets)
 
 
-# get_local_min picks the minimum x and y values from the dataset.
-def test_trust_region_box_get_local_min() -> None:
+# get_dataset_min picks the minimum x and y values from the dataset.
+def test_trust_region_box_get_dataset_min() -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     dataset = Dataset(
         tf.constant([[0.1, 0.1], [0.5, 0.5], [0.3, 0.4], [0.8, 0.8], [0.4, 0.4]], dtype=tf.float64),
@@ -1187,21 +1229,21 @@ def test_trust_region_box_get_local_min() -> None:
     trb = SingleObjectiveTrustRegionBox(search_space)
     trb._lower = tf.constant([0.2, 0.2], dtype=tf.float64)
     trb._upper = tf.constant([0.7, 0.7], dtype=tf.float64)
-    x_min, y_min = trb.get_local_min(dataset)
+    x_min, y_min = trb.get_dataset_min({OBJECTIVE: dataset})
     npt.assert_array_equal(x_min, tf.constant([0.3, 0.4], dtype=tf.float64))
     npt.assert_array_equal(y_min, tf.constant([0.2], dtype=tf.float64))
 
 
-# get_local_min returns first x value and inf y value when points in dataset are outside the
+# get_dataset_min returns first x value and inf y value when points in dataset are outside the
 # search space.
-def test_trust_region_box_get_local_min_outside_search_space() -> None:
+def test_trust_region_box_get_dataset_min_outside_search_space() -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     dataset = Dataset(
         tf.constant([[1.2, 1.3], [-0.4, -0.5]], dtype=tf.float64),
         tf.constant([[0.7], [0.9]], dtype=tf.float64),
     )
     trb = SingleObjectiveTrustRegionBox(search_space)
-    x_min, y_min = trb.get_local_min(dataset)
+    x_min, y_min = trb.get_dataset_min({OBJECTIVE: dataset})
     npt.assert_array_equal(x_min, tf.constant([1.2, 1.3], dtype=tf.float64))
     npt.assert_array_equal(y_min, tf.constant([np.inf], dtype=tf.float64))
 
@@ -1391,7 +1433,7 @@ def test_multi_trust_region_box_acquire_no_state() -> None:
     assert isinstance(state.acquisition_space, TaggedMultiSearchSpace)
     assert len(state.acquisition_space.subspace_tags) == 2
 
-    for index, (tag, point) in enumerate(zip(state.acquisition_space.subspace_tags, points)):
+    for index, (tag, point) in enumerate(zip(state.acquisition_space.subspace_tags, points[0])):
         subspace = state.acquisition_space.get_subspace(tag)
         assert subspace == subspaces[index]
         assert isinstance(subspace, SingleObjectiveTrustRegionBox)
@@ -1447,9 +1489,11 @@ class TestTrustRegionBox(SingleObjectiveTrustRegionBox):
         beta: float = 0.7,
         kappa: float = 1e-4,
         min_eps: float = 1e-2,
+        init_eps: float = 0.07,
     ):
         super().__init__(global_search_space, beta, kappa, min_eps)
         self._location = fixed_location
+        self._init_eps_val = init_eps
 
     @property
     def location(self) -> TensorType:
@@ -1460,7 +1504,7 @@ class TestTrustRegionBox(SingleObjectiveTrustRegionBox):
         ...
 
     def _init_eps(self) -> None:
-        self.eps = tf.constant(0.07, dtype=tf.float64)
+        self.eps = tf.constant(self._init_eps_val, dtype=tf.float64)
 
 
 # Start with a defined state and dataset. Acquire should return an updated state.
@@ -1500,13 +1544,13 @@ def test_multi_trust_region_box_acquire_with_state() -> None:
     next_state, points = state_func(state)
 
     assert next_state is not None
-    assert len(points) == 3
+    assert points.shape == [1, 3, 2]
     # The regions correspond to first, third and first points in the dataset.
     # First two regions should be updated.
     # The third region should be initialized and not updated, as it is too close to the first
     # subspace.
     for point, subspace, exp_obs, exp_eps in zip(
-        points,
+        points[0],
         subspaces,
         [dataset.observations[0], dataset.observations[2], dataset.observations[0]],
         [0.1, 0.1, 0.07],  # First two regions updated, third region initialized.
@@ -1517,13 +1561,212 @@ def test_multi_trust_region_box_acquire_with_state() -> None:
         npt.assert_allclose(subspace.eps, exp_eps)
 
 
+# Test case with multiple local models and multiple regions for batch trust regions.
+# It checks that the correct model is passed to each region, and that the correct dataset is
+# passed to each instance of the base rule (note: the base rule is deep-copied for each region).
+# This is done by mapping each region to a model. For each region the model has a local quadratic
+# shape with the minimum at the center of the region. The overal model is creating by creating
+# a product of all regions using that model. The end expected result is that each region should find
+# its center after optimization. If the wrong model is being used by a region, then instead it would
+# find one of its boundaries.
+# Note that the implementation of this test is more general than strictly required. It can support
+# fewer models than regions (as long as the number of regions is a multiple of the number of
+# models). However, currently trieste only supports either a global model or a one to one mapping
+# between models and regions.
+@pytest.mark.parametrize("use_global_model", [True, False])
+@pytest.mark.parametrize("use_global_dataset", [True, False])
+@pytest.mark.parametrize("num_regions", [2, 4])
+@pytest.mark.parametrize("num_query_points_per_region", [1, 2])
+def test_multi_trust_region_box_with_multiple_models_and_regions(
+    use_global_model: bool,
+    use_global_dataset: bool,
+    num_regions: int,
+    num_query_points_per_region: int,
+) -> None:
+    search_space = Box([0.0, 0.0], [6.0, 6.0])
+    base_shift = tf.constant([2.0, 2.0], dtype=tf.float64)  # Common base shift for all regions.
+    eps = 0.9
+    subspaces = [
+        TestTrustRegionBox(base_shift + i, search_space, init_eps=eps) for i in range(num_regions)
+    ]
+
+    # Define the models and acquisition functions for each region
+    noise_variance = tf.constant(1e-6, dtype=tf.float64)
+    kernel_variance = tf.constant(1e-3, dtype=tf.float64)
+
+    global_dataset = Dataset(
+        tf.constant([[0.0, 0.0]], dtype=tf.float64),
+        tf.constant([[1.0]], dtype=tf.float64),
+    )
+    init_datasets = {OBJECTIVE: global_dataset}
+    models = {}
+    r = range(1) if use_global_model else range(num_regions)
+    for i in r:
+        if use_global_model:
+            tag = OBJECTIVE
+            num_models = 1
+        else:
+            tag = LocalizedTag(OBJECTIVE, i)
+            num_models = num_regions
+
+        num_regions_per_model = num_regions // num_models
+        query_points = tf.stack([base_shift + j for j in range(i, num_regions, num_models)])
+        observations = tf.constant([0.0] * num_regions_per_model, dtype=tf.float64)[:, None]
+
+        if not use_global_dataset:
+            init_datasets[tag] = Dataset(query_points, observations)
+
+        kernel = tfp.math.psd_kernels.ExponentiatedQuadratic(kernel_variance)
+
+        # Overall mean function is a product of local mean functions.
+        def mean_function(x: TensorType, i: int = i) -> TensorType:
+            return tf.reduce_prod(
+                tf.stack(
+                    [
+                        quadratic(x - tf.cast(base_shift + j, dtype=x.dtype))
+                        for j in range(i, num_regions, num_models)
+                    ]
+                ),
+                axis=0,
+            )
+
+        models[tag] = GaussianProcess([mean_function], [kernel], noise_variance)
+        models[tag]._exp_dataset = (  # type: ignore[attr-defined]
+            global_dataset if use_global_dataset else init_datasets[tag]
+        )
+
+    if use_global_model:
+        # Global model; acquire in parallel.
+        num_query_points = num_regions * num_query_points_per_region
+    else:
+        # Local models; acquire sequentially.
+        num_query_points = num_query_points_per_region
+
+    class TestMultipleOptimismNegativeLowerConfidenceBound(
+        MultipleOptimismNegativeLowerConfidenceBound
+    ):
+        # Override the prepare_acquisition_function method to check that the dataset is correct.
+        def prepare_acquisition_function(
+            self,
+            model: ProbabilisticModel,
+            dataset: Optional[Dataset] = None,
+        ) -> AcquisitionFunction:
+            assert dataset is model._exp_dataset  # type: ignore[attr-defined]
+            return super().prepare_acquisition_function(model, dataset)
+
+    base_rule = EfficientGlobalOptimization(  # type: ignore[var-annotated]
+        builder=TestMultipleOptimismNegativeLowerConfidenceBound(search_space),
+        num_query_points=num_query_points,
+    )
+
+    mtb = BatchTrustRegionBox(subspaces, base_rule)
+    _, points = mtb.acquire(search_space, models, init_datasets)(None)
+
+    npt.assert_array_equal(points.shape, [num_query_points_per_region, num_regions, 2])
+
+    # Each region should find the minimum of its local model, which will be the center of
+    # the region.
+    exp_points = tf.stack([base_shift + i for i in range(num_regions)])
+    exp_points = tf.tile(exp_points[None, :, :], [num_query_points_per_region, 1, 1])
+    npt.assert_allclose(points, exp_points)
+
+
+# This test ensures that the datasets for each region are updated correctly. The datasets should
+# contain filtered data, i.e. only points in the respective regions.
+@pytest.mark.parametrize(
+    "datasets, exp_num_init_points",
+    [
+        ({OBJECTIVE: mk_dataset([[0.0], [1.0], [2.0]], [[1.0], [1.0], [1.0]])}, 1),
+        (
+            {
+                OBJECTIVE: mk_dataset(
+                    [[0.0], [1.0], [0.3], [2.0], [0.7], [1.7]],
+                    [[1.0], [1.0], [1.0], [1.0], [1.0], [1.0]],
+                )
+            },
+            2,
+        ),
+        (
+            {
+                OBJECTIVE: mk_dataset([[-1.0]], [[-1.0]]),  # Should be ignored.
+                LocalizedTag(OBJECTIVE, 0): mk_dataset([[0.0]], [[1.0]]),
+                LocalizedTag(OBJECTIVE, 1): mk_dataset([[1.0]], [[1.0]]),
+                LocalizedTag(OBJECTIVE, 2): mk_dataset([[2.0]], [[1.0]]),
+            },
+            1,
+        ),
+        (
+            {
+                OBJECTIVE: mk_dataset([[-1.0]], [[-1.0]]),  # Should be ignored.
+                LocalizedTag(OBJECTIVE, 0): mk_dataset([[0.0], [1.0]], [[1.0], [1.0]]),
+                LocalizedTag(OBJECTIVE, 1): mk_dataset([[2.0], [1.0]], [[1.0], [1.0]]),
+                LocalizedTag(OBJECTIVE, 2): mk_dataset([[2.0], [3.0]], [[1.0], [1.0]]),
+            },
+            1,
+        ),
+    ],
+)
+@pytest.mark.parametrize("num_query_points_per_region", [1, 2])
+def test_multi_trust_region_box_updated_datasets_are_in_regions(
+    datasets: Mapping[Tag, Dataset], exp_num_init_points: int, num_query_points_per_region: int
+) -> None:
+    num_local_models = 3
+    search_space = Box([0.0], [3.0])
+    # Non-overlapping regions.
+    subspaces = [
+        TestTrustRegionBox(tf.constant([i], dtype=tf.float64), search_space, init_eps=0.4)
+        for i in range(num_local_models)
+    ]
+    models = copy_to_local_models(QuadraticMeanAndRBFKernel(), num_local_models)
+    base_rule = EfficientGlobalOptimization(  # type: ignore[var-annotated]
+        builder=MultipleOptimismNegativeLowerConfidenceBound(search_space),
+        num_query_points=num_query_points_per_region,
+    )
+    rule = BatchTrustRegionBox(subspaces, base_rule)
+    _, points = rule.acquire(search_space, models, datasets)(None)
+    observer = mk_batch_observer(quadratic)
+    new_data = observer(points)
+    assert not isinstance(new_data, Dataset)
+
+    updated_datasets = {}
+    for tag in new_data:
+        _, dataset = get_value_for_tag(datasets, *[tag, LocalizedTag.from_tag(tag).global_tag])
+        assert dataset is not None
+        updated_datasets[tag] = dataset + new_data[tag]
+    datasets = rule.filter_datasets(updated_datasets)
+
+    # Check local datasets.
+    for i, subspace in enumerate(subspaces):
+        assert (
+            datasets[LocalizedTag(OBJECTIVE, i)].query_points.shape[0]
+            == exp_num_init_points + num_query_points_per_region
+        )
+        assert np.all(subspace.contains(datasets[LocalizedTag(OBJECTIVE, i)].query_points))
+
+    # Check global dataset.
+    assert datasets[OBJECTIVE].query_points.shape[0] == num_local_models * (
+        exp_num_init_points + num_query_points_per_region
+    )
+    # Each point should be in at least one region.
+    for point in datasets[OBJECTIVE].query_points:
+        assert any(subspace.contains(point) for subspace in subspaces)
+    # Global dataset should be the concatenation of all local datasets.
+    exp_query_points = tf.concat(
+        [datasets[LocalizedTag(OBJECTIVE, i)].query_points for i in range(num_local_models)], axis=0
+    )
+    npt.assert_array_almost_equal(datasets[OBJECTIVE].query_points, exp_query_points)
+
+
 def test_multi_trust_region_box_state_deepcopy() -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     dataset = Dataset(
         tf.constant([[0.25, 0.25], [0.5, 0.5], [0.75, 0.75]], dtype=tf.float64),
         tf.constant([[1.0], [1.0], [1.0]], dtype=tf.float64),
     )
-    subspaces = [SingleObjectiveTrustRegionBox(search_space, 0.07, 1e-5, 1e-3) for _ in range(3)]
+    subspaces = [
+        SingleObjectiveTrustRegionBox(search_space, beta=0.07, kappa=1e-5, min_eps=1e-3)
+        for _ in range(3)
+    ]
     for _subspace in subspaces:
         _subspace.initialize(datasets={OBJECTIVE: dataset})
     state = BatchTrustRegionBox.State(acquisition_space=TaggedMultiSearchSpace(subspaces))

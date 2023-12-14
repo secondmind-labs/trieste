@@ -20,9 +20,22 @@ from __future__ import annotations
 import copy
 import math
 from abc import ABC, abstractmethod
+from collections import Counter
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Callable, Generic, Optional, Sequence, Tuple, TypeVar, Union, cast, overload
+from typing import (
+    Any,
+    Callable,
+    Generic,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    TypeVar,
+    Union,
+    cast,
+    overload,
+)
 
 import numpy as np
 from check_shapes import check_shapes, inherit_check_shapes
@@ -50,7 +63,7 @@ from ..models.interfaces import (
 from ..observer import OBJECTIVE
 from ..space import Box, SearchSpace, TaggedMultiSearchSpace
 from ..types import State, Tag, TensorType
-from ..utils.misc import get_value_for_tag
+from ..utils.misc import LocalizedTag
 from .function import (
     BatchMonteCarloExpectedImprovement,
     ExpectedImprovement,
@@ -80,6 +93,9 @@ ResultType = TypeVar("ResultType", covariant=True)
 
 SearchSpaceType = TypeVar("SearchSpaceType", bound=SearchSpace, contravariant=True)
 """ Contravariant type variable bound to :class:`~trieste.space.SearchSpace`. """
+
+T = TypeVar("T")
+""" Unbound type variable. """
 
 
 class AcquisitionRule(ABC, Generic[ResultType, SearchSpaceType, ProbabilisticModelType]):
@@ -147,6 +163,17 @@ class AcquisitionRule(ABC, Generic[ResultType, SearchSpaceType, ProbabilisticMod
             {OBJECTIVE: model},
             datasets=None if dataset is None else {OBJECTIVE: dataset},
         )
+
+    def filter_datasets(self, datasets: Mapping[Tag, Dataset]) -> Mapping[Tag, Dataset]:
+        """
+        Filter the post-acquisition datasets before they are used for model training. For example,
+        this can be used to remove points from the datasets that are no longer in the search space.
+
+        :param datasets: The datasets to filter.
+        :return: The filtered datasets.
+        """
+        # No filtering by default.
+        return datasets
 
 
 class EfficientGlobalOptimization(
@@ -944,6 +971,14 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
 class UpdatableTrustRegion(SearchSpace):
     """A search space that can be updated."""
 
+    def __init__(self, region_index: Optional[int] = None) -> None:
+        """
+        :param region_index: The index of the region in a multi-region search space. This is used to
+            identify the local models and datasets to use for acquisition. If `None`, the
+            global models and datasets are used.
+        """
+        self.region_index = region_index
+
     @abstractmethod
     def initialize(
         self,
@@ -971,6 +1006,78 @@ class UpdatableTrustRegion(SearchSpace):
         :param datasets: The dataset for each tag.
         """
         ...
+
+    def _get_tags(self, tags: Set[Tag]) -> Tuple[Set[Tag], Set[Tag]]:
+        # Separate tags into local (matching index) and global tags (without matching
+        # local tag).
+        local_gtags = set()  # Set of global part of all local tags.
+        global_tags = set()  # Set of all global tags.
+        for tag in tags:
+            ltag = LocalizedTag.from_tag(tag)
+            if not ltag.is_local:
+                global_tags.add(tag)
+            elif ltag.local_index == self.region_index:
+                local_gtags.add(ltag.global_tag)
+
+        # Only keep global tags that don't have a matching local tag.
+        global_tags -= local_gtags
+
+        return local_gtags, global_tags
+
+    def select_in_region(self, mapping: Optional[Mapping[Tag, T]]) -> Optional[Mapping[Tag, T]]:
+        """
+        Select items belonging to this region for acquisition.
+
+        :param mapping: The mapping of items for each tag.
+        :return: The items belonging to this region (or `None` if there aren't any).
+        """
+        if mapping is None:
+            _mapping = {}
+        elif self.region_index is None:
+            # If no index, then return the global items.
+            _mapping = {
+                tag: item
+                for tag, item in mapping.items()
+                if not LocalizedTag.from_tag(tag).is_local
+            }
+        else:
+            # Prefer matching local item for each tag, otherwise select the global item.
+            local_gtags, global_tags = self._get_tags(set(mapping))
+
+            _mapping = {}
+            for tag in local_gtags:
+                ltag = LocalizedTag(tag, self.region_index)
+                _mapping[ltag] = mapping[ltag]
+            for tag in global_tags:
+                _mapping[tag] = mapping[tag]
+
+        return _mapping if _mapping else None
+
+    def get_datasets_filter_mask(
+        self, datasets: Optional[Mapping[Tag, Dataset]]
+    ) -> Optional[Mapping[Tag, tf.Tensor]]:
+        """
+        Return a boolean mask that can be used to filter out points from the datasets that
+        belong to this region.
+
+        :param datasets: The dataset for each tag.
+        :return: A mapping for each tag belonging to this region, to a boolean mask that can be
+            used to filter out points from the datasets. A value of `True` indicates that the
+            corresponding point should be kept.
+        """
+        # Only select the region datasets for filtering. Don't directly filter the global dataset.
+        assert (
+            self.region_index is not None
+        ), "the region_index should be set for filtering local datasets"
+        if datasets is None:
+            return None
+        else:
+            # Only keep points that are in the region.
+            return {
+                tag: self.contains(dataset.query_points)
+                for tag, dataset in datasets.items()
+                if LocalizedTag.from_tag(tag).local_index == self.region_index
+            }
 
 
 UpdatableTrustRegionType = TypeVar("UpdatableTrustRegionType", bound=UpdatableTrustRegion)
@@ -1024,9 +1131,16 @@ class BatchTrustRegion(
             if not isinstance(init_subspaces, Sequence):
                 init_subspaces = [init_subspaces]
             self._init_subspaces = tuple(init_subspaces)
+            for index, subspace in enumerate(self._init_subspaces):
+                subspace.region_index = index  # Override the index.
             self._tags = tuple([str(index) for index in range(len(init_subspaces))])
 
         self._rule = rule
+        # The rules for each subspace. These are only used when we have local models to run the
+        # base rule sequentially for each subspace. Theses are set in `acquire`.
+        self._rules: Optional[
+            Sequence[AcquisitionRule[TensorType, SearchSpace, ProbabilisticModelType]]
+        ] = None
 
     def __repr__(self) -> str:
         """"""
@@ -1055,10 +1169,38 @@ class BatchTrustRegion(
             points from the previous acquisition state.
         """
 
+        # Subspaces should be set by the time we call `acquire`.
+        assert self._tags is not None
+        assert self._init_subspaces is not None
+
+        num_local_models = Counter(
+            LocalizedTag.from_tag(tag).global_tag
+            for tag in models
+            if LocalizedTag.from_tag(tag).is_local
+        )
+        num_local_models_vals = set(num_local_models.values())
+        assert (
+            len(num_local_models_vals) <= 1
+        ), f"The number of local models should be the same for all tags, got {num_local_models}"
+        _num_local_models = sum(num_local_models_vals)
+
+        num_subspaces = len(self._tags)
+        assert _num_local_models in [0, num_subspaces], (
+            f"When using local models, the number of subspaces {num_subspaces} should be equal to "
+            f"the number of local models {_num_local_models}"
+        )
+
+        # If we have local models, run the (deepcopied) base rule sequentially for each subspace.
+        # Otherwise, run the base rule as is, once with all models and datasets.
+        # Note: this should only trigger on the first call to `acquire`, as after that we will
+        # have a list of rules in `self._rules`.
+        if _num_local_models > 0 and self._rules is None:
+            self._rules = [copy.deepcopy(self._rule) for _ in range(num_subspaces)]
+
         def state_func(
             state: BatchTrustRegion.State | None,
         ) -> Tuple[BatchTrustRegion.State | None, TensorType]:
-            # Subspaces should be set by the time we call `acquire`.
+            # Check again to keep mypy happy.
             assert self._tags is not None
             assert self._init_subspaces is not None
 
@@ -1092,9 +1234,32 @@ class BatchTrustRegion(
                 acquisition_space = state.acquisition_space
 
             state_ = BatchTrustRegion.State(acquisition_space)
-            points = self._rule.acquire(acquisition_space, models, datasets=datasets)
 
-            return state_, points
+            # If the base rule is a sequence, run it sequentially for each subspace.
+            # See earlier comments.
+            if self._rules is not None:
+                _points = []
+                for subspace, rule in zip(subspaces, self._rules):
+                    _models = subspace.select_in_region(models)
+                    _datasets = subspace.select_in_region(datasets)
+                    assert _models is not None
+                    # Remap all local tags to global ones. One reason is that single model
+                    # acquisition builders expect OBJECTIVE to exist.
+                    _models = {
+                        LocalizedTag.from_tag(tag).global_tag: model
+                        for tag, model in _models.items()
+                    }
+                    if _datasets is not None:
+                        _datasets = {
+                            LocalizedTag.from_tag(tag).global_tag: dataset
+                            for tag, dataset in _datasets.items()
+                        }
+                    _points.append(rule.acquire(subspace, _models, _datasets))
+                points = tf.stack(_points, axis=1)
+            else:
+                points = self._rule.acquire(acquisition_space, models, datasets)
+
+            return state_, tf.reshape(points, [-1, len(subspaces), points.shape[-1]])
 
         return state_func
 
@@ -1143,6 +1308,53 @@ class BatchTrustRegion(
         """
         ...
 
+    def filter_datasets(self, datasets: Mapping[Tag, Dataset]) -> Mapping[Tag, Dataset]:
+        # Filter out points that are not in any of the subspaces. This is done by creating a mask
+        # for each local dataset that is True for points that are in any subspace.
+        used_masks = {
+            tag: tf.zeros(dataset.query_points.shape[:-1], dtype=tf.bool)
+            for tag, dataset in datasets.items()
+            if LocalizedTag.from_tag(tag).is_local
+        }
+
+        # Global datasets to re-generate.
+        global_tags = {LocalizedTag.from_tag(tag).global_tag for tag in used_masks}
+
+        # Using init_subspaces here relies on the users not creating new subspaces after
+        # initialization. This is a reasonable assumption for now.
+        assert self._init_subspaces is not None
+        for subspace in self._init_subspaces:
+            in_region_masks = subspace.get_datasets_filter_mask(datasets)
+            if in_region_masks is not None:
+                for tag, in_region in in_region_masks.items():
+                    ltag = LocalizedTag.from_tag(tag)
+                    assert ltag.is_local, f"can only filter local tags, got {tag}"
+                    used_masks[tag] = tf.logical_or(used_masks[tag], in_region)
+
+        filtered_datasets = {}
+        for tag, used_mask in used_masks.items():
+            filtered_datasets[tag] = Dataset(
+                tf.boolean_mask(datasets[tag].query_points, used_mask),
+                tf.boolean_mask(datasets[tag].observations, used_mask),
+            )
+
+        # Include global datasets.
+        for gtag in global_tags:
+            # Create global dataset from local datasets. This is done by concatenating the local
+            # datasets.
+            local_datasets = [
+                value
+                for tag, value in filtered_datasets.items()
+                if LocalizedTag.from_tag(tag).global_tag == gtag
+            ]
+            # Note there is no ordering assumption for the local datasets. They are simply
+            # concatenated and information about which local dataset they came from is lost.
+            qps = tf.concat([dataset.query_points for dataset in local_datasets], axis=0)
+            obs = tf.concat([dataset.observations for dataset in local_datasets], axis=0)
+            filtered_datasets[gtag] = Dataset(qps, obs)
+
+        return filtered_datasets
+
 
 class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
     """An updatable box search space for use with trust region acquisition rules."""
@@ -1153,6 +1365,7 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
         beta: float = 0.7,
         kappa: float = 1e-4,
         min_eps: float = 1e-2,
+        region_index: Optional[int] = None,
     ):
         """
         Calculates the bounds of the box from the location/centre and global bounds.
@@ -1163,6 +1376,9 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
             considered a success.
         :param min_eps: The minimal size of the search space. If the size of the search space is
             smaller than this, the search space is reinitialized.
+        :param region_index: The index of the region in a multi-region search space. This is used to
+            identify the local models and datasets to use for acquisition. If `None`, the
+            global models and datasets are used.
         """
 
         self._global_search_space = global_search_space
@@ -1171,6 +1387,7 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
         self._min_eps = min_eps
 
         super().__init__(global_search_space.lower, global_search_space.upper)
+        super(Box, self).__init__(region_index)
 
     @property
     def global_search_space(self) -> SearchSpace:
@@ -1199,13 +1416,13 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
         Initialize the box by sampling a location from the global search space and setting the
         bounds.
         """
-        dataset = get_value_for_tag(datasets)
+        datasets = self.select_in_region(datasets)
 
         self.location = tf.squeeze(self.global_search_space.sample(1), axis=0)
         self._step_is_success = False
         self._init_eps()
         self._update_bounds()
-        _, self._y_min = self.get_local_min(dataset)
+        _, self._y_min = self.get_dataset_min(datasets)
 
     def update(
         self,
@@ -1223,13 +1440,13 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
         ``1 / beta``. Conversely, if it was unsuccessful, the size is reduced by the factor
         ``beta``.
         """
-        dataset = get_value_for_tag(datasets)
+        datasets = self.select_in_region(datasets)
 
         if tf.reduce_any(self.eps < self._min_eps):
             self.initialize(models, datasets)
             return
 
-        x_min, y_min = self.get_local_min(dataset)
+        x_min, y_min = self.get_dataset_min(datasets)
         self.location = x_min
 
         tr_volume = tf.reduce_prod(self.upper - self.lower)
@@ -1242,10 +1459,17 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
         "return[0]: [D]",
         "return[1]: []",
     )
-    def get_local_min(self, dataset: Optional[Dataset]) -> Tuple[TensorType, TensorType]:
-        """Calculate the local minimum of the box using the given dataset."""
-        if dataset is None:
-            raise ValueError("""dataset must be provided""")
+    def get_dataset_min(
+        self, datasets: Optional[Mapping[Tag, Dataset]]
+    ) -> Tuple[TensorType, TensorType]:
+        """Calculate the minimum of the box using the given dataset."""
+        if (
+            datasets is None
+            or len(datasets) != 1
+            or LocalizedTag.from_tag(next(iter(datasets))).global_tag != OBJECTIVE
+        ):
+            raise ValueError("""a single OBJECTIVE dataset must be provided""")
+        dataset = next(iter(datasets.values()))
 
         in_tr = self.contains(dataset.query_points)
         in_tr_obs = tf.where(
@@ -1286,6 +1510,8 @@ class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, SingleObjecti
             self._init_subspaces = tuple(
                 [SingleObjectiveTrustRegionBox(search_space) for _ in range(num_query_points)]
             )
+            for index, subspace in enumerate(self._init_subspaces):
+                subspace.region_index = index  # Override the index.
             self._tags = tuple([str(index) for index in range(len(self._init_subspaces))])
 
         # Ensure passed in global search space is always the same as the search space passed to
@@ -1339,8 +1565,9 @@ class TREGOBox(SingleObjectiveTrustRegionBox):
         beta: float = 0.7,
         kappa: float = 1e-4,
         min_eps: float = 1e-2,
+        region_index: Optional[int] = None,
     ):
-        super().__init__(global_search_space, beta, kappa, min_eps)
+        super().__init__(global_search_space, beta, kappa, min_eps, region_index)
         self._is_global = False
         self._initialized = False
 
@@ -1382,10 +1609,35 @@ class TREGOBox(SingleObjectiveTrustRegionBox):
 
         super().initialize(models, datasets)
 
+    def get_datasets_filter_mask(
+        self, datasets: Optional[Mapping[Tag, Dataset]]
+    ) -> Optional[Mapping[Tag, tf.Tensor]]:
+        # Only select the region datasets for filtering. Don't directly filter the global dataset.
+        assert (
+            self.region_index is not None
+        ), "the region_index should be set for filtering local datasets"
+        if datasets is None:
+            return None
+        else:
+            # Don't filter out any points from the dataset. Always keep the entire dataset.
+            return {
+                tag: tf.ones(tf.shape(dataset.query_points)[:-1], dtype=tf.bool)
+                for tag, dataset in datasets.items()
+                if LocalizedTag.from_tag(tag).local_index == self.region_index
+            }
+
     @inherit_check_shapes
-    def get_local_min(self, dataset: Optional[Dataset]) -> Tuple[TensorType, TensorType]:
-        if dataset is None:
-            raise ValueError("""dataset must be provided""")
+    def get_dataset_min(
+        self, datasets: Optional[Mapping[Tag, Dataset]]
+    ) -> Tuple[TensorType, TensorType]:
+        """Calculate the minimum of the box using the given dataset."""
+        if (
+            datasets is None
+            or len(datasets) != 1
+            or LocalizedTag.from_tag(next(iter(datasets))).global_tag != OBJECTIVE
+        ):
+            raise ValueError("""a single OBJECTIVE dataset must be provided""")
+        dataset = next(iter(datasets.values()))
 
         # Always return the global minimum.
         ix = tf.argmin(dataset.observations)
