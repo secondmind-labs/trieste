@@ -53,7 +53,6 @@ from .space import SearchSpace
 from .types import State, Tag, TensorType
 from .utils import Ok, Timer
 from .utils.misc import LocalizedTag, get_value_for_tag, ignoring_local_tags
-from .utils.misc import LocalizedTag, get_value_for_tag, ignoring_local_tags
 
 StateType = TypeVar("StateType")
 """ Unbound type variable. """

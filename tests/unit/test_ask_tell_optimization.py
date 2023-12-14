@@ -16,7 +16,6 @@ from __future__ import annotations
 from typing import Mapping, Optional
 
 import numpy.testing as npt
-import numpy.testing as npt
 import pytest
 import tensorflow as tf
 

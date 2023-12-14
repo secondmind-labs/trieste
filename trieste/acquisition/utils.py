@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import copy
-import copy
 import functools
 from typing import Dict, Mapping, Tuple, Union
 
@@ -20,8 +19,6 @@ import tensorflow as tf
 from check_shapes import check_shapes
 
 from ..data import Dataset
-from ..models import ProbabilisticModelType
-from ..observer import OBJECTIVE
 from ..models import ProbabilisticModelType
 from ..observer import OBJECTIVE
 from ..space import SearchSpaceType
