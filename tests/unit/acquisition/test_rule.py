@@ -23,6 +23,7 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
+import tensorflow_probability as tfp
 
 from tests.util.misc import empty_dataset, mk_dataset, quadratic, random_seed
 from tests.util.models.gpflow.models import (

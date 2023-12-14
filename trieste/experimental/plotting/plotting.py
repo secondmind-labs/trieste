@@ -34,9 +34,11 @@ from trieste.acquisition import AcquisitionFunction
 from trieste.acquisition.multi_objective.dominance import non_dominated
 from trieste.bayesian_optimizer import FrozenRecord, Record, StateType
 from trieste.observer import OBJECTIVE
+from trieste.observer import OBJECTIVE
 from trieste.space import TaggedMultiSearchSpace
 from trieste.types import TensorType
 from trieste.utils import to_numpy
+from trieste.utils.misc import LocalizedTag
 from trieste.utils.misc import LocalizedTag
 
 

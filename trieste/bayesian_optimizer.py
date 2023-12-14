@@ -63,10 +63,12 @@ from .acquisition.utils import with_local_datasets
 from .data import Dataset
 from .models import SupportsCovarianceWithTopFidelity, TrainableProbabilisticModel
 from .objectives.utils import mk_batch_observer
+from .objectives.utils import mk_batch_observer
 from .observer import OBJECTIVE, Observer
 from .space import SearchSpace
 from .types import State, Tag, TensorType
 from .utils import Err, Ok, Result, Timer
+from .utils.misc import LocalizedTag, get_value_for_tag, ignoring_local_tags
 from .utils.misc import LocalizedTag, get_value_for_tag, ignoring_local_tags
 
 StateType = TypeVar("StateType")
