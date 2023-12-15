@@ -277,15 +277,20 @@ plot_history(result)
 # As before, this meta-rule requires the specification of an aquisition base-rule for performing
 # optimization within the trust regions; for our example we use the `DiscreteThompsonSampling` rule.
 #
-# This base-rule does not support parallel optimization, and acquisition is performed sequentially
-# across each region. Hence, the number of query points per region is controlled directly by the
-# `num_query_points` argument. This is in contrast to the batched trust region in the previous
-# section, where the number of query points per region was `num_query_points / num_regions`.
-#
 # We create 2 `TuRBO` trust regions and associated local models by initially copying the global
 # model (using `copy_to_local_models`). The optimizer will return `num_query_points` new query
 # points for each region in every step of the loop. With 5 steps and 2 regions, that's 30 points in
 # total.
+#
+# Note: this behavior of the base-rule `num_query_points` argument is different from the
+# batch-trust-region example above. In the batch-trust-region example, the total number of
+# query points returned per step was `num_query_points`. In this example, the total number of query
+# points returned per step is `num_query_points * num_regions`. This depends on whether the
+# base-rule is run in parallel across all regions or in parallel only within a region. This
+# example runs the acquisition sequentially one region at a time, wherease the
+# batch-trust-region case performed the acquisition in parallel across all regions. Fully
+# parallel acquisition is only supported when using `EfficientGlobalOptimization` base-rule without
+# local models.
 
 # %%
 num_regions = 2
