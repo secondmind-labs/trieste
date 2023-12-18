@@ -18,7 +18,6 @@ the Bayesian optimization process.
 from __future__ import annotations
 
 import copy
-import math
 from abc import ABC, abstractmethod
 from collections import Counter
 from collections.abc import Mapping
@@ -86,7 +85,7 @@ from .optimizer import (
     batchify_vectorize,
 )
 from .sampler import ExactThompsonSampler, ThompsonSampler
-from .utils import get_local_dataset, get_unique_points_mask, select_nth_output
+from .utils import get_unique_points_mask, select_nth_output
 
 ResultType = TypeVar("ResultType", covariant=True)
 """ Unbound covariant type variable. """
@@ -164,16 +163,33 @@ class AcquisitionRule(ABC, Generic[ResultType, SearchSpaceType, ProbabilisticMod
             datasets=None if dataset is None else {OBJECTIVE: dataset},
         )
 
-    def filter_datasets(self, datasets: Mapping[Tag, Dataset]) -> Mapping[Tag, Dataset]:
+    def filter_datasets(
+        self, models: Mapping[Tag, ProbabilisticModelType], datasets: Mapping[Tag, Dataset]
+    ) -> Mapping[Tag, Dataset]:
         """
         Filter the post-acquisition datasets before they are used for model training. For example,
-        this can be used to remove points from the datasets that are no longer in the search space.
+        this can be used to remove points from the post-acquisition datasets that are no longer in
+        the search space.
+        Some rules may also update their internal state.
 
-        :param datasets: The datasets to filter.
+        :param models: The model for each tag.
+        :param datasets: The updated datasets after previous acquisition step.
         :return: The filtered datasets.
         """
         # No filtering by default.
         return datasets
+
+
+class LocalDatasetsAcquisitionRule(
+    AcquisitionRule[ResultType, SearchSpaceType, ProbabilisticModelType]
+):
+    """An :class:`AcquisitionRule` that requires local datasets. For example, this is implemented
+    by :class:`BatchTrustRegion`."""
+
+    @property
+    @abstractmethod
+    def num_local_datasets(self) -> int:
+        """The number of local datasets required by this rule."""
 
 
 class EfficientGlobalOptimization(
@@ -1085,7 +1101,7 @@ UpdatableTrustRegionType = TypeVar("UpdatableTrustRegionType", bound=UpdatableTr
 
 
 class BatchTrustRegion(
-    AcquisitionRule[
+    LocalDatasetsAcquisitionRule[
         types.State[Optional["BatchTrustRegion.State"], TensorType],
         SearchSpace,
         ProbabilisticModelType,
@@ -1094,6 +1110,11 @@ class BatchTrustRegion(
 ):
     """Abstract class for multi trust region acquisition rules. These are batch algorithms where
     each query point is optimized in parallel, with its own separate trust region.
+
+    Note: to restart or continue an optimization with this rule, either the same instance of the
+    rule must be used, or a new instance must be created with the subspaces from a previous
+    state. This is because the internal state of the rule cannot be restored directly from a state
+    object.
     """
 
     @dataclass(frozen=True)
@@ -1119,32 +1140,38 @@ class BatchTrustRegion(
             subspaces of type :class:`UpdatableTrustRegionType` will be created, with length
             equal to the number of query points in the base `rule`.
         :param rule: The acquisition rule that defines how to search for a new query point in each
-            subspace. Defaults to :class:`EfficientGlobalOptimization` with default arguments.
-        """
-        if rule is None:
-            rule = EfficientGlobalOptimization()
+            subspace.
 
+            If `None`, defaults to :class:`~trieste.acquisition.DiscreteThompsonSampling` with
+            a batch size of 1 for `TURBOBox` subspaces, and
+            :class:`~trieste.acquisition.EfficientGlobalOptimization` otherwise.
+        """
         # If init_subspaces are not provided, leave it to the subclasses to create them.
-        self._init_subspaces = None
+        self._subspaces = None
         self._tags = None
         if init_subspaces is not None:
             if not isinstance(init_subspaces, Sequence):
                 init_subspaces = [init_subspaces]
-            self._init_subspaces = tuple(init_subspaces)
-            for index, subspace in enumerate(self._init_subspaces):
+            self._subspaces = tuple(init_subspaces)
+            for index, subspace in enumerate(self._subspaces):
                 subspace.region_index = index  # Override the index.
             self._tags = tuple([str(index) for index in range(len(init_subspaces))])
 
         self._rule = rule
-        # The rules for each subspace. These are only used when we have local models to run the
-        # base rule sequentially for each subspace. Theses are set in `acquire`.
+        # The rules for each subspace. These are only used when we want to run the base rule
+        # sequentially for each subspace. Theses are set in `acquire`.
         self._rules: Optional[
             Sequence[AcquisitionRule[TensorType, SearchSpace, ProbabilisticModelType]]
         ] = None
 
     def __repr__(self) -> str:
         """"""
-        return f"""{self.__class__.__name__}({self._init_subspaces!r}, {self._rule!r})"""
+        return f"""{self.__class__.__name__}({self._subspaces!r}, {self._rule!r})"""
+
+    @property
+    def num_local_datasets(self) -> int:
+        assert self._subspaces is not None, "the subspaces have not been initialized"
+        return len(self._subspaces)
 
     def acquire(
         self,
@@ -1171,7 +1198,18 @@ class BatchTrustRegion(
 
         # Subspaces should be set by the time we call `acquire`.
         assert self._tags is not None
-        assert self._init_subspaces is not None
+        assert self._subspaces is not None
+
+        # Implement heuristic defaults for the rule if not specified by the user.
+        if self._rule is None:
+            # Use first subspace to determine the type of the base rule.
+            if isinstance(self._subspaces[0], TURBOBox):
+                # Default to Thompson sampling with batches of size 1.
+                self._rule = DiscreteThompsonSampling(
+                    tf.minimum(100 * search_space.dimension, 5_000), 1
+                )
+            else:
+                self._rule = EfficientGlobalOptimization()
 
         num_local_models = Counter(
             LocalizedTag.from_tag(tag).global_tag
@@ -1190,11 +1228,15 @@ class BatchTrustRegion(
             f"the number of local models {_num_local_models}"
         )
 
-        # If we have local models, run the (deepcopied) base rule sequentially for each subspace.
-        # Otherwise, run the base rule as is, once with all models and datasets.
+        # If we have local models or not using a base-rule that supports batched acquisition,
+        # run the (deepcopied) base rule sequentially for each subspace. Note: we only support
+        # batching for EfficientGlobalOptimization.
+        # Otherwise, run the base rule as is (i.e as a batch), once with all models and datasets.
         # Note: this should only trigger on the first call to `acquire`, as after that we will
         # have a list of rules in `self._rules`.
-        if _num_local_models > 0 and self._rules is None:
+        if self._rules is None and (
+            _num_local_models > 0 or not isinstance(self._rule, EfficientGlobalOptimization)
+        ):
             self._rules = [copy.deepcopy(self._rule) for _ in range(num_subspaces)]
 
         def state_func(
@@ -1202,7 +1244,8 @@ class BatchTrustRegion(
         ) -> Tuple[BatchTrustRegion.State | None, TensorType]:
             # Check again to keep mypy happy.
             assert self._tags is not None
-            assert self._init_subspaces is not None
+            assert self._subspaces is not None
+            assert self._rule is not None
 
             # If state is set, the tags should be the same as the tags of the acquisition space
             # in the state.
@@ -1213,33 +1256,15 @@ class BatchTrustRegion(
                     {state.acquisition_space.subspace_tags} should be the same as the tags of the
                     BatchTrustRegion acquisition rule {self._tags}"""
 
-            subspaces = []
-            for tag, init_subspace in zip(self._tags, self._init_subspaces):
-                if state is None:
-                    subspace = init_subspace
-                    subspace.initialize(models, datasets)
-                else:
-                    _subspace = state.acquisition_space.get_subspace(tag)
-                    assert isinstance(_subspace, type(init_subspace))
-                    subspace = _subspace
-                    subspace.update(models, datasets)
-
-                subspaces.append(subspace)
-
-            self.maybe_initialize_subspaces(subspaces, models, datasets)
-
-            if state is None:
-                acquisition_space = TaggedMultiSearchSpace(subspaces, self._tags)
-            else:
-                acquisition_space = state.acquisition_space
-
-            state_ = BatchTrustRegion.State(acquisition_space)
+            # Never use the subspaces from the passed in state, as we may have modified the
+            # subspaces in filter_datasets.
+            acquisition_space = TaggedMultiSearchSpace(self._subspaces, self._tags)
 
             # If the base rule is a sequence, run it sequentially for each subspace.
             # See earlier comments.
             if self._rules is not None:
                 _points = []
-                for subspace, rule in zip(subspaces, self._rules):
+                for subspace, rule in zip(self._subspaces, self._rules):
                     _models = subspace.select_in_region(models)
                     _datasets = subspace.select_in_region(datasets)
                     assert _models is not None
@@ -1259,7 +1284,9 @@ class BatchTrustRegion(
             else:
                 points = self._rule.acquire(acquisition_space, models, datasets)
 
-            return state_, tf.reshape(points, [-1, len(subspaces), points.shape[-1]])
+            # We may modify the regions in filter_datasets later, so return a copy.
+            state_ = BatchTrustRegion.State(copy.deepcopy(acquisition_space))
+            return state_, tf.reshape(points, [-1, len(self._subspaces), points.shape[-1]])
 
         return state_func
 
@@ -1308,7 +1335,15 @@ class BatchTrustRegion(
         """
         ...
 
-    def filter_datasets(self, datasets: Mapping[Tag, Dataset]) -> Mapping[Tag, Dataset]:
+    def filter_datasets(
+        self, models: Mapping[Tag, ProbabilisticModelType], datasets: Mapping[Tag, Dataset]
+    ) -> Mapping[Tag, Dataset]:
+        # Update subspaces with the latest datasets.
+        assert self._subspaces is not None
+        for subspace in self._subspaces:
+            subspace.update(models, datasets)
+        self.maybe_initialize_subspaces(self._subspaces, models, datasets)
+
         # Filter out points that are not in any of the subspaces. This is done by creating a mask
         # for each local dataset that is True for points that are in any subspace.
         used_masks = {
@@ -1317,13 +1352,7 @@ class BatchTrustRegion(
             if LocalizedTag.from_tag(tag).is_local
         }
 
-        # Global datasets to re-generate.
-        global_tags = {LocalizedTag.from_tag(tag).global_tag for tag in used_masks}
-
-        # Using init_subspaces here relies on the users not creating new subspaces after
-        # initialization. This is a reasonable assumption for now.
-        assert self._init_subspaces is not None
-        for subspace in self._init_subspaces:
+        for subspace in self._subspaces:
             in_region_masks = subspace.get_datasets_filter_mask(datasets)
             if in_region_masks is not None:
                 for tag, in_region in in_region_masks.items():
@@ -1338,25 +1367,53 @@ class BatchTrustRegion(
                 tf.boolean_mask(datasets[tag].observations, used_mask),
             )
 
-        # Include global datasets.
-        for gtag in global_tags:
-            # Create global dataset from local datasets. This is done by concatenating the local
-            # datasets.
-            local_datasets = [
-                value
-                for tag, value in filtered_datasets.items()
-                if LocalizedTag.from_tag(tag).global_tag == gtag
-            ]
-            # Note there is no ordering assumption for the local datasets. They are simply
-            # concatenated and information about which local dataset they came from is lost.
-            qps = tf.concat([dataset.query_points for dataset in local_datasets], axis=0)
-            obs = tf.concat([dataset.observations for dataset in local_datasets], axis=0)
-            filtered_datasets[gtag] = Dataset(qps, obs)
+        # Include global datasets unmodified.
+        for tag, dataset in datasets.items():
+            if not LocalizedTag.from_tag(tag).is_local:
+                filtered_datasets[tag] = dataset
 
         return filtered_datasets
 
 
-class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
+class UpdatableTrustRegionBox(Box, UpdatableTrustRegion):
+    """
+    A simple updatable box search space with a centre location and an associated global search
+    space.
+    """
+
+    def __init__(
+        self,
+        global_search_space: SearchSpace,
+        region_index: Optional[int] = None,
+    ):
+        """
+        :param global_search_space: The global search space this search space lives in.
+        :param region_index: The index of the region in a multi-region search space. This is used to
+            identify the local models and datasets to use for acquisition. If `None`, the
+            global models and datasets are used.
+        """
+        Box.__init__(self, global_search_space.lower, global_search_space.upper)
+        UpdatableTrustRegion.__init__(self, region_index)
+        self._global_search_space = global_search_space
+        # Random initial location in the global search space.
+        self.location = tf.squeeze(global_search_space.sample(1), axis=0)
+
+    @property
+    def location(self) -> TensorType:
+        """The centre of the box."""
+        return self._location
+
+    @location.setter
+    def location(self, location: TensorType) -> None:
+        self._location = location
+
+    @property
+    def global_search_space(self) -> SearchSpace:
+        """The global search space this search space lives in."""
+        return self._global_search_space
+
+
+class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox):
     """An updatable box search space for use with trust region acquisition rules."""
 
     def __init__(
@@ -1380,19 +1437,16 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
             identify the local models and datasets to use for acquisition. If `None`, the
             global models and datasets are used.
         """
-
-        self._global_search_space = global_search_space
+        super().__init__(global_search_space, region_index)
         self._beta = beta
         self._kappa = kappa
         self._min_eps = min_eps
 
-        super().__init__(global_search_space.lower, global_search_space.upper)
-        super(Box, self).__init__(region_index)
-
-    @property
-    def global_search_space(self) -> SearchSpace:
-        """The global search space this search space lives in."""
-        return self._global_search_space
+        self._initialized = False
+        self._step_is_success = False
+        self._init_eps()
+        self._update_bounds()
+        self._y_min = np.inf
 
     def _init_eps(self) -> None:
         global_lower = self.global_search_space.lower
@@ -1423,6 +1477,7 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
         self._init_eps()
         self._update_bounds()
         _, self._y_min = self.get_dataset_min(datasets)
+        self._initialized = True
 
     def update(
         self,
@@ -1440,12 +1495,11 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
         ``1 / beta``. Conversely, if it was unsuccessful, the size is reduced by the factor
         ``beta``.
         """
-        datasets = self.select_in_region(datasets)
-
-        if tf.reduce_any(self.eps < self._min_eps):
+        if not self._initialized or tf.reduce_any(self.eps < self._min_eps):
             self.initialize(models, datasets)
             return
 
+        datasets = self.select_in_region(datasets)
         x_min, y_min = self.get_dataset_min(datasets)
         self.location = x_min
 
@@ -1484,7 +1538,7 @@ class SingleObjectiveTrustRegionBox(Box, UpdatableTrustRegion):
         return tf.squeeze(x_min, axis=0), tf.squeeze(y_min)
 
 
-class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, SingleObjectiveTrustRegionBox]):
+class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, UpdatableTrustRegionBox]):
     """
     Implements the :class:`BatchTrustRegion` *trust region* acquisition rule for box regions.
     This is intended to be used for single-objective optimization with batching.
@@ -1496,7 +1550,7 @@ class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, SingleObjecti
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> types.State[BatchTrustRegion.State | None, TensorType]:
-        if self._init_subspaces is None:
+        if self._subspaces is None:
             # If no initial subspaces were provided, create N default subspaces, where N is the
             # number of query points in the base-rule.
             # Currently the detection for N is only implemented for EGO.
@@ -1507,16 +1561,17 @@ class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, SingleObjecti
             else:
                 num_query_points = 1
 
-            self._init_subspaces = tuple(
+            init_subspaces: Tuple[UpdatableTrustRegionBox, ...] = tuple(
                 [SingleObjectiveTrustRegionBox(search_space) for _ in range(num_query_points)]
             )
-            for index, subspace in enumerate(self._init_subspaces):
+            self._subspaces = init_subspaces
+            for index, subspace in enumerate(self._subspaces):
                 subspace.region_index = index  # Override the index.
-            self._tags = tuple([str(index) for index in range(len(self._init_subspaces))])
+            self._tags = tuple([str(index) for index in range(self.num_local_datasets)])
 
         # Ensure passed in global search space is always the same as the search space passed to
         # the subspaces.
-        for subspace in self._init_subspaces:
+        for subspace in self._subspaces:
             assert subspace.global_search_space == search_space, (
                 "The global search space of the subspaces should be the same as the "
                 "search space passed to the BatchTrustRegionBox acquisition rule. "
@@ -1529,7 +1584,7 @@ class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, SingleObjecti
     @inherit_check_shapes
     def get_initialize_subspaces_mask(
         self,
-        subspaces: Sequence[SingleObjectiveTrustRegionBox],
+        subspaces: Sequence[UpdatableTrustRegionBox],
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> TensorType:
@@ -1567,9 +1622,8 @@ class TREGOBox(SingleObjectiveTrustRegionBox):
         min_eps: float = 1e-2,
         region_index: Optional[int] = None,
     ):
-        super().__init__(global_search_space, beta, kappa, min_eps, region_index)
         self._is_global = False
-        self._initialized = False
+        super().__init__(global_search_space, beta, kappa, min_eps, region_index)
 
     @property
     def eps(self) -> TensorType:
@@ -1605,7 +1659,6 @@ class TREGOBox(SingleObjectiveTrustRegionBox):
         # re-initializations. Note the calls to `_update_bounds` switch the mode, so the values
         # here are inverted.
         self._is_global = self._initialized
-        self._initialized = True
 
         super().initialize(models, datasets)
 
@@ -1647,93 +1700,37 @@ class TREGOBox(SingleObjectiveTrustRegionBox):
         return tf.squeeze(x_min, axis=0), tf.squeeze(y_min)
 
 
-class TURBO(
-    AcquisitionRule[
-        types.State[Optional["TURBO.State"], TensorType], Box, TrainableSupportsGetKernel
-    ]
-):
+class TURBOBox(UpdatableTrustRegionBox):
     """Implements the TURBO algorithm as detailed in :cite:`eriksson2019scalable`."""
-
-    @dataclass(frozen=True)
-    class State:
-        """The acquisition state for the :class:`TURBO` acquisition rule."""
-
-        acquisition_space: Box
-        """ The search space. """
-
-        L: float
-        """ Length of the trust region (before standardizing by model lengthscales) """
-
-        failure_counter: int
-        """ Number of consecutive failures (reset if we see a success). """
-
-        success_counter: int
-        """ Number of consecutive successes (reset if we see a failure).  """
-
-        y_min: TensorType
-        """ The minimum observed value. """
-
-        def __deepcopy__(self, memo: dict[int, object]) -> TURBO.State:
-            box_copy = copy.deepcopy(self.acquisition_space, memo)
-            return TURBO.State(
-                box_copy, self.L, self.failure_counter, self.success_counter, self.y_min
-            )
 
     def __init__(
         self,
-        search_space: SearchSpace,
-        num_trust_regions: int = 1,
-        rule: Optional[AcquisitionRule[ResultType, Box, TrainableSupportsGetKernel]] = None,
+        global_search_space: SearchSpace,
         L_min: Optional[float] = None,
         L_init: Optional[float] = None,
         L_max: Optional[float] = None,
         success_tolerance: int = 3,
         failure_tolerance: Optional[int] = None,
-        local_models: Optional[Mapping[Tag, TrainableSupportsGetKernel]] = None,
+        region_index: Optional[int] = None,
     ):
         """
         Note that the optional parameters are set by a heuristic if not given by the user.
 
-        :param search_space: The search space.
-        :param num_trust_regions: Number of trust regions controlled by TURBO
-        :param rule: rule used to select points from within the trust region, using the local model.
+        :param global_search_space: The global search space.
         :param L_min: Minimum allowed length of the trust region.
         :param L_init: Initial length of the trust region.
         :param L_max: Maximum allowed length of the trust region.
         :param success_tolerance: Number of consecutive successes before changing region size.
         :param failure tolerance: Number of consecutive failures before changing region size.
-        :param local_models: Optional model to act as the local model. This will be refit using
-            the data from each trust region. If no local_models are provided then we just
-            copy the global model.
+        :param region_index: The index of the region in a multi-region search space. This is used to
+            identify the local models and datasets to use for acquisition. If `None`, the
+            global models and datasets are used.
         """
+        super().__init__(global_search_space, region_index)
 
-        if not num_trust_regions > 0:
-            raise ValueError(f"Num trust regions must be greater than 0, got {num_trust_regions}")
-
-        if num_trust_regions > 1:
-            raise NotImplementedError(
-                f"TURBO does not yet support multiple trust regions, but got {num_trust_regions}"
-            )
-
-        # implement heuristic defaults for TURBO if not specified by user
-        if rule is None:  # default to Thompson sampling with batches of size 1
-            rule = DiscreteThompsonSampling(tf.minimum(100 * search_space.dimension, 5_000), 1)
-
-        if failure_tolerance is None:
-            if isinstance(
-                rule,
-                (
-                    EfficientGlobalOptimization,
-                    DiscreteThompsonSampling,
-                    RandomSampling,
-                    AsynchronousOptimization,
-                ),
-            ):
-                failure_tolerance = math.ceil(search_space.dimension / rule._num_query_points)
-            else:
-                failure_tolerance == search_space.dimension
-            assert isinstance(failure_tolerance, int)
-        search_space_max_width = tf.reduce_max(search_space.upper - search_space.lower)
+        search_space_max_width = tf.reduce_max(
+            global_search_space.upper - global_search_space.lower
+        )
         if L_min is None:
             L_min = (0.5**7) * search_space_max_width
         if L_init is None:
@@ -1741,139 +1738,145 @@ class TURBO(
         if L_max is None:
             L_max = 1.6 * search_space_max_width
 
-        if not success_tolerance > 0:
-            raise ValueError(
-                f"success tolerance must be an integer greater than 0, got {success_tolerance}"
-            )
-        if not failure_tolerance > 0:
-            raise ValueError(
-                f"success tolerance must be an integer greater than 0, got {failure_tolerance}"
-            )
-
         if L_min <= 0:
             raise ValueError(f"L_min must be postive, got {L_min}")
         if L_init <= 0:
-            raise ValueError(f"L_min must be postive, got {L_init}")
+            raise ValueError(f"L_init must be postive, got {L_init}")
         if L_max <= 0:
-            raise ValueError(f"L_min must be postive, got {L_max}")
+            raise ValueError(f"L_max must be postive, got {L_max}")
 
-        self._num_trust_regions = num_trust_regions
-        self._L_min = L_min
-        self._L_init = L_init
-        self._L_max = L_max
-        self._success_tolerance = success_tolerance
-        self._failure_tolerance = failure_tolerance
-        self._rule = rule
-        self._local_models = local_models
+        self.L_min = L_min
+        self.L_init = L_init
+        self.L_max = L_max
+        self.L = L_init
+        self.success_tolerance = success_tolerance
+        self.failure_tolerance = (
+            failure_tolerance if failure_tolerance is not None else global_search_space.dimension
+        )
 
-    def __repr__(self) -> str:
-        """"""
-        return f"TURBO({self._num_trust_regions!r}, {self._rule})"
+        self.success_counter = 0
+        self.failure_counter = 0
 
-    def acquire(
+        if not self.success_tolerance > 0:
+            raise ValueError(
+                f"success tolerance must be an integer greater than 0, got {self.success_tolerance}"
+            )
+        if not self.failure_tolerance > 0:
+            raise ValueError(
+                f"success tolerance must be an integer greater than 0, got {self.failure_tolerance}"
+            )
+
+        self._initialized = False
+        self.y_min = np.inf
+        # Initialise to the full global search space size.
+        self.tr_width = global_search_space.upper - global_search_space.lower
+        self._update_bounds()
+
+    def _set_tr_width(self, models: Optional[Mapping[Tag, ProbabilisticModelType]] = None) -> None:
+        # Set the width of the trust region based on the local model.
+        if (
+            models is None
+            or len(models) != 1
+            or LocalizedTag.from_tag(next(iter(models))).global_tag != OBJECTIVE
+        ):
+            raise ValueError("""a single OBJECTIVE model must be provided""")
+        model = next(iter(models.values()))
+        assert isinstance(
+            model, TrainableSupportsGetKernel
+        ), f"the model should be of type TrainableSupportsGetKernel, got {type(model)}"
+
+        lengthscales = (
+            model.get_kernel().lengthscales
+        )  # stretch region according to model lengthscales
+        self.tr_width = (
+            lengthscales
+            * self.L
+            / tf.reduce_prod(lengthscales) ** (1.0 / self.global_search_space.lower.shape[-1])
+        )  # keep volume fixed
+
+    def _update_bounds(self) -> None:
+        self._lower = tf.reduce_max(
+            [self.global_search_space.lower, self.location - self.tr_width / 2.0], axis=0
+        )
+        self._upper = tf.reduce_min(
+            [self.global_search_space.upper, self.location + self.tr_width / 2.0], axis=0
+        )
+
+    def initialize(
         self,
-        search_space: Box,
-        models: Mapping[Tag, TrainableSupportsGetKernel],
+        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
         datasets: Optional[Mapping[Tag, Dataset]] = None,
-    ) -> types.State[State | None, TensorType]:
-        """
-        Construct a local search space from ``search_space`` according the TURBO algorithm,
-        and use that with the ``rule`` specified at :meth:`~TURBO.__init__` to find new
-        query points. Return a function that constructs these points given a previous trust region
-        state.
+    ) -> None:
+        # Use the full dataset to determine the best point.
+        datasets = self.select_in_region(datasets)
+        x_min, self.y_min = self.get_dataset_min(datasets)
+        self.location: TensorType = x_min
 
-        If no ``state`` is specified (it is `None`), then we build the initial trust region.
+        self.L, self.failure_counter, self.success_counter = self.L_init, 0, 0
 
-        If a ``state`` is specified, and the new optimum improves over the previous optimum,
-        the previous acquisition is considered successful.
+        models = self.select_in_region(models)
+        self._set_tr_width(models)
+        self._update_bounds()
+        self._initialized = True
 
-        If ``success_tolerance`` previous consecutive acquisitions were successful then the search
-        space is made larger. If  ``failure_tolerance`` consecutive acquisitions were unsuccessful
-        then the search space is shrunk. If neither condition is triggered then the search space
-        remains the same.
+    def update(
+        self,
+        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+    ) -> None:
+        if not self._initialized:
+            self.initialize(models, datasets)
+            return
 
-        **Note:** The acquisition search space will never extend beyond the boundary of the
-        ``search_space``. For a local search, the actual search space will be the
-        intersection of the trust region and ``search_space``.
+        # Use the full dataset to determine the best point.
+        datasets = self.select_in_region(datasets)
+        x_min, y_min = self.get_dataset_min(datasets)
+        self.location = x_min
 
-        :param search_space: The local acquisition search space for *this step*.
-        :param models: The model for each tag.
-        :param datasets: The known observer query points and observations. Uses the data for key
-            `OBJECTIVE` to calculate the new trust region.
-        :return: A function that constructs the next acquisition state and the recommended query
-            points from the previous acquisition state.
-        :raise KeyError: If ``datasets`` does not contain the key `OBJECTIVE`.
-        """
-        if self._local_models is None:  # if user doesnt specifiy a local model
-            self._local_models = copy.copy(models)  # copy global model (will be fit locally later)
+        step_is_success = y_min < self.y_min - 1e-10  # maybe make this stronger?
+        self.y_min = y_min
+        self.failure_counter = (
+            0 if step_is_success else self.failure_counter + 1
+        )  # update or reset counter
+        self.success_counter = (
+            self.success_counter + 1 if step_is_success else 0
+        )  # update or reset counter
+        if self.success_counter == self.success_tolerance:
+            self.L *= 2.0  # make region bigger
+            self.success_counter = 0
+        elif self.failure_counter == self.failure_tolerance:
+            self.L *= 0.5  # make region smaller
+            self.failure_counter = 0
 
-        if self._local_models.keys() != {OBJECTIVE}:
-            raise ValueError(
-                f"dict of models must contain the single key {OBJECTIVE}, got keys {models.keys()}"
-            )
+        self.L = tf.minimum(self.L, self.L_max)
+        if self.L < self.L_min:  # if gets too small then start again
+            self.L, self.failure_counter, self.success_counter = self.L_init, 0, 0
 
-        if datasets is None or datasets.keys() != {OBJECTIVE}:
-            raise ValueError(
-                f"""datasets must be provided and contain the single key {OBJECTIVE}"""
-            )
+        models = self.select_in_region(models)
+        self._set_tr_width(models)
+        self._update_bounds()
 
-        dataset = datasets[OBJECTIVE]
-        local_model = self._local_models[OBJECTIVE]
-        global_lower = search_space.lower
-        global_upper = search_space.upper
+    @check_shapes(
+        "return[0]: [D]",
+        "return[1]: []",
+    )
+    def get_dataset_min(
+        self, datasets: Optional[Mapping[Tag, Dataset]]
+    ) -> Tuple[TensorType, TensorType]:
+        """Calculate the minimum of the box using the given dataset."""
+        if (
+            datasets is None
+            or len(datasets) != 1
+            or LocalizedTag.from_tag(next(iter(datasets))).global_tag != OBJECTIVE
+        ):
+            raise ValueError("""a single OBJECTIVE dataset must be provided""")
+        dataset = next(iter(datasets.values()))
 
-        y_min = tf.reduce_min(dataset.observations, axis=0)
+        ix = tf.argmin(dataset.observations)
+        x_min = tf.gather(dataset.query_points, ix)
+        y_min = tf.gather(dataset.observations, ix)
 
-        def state_func(
-            state: TURBO.State | None,
-        ) -> tuple[TURBO.State | None, TensorType]:
-            if state is None:  # initialise first TR
-                L, failure_counter, success_counter = self._L_init, 0, 0
-            else:  # update TR
-                step_is_success = y_min < state.y_min - 1e-10  # maybe make this stronger?
-                failure_counter = (
-                    0 if step_is_success else state.failure_counter + 1
-                )  # update or reset counter
-                success_counter = (
-                    state.success_counter + 1 if step_is_success else 0
-                )  # update or reset counter
-                L = state.L
-                if success_counter == self._success_tolerance:
-                    L *= 2.0  # make region bigger
-                    success_counter = 0
-                elif failure_counter == self._failure_tolerance:
-                    L *= 0.5  # make region smaller
-                    failure_counter = 0
-
-                L = tf.minimum(L, self._L_max)
-                if L < self._L_min:  # if gets too small then start again
-                    L, failure_counter, success_counter = self._L_init, 0, 0
-
-            # build region with volume according to length L but stretched according to lengthscales
-            xmin = dataset.query_points[tf.argmin(dataset.observations)[0], :]  # centre of region
-            lengthscales = (
-                local_model.get_kernel().lengthscales
-            )  # stretch region according to model lengthscales
-            tr_width = (
-                lengthscales * L / tf.reduce_prod(lengthscales) ** (1.0 / global_lower.shape[-1])
-            )  # keep volume fixed
-            acquisition_space = Box(
-                tf.reduce_max([global_lower, xmin - tr_width / 2.0], axis=0),
-                tf.reduce_min([global_upper, xmin + tr_width / 2.0], axis=0),
-            )
-
-            # fit the local model using just data from the trust region
-            local_dataset = get_local_dataset(acquisition_space, dataset)
-            local_model.update(local_dataset)
-            local_model.optimize(local_dataset)
-
-            # use local model and local dataset to choose next query point(s)
-            points = self._rule.acquire_single(acquisition_space, local_model, local_dataset)
-            state_ = TURBO.State(acquisition_space, L, failure_counter, success_counter, y_min)
-
-            return state_, points
-
-        return state_func
+        return tf.squeeze(x_min, axis=0), tf.squeeze(y_min)
 
 
 class BatchHypervolumeSharpeRatioIndicator(

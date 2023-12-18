@@ -44,7 +44,6 @@ from trieste.acquisition import (
 )
 from trieste.acquisition.optimizer import generate_continuous_optimizer
 from trieste.acquisition.rule import (
-    TURBO,
     AcquisitionRule,
     AsynchronousGreedy,
     AsynchronousOptimization,
@@ -56,6 +55,7 @@ from trieste.acquisition.rule import (
     EfficientGlobalOptimization,
     SingleObjectiveTrustRegionBox,
     TREGOBox,
+    TURBOBox,
 )
 from trieste.acquisition.sampler import ThompsonSamplerFromTrajectory
 from trieste.acquisition.utils import copy_to_local_models
@@ -214,7 +214,10 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
             ),
             pytest.param(
                 10,
-                TURBO(ScaledBranin.search_space, rule=DiscreteThompsonSampling(500, 3)),
+                BatchTrustRegionBox(
+                    TURBOBox(ScaledBranin.search_space),
+                    DiscreteThompsonSampling(500, 3),
+                ),
                 id="Turbo",
             ),
             pytest.param(
@@ -692,7 +695,6 @@ def _test_optimizer_finds_minimum(
                     minimum_rtol=rtol_level,
                     minimum_step_number=2,
                 ),
-                fit_model=not isinstance(acquisition_rule, TURBO),
                 fit_initial_model=False,
             )
 

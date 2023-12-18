@@ -23,7 +23,7 @@ import pytest
 import tensorflow as tf
 from check_shapes import inherit_check_shapes
 
-from tests.unit.test_ask_tell_optimization import DatasetChecker
+from tests.unit.test_ask_tell_optimization import DatasetChecker, LocalDatasetsFixedAcquisitionRule
 from tests.util.misc import (
     FixedAcquisitionRule,
     assert_datasets_allclose,
@@ -273,7 +273,7 @@ def test_bayesian_optimizer_creates_correct_datasets_for_rank3_points(
         model._tag = tag
 
     optimizer = BayesianOptimizer(lambda x: Dataset(x, x), search_space)
-    rule = FixedAcquisitionRule(query_points)
+    rule = LocalDatasetsFixedAcquisitionRule(query_points, batch_size)
     optimizer.optimize(1, init_data, models, rule).final_result.unwrap()
 
 

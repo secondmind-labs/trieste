@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import copy
 import traceback
-import warnings
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
@@ -55,7 +54,12 @@ except ModuleNotFoundError:
     sns = None
 
 from . import logging
-from .acquisition.rule import TURBO, AcquisitionRule, EfficientGlobalOptimization
+from .acquisition.rule import (
+    AcquisitionRule,
+    EfficientGlobalOptimization,
+    LocalDatasetsAcquisitionRule,
+)
+from .acquisition.utils import with_local_datasets
 from .data import Dataset
 from .models import SupportsCovarianceWithTopFidelity, TrainableProbabilisticModel
 from .objectives.utils import mk_batch_observer
@@ -665,15 +669,6 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         if not datasets:
             raise ValueError("dicts of datasets and models must be populated.")
 
-        if fit_model and isinstance(acquisition_rule, TURBO):
-            warnings.warn(
-                """
-                Are you sure you want to keep fitting the global model even though you
-                are using TURBO which has only local models? This is a waste of computation.
-                Consider setting 'fit_model'='False'.
-                """
-            )
-
         if acquisition_rule is None:
             if datasets.keys() != {OBJECTIVE}:
                 raise ValueError(
@@ -734,22 +729,30 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                             "will be available."
                         ) from e
 
-                if step == 1 and fit_model and fit_initial_model:
-                    with Timer() as initial_model_fitting_timer:
-                        for tag, model in models.items():
-                            # Prefer local dataset if available.
-                            tags = [tag, LocalizedTag.from_tag(tag).global_tag]
-                            _, dataset = get_value_for_tag(datasets, *tags)
-                            assert dataset is not None
-                            model.update(dataset)
-                            optimize_model_and_save_result(model, dataset)
-                    if summary_writer:
-                        logging.set_step_number(0)
-                        with summary_writer.as_default(step=0):
-                            write_summary_initial_model_fit(
-                                datasets, models, initial_model_fitting_timer
-                            )
-                        logging.set_step_number(step)
+                if step == 1:
+                    # See explanation in AskTellOptimizer.__init__().
+                    if isinstance(acquisition_rule, LocalDatasetsAcquisitionRule):
+                        datasets = with_local_datasets(
+                            datasets, acquisition_rule.num_local_datasets
+                        )
+                    filtered_datasets = acquisition_rule.filter_datasets(models, datasets)
+
+                    if fit_model and fit_initial_model:
+                        with Timer() as initial_model_fitting_timer:
+                            for tag, model in models.items():
+                                # Prefer local dataset if available.
+                                tags = [tag, LocalizedTag.from_tag(tag).global_tag]
+                                _, dataset = get_value_for_tag(filtered_datasets, *tags)
+                                assert dataset is not None
+                                model.update(dataset)
+                                optimize_model_and_save_result(model, dataset)
+                        if summary_writer:
+                            logging.set_step_number(0)
+                            with summary_writer.as_default(step=0):
+                                write_summary_initial_model_fit(
+                                    datasets, models, initial_model_fitting_timer
+                                )
+                            logging.set_step_number(step)
 
                 with Timer() as total_step_wallclock_timer:
                     with Timer() as query_point_generation_timer:
@@ -773,21 +776,9 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         else {OBJECTIVE: observer_output}
                     )
 
-                    # See explanation in ask_tell_optimization.tell().
-                    # We need to process the local tags first, then the global tags.
-                    sorted_tags = sorted(
-                        tagged_output, key=lambda tag: not LocalizedTag.from_tag(tag).is_local
-                    )
-                    for tag in sorted_tags:
-                        new_dataset = tagged_output[tag]
-                        if tag in datasets:
-                            datasets[tag] += new_dataset
-                        else:
-                            global_tag = LocalizedTag.from_tag(tag).global_tag
-                            if global_tag not in datasets:
-                                raise ValueError(f"global tag '{global_tag}' not found in dataset")
-                            datasets[tag] = datasets[global_tag] + new_dataset
-                    filtered_datasets = acquisition_rule.filter_datasets(datasets)
+                    for tag, new_dataset in tagged_output.items():
+                        datasets[tag] += new_dataset
+                    filtered_datasets = acquisition_rule.filter_datasets(models, datasets)
 
                     with Timer() as model_fitting_timer:
                         if fit_model:
