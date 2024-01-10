@@ -65,7 +65,7 @@ def mk_multi_observer(**kwargs: Callable[[TensorType], TensorType]) -> MultiObse
 def mk_batch_observer(
     objective_or_observer: Union[Callable[[TensorType], TensorType], Observer],
     default_key: Tag = OBJECTIVE,
-) -> Observer:
+) -> MultiObserver:
     """
     Create an observer that returns the data from ``objective`` or an existing ``observer``
     separately for each query point in a batch.
