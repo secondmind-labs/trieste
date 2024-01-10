@@ -16,6 +16,7 @@ from __future__ import annotations
 import copy
 from collections.abc import Mapping
 from typing import Callable, Optional
+from unittest.mock import ANY, MagicMock
 
 import gpflow
 import numpy as np
@@ -1795,6 +1796,33 @@ def test_multi_trust_region_box_updated_datasets_are_in_regions(
     # Global dataset should be the unfiltered full dataset.
     npt.assert_array_almost_equal(
         filtered_datasets[OBJECTIVE].query_points, updated_datasets[OBJECTIVE].query_points
+    )
+
+
+def test_multi_trust_region_box_acquire_filters() -> None:
+    # Create some dummy models and datasets
+    models: Mapping[Tag, ANY] = {"global_tag": MagicMock()}
+    datasets: Mapping[Tag, ANY] = {
+        LocalizedTag("tag1", 1): MagicMock(),
+        LocalizedTag("tag1", 2): MagicMock(),
+        LocalizedTag("tag2", 1): MagicMock(),
+        LocalizedTag("tag2", 2): MagicMock(),
+        "global_tag": MagicMock(),
+    }
+
+    search_space = Box([0.0], [1.0])
+    mock_base_rule = MagicMock(spec=EfficientGlobalOptimization)
+    mock_base_rule.acquire.return_value = tf.constant([[[0.0], [0.0]]], dtype=tf.float64)
+
+    # Create a BatchTrustRegionBox instance with the mock base_rule.
+    subspaces = [SingleObjectiveTrustRegionBox(search_space) for _ in range(2)]
+    rule = BatchTrustRegionBox(subspaces, mock_base_rule)  # type: ignore[var-annotated]
+
+    rule.acquire(search_space, models, datasets)(None)
+
+    # Only the global tags should be passed to the base_rule acquire call.
+    mock_base_rule.acquire.assert_called_once_with(
+        ANY, models, {"global_tag": datasets["global_tag"]}
     )
 
 

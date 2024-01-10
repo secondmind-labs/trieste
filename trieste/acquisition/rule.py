@@ -1282,7 +1282,19 @@ class BatchTrustRegion(
                     _points.append(rule.acquire(subspace, _models, _datasets))
                 points = tf.stack(_points, axis=1)
             else:
-                points = self._rule.acquire(acquisition_space, models, datasets)
+                # Filter out local datasets as this is the EGO rule with normal acquisition
+                # functions that don't expect local datasets.
+                # Note: no need to filter out local models, as setups with local models
+                # are handled above (i.e. we run the base rule sequentially for each subspace).
+                if datasets is not None:
+                    _datasets = {
+                        tag: dataset
+                        for tag, dataset in datasets.items()
+                        if not LocalizedTag.from_tag(tag).is_local
+                    }
+                else:
+                    _datasets = None
+                points = self._rule.acquire(acquisition_space, models, _datasets)
 
             # We may modify the regions in filter_datasets later, so return a copy.
             state_ = BatchTrustRegion.State(copy.deepcopy(acquisition_space))
