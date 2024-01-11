@@ -61,7 +61,7 @@ slowtests = "pytest --durations 6 --runslow only"
 quicktests = "pytest -x --ff -rN -Wignore --ignore-glob=tests/integration/*"
 coverage = "pytest --eager --qhsri yes --cov trieste --cov-report html:htmlcov"
 mypy = "mypy"
-check_format = "pytest -v --black --flake8 --isort -m 'black or flake8 or isort'"
+check_format = "black --check . && flake8 --count . && isort --check . && black -l 80 --extend-exclude 'notebooks/.+/' --check notebooks"
 format = "black . && flake8 . && isort . && black -l 80 notebooks/*pct.py"
 pylint = "pytest --pylint --cache-clear -m pylint -v trieste"
 
