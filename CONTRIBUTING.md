@@ -50,7 +50,7 @@ To run the notebooks, there are additional setup instructions described [here](d
 
 ### Quality checks
 
-[GitHub actions](https://docs.github.com/en/actions) will automatically run a number of quality checks against all pull requests to the develop branch. The GitHub repository is set up such that these need to pass in order to merge. Below is a summary of the various checks. We recommend manually running them before making a pull request, though it is also possible to wait until they are run on GitHub and fixing any errors in subsequent branch commits.
+[GitHub actions](https://docs.github.com/en/actions) will automatically run a number of quality checks against all pull requests to the `develop` branch. The GitHub repository is set up such that these need to pass in order to merge. Below is a summary of the various checks. We recommend manually running them before making a pull request, though it is also possible to wait until they are run on GitHub and fixing any errors in subsequent branch commits.
 
 #### Type checking
 
@@ -61,10 +61,12 @@ Run the type checker with
 $ tox -e types
 ```
 
-or, if running inside a virtual environment, just
+or, if running inside a virtual environment
 ```bash
-mypy
+task mypy
 ```
+
+You can also pass in a path argument to type check just a single file or directory (if using tox, precede it with a ` -- ` separator).
 
 #### Code formatting
 
@@ -112,7 +114,7 @@ $ tox -e tests -- --runslow yes
 ```
 or
 ```bash
-pytest --runslow yes
+task tests --runslow yes
 ```
 
 Running all of the tests (even without `--runslow`) takes a long time, and can result in out-of-memory issues. When developing your code it is usually enough to run locally just the tests or test directories that you're likely to have affected, and rely on GitHub to tell you whether you've broken any other tests. You can do this by passing in the test path to pytest:
@@ -122,7 +124,7 @@ $ tox -e tests -- <path>
 ```
 or
 ```bash
-pytest <path>
+task tests <path>
 ```
 
 
@@ -132,7 +134,7 @@ To update the Python dependencies used in any part of the project (e.g. introduc
 ```bash
 $ ./generate_constraints.sh
 ```
-This will update all the constraints.txt files (but not your virtual environment).
+This will update all the constraints.txt files, but not your virtual environment. To update that, follow the `pip install ...` section of the [code setup](#code-setup) instructions.
 
 
 ### Documentation
@@ -158,7 +160,7 @@ When submitting Pull Requests, please:
   import trieste
   trieste.utils.objectives.branin(...)
   ```
-  import all modules (or their contents) in their parent package \_\_init\_\_.py file.
+  import all modules (or their contents) in their parent package `__init__.py` file.
 - In commit messages, be descriptive but to the point. Comments such as "further fixes" obscure the more useful information.
 
 
