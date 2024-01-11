@@ -106,9 +106,9 @@ $ tox -e tests
 ```
 or
 ```bash
-pytest
+task tests
 ```
-To save time, some slower tests are not run by default. Run these with:
+To save time, some slower tests are not run by default. If you need to run them (either because they are clearly relevant to your code changes, or because you have been told that your code changes resulted in a failure) you can do so with:
 ```bash
 $ tox -e tests -- --runslow yes
 ```
@@ -134,7 +134,7 @@ To update the Python dependencies used in any part of the project (e.g. introduc
 ```bash
 $ ./generate_constraints.sh
 ```
-This will update all the constraints.txt files, but not your virtual environment. To update that, follow the `pip install ...` section of the [code setup](#code-setup) instructions.
+This will update all the constraints.txt files, but not your virtual environment. To update that, follow the `pip install` section of the [code setup](#code-setup) instructions.
 
 
 ### Documentation
