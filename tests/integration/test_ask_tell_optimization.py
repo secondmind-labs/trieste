@@ -16,7 +16,7 @@ from __future__ import annotations
 import copy
 import pickle
 import tempfile
-from typing import Callable, Tuple, Union
+from typing import Callable, Mapping, Tuple, Union
 
 import numpy.testing as npt
 import pytest
@@ -36,6 +36,7 @@ from trieste.acquisition.rule import (
 from trieste.acquisition.utils import copy_to_local_models
 from trieste.ask_tell_optimization import AskTellOptimizer
 from trieste.bayesian_optimizer import OptimizationResult, Record
+from trieste.data import Dataset
 from trieste.logging import set_step_number, tensorboard_writer
 from trieste.models import TrainableProbabilisticModel
 from trieste.models.gpflow import GaussianProcessRegression, build_gpr
@@ -43,7 +44,7 @@ from trieste.objectives import ScaledBranin, SimpleQuadratic
 from trieste.objectives.utils import mk_batch_observer, mk_observer
 from trieste.observer import OBJECTIVE
 from trieste.space import Box, SearchSpace
-from trieste.types import State, TensorType
+from trieste.types import State, Tag, TensorType
 
 # Optimizer parameters for testing against the branin function.
 # We use a copy of these for a quicker test against a simple quadratic function
@@ -212,7 +213,9 @@ def _test_ask_tell_optimization_finds_minima(
 
                 # If query points are rank 3, then use a batched observer.
                 if tf.rank(new_point) == 3:
-                    new_data_point = batch_observer(new_point)
+                    new_data_point: Union[Mapping[Tag, Dataset], Dataset] = batch_observer(
+                        new_point
+                    )
                 else:
                     new_data_point = observer(new_point)
 
