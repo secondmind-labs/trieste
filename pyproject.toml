@@ -102,6 +102,7 @@ disable = [
     "too-many-statements",
     "too-many-boolean-expressions",
     "too-many-nested-blocks",
+    "typevar-name-incorrect-variance",
     "unexpected-keyword-arg",
     "unused-argument",
     "unsubscriptable-object",

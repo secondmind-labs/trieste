@@ -1020,9 +1020,7 @@ class TaggedProductSearchSpace(CollectionSearchSpace):
         super().__init__(spaces, tags)
         subspace_sizes = self.subspace_dimension
 
-        self._subspace_sizes_by_tag = {
-            tag: subspace_size for tag, subspace_size in zip(self._tags, subspace_sizes)
-        }
+        self._subspace_sizes_by_tag = dict(zip(self._tags, subspace_sizes))
 
         self._subspace_starting_indices = dict(
             zip(self._tags, tf.cumsum(subspace_sizes, exclusive=True))
@@ -1179,7 +1177,7 @@ class TaggedMultiSearchSpace(CollectionSearchSpace):
         )
 
         tf.debugging.assert_equal(
-            len(set([int(space.dimension) for space in spaces])),
+            len({int(space.dimension) for space in spaces}),
             1,
             message=f"""
                 All subspaces must have the same dimension but received

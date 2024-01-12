@@ -437,16 +437,15 @@ class DeepEnsemble(
                     else:
                         # unrecognised history key; ignore
                         continue
-                    if "model" in post and not logging.include_summary("_ensemble"):
-                        break
-                    else:
-                        if "model" in post:
-                            pre = pre + "/_ensemble"
-                        logging.histogram(f"{pre}/epoch{post}", lambda: v)
-                        logging.scalar(f"{pre}/final{post}", lambda: v[-1])
-                        logging.scalar(f"{pre}/diff{post}", lambda: v[0] - v[-1])
-                        logging.scalar(f"{pre}/min{post}", lambda: tf.reduce_min(v))
-                        logging.scalar(f"{pre}/max{post}", lambda: tf.reduce_max(v))
+                    if "model" in post:
+                        if not logging.include_summary("_ensemble"):
+                            break
+                        pre = pre + "/_ensemble"
+                    logging.histogram(f"{pre}/epoch{post}", lambda: v)
+                    logging.scalar(f"{pre}/final{post}", lambda: v[-1])
+                    logging.scalar(f"{pre}/diff{post}", lambda: v[0] - v[-1])
+                    logging.scalar(f"{pre}/min{post}", lambda: tf.reduce_min(v))
+                    logging.scalar(f"{pre}/max{post}", lambda: tf.reduce_max(v))
                 if dataset:
                     write_summary_data_based_metrics(
                         dataset=dataset, model=self, prefix="training_"

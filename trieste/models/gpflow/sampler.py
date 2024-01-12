@@ -293,8 +293,6 @@ class FeatureDecompositionInternalDataModel(
     and get_internal_data methods.
     """
 
-    pass
-
 
 @runtime_checkable
 class FeatureDecompositionInducingPointModel(
@@ -304,8 +302,6 @@ class FeatureDecompositionInducingPointModel(
     A probabilistic model that supports get_kernel, get_mean_function
     and get_inducing_point methods.
     """
-
-    pass
 
 
 FeatureDecompositionTrajectorySamplerModel = Union[

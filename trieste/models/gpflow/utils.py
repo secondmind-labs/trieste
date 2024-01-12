@@ -98,10 +98,10 @@ def squeeze_hyperparameters(
     :raise ValueError: If ``alpha`` is not in (0,1) or epsilon <= 0
     """
 
-    if not (0 < alpha < 1):
+    if not 0 < alpha < 1:
         raise ValueError(f"squeeze factor alpha must be in (0, 1), found {alpha}")
 
-    if not (0 < epsilon):
+    if not 0 < epsilon:
         raise ValueError(f"offset factor epsilon must be > 0, found {epsilon}")
 
     for param in object.trainable_parameters:

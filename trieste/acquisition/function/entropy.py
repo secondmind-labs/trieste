@@ -221,8 +221,6 @@ class SupportsCovarianceObservationNoise(
 ):
     """A model that supports both covariance_between_points and get_observation_noise."""
 
-    pass
-
 
 class SupportsCovarianceObservationNoiseTrajectory(
     HasTrajectorySampler, SupportsCovarianceObservationNoise, Protocol
@@ -629,8 +627,6 @@ class SupportsCovarianceWithTopFidelityPredictY(
     SupportsCovarianceWithTopFidelity, SupportsPredictY, Protocol
 ):
     """A model that is both multifidelity and supports predict_y."""
-
-    pass
 
 
 MUMBOModelType = TypeVar(

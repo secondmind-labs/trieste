@@ -119,12 +119,12 @@ def build_gpr(
     """
     empirical_mean, empirical_variance, _ = _get_data_stats(data)
 
-    if kernel is None and search_space is None:
-        raise ValueError(
-            "'build_gpr' function requires one of 'search_space' or 'kernel' arguments,"
-            " but got neither"
-        )
-    elif kernel is None and search_space is not None:
+    if kernel is None:
+        if search_space is None:
+            raise ValueError(
+                "'build_gpr' function requires one of 'search_space' or 'kernel' arguments,"
+                " but got neither"
+            )
         kernel = _get_kernel(empirical_variance, search_space, kernel_priors, kernel_priors)
     mean = _get_mean_function(empirical_mean)
 
@@ -589,7 +589,7 @@ def _create_multifidelity_nonlinear_autoregressive_kernels(
     scale_lengthscale = 1.0
     kernels = [kernel_base_class(lengthscales=lengthscales)]
 
-    for i in range(1, n_fidelities):
+    for _ in range(1, n_fidelities):
         interaction_kernel = kernel_base_class(lengthscales=lengthscales, active_dims=dims[:-1])
         scale_kernel = kernel_base_class(lengthscales=scale_lengthscale, active_dims=[dims[-1]])
         bias_kernel = kernel_base_class(lengthscales=lengthscales, active_dims=dims[:-1])

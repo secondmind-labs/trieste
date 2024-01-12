@@ -1007,7 +1007,6 @@ class UpdatableTrustRegion(SearchSpace):
         :param models: The model for each tag.
         :param datasets: The dataset for each tag.
         """
-        ...
 
     @abstractmethod
     def update(
@@ -1021,7 +1020,6 @@ class UpdatableTrustRegion(SearchSpace):
         :param models: The model for each tag.
         :param datasets: The dataset for each tag.
         """
-        ...
 
     def _get_tags(self, tags: Set[Tag]) -> Tuple[Set[Tag], Set[Tag]]:
         # Separate tags into local (matching index) and global tags (without matching
@@ -1345,7 +1343,6 @@ class BatchTrustRegion(
         :param datasets: The dataset for each tag.
         :return: A boolean mask of length V, where V is the number of subspaces.
         """
-        ...
 
     def filter_datasets(
         self, models: Mapping[Tag, ProbabilisticModelType], datasets: Mapping[Tag, Dataset]

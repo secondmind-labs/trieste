@@ -179,8 +179,6 @@ class SupportsGetKernel(ProbabilisticModel, Protocol):
 class TrainableSupportsGetKernel(TrainableProbabilisticModel, SupportsGetKernel, Protocol):
     """A trainable probabilistic model that supports get_kernel."""
 
-    pass
-
 
 @runtime_checkable
 class SupportsGetObservationNoise(ProbabilisticModel, Protocol):
@@ -333,8 +331,6 @@ class SupportsReparamSamplerObservationNoise(
     HasReparamSampler, SupportsGetObservationNoise, Protocol
 ):
     """A model that supports both reparam_sampler and get_observation_noise."""
-
-    pass
 
 
 class ModelStack(ProbabilisticModel, Generic[ProbabilisticModelType]):
@@ -526,21 +522,15 @@ class PredictYModelStack(ModelStack[SupportsPredictY], SupportsPredictY):
 class TrainableSupportsPredictJoint(TrainableProbabilisticModel, SupportsPredictJoint, Protocol):
     """A model that is both trainable and supports predict_joint."""
 
-    pass
-
 
 class TrainablePredictJointModelStack(
     TrainableModelStack, PredictJointModelStack, ModelStack[TrainableSupportsPredictJoint]
 ):
     """A stack of models that are both trainable and support predict_joint."""
 
-    pass
-
 
 class TrainableSupportsPredictY(TrainableProbabilisticModel, SupportsPredictY, Protocol):
     """A model that is both trainable and supports predict_y."""
-
-    pass
 
 
 class TrainablePredictYModelStack(
@@ -548,13 +538,9 @@ class TrainablePredictYModelStack(
 ):
     """A stack of models that are both trainable and support predict_y."""
 
-    pass
-
 
 class SupportsPredictJointPredictY(SupportsPredictJoint, SupportsPredictY, Protocol):
     """A model that supports both predict_joint and predict_y."""
-
-    pass
 
 
 class PredictJointPredictYModelStack(
@@ -562,15 +548,11 @@ class PredictJointPredictYModelStack(
 ):
     """A stack of models that support both predict_joint and predict_y."""
 
-    pass
-
 
 class TrainableSupportsPredictJointHasReparamSampler(
     TrainableSupportsPredictJoint, HasReparamSampler, Protocol
 ):
     """A model that is trainable, supports predict_joint and has a reparameterization sampler."""
-
-    pass
 
 
 class TrainablePredictJointReparamModelStack(
@@ -579,8 +561,6 @@ class TrainablePredictJointReparamModelStack(
     ModelStack[TrainableSupportsPredictJointHasReparamSampler],
 ):
     """A stack of models that are both trainable and support predict_joint."""
-
-    pass
 
 
 class ReparametrizationSampler(ABC, Generic[ProbabilisticModelType]):
