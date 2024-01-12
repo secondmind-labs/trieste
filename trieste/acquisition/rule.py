@@ -1234,8 +1234,8 @@ class BatchTrustRegion(
         # Otherwise, run the base rule as is (i.e as a batch), once with all models and datasets.
         # Note: this should only trigger on the first call to `acquire`, as after that we will
         # have a list of rules in `self._rules`.
-        if self._rules is None and (
-            _num_local_models > 0 or not isinstance(self._rule, EfficientGlobalOptimization)
+        if self._rules is None and not (
+            _num_local_models == 0 and isinstance(self._rule, EfficientGlobalOptimization)
         ):
             self._rules = [copy.deepcopy(self._rule) for _ in range(num_subspaces)]
 
@@ -1282,8 +1282,8 @@ class BatchTrustRegion(
                     _points.append(rule.acquire(subspace, _models, _datasets))
                 points = tf.stack(_points, axis=1)
             else:
-                # Filter out local datasets as this is the EGO rule with normal acquisition
-                # functions that don't expect local datasets.
+                # Filter out local datasets as this is a rule (currently only EGO) with normal
+                # acquisition functions that don't expect local datasets.
                 # Note: no need to filter out local models, as setups with local models
                 # are handled above (i.e. we run the base rule sequentially for each subspace).
                 if datasets is not None:

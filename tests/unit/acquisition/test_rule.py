@@ -1816,7 +1816,7 @@ def test_multi_trust_region_box_acquire_filters() -> None:
 
     # Create a BatchTrustRegionBox instance with the mock base_rule.
     subspaces = [SingleObjectiveTrustRegionBox(search_space) for _ in range(2)]
-    rule = BatchTrustRegionBox(subspaces, mock_base_rule)  # type: ignore[var-annotated]
+    rule: BatchTrustRegionBox[ProbabilisticModel] = BatchTrustRegionBox(subspaces, mock_base_rule)
 
     rule.acquire(search_space, models, datasets)(None)
 
