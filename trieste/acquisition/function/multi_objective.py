@@ -340,7 +340,7 @@ class BatchMonteCarloExpectedHypervolumeImprovement(
         if not isinstance(model, HasReparamSampler):
             raise ValueError(
                 f"The batch Monte-Carlo expected hyper-volume improvement function only supports "
-                f"models that implement a reparam_sampler method; received {model.__repr__()}"
+                f"models that implement a reparam_sampler method; received {model!r}"
             )
 
         sampler = model.reparam_sampler(self._sample_size)

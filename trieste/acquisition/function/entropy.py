@@ -335,7 +335,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[GIBBONModelType]):
         if not isinstance(model, SupportsCovarianceObservationNoise):
             raise NotImplementedError(
                 f"GIBBON only works with models that support "
-                f"covariance_between_points and get_observation_noise; received {model.__repr__()}"
+                f"covariance_between_points and get_observation_noise; received {model!r}"
             )
 
         tf.debugging.Assert(dataset is not None, [tf.constant([])])

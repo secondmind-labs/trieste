@@ -64,7 +64,7 @@ class PredictiveVariance(SingleModelAcquisitionBuilder[SupportsPredictJoint]):
         if not isinstance(model, SupportsPredictJoint):
             raise NotImplementedError(
                 f"PredictiveVariance only works with models that support "
-                f"predict_joint; received {model.__repr__()}"
+                f"predict_joint; received {model!r}"
             )
 
         return predictive_variance(model, self._jitter)
@@ -282,8 +282,7 @@ class IntegratedVarianceReduction(SingleModelAcquisitionBuilder[FastUpdateModel]
         """
         if not isinstance(model, FastUpdateModel):
             raise NotImplementedError(
-                f"PredictiveVariance only works with FastUpdateModel models; "
-                f"received {model.__repr__()}"
+                f"PredictiveVariance only works with FastUpdateModel models; " f"received {model!r}"
             )
 
         return integrated_variance_reduction(model, self._integration_points, self._threshold)

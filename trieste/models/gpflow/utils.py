@@ -101,7 +101,7 @@ def squeeze_hyperparameters(
     if not 0 < alpha < 1:
         raise ValueError(f"squeeze factor alpha must be in (0, 1), found {alpha}")
 
-    if not 0 < epsilon:
+    if epsilon <= 0:
         raise ValueError(f"offset factor epsilon must be > 0, found {epsilon}")
 
     for param in object.trainable_parameters:

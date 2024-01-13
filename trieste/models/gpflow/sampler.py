@@ -192,7 +192,7 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
         if not isinstance(model, SupportsPredictJoint):
             raise NotImplementedError(
                 f"BatchReparametrizationSampler only works with models that support "
-                f"predict_joint; received {model.__repr__()}"
+                f"predict_joint; received {model!r}"
             )
         self._eps: Optional[tf.Variable] = None
         self._qmc = qmc
@@ -492,7 +492,7 @@ class RandomFourierFeatureTrajectorySampler(
             raise NotImplementedError(
                 f"RandomFourierFeatureTrajectorySampler only works with models with "
                 f"get_kernel, get_observation_noise and get_internal_data methods; "
-                f"but received {model.__repr__()}."
+                f"but received {model!r}."
             )
 
         tf.debugging.assert_positive(num_features)
@@ -641,7 +641,7 @@ class DecoupledTrajectorySampler(
             raise NotImplementedError(
                 f"DecoupledTrajectorySampler only works with models that either support "
                 f"get_kernel, get_observation_noise and get_internal_data or support get_kernel "
-                f"and get_inducing_variables; but received {model.__repr__()}."
+                f"and get_inducing_variables; but received {model!r}."
             )
 
         tf.debugging.assert_positive(num_features)
@@ -768,7 +768,7 @@ class ResampleableRandomFourierFeatureFunctions(RandomFourierFeaturesCosine):
                 f"ResampleableRandomFourierFeatureFunctions only work with models that either"
                 f"support get_kernel, get_observation_noise and get_internal_data or support "
                 f"get_kernel and get_inducing_variables;"
-                f"but received {model.__repr__()}."
+                f"but received {model!r}."
             )
 
         super().__init__(model.get_kernel(), n_components, dtype=tf.float64)
@@ -790,12 +790,12 @@ class ResampleableRandomFourierFeatureFunctions(RandomFourierFeaturesCosine):
         self.b.assign(self._bias_init(tf.shape(self.b), dtype=self._dtype))
         self.W.assign(self._weights_init(tf.shape(self.W), dtype=self._dtype))
 
-    def call(self, x: TensorType) -> TensorType:  # [N, D] -> [N, F] or [L, N, F]
+    def call(self, inputs: TensorType) -> TensorType:  # [N, D] -> [N, F] or [L, N, F]
         """
-        Evaluate the basis functions at ``x``
+        Evaluate the basis functions at ``inputs``
         """
-        x = self.kernel.slice(x, None)[0]  # Keep only the active dims from the kernel.
-        return super().call(x)  # [N, F] or [L, N, F]
+        inputs = self.kernel.slice(inputs, None)[0]  # Keep only active dims from the kernel
+        return super().call(inputs)  # [N, F] or [L, N, F]
 
 
 class ResampleableDecoupledFeatureFunctions(ResampleableRandomFourierFeatureFunctions):
@@ -835,12 +835,12 @@ class ResampleableDecoupledFeatureFunctions(ResampleableRandomFourierFeatureFunc
             kernel_K(self._inducing_points, x)
         )
 
-    def call(self, x: TensorType) -> TensorType:  # [N, D] -> [N, F + M] or [L, N, F + M]
+    def call(self, inputs: TensorType) -> TensorType:  # [N, D] -> [N, F + M] or [L, N, F + M]
         """
         combine prior basis functions with canonical basis functions
         """
-        fourier_feature_eval = super().call(x)  # [N, F] or [L, N, F]
-        canonical_feature_eval = self._canonical_feature_functions(x)  # [1, N, M] or [L, N, M]
+        fourier_feature_eval = super().call(inputs)  # [N, F] or [L, N, F]
+        canonical_feature_eval = self._canonical_feature_functions(inputs)  # [1, N, M] or [L, N, M]
         # ensure matching rank between features, i.e. drop the leading 1 dimension
         matched_shape = tf.shape(canonical_feature_eval)[-tf.rank(fourier_feature_eval) :]
         canonical_feature_eval = tf.reshape(canonical_feature_eval, matched_shape)
@@ -888,16 +888,16 @@ class feature_decomposition_trajectory(TrajectoryFunctionClass):
         )  # dummy init to be updated before trajectory evaluation
 
     @tf.function
-    def __call__(self, x: TensorType) -> TensorType:  # [N, B, D] -> [N, B, L]
+    def __call__(self, inputs: TensorType) -> TensorType:  # [N, B, D] -> [N, B, L]
         """Call trajectory function."""
 
         if not self._initialized:  # work out desired batch size from input
-            self._batch_size.assign(tf.shape(x)[-2])  # B
+            self._batch_size.assign(tf.shape(inputs)[-2])  # B
             self.resample()  # sample B feature weights
             self._initialized.assign(True)
 
         tf.debugging.assert_equal(
-            tf.shape(x)[-2],
+            tf.shape(inputs)[-2],
             self._batch_size.value(),
             message=f"""
             This trajectory only supports batch sizes of {self._batch_size}.
@@ -906,9 +906,9 @@ class feature_decomposition_trajectory(TrajectoryFunctionClass):
             """,
         )
 
-        flat_x, unflatten = flatten_leading_dims(x)  # [N*B, D]
+        flat_inputs, unflatten = flatten_leading_dims(inputs)  # [N*B, D]
         flattened_feature_evaluations = self._feature_functions(
-            flat_x
+            flat_inputs
         )  # [N*B, F + M] or [L, N*B, F + M]
         # ensure tensor is always rank 3
         rank3_shape = tf.concat([[1], tf.shape(flattened_feature_evaluations)], axis=0)[-3:]
@@ -918,7 +918,7 @@ class feature_decomposition_trajectory(TrajectoryFunctionClass):
         )  # [N*B, F + M, L]
         feature_evaluations = unflatten(flattened_feature_evaluations)  # [N, B, F + M, L]
 
-        mean = self._mean_function(x)  # account for the model's mean function
+        mean = self._mean_function(inputs)  # account for the model's mean function
         return tf.reduce_sum(feature_evaluations * self._weights_sample, -2) + mean  # [N, B, L]
 
     def resample(self) -> None:

@@ -46,7 +46,8 @@ class Reducer(AcquisitionFunctionBuilder[ProbabilisticModelType]):
 
     def __repr__(self) -> str:
         """"""
-        return "{}({})".format(self.__class__.__name__, ", ".join(map(repr, self._acquisitions)))
+        builders = ", ".join(map(repr, self._acquisitions))
+        return f"{self.__class__.__name__}({builders})"
 
     def prepare_acquisition_function(
         self,

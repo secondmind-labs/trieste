@@ -1153,7 +1153,7 @@ class BatchTrustRegion(
             self._subspaces = tuple(init_subspaces)
             for index, subspace in enumerate(self._subspaces):
                 subspace.region_index = index  # Override the index.
-            self._tags = tuple([str(index) for index in range(len(init_subspaces))])
+            self._tags = tuple(str(index) for index in range(len(init_subspaces)))
 
         self._rule = rule
         # The rules for each subspace. These are only used when we want to run the base rule
@@ -1453,14 +1453,14 @@ class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox):
 
         self._initialized = False
         self._step_is_success = False
-        self._init_eps()
+        self.eps = self._initial_eps()
         self._update_bounds()
         self._y_min = np.inf
 
-    def _init_eps(self) -> None:
+    def _initial_eps(self) -> float:
         global_lower = self.global_search_space.lower
         global_upper = self.global_search_space.upper
-        self.eps = 0.5 * (global_upper - global_lower) / (5.0 ** (1.0 / global_lower.shape[-1]))
+        return 0.5 * (global_upper - global_lower) / (5.0 ** (1.0 / global_lower.shape[-1]))
 
     def _update_bounds(self) -> None:
         self._lower = tf.reduce_max(
@@ -1483,7 +1483,7 @@ class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox):
 
         self.location = tf.squeeze(self.global_search_space.sample(1), axis=0)
         self._step_is_success = False
-        self._init_eps()
+        self.eps = self._initial_eps()
         self._update_bounds()
         _, self._y_min = self.get_dataset_min(datasets)
         self._initialized = True
@@ -1571,12 +1571,12 @@ class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, UpdatableTrus
                 num_query_points = 1
 
             init_subspaces: Tuple[UpdatableTrustRegionBox, ...] = tuple(
-                [SingleObjectiveTrustRegionBox(search_space) for _ in range(num_query_points)]
+                SingleObjectiveTrustRegionBox(search_space) for _ in range(num_query_points)
             )
             self._subspaces = init_subspaces
             for index, subspace in enumerate(self._subspaces):
                 subspace.region_index = index  # Override the index.
-            self._tags = tuple([str(index) for index in range(self.num_local_datasets)])
+            self._tags = tuple(str(index) for index in range(self.num_local_datasets))
 
         # Ensure passed in global search space is always the same as the search space passed to
         # the subspaces.
@@ -1766,11 +1766,11 @@ class TURBOBox(UpdatableTrustRegionBox):
         self.success_counter = 0
         self.failure_counter = 0
 
-        if not self.success_tolerance > 0:
+        if self.success_tolerance <= 0:
             raise ValueError(
                 f"success tolerance must be an integer greater than 0, got {self.success_tolerance}"
             )
-        if not self.failure_tolerance > 0:
+        if self.failure_tolerance <= 0:
             raise ValueError(
                 f"success tolerance must be an integer greater than 0, got {self.failure_tolerance}"
             )
@@ -1914,14 +1914,14 @@ class BatchHypervolumeSharpeRatioIndicator(
              points from the Sharpe ratio optimisation. Defaults to 0.1.
         :param noisy_observations: Whether the observations have noise. Defaults to True.
         """
-        if not num_query_points > 0:
+        if num_query_points <= 0:
             raise ValueError(f"Num query points must be greater than 0, got {num_query_points}")
-        if not ga_population_size >= num_query_points:
+        if ga_population_size < num_query_points:
             raise ValueError(
                 "Population size must be greater or equal to num query points size, got num"
                 f" query points as {num_query_points} and population size as {ga_population_size}"
             )
-        if not ga_n_generations > 0:
+        if ga_n_generations <= 0:
             raise ValueError(f"Number of generation must be greater than 0, got {ga_n_generations}")
         if not 0.0 <= filter_threshold < 1.0:
             raise ValueError(f"Filter threshold must be in range [0.0,1.0), got {filter_threshold}")

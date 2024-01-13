@@ -57,7 +57,7 @@ class DeepEnsembleTrajectorySampler(TrajectorySampler[DeepEnsembleModel]):
             raise NotImplementedError(
                 f"EnsembleTrajectorySampler only works with DeepEnsembleModel models, that support "
                 f"ensemble_size and ensemble_distributions methods; "
-                f"received {model.__repr__()}"
+                f"received {model!r}"
             )
 
         super().__init__(model)
