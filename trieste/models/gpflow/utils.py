@@ -308,7 +308,7 @@ def _compute_kernel_blocks(
         K12 = tf.repeat(tf.expand_dims(K12, -3), num_latent, axis=-3)
     elif len(tf.shape(K)) > 3:
         raise NotImplementedError(
-            "Covariance between points is not supported " "for kernels of type " f"{type(kernel)}."
+            "Covariance between points is not supported for kernels of type {type(kernel)}."
         )
 
     tf.debugging.assert_shapes(

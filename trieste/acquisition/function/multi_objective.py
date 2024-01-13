@@ -77,7 +77,7 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder[Probabilistic
     def __repr__(self) -> str:
         """"""
         if callable(self._ref_point_spec):
-            return f"ExpectedHypervolumeImprovement(" f"{self._ref_point_spec.__name__})"
+            return f"ExpectedHypervolumeImprovement({self._ref_point_spec.__name__})"
         else:
             return f"ExpectedHypervolumeImprovement({self._ref_point_spec!r})"
 

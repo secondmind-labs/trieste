@@ -159,7 +159,7 @@ class DeepEnsemble(
 
     @property
     def model(self) -> tf.keras.Model:
-        """ " Returns compiled Keras ensemble model."""
+        """Returns compiled Keras ensemble model."""
         return self._model.model
 
     @property

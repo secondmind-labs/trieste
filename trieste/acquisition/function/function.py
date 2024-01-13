@@ -1216,7 +1216,7 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
     def __repr__(self) -> str:
         """"""
 
-        return f"BatchExpectedImprovement({self._sample_size!r}, " f"jitter={self._jitter!r})"
+        return f"BatchExpectedImprovement({self._sample_size!r}, jitter={self._jitter!r})"
 
     def prepare_acquisition_function(
         self,

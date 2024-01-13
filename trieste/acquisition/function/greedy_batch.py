@@ -602,7 +602,7 @@ def _generate_fantasized_data(
     elif fantasize_method == "sample":
         fantasized_obs = model.sample(pending_points, num_samples=1)[0]
     else:
-        raise NotImplementedError(f"fantasize_method must be KB or sample, " f"received {model!r}")
+        raise NotImplementedError(f"fantasize_method must be KB or sample, received {model!r}")
 
     return Dataset(pending_points, fantasized_obs)
 

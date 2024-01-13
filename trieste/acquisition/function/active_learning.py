@@ -282,7 +282,7 @@ class IntegratedVarianceReduction(SingleModelAcquisitionBuilder[FastUpdateModel]
         """
         if not isinstance(model, FastUpdateModel):
             raise NotImplementedError(
-                f"PredictiveVariance only works with FastUpdateModel models; " f"received {model!r}"
+                f"PredictiveVariance only works with FastUpdateModel models; received {model!r}"
             )
 
         return integrated_variance_reduction(model, self._integration_points, self._threshold)

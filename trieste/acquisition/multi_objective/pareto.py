@@ -111,7 +111,7 @@ class Pareto:
                 f" got {bounds_delta_scale_factor}"
             )
         if bounds_delta_scale_factor < 0:
-            raise ValueError("bounds_delta_min should be non-negative," f" got {bounds_min_delta}")
+            raise ValueError("bounds_delta_min should be non-negative, got {bounds_min_delta}")
 
         front_size, _ = self.front.shape
 
