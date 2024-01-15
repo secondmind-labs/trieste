@@ -1453,14 +1453,15 @@ class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox):
 
         self._initialized = False
         self._step_is_success = False
-        self.eps = self._initial_eps()
+        self.eps = 0.0
+        self._init_eps()
         self._update_bounds()
         self._y_min = np.inf
 
-    def _initial_eps(self) -> float:
+    def _init_eps(self) -> None:
         global_lower = self.global_search_space.lower
         global_upper = self.global_search_space.upper
-        return 0.5 * (global_upper - global_lower) / (5.0 ** (1.0 / global_lower.shape[-1]))
+        self.eps = 0.5 * (global_upper - global_lower) / (5.0 ** (1.0 / global_lower.shape[-1]))
 
     def _update_bounds(self) -> None:
         self._lower = tf.reduce_max(
@@ -1483,7 +1484,7 @@ class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox):
 
         self.location = tf.squeeze(self.global_search_space.sample(1), axis=0)
         self._step_is_success = False
-        self.eps = self._initial_eps()
+        self._init_eps()
         self._update_bounds()
         _, self._y_min = self.get_dataset_min(datasets)
         self._initialized = True
