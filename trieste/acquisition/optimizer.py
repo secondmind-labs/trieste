@@ -261,7 +261,7 @@ def generate_continuous_optimizer(
             raise ValueError(f"vectorization must be positive, got {V}")
 
         samples_left = num_initial_samples
-        top_fun_values = tf.zeros([V, 0])  # [V, num_optimization_runs]
+        top_fun_values: Optional[TensorType] = None  # [V, num_optimization_runs]
         top_candidates: Optional[TensorType] = None  # [V, num_optimization_runs, D]
 
         while samples_left > 0:
@@ -302,9 +302,6 @@ def generate_continuous_optimizer(
                 )
                 tiled_candidates = tf.tile(candidates[:, None, :], [1, V, 1])  # [samples, V, D]
 
-            if top_candidates is None:
-                top_candidates = tf.zeros([V, 0, tf.shape(candidates)[-1]])  # [V, 0, D]
-
             target_func_values = target_func(tiled_candidates)  # [samples, V]
             tf.debugging.assert_shapes(
                 [(target_func_values, ("_", V))],
@@ -317,11 +314,16 @@ def generate_continuous_optimizer(
                 ),
             )
 
+            if top_candidates is None:
+                top_candidates = tf.zeros([V, 0, tf.shape(candidates)[-1]], dtype=candidates.dtype)
+            if top_fun_values is None:
+                top_fun_values = tf.zeros([V, 0], dtype=target_func_values.dtype)
+
             top_candidates = tf.concat(
-                [top_candidates, tf.transpose(tiled_candidates, [1, 0, 2])], -1
+                [top_candidates, tf.transpose(tiled_candidates, [1, 0, 2])], 1
             )  # [V, samples+num_optimization_runs, D]
             top_fun_values = tf.concat(
-                [top_fun_values, tf.transpose(target_func_values)], -1
+                [top_fun_values, tf.transpose(target_func_values)], 1
             )  # [V, samples+num_optimization_runs]
 
             _, top_k_indices = tf.math.top_k(
