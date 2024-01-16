@@ -173,6 +173,7 @@ def generate_continuous_optimizer(
     num_optimization_runs: int = 10,
     num_recovery_runs: int = 10,
     optimizer_args: Optional[dict[str, Any]] = None,
+    split_initial_samples: Optional[int] = 100_000,
 ) -> AcquisitionOptimizer[Box | CollectionSearchSpace]:
     """
     Generate a gradient-based optimizer for :class:'Box' and :class:'CollectionSearchSpace'
@@ -202,10 +203,17 @@ def generate_continuous_optimizer(
     :param optimizer_args: The keyword arguments to pass to the Scipy L-BFGS-B optimizer.
         Check `minimize` method  of :class:`~scipy.optimize` for details of which arguments
         can be passed. Note that method, jac and bounds cannot/should not be changed.
+    :param split_initial_samples: Maximum number of samples to process at a time. Decrease
+        this can reduce memory usage at the start, at the slight cost of performance.
     :return: The acquisition optimizer.
     """
     if num_initial_samples <= 0:
         raise ValueError(f"num_initial_samples must be positive, got {num_initial_samples}")
+
+    if split_initial_samples is not None and split_initial_samples <= 0:
+        raise ValueError(
+            f"split_initial_samples must be positive or None, got {num_initial_samples}"
+        )
 
     if num_optimization_runs < 0:
         raise ValueError(f"num_optimization_runs must be positive, got {num_optimization_runs}")
@@ -232,7 +240,7 @@ def generate_continuous_optimizer(
         For :class:'CollectionSearchSpace' we only apply gradient updates to
         its class:'Box' subspaces.
 
-        When this functions receives an acquisition-integer tuple as its `target_func`,it
+        When this function receives an acquisition-integer tuple as its `target_func`,it
         optimizes each of the individual V functions making up `target_func`, i.e.
         evaluating `num_initial_samples` samples, running `num_optimization_runs` runs, and
         (if necessary) running `num_recovery_runs` recovery run for each of the individual
@@ -252,60 +260,82 @@ def generate_continuous_optimizer(
         if V < 0:
             raise ValueError(f"vectorization must be positive, got {V}")
 
-        candidates = space.sample(num_initial_samples)
-        if tf.rank(candidates) == 3:
-            # If samples is a tensor of rank 3, then it is a batch of samples. In this case
-            # the vectorization of the target function must be a multiple of the length of the
-            # second (batch) dimension.
-            remainder = V % tf.shape(candidates)[1]
-            tf.debugging.assert_equal(
-                remainder,
-                tf.cast(0, dtype=remainder.dtype),
+        samples_left = num_initial_samples
+        top_fun_values = tf.zeros([V, 0])  # [V, num_optimization_runs]
+        top_candidates: Optional[TensorType] = None  # [V, num_optimization_runs, D]
+
+        while samples_left > 0:
+            if split_initial_samples is None:
+                samples = samples_left
+            else:
+                samples = max(min(samples_left, split_initial_samples // V), 1)
+            samples_left -= samples
+
+            candidates = space.sample(samples)
+            if tf.rank(candidates) == 3:
+                # If samples is a tensor of rank 3, then it is a batch of samples. In this case
+                # the vectorization of the target function must be a multiple of the length of the
+                # second (batch) dimension.
+                remainder = V % tf.shape(candidates)[1]
+                tf.debugging.assert_equal(
+                    remainder,
+                    tf.cast(0, dtype=remainder.dtype),
+                    message=(
+                        f"""
+                        The vectorization of the target function {V} must be a multiple of the batch
+                        shape of initial samples {tf.shape(candidates)[1]}.
+                        """
+                    ),
+                )
+                multiple = V // tf.shape(candidates)[1]
+                tiled_candidates = tf.tile(candidates, [1, multiple, 1])  # [samples, V, D]
+            else:
+                tf.debugging.assert_rank(
+                    candidates,
+                    2,
+                    message=(
+                        f"""
+                        The initial samples must be a tensor of rank 2, got a tensor of rank
+                        {tf.rank(candidates)}.
+                        """
+                    ),
+                )
+                tiled_candidates = tf.tile(candidates[:, None, :], [1, V, 1])  # [samples, V, D]
+
+            if top_candidates is None:
+                top_candidates = tf.zeros([V, 0, tf.shape(candidates)[-1]])  # [V, 0, D]
+
+            target_func_values = target_func(tiled_candidates)  # [samples, V]
+            tf.debugging.assert_shapes(
+                [(target_func_values, ("_", V))],
                 message=(
                     f"""
-                    The vectorization of the target function {V} must be a multiple of the batch
-                    shape of initial samples {tf.shape(candidates)[1]}.
+                    The result of function target_func has shape
+                    {tf.shape(target_func_values)}, however, expected a trailing
+                    dimension of size {V}.
                     """
                 ),
             )
-            multiple = V // tf.shape(candidates)[1]
-            tiled_candidates = tf.tile(candidates, [1, multiple, 1])  # [num_initial_samples, V, D]
-        else:
-            tf.debugging.assert_rank(
-                candidates,
-                2,
-                message=(
-                    f"""
-                    The initial samples must be a tensor of rank 2, got a tensor of rank
-                    {tf.rank(candidates)}.
-                    """
-                ),
-            )
-            tiled_candidates = tf.tile(
-                candidates[:, None, :], [1, V, 1]
-            )  # [num_initial_samples, V, D]
 
-        target_func_values = target_func(tiled_candidates)  # [num_samples, V]
-        tf.debugging.assert_shapes(
-            [(target_func_values, ("_", V))],
-            message=(
-                f"""
-                The result of function target_func has shape
-                {tf.shape(target_func_values)}, however, expected a trailing
-                dimension of size {V}.
-                """
-            ),
-        )
+            top_candidates = tf.concat(
+                [top_candidates, tf.transpose(tiled_candidates, [1, 0, 2])], -1
+            )  # [V, samples+num_optimization_runs, D]
+            top_fun_values = tf.concat(
+                [top_fun_values, tf.transpose(target_func_values)], -1
+            )  # [V, samples+num_optimization_runs]
 
-        _, top_k_indices = tf.math.top_k(
-            tf.transpose(target_func_values), k=num_optimization_runs
-        )  # [1, num_optimization_runs] or [V, num_optimization_runs]
+            _, top_k_indices = tf.math.top_k(
+                top_fun_values, k=num_optimization_runs
+            )  # [V, num_optimization_runs]
 
-        tiled_candidates = tf.transpose(tiled_candidates, [1, 0, 2])  # [V, num_initial_samples, D]
-        top_k_points = tf.gather(
-            tiled_candidates, top_k_indices, batch_dims=1
-        )  # [V, num_optimization_runs, D]
-        initial_points = tf.transpose(top_k_points, [1, 0, 2])  # [num_optimization_runs,V,D]
+            top_candidates = tf.gather(
+                top_candidates, top_k_indices, batch_dims=1
+            )  # [V, num_optimization_runs, D]
+            top_fun_values = tf.gather(
+                top_fun_values, top_k_indices, batch_dims=1
+            )  # [V, num_optimization_runs]
+
+        initial_points = tf.transpose(top_candidates, [1, 0, 2])  # [num_optimization_runs,V,D]
 
         (
             successes,
