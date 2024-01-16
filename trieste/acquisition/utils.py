@@ -195,23 +195,17 @@ def get_unique_points_mask(points: TensorType, tolerance: float = 1e-6) -> Tenso
         unique_points = tf.boolean_mask(points, mask)
 
     :param points: A tensor of points, with the first dimension being the number of points.
-    :param tolerance: The tolerance within which points are considered equal.
+    :param tolerance: The tolerance within which points are considered equal. Comparisons are
+        made by rounding to a grid of this radius.
     :return: A boolean mask for the unique points.
     """
-
-    tolerance = tf.constant(tolerance, dtype=points.dtype)
-    n_points = tf.shape(points)[0]
-    mask = tf.zeros(shape=(n_points,), dtype=tf.bool)
-
-    for idx in tf.range(n_points):
-        # Pairwise distance with previous unique points.
-        used_points = tf.boolean_mask(points, mask)
-        distances = tf.norm(points[idx] - used_points, axis=-1)
-        # Find if there is any point within the tolerance.
-        min_distance = tf.reduce_min(distances)
-
-        # Update mask.
-        is_unique_point = min_distance >= tolerance
-        mask = tf.tensor_scatter_nd_update(mask, [[idx]], [is_unique_point])
-
-    return mask
+    rounded_points = tf.round(points / (2 * tolerance))
+    _, unique_idx = tf.raw_ops.UniqueV2(x=rounded_points, axis=[0])
+    unique_indices = tf.math.unsorted_segment_min(
+        tf.range(len(points)), unique_idx, tf.math.reduce_max(unique_idx) + 1
+    )
+    return tf.tensor_scatter_nd_update(
+        tf.zeros_like(unique_idx, dtype=tf.bool),
+        tf.expand_dims(unique_indices, axis=-1),
+        tf.ones_like(unique_indices, dtype=tf.bool),
+    )
