@@ -98,10 +98,10 @@ def squeeze_hyperparameters(
     :raise ValueError: If ``alpha`` is not in (0,1) or epsilon <= 0
     """
 
-    if not (0 < alpha < 1):
+    if not 0 < alpha < 1:
         raise ValueError(f"squeeze factor alpha must be in (0, 1), found {alpha}")
 
-    if not (0 < epsilon):
+    if epsilon <= 0:
         raise ValueError(f"offset factor epsilon must be > 0, found {epsilon}")
 
     for param in object.trainable_parameters:
@@ -308,7 +308,7 @@ def _compute_kernel_blocks(
         K12 = tf.repeat(tf.expand_dims(K12, -3), num_latent, axis=-3)
     elif len(tf.shape(K)) > 3:
         raise NotImplementedError(
-            "Covariance between points is not supported " "for kernels of type " f"{type(kernel)}."
+            "Covariance between points is not supported for kernels of type {type(kernel)}."
         )
 
     tf.debugging.assert_shapes(

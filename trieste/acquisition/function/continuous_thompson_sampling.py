@@ -70,7 +70,7 @@ class GreedyContinuousThompsonSampling(SingleModelGreedyAcquisitionBuilder[HasTr
         if not isinstance(model, HasTrajectorySampler):
             raise ValueError(
                 f"Thompson sampling from trajectory only supports models with a trajectory_sampler "
-                f"method; received {model.__repr__()}"
+                f"method; received {model!r}"
             )
 
         self._trajectory_sampler = model.trajectory_sampler()
@@ -147,7 +147,7 @@ class ParallelContinuousThompsonSampling(
         if not isinstance(model, HasTrajectorySampler):
             raise ValueError(
                 f"Thompson sampling from trajectory only supports models with a trajectory_sampler "
-                f"method; received {model.__repr__()}"
+                f"method; received {model!r}"
             )
 
         self._trajectory_sampler = model.trajectory_sampler()

@@ -260,13 +260,13 @@ fig, ax = plt.subplots(1, 1, figsize=(10, 7))
 
 # Plot gpr results
 mean, var = gpr_predictions
-ax.plot(X, mean, label=f"GPR", color="tab:blue")
+ax.plot(X, mean, label="GPR", color="tab:blue")
 ax.plot(X, mean + 1.96 * tf.math.sqrt(var), alpha=0.2, color="tab:blue")
 ax.plot(X, mean - 1.96 * tf.math.sqrt(var), alpha=0.2, color="tab:blue")
 
 # Plot gpr results
 mean, var = multifidelity_predictions
-ax.plot(X, mean, label=f"MultifidelityAutoregressive", color="tab:orange")
+ax.plot(X, mean, label="MultifidelityAutoregressive", color="tab:orange")
 ax.plot(X, mean + 1.96 * tf.math.sqrt(var), alpha=0.2, color="tab:orange")
 ax.plot(X, mean - 1.96 * tf.math.sqrt(var), alpha=0.2, color="tab:orange")
 
@@ -275,13 +275,13 @@ ax.plot(X, mean - 1.96 * tf.math.sqrt(var), alpha=0.2, color="tab:orange")
 ax.plot(
     X,
     observer(X_for_multifid, add_noise=False).observations,
-    label=f"True function",
+    label="True function",
     color="tab:green",
 )
 
 # Scatter the data
 ax.scatter(
-    hf_data.query_points, hf_data.observations, label=f"Data", color="tab:green"
+    hf_data.query_points, hf_data.observations, label="Data", color="tab:green"
 )
 plt.legend()
 plt.show()

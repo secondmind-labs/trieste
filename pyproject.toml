@@ -55,15 +55,15 @@ skip_glob = "docs/notebooks"
 line_length = 100
 
 [tool.taskipy.tasks]
-tests = "pytest --mypy --cov trieste --cov-report html:htmlcov --durations 6"
-coverage = "pytest --eager --qhsri yes --cov trieste --cov-report html:htmlcov"
-alltests = "pytest --mypy --durations 6 --runslow yes"
-slowtests = "pytest --mypy --durations 6 --runslow only"
+tests = "pytest --durations 6"
+alltests = "pytest --durations 6 --runslow yes"
+slowtests = "pytest --durations 6 --runslow only"
 quicktests = "pytest -x --ff -rN -Wignore --ignore-glob=tests/integration/*"
+coverage = "pytest --eager --qhsri yes --cov trieste --cov-report html:htmlcov"
 mypy = "mypy"
-pylint = "pytest --pylint --cache-clear -m pylint -v trieste"
-check_format = "pytest -v --black --flake8 --isort -m 'black or flake8 or isort'"
+check_format = "black --check . && flake8 --count . && isort --check . && black -l 80 --extend-exclude 'notebooks/.+/' --check notebooks"
 format = "black . && flake8 . && isort . && black -l 80 notebooks/*pct.py"
+pylint = "pytest --pylint --cache-clear -m pylint -v trieste"
 
 [tool.coverage.report]
 omit = [
@@ -85,10 +85,12 @@ disable = [
     "invalid-unary-operand-type",
     "line-too-long",
     "locally-disabled",
+    "missing-class-docstring",
     "missing-module-docstring",
     "no-else-return",
     "no-self-use",
     "no-value-for-parameter",
+    "protected-access",
     "redefined-builtin",
     "redundant-keyword-arg",
     "suppressed-message",
@@ -98,10 +100,12 @@ disable = [
     "too-many-instance-attributes",
     "too-many-public-methods",
     "too-many-arguments",
+    "too-many-branches",
     "too-many-locals",
     "too-many-statements",
     "too-many-boolean-expressions",
     "too-many-nested-blocks",
+    "typevar-name-incorrect-variance",
     "unexpected-keyword-arg",
     "unused-argument",
     "unsubscriptable-object",

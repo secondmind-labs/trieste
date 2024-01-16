@@ -77,7 +77,7 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder[Probabilistic
     def __repr__(self) -> str:
         """"""
         if callable(self._ref_point_spec):
-            return f"ExpectedHypervolumeImprovement(" f"{self._ref_point_spec.__name__})"
+            return f"ExpectedHypervolumeImprovement({self._ref_point_spec.__name__})"
         else:
             return f"ExpectedHypervolumeImprovement({self._ref_point_spec!r})"
 
@@ -340,7 +340,7 @@ class BatchMonteCarloExpectedHypervolumeImprovement(
         if not isinstance(model, HasReparamSampler):
             raise ValueError(
                 f"The batch Monte-Carlo expected hyper-volume improvement function only supports "
-                f"models that implement a reparam_sampler method; received {model.__repr__()}"
+                f"models that implement a reparam_sampler method; received {model!r}"
             )
 
         sampler = model.reparam_sampler(self._sample_size)

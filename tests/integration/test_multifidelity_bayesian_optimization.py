@@ -61,7 +61,7 @@ def _build_nested_multifidelity_dataset(
 ) -> Dataset:
     num_fidelities = problem.num_fidelities
     initial_sample_sizes = [10 + 2 * (num_fidelities - i) for i in range(num_fidelities)]
-    fidelity_samples = list()
+    fidelity_samples = []
     lowest_fidelity_sample = problem.search_space.sample(initial_sample_sizes[0])
     lowest_fidelity_sample = add_fidelity_column(lowest_fidelity_sample, 0)
     fidelity_samples.append(lowest_fidelity_sample)
