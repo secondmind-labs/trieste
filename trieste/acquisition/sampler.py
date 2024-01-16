@@ -46,6 +46,8 @@ class ThompsonSampler(ABC, Generic[ProbabilisticModelType]):
 
     @property
     def sample_min_value(self) -> bool:
+        """Whether this samples from the minimum value of the function
+        (as opposed to the function's minimiser)."""
         return self._sample_min_value
 
     def __repr__(self) -> str:
@@ -245,7 +247,7 @@ class ThompsonSamplerFromTrajectory(ThompsonSampler[HasTrajectorySampler]):
         if not isinstance(model, HasTrajectorySampler):
             raise ValueError(
                 f"Thompson sampling from trajectory only supports models with a trajectory_sampler "
-                f"method; received {model.__repr__()}"
+                f"method; received {model!r}"
             )
 
         trajectory_sampler = model.trajectory_sampler()

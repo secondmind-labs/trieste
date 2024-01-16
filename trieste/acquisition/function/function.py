@@ -249,7 +249,7 @@ class AugmentedExpectedImprovement(SingleModelAcquisitionBuilder[SupportsGetObse
         if not isinstance(model, SupportsGetObservationNoise):
             raise NotImplementedError(
                 f"AugmentedExpectedImprovement only works with models that support "
-                f"get_observation_noise; received {model.__repr__()}"
+                f"get_observation_noise; received {model!r}"
             )
         tf.debugging.Assert(dataset is not None, [tf.constant([])])
         dataset = cast(Dataset, dataset)
@@ -318,14 +318,11 @@ class augmented_expected_improvement(AcquisitionFunctionClass):
         )
         mean, variance = self._model.predict(tf.squeeze(x, -2))
         normal = tfp.distributions.Normal(mean, tf.sqrt(variance))
-        expected_improvement = (self._eta - mean) * normal.cdf(self._eta) + variance * normal.prob(
-            self._eta
-        )
-
+        ei = (self._eta - mean) * normal.cdf(self._eta) + variance * normal.prob(self._eta)
         augmentation = 1 - (tf.math.sqrt(self._noise_variance)) / (
             tf.math.sqrt(self._noise_variance + variance)
         )
-        return expected_improvement * augmentation
+        return ei * augmentation
 
 
 class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder[ProbabilisticModel]):
@@ -828,7 +825,7 @@ class MonteCarloExpectedImprovement(SingleModelAcquisitionBuilder[HasReparamSamp
         if not isinstance(model, HasReparamSampler):
             raise ValueError(
                 f"MonteCarloExpectedImprovement only supports models with a reparam_sampler method;"
-                f"received {model.__repr__()}"
+                f"received {model!r}"
             )
 
         sampler = model.reparam_sampler(self._sample_size)
@@ -972,7 +969,7 @@ class MonteCarloAugmentedExpectedImprovement(
             raise ValueError(
                 f"MonteCarloAugmentedExpectedImprovement only supports models with a "
                 f"reparam_sampler method and that support observation noise; received "
-                f"{model.__repr__()}."
+                f"{model!r}."
             )
 
         sampler = model.reparam_sampler(self._sample_size)
@@ -1167,7 +1164,7 @@ class batch_monte_carlo_expected_improvement(AcquisitionFunctionClass):
         if not isinstance(model, HasReparamSampler):
             raise ValueError(
                 f"The batch Monte-Carlo expected improvement acquisition function only supports "
-                f"models that implement a reparam_sampler method; received {model.__repr__()}"
+                f"models that implement a reparam_sampler method; received {model!r}"
             )
 
         sampler = model.reparam_sampler(self._sample_size)
@@ -1219,7 +1216,7 @@ class BatchExpectedImprovement(SingleModelAcquisitionBuilder[ProbabilisticModel]
     def __repr__(self) -> str:
         """"""
 
-        return f"BatchExpectedImprovement({self._sample_size!r}, " f"jitter={self._jitter!r})"
+        return f"BatchExpectedImprovement({self._sample_size!r}, jitter={self._jitter!r})"
 
     def prepare_acquisition_function(
         self,
@@ -1743,9 +1740,9 @@ class batch_expected_improvement(AcquisitionFunctionClass):
         )
 
         # Compute outer sum
-        expected_improvement = tf.reduce_sum(mean_T_term + sum_term, axis=1)
+        ei = tf.reduce_sum(mean_T_term + sum_term, axis=1)
 
-        return expected_improvement
+        return ei
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:

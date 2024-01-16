@@ -189,7 +189,7 @@ class ExactPartition2dNonDominated(_BoundIndexPartition):
         tf.debugging.assert_equal(
             tf.reduce_all(non_dominated(front)[1]),
             True,
-            message=f"\ninput {front} " f"contains dominated points",
+            message=f"\ninput {front} contains dominated points",
         )
         self.front = tf.gather_nd(front, tf.argsort(front[:, :1], axis=0))  # sort input front
         self._bounds = self._get_bound_index()
@@ -235,7 +235,7 @@ class DividedAndConquerNonDominated(_BoundIndexPartition):
         tf.debugging.assert_equal(
             tf.reduce_all(non_dominated(front)[1]),
             True,
-            message=f"\ninput {front} " f"contains dominated points",
+            message=f"\ninput {front} contains dominated points",
         )
         self.front = tf.gather_nd(front, tf.argsort(front[:, :1], axis=0))  # sort
         self.front = front

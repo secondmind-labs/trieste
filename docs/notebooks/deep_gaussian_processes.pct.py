@@ -18,7 +18,6 @@ tf.random.set_seed(1794)
 # The Michalewicz functions are highly non-stationary and have a global minimum that's hard to find, so DGPs might be more suitable than standard GPs, which may struggle because they typically have stationary kernels that cannot easily model non-stationarities.
 
 # %%
-import gpflow
 from trieste.objectives import Michalewicz2, Michalewicz5
 from trieste.objectives.utils import mk_observer
 from trieste.experimental.plotting import plot_function_plotly
@@ -167,9 +166,6 @@ fig.show()
 # We now compare to a GP model with priors over the hyperparameters. We do not expect this to do as well because GP models cannot deal with non-stationary functions well.
 
 # %%
-import gpflow
-import tensorflow_probability as tfp
-
 from trieste.models.gpflow import GaussianProcessRegression, build_gpr
 
 gpflow_model = build_gpr(initial_data, search_space, likelihood_variance=1e-7)
