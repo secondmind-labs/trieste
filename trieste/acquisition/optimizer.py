@@ -203,8 +203,8 @@ def generate_continuous_optimizer(
     :param optimizer_args: The keyword arguments to pass to the Scipy L-BFGS-B optimizer.
         Check `minimize` method  of :class:`~scipy.optimize` for details of which arguments
         can be passed. Note that method, jac and bounds cannot/should not be changed.
-    :param split_initial_samples: Maximum number of initial samples to process at a time. Decrease
-        this can reduce memory usage at the start, at the slight cost of performance.
+    :param split_initial_samples: Maximum number of initial samples to process at a time.
+        Decreasing this can reduce memory usage at the start, at the slight cost of performance.
     :return: The acquisition optimizer.
     """
     if num_initial_samples <= 0:
