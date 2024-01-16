@@ -257,7 +257,7 @@ def generate_continuous_optimizer(
         else:
             V = 1
 
-        if V < 0:
+        if V <= 0:
             raise ValueError(f"vectorization must be positive, got {V}")
 
         samples_left = num_initial_samples
