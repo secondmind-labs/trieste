@@ -2,8 +2,8 @@
 
 [![PyPI](https://img.shields.io/pypi/v/trieste.svg)](https://pypi.org/project/trieste)
 [![License](https://img.shields.io/badge/license-Apache-green.svg)](LICENSE)
-[![Quality checks](https://github.com/secondmind-labs/trieste/actions/workflows/develop-checks.yaml/badge.svg)](https://github.com/secondmind-labs/trieste/actions?query=workflows%3Adevelop-checks)
-[![Docs](https://github.com/secondmind-labs/trieste/actions/workflows/deploy.yaml/badge.svg)](https://github.com/secondmind-labs/trieste/actions/workflows/deploy.yaml)
+[![Release](https://img.shields.io/github/actions/workflow/status/secondmind-labs/trieste/develop-checks.yaml?logo=github&label=Release%20checks&branch=v2.0.0)](https://github.com/secondmind-labs/trieste/actions/runs/7264909157)
+[![Develop](https://img.shields.io/github/actions/workflow/status/secondmind-labs/trieste/develop-checks.yaml?logo=github&label=develop%20checks)](https://github.com/secondmind-labs/trieste/actions?query=workflows%3Adevelop-checks)
 [![Codecov](https://img.shields.io/codecov/c/github/secondmind-labs/trieste/coverage.svg?branch=develop)](https://app.codecov.io/github/secondmind-labs/trieste/tree/develop)
 [![Slack Status](https://img.shields.io/badge/slack-trieste-green.svg?logo=Slack)](https://join.slack.com/t/secondmind-labs/shared_invite/zt-ph07nuie-gMlkle__tjvXBay4FNSLkw)
 
