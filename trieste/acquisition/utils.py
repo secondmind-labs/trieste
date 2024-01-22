@@ -187,7 +187,8 @@ def with_local_datasets(
     "return: [n_points]",
 )
 def get_unique_points_mask(points: TensorType, tolerance: float = 1e-6) -> TensorType:
-    """Find the boolean mask of unique points in a tensor, within a given tolerance.
+    """Find the boolean mask of unique points in a tensor within a given tolerance, using
+    grid rounding.
 
     Users can get the actual points with:
 

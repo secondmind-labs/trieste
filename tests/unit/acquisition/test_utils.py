@@ -180,14 +180,14 @@ def test_with_local_datasets(
             tf.constant([True, True, False]),
         ),
         (
-            tf.constant([[1.0], [2.0], [1.0], [3.0], [1.71], [1.699999], [3.29], [3.300001]]),
+            tf.constant([[1.0], [2.0], [1.0], [3.0], [2.1], [2.10001], [3.29], [3.300001]]),
             0.3,
-            tf.constant([True, True, False, True, False, False, False, True]),
+            tf.constant([True, True, False, True, False, True, False, True]),
         ),
         (
-            tf.constant([[1.0], [2.0], [1.0], [3.0], [1.699999], [1.71], [3.300001], [3.29]]),
+            tf.constant([[1.0], [2.0], [1.0], [3.0], [2.10001], [2.1], [3.300001], [3.29]]),
             0.3,
-            tf.constant([True, True, False, True, False, False, True, False]),
+            tf.constant([True, True, False, True, True, False, True, False]),
         ),
     ],
 )
