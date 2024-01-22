@@ -10,7 +10,6 @@ import tensorflow as tf
 import trieste
 from trieste.acquisition.function import BayesianActiveLearningByDisagreement
 from trieste.acquisition.rule import OBJECTIVE
-from trieste.models.gpflow.models import VariationalGaussianProcess
 from trieste.objectives.utils import mk_observer
 
 np.random.seed(1793)

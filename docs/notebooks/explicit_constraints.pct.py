@@ -204,7 +204,6 @@ from trieste.experimental.plotting import plot_bo_points, plot_function_2d
 def plot_bo_results():
     dataset = result.try_get_final_dataset()
     query_points = dataset.query_points.numpy()
-    observations = dataset.observations.numpy()
 
     _, ax = plot_function_2d(
         ScaledBranin.objective,

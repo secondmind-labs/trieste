@@ -129,7 +129,7 @@ def test_multifidelity_nonlinear_autoregressive_results_better_than_linear() -> 
         build_multifidelity_autoregressive_models(initial_data, n_fidelities, input_search_space)
     )
 
-    mses = list()
+    mses = []
     for model in [nonlinear_model, linear_model]:
         model.update(initial_data)
         model.optimize(initial_data)

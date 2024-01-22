@@ -75,15 +75,15 @@ def tensorboard_writer(summary_writer: Optional[tf.summary.SummaryWriter]) -> It
     set_tensorboard_writer(old_writer)
 
 
-def set_step_number(step_number: int) -> None:
+def set_step_number(new_step_number: int) -> None:
     """
     Set an optimization step number to use for logging purposes.
 
-    :param step_number: current step number
+    :param new_step_number: new current step number
     :raise ValueError: if step_number < 0
     """
     global _STEP_NUMBER
-    _STEP_NUMBER = step_number
+    _STEP_NUMBER = new_step_number
 
 
 def get_step_number() -> int:
@@ -96,14 +96,14 @@ def get_step_number() -> int:
 
 
 @contextmanager
-def step_number(step_number: int) -> Iterator[None]:
+def step_number(new_step_number: int) -> Iterator[None]:
     """
     A context manager for setting or overriding the optimization step number inside a code block.
 
-    :param step_number: current step number
+    :param new_step_number: new current step number
     """
     old_step_number = get_step_number()
-    set_step_number(step_number)
+    set_step_number(new_step_number)
     yield
     set_step_number(old_step_number)
 

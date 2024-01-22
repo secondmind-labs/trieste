@@ -637,6 +637,7 @@ class ScipyOptimizerGreenlet(gr.greenlet):  # type: ignore[misc]
         constraints: Sequence[Constraint],
         optimizer_args: Optional[dict[str, Any]] = None,
     ) -> spo.OptimizeResult:
+        """Greenlet run method."""
         cache_x = start + 1  # Any value different from `start`.
         cache_y: Optional["np.ndarray[Any, Any]"] = None
         cache_dy_dx: Optional["np.ndarray[Any, Any]"] = None
@@ -658,7 +659,7 @@ class ScipyOptimizerGreenlet(gr.greenlet):  # type: ignore[misc]
 
         method = "trust-constr" if len(constraints) else "l-bfgs-b"
         optimizer_args = dict(
-            dict(method=method, constraints=constraints), **(optimizer_args or {})
+            {"method": method, "constraints": constraints}, **(optimizer_args or {})
         )
         return spo.minimize(
             lambda x: value_and_gradient(x)[0],

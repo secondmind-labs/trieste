@@ -72,8 +72,8 @@ class MultivariateNormalCDF:
             loc=tf.zeros(shape=(), dtype=dtype),
             scale=tf.ones(shape=(), dtype=dtype),
         )
-        Phi: Callable[[TensorType], TensorType] = lambda x: normal.cdf(x)
-        iPhi: Callable[[TensorType], TensorType] = lambda x: normal.quantile(x)
+        Phi: Callable[[TensorType], TensorType] = normal.cdf
+        iPhi: Callable[[TensorType], TensorType] = normal.quantile
 
         return Phi, iPhi
 

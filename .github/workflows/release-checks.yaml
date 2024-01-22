@@ -1,4 +1,4 @@
-# Copyright 2021 The Trieste Contributors
+# Copyright 2024 The Trieste Contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,14 +12,72 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: Develop checks
+name: Release checks
 
 on:
   workflow_dispatch:
   push:
-    branches: develop
+    tags: v[0-9]+.[0-9]+.[0-9]+*
 
 jobs:
+  types:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        python-version: "3.10"
+    - run: pip install tox
+    - run: tox -e types
+
+  types_old:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        python-version: "3.7"
+    - run: pip install tox
+    - run: tox -e types_old
+
+  format:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        python-version: "3.10"
+    - run: pip install tox
+    - run: tox -e format
+
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        part: [ "1", "2", "3", "4" ]
+    name: tests (part${{ matrix.part }})
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        python-version: "3.10"
+    - run: pip install tox
+    - run: tox -e tests_${{ matrix.part }}
+
+  tests_old:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        part: [ "1", "2", "3", "4" ]
+    name: tests_old (part${{ matrix.part }})
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        python-version: "3.7"
+    - run: pip install tox
+    - run: tox -e tests_old_${{ matrix.part }}
+
   slowtests:
     runs-on: ubuntu-latest
     steps:
