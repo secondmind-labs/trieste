@@ -189,6 +189,9 @@ def test_with_local_datasets(
             0.3,
             tf.constant([True, True, False, True, True, False, True, False]),
         ),
+        (tf.constant([[1], [2], [3], [4]]), 1, tf.constant([True, False, True, False])),
+        (tf.constant([[1]]), 0, tf.constant([True])),
+        (tf.zeros([0, 2]), 0, tf.constant([])),
     ],
 )
 def test_get_unique_points_mask(
