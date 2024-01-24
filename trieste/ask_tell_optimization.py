@@ -20,8 +20,9 @@ perform Bayesian Optimization with external control of the optimization loop.
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from copy import deepcopy
-from typing import Dict, Generic, Mapping, TypeVar, cast, overload
+from typing import Dict, Generic, Mapping, Type, TypeVar, cast, overload
 
 from .models.utils import optimize_model_and_save_result
 
@@ -47,7 +48,7 @@ from .bayesian_optimizer import (
     write_summary_query_points,
 )
 from .data import Dataset
-from .models import TrainableProbabilisticModel
+from .models import ProbabilisticModel, TrainableProbabilisticModel
 from .observer import OBJECTIVE
 from .space import SearchSpace
 from .types import State, Tag, TensorType
@@ -60,16 +61,19 @@ StateType = TypeVar("StateType")
 SearchSpaceType = TypeVar("SearchSpaceType", bound=SearchSpace)
 """ Type variable bound to :class:`SearchSpace`. """
 
-TrainableProbabilisticModelType = TypeVar(
-    "TrainableProbabilisticModelType", bound=TrainableProbabilisticModel, contravariant=True
+ProbabilisticModelType = TypeVar(
+    "ProbabilisticModelType", bound=ProbabilisticModel, contravariant=True
 )
-""" Contravariant type variable bound to :class:`TrainableProbabilisticModel`. """
+""" Contravariant type variable bound to :class:`ProbabilisticModel`. """
+
+AskTellOptimizerType = TypeVar("AskTellOptimizerType")
 
 
-class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]):
+class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType]):
     """
     This class provides Ask/Tell optimization interface. It is designed for those use cases
     when control of the optimization loop by Trieste is impossible or not desirable.
+    For the default use case with model training, refer to :class:`AskTellOptimizer`.
     For more details about the Bayesian Optimization routine, refer to :class:`BayesianOptimizer`.
     """
 
@@ -78,7 +82,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         self,
         search_space: SearchSpaceType,
         datasets: Mapping[Tag, Dataset],
-        models: Mapping[Tag, TrainableProbabilisticModelType],
+        models: Mapping[Tag, ProbabilisticModelType],
         *,
         fit_model: bool = True,
     ):
@@ -89,10 +93,8 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         self,
         search_space: SearchSpaceType,
         datasets: Mapping[Tag, Dataset],
-        models: Mapping[Tag, TrainableProbabilisticModelType],
-        acquisition_rule: AcquisitionRule[
-            TensorType, SearchSpaceType, TrainableProbabilisticModelType
-        ],
+        models: Mapping[Tag, ProbabilisticModelType],
+        acquisition_rule: AcquisitionRule[TensorType, SearchSpaceType, ProbabilisticModelType],
         *,
         fit_model: bool = True,
     ):
@@ -103,9 +105,9 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         self,
         search_space: SearchSpaceType,
         datasets: Mapping[Tag, Dataset],
-        models: Mapping[Tag, TrainableProbabilisticModelType],
+        models: Mapping[Tag, ProbabilisticModelType],
         acquisition_rule: AcquisitionRule[
-            State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
+            State[StateType | None, TensorType], SearchSpaceType, ProbabilisticModelType
         ],
         acquisition_state: StateType | None,
         *,
@@ -118,7 +120,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         self,
         search_space: SearchSpaceType,
         datasets: Dataset,
-        models: TrainableProbabilisticModelType,
+        models: ProbabilisticModelType,
         *,
         fit_model: bool = True,
     ):
@@ -129,10 +131,8 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         self,
         search_space: SearchSpaceType,
         datasets: Dataset,
-        models: TrainableProbabilisticModelType,
-        acquisition_rule: AcquisitionRule[
-            TensorType, SearchSpaceType, TrainableProbabilisticModelType
-        ],
+        models: ProbabilisticModelType,
+        acquisition_rule: AcquisitionRule[TensorType, SearchSpaceType, ProbabilisticModelType],
         *,
         fit_model: bool = True,
     ):
@@ -143,9 +143,9 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         self,
         search_space: SearchSpaceType,
         datasets: Dataset,
-        models: TrainableProbabilisticModelType,
+        models: ProbabilisticModelType,
         acquisition_rule: AcquisitionRule[
-            State[StateType | None, TensorType], SearchSpaceType, TrainableProbabilisticModelType
+            State[StateType | None, TensorType], SearchSpaceType, ProbabilisticModelType
         ],
         acquisition_state: StateType | None = None,
         *,
@@ -157,11 +157,11 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         self,
         search_space: SearchSpaceType,
         datasets: Mapping[Tag, Dataset] | Dataset,
-        models: Mapping[Tag, TrainableProbabilisticModelType] | TrainableProbabilisticModelType,
+        models: Mapping[Tag, ProbabilisticModelType] | ProbabilisticModelType,
         acquisition_rule: AcquisitionRule[
             TensorType | State[StateType | None, TensorType],
             SearchSpaceType,
-            TrainableProbabilisticModelType,
+            ProbabilisticModelType,
         ]
         | None = None,
         acquisition_state: StateType | None = None,
@@ -202,7 +202,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
 
         # reassure the type checker that everything is tagged
         datasets = cast(Dict[Tag, Dataset], datasets)
-        models = cast(Dict[Tag, TrainableProbabilisticModelType], models)
+        models = cast(Dict[Tag, ProbabilisticModelType], models)
 
         # Get set of dataset and model keys, ignoring any local tag index. That is, only the
         # global tag part is considered.
@@ -228,7 +228,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
                 )
 
             self._acquisition_rule = cast(
-                AcquisitionRule[TensorType, SearchSpaceType, TrainableProbabilisticModelType],
+                AcquisitionRule[TensorType, SearchSpaceType, ProbabilisticModelType],
                 EfficientGlobalOptimization(),
             )
         else:
@@ -256,8 +256,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
                     tags = [tag, LocalizedTag.from_tag(tag).global_tag]
                     _, dataset = get_value_for_tag(self._filtered_datasets, *tags)
                     assert dataset is not None
-                    model.update(dataset)
-                    optimize_model_and_save_result(model, dataset)
+                    self.update_model(model, dataset)
 
             summary_writer = logging.get_tensorboard_writer()
             if summary_writer:
@@ -265,6 +264,13 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
                     write_summary_initial_model_fit(
                         self._datasets, self._models, initial_model_fitting_timer
                     )
+
+    @abstractmethod
+    def update_model(self, model: ProbabilisticModelType, dataset: Dataset) -> None:
+        """
+        Update the model on the specified dataset, for example by training.
+        Called during the Tell stage and optionally at initial fitting.
+        """
 
     def __repr__(self) -> str:
         """Print-friendly string representation"""
@@ -288,12 +294,12 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
             raise ValueError(f"Expected a single dataset, found {len(datasets)}")
 
     @property
-    def models(self) -> Mapping[Tag, TrainableProbabilisticModelType]:
+    def models(self) -> Mapping[Tag, ProbabilisticModelType]:
         """The current models."""
         return self._models
 
     @models.setter
-    def models(self, models: Mapping[Tag, TrainableProbabilisticModelType]) -> None:
+    def models(self, models: Mapping[Tag, ProbabilisticModelType]) -> None:
         """Update the current models."""
         if models.keys() != self.models.keys():
             raise ValueError(
@@ -303,17 +309,17 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         self._models = dict(models)
 
     @property
-    def model(self) -> TrainableProbabilisticModel:
+    def model(self) -> ProbabilisticModel:
         """The current model when there is just one model."""
         # Ignore local models.
-        models: Mapping[Tag, TrainableProbabilisticModel] = ignoring_local_tags(self.models)
+        models: Mapping[Tag, ProbabilisticModel] = ignoring_local_tags(self.models)
         if len(models) == 1:
             return next(iter(models.values()))
         else:
             raise ValueError(f"Expected a single model, found {len(models)}")
 
     @model.setter
-    def model(self, model: TrainableProbabilisticModelType) -> None:
+    def model(self, model: ProbabilisticModelType) -> None:
         """Update the current model, using the OBJECTIVE tag."""
         if len(self.models) != 1:
             raise ValueError(f"Expected a single model, found {len(self.models)}")
@@ -331,16 +337,16 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
 
     @classmethod
     def from_record(
-        cls,
+        cls: Type[AskTellOptimizerType],
         record: Record[StateType] | FrozenRecord[StateType],
         search_space: SearchSpaceType,
         acquisition_rule: AcquisitionRule[
             TensorType | State[StateType | None, TensorType],
             SearchSpaceType,
-            TrainableProbabilisticModelType,
+            ProbabilisticModelType,
         ]
         | None = None,
-    ) -> AskTellOptimizer[SearchSpaceType, TrainableProbabilisticModelType]:
+    ) -> AskTellOptimizerType:
         """Creates new :class:`~AskTellOptimizer` instance from provided optimization state.
         Model training isn't triggered upon creation of the instance.
 
@@ -361,7 +367,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         return cls(
             search_space,
             record.datasets,
-            cast(Mapping[Tag, TrainableProbabilisticModelType], record.models),
+            cast(Mapping[Tag, ProbabilisticModelType], record.models),
             acquisition_rule=acquisition_rule,  # type: ignore
             acquisition_state=record.acquisition_state,
             fit_model=False,
@@ -470,8 +476,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
                 # Always use the matching dataset to the model. If the model is
                 # local, then the dataset should be too by this stage.
                 dataset = self._filtered_datasets[tag]
-                model.update(dataset)
-                optimize_model_and_save_result(model, dataset)
+                self.update_model(model, dataset)
 
         summary_writer = logging.get_tensorboard_writer()
         if summary_writer:
@@ -483,3 +488,30 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
                     model_fitting_timer,
                     self._observation_plot_dfs,
                 )
+
+
+TrainableProbabilisticModelType = TypeVar(
+    "TrainableProbabilisticModelType", bound=TrainableProbabilisticModel, contravariant=True
+)
+""" Contravariant type variable bound to :class:`TrainableProbabilisticModel`. """
+
+
+class AskTellOptimizer(AskTellOptimizerABC[SearchSpaceType, TrainableProbabilisticModelType]):
+    """
+    This class provides Ask/Tell optimization interface with the default model training
+    using the TrainableProbabilisticModel interface.
+    """
+
+    def update_model(self, model: TrainableProbabilisticModelType, dataset: Dataset) -> None:
+        model.update(dataset)
+        optimize_model_and_save_result(model, dataset)
+
+
+class AskTellOptimizerNoTraining(AskTellOptimizerABC[SearchSpaceType, ProbabilisticModelType]):
+    """
+    This class provides Ask/Tell optimization interface with no model training performed
+    during the tell stage.
+    """
+
+    def update_model(self, model: ProbabilisticModelType, dataset: Dataset) -> None:
+        pass

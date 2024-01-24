@@ -61,7 +61,11 @@ from .acquisition.rule import (
 )
 from .acquisition.utils import with_local_datasets
 from .data import Dataset
-from .models import SupportsCovarianceWithTopFidelity, TrainableProbabilisticModel
+from .models import (
+    ProbabilisticModel,
+    SupportsCovarianceWithTopFidelity,
+    TrainableProbabilisticModel,
+)
 from .objectives.utils import mk_batch_observer
 from .observer import OBJECTIVE, Observer
 from .space import SearchSpace
@@ -910,7 +914,7 @@ def write_summary_init(
 
 def write_summary_initial_model_fit(
     datasets: Mapping[Tag, Dataset],
-    models: Mapping[Tag, TrainableProbabilisticModel],
+    models: Mapping[Tag, ProbabilisticModel],
     model_fitting_timer: Timer,
 ) -> None:
     """Write TensorBoard summary for the model fitting to the initial data."""
@@ -961,7 +965,7 @@ def observation_plot_init(
 
 def write_summary_observations(
     datasets: Mapping[Tag, Dataset],
-    models: Mapping[Tag, TrainableProbabilisticModel],
+    models: Mapping[Tag, ProbabilisticModel],
     tagged_output: Mapping[Tag, TensorType],
     model_fitting_timer: Timer,
     observation_plot_dfs: MutableMapping[Tag, pd.DataFrame],
@@ -1058,7 +1062,7 @@ def write_summary_observations(
 
 def write_summary_query_points(
     datasets: Mapping[Tag, Dataset],
-    models: Mapping[Tag, TrainableProbabilisticModel],
+    models: Mapping[Tag, ProbabilisticModel],
     search_space: SearchSpace,
     query_points: TensorType,
     query_point_generation_timer: Timer,
