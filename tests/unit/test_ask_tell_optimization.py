@@ -607,7 +607,7 @@ def test_ask_tell_optimizer_no_training_with_non_trainable_model(
 
     new_point = ask_tell.ask()
     assert len(new_point) == 1
-    
+
     ask_tell.tell(new_data)
     state_record: Record[None, ProbabilisticModel] = ask_tell.to_record()
     assert_datasets_allclose(state_record.dataset, init_dataset + new_data)

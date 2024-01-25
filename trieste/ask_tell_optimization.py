@@ -511,7 +511,7 @@ class AskTellOptimizer(AskTellOptimizerABC[SearchSpaceType, TrainableProbabilist
 class AskTellOptimizerNoTraining(AskTellOptimizerABC[SearchSpaceType, ProbabilisticModelType]):
     """
     This class provides Ask/Tell optimization interface with no model training performed
-    during the tell stage.
+    during the Tell stage or at initialization.
     """
 
     def update_model(self, model: ProbabilisticModelType, dataset: Dataset) -> None:
