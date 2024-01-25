@@ -363,13 +363,13 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         # so the model was already trained
         # thus there is no need to train it again
 
-        # type ignore below is due to the fact that overloads don't allow
-        # optional acquisition_rule along with acquisition_state
-        return cls(
+        # type ignore below is because this relies on subclasses not overriding __init__
+        # ones that do may also need to override this to get it to work
+        return cls(  # type: ignore
             search_space,
             record.datasets,
             record.models,
-            acquisition_rule=acquisition_rule,  # type: ignore
+            acquisition_rule=acquisition_rule,
             acquisition_state=record.acquisition_state,
             fit_model=False,
         )
