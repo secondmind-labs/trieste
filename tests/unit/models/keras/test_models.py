@@ -198,6 +198,31 @@ def test_deep_ensemble_is_compiled() -> None:
     assert model.model.optimizer is not None
 
 
+def test_deep_ensemble_compile_args_specified() -> None:
+    mock_ensemble = unittest.mock.MagicMock(spec=KerasEnsemble)
+    mock_ensemble.ensemble_size = _ENSEMBLE_SIZE
+    DeepEnsemble(mock_ensemble, compile_args={"jit_compile": True, "steps_per_execution": 3})
+    # Check that the compile_args are passed through to the model.compile call
+    mock_ensemble.model.compile.assert_called_once_with(
+        optimizer=unittest.mock.ANY,
+        loss=unittest.mock.ANY,
+        metrics=unittest.mock.ANY,
+        jit_compile=True,
+        steps_per_execution=3,
+    )
+
+
+def test_deep_ensemble_disallowed_compile_args_specified() -> None:
+    mock_ensemble = unittest.mock.MagicMock(spec=KerasEnsemble)
+    mock_ensemble.ensemble_size = _ENSEMBLE_SIZE
+    with pytest.raises(ValueError):
+        DeepEnsemble(mock_ensemble, compile_args={"optimizer": unittest.mock.MagicMock()})
+    with pytest.raises(ValueError):
+        DeepEnsemble(mock_ensemble, compile_args={"loss": unittest.mock.MagicMock()})
+    with pytest.raises(ValueError):
+        DeepEnsemble(mock_ensemble, compile_args={"metrics": unittest.mock.MagicMock()})
+
+
 def test_deep_ensemble_resets_lr_with_lr_schedule() -> None:
     example_data = _get_example_data([100, 1])
 
