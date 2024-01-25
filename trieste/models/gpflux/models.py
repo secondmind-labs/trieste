@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Mapping, Optional
 
 import dill
 import gpflow
@@ -64,6 +64,7 @@ class DeepGaussianProcess(
         optimizer: KerasOptimizer | None = None,
         num_rff_features: int = 1000,
         continuous_optimisation: bool = True,
+        compile_args: Optional[Mapping[str, Any]] = None,
     ):
         """
         :param model: The underlying GPflux deep Gaussian process model. Passing in a named closure
@@ -82,9 +83,23 @@ class DeepGaussianProcess(
         :param continuous_optimisation: if True (default), the optimizer will keep track of the
             number of epochs across BO iterations and use this number as initial_epoch. This is
             essential to allow monitoring of model training across BO iterations.
+        :param compile_args: Keyword arguments to pass to the ``compile`` method of the
+            Keras model (:class:`~tf.keras.Model`).
+            See https://keras.io/api/models/model_training_apis/#compile-method for a
+            list of possible arguments. The ``optimizer`` and ``metrics`` arguments
+            must not be included.
         :raise ValueError: If ``model`` has unsupported layers, ``num_rff_features`` is less than 0,
-            or if the ``optimizer`` is not of a supported type.
+            if the ``optimizer`` is not of a supported type, or `compile_args` contains
+            disallowed arguments.
         """
+        if compile_args is None:
+            compile_args = {}
+
+        if "optimizer" in compile_args or "metrics" in compile_args:
+            raise ValueError(
+                "optimizer and metrics arguments must not be included in compile_args."
+            )
+
         if isinstance(model, DeepGP):
             self._model_closure = None
         else:
@@ -152,7 +167,9 @@ class DeepGaussianProcess(
             dtype=tf.float64,
         )
         self._model_keras = model.as_training_model()
-        self._model_keras.compile(self.optimizer.optimizer, metrics=self.optimizer.metrics)
+        self._model_keras.compile(
+            optimizer=self.optimizer.optimizer, metrics=self.optimizer.metrics, **compile_args
+        )
         self._absolute_epochs = 0
         self._continuous_optimisation = continuous_optimisation
 

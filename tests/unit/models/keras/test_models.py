@@ -199,17 +199,15 @@ def test_deep_ensemble_is_compiled() -> None:
 
 
 def test_deep_ensemble_compile_args_specified() -> None:
-    mock_ensemble = unittest.mock.MagicMock(spec=KerasEnsemble)
-    mock_ensemble.ensemble_size = _ENSEMBLE_SIZE
-    DeepEnsemble(mock_ensemble, compile_args={"jit_compile": True, "steps_per_execution": 3})
-    # Check that the compile_args are passed through to the model.compile call
-    mock_ensemble.model.compile.assert_called_once_with(
-        optimizer=unittest.mock.ANY,
-        loss=unittest.mock.ANY,
-        metrics=unittest.mock.ANY,
-        jit_compile=True,
-        steps_per_execution=3,
-    )
+    example_data = empty_dataset([1], [1])
+    # If we get this error we know that the compile_args are being passed to the model
+    # because Keras will throw an error if it receives both of these arguments.
+    with pytest.raises(
+        ValueError, match="You cannot enable `run_eagerly` and `jit_compile` at the same time."
+    ):
+        model, _, _ = trieste_deep_ensemble_model(
+            example_data, _ENSEMBLE_SIZE, compile_args={"run_eagerly": True, "jit_compile": True}
+        )
 
 
 def test_deep_ensemble_disallowed_compile_args_specified() -> None:
