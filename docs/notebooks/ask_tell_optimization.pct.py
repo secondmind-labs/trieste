@@ -151,7 +151,7 @@ for step in range(n_steps):
     new_config = ask_tell.ask()
 
     print("Saving Trieste state to re-use later")
-    state: Record[None] = ask_tell.to_record()
+    state: Record[None, GaussianProcessRegression] = ask_tell.to_record()
     saved_state = pickle.dumps(state)
 
     print(f"In the lab running the experiment #{step}.")

@@ -238,7 +238,7 @@ fig.show()
 
 # %%
 fig, ax = plot_gp_2d(
-    result.models[FAILURE].model,  # type: ignore
+    result.models[FAILURE].model,
     search_space.lower,
     search_space.upper,
     grid_density=20,

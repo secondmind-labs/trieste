@@ -74,7 +74,7 @@ class _Whoops(Exception):
 
 
 def test_optimization_result_astuple() -> None:
-    opt_result: OptimizationResult[None] = OptimizationResult(
+    opt_result: OptimizationResult[None, TrainableProbabilisticModel] = OptimizationResult(
         Err(_Whoops()), [Record({}, {}, None)]
     )
     final_result, history = opt_result.astuple()
@@ -84,7 +84,7 @@ def test_optimization_result_astuple() -> None:
 
 def test_optimization_result_try_get_final_datasets_for_successful_optimization() -> None:
     data = {FOO: empty_dataset([1], [1])}
-    result: OptimizationResult[None] = OptimizationResult(
+    result: OptimizationResult[None, TrainableProbabilisticModel] = OptimizationResult(
         Ok(Record(data, {FOO: _PseudoTrainableQuadratic()}, None)), []
     )
     assert result.try_get_final_datasets() is data
@@ -93,7 +93,7 @@ def test_optimization_result_try_get_final_datasets_for_successful_optimization(
 
 def test_optimization_result_status_for_successful_optimization() -> None:
     data = {FOO: empty_dataset([1], [1])}
-    result: OptimizationResult[None] = OptimizationResult(
+    result: OptimizationResult[None, TrainableProbabilisticModel] = OptimizationResult(
         Ok(Record(data, {FOO: _PseudoTrainableQuadratic()}, None)), []
     )
     assert result.is_ok
@@ -103,27 +103,29 @@ def test_optimization_result_status_for_successful_optimization() -> None:
 def test_optimization_result_try_get_final_datasets_for_multiple_datasets() -> None:
     data = {FOO: empty_dataset([1], [1]), BAR: empty_dataset([2], [2])}
     models = {FOO: _PseudoTrainableQuadratic(), BAR: _PseudoTrainableQuadratic()}
-    result: OptimizationResult[None] = OptimizationResult(Ok(Record(data, models, None)), [])
+    result: OptimizationResult[None, TrainableProbabilisticModel] = OptimizationResult(
+        Ok(Record(data, models, None)), []
+    )
     assert result.try_get_final_datasets() is data
     with pytest.raises(ValueError):
         result.try_get_final_dataset()
 
 
 def test_optimization_result_try_get_final_datasets_for_failed_optimization() -> None:
-    result: OptimizationResult[object] = OptimizationResult(Err(_Whoops()), [])
+    result: OptimizationResult[object, ProbabilisticModel] = OptimizationResult(Err(_Whoops()), [])
     with pytest.raises(_Whoops):
         result.try_get_final_datasets()
 
 
 def test_optimization_result_status_for_failed_optimization() -> None:
-    result: OptimizationResult[object] = OptimizationResult(Err(_Whoops()), [])
+    result: OptimizationResult[object, ProbabilisticModel] = OptimizationResult(Err(_Whoops()), [])
     assert result.is_err
     assert not result.is_ok
 
 
 def test_optimization_result_try_get_final_models_for_successful_optimization() -> None:
     models = {FOO: _PseudoTrainableQuadratic()}
-    result: OptimizationResult[None] = OptimizationResult(
+    result: OptimizationResult[None, TrainableProbabilisticModel] = OptimizationResult(
         Ok(Record({FOO: empty_dataset([1], [1])}, models, None)), []
     )
     assert result.try_get_final_models() is models
@@ -133,21 +135,23 @@ def test_optimization_result_try_get_final_models_for_successful_optimization() 
 def test_optimization_result_try_get_final_models_for_multiple_models() -> None:
     data = {FOO: empty_dataset([1], [1]), BAR: empty_dataset([2], [2])}
     models = {FOO: _PseudoTrainableQuadratic(), BAR: _PseudoTrainableQuadratic()}
-    result: OptimizationResult[None] = OptimizationResult(Ok(Record(data, models, None)), [])
+    result: OptimizationResult[None, TrainableProbabilisticModel] = OptimizationResult(
+        Ok(Record(data, models, None)), []
+    )
     assert result.try_get_final_models() is models
     with pytest.raises(ValueError):
         result.try_get_final_model()
 
 
 def test_optimization_result_try_get_final_models_for_failed_optimization() -> None:
-    result: OptimizationResult[object] = OptimizationResult(Err(_Whoops()), [])
+    result: OptimizationResult[object, ProbabilisticModel] = OptimizationResult(Err(_Whoops()), [])
     with pytest.raises(_Whoops):
         result.try_get_final_models()
 
 
 def test_optimization_result_try_get_optimal_point_for_successful_optimization() -> None:
     data = {FOO: mk_dataset([[0.25, 0.25], [0.5, 0.4]], [[0.8], [0.7]])}
-    result: OptimizationResult[None] = OptimizationResult(
+    result: OptimizationResult[None, TrainableProbabilisticModel] = OptimizationResult(
         Ok(Record(data, {FOO: _PseudoTrainableQuadratic()}, None)), []
     )
     x, y, idx = result.try_get_optimal_point()
@@ -158,7 +162,7 @@ def test_optimization_result_try_get_optimal_point_for_successful_optimization()
 
 def test_optimization_result_try_get_optimal_point_for_multiple_objectives() -> None:
     data = {FOO: mk_dataset([[0.25], [0.5]], [[0.8, 0.5], [0.7, 0.4]])}
-    result: OptimizationResult[None] = OptimizationResult(
+    result: OptimizationResult[None, TrainableProbabilisticModel] = OptimizationResult(
         Ok(Record(data, {FOO: _PseudoTrainableQuadratic()}, None)), []
     )
     with pytest.raises(ValueError):
@@ -166,19 +170,21 @@ def test_optimization_result_try_get_optimal_point_for_multiple_objectives() -> 
 
 
 def test_optimization_result_try_get_optimal_point_for_failed_optimization() -> None:
-    result: OptimizationResult[object] = OptimizationResult(Err(_Whoops()), [])
+    result: OptimizationResult[object, ProbabilisticModel] = OptimizationResult(Err(_Whoops()), [])
     with pytest.raises(_Whoops):
         result.try_get_optimal_point()
 
 
 def test_optimization_result_from_path() -> None:
     with tempfile.TemporaryDirectory() as tmpdirname:
-        opt_result: OptimizationResult[None] = OptimizationResult(
+        opt_result: OptimizationResult[None, TrainableProbabilisticModel] = OptimizationResult(
             Err(_Whoops()), [Record({}, {}, None)] * 10
         )
         opt_result.save(tmpdirname)
 
-        result, history = OptimizationResult[None].from_path(tmpdirname).astuple()
+        result, history = (
+            OptimizationResult[None, TrainableProbabilisticModel].from_path(tmpdirname).astuple()
+        )
         assert result.is_err
         with pytest.raises(_Whoops):
             result.unwrap()
@@ -193,14 +199,16 @@ def test_optimization_result_from_path() -> None:
 
 def test_optimization_result_from_path_partial_result() -> None:
     with tempfile.TemporaryDirectory() as tmpdirname:
-        opt_result: OptimizationResult[None] = OptimizationResult(
+        opt_result: OptimizationResult[None, TrainableProbabilisticModel] = OptimizationResult(
             Err(_Whoops()), [Record({}, {}, None)] * 10
         )
         opt_result.save(tmpdirname)
         (Path(tmpdirname) / OptimizationResult.RESULTS_FILENAME).unlink()
         (Path(tmpdirname) / OptimizationResult.step_filename(9, 10)).unlink()
 
-        result, history = OptimizationResult[None].from_path(tmpdirname).astuple()
+        result, history = (
+            OptimizationResult[None, TrainableProbabilisticModel].from_path(tmpdirname).astuple()
+        )
         assert result.is_err
         with pytest.raises(FileNotFoundError):
             result.unwrap()
@@ -322,7 +330,9 @@ def test_bayesian_optimizer_continue_optimization_raises_for_empty_result() -> N
     search_space = Box([-1], [1])
     optimizer = BayesianOptimizer(lambda x: {FOO: Dataset(x, x)}, search_space)
     rule = FixedAcquisitionRule([[0.0]])
-    opt_result: OptimizationResult[None] = OptimizationResult(Err(_Whoops()), [])
+    opt_result: OptimizationResult[None, TrainableProbabilisticModel] = OptimizationResult(
+        Err(_Whoops()), []
+    )
     with pytest.raises(ValueError):
         optimizer.continue_optimization(10, opt_result, rule)
 
