@@ -353,11 +353,11 @@ def test_bayesian_optimizer_optimizes_initial_model(fit_model: str) -> None:
     final_model = final_opt_state.unwrap().model
 
     if fit_model == "all":  # optimized at start and end of first BO step
-        assert final_model._optimize_count == 2  # type: ignore
+        assert final_model._optimize_count == 2
     elif fit_model == "all_but_init":  # optimized just at end of first BO step
-        assert final_model._optimize_count == 1  # type: ignore
+        assert final_model._optimize_count == 1
     else:  # never optimized
-        assert final_model._optimize_count == 0  # type: ignore
+        assert final_model._optimize_count == 0
 
 
 @pytest.mark.parametrize(

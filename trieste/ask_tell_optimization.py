@@ -338,7 +338,8 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
     @classmethod
     def from_record(
         cls: Type[AskTellOptimizerType],
-        record: Record[StateType] | FrozenRecord[StateType],
+        record: Record[StateType, ProbabilisticModelType]
+        | FrozenRecord[StateType, ProbabilisticModelType],
         search_space: SearchSpaceType,
         acquisition_rule: AcquisitionRule[
             TensorType | State[StateType | None, TensorType],
@@ -367,13 +368,13 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         return cls(
             search_space,
             record.datasets,
-            cast(Mapping[Tag, ProbabilisticModelType], record.models),
+            record.models,
             acquisition_rule=acquisition_rule,  # type: ignore
             acquisition_state=record.acquisition_state,
             fit_model=False,
         )
 
-    def to_record(self, copy: bool = True) -> Record[StateType]:
+    def to_record(self, copy: bool = True) -> Record[StateType, ProbabilisticModelType]:
         """Collects the current state of the optimization, which includes datasets,
         models and acquisition state (if applicable).
 
@@ -397,7 +398,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
 
         return Record(datasets=datasets_copy, models=models_copy, acquisition_state=state_copy)
 
-    def to_result(self, copy: bool = True) -> OptimizationResult[StateType]:
+    def to_result(self, copy: bool = True) -> OptimizationResult[StateType, ProbabilisticModelType]:
         """Converts current state of the optimization
         into a :class:`~trieste.data.OptimizationResult` object.
 
@@ -406,7 +407,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
             modify the original state.
         :return: A :class:`~trieste.data.OptimizationResult` object.
         """
-        record: Record[StateType] = self.to_record(copy=copy)
+        record: Record[StateType, ProbabilisticModelType] = self.to_record(copy=copy)
         return OptimizationResult(Ok(record), [])
 
     def ask(self) -> TensorType:
