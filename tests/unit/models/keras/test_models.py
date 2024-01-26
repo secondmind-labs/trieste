@@ -214,11 +214,18 @@ def test_deep_ensemble_disallowed_compile_args_specified() -> None:
     mock_ensemble = unittest.mock.MagicMock(spec=KerasEnsemble)
     mock_ensemble.ensemble_size = _ENSEMBLE_SIZE
     with pytest.raises(ValueError):
-        DeepEnsemble(mock_ensemble, compile_args={"optimizer": unittest.mock.MagicMock()})
+        DeepEnsemble(
+            mock_ensemble,
+            compile_args={"run_eagerly": True, "optimizer": unittest.mock.MagicMock()},
+        )
     with pytest.raises(ValueError):
-        DeepEnsemble(mock_ensemble, compile_args={"loss": unittest.mock.MagicMock()})
+        DeepEnsemble(
+            mock_ensemble, compile_args={"run_eagerly": True, "loss": unittest.mock.MagicMock()}
+        )
     with pytest.raises(ValueError):
-        DeepEnsemble(mock_ensemble, compile_args={"metrics": unittest.mock.MagicMock()})
+        DeepEnsemble(
+            mock_ensemble, compile_args={"run_eagerly": True, "metrics": unittest.mock.MagicMock()}
+        )
 
 
 def test_deep_ensemble_resets_lr_with_lr_schedule() -> None:

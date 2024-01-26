@@ -95,7 +95,7 @@ class DeepGaussianProcess(
         if compile_args is None:
             compile_args = {}
 
-        if "optimizer" in compile_args or "metrics" in compile_args:
+        if not {"optimizer", "metrics"}.isdisjoint(compile_args):
             raise ValueError(
                 "optimizer and metrics arguments must not be included in compile_args."
             )
