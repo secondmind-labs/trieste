@@ -194,24 +194,43 @@ def get_unique_points_mask(points: TensorType, tolerance: float = 1e-6) -> Tenso
         mask = get_unique_points_mask(points, tolerance)
         unique_points = tf.boolean_mask(points, mask)
 
+    Note: this uses a greedy parallel set covering algorithm, so isn't guaranteed to find the
+    smallest possible set of unique points: e.g. for the points [[1],[2],[3]] with tolerance 1,
+    it returns [True, False True] rather than [False, True, False].
+
     :param points: A tensor of points, with the first dimension being the number of points.
-    :param tolerance: The tolerance within which points are considered equal.
+    :param tolerance: The tolerance up to which points are considered equal.
     :return: A boolean mask for the unique points.
     """
 
-    tolerance = tf.constant(tolerance, dtype=points.dtype)
-    n_points = tf.shape(points)[0]
-    mask = tf.zeros(shape=(n_points,), dtype=tf.bool)
+    # Calculate the pairwise "equality" between points
+    pairwise_distances = tf.math.reduce_euclidean_norm(
+        tf.expand_dims(points, 1) - tf.expand_dims(points, 0), axis=-1
+    )
+    pairwise_equal = pairwise_distances <= tolerance
 
-    for idx in tf.range(n_points):
-        # Pairwise distance with previous unique points.
-        used_points = tf.boolean_mask(points, mask)
-        distances = tf.norm(points[idx] - used_points, axis=-1)
-        # Find if there is any point within the tolerance.
-        min_distance = tf.reduce_min(distances)
+    # Replace the upper triangle with False. That way, any row that is all False
+    # is not equal to any point before it, so can be safely included in the output.
+    upper_triangle = tf.linalg.band_part(tf.ones_like(pairwise_equal), 0, -1)
+    triangle_equal = tf.logical_and(pairwise_equal, ~upper_triangle)
 
-        # Update mask.
-        is_unique_point = min_distance >= tolerance
-        mask = tf.tensor_scatter_nd_update(mask, [[idx]], [is_unique_point])
+    # The converse is not true, however: a row that is not all False might still need
+    # to be included if the only Trues in it correspond to other points that weren't selected.
+    # For example, [1,2,3,4] with tolerance 1 should select not just 1 but also 3, because
+    # even though 3 is equal to 2, it isn't equal to 1. We therefore keep track of which points
+    # remain candidates for uniqueness, and repeat the triangle-based calculation with
+    # those until there are no candidates left.
+    candidate_mask = tf.ones(shape=tf.shape(points)[:1], dtype=tf.bool)
+    unique_mask = tf.zeros(shape=tf.shape(points)[:1], dtype=tf.bool)
+    while tf.reduce_any(candidate_mask):
+        new_points = ~tf.reduce_any(triangle_equal, axis=1)
+        unique_mask = tf.logical_or(unique_mask, new_points)
+        equal_to_new_points = tf.reduce_any(pairwise_equal[new_points], axis=0)
+        candidate_mask = tf.logical_and(candidate_mask, ~equal_to_new_points)
+        # update triangle_equal to ignore non-candidate points
+        triangle_equal = tf.where(candidate_mask, triangle_equal, tf.zeros_like(triangle_equal))
+        triangle_equal = tf.where(
+            tf.expand_dims(candidate_mask, 1), triangle_equal, tf.ones_like(triangle_equal)
+        )
 
-    return mask
+    return unique_mask
