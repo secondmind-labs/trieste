@@ -124,7 +124,7 @@ class DeepEnsemble(
         if compile_args is None:
             compile_args = {}
 
-        if "optimizer" in compile_args or "loss" in compile_args or "metrics" in compile_args:
+        if not {"optimizer", "loss", "metrics"}.isdisjoint(compile_args):
             raise ValueError(
                 "optimizer, loss and metrics arguments must not be included in compile_args."
             )

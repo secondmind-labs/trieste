@@ -569,6 +569,6 @@ def test_deepgp_compile_args_specified() -> None:
 def test_deepgp_disallowed_compile_args_specified() -> None:
     mock_model = unittest.mock.MagicMock(spec=DeepGP)
     with pytest.raises(ValueError):
-        DeepGaussianProcess(mock_model, compile_args={"optimizer": unittest.mock.MagicMock()})
+        DeepGaussianProcess(mock_model, compile_args={"run_eagerly": True, "optimizer": unittest.mock.MagicMock()})
     with pytest.raises(ValueError):
         DeepGaussianProcess(mock_model, compile_args={"metrics": unittest.mock.MagicMock()})
