@@ -1417,6 +1417,10 @@ class MultifidelityAutoregressive(
     def num_fidelities(self) -> int:
         return self._num_fidelities
 
+    @property
+    def event_shape(self) -> TensorType:
+        return self.lowest_fidelity_signal_model.event_shape
+
     @inherit_check_shapes
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """

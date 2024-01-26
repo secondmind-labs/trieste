@@ -287,6 +287,10 @@ class DeepGaussianProcess(
     def model_keras(self) -> tf.keras.Model:
         return self._model_keras
 
+    @property
+    def event_shape(self) -> TensorType:
+        raise NotImplementedError  # TODO: ???
+
     @inherit_check_shapes
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         trajectory = self.trajectory_sampler().get_trajectory()

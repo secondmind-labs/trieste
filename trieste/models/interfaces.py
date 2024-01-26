@@ -45,6 +45,13 @@ class ProbabilisticModel(Protocol):
     https://github.com/python/typing/issues/213 is implemented.
     """
 
+    @property
+    @abstractmethod
+    def event_shape(self) -> TensorType:
+        """
+        The event shape of the model's predictive distribution.
+        """
+
     @abstractmethod
     @check_shapes(
         "query_points: [batch..., D]",
@@ -366,6 +373,11 @@ class ModelStack(ProbabilisticModel, Generic[ProbabilisticModelType]):
 
     # NB we don't use @inherit_shapes below as some classes break the shape API (👀 fantasizer)
     # instead we rely on the shape checking inside the submodels
+
+    @property
+    def event_shape(self) -> TensorType:
+        shapes = [model.event_shape for model in self._models]
+        return tf.concat([shapes[0][:-1], [sum(shape[-1] for shape in shapes)]], axis=0)
 
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         r"""
