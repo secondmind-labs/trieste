@@ -317,7 +317,7 @@ class AskTellOptimizer(Generic[SearchSpaceType, TrainableProbabilisticModelType]
         """Update the current model, using the OBJECTIVE tag."""
         if len(self.models) != 1:
             raise ValueError(f"Expected a single model, found {len(self.models)}")
-        elif self.models.keys() != {OBJECTIVE}:
+        if self.models.keys() != {OBJECTIVE}:
             raise ValueError(
                 f"Expected a single model tagged OBJECTIVE, found {self.models.keys()}. "
                 "To update this, pass in a dictionary to the models property instead."

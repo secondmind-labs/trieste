@@ -211,7 +211,7 @@ try:
                 f"Process {pid}: Main     : received data {new_data}",
                 flush=True,
             )
-        except:
+        except Exception:
             continue
 
         # new_data is a tuple of (point, observation value)

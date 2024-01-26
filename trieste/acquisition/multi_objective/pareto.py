@@ -111,9 +111,9 @@ class Pareto:
                 f" got {bounds_delta_scale_factor}"
             )
         if bounds_delta_scale_factor < 0:
-            raise ValueError("bounds_delta_min should be non-negative," f" got {bounds_min_delta}")
+            raise ValueError("bounds_delta_min should be non-negative, got {bounds_min_delta}")
 
-        front_size, front_dims = self.front.shape
+        front_size, _ = self.front.shape
 
         if (front_size < sample_size) and allow_repeats is False:
             raise ValueError(
@@ -169,7 +169,7 @@ class Pareto:
                 n_times_sampled[idx] += 1
 
         # Create a list of the sample indices
-        sample_ids = list()
+        sample_ids = []
         for idx, repeats in enumerate(n_times_sampled):
             for _ in range(int(repeats)):
                 sample_ids.append(idx)

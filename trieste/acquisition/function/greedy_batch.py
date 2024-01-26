@@ -397,8 +397,6 @@ class FantasizerModelType(
 ):
     """The model requirements for the Fantasizer acquisition function."""
 
-    pass
-
 
 class FantasizerModelStack(
     PredictJointModelStack, PredictYModelStack, ModelStack[FantasizerModelType]
@@ -407,8 +405,6 @@ class FantasizerModelStack(
     A stack of models :class:`FantasizerModelType` models. Note that this delegates predict_joint
     and predict_y but none of the other methods.
     """
-
-    pass
 
 
 FantasizerModelOrStack = Union[FantasizerModelType, FantasizerModelStack]
@@ -555,7 +551,7 @@ class Fantasizer(GreedyAcquisitionFunctionBuilder[FantasizerModelOrStack]):
                 raise NotImplementedError(
                     f"Fantasizer only works with FastUpdateModel models that also support "
                     f"predict_joint, get_kernel and get_observation_noise, or with "
-                    f"ModelStack stacks of such models; received {model.__repr__()}"
+                    f"ModelStack stacks of such models; received {model!r}"
                 )
         if pending_points is None:
             return self._update_base_acquisition_function(models, datasets)
@@ -606,9 +602,7 @@ def _generate_fantasized_data(
     elif fantasize_method == "sample":
         fantasized_obs = model.sample(pending_points, num_samples=1)[0]
     else:
-        raise NotImplementedError(
-            f"fantasize_method must be KB or sample, " f"received {model.__repr__()}"
-        )
+        raise NotImplementedError(f"fantasize_method must be KB or sample, received {model!r}")
 
     return Dataset(pending_points, fantasized_obs)
 

@@ -1358,7 +1358,7 @@ class VariationalGaussianProcess(
             (L being the number of latent GPs = number of output dimensions)
         """
 
-        inducing_points, _, q_sqrt, whiten = self.get_inducing_variables()
+        _, _, q_sqrt, whiten = self.get_inducing_variables()
 
         return _covariance_between_points_for_variational_models(
             kernel=self.get_kernel(),

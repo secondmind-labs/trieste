@@ -358,7 +358,7 @@ def plot_mobo_points_in_obj_space(
     """
     obj_num = obs_values.shape[-1]
     tf.debugging.assert_shapes([])
-    assert obj_num == 2 or obj_num == 3, NotImplementedError(
+    assert obj_num in (2, 3), NotImplementedError(
         f"Only support 2/3-objective functions but found: {obj_num}"
     )
 

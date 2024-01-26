@@ -405,7 +405,7 @@ def test_integrated_variance_reduction_builder_updates_without_retracing() -> No
     ],
 )
 def test_bayesian_active_learning_by_disagreement_is_correct(at: tf.Tensor) -> None:
-    """ "
+    """
     We perform an MC check as in Section 5 of Houlsby 2011 paper. We check only the
     2nd, more complicated term.
     """
