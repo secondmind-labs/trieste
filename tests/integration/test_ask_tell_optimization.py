@@ -207,7 +207,8 @@ def _test_ask_tell_optimization_finds_minima(
 
                 if reload_state:
                     state: Record[
-                        None | State[TensorType, AsynchronousRuleState | BatchTrustRegionBox.State]
+                        None | State[TensorType, AsynchronousRuleState | BatchTrustRegionBox.State],
+                        GaussianProcessRegression,
                     ] = ask_tell.to_record()
                     written_state = pickle.dumps(state)
 
@@ -228,7 +229,8 @@ def _test_ask_tell_optimization_finds_minima(
                 ask_tell.tell(new_data_point)
 
     result: OptimizationResult[
-        None | State[TensorType, AsynchronousRuleState | BatchTrustRegionBox.State]
+        None | State[TensorType, AsynchronousRuleState | BatchTrustRegionBox.State],
+        GaussianProcessRegression,
     ] = ask_tell.to_result()
     dataset = result.try_get_final_dataset()
 

@@ -33,6 +33,7 @@ from matplotlib.patches import Rectangle
 from trieste.acquisition import AcquisitionFunction
 from trieste.acquisition.multi_objective.dominance import non_dominated
 from trieste.bayesian_optimizer import FrozenRecord, Record, StateType
+from trieste.models import ProbabilisticModel
 from trieste.observer import OBJECTIVE
 from trieste.space import TaggedMultiSearchSpace
 from trieste.types import TensorType
@@ -551,7 +552,7 @@ def plot_trust_region_history_2d(
     obj_func: Callable[[TensorType], TensorType],
     mins: TensorType,
     maxs: TensorType,
-    history: Record[StateType] | FrozenRecord[StateType],
+    history: Record[StateType, ProbabilisticModel] | FrozenRecord[StateType, ProbabilisticModel],
     num_query_points: Optional[int] = None,
     num_init: Optional[int] = None,
 ) -> tuple[Optional[Figure], Optional[Axes]]:

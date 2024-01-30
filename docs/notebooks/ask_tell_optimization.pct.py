@@ -12,7 +12,10 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 import gpflow
 
-from trieste.ask_tell_optimization import AskTellOptimizer
+from trieste.ask_tell_optimization import (
+    AskTellOptimizer,
+    AskTellOptimizerNoTraining,
+)
 from trieste.bayesian_optimizer import Record
 from trieste.data import Dataset
 from trieste.models.gpflow.models import GaussianProcessRegression
@@ -96,7 +99,7 @@ plot_ask_tell_regret(ask_tell.to_result())
 # %% [markdown]
 # ## Model selection: using only Ask part
 #
-# We now turn to a slightly more complex use case. Let's suppose we want to switch between two models depending on some criteria dynamically during the optimization loop, e.g. we want to be able to train a model outside of Trieste. In this case we can only use Ask part of the Ask-Tell interface.
+# We now turn to a slightly more complex use case. Let's suppose we want to switch between two models depending on some criteria dynamically during the optimization loop, e.g. we want to be able to train a model outside of Trieste. In this case we can only use Ask part of the Ask-Tell interface. For this it is recommended to use the `AskTellOptimizerNoTraining` class, which performs no training during the Tell stage and can therefore be used with any probabilistic model, including ones which aren't trainable.
 
 # %%
 model1 = build_model(
@@ -118,8 +121,8 @@ for step in range(n_steps):
         model = model2
 
     print("Asking for new point to observe")
-    ask_tell = AskTellOptimizer(search_space, dataset, model)
-    new_point = ask_tell.ask()
+    ask_only = AskTellOptimizerNoTraining(search_space, dataset, model)
+    new_point = ask_only.ask()
 
     new_data_point = observer(new_point)
     dataset = dataset + new_data_point
@@ -131,7 +134,7 @@ for step in range(n_steps):
     model2.update(dataset)
     model2.optimize(dataset)
 
-plot_ask_tell_regret(ask_tell.to_result())
+plot_ask_tell_regret(ask_only.to_result())
 
 
 # %% [markdown]
@@ -151,7 +154,7 @@ for step in range(n_steps):
     new_config = ask_tell.ask()
 
     print("Saving Trieste state to re-use later")
-    state: Record[None] = ask_tell.to_record()
+    state: Record[None, GaussianProcessRegression] = ask_tell.to_record()
     saved_state = pickle.dumps(state)
 
     print(f"In the lab running the experiment #{step}.")
