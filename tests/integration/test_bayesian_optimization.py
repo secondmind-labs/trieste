@@ -701,9 +701,9 @@ def _test_optimizer_finds_minimum(
             # check history saved ok
             assert len(result.history) <= (num_steps or 2)
             assert len(result.loaded_history) == len(result.history)
-            loaded_result: OptimizationResult[None] = OptimizationResult.from_path(
-                Path(tmpdirname) / "history"
-            )
+            loaded_result: OptimizationResult[
+                None, TrainableProbabilisticModel
+            ] = OptimizationResult.from_path(Path(tmpdirname) / "history")
             assert loaded_result.final_result.is_ok
             assert len(loaded_result.history) == len(result.history)
 
