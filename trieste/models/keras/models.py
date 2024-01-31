@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Mapping, Optional
 
 import dill
 import keras.callbacks
@@ -85,6 +85,7 @@ class DeepEnsemble(
         bootstrap: bool = False,
         diversify: bool = False,
         continuous_optimisation: bool = True,
+        compile_args: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """
         :param model: A Keras ensemble model with probabilistic networks as ensemble members. The
@@ -106,14 +107,27 @@ class DeepEnsemble(
         :param continuous_optimisation: If True (default), the optimizer will keep track of the
             number of epochs across BO iterations and use this number as initial_epoch. This is
             essential to allow monitoring of model training across BO iterations.
+        :param compile_args: Keyword arguments to pass to the ``compile`` method of the
+            Keras model (:class:`~tf.keras.Model`).
+            See https://keras.io/api/models/model_training_apis/#compile-method for a
+            list of possible arguments. The ``optimizer``, ``loss`` and ``metrics`` arguments
+            must not be included.
         :raise ValueError: If ``model`` is not an instance of
-            :class:`~trieste.models.keras.KerasEnsemble` or ensemble has less than two base
-            learners (networks).
+            :class:`~trieste.models.keras.KerasEnsemble`, or ensemble has less than two base
+            learners (networks), or `compile_args` contains disallowed arguments.
         """
         if model.ensemble_size < 2:
             raise ValueError(f"Ensemble size must be greater than 1 but got {model.ensemble_size}.")
 
         super().__init__(optimizer)
+
+        if compile_args is None:
+            compile_args = {}
+
+        if not {"optimizer", "loss", "metrics"}.isdisjoint(compile_args):
+            raise ValueError(
+                "optimizer, loss and metrics arguments must not be included in compile_args."
+            )
 
         if not self.optimizer.fit_args:
             self.optimizer.fit_args = {
@@ -134,9 +148,10 @@ class DeepEnsemble(
             self.optimizer.metrics = ["mse"]
 
         model.model.compile(
-            self.optimizer.optimizer,
+            optimizer=self.optimizer.optimizer,
             loss=[self.optimizer.loss] * model.ensemble_size,
             metrics=[self.optimizer.metrics] * model.ensemble_size,
+            **compile_args,
         )
 
         if not isinstance(
