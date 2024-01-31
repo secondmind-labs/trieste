@@ -553,3 +553,26 @@ def test_deepgp_log(
 
     assert mocked_summary_scalar.call_count == num_scalars
     assert mocked_summary_histogram.call_count == num_histogram
+
+
+def test_deepgp_compile_args_specified() -> None:
+    x_observed = np.linspace(0, 10, 10).reshape((-1, 1))
+    model = single_layer_dgp_model(x_observed)
+    # If we get this error we know that the compile_args are being passed to the model
+    # because Keras will throw an error if it receives both of these arguments.
+    with pytest.raises(
+        ValueError, match="You cannot enable `run_eagerly` and `jit_compile` at the same time."
+    ):
+        DeepGaussianProcess(model, compile_args={"jit_compile": True, "run_eagerly": True})
+
+
+def test_deepgp_disallowed_compile_args_specified() -> None:
+    mock_model = unittest.mock.MagicMock(spec=DeepGP)
+    with pytest.raises(ValueError):
+        DeepGaussianProcess(
+            mock_model, compile_args={"run_eagerly": True, "optimizer": unittest.mock.MagicMock()}
+        )
+    with pytest.raises(ValueError):
+        DeepGaussianProcess(
+            mock_model, compile_args={"run_eagerly": True, "metrics": unittest.mock.MagicMock()}
+        )
