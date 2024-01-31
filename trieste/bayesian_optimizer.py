@@ -61,7 +61,11 @@ from .acquisition.rule import (
 )
 from .acquisition.utils import with_local_datasets
 from .data import Dataset
-from .models import SupportsCovarianceWithTopFidelity, TrainableProbabilisticModel
+from .models import (
+    ProbabilisticModel,
+    SupportsCovarianceWithTopFidelity,
+    TrainableProbabilisticModel,
+)
 from .objectives.utils import mk_batch_observer
 from .observer import OBJECTIVE, Observer
 from .space import SearchSpace
@@ -74,6 +78,13 @@ StateType = TypeVar("StateType")
 
 SearchSpaceType = TypeVar("SearchSpaceType", bound=SearchSpace)
 """ Type variable bound to :class:`SearchSpace`. """
+
+ProbabilisticModelType = TypeVar(
+    "ProbabilisticModelType",
+    bound=ProbabilisticModel,
+    covariant=True,
+)
+""" Covariant type variable bound to :class:`ProbabilisticModel`. """
 
 TrainableProbabilisticModelType = TypeVar(
     "TrainableProbabilisticModelType", bound=TrainableProbabilisticModel, contravariant=True
@@ -88,13 +99,13 @@ EarlyStopCallback = Callable[
 
 
 @dataclass(frozen=True)
-class Record(Generic[StateType]):
+class Record(Generic[StateType, ProbabilisticModelType]):
     """Container to record the state of each step of the optimization process."""
 
     datasets: Mapping[Tag, Dataset]
     """ The known data from the observer. """
 
-    models: Mapping[Tag, TrainableProbabilisticModel]
+    models: Mapping[Tag, ProbabilisticModelType]
     """ The models over the :attr:`datasets`. """
 
     acquisition_state: StateType | None
@@ -111,16 +122,16 @@ class Record(Generic[StateType]):
             raise ValueError(f"Expected a single dataset, found {len(datasets)}")
 
     @property
-    def model(self) -> TrainableProbabilisticModel:
+    def model(self) -> ProbabilisticModelType:
         """The model when there is just one dataset."""
         # Ignore local models.
-        models: Mapping[Tag, TrainableProbabilisticModel] = ignoring_local_tags(self.models)
+        models: Mapping[Tag, ProbabilisticModelType] = ignoring_local_tags(self.models)
         if len(models) == 1:
             return next(iter(models.values()))
         else:
             raise ValueError(f"Expected a single model, found {len(models)}")
 
-    def save(self, path: Path | str) -> FrozenRecord[StateType]:
+    def save(self, path: Path | str) -> FrozenRecord[StateType, ProbabilisticModelType]:
         """Save the record to disk. Will overwrite any existing file at the same path."""
         Path(path).parent.mkdir(exist_ok=True, parents=True)
         with open(path, "wb") as f:
@@ -129,7 +140,7 @@ class Record(Generic[StateType]):
 
 
 @dataclass(frozen=True)
-class FrozenRecord(Generic[StateType]):
+class FrozenRecord(Generic[StateType, ProbabilisticModelType]):
     """
     A Record container saved on disk.
 
@@ -140,7 +151,7 @@ class FrozenRecord(Generic[StateType]):
     path: Path
     """ The path to the pickled Record. """
 
-    def load(self) -> Record[StateType]:
+    def load(self) -> Record[StateType, ProbabilisticModelType]:
         """Load the record into memory."""
         with open(self.path, "rb") as f:
             return dill.load(f)
@@ -151,7 +162,7 @@ class FrozenRecord(Generic[StateType]):
         return self.load().datasets
 
     @property
-    def models(self) -> Mapping[Tag, TrainableProbabilisticModel]:
+    def models(self) -> Mapping[Tag, ProbabilisticModelType]:
         """The models over the :attr:`datasets`."""
         return self.load().models
 
@@ -166,7 +177,7 @@ class FrozenRecord(Generic[StateType]):
         return self.load().dataset
 
     @property
-    def model(self) -> TrainableProbabilisticModel:
+    def model(self) -> ProbabilisticModelType:
         """The model when there is just one dataset."""
         return self.load().model
 
@@ -174,16 +185,18 @@ class FrozenRecord(Generic[StateType]):
 # this should be a generic NamedTuple, but mypy doesn't support them
 #  https://github.com/python/mypy/issues/685
 @dataclass(frozen=True)
-class OptimizationResult(Generic[StateType]):
+class OptimizationResult(Generic[StateType, ProbabilisticModelType]):
     """The final result, and the historical data of the optimization process."""
 
-    final_result: Result[Record[StateType]]
+    final_result: Result[Record[StateType, ProbabilisticModelType]]
     """
     The final result of the optimization process. This contains either a :class:`Record` or an
     exception.
     """
 
-    history: list[Record[StateType] | FrozenRecord[StateType]]
+    history: list[
+        Record[StateType, ProbabilisticModelType] | FrozenRecord[StateType, ProbabilisticModelType]
+    ]
     r"""
     The history of the :class:`Record`\ s from each step of the optimization process. These
     :class:`Record`\ s are created at the *start* of each loop, and as such will never
@@ -200,7 +213,13 @@ class OptimizationResult(Generic[StateType]):
 
     def astuple(
         self,
-    ) -> tuple[Result[Record[StateType]], list[Record[StateType] | FrozenRecord[StateType]]]:
+    ) -> tuple[
+        Result[Record[StateType, ProbabilisticModelType]],
+        list[
+            Record[StateType, ProbabilisticModelType]
+            | FrozenRecord[StateType, ProbabilisticModelType]
+        ],
+    ]:
         """
         **Note:** In contrast to the standard library function :func:`dataclasses.astuple`, this
         method does *not* deepcopy instance attributes.
@@ -264,7 +283,7 @@ class OptimizationResult(Generic[StateType]):
         arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
         return dataset.query_points[arg_min_idx], dataset.observations[arg_min_idx], arg_min_idx
 
-    def try_get_final_models(self) -> Mapping[Tag, TrainableProbabilisticModel]:
+    def try_get_final_models(self) -> Mapping[Tag, ProbabilisticModelType]:
         """
         Convenience method to attempt to get the final models.
 
@@ -273,7 +292,7 @@ class OptimizationResult(Generic[StateType]):
         """
         return self.final_result.unwrap().models
 
-    def try_get_final_model(self) -> TrainableProbabilisticModel:
+    def try_get_final_model(self) -> ProbabilisticModelType:
         """
         Convenience method to attempt to get the final model for a single model run.
 
@@ -290,7 +309,7 @@ class OptimizationResult(Generic[StateType]):
             raise ValueError(f"Expected single model, found {len(models)}")
 
     @property
-    def loaded_history(self) -> list[Record[StateType]]:
+    def loaded_history(self) -> list[Record[StateType, ProbabilisticModelType]]:
         """The history of the optimization process loaded into memory."""
         return [record if isinstance(record, Record) else record.load() for record in self.history]
 
@@ -310,7 +329,9 @@ class OptimizationResult(Generic[StateType]):
             record.save(record_path)
 
     @classmethod
-    def from_path(cls, base_path: Path | str) -> OptimizationResult[StateType]:
+    def from_path(
+        cls, base_path: Path | str
+    ) -> OptimizationResult[StateType, ProbabilisticModelType]:
         """Load a previously saved OptimizationResult."""
         try:
             with open(Path(base_path) / cls.RESULTS_FILENAME, "rb") as f:
@@ -318,9 +339,10 @@ class OptimizationResult(Generic[StateType]):
         except FileNotFoundError as e:
             result = Err(e)
 
-        history: list[Record[StateType] | FrozenRecord[StateType]] = [
-            FrozenRecord(file) for file in sorted(Path(base_path).glob(cls.STEP_GLOB))
-        ]
+        history: list[
+            Record[StateType, ProbabilisticModelType]
+            | FrozenRecord[StateType, ProbabilisticModelType]
+        ] = [FrozenRecord(file) for file in sorted(Path(base_path).glob(cls.STEP_GLOB))]
         return cls(result, history)
 
 
@@ -359,7 +381,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             EarlyStopCallback[TrainableProbabilisticModel, object]
         ] = None,
         start_step: int = 0,
-    ) -> OptimizationResult[None]:
+    ) -> OptimizationResult[None, TrainableProbabilisticModel]:
         ...
 
     @overload
@@ -383,7 +405,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         # this should really be OptimizationResult[None], but tf.Tensor is untyped so the type
         # checker can't differentiate between TensorType and State[S | None, TensorType], and
         # the return types clash. object is close enough to None that object will do.
-    ) -> OptimizationResult[object]:
+    ) -> OptimizationResult[object, TrainableProbabilisticModelType]:
         ...
 
     @overload
@@ -404,7 +426,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             EarlyStopCallback[TrainableProbabilisticModelType, object]
         ] = None,
         start_step: int = 0,
-    ) -> OptimizationResult[object]:
+    ) -> OptimizationResult[object, TrainableProbabilisticModelType]:
         ...
 
     @overload
@@ -426,7 +448,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
         start_step: int = 0,
-    ) -> OptimizationResult[StateType]:
+    ) -> OptimizationResult[StateType, TrainableProbabilisticModelType]:
         ...
 
     @overload
@@ -448,7 +470,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
         start_step: int = 0,
-    ) -> OptimizationResult[StateType]:
+    ) -> OptimizationResult[StateType, TrainableProbabilisticModelType]:
         ...
 
     @overload
@@ -466,7 +488,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             EarlyStopCallback[TrainableProbabilisticModel, object]
         ] = None,
         start_step: int = 0,
-    ) -> OptimizationResult[None]:
+    ) -> OptimizationResult[None, TrainableProbabilisticModel]:
         ...
 
     @overload
@@ -487,7 +509,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             EarlyStopCallback[TrainableProbabilisticModelType, object]
         ] = None,
         start_step: int = 0,
-    ) -> OptimizationResult[object]:
+    ) -> OptimizationResult[object, TrainableProbabilisticModelType]:
         ...
 
     @overload
@@ -508,7 +530,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             EarlyStopCallback[TrainableProbabilisticModelType, object]
         ] = None,
         start_step: int = 0,
-    ) -> OptimizationResult[object]:
+    ) -> OptimizationResult[object, TrainableProbabilisticModelType]:
         ...
 
     @overload
@@ -530,7 +552,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
         start_step: int = 0,
-    ) -> OptimizationResult[StateType]:
+    ) -> OptimizationResult[StateType, TrainableProbabilisticModelType]:
         ...
 
     @overload
@@ -552,7 +574,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
         start_step: int = 0,
-    ) -> OptimizationResult[StateType]:
+    ) -> OptimizationResult[StateType, TrainableProbabilisticModelType]:
         ...
 
     def optimize(
@@ -576,7 +598,10 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
         start_step: int = 0,
-    ) -> OptimizationResult[StateType] | OptimizationResult[None]:
+    ) -> (
+        OptimizationResult[StateType, TrainableProbabilisticModelType]
+        | OptimizationResult[None, TrainableProbabilisticModelType]
+    ):
         """
         Attempt to find the minimizer of the ``observer`` in the ``search_space`` (both specified at
         :meth:`__init__`). This is the central implementation of the Bayesian optimization loop.
@@ -680,7 +705,10 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                 SearchSpaceType, TrainableProbabilisticModelType
             ]()
 
-        history: list[FrozenRecord[StateType] | Record[StateType]] = []
+        history: list[
+            FrozenRecord[StateType, TrainableProbabilisticModelType]
+            | Record[StateType, TrainableProbabilisticModelType]
+        ] = []
         query_plot_dfs: dict[int, pd.DataFrame] = {}
         observation_plot_dfs = observation_plot_init(datasets)
 
@@ -841,10 +869,10 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
     def continue_optimization(
         self,
         num_steps: int,
-        optimization_result: OptimizationResult[StateType],
+        optimization_result: OptimizationResult[StateType, TrainableProbabilisticModelType],
         *args: Any,
         **kwargs: Any,
-    ) -> OptimizationResult[StateType]:
+    ) -> OptimizationResult[StateType, TrainableProbabilisticModelType]:
         """
         Continue a previous optimization that either failed, was terminated early, or which
         you simply wish to run for more steps.
@@ -861,7 +889,10 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             `optimization_result` (including the `final_result` if that was successful) and
             any new records.
         """
-        history: list[Record[StateType] | FrozenRecord[StateType]] = []
+        history: list[
+            Record[StateType, TrainableProbabilisticModelType]
+            | FrozenRecord[StateType, TrainableProbabilisticModelType]
+        ] = []
         history.extend(optimization_result.history)
         if optimization_result.final_result.is_ok:
             history.append(optimization_result.final_result.unwrap())
@@ -910,7 +941,7 @@ def write_summary_init(
 
 def write_summary_initial_model_fit(
     datasets: Mapping[Tag, Dataset],
-    models: Mapping[Tag, TrainableProbabilisticModel],
+    models: Mapping[Tag, ProbabilisticModel],
     model_fitting_timer: Timer,
 ) -> None:
     """Write TensorBoard summary for the model fitting to the initial data."""
@@ -961,7 +992,7 @@ def observation_plot_init(
 
 def write_summary_observations(
     datasets: Mapping[Tag, Dataset],
-    models: Mapping[Tag, TrainableProbabilisticModel],
+    models: Mapping[Tag, ProbabilisticModel],
     tagged_output: Mapping[Tag, TensorType],
     model_fitting_timer: Timer,
     observation_plot_dfs: MutableMapping[Tag, pd.DataFrame],
@@ -1058,7 +1089,7 @@ def write_summary_observations(
 
 def write_summary_query_points(
     datasets: Mapping[Tag, Dataset],
-    models: Mapping[Tag, TrainableProbabilisticModel],
+    models: Mapping[Tag, ProbabilisticModel],
     search_space: SearchSpace,
     query_points: TensorType,
     query_point_generation_timer: Timer,
