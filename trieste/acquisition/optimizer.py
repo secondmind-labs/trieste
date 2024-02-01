@@ -20,6 +20,7 @@ This module contains functionality for optimizing
 from __future__ import annotations
 
 import itertools
+from abc import ABC, abstractmethod
 from typing import Any, Callable, Iterator, List, Optional, Sequence, Tuple, Union, cast
 
 import greenlet as gr
@@ -177,46 +178,85 @@ that many samples (at the offset).
 """
 
 
+class InitialPointSamplerClass(ABC):
+    """An :class:`InitialPointSamplerClass` is an initial point sampler represented using a class
+    rather than as a standalone function. Using a class to represent an initial point sampler
+    makes it easier to update internal state between calls.
+    """
+
+    @abstractmethod
+    def __call__(self, space: SearchSpace, num_samples: int, offset: int) -> TensorType:
+        """Return initial points."""
+
+
 def sample_from_space(space: SearchSpace, num_samples: int, offset: int) -> TensorType:
     """Default initial point sampler that samples randomly from the space."""
     return space.sample(num_samples)
 
 
-def sample_from_sequence(sequence: Sequence[TensorType]) -> InitialPointSampler:
+def sample_from_sequence(
+    sequence: Sequence[TensorType],
+    additional_sampler: Optional[InitialPointSampler] = None,
+) -> InitialPointSampler:
     """
-    Initial point sampler that returns points from a prebuilt sequence (e.g. a list or Tensor).
-    Raises a :exc:`ValueError` if there are insufficiently many points to return.
+    Initial point sampler that returns points from a prebuilt sequence.
+
+    :param sequence: Sequence of initial points (e.g. a list or Tensor).
+    :param additional_sampler: Sampler to use if there aren't enough points to return.
+        If unspecified, raise a :exc:`ValueError`.
     """
 
     def _sampler(space: SearchSpace, num_samples: int, offset: int) -> TensorType:
-        if len(sequence) < offset + num_samples:
-            raise ValueError(
-                f"Insufficient samples ({offset+num_samples} required, {len(sequence)} available"
-            )
         samples = sequence[offset : offset + num_samples]
         if not isinstance(slice, tf.Tensor):
             samples = tf.concat(samples, axis=0)
-        return samples
-
-    return _sampler
-
-
-def sample_from_iterator(iterator: Iterator[TensorType]) -> InitialPointSampler:
-    """
-    Initial point sampler that returns points from a prebuilt iterator (e.g. a generator).
-    Raises a :exc:`ValueError` if the iterator is exhausted with insufficiently many points.
-    """
-
-    def _sampler(space: SearchSpace, num_samples: int, offset: int) -> TensorType:
-        slice = itertools.islice(iterator, num_samples)
-        samples = tf.concat(list(slice), axis=0)
         if len(samples) < num_samples:
-            raise RuntimeError(
-                f"Insufficient samples ({num_samples} requested, {len(samples)} available"
+            if additional_sampler is None:
+                raise ValueError(
+                    "Insufficient samples "
+                    f"({offset + num_samples} required, {len(sequence)} available)"
+                )
+            additional_samples = additional_sampler(
+                space, num_samples - len(samples), max(offset - len(sequence), 0)
             )
+            samples = tf.concat([samples, additional_samples], axis=0)
         return samples
 
     return _sampler
+
+
+class sample_from_iterator(InitialPointSamplerClass):
+    def __init__(
+        self,
+        iterator: Iterator[TensorType],
+        additional_sampler: Optional[InitialPointSampler] = None,
+    ) -> None:
+        """
+        Initial point sampler that returns points from a prebuilt iterator (e.g. a generator).
+
+        :param iterator: Iterator returning initial points.
+        :param additional_sampler: Sampler to use if the iterator is exhausted without enough points.
+            If unspecified, this raises a :exc:`ValueError`.
+        """
+        self._iterator = iterator
+        self._additional_sampler = additional_sampler
+        self._iterator_length = 0
+
+    def __call__(self, space: SearchSpace, num_samples: int, offset: int) -> TensorType:
+        slice = itertools.islice(self._iterator, num_samples)
+        samples = tf.concat(list(slice), axis=0)
+        self._iterator_length += len(samples)
+        if len(samples) < num_samples:
+            if self._additional_sampler is None:
+                raise ValueError(
+                    "Insufficient samples "
+                    f"({offset + num_samples} required, {self._iterator_length} available)"
+                )
+            additional_samples = self._additional_sampler(
+                space, num_samples - len(samples), max(offset - self._iterator_length, 0)
+            )
+            samples = tf.concat([samples, additional_samples], axis=0)
+        return samples
 
 
 def generate_continuous_optimizer(
