@@ -203,7 +203,7 @@ def sample_from_sequence(
 
     :param sequence: Sequence of initial points (e.g. a list or Tensor).
     :param additional_sampler: Sampler to use if there aren't enough points to return.
-        If unspecified, raise a :exc:`ValueError`.
+        If unspecified, this scenario raises a :exc:`ValueError`.
     """
 
     def _sampler(space: SearchSpace, num_samples: int, offset: int) -> TensorType:
@@ -236,7 +236,7 @@ class sample_from_iterator(InitialPointSamplerClass):
 
         :param iterator: Iterator returning initial points.
         :param additional_sampler: Sampler to use if the iterator is exhausted without enough points.
-            If unspecified, this raises a :exc:`ValueError`.
+            If unspecified, this scenario raises a :exc:`ValueError`.
         """
         self._iterator = iterator
         self._additional_sampler = additional_sampler
@@ -265,7 +265,7 @@ def generate_continuous_optimizer(
     num_recovery_runs: int = 10,
     optimizer_args: Optional[dict[str, Any]] = None,
     split_initial_samples: Optional[int] = 100_000,
-    initial_sampler: Callable[[SearchSpace, int, int], TensorType] = sample_from_space,
+    initial_sampler: InitialPointSampler = sample_from_space,
 ) -> AcquisitionOptimizer[Box | CollectionSearchSpace]:
     """
     Generate a gradient-based optimizer for :class:'Box' and :class:'CollectionSearchSpace'
