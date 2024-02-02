@@ -248,7 +248,7 @@ def generate_continuous_optimizer(
 
     initial_sampler = (
         sample_from_space(num_initial_samples)
-        if isinstance(num_initial_samples, int)
+        if not callable(num_initial_samples)
         else num_initial_samples
     )
 
