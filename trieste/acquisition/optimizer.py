@@ -219,7 +219,7 @@ def generate_continuous_optimizer(
     **Note:** using a large number of `num_initial_samples` and `num_optimization_runs` with a
     high-dimensional search space can consume a large amount of CPU memory (RAM).
 
-    :param initial_samples: The starting point(s) of the optimization. This can be either
+    :param num_initial_samples: The starting point(s) of the optimization. This can be either
         the number of random samples to use, or a function that given the search space returns
         the points to use (possibly in multiple batches to help reduce memory usage).
     :param num_optimization_runs: The number of separate optimizations to run.
