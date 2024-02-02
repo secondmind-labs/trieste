@@ -229,13 +229,10 @@ def generate_continuous_optimizer(
         can be passed. Note that method, jac and bounds cannot/should not be changed.
     :return: The acquisition optimizer.
     """
-    if isinstance(num_initial_samples, int) and num_initial_samples <= 0:
-        raise ValueError(f"num_initial_samples must be positive, got {num_initial_samples}")
-
-    if num_optimization_runs < 0:
+    if num_optimization_runs <= 0:
         raise ValueError(f"num_optimization_runs must be positive, got {num_optimization_runs}")
 
-    if isinstance(num_initial_samples, int) and num_initial_samples < num_optimization_runs:
+    if not callable(num_initial_samples) and num_initial_samples < num_optimization_runs:
         raise ValueError(
             f"""
             num_initial_samples {num_initial_samples} must be at
