@@ -187,7 +187,7 @@ to conserve memory:
 
     def sampler(space: SearchSpace) -> Iterable[TensorType]:
         yield pre_optimized_points
-        yield from sample_from_space(50_000, 1_000)(space)
+        yield from sample_from_space(50_000, batch_size=1_000)(space)
 """
 
 
