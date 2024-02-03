@@ -284,23 +284,23 @@ def generate_initial_points(
 
         top_candidates = tf.concat(
             [top_candidates, tf.transpose(tiled_candidates, [1, 0, 2])], 1
-        )  # [V, samples+num_optimization_runs, D]
+        )  # [V, samples+num_initial_points, D]
         top_fun_values = tf.concat(
             [top_fun_values, tf.transpose(target_func_values)], 1
-        )  # [V, samples+num_optimization_runs]
+        )  # [V, samples+num_initial_points]
 
         _, top_k_indices = tf.math.top_k(
-            top_fun_values, k=num_initial_points
-        )  # [V, num_optimization_runs]
+            top_fun_values, k=min(num_initial_points, tf.shape(top_fun_values)[-1])
+        )  # [V, num_initial_points]
 
         top_candidates = tf.gather(
             top_candidates, top_k_indices, batch_dims=1
-        )  # [V, num_optimization_runs, D]
+        )  # [V, num_initial_points, D]
         top_fun_values = tf.gather(
             top_fun_values, top_k_indices, batch_dims=1
-        )  # [V, num_optimization_runs]
+        )  # [V, num_initial_points]
 
-    initial_points = tf.transpose(top_candidates, [1, 0, 2])  # [num_optimization_runs,V,D]
+    initial_points = tf.transpose(top_candidates, [1, 0, 2])  # [num_initial_points,V,D]
     return initial_points
 
 
@@ -397,6 +397,12 @@ def generate_continuous_optimizer(
         initial_points = generate_initial_points(
             num_optimization_runs, initial_sampler, space, target_func, V
         )  # [num_optimization_runs,V,D]
+
+        if len(initial_points) < num_optimization_runs:
+            raise ValueError(
+                f"Not enough initial points generated ({len(initial_points)} "
+                f"for {num_optimization_runs} optimization runs"
+            )
 
         (
             successes,

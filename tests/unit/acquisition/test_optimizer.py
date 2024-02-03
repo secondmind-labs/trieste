@@ -16,7 +16,7 @@ from __future__ import annotations
 import unittest
 import unittest.mock
 from math import ceil
-from typing import Any, Callable, Optional, Tuple, TypeVar, Union
+from typing import Any, Callable, Iterable, Optional, Tuple, TypeVar, Union
 from unittest.mock import MagicMock
 
 import numpy.testing as npt
@@ -33,6 +33,7 @@ from trieste.acquisition.optimizer import (
     batchify_joint,
     batchify_vectorize,
     generate_continuous_optimizer,
+    generate_initial_points,
     generate_random_search_optimizer,
     get_bounds_of_box_relaxation_around_point,
     optimize_discrete,
@@ -824,3 +825,31 @@ def test_optimizer_scipy_method_select(
     else:
         received_constraints = None
     assert received_constraints == expected_constraints
+
+
+@pytest.mark.parametrize("num_initial_points", [0, 1, 2, 3, 4])
+def test_generate_initial_points(num_initial_points: int) -> None:
+    def sampler(space: SearchSpace) -> Iterable[TensorType]:
+        assert space == Box([-1], [2])
+        yield tf.range(-1, 2, 0.1)[:, None]
+
+    best_four_samples = tf.constant([1.0, 0.9, 1.1, 0.8])
+    points = generate_initial_points(
+        num_initial_points, sampler, Box([-1], [2]), _quadratic_sum([1.0])
+    )
+    npt.assert_allclose(points, best_four_samples[:num_initial_points, None, None], atol=1e-6)
+
+
+@pytest.mark.parametrize("num_initial_points", [0, 1, 2, 3, 6, 10])
+def test_generate_initial_points_batched_sampler(num_initial_points: int) -> None:
+    def sampler(space: SearchSpace) -> Iterable[TensorType]:
+        assert space == Box([-1], [2])
+        yield tf.constant([[0.8], [0.9]])
+        yield tf.constant([[1.0], [1.1]])
+        yield tf.constant([[1.2], [1.3]])
+
+    best_samples = tf.constant([1.0, 0.9, 1.1, 0.8, 1.2, 1.3])
+    points = generate_initial_points(
+        num_initial_points, sampler, Box([-1], [2]), _quadratic_sum([1.0])
+    )
+    npt.assert_allclose(points, best_samples[:num_initial_points, None, None], atol=1e-6)
