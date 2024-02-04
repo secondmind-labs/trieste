@@ -874,3 +874,16 @@ def test_sample_from_space_raises_with_invalid_input() -> None:
         sample_from_space(num_samples=5, batch_size=0)
     with pytest.raises(ValueError):
         sample_from_space(num_samples=5, batch_size=-1)
+
+
+def test_optimize_continuous_raises_for_insufficient_starting_points() -> None:
+    search_space = Box([-1], [2])
+
+    def sampler(space: SearchSpace) -> Iterable[TensorType]:
+        assert space == search_space
+        yield tf.constant([[0.8], [0.9]])
+
+    optimizer = generate_continuous_optimizer(sampler, 3)
+    with pytest.raises(ValueError) as e:
+        optimizer(search_space, _quadratic_sum([1.0]))
+    assert str(e.value) == "Not enough initial points generated (2 for 3 optimization runs)"

@@ -401,7 +401,7 @@ def generate_continuous_optimizer(
         if len(initial_points) < num_optimization_runs:
             raise ValueError(
                 f"Not enough initial points generated ({len(initial_points)} "
-                f"for {num_optimization_runs} optimization runs"
+                f"for {num_optimization_runs} optimization runs)"
             )
 
         (
