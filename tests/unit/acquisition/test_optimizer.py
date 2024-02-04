@@ -37,6 +37,7 @@ from trieste.acquisition.optimizer import (
     generate_random_search_optimizer,
     get_bounds_of_box_relaxation_around_point,
     optimize_discrete,
+    sample_from_space,
 )
 from trieste.acquisition.utils import split_acquisition_function_calls
 from trieste.logging import tensorboard_writer
@@ -853,3 +854,23 @@ def test_generate_initial_points_batched_sampler(num_initial_points: int) -> Non
         num_initial_points, sampler, Box([-1], [2]), _quadratic_sum([1.0])
     )
     npt.assert_allclose(points, best_samples[:num_initial_points, None, None], atol=1e-6)
+
+
+@pytest.mark.parametrize("num_samples,batch_size", [(1, None), (5, None), (5, 2), (5, 5), (5, 10)])
+def test_sample_from_space(num_samples: int, batch_size: Optional[int]) -> None:
+    batches = list(sample_from_space(num_samples, batch_size)(Box([0], [1])))
+    assert len(batches) == ceil(num_samples / (batch_size or num_samples))
+    assert sum(len(batch) for batch in batches) == num_samples
+    assert all(0 <= x <= 1 for batch in batches for x in batch)
+    assert len(set(float(x) for batch in batches for x in batch)) == num_samples
+
+
+def test_sample_from_space_raises_with_invalid_input() -> None:
+    with pytest.raises(ValueError):
+        sample_from_space(num_samples=0)
+    with pytest.raises(ValueError):
+        sample_from_space(num_samples=-5)
+    with pytest.raises(ValueError):
+        sample_from_space(num_samples=5, batch_size=0)
+    with pytest.raises(ValueError):
+        sample_from_space(num_samples=5, batch_size=-1)
