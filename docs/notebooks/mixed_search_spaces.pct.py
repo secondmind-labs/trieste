@@ -63,7 +63,7 @@ fig.show()
 # choose the discretization points to be equally spaced around the middle minimizer.
 
 # %%
-from trieste.space import Box, DiscreteSearchSpace
+from trieste.space import Box, DiscreteSearchSpace, TaggedProductSearchSpace
 
 minimizers0 = ScaledBranin.minimizers[:, 0]
 step = (minimizers0[1] - minimizers0[0]) / 4
@@ -78,7 +78,9 @@ points = np.concatenate(
 )
 discrete_space = DiscreteSearchSpace(points[:, None])
 continuous_space = Box([0.0], [1.0])
-mixed_search_space = discrete_space * continuous_space
+mixed_search_space = TaggedProductSearchSpace(
+    [discrete_space, continuous_space]
+)
 
 
 # %% [markdown]
