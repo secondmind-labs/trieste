@@ -858,6 +858,32 @@ def test_generate_initial_points_batched_sampler(num_initial_points: int) -> Non
     npt.assert_allclose(points, best_samples[:num_initial_points, None, None], atol=1e-6)
 
 
+@pytest.mark.parametrize("num_initial_points", [0, 1, 2, 10])
+@pytest.mark.parametrize("vectorization", [1, 3, 4])
+def test_generate_initial_points_vectorized(num_initial_points: int, vectorization: int) -> None:
+    search_space = Box([-1, -2], [1.5, 2.5])
+
+    def sampler(space: SearchSpace) -> Iterable[TensorType]:
+        assert space == search_space
+        yield tf.constant([[0], [0.5], [1.0]])
+
+    def vectorized_target(x: TensorType) -> TensorType:  # [N, V, D] -> [N,V]
+        shifts = [[0.0], [0.2], [0.5], [1.0]]
+        individual_func = [
+            _quadratic_sum(shifts[i])(x[:, i : i + 1, :]) for i in range(vectorization)
+        ]
+        return tf.concat(individual_func, axis=-1)
+
+    best_samples = tf.constant(
+        [[[0.0], [0.0], [0.5], [1.0]], [[0.5], [0.5], [0.0], [0.5]], [[1.0], [1.0], [1.0], [0.0]]]
+    )
+    points = generate_initial_points(
+        num_initial_points, sampler, search_space, vectorized_target, vectorization
+    )
+    assert points.shape == [min(num_initial_points, 3), vectorization, 1]
+    npt.assert_allclose(points, best_samples[:num_initial_points, :vectorization], atol=1e-6)
+
+
 @pytest.mark.parametrize("num_samples,batch_size", [(1, None), (5, None), (5, 2), (5, 5), (5, 10)])
 def test_sample_from_space(num_samples: int, batch_size: Optional[int]) -> None:
     batches = list(sample_from_space(num_samples, batch_size)(Box([0], [1])))
