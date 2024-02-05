@@ -838,6 +838,7 @@ def test_generate_initial_points(num_initial_points: int) -> None:
     points = generate_initial_points(
         num_initial_points, sampler, Box([-1], [2]), _quadratic_sum([1.0])
     )
+    assert points.shape == [num_initial_points, 1, 1]
     npt.assert_allclose(points, best_four_samples[:num_initial_points, None, None], atol=1e-6)
 
 
@@ -853,6 +854,7 @@ def test_generate_initial_points_batched_sampler(num_initial_points: int) -> Non
     points = generate_initial_points(
         num_initial_points, sampler, Box([-1], [2]), _quadratic_sum([1.0])
     )
+    assert points.shape == [min(num_initial_points, 6), 1, 1]
     npt.assert_allclose(points, best_samples[:num_initial_points, None, None], atol=1e-6)
 
 
@@ -865,15 +867,10 @@ def test_sample_from_space(num_samples: int, batch_size: Optional[int]) -> None:
     assert len(set(float(x) for batch in batches for x in batch)) == num_samples
 
 
-def test_sample_from_space_raises_with_invalid_input() -> None:
+@pytest.mark.parametrize("num_samples,batch_size", [(0, None), (-5, None), (5, 0), (5, -5)])
+def test_sample_from_space_raises(num_samples: int, batch_size: Optional[int]) -> None:
     with pytest.raises(ValueError):
-        sample_from_space(num_samples=0)
-    with pytest.raises(ValueError):
-        sample_from_space(num_samples=-5)
-    with pytest.raises(ValueError):
-        sample_from_space(num_samples=5, batch_size=0)
-    with pytest.raises(ValueError):
-        sample_from_space(num_samples=5, batch_size=-1)
+        sample_from_space(num_samples=num_samples, batch_size=batch_size)
 
 
 def test_optimize_continuous_raises_for_insufficient_starting_points() -> None:
