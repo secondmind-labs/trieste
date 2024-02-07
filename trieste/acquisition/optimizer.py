@@ -275,6 +275,7 @@ def generate_initial_points(
             ),
         )
 
+        # now that we know the output dimension and dtypes, initialize empty top tensors
         if top_candidates is None:
             top_candidates = tf.zeros(
                 [vectorization, 0, tf.shape(candidates)[-1]], dtype=candidates.dtype
