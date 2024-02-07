@@ -61,6 +61,12 @@ fig.show()
 #
 # We observe that the first and third minimizers are equidistant from the middle minimizer, so we
 # choose the discretization points to be equally spaced around the middle minimizer.
+#
+# The `TaggedProductSearchSpace` class is a convenient way to define a search space
+# that is a combination of multiple search spaces, each with an optional tag.
+# We create our mixed search space by instantiating this class with a list containing the discrete
+# and continuous spaces, without any explicit tags (hence using default tags).
+# This can be easily extended to more than two search spaces by adding more elements to the list.
 
 # %%
 from trieste.space import Box, DiscreteSearchSpace, TaggedProductSearchSpace
@@ -118,7 +124,9 @@ for point in points:
 # ## Sample the observer over the search space
 #
 # We begin our optimization by first collecting five function evaluations from random locations in
-# the mixed search space.
+# the mixed search space. Samples from the discrete dimension are drawn uniformly at random with
+# replacement, and samples from the continuous dimension are drawn from a uniform distribution.
+# Observe that the `sample` method deals with the mixed search space automatically.
 
 # %%
 from trieste.objectives import mk_observer
@@ -134,6 +142,11 @@ initial_data = observer(initial_query_points)
 #
 # We now build a Gaussian process model of the objective function using the initial data, similar
 # to the [introduction notebook](expected_improvement.ipynb).
+#
+# Since all of the data in this example is quantitative, the model does not differentiate between
+# the discrete and continuous dimensions of the search space. The Gaussian process regression model
+# treats all dimensions as continuous variables, allowing for a seamless integration of both types
+# of dimensions in the optimization process.
 
 # %%
 from trieste.models.gpflow import GaussianProcessRegression, build_gpr
@@ -149,6 +162,7 @@ model = GaussianProcessRegression(gpflow_model)
 # The Bayesian optimization loop is run for 15 steps over the mixed search space.
 # For each step, the optimizer fixes the discrete dimension to the best points found from a random
 # initial search, and then optimizes the continuous dimension using a gradient-based method.
+# This dispatch of discrete and continuous optimization is handled by the optimizer automatically.
 
 # %%
 from trieste.bayesian_optimizer import BayesianOptimizer
