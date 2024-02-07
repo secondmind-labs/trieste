@@ -858,6 +858,14 @@ def test_generate_initial_points_batched_sampler(num_initial_points: int) -> Non
     npt.assert_allclose(points, best_samples[:num_initial_points, None, None], atol=1e-6)
 
 
+def test_generate_initial_points_raises_if_empty() -> None:
+    def sampler(space: SearchSpace) -> Iterable[TensorType]:
+        return []
+
+    with pytest.raises(ValueError):
+        generate_initial_points(4, sampler, Box([-1], [2]), _quadratic_sum([1.0]))
+
+
 @pytest.mark.parametrize("num_initial_points", [0, 1, 2, 10])
 @pytest.mark.parametrize("vectorization", [1, 3, 4])
 def test_generate_initial_points_vectorized(num_initial_points: int, vectorization: int) -> None:

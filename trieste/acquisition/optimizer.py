@@ -206,7 +206,7 @@ def sample_from_space(num_samples: int, batch_size: Optional[int] = None) -> Ini
 
     def sampler(space: SearchSpace) -> Iterable[TensorType]:
         for offset in range(0, num_samples, batch_size_int):
-            yield space.sample(min(num_samples, offset + batch_size_int) - offset)
+            yield space.sample(min(num_samples - offset, batch_size_int))
 
     return sampler
 
@@ -299,6 +299,9 @@ def generate_initial_points(
         top_fun_values = tf.gather(
             top_fun_values, top_k_indices, batch_dims=1
         )  # [V, num_initial_points]
+
+    if top_candidates is None:
+        raise ValueError("No initial point generated!")
 
     initial_points = tf.transpose(top_candidates, [1, 0, 2])  # [num_initial_points,V,D]
     return initial_points
