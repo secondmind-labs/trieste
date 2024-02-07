@@ -18,7 +18,7 @@ Deprecated==1.2.14
 dill==0.3.8
 dm-tree==0.1.8
 dropstackframe==0.1.0
-ecos==2.0.12
+ecos==2.0.13
 exceptiongroup==1.2.0
 flatbuffers==23.5.26
 fonttools==4.48.1
@@ -27,7 +27,7 @@ gast==0.5.4
 google-auth==2.27.0
 google-auth-oauthlib==1.2.0
 google-pasta==0.2.0
-gpflow==2.9.0
+gpflow==2.9.1
 gpflux==0.4.3
 grapheme==0.6.0
 greenlet==3.0.3
