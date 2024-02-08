@@ -138,6 +138,8 @@ class KerasEnsemble:
     def __setstate__(self, state: dict[str, Any]) -> None:
         # When unpickling restore the model using model_from_json.
         self.__dict__.update(state)
+        # TF 2.12 disallows loading lambdas without "safe-mode" being disabled
+        # unfortunately, tfp.layers.DistributionLambda seems to use lambdas
         with SafeModeScope(False):
             self._model = tf.keras.models.model_from_json(
                 state["_model"], custom_objects={"MultivariateNormalTriL": MultivariateNormalTriL}
