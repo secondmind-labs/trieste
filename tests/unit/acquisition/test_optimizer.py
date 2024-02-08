@@ -16,7 +16,7 @@ from __future__ import annotations
 import unittest
 import unittest.mock
 from math import ceil
-from typing import Any, Callable, Optional, Tuple, TypeVar, Union
+from typing import Any, Callable, Iterable, Optional, Tuple, TypeVar, Union
 from unittest.mock import MagicMock
 
 import numpy.testing as npt
@@ -33,9 +33,11 @@ from trieste.acquisition.optimizer import (
     batchify_joint,
     batchify_vectorize,
     generate_continuous_optimizer,
+    generate_initial_points,
     generate_random_search_optimizer,
     get_bounds_of_box_relaxation_around_point,
     optimize_discrete,
+    sample_from_space,
 )
 from trieste.acquisition.utils import split_acquisition_function_calls
 from trieste.logging import tensorboard_writer
@@ -824,3 +826,95 @@ def test_optimizer_scipy_method_select(
     else:
         received_constraints = None
     assert received_constraints == expected_constraints
+
+
+@pytest.mark.parametrize("num_initial_points", [0, 1, 2, 3, 4])
+def test_generate_initial_points(num_initial_points: int) -> None:
+    def sampler(space: SearchSpace) -> Iterable[TensorType]:
+        assert space == Box([-1], [2])
+        yield tf.range(-1, 2, 0.1)[:, None]
+
+    best_four_samples = tf.constant([1.0, 0.9, 1.1, 0.8])
+    points = generate_initial_points(
+        num_initial_points, sampler, Box([-1], [2]), _quadratic_sum([1.0])
+    )
+    assert points.shape == [num_initial_points, 1, 1]
+    npt.assert_allclose(points, best_four_samples[:num_initial_points, None, None], atol=1e-6)
+
+
+@pytest.mark.parametrize("num_initial_points", [0, 1, 2, 3, 6, 10])
+def test_generate_initial_points_batched_sampler(num_initial_points: int) -> None:
+    def sampler(space: SearchSpace) -> Iterable[TensorType]:
+        assert space == Box([-1], [2])
+        yield tf.constant([[0.8], [0.9]])
+        yield tf.constant([[1.0], [1.1]])
+        yield tf.constant([[1.2], [1.3]])
+
+    best_samples = tf.constant([1.0, 0.9, 1.1, 0.8, 1.2, 1.3])
+    points = generate_initial_points(
+        num_initial_points, sampler, Box([-1], [2]), _quadratic_sum([1.0])
+    )
+    assert points.shape == [min(num_initial_points, 6), 1, 1]
+    npt.assert_allclose(points, best_samples[:num_initial_points, None, None], atol=1e-6)
+
+
+def test_generate_initial_points_raises_if_empty() -> None:
+    def sampler(space: SearchSpace) -> Iterable[TensorType]:
+        return []
+
+    with pytest.raises(ValueError):
+        generate_initial_points(4, sampler, Box([-1], [2]), _quadratic_sum([1.0]))
+
+
+@pytest.mark.parametrize("num_initial_points", [0, 1, 2, 10])
+@pytest.mark.parametrize("vectorization", [1, 3, 4])
+def test_generate_initial_points_vectorized(num_initial_points: int, vectorization: int) -> None:
+    search_space = Box([-1, -2], [1.5, 2.5])
+
+    def sampler(space: SearchSpace) -> Iterable[TensorType]:
+        assert space == search_space
+        yield tf.constant([[0], [0.5], [1.0]])
+
+    def vectorized_target(x: TensorType) -> TensorType:  # [N, V, D] -> [N,V]
+        shifts = [[0.0], [0.2], [0.5], [1.0]]
+        individual_func = [
+            _quadratic_sum(shifts[i])(x[:, i : i + 1, :]) for i in range(vectorization)
+        ]
+        return tf.concat(individual_func, axis=-1)
+
+    best_samples = tf.constant(
+        [[[0.0], [0.0], [0.5], [1.0]], [[0.5], [0.5], [0.0], [0.5]], [[1.0], [1.0], [1.0], [0.0]]]
+    )
+    points = generate_initial_points(
+        num_initial_points, sampler, search_space, vectorized_target, vectorization
+    )
+    assert points.shape == [min(num_initial_points, 3), vectorization, 1]
+    npt.assert_allclose(points, best_samples[:num_initial_points, :vectorization], atol=1e-6)
+
+
+@pytest.mark.parametrize("num_samples,batch_size", [(1, None), (5, None), (5, 2), (5, 5), (5, 10)])
+def test_sample_from_space(num_samples: int, batch_size: Optional[int]) -> None:
+    batches = list(sample_from_space(num_samples, batch_size)(Box([0], [1])))
+    assert len(batches) == ceil(num_samples / (batch_size or num_samples))
+    assert sum(len(batch) for batch in batches) == num_samples
+    assert all(0 <= x <= 1 for batch in batches for x in batch)
+    assert len(set(float(x) for batch in batches for x in batch)) == num_samples
+
+
+@pytest.mark.parametrize("num_samples,batch_size", [(0, None), (-5, None), (5, 0), (5, -5)])
+def test_sample_from_space_raises(num_samples: int, batch_size: Optional[int]) -> None:
+    with pytest.raises(ValueError):
+        sample_from_space(num_samples=num_samples, batch_size=batch_size)
+
+
+def test_optimize_continuous_raises_for_insufficient_starting_points() -> None:
+    search_space = Box([-1], [2])
+
+    def sampler(space: SearchSpace) -> Iterable[TensorType]:
+        assert space == search_space
+        yield tf.constant([[0.8], [0.9]])
+
+    optimizer = generate_continuous_optimizer(sampler, 3)
+    with pytest.raises(ValueError) as e:
+        optimizer(search_space, _quadratic_sum([1.0]))
+    assert str(e.value) == "Not enough initial points generated (2 for 3 optimization runs)"
