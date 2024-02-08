@@ -18,6 +18,7 @@ This file contains implementations of neural network architectures with Keras.
 
 from __future__ import annotations
 
+import contextlib
 from abc import abstractmethod
 from typing import Any, Callable, Sequence
 
@@ -25,6 +26,11 @@ import dill
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
+
+try:
+    from keras.src.saving.serialization_lib import SafeModeScope
+except ImportError:  # pragma: no cover (tested but not by coverage)
+    SafeModeScope = contextlib.nullcontext
 from tensorflow_probability.python.layers.distribution_layer import DistributionLambda, _serialize
 
 from trieste.types import TensorType
@@ -132,9 +138,12 @@ class KerasEnsemble:
     def __setstate__(self, state: dict[str, Any]) -> None:
         # When unpickling restore the model using model_from_json.
         self.__dict__.update(state)
-        self._model = tf.keras.models.model_from_json(
-            state["_model"], custom_objects={"MultivariateNormalTriL": MultivariateNormalTriL}
-        )
+        # TF 2.15 disallows loading lambdas without "safe-mode" being disabled
+        # unfortunately, tfp.layers.DistributionLambda seems to use lambdas
+        with SafeModeScope(False):
+            self._model = tf.keras.models.model_from_json(
+                state["_model"], custom_objects={"MultivariateNormalTriL": MultivariateNormalTriL}
+            )
         self._model.set_weights(state["_weights"])
 
         # Restore the history (including any model it contains)
