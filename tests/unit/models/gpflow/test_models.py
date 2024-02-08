@@ -29,6 +29,7 @@ import unittest.mock
 from time import time
 from typing import Callable, Union, cast
 
+import dill
 import gpflow
 import numpy as np
 import numpy.testing as npt
@@ -2122,3 +2123,13 @@ def test_multifidelity_autoregressive_samples_are_varied(model_type: str) -> Non
 
     hf_samples = model.sample(hf_test_locations, 2)
     assert hf_samples[0] != hf_samples[1]
+
+
+@random_seed
+def test_gpflow_wrappers_dilling(
+    gpflow_interface_factory: ModelFactoryType,
+) -> None:
+    data = mock_data()
+    model, _ = gpflow_interface_factory(*data)
+    reloaded_model = dill.loads(dill.dumps(model))
+    assert type(reloaded_model) is type(model)
