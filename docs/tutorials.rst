@@ -41,6 +41,7 @@ The following tutorials illustrate solving different types of optimization probl
    notebooks/multifidelity_modelling
    notebooks/rembo
    notebooks/trust_region
+   notebooks/mixed_search_spaces
 
 Frequently asked questions
 --------------------------
