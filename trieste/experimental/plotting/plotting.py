@@ -555,6 +555,7 @@ def plot_trust_region_history_2d(
     history: Record[StateType, ProbabilisticModel] | FrozenRecord[StateType, ProbabilisticModel],
     num_query_points: Optional[int] = None,
     num_init: Optional[int] = None,
+    alpha: float = 0.3,
 ) -> tuple[Optional[Figure], Optional[Axes]]:
     """
     Plot the contour of the objective function, query points and the trust regions for a particular
@@ -566,6 +567,7 @@ def plot_trust_region_history_2d(
     :param history: the optimization history for a particular step of the optimization process
     :param num_query_points: total number of query points in this step
     :param num_init: initial number of BO points
+    :param alpha: transparency for the trust regions
     :return: figure and axes
     """
 
@@ -645,7 +647,7 @@ def plot_trust_region_history_2d(
                 ub[1] - lb[1],
                 facecolor=space_colors[i],
                 edgecolor=space_colors[i],
-                alpha=0.3,
+                alpha=alpha,
             )
         )
 

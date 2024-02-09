@@ -26,6 +26,7 @@ from typing import (
     Any,
     Callable,
     Generic,
+    List,
     Optional,
     Sequence,
     Set,
@@ -60,7 +61,13 @@ from ..models.interfaces import (
     TrainableSupportsGetKernel,
 )
 from ..observer import OBJECTIVE
-from ..space import Box, SearchSpace, TaggedMultiSearchSpace
+from ..space import (
+    Box,
+    DiscreteSearchSpace,
+    SearchSpace,
+    TaggedMultiSearchSpace,
+    TaggedProductSearchSpace,
+)
 from ..types import State, Tag, TensorType
 from ..utils.misc import LocalizedTag
 from .function import (
@@ -1887,6 +1894,281 @@ class TURBOBox(UpdatableTrustRegionBox):
         y_min = tf.gather(dataset.observations, ix)
 
         return tf.squeeze(x_min, axis=0), tf.squeeze(y_min)
+
+
+class UpdatableTrustRegionDiscrete(DiscreteSearchSpace, UpdatableTrustRegion):
+    """
+    A simple updatable discrete search space with an associated global search space.
+    """
+
+    def __init__(
+        self,
+        global_search_space: DiscreteSearchSpace,
+        region_index: Optional[int] = None,
+    ):
+        """
+        :param global_search_space: The global search space this search space lives in.
+        :param region_index: The index of the region in a multi-region search space. This is used to
+            identify the local models and datasets to use for acquisition. If `None`, the
+            global models and datasets are used.
+        """
+        # Ensure global_points is a copied tensor, in case a variable is passed in.
+        DiscreteSearchSpace.__init__(self, tf.constant(global_search_space.points))
+        UpdatableTrustRegion.__init__(self, region_index)
+        self._global_search_space = global_search_space
+
+    @property
+    @abstractmethod
+    def location(self) -> TensorType:
+        """Center of the region."""
+
+    @property
+    def global_search_space(self) -> DiscreteSearchSpace:
+        """The global space this search space lives in."""
+        return self._global_search_space
+
+
+class FixedPointTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
+    """
+    A discrete trust region with a fixed point location that does not change.
+    """
+
+    def __init__(
+        self,
+        global_search_space: DiscreteSearchSpace,
+        region_index: Optional[int] = None,
+    ):
+        super().__init__(global_search_space, region_index)
+        # Random initial point from the global search space.
+        self._points = self.global_search_space.sample(1)
+
+    @property
+    def location(self) -> TensorType:
+        """The location point of the region."""
+        return tf.squeeze(self._points, axis=0)  # Only one point.
+
+    def initialize(
+        self,
+        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+    ) -> None:
+        # Pick a random point from the global search space.
+        self._points = self.global_search_space.sample(1)
+
+    def update(
+        self,
+        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+    ) -> None:
+        # Keep the point fixed, no updates needed.
+        pass
+
+
+UpdatableTrustRegionWithGlobalSearchSpace = Union[
+    UpdatableTrustRegionBox, UpdatableTrustRegionDiscrete
+]
+"""A type alias for updatable trust regions with a global search space."""
+
+
+class UpdatableTrustRegionProduct(TaggedProductSearchSpace, UpdatableTrustRegion):
+    def __init__(
+        self,
+        regions: Sequence[UpdatableTrustRegionWithGlobalSearchSpace],
+        region_index: Optional[int] = None,
+    ):
+        """
+        :param regions: The trust sub-regions to be combined to create a product trust region.
+        :param region_index: The index of the region in a multi-region search space. This is used to
+            identify the local models and datasets to use for acquisition. If `None`, the
+            global models and datasets are used.
+        """
+        assert len(regions) > 0, "at least one region should be provided"
+
+        self._global_search_space = TaggedProductSearchSpace(
+            [region.global_search_space for region in regions]
+        )
+
+        TaggedProductSearchSpace.__init__(self, regions)
+        # When UpdatableTrustRegion sets the region_index, it will also set the region_index for
+        # each region.
+        UpdatableTrustRegion.__init__(self, region_index)
+
+        # Assert all regions have the same index. This would be set by UpdatableTrustRegion.
+        assert all(
+            region.region_index == region_index for region in regions
+        ), "all regions should have the same index"
+
+    @property
+    def region_index(self) -> Optional[int]:
+        """The index of the region in a multi-region search space."""
+        return self._region_index
+
+    @region_index.setter
+    def region_index(self, region_index: Optional[int]) -> None:
+        """Set the index of the region in a multi-region search space, including all sub-regions."""
+        self._region_index = region_index
+        for region in self.regions.values():
+            region.region_index = region_index
+
+    @property
+    def regions(self) -> Mapping[str, UpdatableTrustRegionWithGlobalSearchSpace]:
+        """The sub-regions of the product trust region."""
+        _regions = {}
+        for tag, region in self._spaces.items():
+            assert isinstance(region, (UpdatableTrustRegionBox, UpdatableTrustRegionDiscrete))
+            _regions[tag] = region
+        return _regions
+
+    @property
+    def location(self) -> TensorType:
+        """
+        The location of the product trust region, concatenated from the locations of the
+        sub-regions.
+        """
+        return tf.concat([region.location for region in self.regions.values()], axis=-1)
+
+    @property
+    def global_search_space(self) -> TaggedProductSearchSpace:
+        """The global search space this search space lives in."""
+        return self._global_search_space
+
+    def _get_datasets_component(
+        self,
+        tag: str,
+        datasets: Optional[Mapping[Tag, Dataset]],
+    ) -> Optional[Mapping[Tag, Dataset]]:
+        if datasets is None:
+            return None
+        else:
+            return {
+                data_tag: Dataset(
+                    self.get_subspace_component(tag, dataset.query_points),
+                    dataset.observations,
+                )
+                for data_tag, dataset in datasets.items()
+            }
+
+    def initialize(
+        self,
+        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
+        for tag, region in self.regions.items():
+            region.initialize(models, self._get_datasets_component(tag, datasets), *args, **kwargs)
+
+    def update(
+        self,
+        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
+        for tag, region in self.regions.items():
+            region.update(models, self._get_datasets_component(tag, datasets), *args, **kwargs)
+
+    def get_datasets_filter_mask(
+        self, datasets: Optional[Mapping[Tag, Dataset]]
+    ) -> Optional[Mapping[Tag, tf.Tensor]]:
+        # Return a boolean AND of the masks of each sub-region.
+
+        # Only select the region datasets for filtering. Don't directly filter the global dataset.
+        assert (
+            self.region_index is not None
+        ), "the region_index should be set for filtering local datasets"
+        if datasets is None:
+            return None
+        else:
+            masks = [  # Masks for each sub-region.
+                region.get_datasets_filter_mask(self._get_datasets_component(tag, datasets))
+                for tag, region in self.regions.items()
+            ]
+            if masks[0] is not None:
+                assert all(
+                    set(mask.keys()) == set(masks[0].keys()) for mask in masks if mask is not None
+                ), "all region masks should have the same keys"
+
+                return {
+                    tag: tf.reduce_all([mask[tag] for mask in masks if mask is not None], axis=0)
+                    for tag in masks[0].keys()
+                }
+            else:
+                return None
+
+
+class BatchTrustRegionProduct(
+    BatchTrustRegion[ProbabilisticModelType, UpdatableTrustRegionProduct]
+):
+    """
+    Implements the :class:`BatchTrustRegion` *trust region* acquisition rule for mixed search
+    spaces. This is intended to be used for single-objective optimization with batching.
+    """
+
+    def acquire(
+        self,
+        search_space: SearchSpace,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+    ) -> types.State[BatchTrustRegion.State | None, TensorType]:
+        if self._subspaces is None:
+            # If no initial subspaces were provided, create N default subspaces, where N is the
+            # number of query points in the base-rule.
+            # Currently the detection for N is only implemented for EGO.
+            # Note: the reason we don't create the default subspaces in `__init__` is because we
+            # don't have the global search space at that point.
+            if isinstance(self._rule, EfficientGlobalOptimization):
+                num_query_points = self._rule._num_query_points
+            else:
+                num_query_points = 1
+
+            def create_subregions() -> Sequence[UpdatableTrustRegionWithGlobalSearchSpace]:
+                # Take a global product search space and convert each of its subspaces to an
+                # updatable trust sub-region. These sub-regions are then used to create a
+                # trust region product.
+                assert isinstance(
+                    search_space, TaggedProductSearchSpace
+                ), "search_space should be a TaggedProductSearchSpace"
+
+                subregions: List[UpdatableTrustRegionWithGlobalSearchSpace] = []
+                for tag in search_space.subspace_tags:
+                    subspace = search_space.get_subspace(tag)
+                    if isinstance(subspace, DiscreteSearchSpace):
+                        subregions.append(FixedPointTrustRegionDiscrete(subspace))
+                    else:
+                        subregions.append(SingleObjectiveTrustRegionBox(subspace))
+                return subregions
+
+            init_subspaces: Tuple[UpdatableTrustRegionProduct, ...] = tuple(
+                UpdatableTrustRegionProduct(create_subregions()) for _ in range(num_query_points)
+            )
+            self._subspaces = init_subspaces
+            for index, subspace in enumerate(self._subspaces):
+                subspace.region_index = index  # Override the index.
+            self._tags = tuple(str(index) for index in range(self.num_local_datasets))
+
+        # Ensure passed in global search space is always the same as the search space passed to
+        # the subspaces.
+        for subspace in self._subspaces:
+            assert subspace.global_search_space == search_space, (
+                "The global search space of the subspaces should be the same as the "
+                "search space passed to the BatchTrustRegionProduct acquisition rule. "
+                "If you want to change the global search space, you should recreate the rule. "
+                "Note: all subspaces should be initialized with the same global search space."
+            )
+
+        return super().acquire(search_space, models, datasets)
+
+    @inherit_check_shapes
+    def get_initialize_subspaces_mask(
+        self,
+        subspaces: Sequence[UpdatableTrustRegionProduct],
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+    ) -> TensorType:
+        # Initialize the subspaces that have non-unique locations.
+        centres = tf.stack([subspace.location for subspace in subspaces])
+        return tf.logical_not(get_unique_points_mask(centres, tolerance=1e-6))
 
 
 class BatchHypervolumeSharpeRatioIndicator(
