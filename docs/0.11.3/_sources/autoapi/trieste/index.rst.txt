@@ -1,0 +1,49 @@
+:py:mod:`trieste`
+=================
+
+.. py:module:: trieste
+
+.. autoapi-nested-parse::
+
+   The library root. See :mod:`~trieste.bayesian_optimizer` for the core optimizer, which requires
+   models (see :mod:`~trieste.models`), and data sets (see :mod:`~trieste.data`). The
+   :mod:`~trieste.acquisition` package provides a selection of acquisition algorithms and the
+   functionality to define your own. The :mod:`~trieste.ask_tell_optimization` package provides API
+   for Ask-Tell optimization and manual control of the optimization loop.
+   The :mod:`~trieste.objectives` package contains several popular objective functions,
+   useful for experimentation.
+
+   Bibliography
+   ============
+
+   .. bibliography::
+
+
+
+Subpackages
+-----------
+.. toctree::
+   :titlesonly:
+   :maxdepth: 3
+
+   acquisition/index.rst
+   models/index.rst
+   objectives/index.rst
+   utils/index.rst
+
+
+Submodules
+----------
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+
+   ask_tell_optimization/index.rst
+   bayesian_optimizer/index.rst
+   data/index.rst
+   logging/index.rst
+   observer/index.rst
+   space/index.rst
+   types/index.rst
+
+

@@ -1,0 +1,751 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.models.gpflux.sampler &#8212; trieste 1.0.0 documentation</title>
+    
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+
+    
+  <link rel="stylesheet"
+    href="../../../../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/styles/pydata-sphinx-theme.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css" />
+    
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf">
+
+    <script id="documentation_options" data-url_root="../../../../" src="../../../../_static/documentation_options.js"></script>
+    <script src="../../../../_static/jquery.js"></script>
+    <script src="../../../../_static/underscore.js"></script>
+    <script src="../../../../_static/doctools.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="None">
+    
+
+    <!-- Google Analytics -->
+    
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="60">
+    
+    <div class="container-fluid" id="banner"></div>
+
+    
+    <nav class="navbar navbar-light navbar-expand-lg bg-light fixed-top bd-navbar" id="navbar-main"><div class="container-xl">
+
+  <div id="navbar-start">
+    
+    
+
+<a class="navbar-brand" href="../../../../index.html">
+  <img src="../../../../_static/logo.png" class="logo" alt="logo">
+</a>
+
+
+    
+  </div>
+
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar-collapsible" aria-controls="navbar-collapsible" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  
+  <div id="navbar-collapsible" class="col-lg-9 collapse navbar-collapse">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <ul id="navbar-main-elements" class="navbar-nav">
+    <li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../../index.html">
+  Trieste
+ </a>
+</li>
+
+<li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../../autoapi/trieste/index.html">
+  API reference
+ </a>
+</li>
+
+<li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../../tutorials.html">
+  Tutorials
+ </a>
+</li>
+
+    
+</ul>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+      <div class="navbar-end-item">
+        <div class="dropdown" id="version_switcher">
+    <button type="button" class="btn btn-primary btn-sm navbar-btn dropdown-toggle" id="version_switcher_button" data-toggle="dropdown">
+        1.0.0  <!-- this text may get changed later by javascript -->
+        <span class="caret"></span>
+    </button>
+    <div id="version_switcher_menu" class="dropdown-menu list-group-flush py-0" aria-labelledby="version_switcher_button">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+</div>
+
+<!-- NOTE: this JS must live here (not in our global JS file) because it relies
+     on being processed by Jinja before it is run (specifically for replacing
+     variables _modules/trieste/models/gpflux/sampler and {'json_url': 'https://secondmind-labs.github.io/trieste/versions.json', 'version_match': '1.0.0'}.
+-->
+
+<script type="text/javascript">
+// Check if corresponding page path exists in other version of docs
+// and, if so, go there instead of the homepage of the other docs version
+function checkPageExistsAndRedirect(event) {
+    const currentFilePath = "_modules/trieste/models/gpflux/sampler.html",
+          tryUrl = event.target.getAttribute("href");
+    let otherDocsHomepage = tryUrl.replace(currentFilePath, "");
+    $.ajax({
+        type: 'HEAD',
+        url: tryUrl,
+        // if the page exists, go there
+        success: function() {
+            location.href = tryUrl;
+        }
+    }).fail(function() {
+        location.href = otherDocsHomepage;
+    });
+    // this prevents the browser from following the href of the clicked node
+    // (which is fine because this function takes care of redirecting)
+    return false;
+}
+
+// Populate the version switcher from the JSON config file
+(function () {
+    $.getJSON("https://secondmind-labs.github.io/trieste/versions.json", function(data, textStatus, jqXHR) {
+        const currentFilePath = "_modules/trieste/models/gpflux/sampler.html";
+        // create links to the corresponding page in the other docs versions
+        $.each(data, function(index, entry) {
+            // if no custom name specified (e.g., "latest"), use version string
+            if (!("name" in entry)) {
+                entry.name = entry.version;
+            }
+            // create the node
+            const node = document.createElement("a");
+            node.setAttribute("class", "list-group-item list-group-item-action py-1");
+            node.textContent = `${entry.name}`;
+            node.setAttribute("href", `${entry.url}${currentFilePath}`);
+            // on click, AJAX calls will check if the linked page exists before
+            // trying to redirect, and if not, will redirect to the homepage
+            // for that version of the docs.
+            node.onclick = checkPageExistsAndRedirect;
+            // Add dataset values for the version and name in case people want
+            // to apply CSS styling based on this information.
+            node.dataset["versionName"] = entry.name;
+            node.dataset["version"] = entry.version;
+
+            $("#version_switcher_menu").append(node);
+            // replace dropdown button text with the preferred display name of
+            // this version, rather than using sphinx's  variable.
+            // also highlight the dropdown entry for the currently-viewed
+            // version's entry
+            if (entry.version == "1.0.0") {
+                node.classList.add("active");
+                let btn = document.getElementById("version_switcher_button");
+                btn.innerText = btn.dataset["activeVersionName"] = entry.name;
+                btn.dataset["activeVersion"] = entry.version;
+            }
+        });
+    });
+})();
+</script>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+        <li class="nav-item">
+          <a class="nav-link" href="https://github.com/secondmind-labs/trieste" rel="noopener" target="_blank" title="GitHub"><span><i class="fab fa-github-square"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+</div>
+    </nav>
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+            
+            <!-- Only show if we have sidebars configured, else just a small margin  -->
+            <div class="col-12 col-md-3 bd-sidebar">
+              <div class="sidebar-start-items"><form class="bd-search d-flex align-items-center" action="../../../../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+  <div class="bd-toc-item active">
+    
+  </div>
+</nav>
+              </div>
+              <div class="sidebar-end-items">
+              </div>
+            </div>
+            
+          
+
+          
+          <div class="d-none d-xl-block col-xl-2 bd-toc">
+            
+          </div>
+          
+
+          
+          
+            
+          
+          <main class="col-12 col-md-9 col-xl-7 py-md-5 pl-md-5 pr-md-4 bd-content" role="main">
+              
+              <div>
+                
+  <h1>Source code for trieste.models.gpflux.sampler</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2021 The Trieste Contributors</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABC</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">cast</span>
+
+<span class="kn">import</span> <span class="nn">gpflow.kernels</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">from</span> <span class="nn">gpflow.inducing_variables</span> <span class="kn">import</span> <span class="n">InducingPoints</span>
+<span class="kn">from</span> <span class="nn">gpflux.layers</span> <span class="kn">import</span> <span class="n">GPLayer</span><span class="p">,</span> <span class="n">LatentVariableLayer</span>
+<span class="kn">from</span> <span class="nn">gpflux.layers.basis_functions.fourier_features</span> <span class="kn">import</span> <span class="n">RandomFourierFeaturesCosine</span>
+<span class="kn">from</span> <span class="nn">gpflux.math</span> <span class="kn">import</span> <span class="n">compute_A_inv_b</span>
+<span class="kn">from</span> <span class="nn">gpflux.models</span> <span class="kn">import</span> <span class="n">DeepGP</span>
+
+<span class="kn">from</span> <span class="nn">...types</span> <span class="kn">import</span> <span class="n">TensorType</span>
+<span class="kn">from</span> <span class="nn">...utils</span> <span class="kn">import</span> <span class="n">DEFAULTS</span><span class="p">,</span> <span class="n">flatten_leading_dims</span>
+<span class="kn">from</span> <span class="nn">..interfaces</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ReparametrizationSampler</span><span class="p">,</span>
+    <span class="n">TrajectoryFunction</span><span class="p">,</span>
+    <span class="n">TrajectoryFunctionClass</span><span class="p">,</span>
+    <span class="n">TrajectorySampler</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.interface</span> <span class="kn">import</span> <span class="n">GPfluxPredictor</span>
+
+
+<div class="viewcode-block" id="DeepGaussianProcessReparamSampler"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/sampler/index.html#trieste.models.gpflux.DeepGaussianProcessReparamSampler">[docs]</a><span class="k">class</span> <span class="nc">DeepGaussianProcessReparamSampler</span><span class="p">(</span><span class="n">ReparametrizationSampler</span><span class="p">[</span><span class="n">GPfluxPredictor</span><span class="p">]):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This sampler employs the *reparameterization trick* to approximate samples from a</span>
+<span class="sd">    :class:`GPfluxPredictor`\ &#39;s predictive distribution, when the :class:`GPfluxPredictor` has</span>
+<span class="sd">    an underlying :class:`~gpflux.models.DeepGP`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">GPfluxPredictor</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param sample_size: The number of samples for each batch of points. Must be positive.</span>
+<span class="sd">        :param model: The model to sample from.</span>
+<span class="sd">        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive, if the</span>
+<span class="sd">            model is not a :class:`GPfluxPredictor`, of if its underlying ``model_gpflux`` is not a</span>
+<span class="sd">            :class:`~gpflux.models.DeepGP`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">GPfluxPredictor</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Model must be a gpflux.interface.GPfluxPredictor, received </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">sample_size</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_model_gpflux</span><span class="p">,</span> <span class="n">DeepGP</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;GPflux model must be a gpflux.models.DeepGP, received </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_model_gpflux</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Each element of _eps_list is essentially a lazy constant. It is declared and assigned an</span>
+        <span class="c1"># empty tensor here, and populated on the first call to sample</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_eps_list</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">ones</span><span class="p">([</span><span class="n">sample_size</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="n">shape</span><span class="o">=</span><span class="p">[</span><span class="n">sample_size</span><span class="p">,</span> <span class="kc">None</span><span class="p">])</span>
+            <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_model_gpflux</span><span class="o">.</span><span class="n">f_layers</span><span class="p">))</span>
+        <span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">_model_gpflux</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">tf</span><span class="o">.</span><span class="n">Module</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">model_gpflux</span>
+
+<div class="viewcode-block" id="DeepGaussianProcessReparamSampler.sample"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/sampler/index.html#trieste.models.gpflux.DeepGaussianProcessReparamSampler.sample">[docs]</a>    <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">at</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">jitter</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULTS</span><span class="o">.</span><span class="n">JITTER</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to</span>
+<span class="sd">        :meth:`sample`, for any given :class:`DeepGaussianProcessReparamSampler` and ``at``, will</span>
+<span class="sd">        produce the exact same samples. Calls to :meth:`sample` on *different*</span>
+<span class="sd">        :class:`DeepGaussianProcessReparamSampler` instances will produce different samples.</span>
+
+<span class="sd">        :param at: Where to sample the predictive distribution, with shape `[..., 1, D]`, for points</span>
+<span class="sd">            of dimension `D`.</span>
+<span class="sd">        :param jitter: The size of the jitter to use when stabilizing the Cholesky</span>
+<span class="sd">            decomposition of the covariance matrix.</span>
+<span class="sd">        :return: The samples, of shape `[..., S, 1, L]`, where `S` is the `sample_size` and `L` is</span>
+<span class="sd">            the number of latent model dimensions.</span>
+<span class="sd">        :raise ValueError (or InvalidArgumentError): If ``at`` has an invalid shape or ``jitter``</span>
+<span class="sd">            is negative.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">([(</span><span class="n">at</span><span class="p">,</span> <span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">])])</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_greater_equal</span><span class="p">(</span><span class="n">jitter</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+
+        <span class="n">samples</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">at</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sample_size</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">3</span><span class="p">)</span>  <span class="c1"># [..., S, 1, D]</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">layer</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_model_gpflux</span><span class="o">.</span><span class="n">f_layers</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="n">LatentVariableLayer</span><span class="p">):</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initialized</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_eps_list</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">layer</span><span class="o">.</span><span class="n">prior</span><span class="o">.</span><span class="n">sample</span><span class="p">([</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">samples</span><span class="p">)[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]]))</span>
+                <span class="n">samples</span> <span class="o">=</span> <span class="n">layer</span><span class="o">.</span><span class="n">compositor</span><span class="p">([</span><span class="n">samples</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_eps_list</span><span class="p">[</span><span class="n">i</span><span class="p">]])</span>
+                <span class="k">continue</span>
+
+            <span class="n">mean</span><span class="p">,</span> <span class="n">var</span> <span class="o">=</span> <span class="n">layer</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">samples</span><span class="p">,</span> <span class="n">full_cov</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">full_output_cov</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">var</span> <span class="o">=</span> <span class="n">var</span> <span class="o">+</span> <span class="n">jitter</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initialized</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_eps_list</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span>
+                    <span class="n">tf</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">_sample_size</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">mean</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+                <span class="p">)</span>  <span class="c1"># [S, L]</span>
+
+            <span class="n">samples</span> <span class="o">=</span> <span class="n">mean</span> <span class="o">+</span> <span class="n">tf</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">var</span><span class="p">)</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_eps_list</span><span class="p">[</span><span class="n">i</span><span class="p">][:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:],</span> <span class="n">var</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initialized</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_initialized</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">samples</span>  <span class="c1"># [..., S, 1, L]</span></div></div>
+
+
+<div class="viewcode-block" id="DeepGaussianProcessDecoupledTrajectorySampler"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/sampler/index.html#trieste.models.gpflux.DeepGaussianProcessDecoupledTrajectorySampler">[docs]</a><span class="k">class</span> <span class="nc">DeepGaussianProcessDecoupledTrajectorySampler</span><span class="p">(</span><span class="n">TrajectorySampler</span><span class="p">[</span><span class="n">GPfluxPredictor</span><span class="p">]):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This sampler employs decoupled sampling (see :cite:`wilson2020efficiently`) to build functions</span>
+<span class="sd">    that approximate a trajectory sampled from an underlying deep Gaussian process model. In</span>
+<span class="sd">    particular, this sampler provides trajectory functions for :class:`GPfluxPredictor`\s with</span>
+<span class="sd">    underlying :class:`~gpflux.models.DeepGP` models by using a feature decomposition using both</span>
+<span class="sd">    random Fourier features and canonical features centered at inducing point locations. This allows</span>
+<span class="sd">    for cheap approximate trajectory samples, as opposed to exact trajectory sampling, which scales</span>
+<span class="sd">    cubically in the number of query points.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">GPfluxPredictor</span><span class="p">,</span>
+        <span class="n">num_features</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param model: The model to sample from.</span>
+<span class="sd">        :param num_features: The number of random Fourier features to use.</span>
+<span class="sd">        :raise ValueError (or InvalidArgumentError): If the model is not a :class:`GPfluxPredictor`,</span>
+<span class="sd">            or its underlying ``model_gpflux`` is not a :class:`~gpflux.models.DeepGP`, or</span>
+<span class="sd">            ``num_features`` is not positive.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">GPfluxPredictor</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Model must be a gpflux.interface.GPfluxPredictor, received </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">model_gpflux</span><span class="p">,</span> <span class="n">DeepGP</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;GPflux model must be a gpflux.models.DeepGP, received </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">model_gpflux</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="n">num_features</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_num_features</span> <span class="o">=</span> <span class="n">num_features</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">(</span>
+<span class="s2">        </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="si">!r}</span><span class="s2">,</span>
+<span class="s2">        </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_num_features</span><span class="si">!r}</span><span class="s2">)</span>
+<span class="s2">        &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="DeepGaussianProcessDecoupledTrajectorySampler.get_trajectory"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/sampler/index.html#trieste.models.gpflux.DeepGaussianProcessDecoupledTrajectorySampler.get_trajectory">[docs]</a>    <span class="k">def</span> <span class="nf">get_trajectory</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TrajectoryFunction</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate an approximate function draw (trajectory) from the deep GP model.</span>
+
+<span class="sd">        :return: A trajectory function representing an approximate trajectory from the deep GP,</span>
+<span class="sd">            taking an input of shape `[N, B, D]` and returning shape `[N, B, L]`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="n">dgp_feature_decomposition_trajectory</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_features</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="DeepGaussianProcessDecoupledTrajectorySampler.update_trajectory"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/sampler/index.html#trieste.models.gpflux.DeepGaussianProcessDecoupledTrajectorySampler.update_trajectory">[docs]</a>    <span class="k">def</span> <span class="nf">update_trajectory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trajectory</span><span class="p">:</span> <span class="n">TrajectoryFunction</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TrajectoryFunction</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Efficiently update a :const:`TrajectoryFunction` to reflect an update in its underlying</span>
+<span class="sd">        :class:`ProbabilisticModel` and resample accordingly.</span>
+
+<span class="sd">        :param trajectory: The trajectory function to be updated and resampled.</span>
+<span class="sd">        :return: The updated and resampled trajectory function.</span>
+<span class="sd">        :raise InvalidArgumentError: If ``trajectory`` is not a</span>
+<span class="sd">            :class:`dgp_feature_decomposition_trajectory`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span>
+            <span class="nb">isinstance</span><span class="p">(</span><span class="n">trajectory</span><span class="p">,</span> <span class="n">dgp_feature_decomposition_trajectory</span><span class="p">),</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([])]</span>
+        <span class="p">)</span>
+
+        <span class="n">cast</span><span class="p">(</span><span class="n">dgp_feature_decomposition_trajectory</span><span class="p">,</span> <span class="n">trajectory</span><span class="p">)</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">trajectory</span></div>
+
+<div class="viewcode-block" id="DeepGaussianProcessDecoupledTrajectorySampler.resample_trajectory"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/sampler/index.html#trieste.models.gpflux.DeepGaussianProcessDecoupledTrajectorySampler.resample_trajectory">[docs]</a>    <span class="k">def</span> <span class="nf">resample_trajectory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trajectory</span><span class="p">:</span> <span class="n">TrajectoryFunction</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TrajectoryFunction</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Efficiently resample a :const:`TrajectoryFunction` in-place to avoid function retracing</span>
+<span class="sd">        with every new sample.</span>
+
+<span class="sd">        :param trajectory: The trajectory function to be resampled.</span>
+<span class="sd">        :return: The new resampled trajectory function.</span>
+<span class="sd">        :raise InvalidArgumentError: If ``trajectory`` is not a</span>
+<span class="sd">            :class:`dgp_feature_decomposition_trajectory`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span>
+            <span class="nb">isinstance</span><span class="p">(</span><span class="n">trajectory</span><span class="p">,</span> <span class="n">dgp_feature_decomposition_trajectory</span><span class="p">),</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([])]</span>
+        <span class="p">)</span>
+        <span class="n">cast</span><span class="p">(</span><span class="n">dgp_feature_decomposition_trajectory</span><span class="p">,</span> <span class="n">trajectory</span><span class="p">)</span><span class="o">.</span><span class="n">resample</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">trajectory</span></div></div>
+
+
+<div class="viewcode-block" id="DeepGaussianProcessDecoupledLayer"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/sampler/index.html#trieste.models.gpflux.DeepGaussianProcessDecoupledLayer">[docs]</a><span class="k">class</span> <span class="nc">DeepGaussianProcessDecoupledLayer</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Layer that samples an approximate decoupled trajectory for a GPflux</span>
+<span class="sd">    :class:`~gpflux.layers.GPLayer` using Matheron&#39;s rule (:cite:`wilson2020efficiently`). Note</span>
+<span class="sd">    that the only multi-output kernel that is supported is a</span>
+<span class="sd">    :class:`~gpflow.kernels.SharedIndependent` kernel.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">GPfluxPredictor</span><span class="p">,</span>
+        <span class="n">layer_number</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">num_features</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param model: The model to sample from.</span>
+<span class="sd">        :param layer_number: The index of the layer that we wish to sample from.</span>
+<span class="sd">        :param num_features: The number of features to use in the random feature approximation.</span>
+<span class="sd">        :raise ValueError (or InvalidArgumentError): If the layer is not a</span>
+<span class="sd">            :class:`~gpflux.layers.GPLayer`, the layer&#39;s kernel is not supported, or if</span>
+<span class="sd">            ``num_features`` is not positive.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_layer_number</span> <span class="o">=</span> <span class="n">layer_number</span>
+        <span class="n">layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layer</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="n">GPLayer</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Layers other than gpflux.layers.GPLayer are not currently supported, received&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">layer</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="n">num_features</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_num_features</span> <span class="o">=</span> <span class="n">num_features</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">layer</span><span class="o">.</span><span class="n">kernel</span><span class="p">,</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">kernels</span><span class="o">.</span><span class="n">MultioutputKernel</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">layer</span><span class="o">.</span><span class="n">kernel</span><span class="p">,</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">kernels</span><span class="o">.</span><span class="n">SharedIndependent</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Multioutput kernels other than gpflow.kernels.SharedIndependent are not&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;currently supported, received </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">layer</span><span class="o">.</span><span class="n">kernel</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_kernel</span> <span class="o">=</span> <span class="n">layer</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">kernel</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># GPLayers are supposed to only use multioutput kernels but we also use them with</span>
+            <span class="c1"># simple kernels</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_kernel</span> <span class="o">=</span> <span class="n">layer</span><span class="o">.</span><span class="n">kernel</span>  <span class="c1"># type: ignore[unreachable]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_feature_functions</span> <span class="o">=</span> <span class="n">ResampleableDecoupledDeepGaussianProcessFeatureFunctions</span><span class="p">(</span>
+            <span class="n">layer</span><span class="p">,</span> <span class="n">num_features</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_weight_sampler</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_weight_sampler</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_initialized</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_weights_sample</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">ones</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="n">shape</span><span class="o">=</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_batch_size</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GPLayer</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">model_gpflux</span><span class="o">.</span><span class="n">f_layers</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_layer_number</span><span class="p">]</span>
+
+<div class="viewcode-block" id="DeepGaussianProcessDecoupledLayer.__call__"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/sampler/index.html#trieste.models.gpflux.DeepGaussianProcessDecoupledLayer.__call__">[docs]</a>    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>  <span class="c1"># [N, B, D] -&gt; [N, B, P]</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate trajectory function for layer at input.</span>
+
+<span class="sd">        :param x: Input location with shape `[N, B, D]`, where `N` is the number of points, `B` is</span>
+<span class="sd">            the batch dimension, and `D` is the input dimensionality.</span>
+<span class="sd">        :return: Trajectory for the layer evaluated at the input, with shape `[N, B, P]`, where `P`</span>
+<span class="sd">            is the number of latent GPs in the layer.</span>
+<span class="sd">        :raise InvalidArgumentError: If the provided batch size does not match with the layer&#39;s</span>
+<span class="sd">            batch size.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initialized</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_batch_size</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">x</span><span class="p">)[</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resample</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_initialized</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_equal</span><span class="p">(</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">x</span><span class="p">)[</span><span class="o">-</span><span class="mi">2</span><span class="p">],</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_batch_size</span><span class="o">.</span><span class="n">value</span><span class="p">(),</span>
+            <span class="n">message</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            This trajectory only supports batch sizes of </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_batch_size</span><span class="si">}</span><span class="s2">.</span>
+<span class="s2">            If you wish to change the batch size you must get a new trajectory</span>
+<span class="s2">            by calling the get_trajectory method of the trajectory sampler.</span>
+<span class="s2">            &quot;&quot;&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">flat_x</span><span class="p">,</span> <span class="n">unflatten</span> <span class="o">=</span> <span class="n">flatten_leading_dims</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">flattened_feature_evaluations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_feature_functions</span><span class="p">(</span><span class="n">flat_x</span><span class="p">)</span>
+        <span class="n">feature_evaluations</span> <span class="o">=</span> <span class="n">unflatten</span><span class="p">(</span><span class="n">flattened_feature_evaluations</span><span class="p">)[</span>
+            <span class="o">...</span><span class="p">,</span> <span class="kc">None</span>
+        <span class="p">]</span>  <span class="c1"># [N, B, L + M, 1]</span>
+
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">(</span>
+            <span class="n">feature_evaluations</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_weights_sample</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span>
+        <span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layer</span><span class="o">.</span><span class="n">mean_function</span><span class="p">(</span>
+            <span class="n">x</span></div>
+        <span class="p">)</span>  <span class="c1"># [N, B, P]</span>
+
+<div class="viewcode-block" id="DeepGaussianProcessDecoupledLayer.resample"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/sampler/index.html#trieste.models.gpflux.DeepGaussianProcessDecoupledLayer.resample">[docs]</a>    <span class="k">def</span> <span class="nf">resample</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Efficiently resample in-place without retracing.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_weights_sample</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_weight_sampler</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_batch_size</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="DeepGaussianProcessDecoupledLayer.update"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/sampler/index.html#trieste.models.gpflux.DeepGaussianProcessDecoupledLayer.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Efficiently update the trajectory with a new weight distribution and resample its weights.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_feature_functions</span><span class="o">.</span><span class="n">resample</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_weight_sampler</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_weight_sampler</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resample</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="DeepGaussianProcessDecoupledLayer._prepare_weight_sampler"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/sampler/index.html#trieste.models.gpflux.DeepGaussianProcessDecoupledLayer._prepare_weight_sampler">[docs]</a>    <span class="k">def</span> <span class="nf">_prepare_weight_sampler</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">int</span><span class="p">],</span> <span class="n">TensorType</span><span class="p">]:</span>  <span class="c1"># [B] -&gt; [B, L+M, P]</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Prepare the sampler function that provides samples of the feature weights for both the</span>
+<span class="sd">        RFF and canonical feature functions, i.e. we return a function that takes in a batch size</span>
+<span class="sd">        `B` and returns `B` samples for the weights of each of the `L` RFF features and `M`</span>
+<span class="sd">        canonical features for `P` outputs.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_layer</span><span class="o">.</span><span class="n">inducing_variable</span><span class="p">,</span> <span class="n">InducingPoints</span><span class="p">):</span>
+            <span class="n">inducing_points</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layer</span><span class="o">.</span><span class="n">inducing_variable</span><span class="o">.</span><span class="n">Z</span>  <span class="c1"># [M, D]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">inducing_points</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layer</span><span class="o">.</span><span class="n">inducing_variable</span><span class="o">.</span><span class="n">inducing_variable</span><span class="o">.</span><span class="n">Z</span>  <span class="c1"># [M, D]</span>
+
+        <span class="n">q_mu</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layer</span><span class="o">.</span><span class="n">q_mu</span>  <span class="c1"># [M, P]</span>
+        <span class="n">q_sqrt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layer</span><span class="o">.</span><span class="n">q_sqrt</span>  <span class="c1"># [P, M, M]</span>
+        <span class="n">Kmm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kernel</span><span class="o">.</span><span class="n">K</span><span class="p">(</span><span class="n">inducing_points</span><span class="p">,</span> <span class="n">inducing_points</span><span class="p">)</span>  <span class="c1"># [M, M]</span>
+        <span class="n">Kmm</span> <span class="o">+=</span> <span class="n">tf</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">inducing_points</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">Kmm</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span> <span class="o">*</span> <span class="n">DEFAULTS</span><span class="o">.</span><span class="n">JITTER</span>
+        <span class="n">whiten</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layer</span><span class="o">.</span><span class="n">whiten</span>
+        <span class="n">M</span><span class="p">,</span> <span class="n">P</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">q_mu</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">q_mu</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="p">(</span><span class="n">inducing_points</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;M&quot;</span><span class="p">,</span> <span class="s2">&quot;D&quot;</span><span class="p">]),</span>
+                <span class="p">(</span><span class="n">q_mu</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;M&quot;</span><span class="p">,</span> <span class="s2">&quot;P&quot;</span><span class="p">]),</span>
+                <span class="p">(</span><span class="n">q_sqrt</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;P&quot;</span><span class="p">,</span> <span class="s2">&quot;M&quot;</span><span class="p">,</span> <span class="s2">&quot;M&quot;</span><span class="p">]),</span>
+                <span class="p">(</span><span class="n">Kmm</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;M&quot;</span><span class="p">,</span> <span class="s2">&quot;M&quot;</span><span class="p">]),</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">weight_sampler</span><span class="p">(</span><span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+            <span class="n">prior_weights</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">([</span><span class="n">batch_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_features</span><span class="p">,</span> <span class="n">P</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+            <span class="n">u_noise_sample</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span>
+                <span class="n">q_sqrt</span><span class="p">,</span>  <span class="c1"># [P, M, M]</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">([</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span> <span class="n">M</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>  <span class="c1"># [B, P, M, 1]</span>
+            <span class="p">)</span>  <span class="c1"># [B, P, M, 1]</span>
+            <span class="n">u_sample</span> <span class="o">=</span> <span class="n">q_mu</span> <span class="o">+</span> <span class="n">tf</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">matrix_transpose</span><span class="p">(</span><span class="n">u_noise_sample</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>  <span class="c1"># [B, M, P]</span>
+
+            <span class="k">if</span> <span class="n">whiten</span><span class="p">:</span>
+                <span class="n">Luu</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">cholesky</span><span class="p">(</span><span class="n">Kmm</span><span class="p">)</span>  <span class="c1"># [M, M]</span>
+                <span class="n">u_sample</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">Luu</span><span class="p">,</span> <span class="n">u_sample</span><span class="p">)</span>
+
+            <span class="n">phi_Z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_feature_functions</span><span class="p">(</span><span class="n">inducing_points</span><span class="p">)[:,</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_features</span><span class="p">]</span>
+            <span class="n">weight_space_prior_Z</span> <span class="o">=</span> <span class="n">phi_Z</span> <span class="o">@</span> <span class="n">prior_weights</span>  <span class="c1"># [B, M, P]</span>
+
+            <span class="n">diff</span> <span class="o">=</span> <span class="n">u_sample</span> <span class="o">-</span> <span class="n">weight_space_prior_Z</span>  <span class="c1"># [B, M, P]</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="n">compute_A_inv_b</span><span class="p">(</span><span class="n">Kmm</span><span class="p">,</span> <span class="n">diff</span><span class="p">)</span>  <span class="c1"># [B, M, P]</span>
+
+            <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">prior_weights</span><span class="p">,</span> <span class="n">v</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># [B, L + M, P]</span>
+
+        <span class="k">return</span> <span class="n">weight_sampler</span></div></div>
+
+
+<div class="viewcode-block" id="ResampleableDecoupledDeepGaussianProcessFeatureFunctions"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/sampler/index.html#trieste.models.gpflux.ResampleableDecoupledDeepGaussianProcessFeatureFunctions">[docs]</a><span class="k">class</span> <span class="nc">ResampleableDecoupledDeepGaussianProcessFeatureFunctions</span><span class="p">(</span><span class="n">RandomFourierFeaturesCosine</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A wrapper around GPflux&#39;s random Fourier feature function that allows for efficient in-place</span>
+<span class="sd">    updating when generating new decompositions. In addition to providing Fourier features,</span>
+<span class="sd">    this class concatenates a layer&#39;s Fourier feature expansion with evaluations of the canonical</span>
+<span class="sd">    basis functions.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">layer</span><span class="p">:</span> <span class="n">GPLayer</span><span class="p">,</span> <span class="n">n_components</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param layer: The layer that will be approximated by the feature functions.</span>
+<span class="sd">        :param n_components: The number of features.</span>
+<span class="sd">        :raise ValueError: If the layer is not a :class:`~gpflux.layers.GPLayer`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="n">GPLayer</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;ResampleableDecoupledDeepGaussianProcessFeatureFunctions currently only work with&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;gpflux.layers.GPLayer layers, received </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">layer</span><span class="p">)</span><span class="si">}</span><span class="s2"> instead&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">layer</span><span class="o">.</span><span class="n">kernel</span><span class="p">,</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">kernels</span><span class="o">.</span><span class="n">SharedIndependent</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_kernel</span> <span class="o">=</span> <span class="n">layer</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">kernel</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_kernel</span> <span class="o">=</span> <span class="n">layer</span><span class="o">.</span><span class="n">kernel</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_n_components</span> <span class="o">=</span> <span class="n">n_components</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_kernel</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_components</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">layer</span><span class="o">.</span><span class="n">inducing_variable</span><span class="p">,</span> <span class="n">InducingPoints</span><span class="p">):</span>
+            <span class="n">inducing_points</span> <span class="o">=</span> <span class="n">layer</span><span class="o">.</span><span class="n">inducing_variable</span><span class="o">.</span><span class="n">Z</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">inducing_points</span> <span class="o">=</span> <span class="n">layer</span><span class="o">.</span><span class="n">inducing_variable</span><span class="o">.</span><span class="n">inducing_variable</span><span class="o">.</span><span class="n">Z</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_canonical_feature_functions</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">matrix_transpose</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_kernel</span><span class="o">.</span><span class="n">K</span><span class="p">(</span><span class="n">inducing_points</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="n">dummy_X</span> <span class="o">=</span> <span class="n">inducing_points</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="n">dummy_X</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">b</span><span class="p">:</span> <span class="n">TensorType</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">b</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">W</span><span class="p">:</span> <span class="n">TensorType</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">W</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ResampleableDecoupledDeepGaussianProcessFeatureFunctions.resample"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/sampler/index.html#trieste.models.gpflux.ResampleableDecoupledDeepGaussianProcessFeatureFunctions.resample">[docs]</a>    <span class="k">def</span> <span class="nf">resample</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Resample weights and biases.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_bias_init&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">b</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_sample_bias</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">b</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_dtype</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">W</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_sample_weights</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">W</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_dtype</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">b</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_bias_init</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">b</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_dtype</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">W</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_weights_init</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">W</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_dtype</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="ResampleableDecoupledDeepGaussianProcessFeatureFunctions.__call__"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/sampler/index.html#trieste.models.gpflux.ResampleableDecoupledDeepGaussianProcessFeatureFunctions.__call__">[docs]</a>    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>  <span class="c1"># [N, D] -&gt; [N, L + M]</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate and combine prior basis functions and canonical basic functions at the input.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">fourier_feature_eval</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># [N, L]</span>
+        <span class="n">canonical_feature_eval</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_canonical_feature_functions</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># [N, M]</span>
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">fourier_feature_eval</span><span class="p">,</span> <span class="n">canonical_feature_eval</span><span class="p">],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># [N, L + M]</span></div></div>
+
+
+<div class="viewcode-block" id="dgp_feature_decomposition_trajectory"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/sampler/index.html#trieste.models.gpflux.dgp_feature_decomposition_trajectory">[docs]</a><span class="k">class</span> <span class="nc">dgp_feature_decomposition_trajectory</span><span class="p">(</span><span class="n">TrajectoryFunctionClass</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    An approximate sample from a deep Gaussian process&#39;s posterior, where the samples are</span>
+<span class="sd">    represented as a finite weighted sum of features. This class essentially takes a list of</span>
+<span class="sd">    :class:`DeepGaussianProcessDecoupledLayer`\s and iterates through them to sample, update and</span>
+<span class="sd">    resample.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">GPfluxPredictor</span><span class="p">,</span> <span class="n">num_features</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param model: The model to sample from.</span>
+<span class="sd">        :param num_features: The number of random Fourier features to use.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sampling_layers</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">DeepGaussianProcessDecoupledLayer</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">num_features</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">model_gpflux</span><span class="o">.</span><span class="n">f_layers</span><span class="p">))</span>
+        <span class="p">]</span>
+
+    <span class="nd">@tf</span><span class="o">.</span><span class="n">function</span>
+<div class="viewcode-block" id="dgp_feature_decomposition_trajectory.__call__"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/sampler/index.html#trieste.models.gpflux.dgp_feature_decomposition_trajectory.__call__">[docs]</a>    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Call trajectory function by looping through layers.</span>
+
+<span class="sd">        :param x: Input location with shape `[N, B, D]`, where `N` is the number of points, `B` is</span>
+<span class="sd">            the batch dimension, and `D` is the input dimensionality.</span>
+<span class="sd">        :return: Trajectory samples with shape `[N, B, L]`, where `L` is the number of outputs.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sampling_layers</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">layer</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x</span></div>
+
+<div class="viewcode-block" id="dgp_feature_decomposition_trajectory.update"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/sampler/index.html#trieste.models.gpflux.dgp_feature_decomposition_trajectory.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update the layers with new features and weights.&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sampling_layers</span><span class="p">:</span>
+            <span class="n">layer</span><span class="o">.</span><span class="n">update</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="dgp_feature_decomposition_trajectory.resample"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/sampler/index.html#trieste.models.gpflux.dgp_feature_decomposition_trajectory.resample">[docs]</a>    <span class="k">def</span> <span class="nf">resample</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Resample the layer weights.&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sampling_layers</span><span class="p">:</span>
+            <span class="n">layer</span><span class="o">.</span><span class="n">resample</span><span class="p">()</span></div></div>
+</pre></div>
+
+              </div>
+              
+              
+          </main>
+          
+
+      </div>
+    </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf"></script>
+<footer class="footer mt-5 mt-md-0">
+  <div class="container">
+    
+    <div class="footer-item">
+      <p class="copyright">
+    &copy; Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.<br>
+</p>
+    </div>
+    
+    <div class="footer-item">
+      <p class="sphinx-version">
+Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.5.4.<br>
+</p>
+    </div>
+    
+  </div>
+</footer>
+  </body>
+</html>

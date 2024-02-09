@@ -1,0 +1,11 @@
+:py:mod:`trieste.models.gpflow.optimizer`
+=========================================
+
+.. py:module:: trieste.models.gpflow.optimizer
+
+.. autoapi-nested-parse::
+
+   This module registers the GPflow specific loss functions.
+
+
+

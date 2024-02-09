@@ -1,0 +1,42 @@
+[
+  {
+    "version": "develop",
+    "url": "https://secondmind-labs.github.io/trieste/develop/"
+  },
+  {
+    "version": "3.1.0",
+    "url": "https://secondmind-labs.github.io/trieste/3.1.0/"
+  },
+  {
+    "version": "3.0.0",
+    "url": "https://secondmind-labs.github.io/trieste/3.0.0/"
+  },
+  {
+    "version": "2.0.0",
+    "url": "https://secondmind-labs.github.io/trieste/2.0.0/"
+  },
+  {
+    "version": "1.2.0",
+    "url": "https://secondmind-labs.github.io/trieste/1.2.0/"
+  },
+  {
+    "version": "1.1.2",
+    "url": "https://secondmind-labs.github.io/trieste/1.1.2/"
+  },
+  {
+    "version": "1.0.0",
+    "url": "https://secondmind-labs.github.io/trieste/1.0.0/"
+  },
+  {
+    "version": "0.13.3",
+    "url": "https://secondmind-labs.github.io/trieste/0.13.3/"
+  },
+  {
+    "version": "0.12.0",
+    "url": "https://secondmind-labs.github.io/trieste/0.12.0/"
+  },
+  {
+    "version": "0.11.3",
+    "url": "https://secondmind-labs.github.io/trieste/0.11.3/"
+  }
+]

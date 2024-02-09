@@ -1,0 +1,525 @@
+:py:mod:`trieste.models`
+========================
+
+.. py:module:: trieste.models
+
+.. autoapi-nested-parse::
+
+   This package contains the primary interfaces for probabilistic models, :class:`ProbabilisticModel`
+   and its trainable subclass :class:`TrainableProbabilisticModel`. It also contains tooling for
+   creating :class:`TrainableProbabilisticModel`\ s from config.
+
+
+
+Subpackages
+-----------
+.. toctree::
+   :titlesonly:
+   :maxdepth: 3
+
+   gpflow/index.rst
+   gpflux/index.rst
+   keras/index.rst
+
+
+Submodules
+----------
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+
+   config/index.rst
+   optimizer/index.rst
+
+
+Package Contents
+----------------
+
+.. py:class:: ModelConfig
+
+   This class is a specification for building a
+   :class:`~trieste.models.TrainableProbabilisticModel`. It is not meant to be used by itself,
+   it implements methods that facilitate building a Trieste model as a dictionary of model and
+   optimizer arguments with :func:`create_model`.
+
+   .. py:attribute:: model
+      :annotation: :Any
+
+      The low-level model to pass to the :class:`~trieste.models.TrainableProbabilisticModel`
+      wrapper registered with the `model` via :class:`ModelRegistry`. The model has to be one of
+      the supported models, that is, registered via :class:`ModelRegistry`. We use type `Any` here as
+      this can be either a model that is supported by default (for example, GPflow- or GPflux-based
+      models) or a user-defined model that has been registered.
+
+
+   .. py:attribute:: model_args
+      :annotation: :dict[str, Any]
+
+      The keyword arguments to pass to the model wrapper
+      :class:`~trieste.models.TrainableProbabilisticModel` registered with the `model` via
+      :class:`ModelRegistry`.
+
+
+   .. py:attribute:: optimizer
+      :annotation: :Any
+
+      The low-level optimizer to pass to the :class:`~trieste.models.Optimizer` wrapper
+      registered with the `model` via :class:`ModelRegistry`, with which to train the model (by
+      minimizing its loss function). The model has to be one of the supported models, that is,
+      registered via :class:`ModelRegistry`. We use type `Any` here as this can be either an
+      optimizer that is supported by default (for example, GPflow or TensorFlow) or a user-defined
+      optimizer that has been registered.
+
+
+   .. py:attribute:: optimizer_args
+      :annotation: :dict[str, Any]
+
+      The keyword arguments to pass to the optimizer wrapper :class:`~trieste.models.Optimizer`
+      registered with the `model` via :class:`ModelRegistry`.
+
+
+   .. py:method:: build_model(self) -> trieste.models.interfaces.TrainableProbabilisticModel
+
+      Builds a Trieste model from the model and optimizer configuration.
+
+
+
+.. py:class:: ModelRegistry
+
+   This is a registry of all supported models with their corresponding wrappers, and model
+   optimizers with their corresponding wrapppers.
+
+   A single entry per model and optimizer is maintained, if same model is registered again it will
+   overwrite the previous entry. Registry is primarily used by :class:`ModelConfig` and
+   :func:`create_model` to facilitate building models by specifying a simple dictionary of model
+   and optimizer arguments.
+
+   Note that you do not need to register your custom model if you will provide an instance of
+   :class:`~trieste.models.TrainableProbabilisticModel` directly to the
+   :class:`~trieste.BayesianOptimizer`. Registering is required if you intend to build your custom
+   model as a dictionary of arguments for the wrapper and the optimizer, or as a
+   :class:`ModelConfig`.
+
+   .. py:method:: get_model_wrapper(cls, model_type: Type[Any]) -> Type[trieste.models.interfaces.TrainableProbabilisticModel]
+      :classmethod:
+
+      Get a Trieste model wrapper for a given model type.
+
+      :param model_type: The model type.
+      :return: The wrapper which builds a model.
+
+
+   .. py:method:: get_optimizer_wrapper(cls, optimizer_type: Type[Any]) -> Type[trieste.models.optimizer.Optimizer]
+      :classmethod:
+
+      Get a Trieste model optimizer wrapper for a given optimizer type.
+
+      :param optimizer_type: The optimizer type.
+      :return: The optimizer wrapper to be used with the optimizer type.
+
+
+   .. py:method:: register_model(cls, model_type: Type[Any], wrapper_type: Type[trieste.models.interfaces.TrainableProbabilisticModel]) -> None
+      :classmethod:
+
+      Register a new model type. Note that this will overwrite a registry
+      entry if the model has already been registered.
+
+      :param model_type: The model type.
+      :param wrapper_type: The model wrapper to be used with the model type.
+
+
+   .. py:method:: register_optimizer(cls, optimizer_type: Type[Any], wrapper_type: Type[trieste.models.optimizer.Optimizer]) -> None
+      :classmethod:
+
+      Register a new optimizer type. Note that this will overwrite a registry
+      entry if the optimizer has already been registered.
+
+      :param optimizer_type: The optimizer type.
+      :param wrapper_type: The optimier wrapper to be used with the optimizer type.
+
+
+   .. py:method:: get_registered_models(cls) -> Iterable[Any]
+      :classmethod:
+
+      Provides a generator with all supported model types.
+
+
+   .. py:method:: get_registered_optimizers(cls) -> Iterable[Any]
+      :classmethod:
+
+      Provides a generator with all supported optimizer types.
+
+
+
+.. py:data:: ModelSpec
+   
+
+   Type alias for any type that can be used to fully specify a model. 
+
+
+.. py:function:: create_model(config: ModelSpec) -> trieste.models.interfaces.TrainableProbabilisticModel
+
+   Build a model in a flexible way by providing a dictionary of model and optimizer arguments, a
+   :class:`ModelConfig`, or a :class:`~trieste.models.TrainableProbabilisticModel`. This function
+   is primarily used by :class:`~trieste.BayesianOptimizer` to build a model.
+
+   :param config: A configuration for building a Trieste model.
+   :return: A Trieste model built according to ``config``.
+
+
+.. py:class:: FastUpdateModel
+
+   Bases: :py:obj:`ProbabilisticModel`, :py:obj:`typing_extensions.Protocol`
+
+   A model with the ability to predict based on (possibly fantasized) supplementary data.
+
+   .. py:method:: conditional_predict_f(self, query_points: trieste.types.TensorType, additional_data: trieste.data.Dataset) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+      :abstractmethod:
+
+      Return the mean and variance of the independent marginal distributions at each point in
+      ``query_points``, given an additional batch of (possibly fantasized) data.
+
+      :param query_points: The points at which to make predictions, of shape [M, D].
+      :param additional_data: Dataset with query_points with shape [..., N, D] and observations
+               with shape [..., N, L]
+      :return: The mean and variance of the independent marginal distributions at each point in
+          ``query_points``, with shape [..., L, M, M].
+
+
+   .. py:method:: conditional_predict_joint(self, query_points: trieste.types.TensorType, additional_data: trieste.data.Dataset) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+      :abstractmethod:
+
+      :param query_points: The points at which to make predictions, of shape [M, D].
+      :param additional_data: Dataset with query_points with shape [..., N, D] and observations
+               with shape [..., N, L]
+      :return: The mean and covariance of the joint marginal distribution at each batch of points
+          in ``query_points``, with shape [..., L, M, M].
+
+
+   .. py:method:: conditional_predict_f_sample(self, query_points: trieste.types.TensorType, additional_data: trieste.data.Dataset, num_samples: int) -> trieste.types.TensorType
+      :abstractmethod:
+
+      Return ``num_samples`` samples from the independent marginal distributions at
+      ``query_points``, given an additional batch of (possibly fantasized) data.
+
+      :param query_points: The points at which to sample, with shape [..., N, D].
+      :param additional_data: Dataset with query_points with shape [..., N, D] and observations
+               with shape [..., N, L]
+      :param num_samples: The number of samples at each point.
+      :return: The samples. For a predictive distribution with event shape E, this has shape
+          [..., S, N] + E, where S is the number of samples.
+
+
+   .. py:method:: conditional_predict_y(self, query_points: trieste.types.TensorType, additional_data: trieste.data.Dataset) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+      :abstractmethod:
+
+      Return the mean and variance of the independent marginal distributions at each point in
+      ``query_points`` for the observations, including noise contributions, given an additional
+      batch of (possibly fantasized) data.
+
+      Note that this is not supported by all models.
+
+      :param query_points: The points at which to make predictions, of shape [M, D].
+      :param additional_data: Dataset with query_points with shape [..., N, D] and observations
+               with shape [..., N, L]
+      :return: The mean and variance of the independent marginal distributions at each point in
+          ``query_points``.
+
+
+
+.. py:class:: ModelStack(model_with_event_size: tuple[ProbabilisticModelType, int], *models_with_event_sizes: tuple[ProbabilisticModelType, int])
+
+   Bases: :py:obj:`ProbabilisticModel`, :py:obj:`Generic`\ [\ :py:obj:`ProbabilisticModelType`\ ]
+
+   A :class:`ModelStack` is a wrapper around a number of :class:`ProbabilisticModel`\ s of type
+   :class:`ProbabilisticModelType`. It combines the outputs of each model for predictions and
+   sampling.
+
+   **Note:** Only supports vector outputs (i.e. with event shape [E]). Outputs for any two models
+   are assumed independent. Each model may itself be single- or multi-output, and any one
+   multi-output model may have dependence between its outputs. When we speak of *event size* in
+   this class, we mean the output dimension for a given :class:`ProbabilisticModel`,
+   whether that is the :class:`ModelStack` itself, or one of the subsidiary
+   :class:`ProbabilisticModel`\ s within the :class:`ModelStack`. Of course, the event
+   size for a :class:`ModelStack` will be the sum of the event sizes of each subsidiary model.
+
+   The order of individual models specified at :meth:`__init__` determines the order of the
+   :class:`ModelStack` output dimensions.
+
+   :param model_with_event_size: The first model, and the size of its output events.
+       **Note:** This is a separate parameter to ``models_with_event_sizes`` simply so that the
+       method signature requires at least one model. It is not treated specially.
+   :param \*models_with_event_sizes: The other models, and sizes of their output events.
+
+   .. py:method:: predict(self, query_points: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      :param query_points: The points at which to make predictions, of shape [..., D].
+      :return: The predictions from all the wrapped models, concatenated along the event axis in
+          the same order as they appear in :meth:`__init__`. If the wrapped models have predictive
+          distributions with event shapes [:math:`E_i`], the mean and variance will both have
+          shape [..., :math:`\sum_i E_i`].
+
+
+   .. py:method:: sample(self, query_points: trieste.types.TensorType, num_samples: int) -> trieste.types.TensorType
+
+      :param query_points: The points at which to sample, with shape [..., N, D].
+      :param num_samples: The number of samples at each point.
+      :return: The samples from all the wrapped models, concatenated along the event axis. For
+          wrapped models with predictive distributions with event shapes [:math:`E_i`], this has
+          shape [..., S, N, :math:`\sum_i E_i`], where S is the number of samples.
+
+
+   .. py:method:: predict_y(self, query_points: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      :param query_points: The points at which to make predictions, of shape [..., D].
+      :return: The predictions from all the wrapped models, concatenated along the event axis in
+          the same order as they appear in :meth:`__init__`. If the wrapped models have predictive
+          distributions with event shapes [:math:`E_i`], the mean and variance will both have
+          shape [..., :math:`\sum_i E_i`].
+      :raise NotImplementedError: If any of the models don't implement predict_y.
+
+
+   .. py:method:: log(self) -> None
+
+      Log model-specific information at a given optimization step.
+
+
+
+.. py:class:: ProbabilisticModel
+
+   Bases: :py:obj:`typing_extensions.Protocol`
+
+   A probabilistic model.
+
+   NOTE: This and its subclasses are defined as Protocols rather than ABCs in order to allow
+   acquisition functions to depend on the intersection of different model types. As a result, it
+   is also possible to pass models to acquisition functions that don't explicitly inherit from
+   this class, as long as they implement all the necessary methods. This may change in future if
+   https://github.com/python/typing/issues/213 is implemented.
+
+   .. py:method:: predict(self, query_points: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+      :abstractmethod:
+
+      Return the mean and variance of the independent marginal distributions at each point in
+      ``query_points``.
+
+      This is essentially a convenience method for :meth:`predict_joint`, where non-event
+      dimensions of ``query_points`` are all interpreted as broadcasting dimensions instead of
+      batch dimensions, and the covariance is squeezed to remove redundant nesting.
+
+      :param query_points: The points at which to make predictions, of shape [..., D].
+      :return: The mean and variance of the independent marginal distributions at each point in
+          ``query_points``. For a predictive distribution with event shape E, the mean and
+          variance will both have shape [...] + E.
+
+
+   .. py:method:: sample(self, query_points: trieste.types.TensorType, num_samples: int) -> trieste.types.TensorType
+      :abstractmethod:
+
+      Return ``num_samples`` samples from the independent marginal distributions at
+      ``query_points``.
+
+      :param query_points: The points at which to sample, with shape [..., N, D].
+      :param num_samples: The number of samples at each point.
+      :return: The samples. For a predictive distribution with event shape E, this has shape
+          [..., S, N] + E, where S is the number of samples.
+
+
+   .. py:method:: predict_y(self, query_points: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+      :abstractmethod:
+
+      Return the mean and variance of the independent marginal distributions at each point in
+      ``query_points`` for the observations, including noise contributions.
+
+      Note that this is not supported by all models.
+
+      :param query_points: The points at which to make predictions, of shape [..., D].
+      :return: The mean and variance of the independent marginal distributions at each point in
+          ``query_points``. For a predictive distribution with event shape E, the mean and
+          variance will both have shape [...] + E.
+
+
+   .. py:method:: log(self) -> None
+
+      Log model-specific information at a given optimization step.
+
+
+
+.. py:data:: ProbabilisticModelType
+   
+
+   Contravariant type variable bound to :class:`~trieste.models.ProbabilisticModel`.
+   This is used to specify classes such as samplers and acquisition function builders that
+   take models as input parameters and might ony support models with certain features. 
+
+
+.. py:class:: ReparametrizationSampler(sample_size: int, model: ProbabilisticModelType)
+
+   Bases: :py:obj:`abc.ABC`, :py:obj:`Generic`\ [\ :py:obj:`ProbabilisticModelType`\ ]
+
+   These samplers employ the *reparameterization trick* to draw samples from a
+   :class:`ProbabilisticModel`\ 's predictive distribution  across a discrete set of
+   points. See :cite:`wilson2018maximizing` for details.
+
+   Note that our :class:`TrainableModelStack` currently assumes that
+   all :class:`ReparametrizationSampler` constructors have **only** these inputs
+   and so will not work with more complicated constructors.
+
+   :param sample_size: The desired number of samples.
+   :param model: The model to sample from.
+   :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
+
+   .. py:method:: sample(self, at: trieste.types.TensorType, *, jitter: float = DEFAULTS.JITTER) -> trieste.types.TensorType
+      :abstractmethod:
+
+      :param at: Input points that define the sampler of shape `[N, D]`.
+      :param jitter: The size of the jitter to use when stabilizing the Cholesky
+          decomposition of the covariance matrix.
+      :return: Samples of shape `[sample_size, D]`.
+
+
+   .. py:method:: reset_sampler(self) -> None
+
+      Reset the sampler so that new samples are drawn at the next :meth:`sample` call.
+
+
+
+.. py:class:: TrainableModelStack
+
+   Bases: :py:obj:`ModelStack`\ [\ :py:obj:`TrainableProbabilisticModel`\ ], :py:obj:`TrainableProbabilisticModel`
+
+   A :class:`TrainableModelStack` is a wrapper around a number of
+   :class:`TrainableProbabilisticModel`\ s.
+   It delegates training data to each model for updates and optimization.
+
+   :class:`TrainableProbabilisticModel`\ s within the :class:`TrainableModelStack`.
+   Of course, the event size for a :class:`TrainableModelStack` will be the sum of the
+   event sizes of each subsidiary model.
+
+   Initialize self.  See help(type(self)) for accurate signature.
+
+   .. py:method:: update(self, dataset: trieste.data.Dataset) -> None
+
+      Update all the wrapped models on their corresponding data. The data for each model is
+      extracted by splitting the observations in ``dataset`` along the event axis according to the
+      event sizes specified at :meth:`__init__`.
+
+      :param dataset: The query points and observations for *all* the wrapped models.
+
+
+   .. py:method:: optimize(self, dataset: trieste.data.Dataset) -> None
+
+      Optimize all the wrapped models on their corresponding data. The data for each model is
+      extracted by splitting the observations in ``dataset`` along the event axis according to the
+      event sizes specified at :meth:`__init__`.
+
+      :param dataset: The query points and observations for *all* the wrapped models.
+
+
+
+.. py:class:: TrainableProbabilisticModel
+
+   Bases: :py:obj:`ProbabilisticModel`, :py:obj:`typing_extensions.Protocol`
+
+   A trainable probabilistic model.
+
+   .. py:method:: update(self, dataset: trieste.data.Dataset) -> None
+      :abstractmethod:
+
+      Update the model given the specified ``dataset``. Does not train the model.
+
+      :param dataset: The data with which to update the model.
+
+
+   .. py:method:: optimize(self, dataset: trieste.data.Dataset) -> None
+      :abstractmethod:
+
+      Optimize the model objective with respect to (hyper)parameters given the specified
+      ``dataset``.
+
+      :param dataset: The data with which to train the model.
+
+
+
+.. py:data:: TrajectoryFunction
+   
+
+   Type alias for trajectory functions. These have essentially the same behavior as an
+   :const:`AcquisitionFunction` but have additional sampling properties.
+
+   An :const:`TrajectoryFunction` evaluates a batch of `B` samples, each across different sets
+   of `N` query points (of dimension `D`) i.e. takes input of shape `[N, B, D]` and returns
+   shape `[N, B]`.
+
+   A key property of these trajectory functions is that the same sample draw is evaluated
+   for all queries. This property is known as consistency.
+
+
+.. py:class:: TrajectoryFunctionClass
+
+   Bases: :py:obj:`abc.ABC`
+
+   An :class:`TrajectoryFunctionClass` is a trajectory function represented using a class
+   rather than as a standalone function. Using a class to represent a trajectory function
+   makes it easier to update and resample without having to retrace the function.
+
+   .. py:method:: __call__(self, x: trieste.types.TensorType) -> trieste.types.TensorType
+      :abstractmethod:
+
+      Call trajectory function.
+
+
+
+.. py:class:: TrajectorySampler(model: ProbabilisticModelType)
+
+   Bases: :py:obj:`abc.ABC`, :py:obj:`Generic`\ [\ :py:obj:`ProbabilisticModelType`\ ]
+
+   This class builds functions that approximate a trajectory sampled from an
+   underlying :class:`ProbabilisticModel`.
+
+   Unlike the :class:`ReparametrizationSampler`, a :class:`TrajectorySampler` provides
+   consistent samples (i.e ensuring that the same sample draw is used for all evaluations
+   of a particular trajectory function).
+
+   :param model: The model to sample from.
+
+   .. py:method:: get_trajectory(self) -> TrajectoryFunction
+      :abstractmethod:
+
+      Sample a batch of `B` trajectories. Note that the batch size `B` is determined
+      by the first call of the :const:`TrajectoryFunction`. To change the batch size
+      of a :const:`TrajectoryFunction` after initialization, you must
+      recall :meth:`get_trajecotry`.
+
+      :return: A trajectory function representing an approximate trajectory
+          from the model, taking an input of shape `[N, B, D]` and returning shape `[N, B]`.
+
+
+   .. py:method:: resample_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction
+
+      A :const:`TrajectoryFunction` can often be efficiently updated in-place to provide
+      a new sample without retracing. Note that if the underlying :class:`ProbabilisticModel`
+      has been updated, then we must call :meth:`update_trajectory` to get a new sample from
+      the new model.
+
+      Efficient implementations of a :class:`TrajectorySampler` will have a custom method here
+      to allow in-place resampling. However, the default behavior is just to make a new
+      trajectory from scratch.
+
+      :param trajectory: The trajectory function to be resampled.
+      :return: The new resampled trajectory function.
+
+
+   .. py:method:: update_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction
+
+      Update a :const:`TrajectoryFunction` to reflect an update in its
+      underlying :class:`ProbabilisticModel` and resample accordingly.
+
+      Efficient implementations will have a custom method here to allow in-place resampling
+      and updating. However, the default behavior is just to make a new trajectory from scratch.
+
+      :param trajectory: The trajectory function to be resampled.
+      :return: The new trajectory function updated for a new model
+
+
+

@@ -1,0 +1,11 @@
+:py:mod:`trieste.version`
+=========================
+
+.. py:module:: trieste.version
+
+.. autoapi-nested-parse::
+
+   This module exposes the trieste version number.
+
+
+

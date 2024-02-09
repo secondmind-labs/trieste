@@ -1,0 +1,202 @@
+:py:mod:`trieste.utils`
+=======================
+
+.. py:module:: trieste.utils
+
+.. autoapi-nested-parse::
+
+   This package contains library utilities. 
+
+
+
+Package Contents
+----------------
+
+.. py:class:: DEFAULTS
+
+   Default constants used in Trieste.
+
+   .. py:attribute:: JITTER
+      :annotation: :typing_extensions.Final[float] = 1e-06
+
+      The default jitter, typically used to stabilise computations near singular points, such as in
+      Cholesky decomposition.
+
+
+
+.. py:class:: Err(exc: Exception)
+
+   Bases: :py:obj:`Result`\ [\ :py:obj:`NoReturn`\ ]
+
+   Wraps the exception that occurred during a failed evaluation.
+
+   :param exc: The exception that occurred.
+
+   .. py:method:: is_ok() -> bool
+      :property:
+
+      `False` always.
+
+
+   .. py:method:: unwrap() -> NoReturn
+
+      :raise Exception: Always. Raises the wrapped exception.
+
+
+
+.. py:data:: K
+   
+
+   An unbound type variable. 
+
+
+.. py:class:: Ok(value: ResultType)
+
+   Bases: :py:obj:`Result`\ [\ :py:obj:`ResultType`\ ]
+
+   Wraps the result of a successful evaluation.
+
+   :param value: The result of a successful evaluation.
+
+   .. py:method:: is_ok() -> bool
+      :property:
+
+      `True` always.
+
+
+   .. py:method:: unwrap() -> ResultType
+
+      :return: The wrapped value.
+
+
+
+.. py:class:: Result
+
+   Bases: :py:obj:`Generic`\ [\ :py:obj:`ResultType`\ ], :py:obj:`abc.ABC`
+
+   Represents the result of an operation that can fail with an exception. It contains either the
+   operation return value (in an :class:`Ok`), or the exception raised (in an :class:`Err`).
+
+   To check whether instances such as
+
+       >>> res = Ok(1)
+       >>> other_res = Err(ValueError("whoops"))
+
+   contain a value, use :attr:`is_ok` (or :attr:`is_err`)
+
+       >>> res.is_ok
+       True
+       >>> other_res.is_ok
+       False
+
+   We can access the value if it :attr:`is_ok` using :meth:`unwrap`.
+
+       >>> res.unwrap()
+       1
+
+   Trying to access the value of a failed :class:`Result`, or :class:`Err`, will raise the wrapped
+   exception
+
+       >>> other_res.unwrap()
+       Traceback (most recent call last):
+           ...
+       ValueError: whoops
+
+   **Note:** This class is not intended to be subclassed other than by :class:`Ok` and
+   :class:`Err`.
+
+   .. py:method:: is_ok() -> bool
+      :property:
+
+      `True` if this :class:`Result` contains a value, else `False`.
+
+
+   .. py:method:: is_err() -> bool
+      :property:
+
+      `True` if this :class:`Result` contains an error, else `False`. The opposite of
+      :attr:`is_ok`.
+
+
+   .. py:method:: unwrap() -> ResultType
+      :abstractmethod:
+
+      :return: The contained value, if it exists.
+      :raise Exception: If there is no contained value.
+
+
+
+.. py:data:: ResultType
+   
+
+   An unbounded covariant type variable. 
+
+
+.. py:class:: Timer
+
+   Functionality for timing chunks of code. For example:
+   >>> from time import sleep
+   >>> with Timer() as timer: sleep(2.0)
+   >>> timer.time  # doctest: +SKIP
+   2.0
+
+
+.. py:data:: U
+   
+
+   An unbound type variable. 
+
+
+.. py:data:: V
+   
+
+   An unbound type variable. 
+
+
+.. py:function:: flatten_leading_dims(x: trieste.types.TensorType) -> Tuple[trieste.types.TensorType, Callable[[trieste.types.TensorType], trieste.types.TensorType]]
+
+   Flattens the leading dimensions of `x` (all but the last two dimensions), and returns a
+   function that can be used to restore them (typically after first manipulating the
+   flattened tensor).
+
+
+.. py:function:: jit(apply: bool = True, **optimize_kwargs: Any) -> Callable[[C], C]
+
+   A decorator that conditionally wraps a function with `tf.function`.
+
+   :param apply: If `True`, the decorator is equivalent to `tf.function`. If `False`, the decorator
+       does nothing.
+   :param optimize_kwargs: Additional arguments to `tf.function`.
+   :return: The decorator.
+
+
+.. py:function:: map_values(f: Callable[[U], V], mapping: Mapping[K, U]) -> Mapping[K, V]
+
+   Apply ``f`` to each value in ``mapping`` and return the result. If ``f`` does not modify its
+   argument, :func:`map_values` does not modify ``mapping``. For example:
+
+   >>> import math
+   >>> squares = {'a': 1, 'b': 4, 'c': 9}
+   >>> map_values(math.sqrt, squares)['b']
+   2.0
+   >>> squares
+   {'a': 1, 'b': 4, 'c': 9}
+
+   :param f: The function to apply to the values in ``mapping``.
+   :param mapping: A mapping.
+   :return: A new mapping, whose keys are the same as ``mapping``, and values are the result of
+       applying ``f`` to each value in ``mapping``.
+
+
+.. py:function:: shapes_equal(this: trieste.types.TensorType, that: trieste.types.TensorType) -> trieste.types.TensorType
+
+   Return a scalar tensor containing: `True` if ``this`` and ``that`` have equal runtime shapes,
+   else `False`.
+
+
+.. py:function:: to_numpy(t: trieste.types.TensorType) -> numpy.ndarray[Any, Any]
+
+   :param t: An array-like object.
+   :return: ``t`` as a NumPy array.
+
+

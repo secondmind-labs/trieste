@@ -1,0 +1,1055 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.acquisition.function.greedy_batch &#8212; trieste 0.12.0 documentation</title>
+    
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+
+    
+  <link rel="stylesheet"
+    href="../../../../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/styles/pydata-sphinx-theme.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css" />
+    
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf">
+
+    <script id="documentation_options" data-url_root="../../../../" src="../../../../_static/documentation_options.js"></script>
+    <script src="../../../../_static/jquery.js"></script>
+    <script src="../../../../_static/underscore.js"></script>
+    <script src="../../../../_static/doctools.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="None">
+    
+
+    <!-- Google Analytics -->
+    
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="60">
+    
+    <div class="container-fluid" id="banner"></div>
+
+    
+    <nav class="navbar navbar-light navbar-expand-lg bg-light fixed-top bd-navbar" id="navbar-main"><div class="container-xl">
+
+  <div id="navbar-start">
+    
+    
+
+<a class="navbar-brand" href="../../../../index.html">
+  <img src="../../../../_static/logo.png" class="logo" alt="logo">
+</a>
+
+
+    
+  </div>
+
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar-collapsible" aria-controls="navbar-collapsible" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  
+  <div id="navbar-collapsible" class="col-lg-9 collapse navbar-collapse">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <ul id="navbar-main-elements" class="navbar-nav">
+    <li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../../index.html">
+  Trieste
+ </a>
+</li>
+
+<li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../../autoapi/trieste/index.html">
+  API reference
+ </a>
+</li>
+
+<li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../../tutorials.html">
+  Tutorials
+ </a>
+</li>
+
+    
+</ul>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+      <div class="navbar-end-item">
+        <div class="dropdown" id="version_switcher">
+    <button type="button" class="btn btn-primary btn-sm navbar-btn dropdown-toggle" id="version_switcher_button" data-toggle="dropdown">
+        0.12.0  <!-- this text may get changed later by javascript -->
+        <span class="caret"></span>
+    </button>
+    <div id="version_switcher_menu" class="dropdown-menu list-group-flush py-0" aria-labelledby="version_switcher_button">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+</div>
+
+<!-- NOTE: this JS must live here (not in our global JS file) because it relies
+     on being processed by Jinja before it is run (specifically for replacing
+     variables _modules/trieste/acquisition/function/greedy_batch and {'json_url': 'https://secondmind-labs.github.io/trieste/versions.json', 'version_match': '0.12.0'}.
+-->
+
+<script type="text/javascript">
+// Check if corresponding page path exists in other version of docs
+// and, if so, go there instead of the homepage of the other docs version
+function checkPageExistsAndRedirect(event) {
+    const currentFilePath = "_modules/trieste/acquisition/function/greedy_batch.html",
+          tryUrl = event.target.getAttribute("href");
+    let otherDocsHomepage = tryUrl.replace(currentFilePath, "");
+    $.ajax({
+        type: 'HEAD',
+        url: tryUrl,
+        // if the page exists, go there
+        success: function() {
+            location.href = tryUrl;
+        }
+    }).fail(function() {
+        location.href = otherDocsHomepage;
+    });
+    // this prevents the browser from following the href of the clicked node
+    // (which is fine because this function takes care of redirecting)
+    return false;
+}
+
+// Populate the version switcher from the JSON config file
+(function () {
+    $.getJSON("https://secondmind-labs.github.io/trieste/versions.json", function(data, textStatus, jqXHR) {
+        const currentFilePath = "_modules/trieste/acquisition/function/greedy_batch.html";
+        // create links to the corresponding page in the other docs versions
+        $.each(data, function(index, entry) {
+            // if no custom name specified (e.g., "latest"), use version string
+            if (!("name" in entry)) {
+                entry.name = entry.version;
+            }
+            // create the node
+            const node = document.createElement("a");
+            node.setAttribute("class", "list-group-item list-group-item-action py-1");
+            node.textContent = `${entry.name}`;
+            node.setAttribute("href", `${entry.url}${currentFilePath}`);
+            // on click, AJAX calls will check if the linked page exists before
+            // trying to redirect, and if not, will redirect to the homepage
+            // for that version of the docs.
+            node.onclick = checkPageExistsAndRedirect;
+            // Add dataset values for the version and name in case people want
+            // to apply CSS styling based on this information.
+            node.dataset["versionName"] = entry.name;
+            node.dataset["version"] = entry.version;
+
+            $("#version_switcher_menu").append(node);
+            // replace dropdown button text with the preferred display name of
+            // this version, rather than using sphinx's  variable.
+            // also highlight the dropdown entry for the currently-viewed
+            // version's entry
+            if (entry.version == "0.12.0") {
+                node.classList.add("active");
+                let btn = document.getElementById("version_switcher_button");
+                btn.innerText = btn.dataset["activeVersionName"] = entry.name;
+                btn.dataset["activeVersion"] = entry.version;
+            }
+        });
+    });
+})();
+</script>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+        <li class="nav-item">
+          <a class="nav-link" href="https://github.com/secondmind-labs/trieste" rel="noopener" target="_blank" title="GitHub"><span><i class="fab fa-github-square"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+</div>
+    </nav>
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+            
+            <!-- Only show if we have sidebars configured, else just a small margin  -->
+            <div class="col-12 col-md-3 bd-sidebar">
+              <div class="sidebar-start-items"><form class="bd-search d-flex align-items-center" action="../../../../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+  <div class="bd-toc-item active">
+    
+  </div>
+</nav>
+              </div>
+              <div class="sidebar-end-items">
+              </div>
+            </div>
+            
+          
+
+          
+          <div class="d-none d-xl-block col-xl-2 bd-toc">
+            
+          </div>
+          
+
+          
+          
+            
+          
+          <main class="col-12 col-md-9 col-xl-7 py-md-5 pl-md-5 pr-md-4 bd-content" role="main">
+              
+              <div>
+                
+  <h1>Source code for trieste.acquisition.function.greedy_batch</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2021 The Trieste Contributors</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module contains local penalization-based acquisition function builders.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">cast</span>
+
+<span class="kn">import</span> <span class="nn">gpflow</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">import</span> <span class="nn">tensorflow_probability</span> <span class="k">as</span> <span class="nn">tfp</span>
+<span class="kn">from</span> <span class="nn">typing_extensions</span> <span class="kn">import</span> <span class="n">Protocol</span><span class="p">,</span> <span class="n">runtime_checkable</span>
+
+<span class="kn">from</span> <span class="nn">...data</span> <span class="kn">import</span> <span class="n">Dataset</span>
+<span class="kn">from</span> <span class="nn">...models</span> <span class="kn">import</span> <span class="n">FastUpdateModel</span><span class="p">,</span> <span class="n">ModelStack</span><span class="p">,</span> <span class="n">ProbabilisticModel</span>
+<span class="kn">from</span> <span class="nn">...models.interfaces</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">PredictJointModelStack</span><span class="p">,</span>
+    <span class="n">SupportsGetKernel</span><span class="p">,</span>
+    <span class="n">SupportsGetObservationNoise</span><span class="p">,</span>
+    <span class="n">SupportsPredictJoint</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">...observer</span> <span class="kn">import</span> <span class="n">OBJECTIVE</span>
+<span class="kn">from</span> <span class="nn">...space</span> <span class="kn">import</span> <span class="n">SearchSpace</span>
+<span class="kn">from</span> <span class="nn">...types</span> <span class="kn">import</span> <span class="n">TensorType</span>
+<span class="kn">from</span> <span class="nn">..interface</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">AcquisitionFunction</span><span class="p">,</span>
+    <span class="n">AcquisitionFunctionBuilder</span><span class="p">,</span>
+    <span class="n">GreedyAcquisitionFunctionBuilder</span><span class="p">,</span>
+    <span class="n">PenalizationFunction</span><span class="p">,</span>
+    <span class="n">SingleModelAcquisitionBuilder</span><span class="p">,</span>
+    <span class="n">SingleModelGreedyAcquisitionBuilder</span><span class="p">,</span>
+    <span class="n">UpdatablePenalizationFunction</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.entropy</span> <span class="kn">import</span> <span class="n">MinValueEntropySearch</span>
+<span class="kn">from</span> <span class="nn">.function</span> <span class="kn">import</span> <span class="n">ExpectedImprovement</span><span class="p">,</span> <span class="n">MakePositive</span><span class="p">,</span> <span class="n">expected_improvement</span>
+
+
+<div class="viewcode-block" id="LocalPenalization"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/index.html#trieste.acquisition.function.greedy_batch.LocalPenalization">[docs]</a><span class="k">class</span> <span class="nc">LocalPenalization</span><span class="p">(</span><span class="n">SingleModelGreedyAcquisitionBuilder</span><span class="p">[</span><span class="n">ProbabilisticModel</span><span class="p">]):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Builder of the acquisition function maker for greedily collecting batches by local</span>
+<span class="sd">    penalization.  The resulting :const:`AcquisitionFunctionMaker` takes in a set of pending</span>
+<span class="sd">    points and returns a base acquisition function penalized around those points.</span>
+<span class="sd">    An estimate of the objective function&#39;s Lipschitz constant is used to control the size</span>
+<span class="sd">    of penalization.</span>
+
+<span class="sd">    Local penalization allows us to perform batch Bayesian optimization with a standard (non-batch)</span>
+<span class="sd">    acquisition function. All that we require is that the acquisition function takes strictly</span>
+<span class="sd">    positive values. By iteratively building a batch of points though sequentially maximizing</span>
+<span class="sd">    this acquisition function but down-weighted around locations close to the already</span>
+<span class="sd">    chosen (pending) points, local penalization provides diverse batches of candidate points.</span>
+
+<span class="sd">    Local penalization is applied to the acquisition function multiplicatively. However, to</span>
+<span class="sd">    improve numerical stability, we perform additive penalization in a log space.</span>
+
+<span class="sd">    The Lipschitz constant and additional penalization parameters are estimated once</span>
+<span class="sd">    when first preparing the acquisition function with no pending points. These estimates</span>
+<span class="sd">    are reused for all subsequent function calls.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">search_space</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">,</span>
+        <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">500</span><span class="p">,</span>
+        <span class="n">penalizer</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span>
+            <span class="p">[</span><span class="n">ProbabilisticModel</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">],</span>
+            <span class="n">Union</span><span class="p">[</span><span class="n">PenalizationFunction</span><span class="p">,</span> <span class="n">UpdatablePenalizationFunction</span><span class="p">],</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">base_acquisition_function_builder</span><span class="p">:</span> <span class="n">ExpectedImprovement</span>
+        <span class="o">|</span> <span class="n">MinValueEntropySearch</span><span class="p">[</span><span class="n">ProbabilisticModel</span><span class="p">]</span>
+        <span class="o">|</span> <span class="n">MakePositive</span><span class="p">[</span><span class="n">ProbabilisticModel</span><span class="p">]</span>
+        <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param search_space: The global search space over which the optimisation is defined.</span>
+<span class="sd">        :param num_samples: Size of the random sample over which the Lipschitz constant</span>
+<span class="sd">            is estimated. We recommend scaling this with search space dimension.</span>
+<span class="sd">        :param penalizer: The chosen penalization method (defaults to soft penalization). This</span>
+<span class="sd">            should be a function that accepts a model, pending points, lipschitz constant and eta</span>
+<span class="sd">            and returns a PenalizationFunction.</span>
+<span class="sd">        :param base_acquisition_function_builder: Base acquisition function to be</span>
+<span class="sd">            penalized (defaults to expected improvement). Local penalization only supports</span>
+<span class="sd">            strictly positive acquisition functions.</span>
+<span class="sd">        :raise tf.errors.InvalidArgumentError: If ``num_samples`` is not positive.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="n">num_samples</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_search_space</span> <span class="o">=</span> <span class="n">search_space</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_num_samples</span> <span class="o">=</span> <span class="n">num_samples</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lipschitz_penalizer</span> <span class="o">=</span> <span class="n">soft_local_penalizer</span> <span class="k">if</span> <span class="n">penalizer</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">penalizer</span>
+
+        <span class="k">if</span> <span class="n">base_acquisition_function_builder</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_base_builder</span><span class="p">:</span> <span class="n">SingleModelAcquisitionBuilder</span><span class="p">[</span>
+                <span class="n">ProbabilisticModel</span>
+            <span class="p">]</span> <span class="o">=</span> <span class="n">ExpectedImprovement</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_base_builder</span> <span class="o">=</span> <span class="n">base_acquisition_function_builder</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lipschitz_constant</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_eta</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_base_acquisition_function</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">AcquisitionFunction</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_penalization</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">PenalizationFunction</span> <span class="o">|</span> <span class="n">UpdatablePenalizationFunction</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_penalized_acquisition</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">AcquisitionFunction</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="LocalPenalization.prepare_acquisition_function"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/greedy_batch/index.html#trieste.acquisition.function.greedy_batch.LocalPenalization.prepare_acquisition_function">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">ProbabilisticModel</span><span class="p">,</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">pending_points</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param model: The model.</span>
+<span class="sd">        :param dataset: The data from the observer. Must be populated.</span>
+<span class="sd">        :param pending_points: The points we penalize with respect to.</span>
+<span class="sd">        :return: The (log) expected improvement penalized with respect to the pending points.</span>
+<span class="sd">        :raise tf.errors.InvalidArgumentError: If the ``dataset`` is empty.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span><span class="n">dataset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="n">dataset</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">),</span> <span class="n">message</span><span class="o">=</span><span class="s2">&quot;Dataset must be populated.&quot;</span><span class="p">)</span>
+
+        <span class="n">acq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_update_base_acquisition_function</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">pending_points</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">pending_points</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">acq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_update_penalization</span><span class="p">(</span><span class="n">acq</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">pending_points</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">acq</span></div>
+
+<div class="viewcode-block" id="LocalPenalization.update_acquisition_function"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/greedy_batch/index.html#trieste.acquisition.function.greedy_batch.LocalPenalization.update_acquisition_function">[docs]</a>    <span class="k">def</span> <span class="nf">update_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">function</span><span class="p">:</span> <span class="n">AcquisitionFunction</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">ProbabilisticModel</span><span class="p">,</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">pending_points</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">new_optimization_step</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param function: The acquisition function to update.</span>
+<span class="sd">        :param model: The model.</span>
+<span class="sd">        :param dataset: The data from the observer. Must be populated.</span>
+<span class="sd">        :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),</span>
+<span class="sd">            where M is the number of pending points and D is the search space dimension.</span>
+<span class="sd">        :param new_optimization_step: Indicates whether this call to update_acquisition_function</span>
+<span class="sd">            is to start of a new optimization step, of to continue collecting batch of points</span>
+<span class="sd">            for the current step. Defaults to ``True``.</span>
+<span class="sd">        :return: The updated acquisition function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span><span class="n">dataset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="n">dataset</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">),</span> <span class="n">message</span><span class="o">=</span><span class="s2">&quot;Dataset must be populated.&quot;</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_base_acquisition_function</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">[])</span>
+
+        <span class="k">if</span> <span class="n">new_optimization_step</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_update_base_acquisition_function</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">pending_points</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">pending_points</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># no penalization required if no pending_points</span>
+            <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="n">AcquisitionFunction</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base_acquisition_function</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_update_penalization</span><span class="p">(</span><span class="n">function</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">pending_points</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_update_penalization</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">function</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">AcquisitionFunction</span><span class="p">],</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">ProbabilisticModel</span><span class="p">,</span>
+        <span class="n">pending_points</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_rank</span><span class="p">(</span><span class="n">pending_points</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_penalized_acquisition</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_penalization</span><span class="p">,</span> <span class="n">UpdatablePenalizationFunction</span>
+        <span class="p">):</span>
+            <span class="c1"># if possible, just update the penalization function variables</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_penalization</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">pending_points</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lipschitz_constant</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_eta</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_penalized_acquisition</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># otherwise construct a new penalized acquisition function</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_penalization</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lipschitz_penalizer</span><span class="p">(</span>
+                <span class="n">model</span><span class="p">,</span> <span class="n">pending_points</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lipschitz_constant</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_eta</span>
+            <span class="p">)</span>
+
+            <span class="nd">@tf</span><span class="o">.</span><span class="n">function</span>
+            <span class="k">def</span> <span class="nf">penalized_acquisition</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+                <span class="n">log_acq</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span>
+                    <span class="n">cast</span><span class="p">(</span><span class="n">AcquisitionFunction</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base_acquisition_function</span><span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+                <span class="p">)</span> <span class="o">+</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">cast</span><span class="p">(</span><span class="n">PenalizationFunction</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_penalization</span><span class="p">)(</span><span class="n">x</span><span class="p">))</span>
+                <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">log_acq</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_penalized_acquisition</span> <span class="o">=</span> <span class="n">penalized_acquisition</span>
+            <span class="k">return</span> <span class="n">penalized_acquisition</span>
+
+    <span class="nd">@tf</span><span class="o">.</span><span class="n">function</span><span class="p">(</span><span class="n">experimental_relax_shapes</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_get_lipschitz_estimate</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">ProbabilisticModel</span><span class="p">,</span> <span class="n">sampled_points</span><span class="p">:</span> <span class="n">TensorType</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+        <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">GradientTape</span><span class="p">()</span> <span class="k">as</span> <span class="n">g</span><span class="p">:</span>
+            <span class="n">g</span><span class="o">.</span><span class="n">watch</span><span class="p">(</span><span class="n">sampled_points</span><span class="p">)</span>
+            <span class="n">mean</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">sampled_points</span><span class="p">)</span>
+        <span class="n">grads</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span><span class="n">mean</span><span class="p">,</span> <span class="n">sampled_points</span><span class="p">)</span>
+        <span class="n">grads_norm</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">grads</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">max_grads_norm</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_max</span><span class="p">(</span><span class="n">grads_norm</span><span class="p">)</span>
+        <span class="n">eta</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_min</span><span class="p">(</span><span class="n">mean</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">max_grads_norm</span><span class="p">,</span> <span class="n">eta</span>
+
+    <span class="k">def</span> <span class="nf">_update_base_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">ProbabilisticModel</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+        <span class="n">samples</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_search_space</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">num_samples</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_num_samples</span><span class="p">)</span>
+        <span class="n">samples</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">,</span> <span class="n">samples</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">lipschitz_constant</span><span class="p">,</span> <span class="n">eta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_lipschitz_estimate</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">samples</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">lipschitz_constant</span> <span class="o">&lt;</span> <span class="mf">1e-5</span><span class="p">:</span>  <span class="c1"># threshold to improve numerical stability for &#39;flat&#39; models</span>
+            <span class="n">lipschitz_constant</span> <span class="o">=</span> <span class="mi">10</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lipschitz_constant</span> <span class="o">=</span> <span class="n">lipschitz_constant</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_eta</span> <span class="o">=</span> <span class="n">eta</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base_acquisition_function</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_base_acquisition_function</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base_builder</span><span class="o">.</span><span class="n">update_acquisition_function</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_base_acquisition_function</span><span class="p">,</span>
+                <span class="n">model</span><span class="p">,</span>
+                <span class="n">dataset</span><span class="o">=</span><span class="n">dataset</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_base_builder</span><span class="p">,</span> <span class="n">ExpectedImprovement</span><span class="p">):</span>  <span class="c1"># reuse eta estimate</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_base_acquisition_function</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
+                <span class="n">AcquisitionFunction</span><span class="p">,</span> <span class="n">expected_improvement</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_eta</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_base_acquisition_function</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base_builder</span><span class="o">.</span><span class="n">prepare_acquisition_function</span><span class="p">(</span>
+                <span class="n">model</span><span class="p">,</span>
+                <span class="n">dataset</span><span class="o">=</span><span class="n">dataset</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base_acquisition_function</span></div>
+
+
+<div class="viewcode-block" id="local_penalizer"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/greedy_batch/index.html#trieste.acquisition.function.greedy_batch.local_penalizer">[docs]</a><span class="k">class</span> <span class="nc">local_penalizer</span><span class="p">(</span><span class="n">UpdatablePenalizationFunction</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">ProbabilisticModel</span><span class="p">,</span>
+        <span class="n">pending_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+        <span class="n">lipschitz_constant</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+        <span class="n">eta</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize the local penalizer.</span>
+
+<span class="sd">        :param model: The model over the specified ``dataset``.</span>
+<span class="sd">        :param pending_points: The points we penalize with respect to.</span>
+<span class="sd">        :param lipschitz_constant: The estimated Lipschitz constant of the objective function.</span>
+<span class="sd">        :param eta: The estimated global minima.</span>
+<span class="sd">        :return: The local penalization function. This function will raise</span>
+<span class="sd">            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size</span>
+<span class="sd">            greater than one.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="n">model</span>
+
+        <span class="n">mean_pending</span><span class="p">,</span> <span class="n">variance_pending</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">pending_points</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pending_points</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="n">pending_points</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="n">pending_points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:]])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_radius</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">transpose</span><span class="p">((</span><span class="n">mean_pending</span> <span class="o">-</span> <span class="n">eta</span><span class="p">)</span> <span class="o">/</span> <span class="n">lipschitz_constant</span><span class="p">),</span>
+            <span class="n">shape</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_scale</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">variance_pending</span><span class="p">)</span> <span class="o">/</span> <span class="n">lipschitz_constant</span><span class="p">),</span>
+            <span class="n">shape</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="local_penalizer.update"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/greedy_batch/index.html#trieste.acquisition.function.greedy_batch.local_penalizer.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">pending_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+        <span class="n">lipschitz_constant</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+        <span class="n">eta</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Update the local penalizer with new variable values.&quot;&quot;&quot;</span>
+        <span class="n">mean_pending</span><span class="p">,</span> <span class="n">variance_pending</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">pending_points</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pending_points</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">pending_points</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_radius</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">transpose</span><span class="p">((</span><span class="n">mean_pending</span> <span class="o">-</span> <span class="n">eta</span><span class="p">)</span> <span class="o">/</span> <span class="n">lipschitz_constant</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_scale</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">variance_pending</span><span class="p">)</span> <span class="o">/</span> <span class="n">lipschitz_constant</span><span class="p">))</span></div></div>
+
+
+<div class="viewcode-block" id="soft_local_penalizer"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/index.html#trieste.acquisition.function.greedy_batch.soft_local_penalizer">[docs]</a><span class="k">class</span> <span class="nc">soft_local_penalizer</span><span class="p">(</span><span class="n">local_penalizer</span><span class="p">):</span>
+
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the soft local penalization function used for single-objective greedy batch Bayesian</span>
+<span class="sd">    optimization in :cite:`Gonzalez:2016`.</span>
+
+<span class="sd">    Soft penalization returns the probability that a candidate point does not belong</span>
+<span class="sd">    in the exclusion zones of the pending points. For model posterior mean :math:`\mu`, model</span>
+<span class="sd">    posterior variance :math:`\sigma^2`, current &quot;best&quot; function value :math:`\eta`, and an</span>
+<span class="sd">    estimated Lipschitz constant :math:`L`,the penalization from a set of pending point</span>
+<span class="sd">    :math:`x&#39;` on a candidate point :math:`x` is given by</span>
+<span class="sd">    .. math:: \phi(x, x&#39;) = \frac{1}{2}\textrm{erfc}(-z)</span>
+<span class="sd">    where :math:`z = \frac{1}{\sqrt{2\sigma^2(x&#39;)}}(L||x&#39;-x|| + \eta - \mu(x&#39;))`.</span>
+
+<span class="sd">    The penalization from a set of pending points is just product of the individual</span>
+<span class="sd">    penalizations. See :cite:`Gonzalez:2016` for a full derivation.</span>
+
+<span class="sd">    :param model: The model over the specified ``dataset``.</span>
+<span class="sd">    :param pending_points: The points we penalize with respect to.</span>
+<span class="sd">    :param lipschitz_constant: The estimated Lipschitz constant of the objective function.</span>
+<span class="sd">    :param eta: The estimated global minima.</span>
+<span class="sd">    :return: The local penalization function. This function will raise</span>
+<span class="sd">        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size</span>
+<span class="sd">        greater than one.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@tf</span><span class="o">.</span><span class="n">function</span>
+<div class="viewcode-block" id="soft_local_penalizer.__call__"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/greedy_batch/index.html#trieste.acquisition.function.greedy_batch.soft_local_penalizer.__call__">[docs]</a>    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">(</span>
+            <span class="p">[(</span><span class="n">x</span><span class="p">,</span> <span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">])],</span>
+            <span class="n">message</span><span class="o">=</span><span class="s2">&quot;This penalization function cannot be calculated for batches of points.&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">pairwise_distances</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pending_points</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span>
+        <span class="p">)</span>
+        <span class="n">standardised_distances</span> <span class="o">=</span> <span class="p">(</span><span class="n">pairwise_distances</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_radius</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scale</span>
+
+        <span class="n">normal</span> <span class="o">=</span> <span class="n">tfp</span><span class="o">.</span><span class="n">distributions</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">),</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">))</span>
+        <span class="n">penalization</span> <span class="o">=</span> <span class="n">normal</span><span class="o">.</span><span class="n">cdf</span><span class="p">(</span><span class="n">standardised_distances</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_prod</span><span class="p">(</span><span class="n">penalization</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="hard_local_penalizer"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/index.html#trieste.acquisition.function.greedy_batch.hard_local_penalizer">[docs]</a><span class="k">class</span> <span class="nc">hard_local_penalizer</span><span class="p">(</span><span class="n">local_penalizer</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the hard local penalization function used for single-objective greedy batch Bayesian</span>
+<span class="sd">    optimization in :cite:`Alvi:2019`.</span>
+
+<span class="sd">    Hard penalization is a stronger penalizer than soft penalization and is sometimes more effective</span>
+<span class="sd">    See :cite:`Alvi:2019` for details. Our implementation follows theirs, with the penalization from</span>
+<span class="sd">    a set of pending points being the product of the individual penalizations.</span>
+
+<span class="sd">    :param model: The model over the specified ``dataset``.</span>
+<span class="sd">    :param pending_points: The points we penalize with respect to.</span>
+<span class="sd">    :param lipschitz_constant: The estimated Lipschitz constant of the objective function.</span>
+<span class="sd">    :param eta: The estimated global minima.</span>
+<span class="sd">    :return: The local penalization function. This function will raise</span>
+<span class="sd">        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size</span>
+<span class="sd">        greater than one.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@tf</span><span class="o">.</span><span class="n">function</span>
+<div class="viewcode-block" id="hard_local_penalizer.__call__"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/greedy_batch/index.html#trieste.acquisition.function.greedy_batch.hard_local_penalizer.__call__">[docs]</a>    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">(</span>
+            <span class="p">[(</span><span class="n">x</span><span class="p">,</span> <span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">])],</span>
+            <span class="n">message</span><span class="o">=</span><span class="s2">&quot;This penalization function cannot be calculated for batches of points.&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">pairwise_distances</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pending_points</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span>
+        <span class="p">)</span>
+
+        <span class="n">p</span> <span class="o">=</span> <span class="o">-</span><span class="mi">5</span>  <span class="c1"># following experiments of :cite:`Alvi:2019`.</span>
+        <span class="n">penalization</span> <span class="o">=</span> <span class="p">((</span><span class="n">pairwise_distances</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_radius</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scale</span><span class="p">))</span> <span class="o">**</span> <span class="n">p</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">**</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="n">p</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_prod</span><span class="p">(</span><span class="n">penalization</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="FantasizerModelType"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/greedy_batch/index.html#trieste.acquisition.function.greedy_batch.FantasizerModelType">[docs]</a><span class="nd">@runtime_checkable</span>
+<span class="k">class</span> <span class="nc">FantasizerModelType</span><span class="p">(</span>
+    <span class="n">FastUpdateModel</span><span class="p">,</span> <span class="n">SupportsPredictJoint</span><span class="p">,</span> <span class="n">SupportsGetKernel</span><span class="p">,</span> <span class="n">SupportsGetObservationNoise</span><span class="p">,</span> <span class="n">Protocol</span>
+<span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;The model requirements for the Fantasizer acquisition function.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="FantasizerModelStack"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/greedy_batch/index.html#trieste.acquisition.function.greedy_batch.FantasizerModelStack">[docs]</a><span class="k">class</span> <span class="nc">FantasizerModelStack</span><span class="p">(</span><span class="n">PredictJointModelStack</span><span class="p">,</span> <span class="n">ModelStack</span><span class="p">[</span><span class="n">FantasizerModelType</span><span class="p">]):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A stack of models :class:`FantasizerModelType` models. Note that this delegates predict_joint</span>
+<span class="sd">    but none of the other methods.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+<span class="n">FantasizerModelOrStack</span> <span class="o">=</span> <span class="n">Union</span><span class="p">[</span><span class="n">FantasizerModelType</span><span class="p">,</span> <span class="n">FantasizerModelStack</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="Fantasizer"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/index.html#trieste.acquisition.function.greedy_batch.Fantasizer">[docs]</a><span class="k">class</span> <span class="nc">Fantasizer</span><span class="p">(</span><span class="n">GreedyAcquisitionFunctionBuilder</span><span class="p">[</span><span class="n">FantasizerModelOrStack</span><span class="p">]):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Builder of the acquisition function maker for greedily collecting batches.</span>
+<span class="sd">    Fantasizer allows us to perform batch Bayesian optimization with any</span>
+<span class="sd">    standard (non-batch) acquisition function.</span>
+
+<span class="sd">    Here, every time a query point is chosen by maximising an acquisition function,</span>
+<span class="sd">    its corresponding observation is &quot;fantasized&quot;, and the models are conditioned further</span>
+<span class="sd">    on this new artificial data.</span>
+
+<span class="sd">    This implies that the models need to predict what their updated predictions would be given</span>
+<span class="sd">    new data, see :class:`~FastUpdateModel`. These equations are for instance in closed form</span>
+<span class="sd">    for the GPR model, see :cite:`chevalier2014corrected` (eqs. 8-10) for details.</span>
+
+<span class="sd">    There are several ways to &quot;fantasize&quot; data: the &quot;kriging believer&quot; heuristic (KB, see</span>
+<span class="sd">    :cite:`ginsbourger2010kriging`) uses the mean of the model as observations.</span>
+<span class="sd">    &quot;sample&quot; uses samples from the model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">base_acquisition_function_builder</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span>
+            <span class="n">AcquisitionFunctionBuilder</span><span class="p">[</span><span class="n">SupportsPredictJoint</span><span class="p">]</span>
+            <span class="o">|</span> <span class="n">SingleModelAcquisitionBuilder</span><span class="p">[</span><span class="n">SupportsPredictJoint</span><span class="p">]</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">fantasize_method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;KB&quot;</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        :param base_acquisition_function_builder: The acquisition function builder to use.</span>
+<span class="sd">            Defaults to :class:`~trieste.acquisition.ExpectedImprovement`.</span>
+<span class="sd">        :param fantasize_method: The following options are available: &quot;KB&quot; and &quot;sample&quot;.</span>
+<span class="sd">            See class docs for more details.</span>
+<span class="sd">        :raise tf.errors.InvalidArgumentError: If ``fantasize_method`` is not &quot;KB&quot; or &quot;sample&quot;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span><span class="n">fantasize_method</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;KB&quot;</span><span class="p">,</span> <span class="s2">&quot;sample&quot;</span><span class="p">],</span> <span class="p">[])</span>
+
+        <span class="k">if</span> <span class="n">base_acquisition_function_builder</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">base_acquisition_function_builder</span> <span class="o">=</span> <span class="n">ExpectedImprovement</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">base_acquisition_function_builder</span><span class="p">,</span> <span class="n">SingleModelAcquisitionBuilder</span><span class="p">):</span>
+            <span class="n">base_acquisition_function_builder</span> <span class="o">=</span> <span class="n">base_acquisition_function_builder</span><span class="o">.</span><span class="n">using</span><span class="p">(</span><span class="n">OBJECTIVE</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_builder</span> <span class="o">=</span> <span class="n">base_acquisition_function_builder</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_fantasize_method</span> <span class="o">=</span> <span class="n">fantasize_method</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_base_acquisition_function</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">AcquisitionFunction</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_fantasized_acquisition</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">AcquisitionFunction</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_fantasized_models</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span>
+            <span class="nb">str</span><span class="p">,</span> <span class="n">_fantasized_model</span> <span class="o">|</span> <span class="n">ModelStack</span><span class="p">[</span><span class="n">SupportsPredictJoint</span><span class="p">]</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">def</span> <span class="nf">_update_base_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">models</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">FantasizerModelOrStack</span><span class="p">],</span>
+        <span class="n">datasets</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">]],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base_acquisition_function</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_base_acquisition_function</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_builder</span><span class="o">.</span><span class="n">update_acquisition_function</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_base_acquisition_function</span><span class="p">,</span> <span class="n">models</span><span class="p">,</span> <span class="n">datasets</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_base_acquisition_function</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_builder</span><span class="o">.</span><span class="n">prepare_acquisition_function</span><span class="p">(</span>
+                <span class="n">models</span><span class="p">,</span> <span class="n">datasets</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base_acquisition_function</span>
+
+    <span class="k">def</span> <span class="nf">_update_fantasized_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">models</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">FantasizerModelOrStack</span><span class="p">],</span>
+        <span class="n">datasets</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">]],</span>
+        <span class="n">pending_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_rank</span><span class="p">(</span><span class="n">pending_points</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="n">fantasized_data</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">tag</span><span class="p">:</span> <span class="n">_generate_fantasized_data</span><span class="p">(</span>
+                <span class="n">fantasize_method</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_fantasize_method</span><span class="p">,</span>
+                <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
+                <span class="n">pending_points</span><span class="o">=</span><span class="n">pending_points</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">tag</span><span class="p">,</span> <span class="n">model</span> <span class="ow">in</span> <span class="n">models</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="p">}</span>
+
+        <span class="k">if</span> <span class="n">datasets</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">datasets</span> <span class="o">=</span> <span class="n">fantasized_data</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">datasets</span> <span class="o">=</span> <span class="p">{</span><span class="n">tag</span><span class="p">:</span> <span class="n">data</span> <span class="o">+</span> <span class="n">fantasized_data</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span> <span class="k">for</span> <span class="n">tag</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="n">datasets</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fantasized_acquisition</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_fantasized_models</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">tag</span><span class="p">:</span> <span class="n">_generate_fantasized_model</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">fantasized_data</span><span class="p">[</span><span class="n">tag</span><span class="p">])</span>
+                <span class="k">for</span> <span class="n">tag</span><span class="p">,</span> <span class="n">model</span> <span class="ow">in</span> <span class="n">models</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+            <span class="p">}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_fantasized_acquisition</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_builder</span><span class="o">.</span><span class="n">prepare_acquisition_function</span><span class="p">(</span>
+                <span class="n">cast</span><span class="p">(</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">SupportsPredictJoint</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fantasized_models</span><span class="p">),</span> <span class="n">datasets</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">tag</span><span class="p">,</span> <span class="n">model</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fantasized_models</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">ModelStack</span><span class="p">):</span>
+                    <span class="n">observations</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">split</span><span class="p">(</span>
+                        <span class="n">fantasized_data</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span><span class="o">.</span><span class="n">observations</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">_event_sizes</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span>
+                    <span class="p">)</span>
+                    <span class="k">for</span> <span class="n">submodel</span><span class="p">,</span> <span class="n">obs</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">_models</span><span class="p">,</span> <span class="n">observations</span><span class="p">):</span>
+                        <span class="n">submodel</span><span class="o">.</span><span class="n">update_fantasized_data</span><span class="p">(</span>
+                            <span class="n">Dataset</span><span class="p">(</span><span class="n">fantasized_data</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span><span class="o">.</span><span class="n">query_points</span><span class="p">,</span> <span class="n">obs</span><span class="p">)</span>
+                        <span class="p">)</span>
+
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">model</span><span class="o">.</span><span class="n">update_fantasized_data</span><span class="p">(</span><span class="n">fantasized_data</span><span class="p">[</span><span class="n">tag</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_builder</span><span class="o">.</span><span class="n">update_acquisition_function</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_fantasized_acquisition</span><span class="p">,</span>
+                <span class="n">cast</span><span class="p">(</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">SupportsPredictJoint</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fantasized_models</span><span class="p">),</span>
+                <span class="n">datasets</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fantasized_acquisition</span>
+
+<div class="viewcode-block" id="Fantasizer.prepare_acquisition_function"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/greedy_batch/index.html#trieste.acquisition.function.greedy_batch.Fantasizer.prepare_acquisition_function">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">models</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">FantasizerModelOrStack</span><span class="p">],</span>
+        <span class="n">datasets</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">pending_points</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        :param models: The models over each tag.</span>
+<span class="sd">        :param datasets: The data from the observer (optional).</span>
+<span class="sd">        :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),</span>
+<span class="sd">            where M is the number of pending points and D is the search space dimension.</span>
+<span class="sd">        :return: An acquisition function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">model</span> <span class="ow">in</span> <span class="n">models</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span>
+                <span class="nb">isinstance</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">FantasizerModelType</span><span class="p">)</span>
+                <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">ModelStack</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">FantasizerModelType</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">_models</span><span class="p">)</span>
+            <span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Fantasizer only works with FastUpdateModel models that also support &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;predict_joint, get_kernel and get_observation_noise, or with &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;ModelStack stacks of such models; received </span><span class="si">{</span><span class="n">model</span><span class="o">.</span><span class="fm">__repr__</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+        <span class="k">if</span> <span class="n">pending_points</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_update_base_acquisition_function</span><span class="p">(</span><span class="n">models</span><span class="p">,</span> <span class="n">datasets</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_update_fantasized_acquisition_function</span><span class="p">(</span><span class="n">models</span><span class="p">,</span> <span class="n">datasets</span><span class="p">,</span> <span class="n">pending_points</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Fantasizer.update_acquisition_function"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/greedy_batch/index.html#trieste.acquisition.function.greedy_batch.Fantasizer.update_acquisition_function">[docs]</a>    <span class="k">def</span> <span class="nf">update_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">function</span><span class="p">:</span> <span class="n">AcquisitionFunction</span><span class="p">,</span>
+        <span class="n">models</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">FantasizerModelOrStack</span><span class="p">],</span>
+        <span class="n">datasets</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">pending_points</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">new_optimization_step</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param function: The acquisition function to update.</span>
+<span class="sd">        :param models: The models over each tag.</span>
+<span class="sd">        :param datasets: The data from the observer (optional).</span>
+<span class="sd">        :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),</span>
+<span class="sd">            where M is the number of pending points and D is the search space dimension.</span>
+<span class="sd">        :param new_optimization_step: Indicates whether this call to update_acquisition_function</span>
+<span class="sd">            is to start of a new optimization step, of to continue collecting batch of points</span>
+<span class="sd">            for the current step. Defaults to ``True``.</span>
+<span class="sd">        :return: The updated acquisition function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">pending_points</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_update_base_acquisition_function</span><span class="p">(</span><span class="n">models</span><span class="p">,</span> <span class="n">datasets</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_update_fantasized_acquisition_function</span><span class="p">(</span><span class="n">models</span><span class="p">,</span> <span class="n">datasets</span><span class="p">,</span> <span class="n">pending_points</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="_generate_fantasized_data"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/greedy_batch/index.html#trieste.acquisition.function.greedy_batch._generate_fantasized_data">[docs]</a><span class="k">def</span> <span class="nf">_generate_fantasized_data</span><span class="p">(</span>
+    <span class="n">fantasize_method</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">FantasizerModelOrStack</span><span class="p">,</span> <span class="n">pending_points</span><span class="p">:</span> <span class="n">TensorType</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dataset</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generates &quot;fantasized&quot; data at pending_points depending on the chosen heuristic:</span>
+<span class="sd">    - KB (kriging believer) uses the mean prediction of the models</span>
+<span class="sd">    - sample uses samples from the GP posterior.</span>
+
+<span class="sd">    :param fantasize_method: the following options are available: &quot;KB&quot; and &quot;sample&quot;.</span>
+<span class="sd">    :param model: a model with predict method</span>
+<span class="sd">    :param dataset: past data</span>
+<span class="sd">    :param pending_points: points at which to fantasize data</span>
+<span class="sd">    :return: a fantasized dataset</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">fantasize_method</span> <span class="o">==</span> <span class="s2">&quot;KB&quot;</span><span class="p">:</span>
+        <span class="n">fantasized_obs</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">pending_points</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">fantasize_method</span> <span class="o">==</span> <span class="s2">&quot;sample&quot;</span><span class="p">:</span>
+        <span class="n">fantasized_obs</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">pending_points</span><span class="p">,</span> <span class="n">num_samples</span><span class="o">=</span><span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;fantasize_method must be KB or sample, &quot;</span> <span class="sa">f</span><span class="s2">&quot;received </span><span class="si">{</span><span class="n">model</span><span class="o">.</span><span class="fm">__repr__</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">Dataset</span><span class="p">(</span><span class="n">pending_points</span><span class="p">,</span> <span class="n">fantasized_obs</span><span class="p">)</span></div>
+
+
+<span class="k">def</span> <span class="nf">_generate_fantasized_model</span><span class="p">(</span>
+    <span class="n">model</span><span class="p">:</span> <span class="n">FantasizerModelOrStack</span><span class="p">,</span> <span class="n">fantasized_data</span><span class="p">:</span> <span class="n">Dataset</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_fantasized_model</span> <span class="o">|</span> <span class="n">PredictJointModelStack</span><span class="p">:</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">ModelStack</span><span class="p">):</span>
+        <span class="n">observations</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">fantasized_data</span><span class="o">.</span><span class="n">observations</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">_event_sizes</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">fmods</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">mod</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">event_size</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">_models</span><span class="p">,</span> <span class="n">observations</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">_event_sizes</span><span class="p">):</span>
+            <span class="n">fmods</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="p">(</span>
+                    <span class="n">_fantasized_model</span><span class="p">(</span><span class="n">mod</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">(</span><span class="n">fantasized_data</span><span class="o">.</span><span class="n">query_points</span><span class="p">,</span> <span class="n">obs</span><span class="p">)),</span>
+                    <span class="n">event_size</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">PredictJointModelStack</span><span class="p">(</span><span class="o">*</span><span class="n">fmods</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_fantasized_model</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">fantasized_data</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="_fantasized_model"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/greedy_batch/index.html#trieste.acquisition.function.greedy_batch._fantasized_model">[docs]</a><span class="k">class</span> <span class="nc">_fantasized_model</span><span class="p">(</span><span class="n">SupportsPredictJoint</span><span class="p">,</span> <span class="n">SupportsGetKernel</span><span class="p">,</span> <span class="n">SupportsGetObservationNoise</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates a new model from an existing one and additional data.</span>
+<span class="sd">    This new model posterior is conditioned on both current model data and the additional one.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">FantasizerModelType</span><span class="p">,</span> <span class="n">fantasized_data</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param model: a model, must be of class `FastUpdateModel`</span>
+<span class="sd">        :param fantasized_data: additional dataset to condition on</span>
+<span class="sd">        :raise NotImplementedError: If model is not of class `FastUpdateModel`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_fantasized_query_points</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span>
+            <span class="n">fantasized_data</span><span class="o">.</span><span class="n">query_points</span><span class="p">,</span>
+            <span class="n">trainable</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">shape</span><span class="o">=</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="n">fantasized_data</span><span class="o">.</span><span class="n">query_points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:]],</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_fantasized_observations</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span>
+            <span class="n">fantasized_data</span><span class="o">.</span><span class="n">observations</span><span class="p">,</span>
+            <span class="n">trainable</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">shape</span><span class="o">=</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="n">fantasized_data</span><span class="o">.</span><span class="n">observations</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:]],</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="_fantasized_model.update_fantasized_data"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/greedy_batch/index.html#trieste.acquisition.function.greedy_batch._fantasized_model.update_fantasized_data">[docs]</a>    <span class="k">def</span> <span class="nf">update_fantasized_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fantasized_data</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param fantasized_data: new additional dataset to condition on</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_fantasized_query_points</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">fantasized_data</span><span class="o">.</span><span class="n">query_points</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_fantasized_observations</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">fantasized_data</span><span class="o">.</span><span class="n">observations</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="_fantasized_model.predict"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/greedy_batch/index.html#trieste.acquisition.function.greedy_batch._fantasized_model.predict">[docs]</a>    <span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This function wraps conditional_predict_f. It cannot directly call</span>
+<span class="sd">        conditional_predict_f, since it does not accept query_points with rank &gt; 2.</span>
+<span class="sd">        We use map_fn to allow leading dimensions for query_points.</span>
+
+<span class="sd">        :param query_points: shape [...*, N, d]</span>
+<span class="sd">        :return: mean, shape [...*, ..., N, L] and cov, shape [...*, ..., L, N],</span>
+<span class="sd">            where ... are the leading dimensions of fantasized_data</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">def</span> <span class="nf">fun</span><span class="p">(</span><span class="n">qp</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+            <span class="n">fantasized_data</span> <span class="o">=</span> <span class="n">Dataset</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_fantasized_query_points</span><span class="o">.</span><span class="n">value</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fantasized_observations</span><span class="o">.</span><span class="n">value</span><span class="p">()</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">conditional_predict_f</span><span class="p">(</span><span class="n">qp</span><span class="p">,</span> <span class="n">fantasized_data</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">_broadcast_predict</span><span class="p">(</span><span class="n">query_points</span><span class="p">,</span> <span class="n">fun</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="_fantasized_model.predict_joint"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/greedy_batch/index.html#trieste.acquisition.function.greedy_batch._fantasized_model.predict_joint">[docs]</a>    <span class="k">def</span> <span class="nf">predict_joint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This function wraps conditional_predict_joint. It cannot directly call</span>
+<span class="sd">        conditional_predict_joint, since it does not accept query_points with rank &gt; 2.</span>
+<span class="sd">        We use map_fn to allow leading dimensions for query_points.</span>
+
+<span class="sd">        :param query_points: shape [...*, N, D]</span>
+<span class="sd">        :return: mean, shape [...*, ..., N, L] and cov, shape [...*, ..., L, N, N],</span>
+<span class="sd">            where ... are the leading dimensions of fantasized_data</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">def</span> <span class="nf">fun</span><span class="p">(</span><span class="n">qp</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+            <span class="n">fantasized_data</span> <span class="o">=</span> <span class="n">Dataset</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_fantasized_query_points</span><span class="o">.</span><span class="n">value</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fantasized_observations</span><span class="o">.</span><span class="n">value</span><span class="p">()</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">conditional_predict_joint</span><span class="p">(</span><span class="n">qp</span><span class="p">,</span> <span class="n">fantasized_data</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">_broadcast_predict</span><span class="p">(</span><span class="n">query_points</span><span class="p">,</span> <span class="n">fun</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="_fantasized_model.sample"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/greedy_batch/index.html#trieste.acquisition.function.greedy_batch._fantasized_model.sample">[docs]</a>    <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This function wraps conditional_predict_f_sample. It cannot directly call</span>
+<span class="sd">        conditional_predict_joint, since it does not accept query_points with rank &gt; 2.</span>
+<span class="sd">        We use map_fn to allow leading dimensions for query_points.</span>
+
+<span class="sd">        :param query_points: shape [...*, N, D]</span>
+<span class="sd">        :param num_samples: number of samples.</span>
+<span class="sd">        :return: samples of shape [...*, ..., S, N, L], where ... are the leading</span>
+<span class="sd">            dimensions of fantasized_data</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">leading_dim</span><span class="p">,</span> <span class="n">query_points_flatten</span> <span class="o">=</span> <span class="n">_get_leading_dim_and_flatten</span><span class="p">(</span><span class="n">query_points</span><span class="p">)</span>
+        <span class="c1"># query_points_flatten: [B, n, d], leading_dim =...*, product = B</span>
+
+        <span class="n">samples</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">map_fn</span><span class="p">(</span>
+            <span class="n">fn</span><span class="o">=</span><span class="k">lambda</span> <span class="n">qp</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">conditional_predict_f_sample</span><span class="p">(</span>
+                <span class="n">qp</span><span class="p">,</span>
+                <span class="n">Dataset</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_fantasized_query_points</span><span class="o">.</span><span class="n">value</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fantasized_observations</span><span class="o">.</span><span class="n">value</span><span class="p">()</span>
+                <span class="p">),</span>
+                <span class="n">num_samples</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="n">elems</span><span class="o">=</span><span class="n">query_points_flatten</span><span class="p">,</span>
+        <span class="p">)</span>  <span class="c1"># [B, ..., S, L]</span>
+        <span class="k">return</span> <span class="n">_restore_leading_dim</span><span class="p">(</span><span class="n">samples</span><span class="p">,</span> <span class="n">leading_dim</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="_fantasized_model.predict_y"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/greedy_batch/index.html#trieste.acquisition.function.greedy_batch._fantasized_model.predict_y">[docs]</a>    <span class="k">def</span> <span class="nf">predict_y</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This function wraps conditional_predict_y. It cannot directly call</span>
+<span class="sd">        conditional_predict_joint, since it does not accept query_points with rank &gt; 2.</span>
+<span class="sd">        We use tf.map_fn to allow leading dimensions for query_points.</span>
+
+<span class="sd">        :param query_points: shape [...*, N, D]</span>
+<span class="sd">        :return: mean, shape [...*, ..., N, L] and var, shape [...*, ..., L, N],</span>
+<span class="sd">            where ... are the leading dimensions of fantasized_data</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">def</span> <span class="nf">fun</span><span class="p">(</span><span class="n">qp</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+            <span class="n">fantasized_data</span> <span class="o">=</span> <span class="n">Dataset</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_fantasized_query_points</span><span class="o">.</span><span class="n">value</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fantasized_observations</span><span class="o">.</span><span class="n">value</span><span class="p">()</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">conditional_predict_y</span><span class="p">(</span><span class="n">qp</span><span class="p">,</span> <span class="n">fantasized_data</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">_broadcast_predict</span><span class="p">(</span><span class="n">query_points</span><span class="p">,</span> <span class="n">fun</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="_fantasized_model.get_observation_noise"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/greedy_batch/index.html#trieste.acquisition.function.greedy_batch._fantasized_model.get_observation_noise">[docs]</a>    <span class="k">def</span> <span class="nf">get_observation_noise</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">get_observation_noise</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="_fantasized_model.get_kernel"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/greedy_batch/index.html#trieste.acquisition.function.greedy_batch._fantasized_model.get_kernel">[docs]</a>    <span class="k">def</span> <span class="nf">get_kernel</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">kernels</span><span class="o">.</span><span class="n">Kernel</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">get_kernel</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="_fantasized_model.log"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/greedy_batch/index.html#trieste.acquisition.function.greedy_batch._fantasized_model.log">[docs]</a>    <span class="k">def</span> <span class="nf">log</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">log</span><span class="p">()</span></div></div>
+
+
+<div class="viewcode-block" id="_broadcast_predict"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/greedy_batch/index.html#trieste.acquisition.function.greedy_batch._broadcast_predict">[docs]</a><span class="k">def</span> <span class="nf">_broadcast_predict</span><span class="p">(</span>
+    <span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">fun</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">TensorType</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Utility function that allows leading dimensions for query_points when</span>
+<span class="sd">    fun only accepts rank 2 tensors. It works by flattening query_points into</span>
+<span class="sd">    a rank 3 tensor, evaluate fun(query_points) through tf.map_fn, then</span>
+<span class="sd">    restoring the leading dimensions.</span>
+
+<span class="sd">    :param query_points: shape [...*, N, D]</span>
+<span class="sd">    :param fun: callable that returns two tensors (e.g. a predict function)</span>
+<span class="sd">    :return: two tensors (e.g. mean and variance) with shape [...*, ...]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">leading_dim</span><span class="p">,</span> <span class="n">query_points_flatten</span> <span class="o">=</span> <span class="n">_get_leading_dim_and_flatten</span><span class="p">(</span><span class="n">query_points</span><span class="p">)</span>
+    <span class="c1"># leading_dim =...*, product = B</span>
+    <span class="c1"># query_points_flatten: [B, N, D]</span>
+
+    <span class="n">mean_signature</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">TensorSpec</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">query_points</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+    <span class="n">var_signature</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">TensorSpec</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">query_points</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+    <span class="n">mean</span><span class="p">,</span> <span class="n">var</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">map_fn</span><span class="p">(</span>
+        <span class="n">fn</span><span class="o">=</span><span class="n">fun</span><span class="p">,</span>
+        <span class="n">elems</span><span class="o">=</span><span class="n">query_points_flatten</span><span class="p">,</span>
+        <span class="n">fn_output_signature</span><span class="o">=</span><span class="p">(</span><span class="n">mean_signature</span><span class="p">,</span> <span class="n">var_signature</span><span class="p">),</span>
+    <span class="p">)</span>  <span class="c1"># [B, ..., L, N], [B, ..., L, N] (predict_f) or [B, ..., L, N, N] (predict_joint)</span>
+
+    <span class="k">return</span> <span class="n">_restore_leading_dim</span><span class="p">(</span><span class="n">mean</span><span class="p">,</span> <span class="n">leading_dim</span><span class="p">),</span> <span class="n">_restore_leading_dim</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="n">leading_dim</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="_get_leading_dim_and_flatten"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/greedy_batch/index.html#trieste.acquisition.function.greedy_batch._get_leading_dim_and_flatten">[docs]</a><span class="k">def</span> <span class="nf">_get_leading_dim_and_flatten</span><span class="p">(</span><span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    :param query_points: shape [...*, N, D]</span>
+<span class="sd">    :return: leading_dim = ....*, query_points_flatten, shape [B, N, D]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">leading_dim</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">query_points</span><span class="p">)[:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>  <span class="c1"># =...*, product = B</span>
+    <span class="n">nd</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">query_points</span><span class="p">)[</span><span class="o">-</span><span class="mi">2</span><span class="p">:]</span>
+    <span class="n">query_points_flatten</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">query_points</span><span class="p">,</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">nd</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">nd</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>  <span class="c1"># [B, N, D]</span>
+    <span class="k">return</span> <span class="n">leading_dim</span><span class="p">,</span> <span class="n">query_points_flatten</span></div>
+
+
+<div class="viewcode-block" id="_restore_leading_dim"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/greedy_batch/index.html#trieste.acquisition.function.greedy_batch._restore_leading_dim">[docs]</a><span class="k">def</span> <span class="nf">_restore_leading_dim</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">leading_dim</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;Un-flatten&quot; the first dimension of x to leading_dim</span>
+
+<span class="sd">    :param x: shape [B, ...]</span>
+<span class="sd">    :param leading_dim: [...*]</span>
+<span class="sd">    :return: shape [...*, ...]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">single_x_shape</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>  <span class="c1"># = [...]</span>
+    <span class="n">output_x_shape</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">leading_dim</span><span class="p">,</span> <span class="n">single_x_shape</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># = [...*, ...]</span>
+    <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">output_x_shape</span><span class="p">)</span>  <span class="c1"># [...*, ...]</span></div>
+</pre></div>
+
+              </div>
+              
+              
+          </main>
+          
+
+      </div>
+    </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf"></script>
+<footer class="footer mt-5 mt-md-0">
+  <div class="container">
+    
+    <div class="footer-item">
+      <p class="copyright">
+    &copy; Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.<br>
+</p>
+    </div>
+    
+    <div class="footer-item">
+      <p class="sphinx-version">
+Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.5.4.<br>
+</p>
+    </div>
+    
+  </div>
+</footer>
+  </body>
+</html>

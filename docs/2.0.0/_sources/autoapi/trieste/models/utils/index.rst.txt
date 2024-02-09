@@ -1,0 +1,64 @@
+:py:mod:`trieste.models.utils`
+==============================
+
+.. py:module:: trieste.models.utils
+
+.. autoapi-nested-parse::
+
+   This module contains auxiliary objects and functions that are used by multiple model types.
+
+
+
+Module Contents
+---------------
+
+.. py:function:: write_summary_data_based_metrics(dataset: trieste.data.Dataset, model: trieste.models.interfaces.ProbabilisticModel, prefix: str = '') -> None
+
+   Logging utility for writing TensorBoard summary of various metrics for model diagnostics.
+
+   :param dataset: The dataset to use for computing the metrics. All available data in the
+       dataset will be used.
+   :param model: The model to produce metrics for.
+   :param prefix: The prefix to add to "accuracy" category of model summaries.
+
+
+.. py:function:: write_summary_kernel_parameters(kernel: gpflow.kernels.Kernel, prefix: str = '') -> None
+
+   Logging utility for writing TensorBoard summary of kernel parameters. Provides useful
+   diagnostics for models with a GPflow kernel. Only trainable parameters are logged.
+
+   :param kernel: The kernel to use for computing the metrics.
+   :param prefix: The prefix to add to "kernel" category of model summaries.
+
+
+.. py:function:: write_summary_likelihood_parameters(likelihood: gpflow.likelihoods.Likelihood, prefix: str = '') -> None
+
+   Logging utility for writing TensorBoard summary of likelihood parameters. Provides useful
+   diagnostics for models with a GPflow likelihood. Only trainable parameters are logged.
+
+   :param likelihood: The likelihood to use for computing the metrics.
+   :param prefix: The prefix to add to "likelihood" category of model summaries.
+
+
+.. py:function:: get_module_with_variables(model: trieste.models.interfaces.ProbabilisticModel, *dependencies: Any) -> tensorflow.Module
+
+   Return a fresh module with a model's variables attached, which can then be extended
+   with methods and saved using tf.saved_model.
+
+   :param model: Model to extract variables from.
+   :param dependencies: Dependent objects whose variables should also be included.
+
+
+.. py:function:: optimize_model_and_save_result(model: trieste.models.interfaces.TrainableProbabilisticModel, dataset: trieste.data.Dataset) -> None
+
+   Optimize the model objective and save the (optimizer-specific) optimization result
+   in the model object. To access it, use ``get_last_optimization_result``.
+
+   :param dataset: The data with which to train the model.
+
+
+.. py:function:: get_last_optimization_result(model: trieste.models.interfaces.TrainableProbabilisticModel) -> Optional[Any]
+
+   The last saved (optimizer-specific) optimization result.
+
+

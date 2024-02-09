@@ -1,0 +1,122 @@
+:py:mod:`trieste.data`
+======================
+
+.. py:module:: trieste.data
+
+.. autoapi-nested-parse::
+
+   This module contains utilities for :class:`~trieste.observer.Observer` data. 
+
+
+
+Module Contents
+---------------
+
+.. py:class:: Dataset
+
+   Container for the query points and corresponding observations from an
+   :class:`~trieste.observer.Observer`.
+
+   .. py:attribute:: query_points
+      :annotation: :trieste.types.TensorType
+
+      The points at which the :class:`~trieste.observer.Observer` was queried. 
+
+
+   .. py:attribute:: observations
+      :annotation: :trieste.types.TensorType
+
+      The observed output of the :class:`~trieste.observer.Observer` for each query point. 
+
+
+   .. py:method:: __post_init__() -> None
+
+      :raise ValueError (or InvalidArgumentError): If ``query_points`` or ``observations`` have             rank less than two, or they have unequal shape in any but their last dimension.
+
+
+   .. py:method:: __add__(rhs: Dataset) -> Dataset
+
+      Return the :class:`Dataset` whose query points are the result of concatenating the
+      `query_points` in each :class:`Dataset` along the zeroth axis, and the same for the
+      `observations`. For example:
+
+      >>> d1 = Dataset(
+      ...     tf.constant([[0.1, 0.2], [0.3, 0.4]]),
+      ...     tf.constant([[0.5, 0.6], [0.7, 0.8]])
+      ... )
+      >>> d2 = Dataset(tf.constant([[0.9, 1.0]]), tf.constant([[1.1, 1.2]]))
+      >>> (d1 + d2).query_points
+      <tf.Tensor: shape=(3, 2), dtype=float32, numpy=
+      array([[0.1, 0.2],
+             [0.3, 0.4],
+             [0.9, 1. ]], dtype=float32)>
+      >>> (d1 + d2).observations
+      <tf.Tensor: shape=(3, 2), dtype=float32, numpy=
+      array([[0.5, 0.6],
+             [0.7, 0.8],
+             [1.1, 1.2]], dtype=float32)>
+
+      :param rhs: A :class:`Dataset` with the same shapes as this one, except in the zeroth
+          dimension, which can have any size.
+      :return: The result of concatenating the :class:`Dataset`\ s.
+      :raise InvalidArgumentError: If the shapes of the `query_points` in each :class:`Dataset`
+          differ in any but the zeroth dimension. The same applies for `observations`.
+
+
+   .. py:method:: __len__() -> tensorflow.Tensor
+
+      :return: The number of query points, or equivalently the number of observations.
+
+
+   .. py:method:: astuple() -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      **Note:** Unlike the standard library function `dataclasses.astuple`, this method does
+      **not** deepcopy the attributes.
+
+      :return: A 2-tuple of the :attr:`query_points` and :attr:`observations`.
+
+
+
+.. py:function:: check_and_extract_fidelity_query_points(query_points: trieste.types.TensorType, max_fidelity: Optional[int] = None) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+   Check whether the final column of a tensor is close enough to ints
+   to be reasonably considered to represent fidelities.
+
+   The final input column of multi-fidelity data should be a reference to
+   the fidelity of the query point. We cannot have mixed type tensors, but
+   we can check that thhe final column values are suitably close to integers.
+
+   :param query_points: Data to check final column of.
+   :raise: ValueError: If there are not enough columns to be multifidelity data
+   :raise InvalidArgumentError: If any value in the final column is far from an integer
+   :return: Query points without fidelity column
+       and the fidelities of each of the query points
+
+
+.. py:function:: split_dataset_by_fidelity(dataset: Dataset, num_fidelities: int) -> Sequence[Dataset]
+
+   Split dataset into individual datasets without fidelity information
+
+   :param dataset: Dataset for which to split fidelities
+   :param num_fidlities: Number of fidelities in the problem (not just dataset)
+   :return: Ordered list of datasets with lowest fidelity at index 0 and highest at -1
+
+
+.. py:function:: get_dataset_for_fidelity(dataset: Dataset, fidelity: int) -> Dataset
+
+   Get a dataset with only the specified fidelity of data in
+
+   :param dataset: The dataset from which to extract the single fidelity data
+   :param fidelity: The fidelity to extract the data for
+   :return: Dataset with a single fidelity and no fidelity column
+
+
+.. py:function:: add_fidelity_column(query_points: trieste.types.TensorType, fidelity: int) -> trieste.types.TensorType
+
+   Add fidelity column to query_points without fidelity data
+
+   :param query_points: query points without fidelity to add fidelity column to
+   :param fidelity: fidelity to populate fidelity column with
+   :return: TensorType of query points with fidelity column added
+
+

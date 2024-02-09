@@ -1,0 +1,84 @@
+:py:mod:`trieste.acquisition.multi_objective.partition`
+=======================================================
+
+.. py:module:: trieste.acquisition.multi_objective.partition
+
+.. autoapi-nested-parse::
+
+   This module contains functions of different methods for
+   partitioning the dominated/non-dominated region in multi-objective optimization problems.
+
+
+
+Module Contents
+---------------
+
+.. py:function:: prepare_default_non_dominated_partition_bounds(reference: trieste.types.TensorType, observations: Optional[trieste.types.TensorType] = None, anti_reference: Optional[trieste.types.TensorType] = None) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+   Prepare the default non-dominated partition boundary for acquisition function usage.
+   This functionality will trigger different partition according to objective numbers, if
+   objective number is 2, an `ExactPartition2dNonDominated` will be used. If the objective
+   number is larger than 2, a `DividedAndConquerNonDominated` will be used.
+
+   :param observations: The observations for all objectives, with shape [N, D], if not specified
+       or is an empty Tensor, a single non-dominated partition bounds constructed by reference
+       and anti_reference point will be returned.
+   :param anti_reference: a worst point to use with shape [D].
+       Defines the lower bound of the hypercell. If not specified, will use a default value:
+       -[1e10] * D.
+   :param reference: a reference point to use, with shape [D].
+       Defines the upper bound of the hypervolume.
+       Should be equal to or bigger than the anti-ideal point of the Pareto set.
+       For comparing results across runs, the same reference point must be used.
+   :return: lower, upper bounds of the partitioned cell, each with shape [N, D]
+   :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``reference`` has an invalid
+       shape.
+   :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``anti_reference`` has an invalid
+       shape.
+
+
+.. py:class:: _BoundIndexPartition
+
+   A collection of partition strategies that are based on storing the index of pareto fronts
+   & other auxiliary points
+
+   .. py:method:: partition_bounds(self, anti_reference: trieste.types.TensorType, reference: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Get the partitioned hypercell's lower and upper bounds.
+
+      :param anti_reference: a worst point to use with shape [D].
+          Defines the lower bound of the hypercell
+      :param reference: a reference point to use, with shape [D].
+          Defines the upper bound of the hypervolume.
+          Should be equal to or bigger than the anti-ideal point of the Pareto set.
+          For comparing results across runs, the same reference point must be used.
+      :return: lower, upper bounds of the partitioned cell, each with shape [N, D]
+      :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``reference`` has an invalid
+          shape.
+
+
+
+.. py:class:: ExactPartition2dNonDominated(front: trieste.types.TensorType)
+
+   Bases: :py:obj:`_BoundIndexPartition`
+
+   Exact partition of non-dominated space, used as a default option when the
+   objective number equals 2.
+
+   :param front: non-dominated pareto front.
+
+
+.. py:class:: DividedAndConquerNonDominated(front: trieste.types.TensorType, threshold: TensorType | float = 0)
+
+   Bases: :py:obj:`_BoundIndexPartition`
+
+   branch and bound procedure algorithm. a divide and conquer method introduced
+   in :cite:`Couckuyt2012`.
+
+   :param front: non-dominated pareto front.
+   :param threshold: a threshold used to screen out cells in partition : when its volume is
+       below this threshold, its rejected directly in order to be more computationally
+       efficient, if setting above 0, this partition strategy tends to return an
+       approximated partition.
+
+

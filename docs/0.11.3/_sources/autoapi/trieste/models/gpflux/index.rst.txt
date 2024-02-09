@@ -1,0 +1,205 @@
+:py:mod:`trieste.models.gpflux`
+===============================
+
+.. py:module:: trieste.models.gpflux
+
+.. autoapi-nested-parse::
+
+   This package contains the primary interface for deep Gaussian process models. It also contains a
+   number of :class:`TrainableProbabilisticModel` wrappers for GPflux-based models. Note that currently
+   copying/saving models is not supported, so in a Bayes Opt loop `track_state` should be set False.
+   Note as well that `tf.keras.backend.set_floatx()` should be used to set the desired float type,
+   consistent with the GPflow float type being used.
+
+
+
+Submodules
+----------
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+
+   builders/index.rst
+
+
+Package Contents
+----------------
+
+.. py:function:: build_vanilla_deep_gp(data: trieste.data.Dataset, search_space: trieste.space.SearchSpace, num_layers: int = NUM_LAYERS, num_inducing_points: Optional[int] = None, inner_layer_sqrt_factor: float = INNER_LAYER_SQRT_FACTOR, likelihood_variance: float = LIKELIHOOD_VARIANCE, trainable_likelihood: bool = True) -> gpflux.models.DeepGP
+
+   Build a :class:`~gpflux.models.DeepGP` model with sensible initial parameters. We found the
+   default configuration used here to work well in most situation, but it should not be taken as a
+   universally good solution.
+
+   Note that although we set all the relevant parameters to sensible values, we rely on
+   ``build_constant_input_dim_deep_gp`` from :mod:`~gpflux.architectures` to build the model.
+
+   :param data: Dataset from the initial design, used to estimate the variance of observations
+       and to provide query points which are used to determine inducing point locations with
+       k-means.
+   :param search_space: Search space for performing Bayesian optimization. Used for initialization
+       of inducing locations if ``num_inducing_points`` is larger than the amount of data.
+   :param num_layers: Number of layers in deep GP. By default set to ``NUM_LAYERS``.
+   :param num_inducing_points: Number of inducing points to use in each layer. If left unspecified
+       (default), this number is set to either ``NUM_INDUCING_POINTS_PER_DIM``*dimensionality of
+       the search space or value given by ``MAX_NUM_INDUCING_POINTS``, whichever is smaller.
+   :param inner_layer_sqrt_factor: A multiplicative factor used to rescale hidden layers, see
+       :class:`~gpflux.architectures.Config` for details. By default set to
+       ``INNER_LAYER_SQRT_FACTOR``.
+   :param likelihood_variance: Initial noise variance in the likelihood function, see
+       :class:`~gpflux.architectures.Config` for details. By default set to
+       ``LIKELIHOOD_VARIANCE``.
+   :return: A :class:`~gpflux.models.DeepGP` model with sensible default settings.
+   :raise: If non-positive ``num_layers``, ``inner_layer_sqrt_factor``, ``likelihood_variance``
+       or ``num_inducing_points`` is provided.
+
+
+.. py:class:: GPfluxPredictor(optimizer: KerasOptimizer | None = None)
+
+   Bases: :py:obj:`trieste.models.interfaces.SupportsGetObservationNoise`, :py:obj:`abc.ABC`
+
+   A trainable wrapper for a GPflux deep Gaussian process model. The code assumes subclasses
+   will use the Keras `fit` method for training, and so they should provide access to both a
+   `model_keras` and `model_gpflux`. Note: due to Keras integration, the user should remember to
+   use `tf.keras.backend.set_floatx()` with the desired value (consistent with GPflow) to avoid
+   dtype errors.
+
+   :param optimizer: The optimizer wrapper containing the optimizer with which to train the
+       model and arguments for the wrapper and the optimizer. The optimizer must
+       be an instance of a :class:`~tf.optimizers.Optimizer`. Defaults to
+       :class:`~tf.optimizers.Adam` optimizer with 0.01 learning rate.
+
+   .. py:method:: model_gpflux(self) -> gpflow.base.Module
+      :property:
+
+      The underlying GPflux model.
+
+
+   .. py:method:: model_keras(self) -> tensorflow.keras.Model
+      :property:
+
+      Returns the compiled Keras model for training.
+
+
+   .. py:method:: optimizer(self) -> trieste.models.optimizer.KerasOptimizer
+      :property:
+
+      The optimizer wrapper for training the model.
+
+
+   .. py:method:: predict(self, query_points: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Note: unless otherwise noted, this returns the mean and variance of the last layer
+      conditioned on one sample from the previous layers.
+
+
+   .. py:method:: sample(self, query_points: trieste.types.TensorType, num_samples: int) -> trieste.types.TensorType
+      :abstractmethod:
+
+      Return ``num_samples`` samples from the independent marginal distributions at
+      ``query_points``.
+
+      :param query_points: The points at which to sample, with shape [..., N, D].
+      :param num_samples: The number of samples at each point.
+      :return: The samples. For a predictive distribution with event shape E, this has shape
+          [..., S, N] + E, where S is the number of samples.
+
+
+   .. py:method:: predict_y(self, query_points: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Note: unless otherwise noted, this will return the prediction conditioned on one sample
+      from the lower layers.
+
+
+   .. py:method:: get_observation_noise(self) -> trieste.types.TensorType
+
+      Return the variance of observation noise for homoscedastic likelihoods.
+
+      :return: The observation noise.
+      :raise NotImplementedError: If the model does not have a homoscedastic likelihood.
+
+
+
+.. py:class:: DeepGaussianProcess(model: DeepGP | Callable[[], DeepGP], optimizer: KerasOptimizer | None = None, num_rff_features: int = 1000, continuous_optimisation: bool = True)
+
+   Bases: :py:obj:`trieste.models.gpflux.interface.GPfluxPredictor`, :py:obj:`trieste.models.interfaces.TrainableProbabilisticModel`, :py:obj:`trieste.models.interfaces.HasReparamSampler`, :py:obj:`trieste.models.interfaces.HasTrajectorySampler`
+
+   A :class:`TrainableProbabilisticModel` wrapper for a GPflux :class:`~gpflux.models.DeepGP` with
+   :class:`GPLayer` or :class:`LatentVariableLayer`: this class does not support e.g. keras layers.
+   We provide simple architectures that can be used with this class in the `architectures.py` file.
+   Note: the user should remember to set `tf.keras.backend.set_floatx()` with the desired value
+   (consistent with GPflow) so that dtype errors do not occur.
+
+   :param model: The underlying GPflux deep Gaussian process model. Passing in a named closure
+       rather than a model can help when copying or serialising.
+   :param optimizer: The optimizer configuration for training the model. Defaults to
+       :class:`~trieste.models.optimizer.KerasOptimizer` wrapper with
+       :class:`~tf.optimizers.Adam` optimizer. The ``optimizer`` argument to the wrapper is
+       used when compiling the model and ``fit_args`` is a dictionary of arguments to be used
+       in the Keras ``fit`` method. Defaults to 400 epochs, batch size of 1000, and verbose 0.
+       A custom callback that reduces the optimizer learning rate is used as well. See
+       https://keras.io/api/models/model_training_apis/#fit-method for a list of possible
+       arguments.
+   :param num_rff_features: The number of random Fourier features used to approximate the
+       kernel when calling :meth:`trajectory_sampler`. We use a default of 1000 as it typically
+       performs well for a wide range of kernels. Note that very smooth kernels (e.g. RBF) can
+       be well-approximated with fewer features.
+   :param continuous_optimisation: if True (default), the optimizer will keep track of the
+       number of epochs across BO iterations and use this number as initial_epoch. This is
+       essential to allow monitoring of model training across BO iterations.
+   :raise ValueError: If ``model`` has unsupported layers, ``num_rff_features`` is less than 0,
+       or if the ``optimizer`` is not of a supported type.
+
+   .. py:method:: model_gpflux(self) -> gpflux.models.DeepGP
+      :property:
+
+      The underlying GPflux model.
+
+
+   .. py:method:: model_keras(self) -> tensorflow.keras.Model
+      :property:
+
+      Returns the compiled Keras model for training.
+
+
+   .. py:method:: sample(self, query_points: trieste.types.TensorType, num_samples: int) -> trieste.types.TensorType
+
+      Return ``num_samples`` samples from the independent marginal distributions at
+      ``query_points``.
+
+      :param query_points: The points at which to sample, with shape [..., N, D].
+      :param num_samples: The number of samples at each point.
+      :return: The samples. For a predictive distribution with event shape E, this has shape
+          [..., S, N] + E, where S is the number of samples.
+
+
+   .. py:method:: reparam_sampler(self, num_samples: int) -> trieste.models.interfaces.ReparametrizationSampler[trieste.models.gpflux.interface.GPfluxPredictor]
+
+      Return a reparametrization sampler for a :class:`DeepGaussianProcess` model.
+
+      :param num_samples: The number of samples to obtain.
+      :return: The reparametrization sampler.
+
+
+   .. py:method:: trajectory_sampler(self) -> trieste.models.interfaces.TrajectorySampler[trieste.models.gpflux.interface.GPfluxPredictor]
+
+      Return a trajectory sampler. For :class:`DeepGaussianProcess`, we build
+      trajectories using the GPflux default sampler.
+
+      :return: The trajectory sampler.
+
+
+   .. py:method:: update(self, dataset: trieste.data.Dataset) -> None
+
+      Update the model given the specified ``dataset``. Does not train the model.
+
+      :param dataset: The data with which to update the model.
+
+
+   .. py:method:: optimize(self, dataset: trieste.data.Dataset) -> None
+
+      Optimize the model with the specified `dataset`.
+      :param dataset: The data with which to optimize the `model`.
+
+
+

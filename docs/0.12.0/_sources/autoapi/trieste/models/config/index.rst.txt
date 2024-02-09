@@ -1,0 +1,160 @@
+:py:mod:`trieste.models.config`
+===============================
+
+.. py:module:: trieste.models.config
+
+.. autoapi-nested-parse::
+
+   This module contains registry for supported models and config related classes and functions.
+   Configs allow expert users to build model as a dictionary of model and optimizer arguments,
+   rather than working with interfaces.
+
+
+
+Module Contents
+---------------
+
+.. py:class:: ModelRegistry
+
+   This is a registry of all supported models with their corresponding wrappers, and model
+   optimizers with their corresponding wrapppers.
+
+   A single entry per model and optimizer is maintained, if same model is registered again it will
+   overwrite the previous entry. Registry is primarily used by :class:`ModelConfig` and
+   :func:`create_model` to facilitate building models by specifying a simple dictionary of model
+   and optimizer arguments.
+
+   Note that you do not need to register your custom model if you will provide an instance of
+   :class:`~trieste.models.TrainableProbabilisticModel` directly to the
+   :class:`~trieste.BayesianOptimizer`. Registering is required if you intend to build your custom
+   model as a dictionary of arguments for the wrapper and the optimizer, or as a
+   :class:`ModelConfig`.
+
+   .. py:method:: get_model_wrapper(cls, model_type: Type[Any]) -> Type[trieste.models.interfaces.TrainableProbabilisticModel]
+      :classmethod:
+
+      Get a Trieste model wrapper for a given model type.
+
+      :param model_type: The model type.
+      :return: The wrapper which builds a model.
+
+
+   .. py:method:: get_optimizer_wrapper(cls, optimizer_type: Type[Any]) -> Type[trieste.models.optimizer.Optimizer]
+      :classmethod:
+
+      Get a Trieste model optimizer wrapper for a given optimizer type.
+
+      :param optimizer_type: The optimizer type.
+      :return: The optimizer wrapper to be used with the optimizer type.
+
+
+   .. py:method:: register_model(cls, model_type: Type[Any], wrapper_type: Type[trieste.models.interfaces.TrainableProbabilisticModel]) -> None
+      :classmethod:
+
+      Register a new model type. Note that this will overwrite a registry
+      entry if the model has already been registered.
+
+      :param model_type: The model type.
+      :param wrapper_type: The model wrapper to be used with the model type.
+
+
+   .. py:method:: register_optimizer(cls, optimizer_type: Type[Any], wrapper_type: Type[trieste.models.optimizer.Optimizer]) -> None
+      :classmethod:
+
+      Register a new optimizer type. Note that this will overwrite a registry
+      entry if the optimizer has already been registered.
+
+      :param optimizer_type: The optimizer type.
+      :param wrapper_type: The optimier wrapper to be used with the optimizer type.
+
+
+   .. py:method:: get_registered_models(cls) -> Iterable[Any]
+      :classmethod:
+
+      Provides a generator with all supported model types.
+
+
+   .. py:method:: get_registered_optimizers(cls) -> Iterable[Any]
+      :classmethod:
+
+      Provides a generator with all supported optimizer types.
+
+
+
+.. py:class:: ModelConfig
+
+   This class is a specification for building a
+   :class:`~trieste.models.TrainableProbabilisticModel`. It is not meant to be used by itself,
+   it implements methods that facilitate building a Trieste model as a dictionary of model and
+   optimizer arguments with :func:`create_model`.
+
+   .. py:attribute:: model
+      :annotation: :Any
+
+      The low-level model to pass to the :class:`~trieste.models.TrainableProbabilisticModel`
+      wrapper registered with the `model` via :class:`ModelRegistry`. The model has to be one of
+      the supported models, that is, registered via :class:`ModelRegistry`. We use type `Any` here as
+      this can be either a model that is supported by default (for example, GPflow- or GPflux-based
+      models) or a user-defined model that has been registered.
+
+
+   .. py:attribute:: model_args
+      :annotation: :dict[str, Any]
+
+      The keyword arguments to pass to the model wrapper
+      :class:`~trieste.models.TrainableProbabilisticModel` registered with the `model` via
+      :class:`ModelRegistry`.
+
+
+   .. py:attribute:: optimizer
+      :annotation: :Any
+
+      The low-level optimizer to pass to the :class:`~trieste.models.Optimizer` wrapper
+      registered with the `model` via :class:`ModelRegistry`, with which to train the model (by
+      minimizing its loss function). The model has to be one of the supported models, that is,
+      registered via :class:`ModelRegistry`. We use type `Any` here as this can be either an
+      optimizer that is supported by default (for example, GPflow or TensorFlow) or a user-defined
+      optimizer that has been registered.
+
+
+   .. py:attribute:: optimizer_args
+      :annotation: :dict[str, Any]
+
+      The keyword arguments to pass to the optimizer wrapper :class:`~trieste.models.Optimizer`
+      registered with the `model` via :class:`ModelRegistry`.
+
+
+   .. py:method:: build_model(self) -> trieste.models.interfaces.TrainableProbabilisticModel
+
+      Builds a Trieste model from the model and optimizer configuration.
+
+
+
+.. py:data:: ModelDictConfig
+   
+
+   Type alias for a config type specification of a model. 
+
+
+.. py:data:: ModelConfigType
+   
+
+   Type alias for any config type that can be used to fully specify a model. 
+
+
+.. py:data:: ModelSpec
+   
+
+   Type alias for any type that can be used to fully specify a model. 
+
+
+.. py:function:: create_model(config: ModelSpec) -> trieste.models.interfaces.TrainableProbabilisticModel
+
+   Build a model in a flexible way by providing a dictionary of model and optimizer arguments, a
+   :class:`ModelConfig`, or a :class:`~trieste.models.TrainableProbabilisticModel`. This function
+   is primarily used by :class:`~trieste.BayesianOptimizer` to build a model.
+
+   :param config: A configuration for building a Trieste model.
+   :return: A Trieste model built according to ``config``.
+
+

@@ -1,0 +1,41 @@
+:py:mod:`trieste.objectives.utils`
+==================================
+
+.. py:module:: trieste.objectives.utils
+
+.. autoapi-nested-parse::
+
+   This module contains functions convenient for creating :class:`Observer` objects that return data
+   from objective functions, appropriately formatted for usage with the toolbox.
+
+
+
+Module Contents
+---------------
+
+.. py:function:: mk_observer(objective: collections.abc.Callable[[trieste.types.TensorType], trieste.types.TensorType]) -> trieste.observer.SingleObserver
+                 mk_observer(objective: collections.abc.Callable[[trieste.types.TensorType], trieste.types.TensorType], key: trieste.types.Tag) -> trieste.observer.MultiObserver
+
+   :param objective: An objective function designed to be used with a single data set and model.
+   :param key: An optional key to use to access the data from the observer result.
+   :return: An observer returning the data from ``objective``.
+
+
+.. py:function:: mk_multi_observer(**kwargs: collections.abc.Callable[[trieste.types.TensorType], trieste.types.TensorType]) -> trieste.observer.MultiObserver
+
+   :param kwargs: Observation functions.
+   :return: An multi-observer returning the data from ``kwargs``.
+
+
+.. py:function:: mk_batch_observer(objective_or_observer: Union[collections.abc.Callable[[trieste.types.TensorType], trieste.types.TensorType], trieste.observer.Observer], default_key: trieste.types.Tag = OBJECTIVE) -> trieste.observer.MultiObserver
+
+   Create an observer that returns the data from ``objective`` or an existing ``observer``
+   separately for each query point in a batch.
+
+   :param objective_or_observer: An objective or an existing observer.
+   :param default_key: The default key to use if ``objective_or_observer`` is an objective or
+       does not return a mapping.
+   :return: A multi-observer across the batch dimension of query points, returning the data from
+       ``objective_or_observer``.
+
+

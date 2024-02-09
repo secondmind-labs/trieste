@@ -1,0 +1,561 @@
+:py:mod:`trieste.acquisition.function.function`
+===============================================
+
+.. py:module:: trieste.acquisition.function.function
+
+.. autoapi-nested-parse::
+
+   This module contains acquisition function builders, which build and define our acquisition
+   functions --- functions that estimate the utility of evaluating sets of candidate points.
+
+
+
+Module Contents
+---------------
+
+.. py:class:: ExpectedImprovement
+
+   Bases: :py:obj:`trieste.acquisition.interface.SingleModelAcquisitionBuilder`\ [\ :py:obj:`trieste.models.ProbabilisticModel`\ ]
+
+   Builder for the expected improvement function where the "best" value is taken to be the minimum
+   of the posterior mean at observed points.
+
+   .. py:method:: prepare_acquisition_function(self, model: trieste.models.ProbabilisticModel, dataset: Optional[trieste.data.Dataset] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      :param model: The model.
+      :param dataset: The data from the observer. Must be populated.
+      :return: The expected improvement function. This function will raise
+          :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+          greater than one.
+      :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
+
+
+   .. py:method:: update_acquisition_function(self, function: trieste.acquisition.interface.AcquisitionFunction, model: trieste.models.ProbabilisticModel, dataset: Optional[trieste.data.Dataset] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      :param function: The acquisition function to update.
+      :param model: The model.
+      :param dataset: The data from the observer.  Must be populated.
+
+
+
+.. py:class:: expected_improvement(model: trieste.models.ProbabilisticModel, eta: trieste.types.TensorType)
+
+   Bases: :py:obj:`trieste.acquisition.interface.AcquisitionFunctionClass`
+
+   An :class:`AcquisitionFunctionClass` is an acquisition function represented using a class
+   rather than as a standalone function. Using a class to represent an acquisition function
+   makes it easier to update it, to avoid having to retrace the function on every call.
+
+   Return the Expected Improvement (EI) acquisition function for single-objective global
+   optimization. Improvement is with respect to the current "best" observation ``eta``, where
+   an improvement moves towards the objective function's minimum and the expectation is
+   calculated with respect to the ``model`` posterior. For model posterior :math:`f`, this is
+
+   .. math:: x \mapsto \mathbb E \left[ \max (\eta - f(x), 0) \right]
+
+   This function was introduced by Mockus et al, 1975. See :cite:`Jones:1998` for details.
+
+   :param model: The model of the objective function.
+   :param eta: The "best" observation.
+   :return: The expected improvement function. This function will raise
+       :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+       greater than one.
+
+   .. py:method:: update(self, eta: trieste.types.TensorType) -> None
+
+      Update the acquisition function with a new eta value.
+
+
+   .. py:method:: __call__(self, x: trieste.types.TensorType) -> trieste.types.TensorType
+
+      Call acquisition function.
+
+
+
+.. py:class:: AugmentedExpectedImprovement
+
+   Bases: :py:obj:`trieste.acquisition.interface.SingleModelAcquisitionBuilder`\ [\ :py:obj:`trieste.models.interfaces.SupportsGetObservationNoise`\ ]
+
+   Builder for the augmented expected improvement function for optimization single-objective
+   optimization problems with high levels of observation noise.
+
+   .. py:method:: prepare_acquisition_function(self, model: trieste.models.interfaces.SupportsGetObservationNoise, dataset: Optional[trieste.data.Dataset] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      :param model: The model.
+      :param dataset: The data from the observer. Must be populated.
+      :return: The expected improvement function. This function will raise
+          :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+          greater than one.
+      :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
+
+
+   .. py:method:: update_acquisition_function(self, function: trieste.acquisition.interface.AcquisitionFunction, model: trieste.models.interfaces.SupportsGetObservationNoise, dataset: Optional[trieste.data.Dataset] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      :param function: The acquisition function to update.
+      :param model: The model.
+      :param dataset: The data from the observer. Must be populated.
+
+
+
+.. py:class:: augmented_expected_improvement(model: trieste.models.interfaces.SupportsGetObservationNoise, eta: trieste.types.TensorType)
+
+   Bases: :py:obj:`trieste.acquisition.interface.AcquisitionFunctionClass`
+
+   An :class:`AcquisitionFunctionClass` is an acquisition function represented using a class
+   rather than as a standalone function. Using a class to represent an acquisition function
+   makes it easier to update it, to avoid having to retrace the function on every call.
+
+   Return the Augmented Expected Improvement (AEI) acquisition function for single-objective
+   global optimization under homoscedastic observation noise.
+   Improvement is with respect to the current "best" observation ``eta``, where an
+   improvement moves towards the objective function's minimum and the expectation is calculated
+   with respect to the ``model`` posterior. In contrast to standard EI, AEI has an additional
+   multiplicative factor that penalizes evaluations made in areas of the space with very small
+   posterior predictive variance. Thus, when applying standard EI to noisy optimisation
+   problems, AEI avoids getting trapped and repeatedly querying the same point.
+   For model posterior :math:`f`, this is
+   .. math:: x \mapsto EI(x) * \left(1 - frac{\tau^2}{\sqrt{s^2(x)+\tau^2}}\right),
+   where :math:`s^2(x)` is the predictive variance and :math:`\tau` is observation noise.
+   This function was introduced by Huang et al, 2006. See :cite:`Huang:2006` for details.
+
+   :param model: The model of the objective function.
+   :param eta: The "best" observation.
+   :return: The expected improvement function. This function will raise
+       :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+       greater than one or a model without homoscedastic observation noise.
+
+   .. py:method:: update(self, eta: trieste.types.TensorType) -> None
+
+      Update the acquisition function with a new eta value and noise variance.
+
+
+   .. py:method:: __call__(self, x: trieste.types.TensorType) -> trieste.types.TensorType
+
+      Call acquisition function.
+
+
+
+.. py:class:: NegativeLowerConfidenceBound(beta: float = 1.96)
+
+   Bases: :py:obj:`trieste.acquisition.interface.SingleModelAcquisitionBuilder`\ [\ :py:obj:`trieste.models.ProbabilisticModel`\ ]
+
+   Builder for the negative of the lower confidence bound. The lower confidence bound is typically
+   minimised, so the negative is suitable for maximisation.
+
+   :param beta: Weighting given to the variance contribution to the lower confidence bound.
+       Must not be negative.
+
+   .. py:method:: prepare_acquisition_function(self, model: trieste.models.ProbabilisticModel, dataset: Optional[trieste.data.Dataset] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      :param model: The model.
+      :param dataset: Unused.
+      :return: The negative lower confidence bound function. This function will raise
+          :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+          greater than one.
+      :raise ValueError: If ``beta`` is negative.
+
+
+   .. py:method:: update_acquisition_function(self, function: trieste.acquisition.interface.AcquisitionFunction, model: trieste.models.ProbabilisticModel, dataset: Optional[trieste.data.Dataset] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      :param function: The acquisition function to update.
+      :param model: The model.
+      :param dataset: Unused.
+
+
+
+.. py:class:: NegativePredictiveMean
+
+   Bases: :py:obj:`NegativeLowerConfidenceBound`
+
+   Builder for the negative of the predictive mean. The predictive mean is minimised on minimising
+   the objective function. The negative predictive mean is therefore maximised.
+
+   :param beta: Weighting given to the variance contribution to the lower confidence bound.
+       Must not be negative.
+
+
+.. py:function:: lower_confidence_bound(model: trieste.models.ProbabilisticModel, beta: float) -> trieste.acquisition.interface.AcquisitionFunction
+
+   The lower confidence bound (LCB) acquisition function for single-objective global optimization.
+
+   .. math:: x^* \mapsto \mathbb{E} [f(x^*)|x, y] - \beta \sqrt{ \mathrm{Var}[f(x^*)|x, y] }
+
+   See :cite:`Srinivas:2010` for details.
+
+   :param model: The model of the objective function.
+   :param beta: The weight to give to the standard deviation contribution of the LCB. Must not be
+       negative.
+   :return: The lower confidence bound function. This function will raise
+       :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+       greater than one.
+   :raise tf.errors.InvalidArgumentError: If ``beta`` is negative.
+
+
+.. py:class:: ProbabilityOfFeasibility(threshold: float | TensorType)
+
+   Bases: :py:obj:`trieste.acquisition.interface.SingleModelAcquisitionBuilder`\ [\ :py:obj:`trieste.models.ProbabilisticModel`\ ]
+
+   Builder for the :func:`probability_of_feasibility` acquisition function, defined in
+   :cite:`gardner14` as
+
+   .. math::
+
+       \int_{-\infty}^{\tau} p(c(\mathbf{x}) | \mathbf{x}, \mathcal{D}) \mathrm{d} c(\mathbf{x})
+       \qquad ,
+
+   where :math:`\tau` is a threshold. Values below the threshold are considered feasible by the
+   constraint function. See also :cite:`schonlau1998global` for details.
+
+   :param threshold: The (scalar) probability of feasibility threshold.
+   :raise ValueError (or InvalidArgumentError): If ``threshold`` is not a scalar.
+
+   .. py:method:: threshold(self) -> float | TensorType
+      :property:
+
+      The probability of feasibility threshold.
+
+
+   .. py:method:: prepare_acquisition_function(self, model: trieste.models.ProbabilisticModel, dataset: Optional[trieste.data.Dataset] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      :param model: The model.
+      :param dataset: Unused.
+      :return: The probability of feasibility function. This function will raise
+          :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+          greater than one.
+
+
+   .. py:method:: update_acquisition_function(self, function: trieste.acquisition.interface.AcquisitionFunction, model: trieste.models.ProbabilisticModel, dataset: Optional[trieste.data.Dataset] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      :param function: The acquisition function to update.
+      :param model: The model.
+      :param dataset: Unused.
+
+
+
+.. py:function:: probability_of_feasibility(model: trieste.models.ProbabilisticModel, threshold: float | TensorType) -> trieste.acquisition.interface.AcquisitionFunction
+
+   The probability of feasibility acquisition function defined in :cite:`gardner14` as
+
+   .. math::
+
+       \int_{-\infty}^{\tau} p(c(\mathbf{x}) | \mathbf{x}, \mathcal{D}) \mathrm{d} c(\mathbf{x})
+       \qquad ,
+
+   where :math:`\tau` is a threshold. Values below the threshold are considered feasible by the
+   constraint function.
+
+   :param model: The model of the objective function.
+   :param threshold: The (scalar) probability of feasibility threshold.
+   :return: The probability of feasibility function. This function will raise
+       :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+       greater than one.
+   :raise ValueError or tf.errors.InvalidArgumentError: If ``threshold`` is not a scalar.
+
+
+.. py:class:: ExpectedConstrainedImprovement(objective_tag: str, constraint_builder: trieste.acquisition.interface.AcquisitionFunctionBuilder[trieste.acquisition.interface.ProbabilisticModelType], min_feasibility_probability: float | TensorType = 0.5)
+
+   Bases: :py:obj:`trieste.acquisition.interface.AcquisitionFunctionBuilder`\ [\ :py:obj:`trieste.acquisition.interface.ProbabilisticModelType`\ ]
+
+   Builder for the *expected constrained improvement* acquisition function defined in
+   :cite:`gardner14`. The acquisition function computes the expected improvement from the best
+   feasible point, where feasible points are those that (probably) satisfy some constraint. Where
+   there are no feasible points, this builder simply builds the constraint function.
+
+   :param objective_tag: The tag for the objective data and model.
+   :param constraint_builder: The builder for the constraint function.
+   :param min_feasibility_probability: The minimum probability of feasibility for a
+       "best point" to be considered feasible.
+   :raise ValueError (or tf.errors.InvalidArgumentError): If ``min_feasibility_probability``
+       is not a scalar in the unit interval :math:`[0, 1]`.
+
+   .. py:method:: prepare_acquisition_function(self, models: Mapping[str, trieste.acquisition.interface.ProbabilisticModelType], datasets: Optional[Mapping[str, trieste.data.Dataset]] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      :param models: The models over each tag.
+      :param datasets: The data from the observer.
+      :return: The expected constrained improvement acquisition function. This function will raise
+          :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+          greater than one.
+      :raise KeyError: If `objective_tag` is not found in ``datasets`` and ``models``.
+      :raise tf.errors.InvalidArgumentError: If the objective data is empty.
+
+
+   .. py:method:: update_acquisition_function(self, function: trieste.acquisition.interface.AcquisitionFunction, models: Mapping[str, trieste.acquisition.interface.ProbabilisticModelType], datasets: Optional[Mapping[str, trieste.data.Dataset]] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      :param function: The acquisition function to update.
+      :param models: The models for each tag.
+      :param datasets: The data from the observer.
+
+
+   .. py:method:: _update_expected_improvement_fn(self, objective_model: trieste.acquisition.interface.ProbabilisticModelType, feasible_mean: trieste.types.TensorType) -> None
+
+      Set or update the unconstrained expected improvement function.
+
+      :param objective_model: The objective model.
+      :param feasible_mean: The mean of the feasible query points.
+
+
+
+.. py:class:: MonteCarloExpectedImprovement(sample_size: int, *, jitter: float = DEFAULTS.JITTER)
+
+   Bases: :py:obj:`trieste.acquisition.interface.SingleModelAcquisitionBuilder`\ [\ :py:obj:`trieste.models.interfaces.HasReparamSampler`\ ]
+
+   Builder for a Monte Carlo-based expected improvement function for use with a model without
+   analytical expected improvement (e.g. a deep GP). The "best" value is taken to be
+   the minimum of the posterior mean at observed points. See
+   :class:`monte_carlo_expected_improvement` for details.
+
+   :param sample_size: The number of samples for each batch of points.
+   :param jitter: The jitter for the reparametrization sampler.
+   :raise tf.errors.InvalidArgumentError: If ``sample_size`` is not positive, or ``jitter`` is
+       negative.
+
+   .. py:method:: prepare_acquisition_function(self, model: trieste.models.interfaces.HasReparamSampler, dataset: Optional[trieste.data.Dataset] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      :param model: The model over the specified ``dataset``. Must have output dimension [1].
+      :param dataset: The data from the observer. Cannot be empty.
+      :return: The estimated *expected improvement* acquisition function.
+      :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, ``model``
+          does not have an output dimension of [1] or does not have a ``reparam_sample`` method.
+
+
+   .. py:method:: update_acquisition_function(self, function: trieste.acquisition.interface.AcquisitionFunction, model: trieste.models.interfaces.HasReparamSampler, dataset: Optional[trieste.data.Dataset] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      :param function: The acquisition function to update.
+      :param model: The model. Must have output dimension [1]. Unused here.
+      :param dataset: The data from the observer. Cannot be empty
+
+
+
+.. py:class:: monte_carlo_expected_improvement(sampler: trieste.models.ReparametrizationSampler[trieste.models.interfaces.HasReparamSampler], eta: trieste.types.TensorType)
+
+   Bases: :py:obj:`trieste.acquisition.interface.AcquisitionFunctionClass`
+
+   Return a Monte Carlo based Expected Improvement (EI) acquisition function for
+   single-objective global optimization. Improvement is with respect to the current "best"
+   observation ``eta``, where an improvement moves towards the objective function's minimum
+   and the expectation is calculated with respect to the ``model`` posterior. For model
+   posterior :math:`f`, this is
+
+   .. math:: x \mapsto \mathbb E \left[ \max (\eta - f(x), 0) \right].
+
+   For the Monte Carlo version, the expectation is calculated by samples that we save. See
+   :cite:`wilson2018maximizing` for details.
+
+   :param sampler: The model sampler of the objective function.
+   :param eta: The "best" observation.
+   :return: The Monte Carlo expected improvement function. This function will raise
+       :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+       greater than one.
+
+   .. py:method:: update(self, eta: trieste.types.TensorType) -> None
+
+      Update the acquisition function with a new eta value.
+
+
+   .. py:method:: __call__(self, at: trieste.types.TensorType) -> trieste.types.TensorType
+
+      Call acquisition function.
+
+
+
+.. py:class:: MonteCarloAugmentedExpectedImprovement(sample_size: int, *, jitter: float = DEFAULTS.JITTER)
+
+   Bases: :py:obj:`trieste.acquisition.interface.SingleModelAcquisitionBuilder`\ [\ :py:obj:`trieste.models.interfaces.SupportsReparamSamplerObservationNoise`\ ]
+
+   Builder for a Monte Carlo-based augmented expected improvement function for use with a model
+   without analytical augmented expected improvement (e.g. a deep GP). The "best" value is taken to
+   be the minimum of the posterior mean at observed points. See
+   :class:`monte_carlo_augmented_expected_improvement` for details.
+
+   :param sample_size: The number of samples for each batch of points.
+   :param jitter: The jitter for the reparametrization sampler.
+   :raise tf.errors.InvalidArgumentError: If ``sample_size`` is not positive, or ``jitter`` is
+       negative.
+
+   .. py:method:: prepare_acquisition_function(self, model: trieste.models.interfaces.SupportsReparamSamplerObservationNoise, dataset: Optional[trieste.data.Dataset] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      :param model: The model over the specified ``dataset``. Must have output dimension [1].
+      :param dataset: The data from the observer. Cannot be empty.
+      :return: The estimated *expected improvement* acquisition function.
+      :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, ``model``
+          does not have an output dimension of [1], does not have a ``reparam_sample`` method, or
+          does not support observation noise.
+
+
+   .. py:method:: update_acquisition_function(self, function: trieste.acquisition.interface.AcquisitionFunction, model: trieste.models.interfaces.SupportsReparamSamplerObservationNoise, dataset: Optional[trieste.data.Dataset] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      :param function: The acquisition function to update.
+      :param model: The model. Must have output dimension [1]. Unused here
+      :param dataset: The data from the observer. Cannot be empty.
+
+
+
+.. py:class:: monte_carlo_augmented_expected_improvement(model: trieste.models.interfaces.SupportsReparamSamplerObservationNoise, sampler: trieste.models.ReparametrizationSampler[trieste.models.interfaces.SupportsReparamSamplerObservationNoise], eta: trieste.types.TensorType)
+
+   Bases: :py:obj:`trieste.acquisition.interface.AcquisitionFunctionClass`
+
+   Return a Monte Carlo based Augmented Expected Improvement (AEI) acquisition function for
+   single-objective global optimization with high levels of observation noise. See
+   :cite:`wilson2018maximizing` for details on using the reparametrization trick for optimizing
+   acquisition functions and :cite:`Huang:2006`: for details of AEI.
+
+   :param model: The model of the objective function.
+   :param sampler: The model sampler of the objective function.
+   :param eta: The "best" observation.
+   :return: The Monte Carlo expected improvement function. This function will raise
+       :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+       greater than one.
+
+   .. py:method:: update(self, eta: trieste.types.TensorType) -> None
+
+      Update the acquisition function with a new eta and noise variance
+
+
+   .. py:method:: __call__(self, at: trieste.types.TensorType) -> trieste.types.TensorType
+
+      Call acquisition function.
+
+
+
+.. py:class:: BatchMonteCarloExpectedImprovement(sample_size: int, *, jitter: float = DEFAULTS.JITTER)
+
+   Bases: :py:obj:`trieste.acquisition.interface.SingleModelAcquisitionBuilder`\ [\ :py:obj:`trieste.models.interfaces.HasReparamSampler`\ ]
+
+   Expected improvement for batches of points (or :math:`q`-EI), approximated using Monte Carlo
+   estimation with the reparametrization trick. See :cite:`Ginsbourger2010` for details.
+   Improvement is measured with respect to the minimum predictive mean at observed query points.
+   This is calculated in :class:`BatchMonteCarloExpectedImprovement` by assuming observations
+   at new points are independent from those at known query points. This is faster, but is an
+   approximation for noisy observers.
+
+   :param sample_size: The number of samples for each batch of points.
+   :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
+       the covariance matrix.
+   :raise tf.errors.InvalidArgumentError: If ``sample_size`` is not positive, or ``jitter``
+       is negative.
+
+   .. py:method:: prepare_acquisition_function(self, model: trieste.models.interfaces.HasReparamSampler, dataset: Optional[trieste.data.Dataset] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      :param model: The model. Must have event shape [1].
+      :param dataset: The data from the observer. Must be populated.
+      :return: The batch *expected improvement* acquisition function.
+      :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, or ``model``
+          does not have an event shape of [1].
+
+
+   .. py:method:: update_acquisition_function(self, function: trieste.acquisition.interface.AcquisitionFunction, model: trieste.models.interfaces.HasReparamSampler, dataset: Optional[trieste.data.Dataset] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      :param function: The acquisition function to update.
+      :param model: The model. Must have event shape [1].
+      :param dataset: The data from the observer. Must be populated.
+
+
+
+.. py:class:: batch_monte_carlo_expected_improvement(sample_size: int, model: trieste.models.interfaces.HasReparamSampler, eta: trieste.types.TensorType, jitter: float)
+
+   Bases: :py:obj:`trieste.acquisition.interface.AcquisitionFunctionClass`
+
+   An :class:`AcquisitionFunctionClass` is an acquisition function represented using a class
+   rather than as a standalone function. Using a class to represent an acquisition function
+   makes it easier to update it, to avoid having to retrace the function on every call.
+
+   :param sample_size: The number of Monte-Carlo samples.
+   :param model: The model of the objective function.
+   :param sampler:  ReparametrizationSampler.
+   :param eta: The "best" observation.
+   :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
+       the covariance matrix.
+   :return: The expected improvement function. This function will raise
+       :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+       greater than one.
+
+   .. py:method:: update(self, eta: trieste.types.TensorType) -> None
+
+      Update the acquisition function with a new eta value and reset the reparam sampler.
+
+
+   .. py:method:: __call__(self, x: trieste.types.TensorType) -> trieste.types.TensorType
+
+      Call acquisition function.
+
+
+
+.. py:class:: MultipleOptimismNegativeLowerConfidenceBound(search_space: trieste.space.SearchSpace)
+
+   Bases: :py:obj:`trieste.acquisition.interface.SingleModelVectorizedAcquisitionBuilder`\ [\ :py:obj:`trieste.models.ProbabilisticModel`\ ]
+
+   A simple parallelization of the lower confidence bound acquisition function that produces
+   a vectorized acquisition function which can efficiently optimized even for large batches.
+
+   See :cite:`torossian2020bayesian` for details.
+
+   :param search_space: The global search space over which the optimisation is defined.
+
+   .. py:method:: prepare_acquisition_function(self, model: trieste.models.ProbabilisticModel, dataset: Optional[trieste.data.Dataset] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      :param model: The model.
+      :param dataset: Unused.
+      :return: The multiple optimism negative lower confidence bound function.
+
+
+   .. py:method:: update_acquisition_function(self, function: trieste.acquisition.interface.AcquisitionFunction, model: trieste.models.ProbabilisticModel, dataset: Optional[trieste.data.Dataset] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      :param function: The acquisition function to update.
+      :param model: The model.
+      :param dataset: Unused.
+
+
+
+.. py:class:: multiple_optimism_lower_confidence_bound(model: trieste.models.ProbabilisticModel, search_space_dim: int)
+
+   Bases: :py:obj:`trieste.acquisition.interface.AcquisitionFunctionClass`
+
+   The multiple optimism lower confidence bound (MOLCB) acquisition function for single-objective
+   global optimization.
+
+   Each batch dimension of this acquisiton function correponds to a lower confidence bound
+   acquisition function with different beta values, i.e. each point in a batch chosen by this
+   acquisition function lies on a gradient of exploration/exploitation trade-offs.
+
+   We choose the different beta values following the cdf method of :cite:`torossian2020bayesian`.
+   See their paper for more details.
+
+   :param model: The model of the objective function.
+   :param search_space_dim: The dimensions of the optimisation problem's search space.
+   :raise tf.errors.InvalidArgumentError: If ``search_space_dim`` is not postive.
+
+   .. py:method:: __call__(self, x: trieste.types.TensorType) -> trieste.types.TensorType
+
+      Call acquisition function.
+
+
+
+.. py:class:: MakePositive(base_acquisition_function_builder: trieste.acquisition.interface.SingleModelAcquisitionBuilder[trieste.acquisition.interface.ProbabilisticModelType])
+
+   Bases: :py:obj:`trieste.acquisition.interface.SingleModelAcquisitionBuilder`\ [\ :py:obj:`trieste.acquisition.interface.ProbabilisticModelType`\ ]
+
+   Converts an acquisition function builder into one that only returns positive values, via
+   :math:`x \mapsto \log(1 + \exp(x))`.
+
+   This is sometimes a useful transformation: for example, converting non-batch acquisition
+   functions into batch acquisition functions with local penalization requires functions
+   that only return positive values.
+
+   :param base_acquisition_function_builder: Base acquisition function to be made positive.
+
+   .. py:method:: prepare_acquisition_function(self, model: trieste.acquisition.interface.ProbabilisticModelType, dataset: Optional[trieste.data.Dataset] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      :param model: The model.
+      :param dataset: The data to use to build the acquisition function (optional).
+      :return: An acquisition function.
+
+
+   .. py:method:: update_acquisition_function(self, function: trieste.acquisition.interface.AcquisitionFunction, model: trieste.acquisition.interface.ProbabilisticModelType, dataset: Optional[trieste.data.Dataset] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      :param function: The acquisition function to update.
+      :param model: The model.
+      :param dataset: The data from the observer (optional).
+      :return: The updated acquisition function.
+
+
+

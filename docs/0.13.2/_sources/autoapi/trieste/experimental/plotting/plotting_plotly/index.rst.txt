@@ -1,0 +1,94 @@
+:orphan:
+
+:py:mod:`trieste.experimental.plotting.plotting_plotly`
+=======================================================
+
+.. py:module:: trieste.experimental.plotting.plotting_plotly
+
+
+Module Contents
+---------------
+
+.. py:function:: format_point_markers(num_pts: int, num_init: int, idx_best: Optional[int] = None, mask_fail: Optional[trieste.types.TensorType] = None, m_init: str = 'x', m_add: str = 'circle', c_pass: str = 'green', c_fail: str = 'red', c_best: str = 'darkmagenta') -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+   Prepares point marker styles according to some BO factors
+
+   :param num_pts: total number of BO points
+   :param num_init: initial number of BO points
+   :param idx_best: index of the best BO point
+   :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)
+   :param m_init: marker for the initial BO points
+   :param m_add: marker for the other BO points
+   :param c_pass: color for the regular BO points
+   :param c_fail: color for the failed BO points
+   :param c_best: color for the best BO points
+   :return: 2 string vectors col_pts, mark_pts containing marker styles and colors
+
+
+.. py:function:: add_surface_plotly(xx: trieste.types.TensorType, yy: trieste.types.TensorType, f: trieste.types.TensorType, fig: plotly.graph_objects.Figure, alpha: float = 1.0, figrow: int = 1, figcol: int = 1) -> plotly.graph_objects.Figure
+
+   Adds a surface to an existing plotly subfigure
+
+   :param xx: [n, n] array (input)
+   :param yy: [n, n] array (input)
+   :param f: [n, n] array (output)
+   :param fig: the current plotly figure
+   :param alpha: transparency
+   :param figrow: row index of the subfigure
+   :param figcol: column index of the subfigure
+   :return: updated plotly figure
+
+
+.. py:function:: add_bo_points_plotly(x: trieste.types.TensorType, y: trieste.types.TensorType, z: trieste.types.TensorType, fig: plotly.graph_objects.Figure, num_init: int, idx_best: Optional[int] = None, mask_fail: Optional[trieste.types.TensorType] = None, figrow: int = 1, figcol: int = 1) -> plotly.graph_objects.Figure
+
+   Adds scatter points to an existing subfigure. Markers and colors are chosen according to
+   BO factors.
+   :param x: [N] x inputs
+   :param y: [N] y inputs
+   :param z: [N] z outputs
+   :param fig: the current plotly figure
+   :param num_init: initial number of BO points
+   :param idx_best: index of the best BO point
+   :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)
+   :param figrow: row index of the subfigure
+   :param figcol: column index of the subfigure
+   :return: a plotly figure
+
+
+.. py:function:: plot_model_predictions_plotly(model: trieste.models.interfaces.ProbabilisticModel, mins: trieste.types.TensorType, maxs: trieste.types.TensorType, grid_density: int = 100, num_samples: Optional[int] = None, alpha: float = 0.85) -> plotly.graph_objects.Figure
+
+   Plots 2-dimensional plot of model's predictions. We first create a regular grid of points
+   and evaluate the model on these points. We then plot the mean and 2 standard deviations to
+   show epistemic uncertainty.
+
+   For ``DeepGaussianProcess`` models ``num_samples`` should be used
+   and set to some positive number. This is needed as predictions from deep GP's are stochastic
+   and we need to take more than one sample to estimate the mean and variance.
+
+   :param model: A probabilistic model
+   :param mins: List of 2 lower bounds for creating a grid of points for model predictions.
+   :param maxs: List of 2 upper bounds for creating a grid of points for model predictions.
+   :param grid_density: Number of points per dimension. This will result in a grid size of
+       grid_density^2.
+   :param num_samples: Number of samples to use with deep GPs.
+   :param alpha: Transparency.
+   :return: A plotly figure.
+
+
+.. py:function:: plot_function_plotly(obj_func: Callable[[trieste.types.TensorType], trieste.types.TensorType], mins: trieste.types.TensorType, maxs: trieste.types.TensorType, grid_density: int = 100, title: Optional[str] = None, xlabel: Optional[str] = None, ylabel: Optional[str] = None, alpha: float = 1.0) -> plotly.graph_objects.Figure
+
+   Plots 2-dimensional plot of an objective function. To illustrate the function we create a
+   regular grid of points and evaluate the function on these points.
+
+   :param obj_func: The vectorized objective function.
+   :param mins: List of 2 lower bounds for creating a grid of points for model predictions.
+   :param maxs: List of 2 upper bounds for creating a grid of points for model predictions.
+   :param grid_density: Number of points per dimension. This will result in a grid size of
+       grid_density^2.
+   :param title: optional titles
+   :param xlabel: optional xlabel
+   :param ylabel: optional ylabel
+   :param alpha: transparency
+   :return: A plotly figure.
+
+

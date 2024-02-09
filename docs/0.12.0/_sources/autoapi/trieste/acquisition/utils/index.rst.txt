@@ -1,0 +1,34 @@
+:orphan:
+
+:py:mod:`trieste.acquisition.utils`
+===================================
+
+.. py:module:: trieste.acquisition.utils
+
+
+Module Contents
+---------------
+
+.. py:function:: split_acquisition_function(fn: trieste.acquisition.interface.AcquisitionFunction, split_size: int) -> trieste.acquisition.interface.AcquisitionFunction
+
+   A wrapper around an :const:`AcquisitionFunction` to split its input into batches.
+   Splits `x` into batches along the first dimension, calls `fn` on each batch, and then stitches
+   the results back together, so that it looks like `fn` was called with all of `x` in one batch.
+   :param fn: Acquisition function to split.
+   :param split_size: Call fn with tensors of at most this size.
+   :return: Split acquisition function.
+
+
+.. py:function:: split_acquisition_function_calls(optimizer: trieste.acquisition.optimizer.AcquisitionOptimizer[trieste.space.SearchSpaceType], split_size: int) -> trieste.acquisition.optimizer.AcquisitionOptimizer[trieste.space.SearchSpaceType]
+
+   A wrapper around our :const:`AcquisitionOptimizer`s. This class wraps a
+   :const:`AcquisitionOptimizer` so that evaluations of the acquisition functions
+   are split into batches on the first dimension and then stitched back together.
+   This can be useful to reduce memory usage when evaluating functions over large spaces.
+
+   :param optimizer: An optimizer that returns batches of points with shape [V, ...].
+   :param split_size: The desired maximum number of points in acquisition function evaluations.
+   :return: An :const:`AcquisitionOptimizer` that still returns points with the shape [V, ...]
+       but evaluates at most split_size points at a time.
+
+

@@ -1,0 +1,68 @@
+:py:mod:`trieste.acquisition.multi_objective.pareto`
+====================================================
+
+.. py:module:: trieste.acquisition.multi_objective.pareto
+
+.. autoapi-nested-parse::
+
+   This module contains functions and classes for Pareto based multi-objective optimization. 
+
+
+
+Module Contents
+---------------
+
+.. py:class:: Pareto(observations: trieste.types.TensorType, already_non_dominated: bool = False)
+
+   A :class:`Pareto` constructs a Pareto set.
+   Stores a Pareto set and calculates hypervolume of the Pareto set given a
+   specified reference point
+
+   :param observations: The observations for all objectives, with shape [N, D].
+   :param already_non_dominated: Whether the observations are already non dominated
+   :raise ValueError (or InvalidArgumentError): If ``observations`` has an invalid shape.
+
+   .. py:method:: hypervolume_indicator(reference: trieste.types.TensorType) -> trieste.types.TensorType
+
+      Calculate the hypervolume indicator based on self.front and a reference point
+      The hypervolume indicator is the volume of the dominated region.
+
+      :param reference: a reference point to use, with shape [D].
+          Defines the upper bound of the hypervolume.
+          Should be equal or bigger than the anti-ideal point of the Pareto set.
+          For comparing results across runs, the same reference point must be used.
+      :return: hypervolume indicator, if reference point is less than all of the front
+          in any dimension, the hypervolume indicator will be zero.
+      :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``reference`` has an invalid
+          shape.
+      :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``self.front`` is empty
+          (which can happen if the concentration point is too strict so no frontier
+          exists after the screening)
+
+
+   .. py:method:: sample_diverse_subset(sample_size: int, allow_repeats: bool = True, bounds_delta_scale_factor: float = 0.2, bounds_min_delta: float = 1e-09) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Sample a set of diverse points from the Pareto set using
+      Hypervolume Sharpe-Ratio Indicator
+
+      :param sample_size: The number of points to sample from the Pareto front
+      :param allow_repeats: Whether the sample may contain repeats
+      :param bounds_delta_scale_factor: The factor by which to grow the distance
+          between extrema when calculating lower and upper bounds
+      :param bounds_min_delta: The minimum value of the distance between extrema
+      :return: sample: Tensor of query points selected in the sample
+               and sample_ids: Tensor of indices of points selected from the Pareto set
+
+
+
+.. py:function:: get_reference_point(observations: trieste.types.TensorType) -> trieste.types.TensorType
+
+   Default reference point calculation method that calculates the reference
+   point according to a Pareto front extracted from set of observations.
+
+   :param observations: observations referred to calculate the reference
+       point, with shape [..., N, D]
+   :return: a reference point to use, with shape [..., D].
+   :raise ValueError: If ``observations`` is empty
+
+

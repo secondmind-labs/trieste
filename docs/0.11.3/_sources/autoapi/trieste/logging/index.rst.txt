@@ -1,0 +1,111 @@
+:py:mod:`trieste.logging`
+=========================
+
+.. py:module:: trieste.logging
+
+.. autoapi-nested-parse::
+
+   This module contains logging utilities. 
+
+
+
+Module Contents
+---------------
+
+.. py:function:: default_summary_filter(name: str) -> bool
+
+   Default summary filter: omits any names that start with _.
+
+
+.. py:function:: set_tensorboard_writer(summary_writer: Optional[tensorflow.summary.SummaryWriter]) -> None
+
+   Set a :class:`~tf.summary.SummaryWriter` instance to use for logging
+   to TensorBoard, or `None` to disable.
+
+   :param summary_writer: optional summary writer instance.
+
+
+.. py:function:: get_tensorboard_writer() -> Optional[tensorflow.summary.SummaryWriter]
+
+   Returns a :class:`~tf.summary.SummaryWriter` instance to use for logging
+   to TensorBoard, or `None`.
+
+   :return: optional summary writer instance.
+
+
+.. py:function:: tensorboard_writer(summary_writer: Optional[tensorflow.summary.SummaryWriter]) -> Iterator[None]
+
+   A context manager for setting or overriding a TensorBoard summary writer inside a code block.
+
+   :param summary_writer: optional summary writer instance.
+
+
+.. py:function:: set_step_number(step_number: int) -> None
+
+   Set an optimization step number to use for logging purposes.
+
+   :param step_number: current step number
+   :raise ValueError: if step_number < 0
+
+
+.. py:function:: get_step_number() -> int
+
+   Get the optimization step number used for logging purposes.
+
+   :return: current step number.
+
+
+.. py:function:: step_number(step_number: int) -> Iterator[None]
+
+   A context manager for setting or overriding the optimization step number inside a code block.
+
+   :param step_number: current step number
+
+
+.. py:function:: set_summary_filter(summary_filter: SummaryFilter) -> None
+
+   Set a filter on summary names. The default is to only omit names that start with _.
+
+   :param summary_filter: new summary filter
+
+
+.. py:function:: get_summary_filter() -> SummaryFilter
+
+   Get the current filter on summary names. The default is to only omit names that start with _.
+
+   :return: current summary filter.
+
+
+.. py:function:: get_current_name_scope() -> str
+
+   Returns the full name scope. Copied from TF 2.5.
+
+
+.. py:function:: include_summary(name: str) -> bool
+
+   Whether a summary name should be included.
+
+   :param: full summary name (including name spaces)
+   :return: whether the summary should be included.
+
+
+.. py:function:: histogram(name: str, data: trieste.types.TensorType, **kwargs: Any) -> bool
+
+   Wrapper for tf.summary.histogram that first filters out unwanted summaries by name.
+
+
+.. py:function:: scalar(name: str, data: float, **kwargs: Any) -> bool
+
+   Wrapper for tf.summary.scalar that first filters out unwanted summaries by name.
+
+
+.. py:function:: text(name: str, data: str, **kwargs: Any) -> bool
+
+   Wrapper for tf.summary.text that first filters out unwanted summaries by name.
+
+
+.. py:function:: pyplot(name: str, figure: matplotlib.figure.Figure) -> bool
+
+   Utility function for passing a matplotlib figure to tf.summary.image.
+
+

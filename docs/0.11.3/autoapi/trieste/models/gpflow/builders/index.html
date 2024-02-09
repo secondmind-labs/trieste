@@ -1,0 +1,1029 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.models.gpflow.builders &#8212; trieste 0.11.3 documentation</title>
+    
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../../_static/styles/theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+<link href="../../../../../_static/styles/pydata-sphinx-theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+
+    
+  <link rel="stylesheet"
+    href="../../../../../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    <link rel="stylesheet" href="../../../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../../_static/styles/pydata-sphinx-theme.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/graphviz.css" />
+    
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf">
+
+    <script id="documentation_options" data-url_root="../../../../../" src="../../../../../_static/documentation_options.js"></script>
+    <script src="../../../../../_static/jquery.js"></script>
+    <script src="../../../../../_static/underscore.js"></script>
+    <script src="../../../../../_static/doctools.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <link rel="index" title="Index" href="../../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" />
+    <link rel="next" title="trieste.models.gpflow.inducing_point_selectors" href="../inducing_point_selectors/index.html" />
+    <link rel="prev" title="trieste.models.gpflow" href="../index.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="None">
+    
+
+    <!-- Google Analytics -->
+    
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="60">
+    
+    <div class="container-fluid" id="banner"></div>
+
+    
+    <nav class="navbar navbar-light navbar-expand-lg bg-light fixed-top bd-navbar" id="navbar-main"><div class="container-xl">
+
+  <div id="navbar-start">
+    
+    
+
+<a class="navbar-brand" href="../../../../../index.html">
+  <img src="../../../../../_static/logo.png" class="logo" alt="logo">
+</a>
+
+
+    
+  </div>
+
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar-collapsible" aria-controls="navbar-collapsible" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  
+  <div id="navbar-collapsible" class="col-lg-9 collapse navbar-collapse">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <ul id="navbar-main-elements" class="navbar-nav">
+    <li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../../../index.html">
+  Trieste
+ </a>
+</li>
+
+<li class="toctree-l1 current active nav-item">
+ <a class="reference internal nav-link" href="../../../index.html">
+  API reference
+ </a>
+</li>
+
+<li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../../../tutorials.html">
+  Tutorials
+ </a>
+</li>
+
+    
+</ul>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+      <div class="navbar-end-item">
+        <div class="dropdown" id="version_switcher">
+    <button type="button" class="btn btn-primary btn-sm navbar-btn dropdown-toggle" id="version_switcher_button" data-toggle="dropdown">
+        0.11.3  <!-- this text may get changed later by javascript -->
+        <span class="caret"></span>
+    </button>
+    <div id="version_switcher_menu" class="dropdown-menu list-group-flush py-0" aria-labelledby="version_switcher_button">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+</div>
+
+<!-- NOTE: this JS must live here (not in our global JS file) because it relies
+     on being processed by Jinja before it is run (specifically for replacing
+     variables autoapi/trieste/models/gpflow/builders/index and {'json_url': 'https://secondmind-labs.github.io/trieste/versions.json', 'version_match': '0.11.3'}.
+-->
+
+<script type="text/javascript">
+// Check if corresponding page path exists in other version of docs
+// and, if so, go there instead of the homepage of the other docs version
+function checkPageExistsAndRedirect(event) {
+    const currentFilePath = "autoapi/trieste/models/gpflow/builders/index.html",
+          tryUrl = event.target.getAttribute("href");
+    let otherDocsHomepage = tryUrl.replace(currentFilePath, "");
+    $.ajax({
+        type: 'HEAD',
+        url: tryUrl,
+        // if the page exists, go there
+        success: function() {
+            location.href = tryUrl;
+        }
+    }).fail(function() {
+        location.href = otherDocsHomepage;
+    });
+    // this prevents the browser from following the href of the clicked node
+    // (which is fine because this function takes care of redirecting)
+    return false;
+}
+
+// Populate the version switcher from the JSON config file
+(function () {
+    $.getJSON("https://secondmind-labs.github.io/trieste/versions.json", function(data, textStatus, jqXHR) {
+        const currentFilePath = "autoapi/trieste/models/gpflow/builders/index.html";
+        // create links to the corresponding page in the other docs versions
+        $.each(data, function(index, entry) {
+            // if no custom name specified (e.g., "latest"), use version string
+            if (!("name" in entry)) {
+                entry.name = entry.version;
+            }
+            // create the node
+            const node = document.createElement("a");
+            node.setAttribute("class", "list-group-item list-group-item-action py-1");
+            node.textContent = `${entry.name}`;
+            node.setAttribute("href", `${entry.url}${currentFilePath}`);
+            // on click, AJAX calls will check if the linked page exists before
+            // trying to redirect, and if not, will redirect to the homepage
+            // for that version of the docs.
+            node.onclick = checkPageExistsAndRedirect;
+            // Add dataset values for the version and name in case people want
+            // to apply CSS styling based on this information.
+            node.dataset["versionName"] = entry.name;
+            node.dataset["version"] = entry.version;
+
+            $("#version_switcher_menu").append(node);
+            // replace dropdown button text with the preferred display name of
+            // this version, rather than using sphinx's  variable.
+            // also highlight the dropdown entry for the currently-viewed
+            // version's entry
+            if (entry.version == "0.11.3") {
+                node.classList.add("active");
+                let btn = document.getElementById("version_switcher_button");
+                btn.innerText = btn.dataset["activeVersionName"] = entry.name;
+                btn.dataset["activeVersion"] = entry.version;
+            }
+        });
+    });
+})();
+</script>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+        <li class="nav-item">
+          <a class="nav-link" href="https://github.com/secondmind-labs/trieste" rel="noopener" target="_blank" title="GitHub"><span><i class="fab fa-github-square"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+</div>
+    </nav>
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+            
+            <!-- Only show if we have sidebars configured, else just a small margin  -->
+            <div class="col-12 col-md-3 bd-sidebar">
+              <div class="sidebar-start-items"><form class="bd-search d-flex align-items-center" action="../../../../../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+  <div class="bd-toc-item active">
+    <ul class="current nav bd-sidenav">
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../../acquisition/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.acquisition
+    </span>
+   </code>
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/>
+  <label for="toctree-checkbox-1">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../../acquisition/function/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.function
+      </span>
+     </code>
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/>
+    <label for="toctree-checkbox-2">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../acquisition/function/active_learning/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.active_learning
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../acquisition/function/continuous_thompson_sampling/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.continuous_thompson_sampling
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../acquisition/function/entropy/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.entropy
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../acquisition/function/function/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.function
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../acquisition/function/greedy_batch/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.greedy_batch
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../acquisition/function/multi_objective/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.multi_objective
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../../acquisition/multi_objective/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.multi_objective
+      </span>
+     </code>
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/>
+    <label for="toctree-checkbox-3">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../acquisition/multi_objective/dominance/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.multi_objective.dominance
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../acquisition/multi_objective/pareto/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.multi_objective.pareto
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../acquisition/multi_objective/partition/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.multi_objective.partition
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../acquisition/interface/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.interface
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../acquisition/optimizer/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.optimizer
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../acquisition/rule/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.rule
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../acquisition/sampler/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.sampler
+      </span>
+     </code>
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 current active has-children">
+  <a class="reference internal" href="../../index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.models
+    </span>
+   </code>
+  </a>
+  <input checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/>
+  <label for="toctree-checkbox-4">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul class="current">
+   <li class="toctree-l2 current active has-children">
+    <a class="reference internal" href="../index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.gpflow
+      </span>
+     </code>
+    </a>
+    <input checked="" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/>
+    <label for="toctree-checkbox-5">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul class="current">
+     <li class="toctree-l3 current active">
+      <a class="current reference internal" href="#">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflow.builders
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../inducing_point_selectors/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflow.inducing_point_selectors
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../optimizer/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflow.optimizer
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../sampler/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflow.sampler
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../gpflux/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.gpflux
+      </span>
+     </code>
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/>
+    <label for="toctree-checkbox-6">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../gpflux/builders/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflux.builders
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../keras/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.keras
+      </span>
+     </code>
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/>
+    <label for="toctree-checkbox-7">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../keras/architectures/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.keras.architectures
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../keras/builders/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.keras.builders
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../keras/sampler/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.keras.sampler
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../config/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.config
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../optimizer/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.optimizer
+      </span>
+     </code>
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../../objectives/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.objectives
+    </span>
+   </code>
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" type="checkbox"/>
+  <label for="toctree-checkbox-8">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../objectives/multi_objectives/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.objectives.multi_objectives
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../objectives/single_objectives/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.objectives.single_objectives
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../objectives/utils/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.objectives.utils
+      </span>
+     </code>
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../utils/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.utils
+    </span>
+   </code>
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../ask_tell_optimization/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.ask_tell_optimization
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../bayesian_optimizer/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.bayesian_optimizer
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../data/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.data
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../logging/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.logging
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../observer/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.observer
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../space/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.space
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../types/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.types
+    </span>
+   </code>
+  </a>
+ </li>
+</ul>
+
+  </div>
+</nav>
+              </div>
+              <div class="sidebar-end-items">
+              </div>
+            </div>
+            
+          
+
+          
+          <div class="d-none d-xl-block col-xl-2 bd-toc">
+            
+              
+              <div class="toc-item">
+                
+<div class="tocsection onthispage mt-5 pt-1 pb-3">
+    <i class="fas fa-list"></i> On this page
+</div>
+
+<nav id="bd-toc-nav">
+    <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#module-contents">
+   Module Contents
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.models.gpflow.builders.KERNEL_LENGTHSCALE">
+     KERNEL_LENGTHSCALE
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.models.gpflow.builders.KERNEL_PRIOR_SCALE">
+     KERNEL_PRIOR_SCALE
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.models.gpflow.builders.CLASSIFICATION_KERNEL_VARIANCE_NOISE_FREE">
+     CLASSIFICATION_KERNEL_VARIANCE_NOISE_FREE
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.models.gpflow.builders.CLASSIFICATION_KERNEL_VARIANCE">
+     CLASSIFICATION_KERNEL_VARIANCE
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.models.gpflow.builders.MAX_NUM_INDUCING_POINTS">
+     MAX_NUM_INDUCING_POINTS
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.models.gpflow.builders.NUM_INDUCING_POINTS_PER_DIM">
+     NUM_INDUCING_POINTS_PER_DIM
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.models.gpflow.builders.SIGNAL_NOISE_RATIO_LIKELIHOOD">
+     SIGNAL_NOISE_RATIO_LIKELIHOOD
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.models.gpflow.builders.build_gpr">
+     build_gpr
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.models.gpflow.builders.build_sgpr">
+     build_sgpr
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.models.gpflow.builders.build_vgp_classifier">
+     build_vgp_classifier
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.models.gpflow.builders.build_svgp">
+     build_svgp
+    </a>
+   </li>
+  </ul>
+ </li>
+</ul>
+
+</nav>
+              </div>
+              
+              <div class="toc-item">
+                
+              </div>
+              
+            
+          </div>
+          
+
+          
+          
+            
+          
+          <main class="col-12 col-md-9 col-xl-7 py-md-5 pl-md-5 pr-md-4 bd-content" role="main">
+              
+              <div>
+                
+  <div class="section" id="module-trieste.models.gpflow.builders">
+<span id="trieste-models-gpflow-builders"></span><h1><a class="reference internal" href="#module-trieste.models.gpflow.builders" title="trieste.models.gpflow.builders"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.gpflow.builders</span></code></a><a class="headerlink" href="#module-trieste.models.gpflow.builders" title="Permalink to this headline">#</a></h1>
+<p>This module contains builders for GPflow models supported in Trieste. We found the default
+configurations used here to work well in most situation, but they should not be taken as
+universally good solutions.</p>
+<div class="section" id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this headline">#</a></h2>
+<dl class="py data">
+<dt id="trieste.models.gpflow.builders.KERNEL_LENGTHSCALE">
+<code class="sig-name descname"><span class="pre">KERNEL_LENGTHSCALE</span></code><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/builders.html#KERNEL_LENGTHSCALE"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.builders.KERNEL_LENGTHSCALE" title="Permalink to this definition">#</a></dt>
+<dd><p>Default value of the kernel lengthscale parameter.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt id="trieste.models.gpflow.builders.KERNEL_PRIOR_SCALE">
+<code class="sig-name descname"><span class="pre">KERNEL_PRIOR_SCALE</span></code><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/builders.html#KERNEL_PRIOR_SCALE"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.builders.KERNEL_PRIOR_SCALE" title="Permalink to this definition">#</a></dt>
+<dd><p>Default value of the scaling factor for the kernel lengthscale and variance parameters.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt id="trieste.models.gpflow.builders.CLASSIFICATION_KERNEL_VARIANCE_NOISE_FREE">
+<code class="sig-name descname"><span class="pre">CLASSIFICATION_KERNEL_VARIANCE_NOISE_FREE</span></code><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/builders.html#CLASSIFICATION_KERNEL_VARIANCE_NOISE_FREE"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.builders.CLASSIFICATION_KERNEL_VARIANCE_NOISE_FREE" title="Permalink to this definition">#</a></dt>
+<dd><p>Default value of the kernel variance parameter for classification models in the noise free case.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt id="trieste.models.gpflow.builders.CLASSIFICATION_KERNEL_VARIANCE">
+<code class="sig-name descname"><span class="pre">CLASSIFICATION_KERNEL_VARIANCE</span></code><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/builders.html#CLASSIFICATION_KERNEL_VARIANCE"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.builders.CLASSIFICATION_KERNEL_VARIANCE" title="Permalink to this definition">#</a></dt>
+<dd><p>Default value of the kernel variance parameter for classification models.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt id="trieste.models.gpflow.builders.MAX_NUM_INDUCING_POINTS">
+<code class="sig-name descname"><span class="pre">MAX_NUM_INDUCING_POINTS</span></code><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/builders.html#MAX_NUM_INDUCING_POINTS"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.builders.MAX_NUM_INDUCING_POINTS" title="Permalink to this definition">#</a></dt>
+<dd><p>Default maximum number of inducing points.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt id="trieste.models.gpflow.builders.NUM_INDUCING_POINTS_PER_DIM">
+<code class="sig-name descname"><span class="pre">NUM_INDUCING_POINTS_PER_DIM</span></code><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/builders.html#NUM_INDUCING_POINTS_PER_DIM"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.builders.NUM_INDUCING_POINTS_PER_DIM" title="Permalink to this definition">#</a></dt>
+<dd><p>Default number of inducing points per dimension of the search space.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt id="trieste.models.gpflow.builders.SIGNAL_NOISE_RATIO_LIKELIHOOD">
+<code class="sig-name descname"><span class="pre">SIGNAL_NOISE_RATIO_LIKELIHOOD</span></code><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/builders.html#SIGNAL_NOISE_RATIO_LIKELIHOOD"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.builders.SIGNAL_NOISE_RATIO_LIKELIHOOD" title="Permalink to this definition">#</a></dt>
+<dd><p>Default value used for initializing (noise) variance parameter of the likelihood function.
+If user does not specify it, the noise variance is set to maintain the signal to noise ratio
+determined by this default value. Signal variance in the kernel is set to the empirical variance.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="trieste.models.gpflow.builders.build_gpr">
+<code class="sig-name descname"><span class="pre">build_gpr</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_space</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../space/index.html#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><span class="pre">trieste.space.SearchSpace</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_priors</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><span class="pre">bool</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">likelihood_variance</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trainable_likelihood</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><span class="pre">bool</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">gpflow.models.GPR</span><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/builders.html#build_gpr"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.builders.build_gpr" title="Permalink to this definition">#</a></dt>
+<dd><p>Build a <code class="xref py py-class docutils literal notranslate"><span class="pre">GPR</span></code> model with sensible initial parameters and
+priors. We use <code class="xref py py-class docutils literal notranslate"><span class="pre">Matern52</span></code> kernel and
+<code class="xref py py-class docutils literal notranslate"><span class="pre">Constant</span></code> mean function in the model. We found the default
+configuration used here to work well in most situation, but it should not be taken as a
+universally good solution.</p>
+<p>We set priors for kernel hyperparameters by default in order to stabilize model fitting. We
+found the priors below to be highly effective for objective functions defined over the unit
+hypercube. They do seem to work for other search space sizes, but we advise caution when using
+them in such search spaces. Using priors allows for using maximum a posteriori estimate of
+these kernel parameters during model fitting.</p>
+<p>Note that although we scale parameters as a function of the size of the search space, ideally
+inputs should be normalised to the unit hypercube before building a model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – Dataset from the initial design, used for estimating the variance of observations.</p></li>
+<li><p><strong>search_space</strong> – Search space for performing Bayesian optimization, used for scaling the
+parameters.</p></li>
+<li><p><strong>kernel_priors</strong> – If set to <cite>True</cite> (default) priors are set for kernel parameters (variance
+and lengthscale).</p></li>
+<li><p><strong>likelihood_variance</strong> – Likelihood (noise) variance parameter can be optionally set to a
+certain value. If left unspecified (default), the noise variance is set to maintain the
+signal to noise ratio of value given by <code class="docutils literal notranslate"><span class="pre">SIGNAL_NOISE_RATIO_LIKELIHOOD</span></code>, where signal
+variance in the kernel is set to the empirical variance.</p></li>
+<li><p><strong>trainable_likelihood</strong> – If set to <cite>True</cite> Gaussian likelihood parameter is set to
+non-trainable. By default set to <cite>False</cite>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A <code class="xref py py-class docutils literal notranslate"><span class="pre">GPR</span></code> model.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="trieste.models.gpflow.builders.build_sgpr">
+<code class="sig-name descname"><span class="pre">build_sgpr</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_space</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../space/index.html#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><span class="pre">trieste.space.SearchSpace</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_priors</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><span class="pre">bool</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">likelihood_variance</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trainable_likelihood</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><span class="pre">bool</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_inducing_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trainable_inducing_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><span class="pre">bool</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">gpflow.models.SGPR</span><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/builders.html#build_sgpr"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.builders.build_sgpr" title="Permalink to this definition">#</a></dt>
+<dd><p>Build a <code class="xref py py-class docutils literal notranslate"><span class="pre">SGPR</span></code> model with sensible initial parameters and
+priors. We use <code class="xref py py-class docutils literal notranslate"><span class="pre">Matern52</span></code> kernel and
+<code class="xref py py-class docutils literal notranslate"><span class="pre">Constant</span></code> mean function in the model. We found the default
+configuration used here to work well in most situation, but it should not be taken as a
+universally good solution.</p>
+<p>We set priors for kernel hyperparameters by default in order to stabilize model fitting. We
+found the priors below to be highly effective for objective functions defined over the unit
+hypercube. They do seem to work for other search space sizes, but we advise caution when using
+them in such search spaces. Using priors allows for using maximum a posteriori estimate of
+these kernel parameters during model fitting.</p>
+<p>For performance reasons number of inducing points should not be changed during Bayesian
+optimization. Hence, even if the initial dataset is smaller, we advise setting this to a higher
+number. By default inducing points are set to Sobol samples for the continuous search space,
+and simple random samples for discrete or mixed search spaces. This carries
+the risk that optimization gets stuck if they are not trainable, which calls for adaptive
+inducing point selection during the optimization. This functionality will be added to Trieste
+in future.</p>
+<p>Note that although we scale parameters as a function of the size of the search space, ideally
+inputs should be normalised to the unit hypercube before building a model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – Dataset from the initial design, used for estimating the variance of observations.</p></li>
+<li><p><strong>search_space</strong> – Search space for performing Bayesian optimization, used for scaling the
+parameters.</p></li>
+<li><p><strong>kernel_priors</strong> – If set to <cite>True</cite> (default) priors are set for kernel parameters (variance
+and lengthscale).</p></li>
+<li><p><strong>likelihood_variance</strong> – Likelihood (noise) variance parameter can be optionally set to a
+certain value. If left unspecified (default), the noise variance is set to maintain the
+signal to noise ratio of value given by <code class="docutils literal notranslate"><span class="pre">SIGNAL_NOISE_RATIO_LIKELIHOOD</span></code>, where signal
+variance in the kernel is set to the empirical variance.</p></li>
+<li><p><strong>trainable_likelihood</strong> – If set to <cite>True</cite> Gaussian likelihood parameter is set to
+be trainable. By default set to <cite>False</cite>.</p></li>
+<li><p><strong>num_inducing_points</strong> – The number of inducing points can be optionally set to a
+certain value. If left unspecified (default), this number is set to either
+<code class="docutils literal notranslate"><span class="pre">NUM_INDUCING_POINTS_PER_DIM``*dimensionality</span> <span class="pre">of</span> <span class="pre">the</span> <span class="pre">search</span> <span class="pre">space</span> <span class="pre">or</span> <span class="pre">value</span> <span class="pre">given</span> <span class="pre">by</span>
+<span class="pre">``MAX_NUM_INDUCING_POINTS</span></code>, whichever is smaller.</p></li>
+<li><p><strong>trainable_inducing_points</strong> – If set to <cite>True</cite> inducing points will be set to
+be trainable. This option should be used with caution. By default set to <cite>False</cite>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>An <code class="xref py py-class docutils literal notranslate"><span class="pre">SGPR</span></code> model.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="trieste.models.gpflow.builders.build_vgp_classifier">
+<code class="sig-name descname"><span class="pre">build_vgp_classifier</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_space</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../space/index.html#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><span class="pre">trieste.space.SearchSpace</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_priors</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><span class="pre">bool</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noise_free</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><span class="pre">bool</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_variance</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">gpflow.models.VGP</span><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/builders.html#build_vgp_classifier"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.builders.build_vgp_classifier" title="Permalink to this definition">#</a></dt>
+<dd><p>Build a <code class="xref py py-class docutils literal notranslate"><span class="pre">VGP</span></code> binary classification model with sensible initial
+parameters and priors. We use <code class="xref py py-class docutils literal notranslate"><span class="pre">Matern52</span></code> kernel and
+<code class="xref py py-class docutils literal notranslate"><span class="pre">Constant</span></code> mean function in the model. We found the default
+configuration used here to work well in most situation, but it should not be taken as a
+universally good solution.</p>
+<p>We set priors for kernel hyperparameters by default in order to stabilize model fitting. We
+found the priors below to be highly effective for objective functions defined over the unit
+hypercube. They do seem to work for other search space sizes, but we advise caution when using
+them in such search spaces. Using priors allows for using maximum a posteriori estimate of
+these kernel parameters during model fitting. In the <code class="docutils literal notranslate"><span class="pre">noise_free</span></code> case we do not use prior
+for the kernel variance parameters.</p>
+<p>Note that although we scale parameters as a function of the size of the search space, ideally
+inputs should be normalised to the unit hypercube before building a model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – Dataset from the initial design, used for estimating the variance of observations.</p></li>
+<li><p><strong>search_space</strong> – Search space for performing Bayesian optimization, used for scaling the
+parameters.</p></li>
+<li><p><strong>kernel_priors</strong> – If set to <cite>True</cite> (default) priors are set for kernel parameters (variance
+and lengthscale). In the <code class="docutils literal notranslate"><span class="pre">noise_free</span></code> case kernel variance prior is not set.</p></li>
+<li><p><strong>noise_free</strong> – If  there is a prior information that the classification problem is a
+deterministic one, this should be set to <cite>True</cite> and kernel variance will be fixed to a
+higher default value <code class="docutils literal notranslate"><span class="pre">CLASSIFICATION_KERNEL_VARIANCE_NOISE_FREE</span></code> leading to sharper
+classification boundary. In this case prior for the kernel variance parameter is also not
+set. By default set to <cite>False</cite>.</p></li>
+<li><p><strong>kernel_variance</strong> – Kernel variance parameter can be optionally set to a
+certain value. If left unspecified (default), the kernel variance is set to
+<code class="docutils literal notranslate"><span class="pre">CLASSIFICATION_KERNEL_VARIANCE_NOISE_FREE</span></code> in the <code class="docutils literal notranslate"><span class="pre">noise_free</span></code> case and to
+<code class="docutils literal notranslate"><span class="pre">CLASSIFICATION_KERNEL_VARIANCE</span></code> otherwise.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A <code class="xref py py-class docutils literal notranslate"><span class="pre">VGP</span></code> model.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="trieste.models.gpflow.builders.build_svgp">
+<code class="sig-name descname"><span class="pre">build_svgp</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_space</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../space/index.html#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><span class="pre">trieste.space.SearchSpace</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">classification</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><span class="pre">bool</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_priors</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><span class="pre">bool</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">likelihood_variance</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trainable_likelihood</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><span class="pre">bool</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_inducing_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trainable_inducing_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><span class="pre">bool</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">gpflow.models.SVGP</span><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/builders.html#build_svgp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.builders.build_svgp" title="Permalink to this definition">#</a></dt>
+<dd><p>Build a <code class="xref py py-class docutils literal notranslate"><span class="pre">SVGP</span></code> model with sensible initial parameters and
+priors. Both regression and binary classification models are
+available. We use <code class="xref py py-class docutils literal notranslate"><span class="pre">Matern52</span></code> kernel and
+<code class="xref py py-class docutils literal notranslate"><span class="pre">Constant</span></code> mean function in the model. We found the default
+configuration used here to work well in most situation, but it should not be taken as a
+universally good solution.</p>
+<p>We set priors for kernel hyperparameters by default in order to stabilize model fitting. We
+found the priors below to be highly effective for objective functions defined over the unit
+hypercube. They do seem to work for other search space sizes, but we advise caution when using
+them in such search spaces. Using priors allows for using maximum a posteriori estimate of
+these kernel parameters during model fitting.</p>
+<p>For performance reasons number of inducing points should not be changed during Bayesian
+optimization. Hence, even if the initial dataset is smaller, we advise setting this to a higher
+number. By default inducing points are set to Sobol samples for the continuous search space,
+and simple random samples for discrete or mixed search spaces. This carries
+the risk that optimization gets stuck if they are not trainable, which calls for adaptive
+inducing point selection during the optimization. This functionality will be added to Trieste
+in future.</p>
+<p>Note that although we scale parameters as a function of the size of the search space, ideally
+inputs should be normalised to the unit hypercube before building a model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – Dataset from the initial design, used for estimating the variance of observations.</p></li>
+<li><p><strong>search_space</strong> – Search space for performing Bayesian optimization, used for scaling the
+parameters.</p></li>
+<li><p><strong>classification</strong> – If a classification model is needed, this should be set to <cite>True</cite>, in
+which case a Bernoulli likelihood will be used. If a regression model is required, this
+should be set to <cite>False</cite> (default), in which case a Gaussian likelihood is used.</p></li>
+<li><p><strong>kernel_priors</strong> – If set to <cite>True</cite> (default) priors are set for kernel parameters (variance
+and lengthscale).</p></li>
+<li><p><strong>likelihood_variance</strong> – Likelihood (noise) variance parameter can be optionally set to a
+certain value. If left unspecified (default), the noise variance is set to maintain the
+signal to noise ratio of value given by <code class="docutils literal notranslate"><span class="pre">SIGNAL_NOISE_RATIO_LIKELIHOOD</span></code>, where signal
+variance in the kernel is set to the empirical variance. This argument is ignored in the
+classification case.</p></li>
+<li><p><strong>trainable_likelihood</strong> – If set to <cite>True</cite> likelihood parameter is set to
+be trainable. By default set to <cite>False</cite>. This argument is ignored in the classification
+case.</p></li>
+<li><p><strong>num_inducing_points</strong> – The number of inducing points can be optionally set to a
+certain value. If left unspecified (default), this number is set to either
+<code class="docutils literal notranslate"><span class="pre">NUM_INDUCING_POINTS_PER_DIM``*dimensionality</span> <span class="pre">of</span> <span class="pre">the</span> <span class="pre">search</span> <span class="pre">space</span> <span class="pre">or</span> <span class="pre">value</span> <span class="pre">given</span> <span class="pre">by</span>
+<span class="pre">``MAX_NUM_INDUCING_POINTS</span></code>, whichever is smaller.</p></li>
+<li><p><strong>trainable_inducing_points</strong> – If set to <cite>True</cite> inducing points will be set to
+be trainable. This option should be used with caution. By default set to <cite>False</cite>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>An <code class="xref py py-class docutils literal notranslate"><span class="pre">SVGP</span></code> model.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+</div>
+
+
+              </div>
+              
+              
+          </main>
+          
+
+      </div>
+    </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf"></script>
+<footer class="footer mt-5 mt-md-0">
+  <div class="container">
+    
+    <div class="footer-item">
+      <p class="copyright">
+    &copy; Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.<br>
+</p>
+    </div>
+    
+    <div class="footer-item">
+      <p class="sphinx-version">
+Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.5.4.<br>
+</p>
+    </div>
+    
+  </div>
+</footer>
+  </body>
+</html>
