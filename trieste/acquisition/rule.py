@@ -1991,8 +1991,8 @@ class UpdatableTrustRegionProduct(TaggedProductSearchSpace, UpdatableTrustRegion
                 for region in regions
                 if region.region_index is not None
             ), (
-                f"all regions should have the same index, if set, as the "
-                "product region ({region_index})"
+                "all regions should have the same index, if set, as the "
+                f"product region ({region_index})"
             )
         else:
             assert all(region.region_index is None for region in regions), (
