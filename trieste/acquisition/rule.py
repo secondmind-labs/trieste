@@ -1984,19 +1984,35 @@ class UpdatableTrustRegionProduct(TaggedProductSearchSpace, UpdatableTrustRegion
         """
         assert len(regions) > 0, "at least one region should be provided"
 
+        # If set, assert all regions have the same index and matching the product index.
+        if region_index is not None:
+            assert all(
+                region.region_index == region_index
+                for region in regions
+                if region.region_index is not None
+            ), (
+                f"all regions should have the same index, if set, as the "
+                "product region ({region_index})"
+            )
+        else:
+            assert all(region.region_index is None for region in regions), (
+                f"regions can only have a region_index if the product region ({region_index}) "
+                "has one"
+            )
+
         self._global_search_space = TaggedProductSearchSpace(
             [region.global_search_space for region in regions]
         )
+
+        # Find the most general dtype of all the regions.
+        dtypes = [np.array(region.location).dtype for region in regions]
+        most_general_dtype = np.find_common_type(dtypes, [])
+        self.dtype = most_general_dtype
 
         TaggedProductSearchSpace.__init__(self, regions)
         # When UpdatableTrustRegion sets the region_index, it will also set the region_index for
         # each region.
         UpdatableTrustRegion.__init__(self, region_index)
-
-        # Assert all regions have the same index. This would be set by UpdatableTrustRegion.
-        assert all(
-            region.region_index == region_index for region in regions
-        ), "all regions should have the same index"
 
     @property
     def region_index(self) -> Optional[int]:
@@ -2007,6 +2023,8 @@ class UpdatableTrustRegionProduct(TaggedProductSearchSpace, UpdatableTrustRegion
     def region_index(self, region_index: Optional[int]) -> None:
         """Set the index of the region in a multi-region search space, including all sub-regions."""
         self._region_index = region_index
+        # Override the region index for each sub-region. These would either already be set to the
+        # same value (assert in __init__), or None.
         for region in self.regions.values():
             region.region_index = region_index
 
@@ -2025,7 +2043,9 @@ class UpdatableTrustRegionProduct(TaggedProductSearchSpace, UpdatableTrustRegion
         The location of the product trust region, concatenated from the locations of the
         sub-regions.
         """
-        return tf.concat([region.location for region in self.regions.values()], axis=-1)
+        return tf.concat(
+            [tf.cast(region.location, self.dtype) for region in self.regions.values()], axis=-1
+        )
 
     @property
     def global_search_space(self) -> TaggedProductSearchSpace:
