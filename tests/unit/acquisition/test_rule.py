@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import copy
 from collections.abc import Mapping
-from typing import Callable, Optional
+from typing import Any, Callable, List, Optional
 from unittest.mock import ANY, MagicMock
 
 import gpflow
@@ -56,6 +56,7 @@ from trieste.acquisition.rule import (
     SingleObjectiveTrustRegionBox,
     TREGOBox,
     TURBOBox,
+    UpdatableTrustRegion,
     UpdatableTrustRegionProduct,
 )
 from trieste.acquisition.sampler import (
@@ -1506,53 +1507,102 @@ def test_updatable_tr_product_location(
     )
 
 
-@pytest.mark.parametrize("initialize_n_update", [True, False])
-def test_updatable_tr_product_initialize_update_calls_subregions(initialize_n_update: bool) -> None:
+@pytest.mark.parametrize(
+    "datasets_only_arg, method",
+    [
+        (False, lambda tr: tr.initialize),
+        (False, lambda tr: tr.update),
+        (True, lambda tr: tr.get_datasets_filter_mask),
+    ],
+)
+@pytest.mark.parametrize(
+    "in_datasets, exp_datasets",
+    [
+        (None, [None, None]),
+        (
+            {
+                OBJECTIVE: Dataset(
+                    tf.constant([[3.0, 0.5], [1.0, 0.0], [2.0, 1.0]], dtype=tf.float64),
+                    tf.constant([[0.5], [0.0], [1.0]], dtype=tf.float64),
+                )
+            },
+            [
+                {
+                    OBJECTIVE: Dataset(
+                        tf.constant([[3.0], [1.0], [2.0]], dtype=tf.float64),
+                        tf.constant([[0.5], [0.0], [1.0]], dtype=tf.float64),
+                    )
+                },
+                {
+                    OBJECTIVE: Dataset(
+                        tf.constant([[0.5], [0.0], [1.0]], dtype=tf.float64),
+                        tf.constant([[0.5], [0.0], [1.0]], dtype=tf.float64),
+                    )
+                },
+            ],
+        ),
+    ],
+)
+def test_updatable_tr_product_method_calls_subregions(
+    datasets_only_arg: bool,
+    method: Callable[
+        [
+            UpdatableTrustRegion,
+        ],
+        Callable[..., Any],  # We can have different signatures for the methods.
+    ],
+    in_datasets: Optional[Mapping[Tag, Dataset]],
+    exp_datasets: List[Optional[Mapping[Tag, Dataset]]],
+) -> None:
     # Calling initialize/update should call the initialize/update method of all subregions.
     region1 = MagicMock(spec=FixedPointTrustRegionDiscrete, region_index=None, dimension=1)
     region2 = MagicMock(spec=SingleObjectiveTrustRegionBox, region_index=None, dimension=1)
-    tr = UpdatableTrustRegionProduct([region1, region2])
+    tr = UpdatableTrustRegionProduct([region1, region2], region_index=2)
 
     models = {OBJECTIVE: QuadraticMeanAndRBFKernel()}
-    datasets = {
-        OBJECTIVE: Dataset(
-            tf.constant([[3.0, 0.5], [1.0, 0.0], [2.0, 1.0]], dtype=tf.float64),
-            tf.constant([[0.5], [0.0], [1.0]], dtype=tf.float64),
-        )
-    }
 
-    if initialize_n_update:
-        tr.initialize(models, datasets, "dummy_arg", dummy_kwarg="dummy_kwarg_value")
+    if datasets_only_arg:
+        method(tr)(in_datasets)
     else:
-        tr.update(models, datasets, "dummy_arg", dummy_kwarg="dummy_kwarg_value")
+        method(tr)(models, in_datasets, "dummy_arg", dummy_kwarg="dummy_kwarg_value")
 
-    for region, exp_qps in zip(
-        [region1, region2],
-        [
-            tf.constant([[3.0], [1.0], [2.0]], dtype=tf.float64),
-            tf.constant([[0.5], [0.0], [1.0]], dtype=tf.float64),
-        ],
-    ):
+    for region, exp_d in zip([region1, region2], exp_datasets):
         # Can't use region1.*.assert_called_once_with() directly as bool comparison
         # doesn't work with datasets. So we check the call_args instead.
-        mock = region.initialize if initialize_n_update else region.update
-        mock.assert_called_once()
-        assert mock.call_args.kwargs == {"dummy_kwarg": "dummy_kwarg_value"}
-        assert mock.call_args.args[0] == models
-        call_dataset = mock.call_args.args[1]
-        assert call_dataset.keys() == {OBJECTIVE}
-        npt.assert_array_equal(
-            exp_qps,
-            call_dataset[OBJECTIVE].query_points,
-        )
-        npt.assert_array_equal(
-            tf.constant([[0.5], [0.0], [1.0]], dtype=tf.float64),
-            call_dataset[OBJECTIVE].observations,
-        )
-        assert mock.call_args.args[2] == "dummy_arg"
+        mock = method(region)
+        mock.assert_called_once()  # type: ignore[attr-defined]
+        call_args = mock.call_args  # type: ignore[attr-defined]
+        if datasets_only_arg:
+            call_dataset = call_args.args[0]
+        else:
+            assert call_args.kwargs == {"dummy_kwarg": "dummy_kwarg_value"}
+            assert call_args.args[0] == models
+            call_dataset = call_args.args[1]
+            assert call_args.args[2] == "dummy_arg"
+
+        if exp_d is None:
+            assert call_dataset is None
+        else:
+            assert exp_d.keys() == call_dataset.keys()
+            for key in exp_d:
+                npt.assert_array_equal(exp_d[key].query_points, call_dataset[key].query_points)
+                npt.assert_array_equal(
+                    exp_d[key].observations,
+                    call_dataset[key].observations,
+                )
 
 
-def test_updatable_tr_product_datasets_filter_mask() -> None:
+def test_updatable_tr_product_datasets_filter_mask_raises_on_missing_index() -> None:
+    region1 = MagicMock(spec=FixedPointTrustRegionDiscrete, region_index=None, dimension=1)
+    region2 = MagicMock(spec=SingleObjectiveTrustRegionBox, region_index=None, dimension=1)
+    tr = UpdatableTrustRegionProduct([region1, region2], region_index=None)
+
+    datasets = {OBJECTIVE: empty_dataset([2], [1])}
+    with pytest.raises(AssertionError, match="the region_index should be set for filtering"):
+        tr.get_datasets_filter_mask(datasets)
+
+
+def test_updatable_tr_product_datasets_filter_mask_value() -> None:
     # Calling get_datasets_filter_mask on the product region returns a boolean AND of the masks
     # returned by the subregions.
     region1 = MagicMock(spec=FixedPointTrustRegionDiscrete, region_index=None, dimension=1)
@@ -1573,8 +1623,6 @@ def test_updatable_tr_product_datasets_filter_mask() -> None:
     assert mask.keys() == {"tag1", "tag2"}
     npt.assert_array_equal(mask["tag1"], [True, False, False])
     npt.assert_array_equal(mask["tag2"], [True, True, False])
-    # region1.get_datasets_filter_mask.assert_called_once_with({OBJECTIVE: empty_dataset([1], [1])})
-    # region2.get_datasets_filter_mask.assert_called_once_with({OBJECTIVE: empty_dataset([1], [1])})
 
 
 # Check multi trust region works when no subspace is provided.

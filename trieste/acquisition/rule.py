@@ -2006,7 +2006,7 @@ class UpdatableTrustRegionProduct(TaggedProductSearchSpace, UpdatableTrustRegion
 
         # Find the most general dtype of all the regions.
         dtypes = [np.array(region.location).dtype for region in regions]
-        most_general_dtype = np.find_common_type(dtypes, [])
+        most_general_dtype = np.result_type(*dtypes)
         self.dtype = most_general_dtype
 
         TaggedProductSearchSpace.__init__(self, regions)
@@ -2097,24 +2097,23 @@ class UpdatableTrustRegionProduct(TaggedProductSearchSpace, UpdatableTrustRegion
         assert (
             self.region_index is not None
         ), "the region_index should be set for filtering local datasets"
-        if datasets is None:
-            return None
-        else:
-            masks = [  # Masks for each sub-region.
-                region.get_datasets_filter_mask(self._get_datasets_component(tag, datasets))
-                for tag, region in self.regions.items()
-            ]
-            if masks[0] is not None:
-                assert all(
-                    set(mask.keys()) == set(masks[0].keys()) for mask in masks if mask is not None
-                ), "all region masks should have the same keys"
 
-                return {
-                    tag: tf.reduce_all([mask[tag] for mask in masks if mask is not None], axis=0)
-                    for tag in masks[0].keys()
-                }
-            else:
-                return None
+        masks = [  # Masks for each sub-region.
+            region.get_datasets_filter_mask(self._get_datasets_component(tag, datasets))
+            for tag, region in self.regions.items()
+        ]
+
+        if masks[0] is not None:  # There is always at least one region.
+            assert all(
+                set(mask.keys()) == set(masks[0].keys()) for mask in masks if mask is not None
+            ), "all region masks should have the same keys"
+
+            return {
+                tag: tf.reduce_all([mask[tag] for mask in masks if mask is not None], axis=0)
+                for tag in masks[0].keys()
+            }
+        else:
+            return None
 
 
 class BatchTrustRegionProduct(
