@@ -667,7 +667,6 @@ class _DecreasingVarianceModel(QuadraticMeanAndRBFKernel, TrainableProbabilistic
 
 @pytest.mark.parametrize("save_to_disk", [False, True])
 def test_bayesian_optimizer_optimize_tracked_state(save_to_disk: bool) -> None:
-
     class _CountingRule(AcquisitionRule[State[Optional[int], TensorType], Box, ProbabilisticModel]):
         def acquire(
             self,
