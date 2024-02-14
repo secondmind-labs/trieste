@@ -21,9 +21,7 @@ from typing import NoReturn, Optional
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
-import tensorflow_probability as tfp
 from check_shapes import inherit_check_shapes
-from packaging.version import Version
 
 from tests.unit.test_ask_tell_optimization import DatasetChecker, LocalDatasetsFixedAcquisitionRule
 from tests.util.misc import (
