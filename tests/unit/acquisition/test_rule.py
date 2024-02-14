@@ -1573,12 +1573,13 @@ def test_updatable_tr_product_method_calls_subregions(
         mock.assert_called_once()  # type: ignore[attr-defined]
         call_args = mock.call_args  # type: ignore[attr-defined]
         if datasets_only_arg:
-            call_dataset = call_args.args[0]
+            call_dataset = call_args[0][0]
         else:
-            assert call_args.kwargs == {"dummy_kwarg": "dummy_kwarg_value"}
-            assert call_args.args[0] == models
-            call_dataset = call_args.args[1]
-            assert call_args.args[2] == "dummy_arg"
+            print(call_args[1])
+            assert call_args[1] == {"dummy_kwarg": "dummy_kwarg_value"}
+            assert call_args[0][0] == models
+            call_dataset = call_args[0][1]
+            assert call_args[0][2] == "dummy_arg"
 
         if exp_d is None:
             assert call_dataset is None
