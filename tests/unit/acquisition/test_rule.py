@@ -49,6 +49,7 @@ from trieste.acquisition.rule import (
     AsynchronousRuleState,
     BatchHypervolumeSharpeRatioIndicator,
     BatchTrustRegionBox,
+    BatchTrustRegionProduct,
     DiscreteThompsonSampling,
     EfficientGlobalOptimization,
     FixedPointTrustRegionDiscrete,
@@ -71,7 +72,13 @@ from trieste.models import ProbabilisticModel
 from trieste.models.interfaces import TrainableSupportsGetKernel
 from trieste.objectives.utils import mk_batch_observer
 from trieste.observer import OBJECTIVE
-from trieste.space import Box, DiscreteSearchSpace, SearchSpace, TaggedMultiSearchSpace
+from trieste.space import (
+    Box,
+    DiscreteSearchSpace,
+    SearchSpace,
+    TaggedMultiSearchSpace,
+    TaggedProductSearchSpace,
+)
 from trieste.types import State, Tag, TensorType
 from trieste.utils.misc import LocalizedTag, get_value_for_tag
 
@@ -1412,220 +1419,6 @@ def test_trust_region_box_update_size(success: bool) -> None:
     npt.assert_allclose(trb.upper, np.minimum(trb.location + trb.eps, search_space.upper))
 
 
-@pytest.fixture
-def discrete_search_space() -> DiscreteSearchSpace:
-    return DiscreteSearchSpace(np.arange(10)[:, None])
-
-
-@pytest.fixture
-def continuous_search_space() -> Box:
-    return Box([0.0], [1.0])
-
-
-@pytest.mark.parametrize("with_initialize", [True, False])
-def test_fixed_trust_region_discrete_initialize(
-    discrete_search_space: DiscreteSearchSpace, with_initialize: bool
-) -> None:
-    # Check that FixedTrustRegionDiscrete inits correctly by picking a single point from the global
-    # search space.
-    tr = FixedPointTrustRegionDiscrete(discrete_search_space)
-    if with_initialize:
-        tr.initialize()
-    assert tr.location.shape == (1,)
-    assert tr.location in discrete_search_space
-
-
-def test_fixed_trust_region_discrete_update(
-    discrete_search_space: DiscreteSearchSpace,
-) -> None:
-    # Update call should not change the location of the region.
-    tr = FixedPointTrustRegionDiscrete(discrete_search_space)
-    tr.initialize()
-    orig_location = tr.location.numpy()
-    tr.update()
-    npt.assert_equal(orig_location, tr.location)
-
-
-def test_updatable_tr_product_raises_on_no_regions() -> None:
-    with pytest.raises(AssertionError, match="at least one region should be provided"):
-        UpdatableTrustRegionProduct([])
-
-
-def test_updatable_tr_product_raises_on_missing_index(
-    discrete_search_space: DiscreteSearchSpace, continuous_search_space: Box
-) -> None:
-    region1 = FixedPointTrustRegionDiscrete(discrete_search_space, region_index=0)
-    region2 = SingleObjectiveTrustRegionBox(continuous_search_space, region_index=1)
-    with pytest.raises(AssertionError, match="regions can only have a region_index"):
-        UpdatableTrustRegionProduct([region1, region2])
-
-
-def test_updatable_tr_product_raises_on_mimatch_index(
-    discrete_search_space: DiscreteSearchSpace, continuous_search_space: Box
-) -> None:
-    region1 = FixedPointTrustRegionDiscrete(discrete_search_space, region_index=0)
-    region2 = SingleObjectiveTrustRegionBox(continuous_search_space, region_index=1)
-    with pytest.raises(AssertionError, match="all regions should have the same index"):
-        UpdatableTrustRegionProduct([region1, region2], region_index=0)
-
-
-def test_updatable_tr_product_sets_all_region_indices(
-    discrete_search_space: DiscreteSearchSpace, continuous_search_space: Box
-) -> None:
-    region1 = FixedPointTrustRegionDiscrete(discrete_search_space, region_index=None)
-    region2 = SingleObjectiveTrustRegionBox(continuous_search_space, region_index=1)
-    tr = UpdatableTrustRegionProduct([region1, region2], region_index=1)
-
-    assert tuple(tr.regions.keys()) == tr.subspace_tags
-    assert list(tr.regions.values()) == [region1, region2]
-
-    assert next(iter(tr.regions.values())).region_index == 1
-    assert len(set([region.region_index for region in tr.regions.values()])) == 1
-    tr.region_index = 10
-    assert next(iter(tr.regions.values())).region_index == 10
-    assert len(set([region.region_index for region in tr.regions.values()])) == 1
-
-
-@pytest.mark.parametrize("disc_dtype", [tf.int32, tf.int64, tf.float32, tf.float64])
-def test_updatable_tr_product_location(
-    disc_dtype: tf.DType, discrete_search_space: DiscreteSearchSpace, continuous_search_space: Box
-) -> None:
-    # Check that we can combine locations of different and same dtypes. continuous_search_space
-    # is of dtype float64, and discrete_search_space is of dtype int64. We cast the
-    # discrete_search_space to different dtype to check that the UpdatableTrustRegionProduct can
-    # handle different dtypes.
-    casted_discrete_search_space = DiscreteSearchSpace(
-        tf.cast(discrete_search_space.points, disc_dtype)
-    )
-    region1 = FixedPointTrustRegionDiscrete(casted_discrete_search_space)
-    region2 = SingleObjectiveTrustRegionBox(continuous_search_space)
-    tr = UpdatableTrustRegionProduct([region1, region2])
-
-    assert tr.location.dtype == tf.float64
-    npt.assert_array_equal(
-        tr.location, np.concatenate([region1.location, region2.location], axis=-1)
-    )
-
-
-@pytest.mark.parametrize(
-    "datasets_only_arg, method",
-    [
-        (False, lambda tr: tr.initialize),
-        (False, lambda tr: tr.update),
-        (True, lambda tr: tr.get_datasets_filter_mask),
-    ],
-)
-@pytest.mark.parametrize(
-    "in_datasets, exp_datasets",
-    [
-        (None, [None, None]),
-        (
-            {
-                OBJECTIVE: Dataset(
-                    tf.constant([[3.0, 0.5], [1.0, 0.0], [2.0, 1.0]], dtype=tf.float64),
-                    tf.constant([[0.5], [0.0], [1.0]], dtype=tf.float64),
-                )
-            },
-            [
-                {
-                    OBJECTIVE: Dataset(
-                        tf.constant([[3.0], [1.0], [2.0]], dtype=tf.float64),
-                        tf.constant([[0.5], [0.0], [1.0]], dtype=tf.float64),
-                    )
-                },
-                {
-                    OBJECTIVE: Dataset(
-                        tf.constant([[0.5], [0.0], [1.0]], dtype=tf.float64),
-                        tf.constant([[0.5], [0.0], [1.0]], dtype=tf.float64),
-                    )
-                },
-            ],
-        ),
-    ],
-)
-def test_updatable_tr_product_method_calls_subregions(
-    datasets_only_arg: bool,
-    method: Callable[
-        [
-            UpdatableTrustRegion,
-        ],
-        Callable[..., Any],  # We can have different signatures for the methods.
-    ],
-    in_datasets: Optional[Mapping[Tag, Dataset]],
-    exp_datasets: List[Optional[Mapping[Tag, Dataset]]],
-) -> None:
-    # Calling initialize/update should call the initialize/update method of all subregions.
-    region1 = MagicMock(spec=FixedPointTrustRegionDiscrete, region_index=None, dimension=1)
-    region2 = MagicMock(spec=SingleObjectiveTrustRegionBox, region_index=None, dimension=1)
-    tr = UpdatableTrustRegionProduct([region1, region2], region_index=2)
-
-    models = {OBJECTIVE: QuadraticMeanAndRBFKernel()}
-
-    if datasets_only_arg:
-        method(tr)(in_datasets)
-    else:
-        method(tr)(models, in_datasets, "dummy_arg", dummy_kwarg="dummy_kwarg_value")
-
-    for region, exp_d in zip([region1, region2], exp_datasets):
-        # Can't use region1.*.assert_called_once_with() directly as bool comparison
-        # doesn't work with datasets. So we check the call_args instead.
-        mock = method(region)
-        mock.assert_called_once()  # type: ignore[attr-defined]
-        call_args = mock.call_args  # type: ignore[attr-defined]
-        if datasets_only_arg:
-            call_dataset = call_args[0][0]
-        else:
-            print(call_args[1])
-            assert call_args[1] == {"dummy_kwarg": "dummy_kwarg_value"}
-            assert call_args[0][0] == models
-            call_dataset = call_args[0][1]
-            assert call_args[0][2] == "dummy_arg"
-
-        if exp_d is None:
-            assert call_dataset is None
-        else:
-            assert exp_d.keys() == call_dataset.keys()
-            for key in exp_d:
-                npt.assert_array_equal(exp_d[key].query_points, call_dataset[key].query_points)
-                npt.assert_array_equal(
-                    exp_d[key].observations,
-                    call_dataset[key].observations,
-                )
-
-
-def test_updatable_tr_product_datasets_filter_mask_raises_on_missing_index() -> None:
-    region1 = MagicMock(spec=FixedPointTrustRegionDiscrete, region_index=None, dimension=1)
-    region2 = MagicMock(spec=SingleObjectiveTrustRegionBox, region_index=None, dimension=1)
-    tr = UpdatableTrustRegionProduct([region1, region2], region_index=None)
-
-    datasets = {OBJECTIVE: empty_dataset([2], [1])}
-    with pytest.raises(AssertionError, match="the region_index should be set for filtering"):
-        tr.get_datasets_filter_mask(datasets)
-
-
-def test_updatable_tr_product_datasets_filter_mask_value() -> None:
-    # Calling get_datasets_filter_mask on the product region returns a boolean AND of the masks
-    # returned by the subregions.
-    region1 = MagicMock(spec=FixedPointTrustRegionDiscrete, region_index=None, dimension=1)
-    region1.get_datasets_filter_mask.return_value = {
-        "tag1": tf.constant([True, False, True], dtype=tf.bool),
-        "tag2": tf.constant([True, True, False], dtype=tf.bool),
-    }
-    region2 = MagicMock(spec=SingleObjectiveTrustRegionBox, region_index=None, dimension=1)
-    region2.get_datasets_filter_mask.return_value = {
-        "tag1": tf.constant([True, False, False], dtype=tf.bool),
-        "tag2": tf.constant([True, True, True], dtype=tf.bool),
-    }
-    tr = UpdatableTrustRegionProduct([region1, region2], region_index=3)
-
-    datasets = {OBJECTIVE: empty_dataset([2], [1])}
-    mask = tr.get_datasets_filter_mask(datasets)
-    assert mask is not None
-    assert mask.keys() == {"tag1", "tag2"}
-    npt.assert_array_equal(mask["tag1"], [True, False, False])
-    npt.assert_array_equal(mask["tag2"], [True, True, False])
-
-
 # Check multi trust region works when no subspace is provided.
 @pytest.mark.parametrize(
     "rule, exp_num_subspaces",
@@ -2075,6 +1868,288 @@ def test_multi_trust_region_box_state_deepcopy() -> None:
         npt.assert_array_equal(subspace.eps, subspace_copy.eps)
         npt.assert_array_equal(subspace.location, subspace_copy.location)
         npt.assert_array_equal(subspace._y_min, subspace_copy._y_min)
+
+
+@pytest.fixture
+def discrete_search_space() -> DiscreteSearchSpace:
+    return DiscreteSearchSpace(np.arange(10)[:, None])
+
+
+@pytest.fixture
+def continuous_search_space() -> Box:
+    return Box([0.0], [1.0])
+
+
+@pytest.mark.parametrize("with_initialize", [True, False])
+def test_fixed_trust_region_discrete_initialize(
+    discrete_search_space: DiscreteSearchSpace, with_initialize: bool
+) -> None:
+    # Check that FixedTrustRegionDiscrete inits correctly by picking a single point from the global
+    # search space.
+    tr = FixedPointTrustRegionDiscrete(discrete_search_space)
+    if with_initialize:
+        tr.initialize()
+    assert tr.location.shape == (1,)
+    assert tr.location in discrete_search_space
+
+
+def test_fixed_trust_region_discrete_update(
+    discrete_search_space: DiscreteSearchSpace,
+) -> None:
+    # Update call should not change the location of the region.
+    tr = FixedPointTrustRegionDiscrete(discrete_search_space)
+    tr.initialize()
+    orig_location = tr.location.numpy()
+    tr.update()
+    npt.assert_equal(orig_location, tr.location)
+
+
+def test_updatable_tr_product_raises_on_no_regions() -> None:
+    with pytest.raises(AssertionError, match="at least one region should be provided"):
+        UpdatableTrustRegionProduct([])
+
+
+def test_updatable_tr_product_raises_on_missing_index(
+    discrete_search_space: DiscreteSearchSpace, continuous_search_space: Box
+) -> None:
+    region1 = FixedPointTrustRegionDiscrete(discrete_search_space, region_index=0)
+    region2 = SingleObjectiveTrustRegionBox(continuous_search_space, region_index=1)
+    with pytest.raises(AssertionError, match="regions can only have a region_index"):
+        UpdatableTrustRegionProduct([region1, region2])
+
+
+def test_updatable_tr_product_raises_on_mimatch_index(
+    discrete_search_space: DiscreteSearchSpace, continuous_search_space: Box
+) -> None:
+    region1 = FixedPointTrustRegionDiscrete(discrete_search_space, region_index=0)
+    region2 = SingleObjectiveTrustRegionBox(continuous_search_space, region_index=1)
+    with pytest.raises(AssertionError, match="all regions should have the same index"):
+        UpdatableTrustRegionProduct([region1, region2], region_index=0)
+
+
+def test_updatable_tr_product_sets_all_region_indices(
+    discrete_search_space: DiscreteSearchSpace, continuous_search_space: Box
+) -> None:
+    region1 = FixedPointTrustRegionDiscrete(discrete_search_space, region_index=None)
+    region2 = SingleObjectiveTrustRegionBox(continuous_search_space, region_index=1)
+    tr = UpdatableTrustRegionProduct([region1, region2], region_index=1)
+
+    assert tuple(tr.regions.keys()) == tr.subspace_tags
+    assert list(tr.regions.values()) == [region1, region2]
+
+    assert next(iter(tr.regions.values())).region_index == 1
+    assert len(set([region.region_index for region in tr.regions.values()])) == 1
+    tr.region_index = 10
+    assert next(iter(tr.regions.values())).region_index == 10
+    assert len(set([region.region_index for region in tr.regions.values()])) == 1
+
+
+@pytest.mark.parametrize("disc_dtype", [tf.int32, tf.int64, tf.float32, tf.float64])
+def test_updatable_tr_product_location(
+    disc_dtype: tf.DType, discrete_search_space: DiscreteSearchSpace, continuous_search_space: Box
+) -> None:
+    # Check that we can combine locations of different and same dtypes. continuous_search_space
+    # is of dtype float64, and discrete_search_space is of dtype int64. We cast the
+    # discrete_search_space to different dtype to check that the UpdatableTrustRegionProduct can
+    # handle different dtypes.
+    casted_discrete_search_space = DiscreteSearchSpace(
+        tf.cast(discrete_search_space.points, disc_dtype)
+    )
+    region1 = FixedPointTrustRegionDiscrete(casted_discrete_search_space)
+    region2 = SingleObjectiveTrustRegionBox(continuous_search_space)
+    tr = UpdatableTrustRegionProduct([region1, region2])
+
+    assert tr.location.dtype == tf.float64
+    npt.assert_array_equal(
+        tr.location, np.concatenate([region1.location, region2.location], axis=-1)
+    )
+
+
+@pytest.mark.parametrize(
+    "datasets_only_arg, method",
+    [
+        (False, lambda tr: tr.initialize),
+        (False, lambda tr: tr.update),
+        (True, lambda tr: tr.get_datasets_filter_mask),
+    ],
+)
+@pytest.mark.parametrize(
+    "in_datasets, exp_datasets",
+    [
+        (None, [None, None]),
+        (
+            {
+                OBJECTIVE: Dataset(
+                    tf.constant([[3.0, 0.5], [1.0, 0.0], [2.0, 1.0]], dtype=tf.float64),
+                    tf.constant([[0.5], [0.0], [1.0]], dtype=tf.float64),
+                )
+            },
+            [
+                {
+                    OBJECTIVE: Dataset(
+                        tf.constant([[3.0], [1.0], [2.0]], dtype=tf.float64),
+                        tf.constant([[0.5], [0.0], [1.0]], dtype=tf.float64),
+                    )
+                },
+                {
+                    OBJECTIVE: Dataset(
+                        tf.constant([[0.5], [0.0], [1.0]], dtype=tf.float64),
+                        tf.constant([[0.5], [0.0], [1.0]], dtype=tf.float64),
+                    )
+                },
+            ],
+        ),
+    ],
+)
+def test_updatable_tr_product_method_calls_subregions(
+    datasets_only_arg: bool,
+    method: Callable[
+        [
+            UpdatableTrustRegion,
+        ],
+        Callable[..., Any],  # We can have different signatures for the methods.
+    ],
+    in_datasets: Optional[Mapping[Tag, Dataset]],
+    exp_datasets: List[Optional[Mapping[Tag, Dataset]]],
+) -> None:
+    # Calling initialize/update should call the initialize/update method of all subregions.
+    region1 = MagicMock(spec=FixedPointTrustRegionDiscrete, region_index=None, dimension=1)
+    region2 = MagicMock(spec=SingleObjectiveTrustRegionBox, region_index=None, dimension=1)
+    tr = UpdatableTrustRegionProduct([region1, region2], region_index=2)
+
+    models = {OBJECTIVE: QuadraticMeanAndRBFKernel()}
+
+    if datasets_only_arg:
+        method(tr)(in_datasets)
+    else:
+        method(tr)(models, in_datasets, "dummy_arg", dummy_kwarg="dummy_kwarg_value")
+
+    for region, exp_d in zip([region1, region2], exp_datasets):
+        # Can't use region1.*.assert_called_once_with() directly as bool comparison
+        # doesn't work with datasets. So we check the call_args instead.
+        mock = method(region)
+        mock.assert_called_once()  # type: ignore[attr-defined]
+        call_args = mock.call_args  # type: ignore[attr-defined]
+        if datasets_only_arg:
+            call_dataset = call_args[0][0]
+        else:
+            print(call_args[1])
+            assert call_args[1] == {"dummy_kwarg": "dummy_kwarg_value"}
+            assert call_args[0][0] == models
+            call_dataset = call_args[0][1]
+            assert call_args[0][2] == "dummy_arg"
+
+        if exp_d is None:
+            assert call_dataset is None
+        else:
+            assert exp_d.keys() == call_dataset.keys()
+            for key in exp_d:
+                npt.assert_array_equal(exp_d[key].query_points, call_dataset[key].query_points)
+                npt.assert_array_equal(
+                    exp_d[key].observations,
+                    call_dataset[key].observations,
+                )
+
+
+def test_updatable_tr_product_datasets_filter_mask_raises_on_missing_index() -> None:
+    region1 = MagicMock(spec=FixedPointTrustRegionDiscrete, region_index=None, dimension=1)
+    region2 = MagicMock(spec=SingleObjectiveTrustRegionBox, region_index=None, dimension=1)
+    tr = UpdatableTrustRegionProduct([region1, region2], region_index=None)
+
+    datasets = {OBJECTIVE: empty_dataset([2], [1])}
+    with pytest.raises(AssertionError, match="the region_index should be set for filtering"):
+        tr.get_datasets_filter_mask(datasets)
+
+
+def test_updatable_tr_product_datasets_filter_mask_value() -> None:
+    # Calling get_datasets_filter_mask on the product region returns a boolean AND of the masks
+    # returned by the subregions.
+    region1 = MagicMock(spec=FixedPointTrustRegionDiscrete, region_index=None, dimension=1)
+    region1.get_datasets_filter_mask.return_value = {
+        "tag1": tf.constant([True, False, True], dtype=tf.bool),
+        "tag2": tf.constant([True, True, False], dtype=tf.bool),
+    }
+    region2 = MagicMock(spec=SingleObjectiveTrustRegionBox, region_index=None, dimension=1)
+    region2.get_datasets_filter_mask.return_value = {
+        "tag1": tf.constant([True, False, False], dtype=tf.bool),
+        "tag2": tf.constant([True, True, True], dtype=tf.bool),
+    }
+    tr = UpdatableTrustRegionProduct([region1, region2], region_index=3)
+
+    datasets = {OBJECTIVE: empty_dataset([2], [1])}
+    mask = tr.get_datasets_filter_mask(datasets)
+    assert mask is not None
+    assert mask.keys() == {"tag1", "tag2"}
+    npt.assert_array_equal(mask["tag1"], [True, False, False])
+    npt.assert_array_equal(mask["tag2"], [True, True, False])
+
+
+@pytest.mark.parametrize(
+    "rule, exp_num_subspaces",
+    [
+        (EfficientGlobalOptimization(), 1),
+        (EfficientGlobalOptimization(ParallelContinuousThompsonSampling(), num_query_points=2), 2),
+        (RandomSampling(num_query_points=2), 1),
+    ],
+)
+def test_batch_trust_region_product_no_subspace(
+    discrete_search_space: DiscreteSearchSpace,
+    continuous_search_space: Box,
+    rule: AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel],
+    exp_num_subspaces: int,
+) -> None:
+    # Check batch trust region creates default subspaces when none are provided at init.
+    search_space = TaggedProductSearchSpace(
+        [discrete_search_space, continuous_search_space, discrete_search_space]
+    )
+    tr_rule = BatchTrustRegionProduct(rule=rule)
+    tr_rule.acquire(search_space, {})
+
+    assert tr_rule._tags is not None
+    assert tr_rule._subspaces is not None
+    assert len(tr_rule._subspaces) == exp_num_subspaces
+    for i, (subspace, tag) in enumerate(zip(tr_rule._subspaces, tr_rule._tags)):
+        assert isinstance(subspace, UpdatableTrustRegionProduct)
+        assert subspace.global_search_space == search_space
+        assert tag == f"{i}"
+
+        subregions = subspace.regions
+        assert len(subregions) == 3
+        assert subregions.keys() == {"0", "1", "2"}
+        for r, t, g in zip(
+            subregions.values(),
+            [
+                FixedPointTrustRegionDiscrete,
+                SingleObjectiveTrustRegionBox,
+                FixedPointTrustRegionDiscrete,
+            ],
+            [discrete_search_space, continuous_search_space, discrete_search_space],
+        ):
+            assert isinstance(r, t)
+            assert r.global_search_space == g
+
+
+def test_batch_trust_region_product_raises_for_wrong_search_space() -> None:
+    search_space = Box([0.0], [1.0])
+    tr_rule = BatchTrustRegionProduct()  # type: ignore[var-annotated]
+    with pytest.raises(AssertionError, match="search_space should be a TaggedProductSearchSpace"):
+        tr_rule.acquire(search_space, {})
+
+
+def test_batch_trust_region_product_raises_for_mismatched_search_space(
+    discrete_search_space: DiscreteSearchSpace, continuous_search_space: Box
+) -> None:
+    search_space = TaggedProductSearchSpace(
+        [discrete_search_space, continuous_search_space, discrete_search_space]
+    )
+    tr_rule = BatchTrustRegionProduct()  # type: ignore[var-annotated]
+    tr_rule.acquire(search_space, {})
+
+    different_search_space = TaggedProductSearchSpace(
+        [discrete_search_space, continuous_search_space]
+    )
+    with pytest.raises(AssertionError, match="The global search space of the subspaces should"):
+        tr_rule.acquire(different_search_space, {})
 
 
 def test_asynchronous_rule_state_pending_points() -> None:
