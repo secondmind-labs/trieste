@@ -1898,7 +1898,7 @@ class TURBOBox(UpdatableTrustRegionBox):
 
 class UpdatableTrustRegionDiscrete(DiscreteSearchSpace, UpdatableTrustRegion):
     """
-    A simple updatable discrete search space with an associated global search space.
+    An updatable discrete search space with an associated global search space.
     """
 
     def __init__(
@@ -1971,6 +1971,10 @@ UpdatableTrustRegionWithGlobalSearchSpace = Union[
 
 
 class UpdatableTrustRegionProduct(TaggedProductSearchSpace, UpdatableTrustRegion):
+    """
+    An updatable mixed search space that is the product of multiple updatable trust sub-regions.
+    """
+
     def __init__(
         self,
         regions: Sequence[UpdatableTrustRegionWithGlobalSearchSpace],

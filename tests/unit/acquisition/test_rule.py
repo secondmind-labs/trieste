@@ -2012,7 +2012,7 @@ def test_updatable_tr_product_method_calls_subregions(
     in_datasets: Optional[Mapping[Tag, Dataset]],
     exp_datasets: List[Optional[Mapping[Tag, Dataset]]],
 ) -> None:
-    # Calling initialize/update should call the initialize/update method of all subregions.
+    # Calling initialize/update/* should call the initialize/update/* method of all subregions.
     region1 = MagicMock(spec=FixedPointTrustRegionDiscrete, region_index=None, dimension=1)
     region2 = MagicMock(spec=SingleObjectiveTrustRegionBox, region_index=None, dimension=1)
     tr = UpdatableTrustRegionProduct([region1, region2], region_index=2)
