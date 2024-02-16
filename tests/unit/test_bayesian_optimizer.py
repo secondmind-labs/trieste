@@ -21,9 +21,7 @@ from typing import NoReturn, Optional
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
-import tensorflow_probability as tfp
 from check_shapes import inherit_check_shapes
-from packaging.version import Version
 
 from tests.unit.test_ask_tell_optimization import DatasetChecker, LocalDatasetsFixedAcquisitionRule
 from tests.util.misc import (
@@ -667,10 +665,6 @@ class _DecreasingVarianceModel(QuadraticMeanAndRBFKernel, TrainableProbabilistic
 
 @pytest.mark.parametrize("save_to_disk", [False, True])
 def test_bayesian_optimizer_optimize_tracked_state(save_to_disk: bool) -> None:
-    if save_to_disk and Version(tfp.__version__) >= Version("0.23.0"):
-        # TODO: the latest tfp seems to have broken pickling QuadraticMeanAndRBFKernel
-        pytest.skip()
-
     class _CountingRule(AcquisitionRule[State[Optional[int], TensorType], Box, ProbabilisticModel]):
         def acquire(
             self,
