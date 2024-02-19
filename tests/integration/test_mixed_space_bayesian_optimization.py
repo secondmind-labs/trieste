@@ -22,8 +22,16 @@ from trieste.acquisition import (
     AcquisitionFunctionClass,
     BatchMonteCarloExpectedImprovement,
     LocalPenalization,
+    ParallelContinuousThompsonSampling,
 )
-from trieste.acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
+from trieste.acquisition.rule import (
+    AcquisitionRule,
+    BatchTrustRegionProduct,
+    EfficientGlobalOptimization,
+    FixedPointTrustRegionDiscrete,
+    SingleObjectiveTrustRegionBox,
+    UpdatableTrustRegionProduct,
+)
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.models import TrainableProbabilisticModel
 from trieste.models.gpflow import GaussianProcessRegression, build_gpr
@@ -32,6 +40,11 @@ from trieste.objectives.utils import mk_observer
 from trieste.observer import OBJECTIVE
 from trieste.space import Box, DiscreteSearchSpace, TaggedProductSearchSpace
 from trieste.types import TensorType
+
+mixed_search_space = TaggedProductSearchSpace(
+    spaces=[Box([0], [1]), DiscreteSearchSpace(tf.linspace(0, 1, 15)[:, None])],
+    tags=["continuous", "discrete"],
+)
 
 
 @random_seed
@@ -57,6 +70,33 @@ from trieste.types import TensorType
             ),
             id="LocalPenalization",
         ),
+        pytest.param(
+            10,
+            BatchTrustRegionProduct(
+                [
+                    UpdatableTrustRegionProduct(
+                        [
+                            SingleObjectiveTrustRegionBox(
+                                mixed_search_space.get_subspace("continuous")
+                            ),
+                            FixedPointTrustRegionDiscrete(
+                                mixed_search_space.get_subspace("discrete")
+                            ),
+                        ],
+                        tags=mixed_search_space.subspace_tags,
+                    )
+                    for _ in range(10)
+                ],
+                EfficientGlobalOptimization(
+                    ParallelContinuousThompsonSampling(),
+                    # Use a large batch to ensure discrete init finds a good point.
+                    # We are using a fixed point trust region for the discrete space, so
+                    # the init point is randomly chosen and then never updated.
+                    num_query_points=10,
+                ),
+            ),
+            id="BatchTrustRegionProduct",
+        ),
     ],
 )
 def test_optimizer_finds_minima_of_the_scaled_branin_function(
@@ -65,20 +105,15 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
         TensorType, TaggedProductSearchSpace, TrainableProbabilisticModel
     ],
 ) -> None:
-    search_space = TaggedProductSearchSpace(
-        spaces=[Box([0], [1]), DiscreteSearchSpace(tf.linspace(0, 1, 15)[:, None])],
-        tags=["continuous", "discrete"],
-    )
-
-    initial_query_points = search_space.sample(5)
+    initial_query_points = mixed_search_space.sample(5)
     observer = mk_observer(ScaledBranin.objective)
     initial_data = observer(initial_query_points)
     model = GaussianProcessRegression(
-        build_gpr(initial_data, search_space, likelihood_variance=1e-8)
+        build_gpr(initial_data, mixed_search_space, likelihood_variance=1e-8)
     )
 
     dataset = (
-        BayesianOptimizer(observer, search_space)
+        BayesianOptimizer(observer, mixed_search_space)
         .optimize(num_steps, initial_data, model, acquisition_rule)
         .try_get_final_dataset()
     )

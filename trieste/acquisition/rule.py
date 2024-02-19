@@ -1983,10 +1983,13 @@ class UpdatableTrustRegionProduct(TaggedProductSearchSpace, UpdatableTrustRegion
     def __init__(
         self,
         regions: Sequence[UpdatableTrustRegionWithGlobalSearchSpace],
+        tags: Optional[Sequence[str]] = None,
         region_index: Optional[int] = None,
     ):
         """
         :param regions: The trust sub-regions to be combined to create a product trust region.
+        :param tags: An optional list of tags giving the unique identifiers of the region's
+            sub-regions.
         :param region_index: The index of the region in a multi-region search space. This is used to
             identify the local models and datasets to use for acquisition. If `None`, the
             global models and datasets are used.
@@ -2010,7 +2013,7 @@ class UpdatableTrustRegionProduct(TaggedProductSearchSpace, UpdatableTrustRegion
             )
 
         self._global_search_space = TaggedProductSearchSpace(
-            [region.global_search_space for region in regions]
+            [region.global_search_space for region in regions], tags
         )
 
         TaggedProductSearchSpace.__init__(self, regions)
