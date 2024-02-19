@@ -999,6 +999,8 @@ class TaggedProductSearchSpace(CollectionSearchSpace):
         decision_space = Box([-1, -2], [2, 3])
         mixed_space = TaggedProductSearchSpace(spaces=[context_space, decision_space])
 
+    Note: the dtype of all the component search spaces must be the same.
+
     Note that this class assumes that individual points in product spaces are
     represented with their inputs in the same order as specified when initializing
     the space.

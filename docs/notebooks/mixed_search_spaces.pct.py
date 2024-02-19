@@ -67,6 +67,8 @@ fig.show()
 # We create our mixed search space by instantiating this class with a list containing the discrete
 # and continuous spaces, without any explicit tags (hence using default tags).
 # This can be easily extended to more than two search spaces by adding more elements to the list.
+#
+# Note: the dtype of all the component search spaces must be the same.
 
 # %%
 from trieste.space import Box, DiscreteSearchSpace, TaggedProductSearchSpace

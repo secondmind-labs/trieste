@@ -1978,6 +1978,8 @@ class UpdatableTrustRegionProduct(TaggedProductSearchSpace, UpdatableTrustRegion
 
     This is useful for combining different types of search spaces, such as continuous and discrete,
     to form a mixed search space for trust region acquisition rules.
+
+    Note: the dtype of all the component search spaces must be the same.
     """
 
     def __init__(
