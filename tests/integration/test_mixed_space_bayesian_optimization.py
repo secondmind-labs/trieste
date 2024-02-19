@@ -13,6 +13,8 @@
 # limitations under the License.
 from __future__ import annotations
 
+from typing import cast
+
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
@@ -80,7 +82,9 @@ mixed_search_space = TaggedProductSearchSpace(
                                 mixed_search_space.get_subspace("continuous")
                             ),
                             FixedPointTrustRegionDiscrete(
-                                mixed_search_space.get_subspace("discrete")
+                                cast(
+                                    DiscreteSearchSpace, mixed_search_space.get_subspace("discrete")
+                                )
                             ),
                         ],
                         tags=mixed_search_space.subspace_tags,
