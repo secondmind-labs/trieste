@@ -2013,11 +2013,6 @@ class UpdatableTrustRegionProduct(TaggedProductSearchSpace, UpdatableTrustRegion
             [region.global_search_space for region in regions]
         )
 
-        # Find the most general dtype of all the regions.
-        dtypes = [np.array(region.location).dtype for region in regions]
-        most_general_dtype = np.result_type(*dtypes)
-        self.dtype = most_general_dtype
-
         TaggedProductSearchSpace.__init__(self, regions)
         # When UpdatableTrustRegion sets the region_index, it will also set the region_index for
         # each region.
@@ -2052,9 +2047,7 @@ class UpdatableTrustRegionProduct(TaggedProductSearchSpace, UpdatableTrustRegion
         The location of the product trust region, concatenated from the locations of the
         sub-regions.
         """
-        return tf.concat(
-            [tf.cast(region.location, self.dtype) for region in self.regions.values()], axis=-1
-        )
+        return tf.concat([region.location for region in self.regions.values()], axis=-1)
 
     @property
     def global_search_space(self) -> TaggedProductSearchSpace:

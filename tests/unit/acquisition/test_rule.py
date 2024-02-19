@@ -1872,7 +1872,7 @@ def test_multi_trust_region_box_state_deepcopy() -> None:
 
 @pytest.fixture
 def discrete_search_space() -> DiscreteSearchSpace:
-    return DiscreteSearchSpace(np.arange(10)[:, None])
+    return DiscreteSearchSpace(np.arange(10, dtype=np.float64)[:, None])
 
 
 @pytest.fixture
@@ -1944,18 +1944,11 @@ def test_updatable_tr_product_sets_all_region_indices(
     assert len(set([region.region_index for region in tr.regions.values()])) == 1
 
 
-@pytest.mark.parametrize("disc_dtype", [tf.int32, tf.int64, tf.float32, tf.float64])
 def test_updatable_tr_product_location(
-    disc_dtype: tf.DType, discrete_search_space: DiscreteSearchSpace, continuous_search_space: Box
+    discrete_search_space: DiscreteSearchSpace, continuous_search_space: Box
 ) -> None:
-    # Check that we can combine locations of different and same dtypes. continuous_search_space
-    # is of dtype float64, and discrete_search_space is of dtype int64. We cast the
-    # discrete_search_space to different dtype to check that the UpdatableTrustRegionProduct can
-    # handle different dtypes.
-    casted_discrete_search_space = DiscreteSearchSpace(
-        tf.cast(discrete_search_space.points, disc_dtype)
-    )
-    region1 = FixedPointTrustRegionDiscrete(casted_discrete_search_space)
+    # Check the combined locations of the subregions.
+    region1 = FixedPointTrustRegionDiscrete(discrete_search_space)
     region2 = SingleObjectiveTrustRegionBox(continuous_search_space)
     tr = UpdatableTrustRegionProduct([region1, region2])
 
