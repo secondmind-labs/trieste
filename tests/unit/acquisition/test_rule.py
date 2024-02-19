@@ -1918,7 +1918,7 @@ def test_updatable_tr_product_raises_on_missing_index(
         UpdatableTrustRegionProduct([region1, region2])
 
 
-def test_updatable_tr_product_raises_on_mimatch_index(
+def test_updatable_tr_product_raises_on_mismatch_index(
     discrete_search_space: DiscreteSearchSpace, continuous_search_space: Box
 ) -> None:
     region1 = FixedPointTrustRegionDiscrete(discrete_search_space, region_index=0)
@@ -2012,7 +2012,8 @@ def test_updatable_tr_product_method_calls_subregions(
     in_datasets: Optional[Mapping[Tag, Dataset]],
     exp_datasets: List[Optional[Mapping[Tag, Dataset]]],
 ) -> None:
-    # Calling initialize/update/* should call the initialize/update/* method of all subregions.
+    # Check that calling initialize/update/* should call the initialize/update/* method of all
+    # subregions with the correct arguments.
     region1 = MagicMock(spec=FixedPointTrustRegionDiscrete, region_index=None, dimension=1)
     region2 = MagicMock(spec=SingleObjectiveTrustRegionBox, region_index=None, dimension=1)
     tr = UpdatableTrustRegionProduct([region1, region2], region_index=2)

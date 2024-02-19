@@ -1930,7 +1930,9 @@ class UpdatableTrustRegionDiscrete(DiscreteSearchSpace, UpdatableTrustRegion):
 
 class FixedPointTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
     """
-    A discrete trust region with a fixed point location that does not change.
+    A discrete trust region with a fixed point location that does not change across active learning
+    steps. The fixed point is selected at random from the global (discrete) search space at
+    initialization time.
     """
 
     def __init__(
@@ -1973,6 +1975,9 @@ UpdatableTrustRegionWithGlobalSearchSpace = Union[
 class UpdatableTrustRegionProduct(TaggedProductSearchSpace, UpdatableTrustRegion):
     """
     An updatable mixed search space that is the product of multiple updatable trust sub-regions.
+
+    This is useful for combining different types of search spaces, such as continuous and discrete,
+    to form a mixed search space for trust region acquisition rules.
     """
 
     def __init__(

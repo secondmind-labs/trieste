@@ -238,8 +238,15 @@ model = GaussianProcessRegression(gpflow_model)
 # acquisition rule as the base rule. The trust region acquisition rule is initialized with a set of
 # trust regions; 5 in this example. Each trust regions is defined as a product of a discrete and a
 # continuous trust sub-region. The base rule is then used to optimize the acquisition function
-# within each trust region. This setup is analogous to the one used in the "Batch trust region rule"
+# within each trust region. This setup is similar to the one used in the "Batch trust region rule"
 # section of the [trust region Bayesian optimization notebook](trust_region.ipynb).
+#
+# Analogous to a `TaggedProductSearchSpace`, each trust region is a product of a discrete and a
+# continuous trust (sub-)region. The discrete sub-region is defined by
+# `FixedPointTrustRegionDiscrete` that selects a random point from the discrete space, which is then
+# fixed for the duration of the optimization. The continuous sub-region is defined by
+# `SingleObjectiveTrustRegionBox`, just as in the trust region notebook, where the region is updated
+# at each step of the optimization.
 
 # %%
 from trieste.acquisition import ParallelContinuousThompsonSampling
