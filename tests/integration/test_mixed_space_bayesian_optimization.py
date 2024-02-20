@@ -32,6 +32,7 @@ from trieste.acquisition.rule import (
     EfficientGlobalOptimization,
     FixedPointTrustRegionDiscrete,
     SingleObjectiveTrustRegionBox,
+    TURBOBox,
     UpdatableTrustRegionProduct,
 )
 from trieste.bayesian_optimizer import BayesianOptimizer
@@ -99,7 +100,32 @@ mixed_search_space = TaggedProductSearchSpace(
                     num_query_points=10,
                 ),
             ),
-            id="BatchTrustRegionProduct",
+            id="TrustRegionSingleObjectiveFixed",
+        ),
+        pytest.param(
+            10,
+            BatchTrustRegionProduct(
+                [
+                    UpdatableTrustRegionProduct(
+                        [
+                            TURBOBox(mixed_search_space.get_subspace("continuous")),
+                            FixedPointTrustRegionDiscrete(
+                                cast(
+                                    DiscreteSearchSpace, mixed_search_space.get_subspace("discrete")
+                                )
+                            ),
+                        ],
+                        tags=mixed_search_space.subspace_tags,
+                    )
+                    for _ in range(10)
+                ],
+                EfficientGlobalOptimization(
+                    ParallelContinuousThompsonSampling(),
+                    # See comment above.
+                    num_query_points=10,
+                ),
+            ),
+            id="TrustRegionTurboFixed",
         ),
     ],
 )
