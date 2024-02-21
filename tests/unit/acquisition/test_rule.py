@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import copy
 from collections.abc import Mapping
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, List, Optional, Union
 from unittest.mock import ANY, MagicMock
 
 import gpflow
@@ -599,11 +599,12 @@ def test_trego_for_default_state(
     rule: AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel],
     expected_query_point: TensorType,
 ) -> None:
-    dataset = Dataset(tf.constant([[0.1, 0.2]]), tf.constant([[0.012]]))
+    dataset = Dataset(tf.constant([[0.0, 0.1, 0.3, 0.2]]), tf.constant([[0.012]]))
     lower_bound = tf.constant([-2.2, -1.0])
     upper_bound = tf.constant([1.3, 3.3])
     search_space = Box(lower_bound, upper_bound)
-    subspace = TREGOBox(search_space)
+    # Includes a quick test of input_active_dims. The irrelevant input dimension should be ignored.
+    subspace = TREGOBox(search_space, input_active_dims=[1, 3])
     tr = BatchTrustRegionBox(subspace, rule)
 
     model = QuadraticMeanAndRBFKernel()
@@ -962,21 +963,35 @@ def test_turbo_acquire_returns_correct_shape(num_query_points: int) -> None:
 
 
 @random_seed
-def test_turbo_for_default_state() -> None:
+@pytest.mark.parametrize(
+    "lengthscales, exp_upper",
+    [
+        (4.0, [0.8, 0.8]),
+        (
+            [4.0, 0.1, 0.1, 1.0],  # Unused lengthscales should be ignored due to input_active_dims.
+            [0.8, 0.2],
+        ),
+    ],
+)
+def test_turbo_for_default_state(
+    lengthscales: Union[float, List[float]], exp_upper: List[float]
+) -> None:
     dataset = Dataset(
-        tf.constant([[0.0, 0.0]], dtype=tf.float64), tf.constant([[0.012]], dtype=tf.float64)
+        tf.constant([[0.0, 0.3, 0.2, 0.0]], dtype=tf.float64),
+        tf.constant([[0.012]], dtype=tf.float64),
     )
     lower_bound = tf.constant([0.0, 0.0], dtype=tf.float64)
     upper_bound = tf.constant([1.0, 1.0], dtype=tf.float64)
     search_space = Box(lower_bound, upper_bound)
-    orig_region = TURBOBox(search_space)
+    # Includes a quick test of input_active_dims. The irrelevant input dimension should be ignored.
+    orig_region = TURBOBox(search_space, input_active_dims=[0, 3])
     region = copy.deepcopy(orig_region)
     tr = BatchTrustRegionBox(region, rule=DiscreteThompsonSampling(100, 1))
     model = QuadraticMeanAndRBFKernelWithSamplers(
         dataset, noise_variance=tf.constant(1e-5, dtype=tf.float64)
     )
     model.kernel = gpflow.kernels.RBF(
-        lengthscales=tf.constant([4.0, 1.0], dtype=tf.float64), variance=1e-5
+        lengthscales=tf.constant(lengthscales, dtype=tf.float64), variance=1e-5
     )  # need a gpflow kernel for TURBOBox
     state, query_point = tr.acquire_single(search_space, model, dataset=dataset)(None)
     tr.filter_datasets({OBJECTIVE: model}, {OBJECTIVE: dataset})
@@ -987,7 +1002,7 @@ def test_turbo_for_default_state() -> None:
     npt.assert_array_almost_equal(state_region.lower, orig_region.lower)
     npt.assert_array_almost_equal(state_region.upper, orig_region.upper)
     npt.assert_array_almost_equal(region.lower, lower_bound)
-    npt.assert_array_almost_equal(region.upper, tf.constant([0.8, 0.2], dtype=tf.float64))
+    npt.assert_array_almost_equal(region.upper, tf.constant(exp_upper, dtype=tf.float64))
     npt.assert_array_almost_equal(region.y_min, [0.012])
     npt.assert_array_almost_equal(region.L, tf.cast(0.8, dtype=tf.float64))
     assert region.success_counter == 0
@@ -1253,6 +1268,79 @@ def test_turbo_state_deepcopy() -> None:
 
 
 @pytest.mark.parametrize(
+    "active_dims, in_values, exp_values",
+    [
+        ([0], tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.1], [-0.1]])),
+        ([1], tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.2], [-0.2]])),
+        ([0, 1], tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.1, 0.2], [-0.1, -0.2]])),
+        (
+            [1, 3],
+            tf.constant([[0.1, 0.2, 0.3, 0.4], [-0.1, -0.2, -0.3, -0.4]]),
+            tf.constant([[0.2, 0.4], [-0.2, -0.4]]),
+        ),
+        (
+            None,
+            tf.constant([[0.1, 0.2, 0.3, 0.4], [-0.1, -0.2, -0.3, -0.4]]),
+            tf.constant([[0.1, 0.2, 0.3, 0.4], [-0.1, -0.2, -0.3, -0.4]]),
+        ),
+        (
+            slice(1, 3),
+            tf.constant([[0.1, 0.2, 0.3], [-0.1, -0.2, -0.3]]),
+            tf.constant([[0.2, 0.3], [-0.2, -0.3]]),
+        ),
+        (
+            slice(0, 4, 2),
+            tf.constant([[0.1, 0.2, 0.3, 0.4], [-0.1, -0.2, -0.3, -0.4]]),
+            tf.constant([[0.1, 0.3], [-0.1, -0.3]]),
+        ),
+        (
+            [0],
+            Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.5]])),
+            Dataset(tf.constant([[0.1], [-0.1]]), tf.constant([[0.4], [0.5]])),
+        ),
+        (
+            [2],
+            Dataset(
+                tf.constant([[0.1, 0.2, 0.3], [-0.1, -0.2, -0.3]]), tf.constant([[0.4], [0.5]])
+            ),
+            Dataset(tf.constant([[0.3], [-0.3]]), tf.constant([[0.4], [0.5]])),
+        ),
+        (
+            [0, 1],
+            Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.5]])),
+            Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.5]])),
+        ),
+        (
+            slice(1, 3),
+            Dataset(
+                tf.constant([[0.1, 0.2, 0.3], [-0.1, -0.2, -0.3]]), tf.constant([[0.4], [0.5]])
+            ),
+            Dataset(tf.constant([[0.2, 0.3], [-0.2, -0.3]]), tf.constant([[0.4], [0.5]])),
+        ),
+        ([1], QuadraticMeanAndRBFKernel(), None),  # exp_values in unused.
+        ([7, 10], QuadraticMeanAndRBFKernel(x_shift=0.3), None),  # exp_values in unused.
+    ],
+)
+def test_trust_region_with_input_active_dims(
+    active_dims: Optional[Union[slice, List[int]]],
+    in_values: Union[TensorType, Dataset, ProbabilisticModel],
+    exp_values: Union[TensorType, Dataset, ProbabilisticModel],
+) -> None:
+    dummy_search_space = Box([0.0], [1.0])
+    tr = SingleObjectiveTrustRegionBox(dummy_search_space, input_active_dims=active_dims)
+    out_values = tr.with_input_active_dims(in_values)
+    if isinstance(in_values, Dataset):
+        assert isinstance(exp_values, Dataset)
+        npt.assert_allclose(out_values.query_points, exp_values.query_points)
+        npt.assert_allclose(out_values.observations, exp_values.observations)
+    elif isinstance(in_values, ProbabilisticModel):
+        assert out_values is in_values
+    else:
+        assert isinstance(exp_values, tf.Tensor)
+        npt.assert_allclose(out_values, exp_values)
+
+
+@pytest.mark.parametrize(
     "datasets",
     [
         {},
@@ -1303,11 +1391,12 @@ def test_trust_region_box_initialize() -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     datasets = {
         OBJECTIVE: Dataset(  # Points outside the search space should be ignored.
-            tf.constant([[1.2, 1.3], [-0.4, -0.5]], dtype=tf.float64),
+            tf.constant([[0.5, 1.2, 1.3, 0.6], [0.4, -0.4, -0.5, 0.3]], dtype=tf.float64),
             tf.constant([[0.7], [0.9]], dtype=tf.float64),
         )
     }
-    trb = SingleObjectiveTrustRegionBox(search_space)
+    # Includes a quick test of input_active_dims. The irrelevant input dimension should be ignored.
+    trb = SingleObjectiveTrustRegionBox(search_space, input_active_dims=[1, 2])
     trb.initialize(datasets=datasets)
 
     exp_eps = 0.5 * (search_space.upper - search_space.lower) / 5.0 ** (1.0 / 2.0)
@@ -1346,11 +1435,15 @@ def test_trust_region_box_update_no_initialize() -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     datasets = {
         OBJECTIVE: Dataset(
-            tf.constant([[0.5, 0.5], [0.0, 0.0], [1.0, 1.0]], dtype=tf.float64),
+            tf.constant(
+                [[0.5, 0.5, 0.5, 0.6], [0.0, -0.4, 0.0, 0.3], [1.0, 0.9, 1.0, 0.1]],
+                dtype=tf.float64,
+            ),
             tf.constant([[0.5], [0.0], [1.0]], dtype=tf.float64),
         )
     }
-    trb = SingleObjectiveTrustRegionBox(search_space, min_eps=0.1)
+    # Includes a quick test of input_active_dims. The irrelevant input dimension should be ignored.
+    trb = SingleObjectiveTrustRegionBox(search_space, min_eps=0.1, input_active_dims=[0, 2])
     trb.initialize(datasets=datasets)
     trb.location = tf.constant([0.5, 0.5], dtype=tf.float64)
     location = trb.location
@@ -1927,6 +2020,15 @@ def test_updatable_tr_product_raises_on_mismatch_index(
         UpdatableTrustRegionProduct([region1, region2], region_index=0)
 
 
+def test_updatable_tr_product_raises_on_active_dims_set(
+    discrete_search_space: DiscreteSearchSpace, continuous_search_space: Box
+) -> None:
+    region1 = FixedPointTrustRegionDiscrete(discrete_search_space, input_active_dims=[0])
+    region2 = SingleObjectiveTrustRegionBox(continuous_search_space)
+    with pytest.raises(AssertionError, match="input_active_dims ..0.. should not be set"):
+        UpdatableTrustRegionProduct([region1, region2])
+
+
 def test_updatable_tr_product_sets_all_region_indices(
     discrete_search_space: DiscreteSearchSpace, continuous_search_space: Box
 ) -> None:
@@ -1967,31 +2069,15 @@ def test_updatable_tr_product_location(
     ],
 )
 @pytest.mark.parametrize(
-    "in_datasets, exp_datasets",
+    "datasets",
     [
-        (None, [None, None]),
-        (
-            {
-                OBJECTIVE: Dataset(
-                    tf.constant([[3.0, 0.5], [1.0, 0.0], [2.0, 1.0]], dtype=tf.float64),
-                    tf.constant([[0.5], [0.0], [1.0]], dtype=tf.float64),
-                )
-            },
-            [
-                {
-                    OBJECTIVE: Dataset(
-                        tf.constant([[3.0], [1.0], [2.0]], dtype=tf.float64),
-                        tf.constant([[0.5], [0.0], [1.0]], dtype=tf.float64),
-                    )
-                },
-                {
-                    OBJECTIVE: Dataset(
-                        tf.constant([[0.5], [0.0], [1.0]], dtype=tf.float64),
-                        tf.constant([[0.5], [0.0], [1.0]], dtype=tf.float64),
-                    )
-                },
-            ],
-        ),
+        None,
+        {
+            OBJECTIVE: Dataset(
+                tf.constant([[3.0, 0.5], [1.0, 0.0], [2.0, 1.0]], dtype=tf.float64),
+                tf.constant([[0.5], [0.0], [1.0]], dtype=tf.float64),
+            )
+        },
     ],
 )
 def test_updatable_tr_product_method_calls_subregions(
@@ -2002,23 +2088,26 @@ def test_updatable_tr_product_method_calls_subregions(
         ],
         Callable[..., Any],  # We can have different signatures for the methods.
     ],
-    in_datasets: Optional[Mapping[Tag, Dataset]],
-    exp_datasets: List[Optional[Mapping[Tag, Dataset]]],
+    datasets: Optional[Mapping[Tag, Dataset]],
 ) -> None:
     # Check that calling initialize/update/* should call the initialize/update/* method of all
     # subregions with the correct arguments.
-    region1 = MagicMock(spec=FixedPointTrustRegionDiscrete, region_index=None, dimension=1)
-    region2 = MagicMock(spec=SingleObjectiveTrustRegionBox, region_index=None, dimension=1)
+    region1 = MagicMock(
+        spec=FixedPointTrustRegionDiscrete, region_index=None, input_active_dims=None, dimension=1
+    )
+    region2 = MagicMock(
+        spec=SingleObjectiveTrustRegionBox, region_index=None, input_active_dims=None, dimension=1
+    )
     tr = UpdatableTrustRegionProduct([region1, region2], region_index=2)
 
     models = {OBJECTIVE: QuadraticMeanAndRBFKernel()}
 
     if datasets_only_arg:
-        method(tr)(in_datasets)
+        method(tr)(datasets)
     else:
-        method(tr)(models, in_datasets, "dummy_arg", dummy_kwarg="dummy_kwarg_value")
+        method(tr)(models, datasets, "dummy_arg", dummy_kwarg="dummy_kwarg_value")
 
-    for region, exp_d in zip([region1, region2], exp_datasets):
+    for region in [region1, region2]:
         # Can't use region1.*.assert_called_once_with() directly as bool comparison
         # doesn't work with datasets. So we check the call_args instead.
         mock = method(region)
@@ -2033,21 +2122,25 @@ def test_updatable_tr_product_method_calls_subregions(
             call_dataset = call_args[0][1]
             assert call_args[0][2] == "dummy_arg"
 
-        if exp_d is None:
+        if datasets is None:
             assert call_dataset is None
         else:
-            assert exp_d.keys() == call_dataset.keys()
-            for key in exp_d:
-                npt.assert_array_equal(exp_d[key].query_points, call_dataset[key].query_points)
+            assert datasets.keys() == call_dataset.keys()
+            for key in datasets:
+                npt.assert_array_equal(datasets[key].query_points, call_dataset[key].query_points)
                 npt.assert_array_equal(
-                    exp_d[key].observations,
+                    datasets[key].observations,
                     call_dataset[key].observations,
                 )
 
 
 def test_updatable_tr_product_datasets_filter_mask_raises_on_missing_index() -> None:
-    region1 = MagicMock(spec=FixedPointTrustRegionDiscrete, region_index=None, dimension=1)
-    region2 = MagicMock(spec=SingleObjectiveTrustRegionBox, region_index=None, dimension=1)
+    region1 = MagicMock(
+        spec=FixedPointTrustRegionDiscrete, region_index=None, input_active_dims=None, dimension=1
+    )
+    region2 = MagicMock(
+        spec=SingleObjectiveTrustRegionBox, region_index=None, input_active_dims=None, dimension=1
+    )
     tr = UpdatableTrustRegionProduct([region1, region2], region_index=None)
 
     datasets = {OBJECTIVE: empty_dataset([2], [1])}
@@ -2058,12 +2151,16 @@ def test_updatable_tr_product_datasets_filter_mask_raises_on_missing_index() -> 
 def test_updatable_tr_product_datasets_filter_mask_value() -> None:
     # Calling get_datasets_filter_mask on the product region returns a boolean AND of the masks
     # returned by the subregions.
-    region1 = MagicMock(spec=FixedPointTrustRegionDiscrete, region_index=None, dimension=1)
+    region1 = MagicMock(
+        spec=FixedPointTrustRegionDiscrete, region_index=None, input_active_dims=None, dimension=1
+    )
     region1.get_datasets_filter_mask.return_value = {
         "tag1": tf.constant([True, False, True], dtype=tf.bool),
         "tag2": tf.constant([True, True, False], dtype=tf.bool),
     }
-    region2 = MagicMock(spec=SingleObjectiveTrustRegionBox, region_index=None, dimension=1)
+    region2 = MagicMock(
+        spec=SingleObjectiveTrustRegionBox, region_index=None, input_active_dims=None, dimension=1
+    )
     region2.get_datasets_filter_mask.return_value = {
         "tag1": tf.constant([True, False, False], dtype=tf.bool),
         "tag2": tf.constant([True, True, True], dtype=tf.bool),
