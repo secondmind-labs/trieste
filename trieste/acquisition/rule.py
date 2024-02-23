@@ -1005,6 +1005,10 @@ class UpdatableTrustRegion(SearchSpace):
             global models and datasets are used.
         :param input_active_dims: The active dimensions of the input space, either a slice or list
             of indices into the columns of the space. If `None`, all dimensions are active.
+
+            When this region is part of a product search-space (via `UpdatableTrustRegionProduct`),
+            this is used to select the active dimensions of the full input space that belong to this
+            region.
         """
         self.region_index = region_index
         self.input_active_dims = input_active_dims
