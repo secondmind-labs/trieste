@@ -1100,7 +1100,27 @@ class UpdatableTrustRegion(SearchSpace):
         else:
             return selected_input
 
-    def select_in_region(self, mapping: Optional[Mapping[Tag, T]]) -> Optional[Mapping[Tag, T]]:
+    @overload
+    def select_in_region(self, mapping: None) -> None:
+        ...
+
+    @overload
+    def select_in_region(self, mapping: Mapping[Tag, TensorType]) -> Mapping[Tag, TensorType]:
+        ...
+
+    @overload
+    def select_in_region(self, mapping: Mapping[Tag, Dataset]) -> Mapping[Tag, Dataset]:
+        ...
+
+    @overload
+    def select_in_region(
+        self, mapping: Mapping[Tag, ProbabilisticModel]
+    ) -> Mapping[Tag, ProbabilisticModel]:
+        ...
+
+    def select_in_region(
+        self, mapping: Optional[Mapping[Tag, Union[TensorType, Dataset, ProbabilisticModel]]]
+    ) -> Optional[Mapping[Tag, Union[TensorType, Dataset, ProbabilisticModel]]]:
         """
         Select items belonging to this region for acquisition.
 
