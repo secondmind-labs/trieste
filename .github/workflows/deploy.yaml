@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: Release documentation build
+name: Release documentation build and pypi upload
 
 on:
   workflow_dispatch:
@@ -59,3 +59,23 @@ jobs:
         git config --global user.name "github-actions-bot"
         git commit -m "build documentation for $VERSION"
         git push
+
+  upload-pypi:
+    needs: docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "3.10"
+      - name: Install twine, wheel and build
+        run: |
+          pip install twine wheel build
+      - name: Create pip packages
+        run: |
+          python -m build --sdist --wheel
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_PASSWORD }}
