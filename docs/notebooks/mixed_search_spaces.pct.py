@@ -67,6 +67,8 @@ fig.show()
 # We create our mixed search space by instantiating this class with a list containing the discrete
 # and continuous spaces, without any explicit tags (hence using default tags).
 # This can be easily extended to more than two search spaces by adding more elements to the list.
+#
+# Note: the dtype of all the component search spaces must be the same.
 
 # %%
 from trieste.space import Box, DiscreteSearchSpace, TaggedProductSearchSpace
@@ -216,6 +218,168 @@ for point in points:
         linestyles="dashed",
         alpha=0.6,
     )
+
+# %% [markdown]
+# ## Trust region with mixed search spaces
+#
+# In this section, we demonstrate the use of trust region acquisition rules with mixed search
+# spaces. We use the same mixed search space and observer as before, and the same initial data.
+# See [trust region Bayesian optimization notebook](trust_region.ipynb) for an introduction to
+# trust region acquisition rules.
+#
+# First we build a Gaussian process model of the objective function using the initial data.
+
+# %%
+gpflow_model = build_gpr(
+    initial_data, mixed_search_space, likelihood_variance=1e-7
+)
+model = GaussianProcessRegression(gpflow_model)
+
+# %% [markdown]
+# We create a trust region acquisition rule that uses the efficient global optimization (EGO)
+# acquisition rule as the base rule. The trust region acquisition rule is initialized with a set of
+# trust regions; 5 in this example. Each trust regions is defined as a product of a discrete and a
+# continuous trust sub-region. The base rule is then used to optimize the acquisition function
+# within each trust region. This setup is similar to the one used in the "Batch trust region rule"
+# section of the [trust region Bayesian optimization notebook](trust_region.ipynb).
+#
+# Analogous to a `TaggedProductSearchSpace`, each trust region is a product of a discrete and a
+# continuous trust (sub-)region. The discrete sub-region is defined by
+# `FixedPointTrustRegionDiscrete` that selects a random point from the discrete space, which is then
+# fixed for the duration of the optimization. The continuous sub-region is defined by
+# `SingleObjectiveTrustRegionBox`, just as in the trust region notebook, where the region is updated
+# at each step of the optimization.
+
+# %%
+from trieste.acquisition import ParallelContinuousThompsonSampling
+from trieste.acquisition.rule import (
+    BatchTrustRegionProduct,
+    EfficientGlobalOptimization,
+    FixedPointTrustRegionDiscrete,
+    SingleObjectiveTrustRegionBox,
+    UpdatableTrustRegionProduct,
+)
+
+num_query_points = 5
+init_regions = [
+    UpdatableTrustRegionProduct(
+        [
+            FixedPointTrustRegionDiscrete(discrete_space),
+            SingleObjectiveTrustRegionBox(continuous_space),
+        ]
+    )
+    for _ in range(num_query_points)
+]
+base_rule = EfficientGlobalOptimization(  # type: ignore[var-annotated]
+    builder=ParallelContinuousThompsonSampling(),
+    num_query_points=num_query_points,
+)
+tr_acq_rule = BatchTrustRegionProduct(init_regions, base_rule)
+
+# %% [markdown]
+# We run the optimization loop for 15 steps using the trust region acquisition rule.
+
+# %%
+bo = BayesianOptimizer(observer, mixed_search_space)
+
+num_steps = 15
+tr_result = bo.optimize(
+    num_steps, initial_data, model, tr_acq_rule, track_state=True
+)
+dataset = tr_result.try_get_final_dataset()
+
+# %% [markdown]
+# The best point found by the optimizer is obtained as before.
+
+# %%
+query_point, observation, arg_min_idx = tr_result.try_get_optimal_point()
+
+print(f"query point: {query_point}")
+print(f"observation: {observation}")
+
+# %% [markdown]
+# Plot of the optimization loop over the mixed search space, similar to the previous plot.
+
+# %%
+query_points = dataset.query_points.numpy()
+observations = dataset.observations.numpy()
+
+_, ax = plot_function_2d(
+    scaled_branin,
+    ScaledBranin.search_space.lower,
+    ScaledBranin.search_space.upper,
+    contour=True,
+)
+plot_bo_points(query_points, ax[0, 0], num_initial_points, arg_min_idx)
+ax[0, 0].set_xlabel(r"$x_1$")
+ax[0, 0].set_ylabel(r"$x_2$")
+
+for point in points:
+    ax[0, 0].vlines(
+        point,
+        mixed_search_space.lower[1],
+        mixed_search_space.upper[1],
+        colors="b",
+        linestyles="dashed",
+        alpha=0.6,
+    )
+
+# %% [markdown]
+# Finally, we visualize the optimization progress by plotting the 5 (product) trust regions at each
+# step. The trust regions are shown as translucent boxes, with each box in a different color. The
+# new query point for earch region is plotted in matching color.
+#
+# Note that since the discrete dimension is on the x-axis, the trust regions appear as vertical
+# lines with zero width.
+
+# %%
+import base64
+from typing import Optional
+
+import IPython
+import matplotlib.pyplot as plt
+
+from trieste.bayesian_optimizer import OptimizationResult
+from trieste.experimental.plotting import (
+    convert_figure_to_frame,
+    convert_frames_to_gif,
+    plot_trust_region_history_2d,
+)
+
+
+def plot_history(
+    result: OptimizationResult,
+    num_query_points: Optional[int] = None,
+) -> None:
+    frames = []
+    for step, hist in enumerate(
+        result.history + [result.final_result.unwrap()]
+    ):
+        fig, _ = plot_trust_region_history_2d(
+            scaled_branin,
+            ScaledBranin.search_space.lower,
+            ScaledBranin.search_space.upper,
+            hist,
+            num_query_points=num_query_points,
+            num_init=num_initial_points,
+            alpha=1.0,
+        )
+
+        if fig is not None:
+            fig.suptitle(f"step number {step}")
+            frames.append(convert_figure_to_frame(fig))
+            plt.close(fig)
+
+    gif_file = convert_frames_to_gif(frames)
+    gif = IPython.display.HTML(
+        '<img src="data:image/gif;base64,{0}"/>'.format(
+            base64.b64encode(gif_file.getvalue()).decode()
+        )
+    )
+    IPython.display.display(gif)
+
+
+plot_history(tr_result)
 
 # %% [markdown]
 # ## LICENSE

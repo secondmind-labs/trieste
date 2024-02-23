@@ -13,6 +13,9 @@
 # limitations under the License.
 from __future__ import annotations
 
+from typing import cast
+
+import numpy as np
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
@@ -22,8 +25,16 @@ from trieste.acquisition import (
     AcquisitionFunctionClass,
     BatchMonteCarloExpectedImprovement,
     LocalPenalization,
+    ParallelContinuousThompsonSampling,
 )
-from trieste.acquisition.rule import AcquisitionRule, EfficientGlobalOptimization
+from trieste.acquisition.rule import (
+    AcquisitionRule,
+    BatchTrustRegionProduct,
+    EfficientGlobalOptimization,
+    FixedPointTrustRegionDiscrete,
+    SingleObjectiveTrustRegionBox,
+    UpdatableTrustRegionProduct,
+)
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.models import TrainableProbabilisticModel
 from trieste.models.gpflow import GaussianProcessRegression, build_gpr
@@ -32,6 +43,34 @@ from trieste.objectives.utils import mk_observer
 from trieste.observer import OBJECTIVE
 from trieste.space import Box, DiscreteSearchSpace, TaggedProductSearchSpace
 from trieste.types import TensorType
+
+
+def _get_mixed_search_space() -> TaggedProductSearchSpace:
+    # The discrete space is defined by a set of 10 points that are equally spaced, ensuring that
+    # the three Branin minimizers (of dimension 0) are included in this set. The continuous
+    # dimension is defined by the interval [0, 1].
+    # We observe that the first and third minimizers are equidistant from the middle minimizer, so
+    # we choose the discretization points to be equally spaced around the middle minimizer.
+    minimizers0 = ScaledBranin.minimizers[:, 0]
+    step = (minimizers0[1] - minimizers0[0]) / 4
+    points = np.concatenate(
+        [
+            # Equally spaced points to the left of the middle minimizer. Skip the last point as it
+            # is the same as the first point in the next array.
+            np.flip(np.arange(minimizers0[1], 0.0, -step))[:-1],
+            # Equally spaced points to the right of the middle minimizer.
+            np.arange(minimizers0[1], 1.0, step),
+        ]
+    )
+    discrete_space = DiscreteSearchSpace(points[:, None])
+    continuous_space = Box([0], [1])
+    return TaggedProductSearchSpace(
+        spaces=[discrete_space, continuous_space],
+        tags=["discrete", "continuous"],
+    )
+
+
+mixed_search_space = _get_mixed_search_space()
 
 
 @random_seed
@@ -57,6 +96,35 @@ from trieste.types import TensorType
             ),
             id="LocalPenalization",
         ),
+        pytest.param(
+            8,
+            BatchTrustRegionProduct(
+                [
+                    UpdatableTrustRegionProduct(
+                        [
+                            FixedPointTrustRegionDiscrete(
+                                cast(
+                                    DiscreteSearchSpace, mixed_search_space.get_subspace("discrete")
+                                )
+                            ),
+                            SingleObjectiveTrustRegionBox(
+                                mixed_search_space.get_subspace("continuous")
+                            ),
+                        ],
+                        tags=mixed_search_space.subspace_tags,
+                    )
+                    for _ in range(10)
+                ],
+                EfficientGlobalOptimization(
+                    ParallelContinuousThompsonSampling(),
+                    # Use a large batch to ensure discrete init finds a good point.
+                    # We are using a fixed point trust region for the discrete space, so
+                    # the init point is randomly chosen and then never updated.
+                    num_query_points=10,
+                ),
+            ),
+            id="TrustRegionSingleObjectiveFixed",
+        ),
     ],
 )
 def test_optimizer_finds_minima_of_the_scaled_branin_function(
@@ -65,20 +133,15 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
         TensorType, TaggedProductSearchSpace, TrainableProbabilisticModel
     ],
 ) -> None:
-    search_space = TaggedProductSearchSpace(
-        spaces=[Box([0], [1]), DiscreteSearchSpace(tf.linspace(0, 1, 15)[:, None])],
-        tags=["continuous", "discrete"],
-    )
-
-    initial_query_points = search_space.sample(5)
+    initial_query_points = mixed_search_space.sample(5)
     observer = mk_observer(ScaledBranin.objective)
     initial_data = observer(initial_query_points)
     model = GaussianProcessRegression(
-        build_gpr(initial_data, search_space, likelihood_variance=1e-8)
+        build_gpr(initial_data, mixed_search_space, likelihood_variance=1e-8)
     )
 
     dataset = (
-        BayesianOptimizer(observer, search_space)
+        BayesianOptimizer(observer, mixed_search_space)
         .optimize(num_steps, initial_data, model, acquisition_rule)
         .try_get_final_dataset()
     )
