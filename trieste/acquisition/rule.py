@@ -2073,6 +2073,191 @@ class FixedPointTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
         pass
 
 
+class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
+    """
+    An updatable discrete trust region that maintains a set of neighbouring points around a
+    single location point. The region is updated based on the best point found in the region.
+    """
+
+    def __init__(
+        self,
+        global_search_space: DiscreteSearchSpace,
+        beta: float = 0.7,
+        kappa: float = 1e-4,
+        min_eps: float = 1e-2,
+        region_index: Optional[int] = None,
+        input_active_dims: Optional[Union[slice, Sequence[int]]] = None,
+    ):
+        """
+        Select a random initial location from the global search space and select the initial
+        neighbors within the trust region.
+
+        :param global_search_space: The global search space this search space lives in.
+        :param beta: The inverse of the trust region contraction factor.
+        :param kappa: Scales the threshold for the minimal improvement required for a step to be
+            considered a success.
+        :param min_eps: The minimal size of the search space. If the size of the search space is
+            smaller than this, the search space is reinitialized.
+        :param region_index: The index of the region in a multi-region search space. This is used to
+            identify the local models and datasets to use for acquisition. If `None`, the
+            global models and datasets are used.
+        :param input_active_dims: The active dimensions of the input space, either a slice or list
+            of indices into the columns of the space. If `None`, all dimensions are active.
+        """
+        super().__init__(global_search_space, region_index, input_active_dims)
+        self._beta = beta
+        self._kappa = kappa
+        self._min_eps = min_eps
+        self._initialized = False
+        self._step_is_success = False
+
+        # Random initial location index from the global search space.
+        self._location_ix = tf.random.categorical(
+            tf.ones(
+                (
+                    1,
+                    global_search_space.points.shape[0],
+                )
+            ),
+            1,
+        )[0]
+
+        # Pairwise distances for each axis in the global search space.
+        points = global_search_space.points
+        self._global_distances = tf.stack(
+            [
+                tf.abs(tf.expand_dims(points[..., i], -1) - tf.expand_dims(points[..., i], -2))
+                for i in range(self.dimension)
+            ],
+            axis=0,
+        )
+
+        self._init_eps()
+        self._update_neighbors()
+        self._y_min = np.inf
+
+    @property
+    def location(self) -> TensorType:
+        """Center point of the region."""
+        return tf.squeeze(tf.gather(self.global_search_space.points, self._location_ix), axis=0)
+
+    def _init_eps(self) -> None:
+        global_lower = self.global_search_space.lower
+        global_upper = self.global_search_space.upper
+        self.eps = 0.5 * (global_upper - global_lower) / (5.0 ** (1.0 / global_lower.shape[-1]))
+
+    def _update_neighbors(self) -> None:
+        self._neighbor_ixs = tf.where(
+            tf.reduce_all(
+                [
+                    tf.gather(self._global_distances[i], self._location_ix) <= self.eps[i]
+                    for i in range(self.dimension)
+                ],
+                axis=0,
+            )[0]
+        )
+        self._points = tf.gather(
+            self.global_search_space.points, tf.squeeze(self._neighbor_ixs, axis=-1)
+        )
+
+    def initialize(
+        self,
+        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+    ) -> None:
+        """
+        Initialize the region by sampling a location from the global search space and selecting
+        the neighboring points within the trust region.
+
+        :param models: The model for each tag.
+        :param datasets: The dataset for each tag.
+        """
+
+        datasets = self.select_in_region(datasets)
+        self._location_ix = tf.random.categorical(
+            tf.ones(
+                (
+                    1,
+                    self.global_search_space.points.shape[0],
+                )
+            ),
+            1,
+        )[0]
+        self._step_is_success = False
+        self._init_eps()
+        self._update_neighbors()
+        _, self._y_min = self.get_dataset_min(datasets)
+        self._initialized = True
+
+    def update(
+        self,
+        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+    ) -> None:
+        """
+        Update this region, including location and neighbors, using the given dataset. If the
+        size of the region is less than the minimum size, re-initialize the region.
+
+        If the new optimum improves over the previous optimum by some threshold (that scales
+        linearly with ``kappa``), the previous acquisition is considered successful.
+
+        If the previous acquisition was successful, the size is increased by a factor
+        ``1 / beta``. Conversely, if it was unsuccessful, the size is reduced by the factor
+        ``beta``.
+
+        :param models: The model for each tag.
+        :param datasets: The dataset for each tag.
+        """
+
+        if not self._initialized or tf.reduce_any(self.eps < self._min_eps):
+            self.initialize(models, datasets)
+            return
+
+        datasets = self.select_in_region(datasets)
+        x_min, y_min = self.get_dataset_min(datasets)
+        self._location_ix = tf.where(
+            tf.reduce_all(self.global_search_space.points == x_min, axis=-1)
+        )[0]
+
+        tr_volume = tf.reduce_prod(self.upper - self.lower)
+        self._step_is_success = y_min < self._y_min - self._kappa * tr_volume
+        self.eps = self.eps / self._beta if self._step_is_success else self.eps * self._beta
+        self._update_neighbors()
+        self._y_min = y_min
+
+    @check_shapes(
+        "return[0]: [D]",
+        "return[1]: []",
+    )
+    def get_dataset_min(
+        self, datasets: Optional[Mapping[Tag, Dataset]]
+    ) -> Tuple[TensorType, TensorType]:
+        """
+        Calculate the minimum of the region using the given dataset.
+
+        :param datasets: The datasets to use for finding the minimum.
+        """
+        if (
+            datasets is None
+            or len(datasets) != 1
+            or LocalizedTag.from_tag(next(iter(datasets))).global_tag != OBJECTIVE
+        ):
+            raise ValueError("""a single OBJECTIVE dataset must be provided""")
+        dataset = next(iter(datasets.values()))
+
+        in_tr = self.contains(dataset.query_points)
+        in_tr_obs = tf.where(
+            tf.expand_dims(in_tr, axis=-1),
+            dataset.observations,
+            tf.constant(np.inf, dtype=dataset.observations.dtype),
+        )
+        ix = tf.argmin(in_tr_obs)
+        x_min = tf.gather(dataset.query_points, ix)
+        y_min = tf.gather(in_tr_obs, ix)
+
+        return tf.squeeze(x_min, axis=0), tf.squeeze(y_min)
+
+
 UpdatableTrustRegionWithGlobalSearchSpace = Union[
     UpdatableTrustRegionBox, UpdatableTrustRegionDiscrete
 ]
