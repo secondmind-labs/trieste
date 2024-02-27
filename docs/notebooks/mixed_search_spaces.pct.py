@@ -236,27 +236,29 @@ gpflow_model = build_gpr(
 model = GaussianProcessRegression(gpflow_model)
 
 # %% [markdown]
-# We create a trust region acquisition rule that uses the efficient global optimization (EGO)
-# acquisition rule as the base rule. The trust region acquisition rule is initialized with a set of
+# We create a trust region meta acquisition rule that uses efficient global optimization (EGO)
+# as the base rule. The trust region rule is initialized with a set of
 # trust regions; 5 in this example. Each trust regions is defined as a product of a discrete and a
-# continuous trust sub-region. The base rule is then used to optimize the acquisition function
-# within each trust region. This setup is similar to the one used in the "Batch trust region rule"
-# section of the [trust region Bayesian optimization notebook](trust_region.ipynb).
-#
-# Analogous to a `TaggedProductSearchSpace`, each trust region is a product of a discrete and a
-# continuous trust (sub-)region. The discrete sub-region is defined by
-# `FixedPointTrustRegionDiscrete` that selects a random point from the discrete space, which is then
-# fixed for the duration of the optimization. The continuous sub-region is defined by
-# `SingleObjectiveTrustRegionBox`, just as in the trust region notebook, where the region is updated
-# at each step of the optimization.
+# continuous trust sub-region, analogous to a `TaggedProductSearchSpace`. The base rule is then
+# called to optimize the acquisition function within each region.
+
+# This setup is similar to the one used in the "Batch trust region rule"
+# section of the [trust region Bayesian optimization notebook](trust_region.ipynb). That notebook
+# creates trust regions of type `SingleObjectiveTrustRegionBox`. Here, we create trust regions that
+# are a product of a discrete and a continuous trust sub-region with
+# `UpdatableTrustRegionProduct`. The continuous part `SingleObjectiveTrustRegionBox` is the same as
+# in the trust region notebook, but now as a sub-region. The discrete sub-region is implemented by
+# `SingleObjectiveTrustRegionDiscrete`, which follows a very similar algorithm to the continuous
+# one, but with a region defined by a set of neighboring points. Both the continuous and
+# discrete sub-regions are updated at each step of the optimization.
 
 # %%
 from trieste.acquisition import ParallelContinuousThompsonSampling
 from trieste.acquisition.rule import (
     BatchTrustRegionProduct,
     EfficientGlobalOptimization,
-    FixedPointTrustRegionDiscrete,
     SingleObjectiveTrustRegionBox,
+    SingleObjectiveTrustRegionDiscrete,
     UpdatableTrustRegionProduct,
 )
 
@@ -264,7 +266,7 @@ num_query_points = 5
 init_regions = [
     UpdatableTrustRegionProduct(
         [
-            FixedPointTrustRegionDiscrete(discrete_space),
+            SingleObjectiveTrustRegionDiscrete(discrete_space),
             SingleObjectiveTrustRegionBox(continuous_space),
         ]
     )
@@ -329,8 +331,9 @@ for point in points:
 # step. The trust regions are shown as translucent boxes, with each box in a different color. The
 # new query point for earch region is plotted in matching color.
 #
-# Note that since the discrete dimension is on the x-axis, the trust regions appear as vertical
-# lines with zero width.
+# Note that since the discrete dimension is on the x-axis, the trust regions sometimes appear as
+# vertical lines with zero width. This occurs when a region contains only a single point along the
+# discrete dimension.
 
 # %%
 import base64
@@ -362,7 +365,7 @@ def plot_history(
             hist,
             num_query_points=num_query_points,
             num_init=num_initial_points,
-            alpha=1.0,
+            alpha=0.6,
         )
 
         if fig is not None:
