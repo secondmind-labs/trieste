@@ -2124,13 +2124,7 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
 
         # Pairwise distances for each axis in the global search space.
         points = global_search_space.points
-        self._global_distances = tf.stack(
-            [
-                tf.abs(tf.expand_dims(points[..., i], -1) - tf.expand_dims(points[..., i], -2))
-                for i in range(self.dimension)
-            ],
-            axis=0,
-        )
+        self._global_distances = tf.abs(tf.expand_dims(points, -2) - tf.expand_dims(points, -3))
 
         self._init_eps()
         self._update_neighbors()
@@ -2147,18 +2141,15 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
         self.eps = 0.5 * (global_upper - global_lower) / (5.0 ** (1.0 / global_lower.shape[-1]))
 
     def _update_neighbors(self) -> None:
+        # Indices of the neighbors within the trust region.
         self._neighbor_ixs = tf.where(
             tf.reduce_all(
-                [
-                    tf.gather(self._global_distances[i], self._location_ix) <= self.eps[i]
-                    for i in range(self.dimension)
-                ],
-                axis=0,
-            )[0]
+                tf.gather(self._global_distances, self._location_ix)[0] <= self.eps, axis=-1
+            )
         )
-        self._points = tf.gather(
-            self.global_search_space.points, tf.squeeze(self._neighbor_ixs, axis=-1)
-        )
+        self._neighbor_ixs = tf.squeeze(self._neighbor_ixs, axis=-1)
+        # Points within the trust region (including the location point).
+        self._points = tf.gather(self.global_search_space.points, self._neighbor_ixs)
 
     def initialize(
         self,
