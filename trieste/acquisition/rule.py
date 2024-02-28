@@ -2075,7 +2075,7 @@ class FixedPointTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
 
 class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
     """
-    An updatable discrete trust region that maintains a set of neighbouring points around a
+    An updatable discrete trust region that maintains a set of neighboring points around a
     single location point. The region is updated based on the best point found in the region.
     """
 
