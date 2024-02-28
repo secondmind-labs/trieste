@@ -19,6 +19,7 @@ This module contains functionality for optimizing
 
 from __future__ import annotations
 
+from itertools import chain
 from typing import Any, Callable, Iterable, List, Optional, Sequence, Tuple, Union, cast
 
 import greenlet as gr
@@ -603,25 +604,35 @@ def _perform_parallel_continuous_optimization(
             for i in tf.range(num_optimization_runs)
         ]
     elif isinstance(space, TaggedMultiSearchSpace):
+        subspaces = [space.get_subspace(tag) for tag in space.subspace_tags]
+        # Create a sequence of bounds for each optimization run, per subspace.
+        # For product subspaces, we build a continuous relaxation of the discrete subspaces.
+        # Otherwise, we use the original bounds.
         bounds = [
-            spo.Bounds(lower, upper)
-            for lower, upper in zip(space.subspace_lower, space.subspace_upper)
+            [
+                get_bounds_of_box_relaxation_around_point(ss, starting_points[i : i + 1, j])
+                if isinstance(ss, TaggedProductSearchSpace)
+                else spo.Bounds(ss.lower, ss.upper)
+                for j, ss in enumerate(subspaces)
+            ]
+            for i in tf.range(num_optimization_runs_per_function)
         ]
+        bounds = list(chain.from_iterable(bounds))
         # The bounds is a sequence of tensors, stack them into a single tensor. In this case
         # the vectorization of the target function must be a multple of the length of the sequence.
-        remainder = V % len(bounds)
+        remainder = num_optimization_runs % len(bounds)
         tf.debugging.assert_equal(
             remainder,
             tf.cast(0, dtype=remainder.dtype),
             message=(
                 f"""
-                The vectorization of the target function {V} must be a multiple of the length
-                of the bounds sequence {len(bounds)}.
+                The number of optimization runs {num_optimization_runs} must be a multiple of the
+                length of the bounds sequence {len(bounds)}.
                 """
             ),
         )
-        multiple = V // len(bounds)
-        bounds = bounds * multiple * num_optimization_runs_per_function
+        multiple = num_optimization_runs // len(bounds)
+        bounds = bounds * multiple
     else:
         bounds = [spo.Bounds(space.lower, space.upper)] * num_optimization_runs
 

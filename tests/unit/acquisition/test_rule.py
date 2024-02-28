@@ -2158,14 +2158,14 @@ def test_trust_region_discrete_update_size(
     if success:
         # Check that the location is the new min point.
         new_point = np.squeeze(new_point)
-        npt.assert_equal(new_point, tr.location)
+        npt.assert_array_equal(new_point, tr.location)
         npt.assert_allclose(new_min, tr._y_min)
         # Check that the region is larger by beta.
         npt.assert_allclose(eps / tr._beta, tr.eps)
     else:
         # Check that the location is the old min point.
         orig_point = np.squeeze(orig_point)
-        npt.assert_equal(orig_point, tr.location)
+        npt.assert_array_equal(orig_point, tr.location)
         npt.assert_allclose(orig_min, tr._y_min)
         # Check that the region is smaller by beta.
         npt.assert_allclose(eps * tr._beta, tr.eps)
@@ -2173,8 +2173,8 @@ def test_trust_region_discrete_update_size(
     # Check the new set of neighbors.
     neighbors_mask = tf.abs(discrete_search_space.points - tr.location) <= tr.eps
     neighbors_mask = tf.reduce_all(neighbors_mask, axis=-1)
-    neighbors = discrete_search_space.points[neighbors_mask]
-    npt.assert_equal(tr.points, neighbors)
+    neighbors = tf.boolean_mask(discrete_search_space.points, neighbors_mask)
+    npt.assert_array_equal(tr.points, neighbors)
 
 
 def test_updatable_tr_product_raises_on_no_regions() -> None:
