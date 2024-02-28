@@ -2133,7 +2133,7 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
     @property
     def location(self) -> TensorType:
         """Center point of the region."""
-        return tf.squeeze(tf.gather(self.global_search_space.points, self._location_ix), axis=0)
+        return tf.reshape(tf.gather(self.global_search_space.points, self._location_ix), (-1,))
 
     def _init_eps(self) -> None:
         global_lower = self.global_search_space.lower
@@ -2142,11 +2142,11 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
 
     def _update_neighbors(self) -> None:
         # Indices of the neighbors within the trust region.
-        self._neighbor_ixs = tf.where(
-            tf.reduce_all(
-                tf.gather(self._global_distances, self._location_ix)[0] <= self.eps, axis=-1
-            )
+        neighbors_mask = tf.reduce_all(
+            tf.gather(self._global_distances, self._location_ix) <= self.eps, axis=-1
         )
+        neighbors_mask = tf.reshape(neighbors_mask, (-1,))
+        self._neighbor_ixs = tf.where(neighbors_mask)
         self._neighbor_ixs = tf.squeeze(self._neighbor_ixs, axis=-1)
         # Points within the trust region (including the location point).
         self._points = tf.gather(self.global_search_space.points, self._neighbor_ixs)
@@ -2208,7 +2208,8 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
         x_min, y_min = self.get_dataset_min(datasets)
         self._location_ix = tf.where(
             tf.reduce_all(self.global_search_space.points == x_min, axis=-1)
-        )[0]
+        )
+        self._location_ix = tf.squeeze(self._location_ix, axis=-1)
 
         tr_volume = tf.reduce_prod(self.upper - self.lower)
         self._step_is_success = y_min < self._y_min - self._kappa * tr_volume

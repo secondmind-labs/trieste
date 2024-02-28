@@ -55,6 +55,7 @@ from trieste.acquisition.rule import (
     FixedPointTrustRegionDiscrete,
     RandomSampling,
     SingleObjectiveTrustRegionBox,
+    SingleObjectiveTrustRegionDiscrete,
     TREGOBox,
     TURBOBox,
     UpdatableTrustRegion,
@@ -1965,7 +1966,10 @@ def test_multi_trust_region_box_state_deepcopy() -> None:
 
 @pytest.fixture
 def discrete_search_space() -> DiscreteSearchSpace:
-    return DiscreteSearchSpace(np.arange(10, dtype=np.float64)[:, None])
+    dim1 = np.arange(10.0)
+    dim2 = np.array([1.0, 4.0, 8.0], dtype=np.float64)
+    points = np.array(np.meshgrid(dim1, dim2)).T.reshape(-1, 2)
+    return DiscreteSearchSpace(points)
 
 
 @pytest.fixture
@@ -1982,7 +1986,7 @@ def test_fixed_trust_region_discrete_initialize(
     tr = FixedPointTrustRegionDiscrete(discrete_search_space)
     if with_initialize:
         tr.initialize()
-    assert tr.location.shape == (1,)
+    assert tr.location.shape == (2,)
     assert tr.location in discrete_search_space
 
 
@@ -1995,6 +1999,182 @@ def test_fixed_trust_region_discrete_update(
     orig_location = tr.location.numpy()
     tr.update()
     npt.assert_equal(orig_location, tr.location)
+
+
+@pytest.mark.parametrize(
+    "datasets",
+    [
+        {},
+        {"foo": empty_dataset([1], [1])},
+        {OBJECTIVE: empty_dataset([1], [1]), "foo": empty_dataset([1], [1])},
+    ],
+)
+def test_trust_region_discrete_get_dataset_min_raises_if_dataset_is_faulty(
+    datasets: Mapping[Tag, Dataset], discrete_search_space: DiscreteSearchSpace
+) -> None:
+    tr = SingleObjectiveTrustRegionDiscrete(discrete_search_space)
+    with pytest.raises(ValueError, match="a single OBJECTIVE dataset must be provided"):
+        tr.get_dataset_min(datasets)
+
+
+def test_trust_region_discrete_get_dataset_min(discrete_search_space: DiscreteSearchSpace) -> None:
+    # Check get_dataset_min picks the minimum x and y values from the dataset.
+    dataset = Dataset(
+        tf.constant([[1, 1], [4, 4], [3, 4], [8, 8], [4, 4]], dtype=tf.float64),
+        tf.constant([[0.0], [0.5], [0.2], [0.1], [1.0]], dtype=tf.float64),
+    )
+    tr = SingleObjectiveTrustRegionDiscrete(discrete_search_space)
+    tr._points = tf.constant([[4, 4], [3, 4], [4, 4]], dtype=tf.float64)
+    x_min, y_min = tr.get_dataset_min({OBJECTIVE: dataset})
+    npt.assert_array_equal(x_min, tf.constant([3, 4], dtype=tf.float64))
+    npt.assert_array_equal(y_min, tf.constant([0.2], dtype=tf.float64))
+
+
+def test_trust_region_discrete_get_dataset_min_outside_search_space(
+    discrete_search_space: DiscreteSearchSpace,
+) -> None:
+    # Check get_dataset_min returns first x value and inf y value when points in dataset are
+    # outside the search space.
+    dataset = Dataset(
+        tf.constant([[1, 2], [-4, -5]], dtype=tf.float64),
+        tf.constant([[0.7], [0.9]], dtype=tf.float64),
+    )
+    tr = SingleObjectiveTrustRegionDiscrete(discrete_search_space)
+    x_min, y_min = tr.get_dataset_min({OBJECTIVE: dataset})
+    npt.assert_array_equal(x_min, tf.constant([1, 2], dtype=tf.float64))
+    npt.assert_array_equal(y_min, tf.constant([np.inf], dtype=tf.float64))
+
+
+def test_trust_region_discrete_initialize(discrete_search_space: DiscreteSearchSpace) -> None:
+    # Check initialize sets the region to a random location, and sets the eps and y_min values.
+    datasets = {
+        OBJECTIVE: Dataset(  # Points outside the search space should be ignored.
+            tf.constant([[0, 1, 2, 0], [4, -4, -5, 3]], dtype=tf.float64),
+            tf.constant([[0.7], [0.9]], dtype=tf.float64),
+        )
+    }
+    # Includes a quick test of input_active_dims. The irrelevant input dimension should be ignored.
+    tr = SingleObjectiveTrustRegionDiscrete(discrete_search_space, input_active_dims=[1, 2])
+    tr.initialize(datasets=datasets)
+
+    exp_eps = 0.5 * (discrete_search_space.upper - discrete_search_space.lower) / 5.0 ** (1.0 / 2.0)
+    npt.assert_array_equal(tr.eps, exp_eps)
+    npt.assert_array_compare(np.less_equal, discrete_search_space.lower, tr.location)
+    npt.assert_array_compare(np.less_equal, tr.location, discrete_search_space.upper)
+    npt.assert_array_compare(np.less_equal, discrete_search_space.lower, tr.lower)
+    npt.assert_array_compare(np.less_equal, tr.upper, discrete_search_space.upper)
+    npt.assert_array_compare(np.less_equal, tr.upper - tr.lower, 2 * exp_eps)
+    npt.assert_array_equal(tr._y_min, tf.constant([np.inf], dtype=tf.float64))
+
+
+def test_trust_region_discrete_update_initialize(
+    discrete_search_space: DiscreteSearchSpace,
+) -> None:
+    # Check that update call initializes the region if eps is smaller than min_eps.
+    datasets = {
+        OBJECTIVE: Dataset(  # Points outside the search space should be ignored.
+            tf.constant([[1, 2], [-4, -5]], dtype=tf.float64),
+            tf.constant([[0.7], [0.9]], dtype=tf.float64),
+        )
+    }
+    tr = SingleObjectiveTrustRegionDiscrete(discrete_search_space, min_eps=3.0)
+    tr.initialize(datasets=datasets)
+    tr._location_ix = tf.constant([], dtype=tf.int32)
+    location = tr.location
+    eps = tr.eps
+
+    tr.update(datasets=datasets)
+    assert np.any(location != tr.location, axis=-1)
+    npt.assert_array_equal(eps, tr.eps)
+
+
+def test_trust_region_discrete_update_no_initialize(
+    discrete_search_space: DiscreteSearchSpace,
+) -> None:
+    # Check that update call does not initialize the region if eps is larger than min_eps.
+    datasets = {
+        OBJECTIVE: Dataset(
+            tf.constant(
+                [[5, 5, 4, 5], [0, -4, 0, 3], [1, 9, 1, 1]],
+                dtype=tf.float64,
+            ),
+            tf.constant([[0.5], [0.0], [1.0]], dtype=tf.float64),
+        )
+    }
+    # Includes a quick test of input_active_dims. The irrelevant input dimension should be ignored.
+    tr = SingleObjectiveTrustRegionDiscrete(
+        discrete_search_space, min_eps=0.1, input_active_dims=[0, 2]
+    )
+    tr.initialize(datasets=datasets)
+    tr._location_ix = tf.constant([16], dtype=tf.int32)  # Location [5, 4].
+    tr._update_neighbors()
+    location = tr.location
+
+    tr.update(datasets=datasets)
+    npt.assert_array_equal(location, tr.location)
+
+
+@pytest.mark.parametrize("success", [True, False])
+def test_trust_region_discrete_update_size(
+    success: bool, discrete_search_space: DiscreteSearchSpace
+) -> None:
+    # Check that update shrinks/expands region on successful/unsuccessful step.
+    datasets = {
+        OBJECTIVE: Dataset(
+            tf.constant([[5, 4], [0, 1], [1, 1]], dtype=tf.float64),
+            tf.constant([[0.5], [0.3], [1.0]], dtype=tf.float64),
+        )
+    }
+    tr = SingleObjectiveTrustRegionDiscrete(discrete_search_space, min_eps=0.1)
+    tr.initialize(datasets=datasets)
+
+    # Ensure there is at least one point captured in the region.
+    orig_point = tr.sample(1)
+    orig_min = tf.constant([[0.1]], dtype=tf.float64)
+    datasets[OBJECTIVE] = Dataset(
+        np.concatenate([datasets[OBJECTIVE].query_points, orig_point], axis=0),
+        np.concatenate([datasets[OBJECTIVE].observations, orig_min], axis=0),
+    )
+    tr.update(datasets=datasets)
+
+    eps = tr.eps
+
+    if success:
+        # Sample a point from the region.
+        new_point = tr.sample(1)
+    else:
+        # Pick point outside the region.
+        new_point = tf.constant([[1, 1]], dtype=tf.float64)
+
+    # Add a new min point to the dataset.
+    new_min = tf.constant([[-0.1]], dtype=tf.float64)
+    datasets[OBJECTIVE] = Dataset(
+        np.concatenate([datasets[OBJECTIVE].query_points, new_point], axis=0),
+        np.concatenate([datasets[OBJECTIVE].observations, new_min], axis=0),
+    )
+    # Update the region.
+    tr.update(datasets=datasets)
+
+    if success:
+        # Check that the location is the new min point.
+        new_point = np.squeeze(new_point)
+        npt.assert_equal(new_point, tr.location)
+        npt.assert_allclose(new_min, tr._y_min)
+        # Check that the region is larger by beta.
+        npt.assert_allclose(eps / tr._beta, tr.eps)
+    else:
+        # Check that the location is the old min point.
+        orig_point = np.squeeze(orig_point)
+        npt.assert_equal(orig_point, tr.location)
+        npt.assert_allclose(orig_min, tr._y_min)
+        # Check that the region is smaller by beta.
+        npt.assert_allclose(eps * tr._beta, tr.eps)
+
+    # Check the new set of neighbors.
+    neighbors_mask = tf.abs(discrete_search_space.points - tr.location) <= tr.eps
+    neighbors_mask = tf.reduce_all(neighbors_mask, axis=-1)
+    neighbors = discrete_search_space.points[neighbors_mask]
+    npt.assert_equal(tr.points, neighbors)
 
 
 def test_updatable_tr_product_raises_on_no_regions() -> None:

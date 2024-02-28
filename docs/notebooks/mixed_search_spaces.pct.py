@@ -241,7 +241,7 @@ model = GaussianProcessRegression(gpflow_model)
 # trust regions; 5 in this example. Each trust regions is defined as a product of a discrete and a
 # continuous trust sub-region, analogous to a `TaggedProductSearchSpace`. The base rule is then
 # called to optimize the acquisition function within each region.
-
+#
 # This setup is similar to the one used in the "Batch trust region rule"
 # section of the [trust region Bayesian optimization notebook](trust_region.ipynb). That notebook
 # creates trust regions of type `SingleObjectiveTrustRegionBox`. Here, we create trust regions that
