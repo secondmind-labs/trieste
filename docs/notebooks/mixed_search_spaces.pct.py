@@ -251,6 +251,10 @@ model = GaussianProcessRegression(gpflow_model)
 # `SingleObjectiveTrustRegionDiscrete`, which follows a very similar algorithm to the continuous
 # one, but with a region defined by a set of neighboring points. Both the continuous and
 # discrete sub-regions are updated at each step of the optimization.
+#
+# Note that `SingleObjectiveTrustRegionDiscrete` is designed for discrete numerical
+# variables only, which we have in this example. It is not suitable for qualitative (categorical,
+# ordinal and binary) variables.
 
 # %%
 from trieste.acquisition import ParallelContinuousThompsonSampling

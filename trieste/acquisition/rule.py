@@ -2076,7 +2076,18 @@ class FixedPointTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
 class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
     """
     An updatable discrete trust region that maintains a set of neighboring points around a
-    single location point. The region is updated based on the best point found in the region.
+    single location point, allowing for local exploration of the search space. The region is
+    updated based on the best point found in the region.
+
+    This trust region is designed for discrete numerical variables. As it uses axis-aligned
+    Euclidean distance to determine the neighbors within the region, it is not suitable for
+    qualitative (categorical, ordinal and binary) variables.
+
+    When using this trust region, it is important to consider the scaling of the number of value
+    combinations. Since the region computes pairwise distances between points, the computational
+    and memory complexity increases quadratically with the number of points. For example,
+    1000 3D points will result in the distances matrix containing 1000x1000x3 entries. Therefore,
+    this trust region is not suitable for problems with a large number of points.
     """
 
     def __init__(
@@ -2110,22 +2121,8 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
         self._min_eps = min_eps
         self._initialized = False
         self._step_is_success = False
-
-        # Random initial location index from the global search space.
-        self._location_ix = tf.random.categorical(
-            tf.ones(
-                (
-                    1,
-                    global_search_space.points.shape[0],
-                )
-            ),
-            1,
-        )[0]
-
-        # Pairwise distances for each axis in the global search space.
-        points = global_search_space.points
-        self._global_distances = tf.abs(tf.expand_dims(points, -2) - tf.expand_dims(points, -3))
-
+        self._init_location()
+        self._compute_global_distances()
         self._init_eps()
         self._update_neighbors()
         self._y_min = np.inf
@@ -2135,10 +2132,29 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
         """Center point of the region."""
         return tf.reshape(tf.gather(self.global_search_space.points, self._location_ix), (-1,))
 
+    def _init_location(self) -> None:
+        # Random initial location index from the global search space.
+        self._location_ix = tf.random.categorical(
+            tf.ones(
+                (
+                    1,
+                    self.global_search_space.points.shape[0],
+                )
+            ),
+            1,
+        )[0]
+
     def _init_eps(self) -> None:
         global_lower = self.global_search_space.lower
         global_upper = self.global_search_space.upper
         self.eps = 0.5 * (global_upper - global_lower) / (5.0 ** (1.0 / global_lower.shape[-1]))
+
+    def _compute_global_distances(self) -> None:
+        # Pairwise distances along each axis in the global search space.
+        points = self.global_search_space.points
+        self._global_distances = tf.abs(
+            tf.expand_dims(points, -2) - tf.expand_dims(points, -3)
+        )  # [num_points, num_points, D]
 
     def _update_neighbors(self) -> None:
         # Indices of the neighbors within the trust region.
@@ -2165,15 +2181,7 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
         """
 
         datasets = self.select_in_region(datasets)
-        self._location_ix = tf.random.categorical(
-            tf.ones(
-                (
-                    1,
-                    self.global_search_space.points.shape[0],
-                )
-            ),
-            1,
-        )[0]
+        self._init_location()
         self._step_is_success = False
         self._init_eps()
         self._update_neighbors()
