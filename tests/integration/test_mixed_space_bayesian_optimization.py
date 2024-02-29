@@ -31,6 +31,7 @@ from trieste.acquisition.rule import (
     AcquisitionRule,
     BatchTrustRegionProduct,
     EfficientGlobalOptimization,
+    FixedPointTrustRegionDiscrete,
     SingleObjectiveTrustRegionBox,
     SingleObjectiveTrustRegionDiscrete,
     UpdatableTrustRegionProduct,
@@ -95,6 +96,35 @@ mixed_search_space = _get_mixed_search_space()
                 num_query_points=3,
             ),
             id="LocalPenalization",
+        ),
+        pytest.param(
+            8,
+            BatchTrustRegionProduct(
+                [
+                    UpdatableTrustRegionProduct(
+                        [
+                            FixedPointTrustRegionDiscrete(
+                                cast(
+                                    DiscreteSearchSpace, mixed_search_space.get_subspace("discrete")
+                                )
+                            ),
+                            SingleObjectiveTrustRegionBox(
+                                mixed_search_space.get_subspace("continuous")
+                            ),
+                        ],
+                        tags=mixed_search_space.subspace_tags,
+                    )
+                    for _ in range(10)
+                ],
+                EfficientGlobalOptimization(
+                    ParallelContinuousThompsonSampling(),
+                    # Use a large batch to ensure discrete init finds a good point.
+                    # We are using a fixed point trust region for the discrete space, so
+                    # the init point is randomly chosen and then never updated.
+                    num_query_points=10,
+                ),
+            ),
+            id="TrustRegionSingleObjectiveFixed",
         ),
         pytest.param(
             8,
