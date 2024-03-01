@@ -608,6 +608,7 @@ def _test_optimizer_finds_minimum(
     single_precision: bool = False,
 ) -> None:
     model_args = model_args or {}
+    dtype = tf.float32 if single_precision else tf.float64
 
     if optimize_branin:
         search_space = ScaledBranin.search_space
@@ -636,9 +637,10 @@ def _test_optimizer_finds_minimum(
         num_initial_query_points = 25
 
     initial_query_points = search_space.sample(num_initial_query_points)
-    assert initial_query_points.dtype is tf.float32 if single_precision else tf.float64
+    assert initial_query_points.dtype is dtype
     observer = mk_observer(ScaledBranin.objective if optimize_branin else SimpleQuadratic.objective)
     initial_data = observer(initial_query_points)
+    assert initial_data.observations.dtype is dtype
 
     if isinstance(acquisition_rule, tuple):
         acquisition_rule, num_models = acquisition_rule
@@ -750,6 +752,7 @@ def _test_optimizer_finds_minimum(
                     assert isinstance(step_history, FrozenRecord)
                     step_observations = step_history.load().dataset.observations
                     new_observations = step_observations[num_points:]
+                    assert new_observations.dtype is dtype
                     if tf.math.reduce_min(new_observations) < best_initial:
                         better_than_initial += 1
                     num_points = len(step_observations)
@@ -758,6 +761,9 @@ def _test_optimizer_finds_minimum(
             else:
                 # this actually checks that we solved the problem
                 best_x, best_y, _ = result.try_get_optimal_point()
+                assert best_x.dtype is dtype
+                assert best_y.dtype is dtype
+
                 minimizer_err = tf.abs((best_x - minimizers) / minimizers)
                 assert tf.reduce_any(tf.reduce_all(minimizer_err < 0.05, axis=-1), axis=0)
                 npt.assert_allclose(best_y, minima, rtol=rtol_level)
