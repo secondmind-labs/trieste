@@ -898,7 +898,7 @@ def test_rff_and_decoupled_trajectory_give_similar_results(
     )  # variance across samples should (very) roughly agree for different samplers
 
 
-@pytest.mark.parametrize("n_sample_dim", [2, 5])
+@pytest.mark.parametrize("n_sample_dim", [0, 2, 5])
 @pytest.mark.parametrize("skip", [0, 10_000])
 @pytest.mark.parametrize("dtype", [tf.float32, tf.float64])
 def test_qmc_samples_return_standard_normal_samples(
@@ -910,6 +910,7 @@ def test_qmc_samples_return_standard_normal_samples(
         num_samples=n_samples, n_sample_dim=n_sample_dim, skip=skip, dtype=dtype
     )
     assert qmc_samples.dtype is dtype
+    assert qmc_samples.shape == (n_samples, n_sample_dim)
 
     # should be multivariate normal with zero correlation
     for i in range(n_sample_dim):
