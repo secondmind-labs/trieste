@@ -596,45 +596,8 @@ def _perform_parallel_continuous_optimization(
     def _objective_value_and_gradient(x: TensorType) -> Tuple[TensorType, TensorType]:
         return tfp.math.value_and_gradient(_objective_value, x)  # [len(x), 1], [len(x), D]
 
-    if isinstance(
-        space, TaggedProductSearchSpace
-    ):  # build continuous relaxation of discrete subspaces
-        bounds = [
-            get_bounds_of_box_relaxation_around_point(space, vectorized_starting_points[i : i + 1])
-            for i in tf.range(num_optimization_runs)
-        ]
-    elif isinstance(space, TaggedMultiSearchSpace):
-        subspaces = [space.get_subspace(tag) for tag in space.subspace_tags]
-        # Create a sequence of bounds for each optimization run, per subspace.
-        # For product subspaces, we build a continuous relaxation of the discrete subspaces.
-        # Otherwise, we use the original bounds.
-        bounds = [
-            [
-                get_bounds_of_box_relaxation_around_point(ss, starting_points[i : i + 1, j])
-                if isinstance(ss, TaggedProductSearchSpace)
-                else spo.Bounds(ss.lower, ss.upper)
-                for j, ss in enumerate(subspaces)
-            ]
-            for i in tf.range(num_optimization_runs_per_function)
-        ]
-        bounds = list(chain.from_iterable(bounds))
-        # The bounds is a sequence of tensors, stack them into a single tensor. In this case
-        # the vectorization of the target function must be a multple of the length of the sequence.
-        remainder = num_optimization_runs % len(bounds)
-        tf.debugging.assert_equal(
-            remainder,
-            tf.cast(0, dtype=remainder.dtype),
-            message=(
-                f"""
-                The number of optimization runs {num_optimization_runs} must be a multiple of the
-                length of the bounds sequence {len(bounds)}.
-                """
-            ),
-        )
-        multiple = num_optimization_runs // len(bounds)
-        bounds = bounds * multiple
-    else:
-        bounds = [spo.Bounds(space.lower, space.upper)] * num_optimization_runs
+    # Get the bounds for the optimization
+    bounds = get_bounds_of_optimization(space, starting_points)
 
     # Initialize the numpy arrays to be passed to the greenlets
     np_batch_x = np.zeros((num_optimization_runs, tf.shape(starting_points)[-1]), dtype=np.float64)
@@ -775,6 +738,70 @@ def get_bounds_of_box_relaxation_around_point(
             subspace_value = space.get_subspace_component(tag, current_point)
             space_with_fixed_discrete = space_with_fixed_discrete.fix_subspace(tag, subspace_value)
     return spo.Bounds(space_with_fixed_discrete.lower, space_with_fixed_discrete.upper)
+
+
+def get_bounds_of_optimization(space: SearchSpace, starting_points: TensorType) -> List[spo.Bounds]:
+    """
+    A function to return the bounds of the optimization for each of the
+    individual optimization runs. This function is used to provide the
+    bounds for the Scipy optimizer.
+
+    :param space: The original search space.
+    :param starting_points: The points at which to begin our optimizations of shape
+        [num_optimization_runs, V, D]. The leading dimension of
+        `starting_points` controls the number of individual optimization runs
+        for each of the V target functions.
+    :return: A list of bounds for the Scipy optimizer. The length of the list
+        is equal to the number of individual optimization runs, i.e. `num_optimization_runs` x `V`.
+    """
+
+    num_optimization_runs_per_function, V, D = starting_points.shape
+    num_total_optimization_runs = num_optimization_runs_per_function * V
+
+    if isinstance(
+        space, TaggedProductSearchSpace
+    ):  # build continuous relaxation of discrete subspaces
+        vectorized_starting_points = tf.reshape(
+            starting_points, [-1, D]
+        )  # [num_total_optimization_runs, D]
+        bounds = [
+            get_bounds_of_box_relaxation_around_point(space, vectorized_starting_points[i : i + 1])
+            for i in tf.range(num_total_optimization_runs)
+        ]
+    elif isinstance(space, TaggedMultiSearchSpace):
+        subspaces = [space.get_subspace(tag) for tag in space.subspace_tags]
+        # The vectorization `V` of the target function must be a multple of the number of subspaces.
+        remainder = V % len(subspaces)
+        tf.debugging.assert_equal(
+            remainder,
+            0,
+            message=(
+                f"""
+                The vectorization of the target function {V} must be a multiple of the number of
+                subspaces {len(subspaces)}.
+                """
+            ),
+        )
+        multiple = V // len(subspaces)
+        subspaces = subspaces * multiple
+
+        # Create a sequence of bounds for each optimization run, per subspace.
+        # For product subspaces, we build a continuous relaxation of the discrete subspaces.
+        # Otherwise, we use the original bounds.
+        bounds = [
+            [
+                get_bounds_of_box_relaxation_around_point(ss, starting_points[i : i + 1, j])
+                if isinstance(ss, TaggedProductSearchSpace)
+                else spo.Bounds(ss.lower, ss.upper)
+                for j, ss in enumerate(subspaces)
+            ]
+            for i in tf.range(num_optimization_runs_per_function)
+        ]
+        bounds = list(chain.from_iterable(bounds))
+    else:
+        bounds = [spo.Bounds(space.lower, space.upper)] * num_total_optimization_runs
+
+    return bounds
 
 
 def batchify_joint(

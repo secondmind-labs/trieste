@@ -36,6 +36,7 @@ from trieste.acquisition.optimizer import (
     generate_initial_points,
     generate_random_search_optimizer,
     get_bounds_of_box_relaxation_around_point,
+    get_bounds_of_optimization,
     optimize_discrete,
     sample_from_space,
 )
@@ -565,6 +566,121 @@ def test_get_bounds_of_box_relaxation_around_point(
     bounds = get_bounds_of_box_relaxation_around_point(search_space, point)
     npt.assert_array_equal(bounds.lb, lower)
     npt.assert_array_equal(bounds.ub, upper)
+
+
+def test_get_bounds_of_optimization_raises_on_incorrect_num_subspaces() -> None:
+    search_space = TaggedMultiSearchSpace([Box([-1], [2]), Box([3], [4])])
+    points = tf.ones([4, 3, 1], dtype=tf.float64)
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES, match="The vectorization of the target function"):
+        get_bounds_of_optimization(search_space, points)
+
+
+@pytest.mark.parametrize(
+    "search_space, exp_bounds",
+    [
+        (Box([-1], [2]), [(-1, 2)] * 12),
+        (TaggedProductSearchSpace([Box([-1], [2]), Box([3], [4])]), [([-1, 3], [2, 4])] * 12),
+        (TaggedMultiSearchSpace([Box([-1], [2]), Box([3], [4])]), [(-1, 2), (3, 4)] * 6),
+        (
+            TaggedMultiSearchSpace([TaggedProductSearchSpace([Box([-1], [2]), Box([3], [4])])]),
+            [([-1, 3], [2, 4])] * 12,
+        ),
+        (
+            TaggedMultiSearchSpace(
+                [
+                    TaggedProductSearchSpace([Box([-1], [2]), Box([3], [4])]),
+                    TaggedProductSearchSpace([Box([-3], [0]), Box([7], [8])]),
+                ]
+            ),
+            [([-1, 3], [2, 4]), ([-3, 7], [0, 8])] * 6,
+        ),
+        (
+            TaggedProductSearchSpace([Box([-1], [2]), DiscreteSearchSpace([[-0.5], [0.2]])]),
+            [  # Expect use of get_bounds_of_box_relaxation_around_point.
+                ([-1, 11], [2, 11]),
+                ([-1, 13], [2, 13]),
+                ([-1, 15], [2, 15]),
+                ([-1, 17], [2, 17]),
+                ([-1, 21], [2, 21]),
+                ([-1, 23], [2, 23]),
+                ([-1, 25], [2, 25]),
+                ([-1, 27], [2, 27]),
+                ([-1, 31], [2, 31]),
+                ([-1, 33], [2, 33]),
+                ([-1, 35], [2, 35]),
+                ([-1, 37], [2, 37]),
+            ],
+        ),
+        (
+            TaggedMultiSearchSpace(
+                [DiscreteSearchSpace([[-0.5], [0.2]]), DiscreteSearchSpace([[1.0], [-0.2], [3.7]])]
+            ),
+            [(-0.5, 0.2), (-0.2, 3.7)] * 6,
+        ),
+        (
+            TaggedMultiSearchSpace(
+                [TaggedProductSearchSpace([Box([-1], [2]), DiscreteSearchSpace([[-0.5], [0.2]])])]
+            ),
+            [  # Expect use of get_bounds_of_box_relaxation_around_point.
+                ([-1, 11], [2, 11]),
+                ([-1, 13], [2, 13]),
+                ([-1, 15], [2, 15]),
+                ([-1, 17], [2, 17]),
+                ([-1, 21], [2, 21]),
+                ([-1, 23], [2, 23]),
+                ([-1, 25], [2, 25]),
+                ([-1, 27], [2, 27]),
+                ([-1, 31], [2, 31]),
+                ([-1, 33], [2, 33]),
+                ([-1, 35], [2, 35]),
+                ([-1, 37], [2, 37]),
+            ],
+        ),
+        (
+            TaggedMultiSearchSpace(
+                [
+                    TaggedProductSearchSpace(
+                        [Box([-1], [2]), DiscreteSearchSpace([[-0.5], [0.2]])]
+                    ),
+                    TaggedProductSearchSpace(
+                        [Box([-3], [0]), DiscreteSearchSpace([[1.0], [-0.2], [3.7]])]
+                    ),
+                ]
+            ),
+            [  # Expect use of get_bounds_of_box_relaxation_around_point.
+                ([-1, 11], [2, 11]),
+                ([-3, 13], [0, 13]),
+                ([-1, 15], [2, 15]),
+                ([-3, 17], [0, 17]),
+                ([-1, 21], [2, 21]),
+                ([-3, 23], [0, 23]),
+                ([-1, 25], [2, 25]),
+                ([-3, 27], [0, 27]),
+                ([-1, 31], [2, 31]),
+                ([-3, 33], [0, 33]),
+                ([-1, 35], [2, 35]),
+                ([-3, 37], [0, 37]),
+            ],
+        ),
+    ],
+)
+def test_get_bounds_of_optimization(
+    search_space: SearchSpace, exp_bounds: list[Tuple[TensorType, TensorType]]
+) -> None:
+    points = tf.constant(
+        [
+            [[10, 11], [12, 13], [14, 15], [16, 17]],
+            [[20, 21], [22, 23], [24, 25], [26, 27]],
+            [[30, 31], [32, 33], [34, 35], [36, 37]],
+        ],
+        dtype=tf.float64,
+    )
+    bounds = get_bounds_of_optimization(search_space, points)
+
+    assert len(bounds) == 12
+    for exp, b in zip(exp_bounds, bounds):
+        npt.assert_array_equal(exp[0], b.lb)
+        npt.assert_array_equal(exp[1], b.ub)
 
 
 def test_batchify_joint_raises_with_invalid_batch_size() -> None:
