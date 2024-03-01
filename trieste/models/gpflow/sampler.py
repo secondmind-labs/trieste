@@ -49,7 +49,10 @@ _IntTensorType = Union[tf.Tensor, int]
 
 
 def qmc_normal_samples(
-    num_samples: _IntTensorType, n_sample_dim: _IntTensorType, skip: _IntTensorType = 0
+    num_samples: _IntTensorType,
+    n_sample_dim: _IntTensorType,
+    skip: _IntTensorType = 0,
+    dtype: tf.DType = tf.float64,
 ) -> tf.Tensor:
     """
     Generates `num_samples` sobol samples, skipping the first `skip`, where each
@@ -57,18 +60,18 @@ def qmc_normal_samples(
     """
 
     if num_samples == 0 or n_sample_dim == 0:
-        return tf.zeros(shape=(num_samples, n_sample_dim), dtype=tf.float64)
+        return tf.zeros(shape=(num_samples, n_sample_dim), dtype=dtype)
 
     sobol_samples = tf.math.sobol_sample(
         dim=n_sample_dim,
         num_results=num_samples,
-        dtype=tf.float64,
+        dtype=dtype,
         skip=skip,
     )
 
     dist = tfp.distributions.Normal(
-        loc=tf.constant(0.0, dtype=tf.float64),
-        scale=tf.constant(1.0, dtype=tf.float64),
+        loc=tf.constant(0.0, dtype=dtype),
+        scale=tf.constant(1.0, dtype=dtype),
     )
     normal_samples = dist.quantile(sobol_samples)
     return normal_samples
@@ -138,10 +141,12 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
                     IndependentReparametrizationSampler.skip.assign(skip + self._sample_size)
                 else:
                     skip = tf.constant(0)
-                normal_samples = qmc_normal_samples(self._sample_size, mean.shape[-1], skip)
+                normal_samples = qmc_normal_samples(
+                    self._sample_size, mean.shape[-1], skip, dtype=var.dtype
+                )
             else:
                 normal_samples = tf.random.normal(
-                    [self._sample_size, tf.shape(mean)[-1]], dtype=tf.float64
+                    [self._sample_size, tf.shape(mean)[-1]], dtype=var.dtype
                 )
             return normal_samples  # [S, L]
 
@@ -154,7 +159,7 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
             lambda: self._eps.assign(sample_eps()),
         )
 
-        return mean + tf.sqrt(var) * tf.cast(self._eps[:, None, :], var.dtype)  # [..., S, 1, L]
+        return mean + tf.sqrt(var) * self._eps[:, None, :]  # [..., S, 1, L]
 
 
 class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoint]):
