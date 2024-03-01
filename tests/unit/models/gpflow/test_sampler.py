@@ -254,6 +254,19 @@ def test_independent_reparametrization_sampler_samples_are_distinct_for_new_inst
 
 @pytest.mark.parametrize("qmc", [True, False])
 @pytest.mark.parametrize("qmc_skip", [True, False])
+@pytest.mark.parametrize("dtype", [tf.float32, tf.float64])
+def test_independent_reparametrization_sampler_dtype(
+    qmc: bool, qmc_skip: bool, dtype: tf.DType
+) -> None:
+    model = QuadraticMeanAndRBFKernel()
+    sampler = IndependentReparametrizationSampler(2, model, qmc=qmc, qmc_skip=qmc_skip)
+    xs = tf.random.uniform([5, 1, 2], minval=-10.0, maxval=10.0, dtype=dtype)
+    samples = sampler.sample(xs)
+    assert samples.dtype is dtype
+
+
+@pytest.mark.parametrize("qmc", [True, False])
+@pytest.mark.parametrize("qmc_skip", [True, False])
 def test_independent_reparametrization_sampler_reset_sampler(qmc: bool, qmc_skip: bool) -> None:
     sampler = IndependentReparametrizationSampler(100, _dim_two_gp(), qmc=qmc, qmc_skip=qmc_skip)
     assert not sampler._initialized
@@ -885,12 +898,19 @@ def test_rff_and_decoupled_trajectory_give_similar_results(
     )  # variance across samples should (very) roughly agree for different samplers
 
 
-@pytest.mark.parametrize("n_sample_dim", [2, 5])
+@pytest.mark.parametrize("n_sample_dim", [0, 2, 5])
 @pytest.mark.parametrize("skip", [0, 10_000])
-def test_qmc_samples_return_standard_normal_samples(n_sample_dim: int, skip: int) -> None:
+@pytest.mark.parametrize("dtype", [tf.float32, tf.float64])
+def test_qmc_samples_return_standard_normal_samples(
+    n_sample_dim: int, skip: int, dtype: tf.DType
+) -> None:
     n_samples = 10_000
 
-    qmc_samples = qmc_normal_samples(num_samples=n_samples, n_sample_dim=n_sample_dim, skip=skip)
+    qmc_samples = qmc_normal_samples(
+        num_samples=n_samples, n_sample_dim=n_sample_dim, skip=skip, dtype=dtype
+    )
+    assert qmc_samples.dtype is dtype
+    assert qmc_samples.shape == (n_samples, n_sample_dim)
 
     # should be multivariate normal with zero correlation
     for i in range(n_sample_dim):

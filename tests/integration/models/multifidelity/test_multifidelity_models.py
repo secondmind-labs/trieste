@@ -5,6 +5,7 @@ import tensorflow as tf
 from tensorflow.keras.metrics import mean_squared_error
 
 import trieste
+from tests.util.misc import random_seed
 from trieste.data import (
     Dataset,
     add_fidelity_column,
@@ -144,6 +145,7 @@ def test_multifidelity_nonlinear_autoregressive_results_better_than_linear() -> 
     assert mses[0] < mses[1]
 
 
+@random_seed
 def test_multifidelity_autoregressive_gets_expected_rhos() -> None:
     input_dim = 1
     lb = np.zeros(input_dim)
