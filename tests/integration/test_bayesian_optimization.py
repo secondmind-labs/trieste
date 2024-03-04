@@ -610,7 +610,7 @@ def _test_optimizer_finds_minimum(
     single_precision: bool = False,
 ) -> None:
     model_args = model_args or {}
-    dtype = tf.float32 if single_precision else tf.float64
+    test_dtype = tf.float32 if single_precision else tf.float64
 
     if optimize_branin:
         search_space = ScaledBranin.search_space
@@ -636,10 +636,10 @@ def _test_optimizer_finds_minimum(
     # ensure there are no unnecessary casts from float64 to float32 or vice versa
     original_tf_cast = tf.cast
 
-    def patched_tf_cast(val: TensorType, target_dtype: tf.DType) -> TensorType:
-        if val.dtype is dtype and target_dtype != dtype:
-            raise ValueError(f"unexpected cast: {val} to {target_dtype}")
-        return original_tf_cast(val, target_dtype)
+    def patched_tf_cast(x: TensorType, dtype: tf.DType) -> TensorType:
+        if x.dtype in (tf.float32, tf.float64) and x.dtype != dtype:
+            raise ValueError(f"unexpected cast: {x} to {dtype}")
+        return original_tf_cast(x, dtype)
 
     with patch("tensorflow.cast", side_effect=patched_tf_cast):
         if model_type in [SparseVariational, DeepEnsemble]:
@@ -648,12 +648,12 @@ def _test_optimizer_finds_minimum(
             num_initial_query_points = 25
 
         initial_query_points = search_space.sample(num_initial_query_points)
-        assert initial_query_points.dtype is dtype
+        assert initial_query_points.dtype is test_dtype
         observer = mk_observer(
             ScaledBranin.objective if optimize_branin else SimpleQuadratic.objective
         )
         initial_data = observer(initial_query_points)
-        assert initial_data.observations.dtype is dtype
+        assert initial_data.observations.dtype is test_dtype
 
         if isinstance(acquisition_rule, tuple):
             acquisition_rule, num_models = acquisition_rule
@@ -765,7 +765,7 @@ def _test_optimizer_finds_minimum(
                         assert isinstance(step_history, FrozenRecord)
                         step_observations = step_history.load().dataset.observations
                         new_observations = step_observations[num_points:]
-                        assert new_observations.dtype is dtype
+                        assert new_observations.dtype is test_dtype
                         if tf.math.reduce_min(new_observations) < best_initial:
                             better_than_initial += 1
                         num_points = len(step_observations)
@@ -774,8 +774,8 @@ def _test_optimizer_finds_minimum(
                 else:
                     # this actually checks that we solved the problem
                     best_x, best_y, _ = result.try_get_optimal_point()
-                    assert best_x.dtype is dtype
-                    assert best_y.dtype is dtype
+                    assert best_x.dtype is test_dtype
+                    assert best_y.dtype is test_dtype
 
                     minimizer_err = tf.abs((best_x - minimizers) / minimizers)
                     assert tf.reduce_any(tf.reduce_all(minimizer_err < 0.05, axis=-1), axis=0)
