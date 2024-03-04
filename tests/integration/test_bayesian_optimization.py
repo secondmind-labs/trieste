@@ -637,7 +637,7 @@ def _test_optimizer_finds_minimum(
     original_tf_cast = tf.cast
 
     def patched_tf_cast(x: TensorType, dtype: tf.DType) -> TensorType:
-        if x.dtype in (tf.float32, tf.float64) and x.dtype != dtype:
+        if isinstance(x, tf.Tensor) and x.dtype in (tf.float32, tf.float64) and x.dtype != dtype:
             raise ValueError(f"unexpected cast: {x} to {dtype}")
         return original_tf_cast(x, dtype)
 
