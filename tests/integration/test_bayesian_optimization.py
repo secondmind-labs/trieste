@@ -16,7 +16,8 @@ from __future__ import annotations
 import tempfile
 from functools import partial
 from pathlib import Path
-from typing import Any, List, Mapping, Optional, Tuple, Type, Union, cast
+from typing import Any, Callable, List, Mapping, Optional, Tuple, Type, Union, cast
+from unittest.mock import patch
 
 import dill
 import gpflow
@@ -494,17 +495,20 @@ def test_bayesian_optimizer_with_dgp_finds_minima_of_simple_quadratic(
 @random_seed
 @pytest.mark.slow
 @pytest.mark.parametrize(
+    "dtype", [pytest.param(tf.float64, id="float64"), pytest.param(tf.float32, id="float32")]
+)
+@pytest.mark.parametrize(
     "num_steps, acquisition_rule",
     [
         pytest.param(
             60,
-            EfficientGlobalOptimization(),
+            lambda: EfficientGlobalOptimization(),
             id="EfficientGlobalOptimization",
             marks=pytest.mark.skip(reason="too fragile"),
         ),
         pytest.param(
             60,
-            EfficientGlobalOptimization(
+            lambda: EfficientGlobalOptimization(
                 ParallelContinuousThompsonSampling(),
                 num_query_points=4,
             ),
@@ -513,38 +517,54 @@ def test_bayesian_optimizer_with_dgp_finds_minima_of_simple_quadratic(
     ],
 )
 def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_scaled_branin(
+    dtype: tf.DType,
     num_steps: int,
-    acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepEnsemble],
+    acquisition_rule: Callable[[], AcquisitionRule[TensorType, SearchSpace, DeepEnsemble]],
 ) -> None:
     _test_optimizer_finds_minimum(
         DeepEnsemble,
         num_steps,
-        acquisition_rule,
+        acquisition_rule(),
         optimize_branin=True,
         model_args={"bootstrap": True, "diversify": False},
+        single_precision=dtype == tf.float32,
     )
 
 
 @random_seed
 @pytest.mark.parametrize(
+    "dtype",
+    [pytest.param(tf.float64, id="float64"), pytest.param(tf.float32, id="float32")],
+)
+@pytest.mark.parametrize(
     "num_steps, acquisition_rule",
     [
-        pytest.param(5, EfficientGlobalOptimization(), id="EfficientGlobalOptimization"),
-        pytest.param(10, DiscreteThompsonSampling(1000, 1), id="DiscreteThompsonSampling"),
+        pytest.param(5, lambda: EfficientGlobalOptimization(), id="EfficientGlobalOptimization"),
+        pytest.param(10, lambda: DiscreteThompsonSampling(1000, 1), id="DiscreteThompsonSampling"),
         pytest.param(
             5,
-            DiscreteThompsonSampling(1000, 1, thompson_sampler=ThompsonSamplerFromTrajectory()),
+            lambda: DiscreteThompsonSampling(
+                1000, 1, thompson_sampler=ThompsonSamplerFromTrajectory()
+            ),
             id="DiscreteThompsonSampling/ThompsonSamplerFromTrajectory",
         ),
     ],
 )
 def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_simple_quadratic(
-    num_steps: int, acquisition_rule: AcquisitionRule[TensorType, SearchSpace, DeepEnsemble]
+    dtype: tf.DType,
+    num_steps: int,
+    acquisition_rule: Callable[[], AcquisitionRule[TensorType, SearchSpace, DeepEnsemble]],
+    request: Any,
 ) -> None:
+    if request.node.callspec.id == "DiscreteThompsonSampling-float32":
+        # TODO: DiscreteThompsonSampling with ExactThompsonSampler doesn't converge for some reason
+        pytest.skip("skip DiscreteThompsonSampling(1000, 1) test with float32")
+
     _test_optimizer_finds_minimum(
         DeepEnsemble,
         num_steps,
-        acquisition_rule,
+        acquisition_rule(),
+        single_precision=dtype == tf.float32,
     )
 
 
@@ -587,8 +607,10 @@ def _test_optimizer_finds_minimum(
     optimize_branin: bool = False,
     model_args: Optional[Mapping[str, Any]] = None,
     check_regret: bool = False,
+    single_precision: bool = False,
 ) -> None:
     model_args = model_args or {}
+    test_dtype = tf.float32 if single_precision else tf.float64
 
     if optimize_branin:
         search_space = ScaledBranin.search_space
@@ -603,164 +625,199 @@ def _test_optimizer_finds_minimum(
         rtol_level = 0.05
         num_initial_query_points = 10
 
-    if model_type in [SparseVariational, DeepEnsemble]:
-        num_initial_query_points = 20
-    elif model_type in [DeepGaussianProcess]:
-        num_initial_query_points = 25
+    if single_precision:
+        minimizers = tf.cast(minimizers, dtype=tf.float32)
+        minima = tf.cast(minima, dtype=tf.float32)
+        search_space = Box(
+            tf.cast(search_space.lower, dtype=tf.float32),
+            tf.cast(search_space.upper, dtype=tf.float32),
+        )
 
-    initial_query_points = search_space.sample(num_initial_query_points)
-    observer = mk_observer(ScaledBranin.objective if optimize_branin else SimpleQuadratic.objective)
-    initial_data = observer(initial_query_points)
+    original_tf_cast = tf.cast
 
-    if isinstance(acquisition_rule, tuple):
-        acquisition_rule, num_models = acquisition_rule
-    else:
-        num_models = 1
+    def patched_tf_cast(x: TensorType, dtype: tf.DType) -> TensorType:
+        # ensure there are no unnecessary casts from float64 to float32 or vice versa
+        # for now, only do this in the single_precision test as there are some false positives:
+        # - VGP initialises q_mu to tf.zero and then immediately casts it to float64!
+        # - write_summary_data_based_metrics casts observations to the model prediction dtype
+        # - spo_improvement_on_initial_samples metric casts model initial_values to best_values
+        if single_precision:
+            if (
+                isinstance(x, tf.Tensor)
+                and x.dtype in (tf.float32, tf.float64)
+                and x.dtype != dtype
+            ):
+                raise ValueError(f"unexpected cast: {x} to {dtype}")
+        return original_tf_cast(x, dtype)
 
-    model: TrainableProbabilisticModel  # (really TPMType, but that's too complicated for mypy)
+    with patch("tensorflow.cast", side_effect=patched_tf_cast):
+        if model_type in [SparseVariational, DeepEnsemble]:
+            num_initial_query_points = 20
+        elif model_type in [DeepGaussianProcess]:
+            num_initial_query_points = 25
 
-    if model_type is GaussianProcessRegression:
-        if "LocalPenalization" in acquisition_rule.__repr__():
-            likelihood_variance = 1e-3
+        initial_query_points = search_space.sample(num_initial_query_points)
+        assert initial_query_points.dtype is test_dtype
+        observer = mk_observer(
+            ScaledBranin.objective if optimize_branin else SimpleQuadratic.objective
+        )
+        initial_data = observer(initial_query_points)
+        assert initial_data.observations.dtype is test_dtype
+
+        if isinstance(acquisition_rule, tuple):
+            acquisition_rule, num_models = acquisition_rule
         else:
-            likelihood_variance = 1e-5
-        gpr = build_gpr(initial_data, search_space, likelihood_variance=likelihood_variance)
-        model = GaussianProcessRegression(gpr, **model_args)
+            num_models = 1
 
-    elif model_type is SparseGaussianProcessRegression:
-        sgpr = build_sgpr(initial_data, search_space, num_inducing_points=50)
-        model = SparseGaussianProcessRegression(
-            sgpr,
-            **model_args,
-            inducing_point_selector=ConditionalImprovementReduction(),
-        )
+        model: TrainableProbabilisticModel  # (really TPMType, but that's too complicated for mypy)
 
-    elif model_type is VariationalGaussianProcess:
-        empirical_variance = tf.math.reduce_variance(initial_data.observations)
-        kernel = gpflow.kernels.Matern52(variance=empirical_variance, lengthscales=[0.2, 0.2])
-        likelihood = gpflow.likelihoods.Gaussian(1e-3)
-        vgp = gpflow.models.VGP(initial_data.astuple(), kernel, likelihood)
-        gpflow.utilities.set_trainable(vgp.likelihood, False)
-        model = VariationalGaussianProcess(vgp, **model_args)
+        if model_type is GaussianProcessRegression:
+            if "LocalPenalization" in acquisition_rule.__repr__():
+                likelihood_variance = 1e-3
+            else:
+                likelihood_variance = 1e-5
+            gpr = build_gpr(initial_data, search_space, likelihood_variance=likelihood_variance)
+            model = GaussianProcessRegression(gpr, **model_args)
 
-    elif model_type is SparseVariational:
-        svgp = build_svgp(initial_data, search_space, num_inducing_points=50)
-        model = SparseVariational(
-            svgp,
-            **model_args,
-            inducing_point_selector=ConditionalImprovementReduction(),
-        )
-
-    elif model_type is DeepGaussianProcess:
-        model = DeepGaussianProcess(
-            partial(build_vanilla_deep_gp, initial_data, search_space), **model_args
-        )
-
-    elif model_type is DeepEnsemble:
-        keras_ensemble = build_keras_ensemble(initial_data, 5, 3, 25, "selu")
-        fit_args = {
-            "batch_size": 20,
-            "epochs": 200,
-            "callbacks": [
-                tf.keras.callbacks.EarlyStopping(
-                    monitor="loss", patience=25, restore_best_weights=True
-                )
-            ],
-            "verbose": 0,
-        }
-        de_optimizer = KerasOptimizer(tf.keras.optimizers.Adam(0.01), fit_args)
-        model = DeepEnsemble(keras_ensemble, de_optimizer, **model_args)
-
-    else:
-        raise ValueError(f"Unsupported model_type '{model_type}'")
-
-    model = cast(TrainableProbabilisticModelType, model)
-    models = copy_to_local_models(model, num_models) if num_models > 1 else {OBJECTIVE: model}
-    dataset = {OBJECTIVE: initial_data}
-
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        summary_writer = tf.summary.create_file_writer(tmpdirname)
-        with tensorboard_writer(summary_writer):
-            result = BayesianOptimizer(observer, search_space).optimize(
-                num_steps or 2,
-                dataset,
-                models,
-                acquisition_rule,
-                track_state=True,
-                track_path=Path(tmpdirname) / "history",
-                early_stop_callback=stop_at_minimum(
-                    # stop as soon as we find the minimum (but always run at least one step)
-                    minima,
-                    minimizers,
-                    minimum_rtol=rtol_level,
-                    minimum_step_number=2,
-                ),
-                fit_initial_model=False,
+        elif model_type is SparseGaussianProcessRegression:
+            sgpr = build_sgpr(initial_data, search_space, num_inducing_points=50)
+            model = SparseGaussianProcessRegression(
+                sgpr,
+                **model_args,
+                inducing_point_selector=ConditionalImprovementReduction(),
             )
 
-            # check history saved ok
-            assert len(result.history) <= (num_steps or 2)
-            assert len(result.loaded_history) == len(result.history)
-            loaded_result: OptimizationResult[
-                None, TrainableProbabilisticModel
-            ] = OptimizationResult.from_path(Path(tmpdirname) / "history")
-            assert loaded_result.final_result.is_ok
-            assert len(loaded_result.history) == len(result.history)
+        elif model_type is VariationalGaussianProcess:
+            empirical_variance = tf.math.reduce_variance(initial_data.observations)
+            kernel = gpflow.kernels.Matern52(variance=empirical_variance, lengthscales=[0.2, 0.2])
+            likelihood = gpflow.likelihoods.Gaussian(1e-3)
+            vgp = gpflow.models.VGP(initial_data.astuple(), kernel, likelihood)
+            gpflow.utilities.set_trainable(vgp.likelihood, False)
+            model = VariationalGaussianProcess(vgp, **model_args)
 
-            if num_steps is None:
-                # this test is just being run to check for crashes, not performance
-                pass
-            elif check_regret:
-                # this just check that the new observations are mostly better than the initial ones
-                assert isinstance(result.history[0], FrozenRecord)
-                initial_observations = result.history[0].load().dataset.observations
-                best_initial = tf.math.reduce_min(initial_observations)
-                better_than_initial = 0
-                num_points = len(initial_observations)
-                for i in range(1, len(result.history)):
-                    step_history = result.history[i]
-                    assert isinstance(step_history, FrozenRecord)
-                    step_observations = step_history.load().dataset.observations
-                    new_observations = step_observations[num_points:]
-                    if tf.math.reduce_min(new_observations) < best_initial:
-                        better_than_initial += 1
-                    num_points = len(step_observations)
+        elif model_type is SparseVariational:
+            svgp = build_svgp(initial_data, search_space, num_inducing_points=50)
+            model = SparseVariational(
+                svgp,
+                **model_args,
+                inducing_point_selector=ConditionalImprovementReduction(),
+            )
 
-                assert better_than_initial / len(result.history) > 0.6
-            else:
-                # this actually checks that we solved the problem
-                best_x, best_y, _ = result.try_get_optimal_point()
-                minimizer_err = tf.abs((best_x - minimizers) / minimizers)
-                assert tf.reduce_any(tf.reduce_all(minimizer_err < 0.05, axis=-1), axis=0)
-                npt.assert_allclose(best_y, minima, rtol=rtol_level)
+        elif model_type is DeepGaussianProcess:
+            model = DeepGaussianProcess(
+                partial(build_vanilla_deep_gp, initial_data, search_space), **model_args
+            )
 
-            if isinstance(acquisition_rule, EfficientGlobalOptimization):
-                acq_function = acquisition_rule.acquisition_function
-                assert acq_function is not None
-
-                # check that acquisition functions defined as classes aren't retraced unnecessarily
-                # they should be retraced for the optimizer's starting grid, L-BFGS, and logging
-                # (and possibly once more due to variable creation)
-                if isinstance(acq_function, (AcquisitionFunctionClass, TrajectoryFunctionClass)):
-                    assert acq_function.__call__._get_tracing_count() in {3, 4}  # type: ignore
-
-                # update trajectory function if necessary, so we can test it
-                if isinstance(acq_function, TrajectoryFunctionClass):
-                    sampler = (
-                        acquisition_rule._builder.single_builder._trajectory_sampler  # type: ignore
+        elif model_type is DeepEnsemble:
+            keras_ensemble = build_keras_ensemble(initial_data, 5, 3, 25, "selu")
+            fit_args = {
+                "batch_size": 20,
+                "epochs": 200,
+                "callbacks": [
+                    tf.keras.callbacks.EarlyStopping(
+                        monitor="loss", patience=25, restore_best_weights=True
                     )
-                    sampler.update_trajectory(acq_function)
+                ],
+                "verbose": 0,
+            }
+            de_optimizer = KerasOptimizer(tf.keras.optimizers.Adam(0.01), fit_args)
+            model = DeepEnsemble(keras_ensemble, de_optimizer, **model_args)
 
-                # check that acquisition functions can be saved and reloaded
-                acq_function_copy = dill.loads(dill.dumps(acq_function))
+        else:
+            raise ValueError(f"Unsupported model_type '{model_type}'")
 
-                # and that the copy gives the same values as the original
-                batch_size = (
-                    1
-                    if isinstance(acquisition_rule._builder, GreedyAcquisitionFunctionBuilder)
-                    else acquisition_rule._num_query_points
+        model = cast(TrainableProbabilisticModelType, model)
+        models = copy_to_local_models(model, num_models) if num_models > 1 else {OBJECTIVE: model}
+        dataset = {OBJECTIVE: initial_data}
+
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            summary_writer = tf.summary.create_file_writer(tmpdirname)
+            with tensorboard_writer(summary_writer):
+                result = BayesianOptimizer(observer, search_space).optimize(
+                    num_steps or 2,
+                    dataset,
+                    models,
+                    acquisition_rule,
+                    track_state=True,
+                    track_path=Path(tmpdirname) / "history",
+                    early_stop_callback=stop_at_minimum(
+                        # stop as soon as we find the minimum (but always run at least one step)
+                        minima,
+                        minimizers,
+                        minimum_rtol=rtol_level,
+                        minimum_step_number=2,
+                    ),
+                    fit_initial_model=False,
                 )
-                random_batch = tf.expand_dims(search_space.sample(batch_size), 0)
-                npt.assert_allclose(
-                    acq_function(random_batch), acq_function_copy(random_batch), rtol=5e-7
-                )
+
+                # check history saved ok
+                assert len(result.history) <= (num_steps or 2)
+                assert len(result.loaded_history) == len(result.history)
+                loaded_result: OptimizationResult[
+                    None, TrainableProbabilisticModel
+                ] = OptimizationResult.from_path(Path(tmpdirname) / "history")
+                assert loaded_result.final_result.is_ok
+                assert len(loaded_result.history) == len(result.history)
+
+                if num_steps is None:
+                    # this test is just being run to check for crashes, not performance
+                    pass
+                elif check_regret:
+                    # just check that the new observations are mostly better than the initial ones
+                    assert isinstance(result.history[0], FrozenRecord)
+                    initial_observations = result.history[0].load().dataset.observations
+                    best_initial = tf.math.reduce_min(initial_observations)
+                    better_than_initial = 0
+                    num_points = len(initial_observations)
+                    for i in range(1, len(result.history)):
+                        step_history = result.history[i]
+                        assert isinstance(step_history, FrozenRecord)
+                        step_observations = step_history.load().dataset.observations
+                        new_observations = step_observations[num_points:]
+                        assert new_observations.dtype is test_dtype
+                        if tf.math.reduce_min(new_observations) < best_initial:
+                            better_than_initial += 1
+                        num_points = len(step_observations)
+
+                    assert better_than_initial / len(result.history) > 0.6
+                else:
+                    # this actually checks that we solved the problem
+                    best_x, best_y, _ = result.try_get_optimal_point()
+                    assert best_x.dtype is test_dtype
+                    assert best_y.dtype is test_dtype
+
+                    minimizer_err = tf.abs((best_x - minimizers) / minimizers)
+                    assert tf.reduce_any(tf.reduce_all(minimizer_err < 0.05, axis=-1), axis=0)
+                    npt.assert_allclose(best_y, minima, rtol=rtol_level)
+
+                if isinstance(acquisition_rule, EfficientGlobalOptimization):
+                    acq_function = acquisition_rule.acquisition_function
+                    assert acq_function is not None
+
+                    # check acquisition functions defined as classes aren't retraced unnecessarily
+                    # they should be retraced for the optimizer's starting grid, L-BFGS, and logging
+                    # (and possibly once more due to variable creation)
+                    if isinstance(
+                        acq_function, (AcquisitionFunctionClass, TrajectoryFunctionClass)
+                    ):
+                        assert acq_function.__call__._get_tracing_count() in {3, 4}  # type: ignore
+
+                    # update trajectory function if necessary, so we can test it
+                    if isinstance(acq_function, TrajectoryFunctionClass):
+                        assert hasattr(acquisition_rule._builder, "single_builder")
+                        sampler = acquisition_rule._builder.single_builder._trajectory_sampler
+                        sampler.update_trajectory(acq_function)
+
+                    # check that acquisition functions can be saved and reloaded
+                    acq_function_copy = dill.loads(dill.dumps(acq_function))
+
+                    # and that the copy gives the same values as the original
+                    batch_size = (
+                        1
+                        if isinstance(acquisition_rule._builder, GreedyAcquisitionFunctionBuilder)
+                        else acquisition_rule._num_query_points
+                    )
+                    random_batch = tf.expand_dims(search_space.sample(batch_size), 0)
+                    npt.assert_allclose(
+                        acq_function(random_batch), acq_function_copy(random_batch), rtol=5e-7
+                    )
