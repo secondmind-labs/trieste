@@ -2114,15 +2114,19 @@ def test_trust_region_discrete_update_no_initialize(
     npt.assert_array_equal(location, tr.location)
 
 
+@pytest.mark.parametrize("dtype", [tf.float32, tf.float64])
 @pytest.mark.parametrize("success", [True, False])
 def test_trust_region_discrete_update_size(
-    success: bool, discrete_search_space: DiscreteSearchSpace
+    dtype: tf.DType, success: bool, discrete_search_space: DiscreteSearchSpace
 ) -> None:
+    discrete_search_space = DiscreteSearchSpace(  # Convert to the correct dtype.
+        tf.cast(discrete_search_space.points, dtype=dtype)
+    )
     # Check that update shrinks/expands region on successful/unsuccessful step.
     datasets = {
         OBJECTIVE: Dataset(
-            tf.constant([[5, 4], [0, 1], [1, 1]], dtype=tf.float64),
-            tf.constant([[0.5], [0.3], [1.0]], dtype=tf.float64),
+            tf.constant([[5, 4], [0, 1], [1, 1]], dtype=dtype),
+            tf.constant([[0.5], [0.3], [1.0]], dtype=dtype),
         )
     }
     tr = SingleObjectiveTrustRegionDiscrete(discrete_search_space, min_eps=0.1)
@@ -2130,7 +2134,7 @@ def test_trust_region_discrete_update_size(
 
     # Ensure there is at least one point captured in the region.
     orig_point = tr.sample(1)
-    orig_min = tf.constant([[0.1]], dtype=tf.float64)
+    orig_min = tf.constant([[0.1]], dtype=dtype)
     datasets[OBJECTIVE] = Dataset(
         np.concatenate([datasets[OBJECTIVE].query_points, orig_point], axis=0),
         np.concatenate([datasets[OBJECTIVE].observations, orig_min], axis=0),
@@ -2144,16 +2148,20 @@ def test_trust_region_discrete_update_size(
         new_point = tr.sample(1)
     else:
         # Pick point outside the region.
-        new_point = tf.constant([[1, 1]], dtype=tf.float64)
+        new_point = tf.constant([[1, 1]], dtype=dtype)
 
     # Add a new min point to the dataset.
-    new_min = tf.constant([[-0.1]], dtype=tf.float64)
+    new_min = tf.constant([[-0.1]], dtype=dtype)
     datasets[OBJECTIVE] = Dataset(
         np.concatenate([datasets[OBJECTIVE].query_points, new_point], axis=0),
         np.concatenate([datasets[OBJECTIVE].observations, new_min], axis=0),
     )
     # Update the region.
     tr.update(datasets=datasets)
+
+    assert tr.location.dtype == dtype
+    assert tr.eps.dtype == dtype
+    assert tr.points.dtype == dtype
 
     if success:
         # Check that the location is the new min point.
