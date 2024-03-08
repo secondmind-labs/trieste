@@ -1013,6 +1013,11 @@ class UpdatableTrustRegion(SearchSpace):
         self.region_index = region_index
         self.input_active_dims = input_active_dims
 
+    @property
+    @abstractmethod
+    def needs_init(self) -> bool:
+        """Return `True` if the search space needs to be initialized, and `False` otherwise."""
+
     @abstractmethod
     def initialize(
         self,
@@ -1436,7 +1441,11 @@ class BatchTrustRegion(
         # Update subspaces with the latest datasets.
         assert self._subspaces is not None
         for subspace in self._subspaces:
-            subspace.update(models, datasets)
+            # Re-initialize or update the subspace, depending on the property.
+            if subspace.needs_init:
+                subspace.initialize(models, datasets)
+            else:
+                subspace.update(models, datasets)
         self.maybe_initialize_subspaces(self._subspaces, models, datasets)
 
         # Filter out points that are not in any of the subspaces. This is done by creating a mask
@@ -1550,6 +1559,16 @@ class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox):
         self._update_bounds()
         self._y_min = np.inf
 
+    @property
+    def needs_init(self) -> bool:
+        """
+        Return `True` if the search space needs to be initialized, and `False` otherwise.
+
+        If uninitialized, or the size of the box is less than the minimum size, re-initialize
+        the box.
+        """
+        return not self._initialized or tf.reduce_any(self.eps < self._min_eps)
+
     def _init_eps(self) -> None:
         global_lower = self.global_search_space.lower
         global_upper = self.global_search_space.upper
@@ -1587,8 +1606,7 @@ class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox):
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> None:
         """
-        Update this box, including centre/location, using the given dataset. If the size of the
-        box is less than the minimum size, re-initialize the box.
+        Update this box, including centre/location, using the given dataset.
 
         If the new optimum improves over the previous optimum by some threshold (that scales
         linearly with ``kappa``), the previous acquisition is considered successful.
@@ -1597,10 +1615,6 @@ class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox):
         ``1 / beta``. Conversely, if it was unsuccessful, the size is reduced by the factor
         ``beta``.
         """
-        if not self._initialized or tf.reduce_any(self.eps < self._min_eps):
-            self.initialize(models, datasets)
-            return
-
         datasets = self.select_in_region(datasets)
         x_min, y_min = self.get_dataset_min(datasets)
         self.location = x_min
@@ -1887,6 +1901,10 @@ class TURBOBox(UpdatableTrustRegionBox):
         self.tr_width = global_search_space.upper - global_search_space.lower
         self._update_bounds()
 
+    @property
+    def needs_init(self) -> bool:
+        return not self._initialized
+
     def _set_tr_width(self, models: Optional[Mapping[Tag, ProbabilisticModelType]] = None) -> None:
         # Set the width of the trust region based on the local model.
         if (
@@ -1944,10 +1962,6 @@ class TURBOBox(UpdatableTrustRegionBox):
         models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> None:
-        if not self._initialized:
-            self.initialize(models, datasets)
-            return
-
         # Use the full dataset to determine the best point.
         datasets = self.select_in_region(datasets)
         x_min, y_min = self.get_dataset_min(datasets)
@@ -2052,6 +2066,10 @@ class FixedPointTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
         self._points = self.global_search_space.sample(1)
 
     @property
+    def needs_init(self) -> bool:
+        return False
+
+    @property
     def location(self) -> TensorType:
         """The location point of the region."""
         return tf.squeeze(self._points, axis=0)  # Only one point.
@@ -2128,6 +2146,16 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
         self._y_min = np.inf
 
     @property
+    def needs_init(self) -> bool:
+        """
+        Return `True` if the search space needs to be initialized, and `False` otherwise.
+
+        If uninitialized, or the size of the region is less than the minimum size, re-initialize
+        the region.
+        """
+        return not self._initialized or tf.reduce_any(self.eps < self._min_eps)
+
+    @property
     def location(self) -> TensorType:
         """Center point of the region."""
         return tf.reshape(tf.gather(self.global_search_space.points, self._location_ix), (-1,))
@@ -2194,8 +2222,7 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> None:
         """
-        Update this region, including location and neighbors, using the given dataset. If the
-        size of the region is less than the minimum size, re-initialize the region.
+        Update this region, including location and neighbors, using the given dataset.
 
         If the new optimum improves over the previous optimum by some threshold (that scales
         linearly with ``kappa``), the previous acquisition is considered successful.
@@ -2207,10 +2234,6 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
         :param models: The model for each tag.
         :param datasets: The dataset for each tag.
         """
-
-        if not self._initialized or tf.reduce_any(self.eps < self._min_eps):
-            self.initialize(models, datasets)
-            return
 
         datasets = self.select_in_region(datasets)
         x_min, y_min = self.get_dataset_min(datasets)
@@ -2327,6 +2350,15 @@ class UpdatableTrustRegionProduct(TaggedProductSearchSpace, UpdatableTrustRegion
             )
             region.input_active_dims = slice(dim_ix, dim_ix + dims)
             dim_ix += dims
+
+    @property
+    def needs_init(self) -> bool:
+        """
+        Return `True` if the search space needs to be initialized, and `False` otherwise.
+
+        Re-initialize the whole product region if any of the sub-regions need to be re-initialized.
+        """
+        return any(region.needs_init for region in self.regions.values())
 
     @property
     def region_index(self) -> Optional[int]:

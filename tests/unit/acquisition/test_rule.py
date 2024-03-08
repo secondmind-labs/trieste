@@ -1410,8 +1410,8 @@ def test_trust_region_box_initialize() -> None:
     npt.assert_array_equal(trb._y_min, tf.constant([np.inf], dtype=tf.float64))
 
 
-# Update call initializes the box if eps is smaller than min_eps.
-def test_trust_region_box_update_initialize() -> None:
+# Box requires initialization if eps is smaller than min_eps.
+def test_trust_region_box_needs_initialize() -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     datasets = {
         OBJECTIVE: Dataset(  # Points outside the search space should be ignored.
@@ -1423,15 +1423,17 @@ def test_trust_region_box_update_initialize() -> None:
     trb.initialize(datasets=datasets)
     location = trb.location
 
-    trb.update(datasets=datasets)
+    assert trb.needs_init
+    trb.initialize(datasets=datasets)
     npt.assert_array_compare(np.not_equal, location, trb.location)
     location = trb.location
 
-    trb.update(datasets=datasets)
+    assert trb.needs_init
+    trb.initialize(datasets=datasets)
     npt.assert_array_compare(np.not_equal, location, trb.location)
 
 
-# Update call does not initialize the box if eps is larger than min_eps.
+# Box does not need initialization if eps is larger than min_eps.
 def test_trust_region_box_update_no_initialize() -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     datasets = {
@@ -1449,6 +1451,7 @@ def test_trust_region_box_update_no_initialize() -> None:
     trb.location = tf.constant([0.5, 0.5], dtype=tf.float64)
     location = trb.location
 
+    assert not trb.needs_init
     trb.update(datasets=datasets)
     npt.assert_array_equal(location, trb.location)
 
@@ -1467,6 +1470,7 @@ def test_trust_region_box_update_size(success: bool) -> None:
     trb.initialize(datasets=datasets)
 
     # Ensure there is at least one point captured in the box.
+    assert not trb.needs_init
     orig_point = trb.sample(1)
     orig_min = tf.constant([[0.1]], dtype=tf.float64)
     datasets[OBJECTIVE] = Dataset(
@@ -1485,6 +1489,7 @@ def test_trust_region_box_update_size(success: bool) -> None:
         new_point = tf.constant([[1.2, 1.3]], dtype=tf.float64)
 
     # Add a new min point to the dataset.
+    assert not trb.needs_init
     new_min = tf.constant([[-0.1]], dtype=tf.float64)
     datasets[OBJECTIVE] = Dataset(
         np.concatenate([datasets[OBJECTIVE].query_points, new_point], axis=0),
@@ -1653,6 +1658,40 @@ class TestTrustRegionBox(SingleObjectiveTrustRegionBox):
 
     def _init_eps(self) -> None:
         self.eps = tf.constant(self._init_eps_val, dtype=tf.float64)
+
+
+def test_multi_trust_region_box_inits_regions_that_need_it() -> None:
+    search_space = Box([0.0], [1.0])
+    dataset = mk_dataset([[0.5], [0.6], [0.7]], [[0.1], [0.2], [0.3]])
+    model = QuadraticMeanAndRBFKernelWithSamplers(dataset)
+
+    subspaces = [
+        TestTrustRegionBox(
+            tf.constant([0.5 + i * 0.1], dtype=tf.float64), search_space, min_eps=0.3, init_eps=0.4
+        )
+        for i in range(3)
+    ]
+    for subspace in subspaces:
+        subspace.initialize(datasets={OBJECTIVE: dataset})
+
+    # Change all eps values, with the second region have a lower eps than the min. This region
+    # should be re-initialized.
+    subspaces[0].eps = 0.35
+    subspaces[1].eps = 0.25
+    subspaces[2].eps = 0.32
+
+    # Check the property values.
+    assert bool(subspaces[0].needs_init) is False
+    assert bool(subspaces[1].needs_init) is True
+    assert bool(subspaces[2].needs_init) is False
+
+    mtb = BatchTrustRegionBox(subspaces)  # type: ignore[var-annotated]
+    mtb.filter_datasets({OBJECTIVE: model}, {OBJECTIVE: dataset})
+
+    # Check that the second region was re-initialized.
+    assert subspaces[0].eps < 0.35  # Expect reduction.
+    assert subspaces[1].eps == 0.4  # Expect re-initialized value.
+    assert subspaces[2].eps < 0.32  # Expect reduction.
 
 
 # Start with a defined state and dataset. Acquire should return an updated state.
@@ -1997,6 +2036,7 @@ def test_fixed_trust_region_discrete_update(
     tr = FixedPointTrustRegionDiscrete(discrete_search_space)
     tr.initialize()
     orig_location = tr.location.numpy()
+    assert not tr.needs_init
     tr.update()
     npt.assert_equal(orig_location, tr.location)
 
@@ -2067,10 +2107,10 @@ def test_trust_region_discrete_initialize(discrete_search_space: DiscreteSearchS
     npt.assert_array_equal(tr._y_min, tf.constant([np.inf], dtype=tf.float64))
 
 
-def test_trust_region_discrete_update_initialize(
+def test_trust_region_discrete_needs_initialize(
     discrete_search_space: DiscreteSearchSpace,
 ) -> None:
-    # Check that update call initializes the region if eps is smaller than min_eps.
+    # Region requires initialization if eps is smaller than min_eps.
     datasets = {
         OBJECTIVE: Dataset(  # Points outside the search space should be ignored.
             tf.constant([[1, 2], [-4, -5]], dtype=tf.float64),
@@ -2083,7 +2123,8 @@ def test_trust_region_discrete_update_initialize(
     location = tr.location
     eps = tr.eps
 
-    tr.update(datasets=datasets)
+    assert tr.needs_init
+    tr.initialize(datasets=datasets)
     assert np.any(location != tr.location, axis=-1)
     npt.assert_array_equal(eps, tr.eps)
 
@@ -2091,7 +2132,7 @@ def test_trust_region_discrete_update_initialize(
 def test_trust_region_discrete_update_no_initialize(
     discrete_search_space: DiscreteSearchSpace,
 ) -> None:
-    # Check that update call does not initialize the region if eps is larger than min_eps.
+    # Region does not need initialization if eps is larger than min_eps.
     datasets = {
         OBJECTIVE: Dataset(
             tf.constant(
@@ -2110,6 +2151,7 @@ def test_trust_region_discrete_update_no_initialize(
     tr._update_neighbors()
     location = tr.location
 
+    assert not tr.needs_init
     tr.update(datasets=datasets)
     npt.assert_array_equal(location, tr.location)
 
@@ -2133,6 +2175,7 @@ def test_trust_region_discrete_update_size(
     tr.initialize(datasets=datasets)
 
     # Ensure there is at least one point captured in the region.
+    assert not tr.needs_init
     orig_point = tr.sample(1)
     orig_min = tf.constant([[0.1]], dtype=dtype)
     datasets[OBJECTIVE] = Dataset(
@@ -2151,6 +2194,7 @@ def test_trust_region_discrete_update_size(
         new_point = tf.constant([[1, 1]], dtype=dtype)
 
     # Add a new min point to the dataset.
+    assert not tr.needs_init
     new_min = tf.constant([[-0.1]], dtype=dtype)
     datasets[OBJECTIVE] = Dataset(
         np.concatenate([datasets[OBJECTIVE].query_points, new_point], axis=0),
@@ -2320,6 +2364,33 @@ def test_updatable_tr_product_method_calls_subregions(
                     datasets[key].observations,
                     call_dataset[key].observations,
                 )
+
+
+@pytest.mark.parametrize(
+    "subregions_needs_init, exp_needs_init",
+    [
+        ([True, False], True),
+        ([False, True, False], True),
+        ([True, True, True], True),
+        ([False, False, False], False),
+    ],
+)
+def test_updatable_tr_product_needs_init_checks_subregions(
+    subregions_needs_init: List[bool],
+    exp_needs_init: bool,
+) -> None:
+    regions = [
+        MagicMock(
+            spec=FixedPointTrustRegionDiscrete,
+            region_index=None,
+            input_active_dims=None,
+            dimension=1,
+            needs_init=needs_init,
+        )
+        for needs_init in subregions_needs_init
+    ]
+    tr = UpdatableTrustRegionProduct(regions)
+    assert tr.needs_init == exp_needs_init
 
 
 def test_updatable_tr_product_datasets_filter_mask_raises_on_missing_index() -> None:
