@@ -1014,9 +1014,9 @@ class UpdatableTrustRegion(SearchSpace):
         self.input_active_dims = input_active_dims
 
     @property
-    @abstractmethod
     def needs_init(self) -> bool:
         """Return `True` if the search space needs to be initialized, and `False` otherwise."""
+        return False
 
     @abstractmethod
     def initialize(
@@ -2064,10 +2064,6 @@ class FixedPointTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
         super().__init__(global_search_space, region_index, input_active_dims)
         # Random initial point from the global search space.
         self._points = self.global_search_space.sample(1)
-
-    @property
-    def needs_init(self) -> bool:
-        return False
 
     @property
     def location(self) -> TensorType:
