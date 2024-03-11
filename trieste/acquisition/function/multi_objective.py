@@ -403,7 +403,7 @@ def batch_ehvi(
             q_choose_j = tf.gather(q_subset_indices, j - 1).to_tensor()
             # gather all combinations having j points from q batch points (Cq_j)
             j_sub_samples = tf.gather(samples, q_choose_j, axis=-2)  # [..., S, Cq_j, j, num_obj]
-            hv_contrib += tf.constant((-1) ** (j + 1), dtype=samples.dtype) * hv_contrib_on_samples(
+            hv_contrib += tf.cast((-1) ** (j + 1), dtype=samples.dtype) * hv_contrib_on_samples(
                 j_sub_samples
             )
 
