@@ -201,7 +201,7 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
             self._eps.assign(
                 tf.random.normal(
                     shape=(self._batch_size, self._model.num_outputs),
-                    dtype=tf.float64,
+                    dtype=self._model.dtype,
                     seed=self._seed,
                 )
             )  # [B]
