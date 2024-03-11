@@ -507,7 +507,7 @@ class bayesian_active_learning_by_disagreement(AcquisitionFunctionClass):
         normal = tfp.distributions.Normal(tf.constant(0, mean.dtype), tf.constant(1, mean.dtype))
         p = normal.cdf((mean / tf.sqrt(variance + 1)))
 
-        C2 = (math.pi * tf.math.log(tf.cast(2, mean.dtype))) / 2
+        C2 = (math.pi * tf.math.log(tf.constant(2, mean.dtype))) / 2
         Ef = (tf.sqrt(C2) / tf.sqrt(variance + C2)) * tf.exp(-(mean**2) / (2 * (variance + C2)))
 
         return -p * tf.math.log(p + self._jitter) - (1 - p) * tf.math.log(1 - p + self._jitter) - Ef
