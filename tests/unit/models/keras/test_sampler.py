@@ -244,7 +244,7 @@ def test_ensemble_trajectory_sampler_eps_broadcasted_correctly() -> None:
     trajectory = trajectory_sampler.get_trajectory()
 
     _ = trajectory(test_data)  # first call needed to initialize the state
-    trajectory._eps.assign(tf.constant([[0], [1]], dtype=tf.float32))
+    trajectory._eps.assign(tf.constant([[0], [1]], dtype=tf.float32))  # type: ignore
     evals = trajectory(test_data)
 
     npt.assert_array_less(
