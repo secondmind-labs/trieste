@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import random
 from typing import Any, Callable, Optional, cast
+from unittest.mock import patch
 
 import numpy as np
 import numpy.testing as npt
@@ -74,7 +75,16 @@ def test_ensemble_trajectory_sampler_returns_trajectory_function_with_correctly_
     sampler = DeepEnsembleTrajectorySampler(model, diversify=diversify)
     trajectory = sampler.get_trajectory()
 
-    assert trajectory(test_data).shape == (num_evals, batch_size, num_outputs)
+    original_tf_cast = tf.cast
+
+    def patched_tf_cast(x: TensorType, dtype: tf.DType) -> TensorType:
+        # ensure there are no unnecessary casts from float64 to float32 or vice versa
+        if isinstance(x, tf.Tensor) and x.dtype in (tf.float32, tf.float64) and x.dtype != dtype:
+            raise ValueError(f"unexpected cast: {x} to {dtype}")
+        return original_tf_cast(x, dtype)
+
+    with patch("tensorflow.cast", side_effect=patched_tf_cast):
+        assert trajectory(test_data).shape == (num_evals, batch_size, num_outputs)
 
 
 def test_ensemble_trajectory_sampler_returns_deterministic_trajectory(
