@@ -65,17 +65,11 @@ class DeepGaussianProcessReparamSampler(ReparametrizationSampler[GPfluxPredictor
 
         # Each element of _eps_list is essentially a lazy constant. It is declared and assigned an
         # empty tensor here, and populated on the first call to sample
-        compute_dtypes = {f_layer.compute_dtype for f_layer in self._model_gpflux.f_layers}
-
-        if compute_dtypes == {"float64"}:
-            dtype = tf.float64
-        elif compute_dtypes == {"float32"}:
-            dtype = tf.float32
-        else:
-            raise ValueError(f"Unexpected or mixed dtype in DGP layers: {compute_dtypes}")
-
         self._eps_list = [
-            tf.Variable(tf.ones([sample_size, 0], dtype=dtype), shape=[sample_size, None])
+            tf.Variable(
+                tf.ones([sample_size, 0], dtype=self._model_gpflux.targets.dtype),
+                shape=[sample_size, None],
+            )
             for _ in range(len(self._model_gpflux.f_layers))
         ]
 
