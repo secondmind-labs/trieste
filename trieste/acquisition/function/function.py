@@ -595,7 +595,7 @@ def fast_constraints_feasibility(
     def acquisition(x: TensorType) -> TensorType:
         if smoothing_function is None:
             _smoothing_function = tfp.distributions.Normal(
-                tf.cast(0.0, x.dtype), tf.cast(1e-3, x.dtype)
+                tf.constant(0.0, x.dtype), tf.constant(1e-3, x.dtype)
             ).cdf
         else:
             _smoothing_function = smoothing_function
@@ -637,8 +637,8 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder[ProbabilisticMod
             tf.debugging.assert_less_equal(float(min_feasibility_probability), 1.0)
         else:
             dtype = min_feasibility_probability.dtype
-            tf.debugging.assert_greater_equal(min_feasibility_probability, tf.cast(0, dtype))
-            tf.debugging.assert_less_equal(min_feasibility_probability, tf.cast(1, dtype))
+            tf.debugging.assert_greater_equal(min_feasibility_probability, tf.constant(0, dtype))
+            tf.debugging.assert_less_equal(min_feasibility_probability, tf.constant(1, dtype))
 
         self._objective_tag = objective_tag
         self._constraint_builder = constraint_builder
@@ -1896,7 +1896,7 @@ class multiple_optimism_lower_confidence_bound(AcquisitionFunctionClass):
 
         if not self._initialized:
             normal = tfp.distributions.Normal(
-                tf.cast(0.0, dtype=x.dtype), tf.cast(1.0, dtype=x.dtype)
+                tf.constant(0.0, dtype=x.dtype), tf.constant(1.0, dtype=x.dtype)
             )
             spread = 0.5 + 0.5 * tf.range(1, batch_size + 1, dtype=x.dtype) / (
                 tf.cast(batch_size, dtype=x.dtype) + 1.0

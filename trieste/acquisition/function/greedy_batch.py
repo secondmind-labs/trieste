@@ -347,7 +347,7 @@ class soft_local_penalizer(local_penalizer):
         )
         standardised_distances = (pairwise_distances - self._radius) / self._scale
 
-        normal = tfp.distributions.Normal(tf.cast(0, x.dtype), tf.cast(1, x.dtype))
+        normal = tfp.distributions.Normal(tf.constant(0, x.dtype), tf.constant(1, x.dtype))
         penalization = normal.cdf(standardised_distances)
         return tf.reduce_prod(penalization, axis=-1)
 

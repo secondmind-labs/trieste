@@ -238,7 +238,7 @@ def generate_initial_points(
             remainder = vectorization % tf.shape(candidates)[1]
             tf.debugging.assert_equal(
                 remainder,
-                tf.cast(0, dtype=remainder.dtype),
+                tf.constant(0, dtype=remainder.dtype),
                 message=(
                     f"""
                     The vectorization of the target function {vectorization} must be a multiple of
@@ -436,7 +436,7 @@ def generate_continuous_optimizer(
                 remainder = V % tf.shape(random_points)[1]
                 tf.debugging.assert_equal(
                     remainder,
-                    tf.cast(0, dtype=remainder.dtype),
+                    tf.constant(0, dtype=remainder.dtype),
                     message=(
                         f"""
                         The vectorization of the target function {V} must be a multiple of the batch
@@ -612,7 +612,7 @@ def _perform_parallel_continuous_optimization(
         remainder = V % len(bounds)
         tf.debugging.assert_equal(
             remainder,
-            tf.cast(0, dtype=remainder.dtype),
+            tf.constant(0, dtype=remainder.dtype),
             message=(
                 f"""
                 The vectorization of the target function {V} must be a multiple of the length
