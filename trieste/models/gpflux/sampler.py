@@ -67,9 +67,9 @@ class DeepGaussianProcessReparamSampler(ReparametrizationSampler[GPfluxPredictor
         # empty tensor here, and populated on the first call to sample
         compute_dtypes = {f_layer.compute_dtype for f_layer in self._model_gpflux.f_layers}
 
-        if compute_dtypes == "float64":
+        if compute_dtypes == {"float64"}:
             dtype = tf.float64
-        elif compute_dtypes == "float32":
+        elif compute_dtypes == {"float32"}:
             dtype = tf.float32
         else:
             raise ValueError(f"Unexpected or mixed dtype in DGP layers: {compute_dtypes}")
