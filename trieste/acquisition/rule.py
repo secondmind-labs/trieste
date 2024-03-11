@@ -1014,8 +1014,9 @@ class UpdatableTrustRegion(SearchSpace):
         self.input_active_dims = input_active_dims
 
     @property
-    def needs_init(self) -> bool:
-        """Return `True` if the search space needs to be initialized, and `False` otherwise."""
+    def requires_initialization(self) -> bool:
+        """Return `True` if the search space needs to be re-initialized with the latest models
+        and datasets, and `False` if it can be just updated."""
         return False
 
     @abstractmethod
@@ -1442,7 +1443,7 @@ class BatchTrustRegion(
         assert self._subspaces is not None
         for subspace in self._subspaces:
             # Re-initialize or update the subspace, depending on the property.
-            if subspace.needs_init:
+            if subspace.requires_initialization:
                 subspace.initialize(models, datasets)
             else:
                 subspace.update(models, datasets)
@@ -1560,7 +1561,7 @@ class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox):
         self._y_min = np.inf
 
     @property
-    def needs_init(self) -> bool:
+    def requires_initialization(self) -> bool:
         """
         Return `True` if the search space needs to be initialized, and `False` otherwise.
 
@@ -1902,7 +1903,7 @@ class TURBOBox(UpdatableTrustRegionBox):
         self._update_bounds()
 
     @property
-    def needs_init(self) -> bool:
+    def requires_initialization(self) -> bool:
         return not self._initialized
 
     def _set_tr_width(self, models: Optional[Mapping[Tag, ProbabilisticModelType]] = None) -> None:
@@ -2142,7 +2143,7 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
         self._y_min = np.inf
 
     @property
-    def needs_init(self) -> bool:
+    def requires_initialization(self) -> bool:
         """
         Return `True` if the search space needs to be initialized, and `False` otherwise.
 
@@ -2348,13 +2349,13 @@ class UpdatableTrustRegionProduct(TaggedProductSearchSpace, UpdatableTrustRegion
             dim_ix += dims
 
     @property
-    def needs_init(self) -> bool:
+    def requires_initialization(self) -> bool:
         """
         Return `True` if the search space needs to be initialized, and `False` otherwise.
 
         Re-initialize the whole product region if any of the sub-regions need to be re-initialized.
         """
-        return any(region.needs_init for region in self.regions.values())
+        return any(region.requires_initialization for region in self.regions.values())
 
     @property
     def region_index(self) -> Optional[int]:
