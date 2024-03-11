@@ -244,7 +244,7 @@ def test_ensemble_trajectory_sampler_eps_broadcasted_correctly() -> None:
     trajectory = trajectory_sampler.get_trajectory()
 
     _ = trajectory(test_data)  # first call needed to initialize the state
-    trajectory._eps.assign(tf.constant([[0], [1]], dtype=tf.float64))  # type: ignore
+    trajectory._eps.assign(tf.constant([[0], [1]], dtype=tf.float32))
     evals = trajectory(test_data)
 
     npt.assert_array_less(
@@ -453,7 +453,7 @@ def test_ensemble_trajectory_sampler_returns_state(batch_size: int, diversify: b
     trajectory = cast(deep_ensemble_trajectory, sampler.get_trajectory())
 
     if diversify:
-        dtype = tf.float64
+        dtype = tf.float32
         rnd_state_name = "eps"
     else:
         dtype = tf.int32
