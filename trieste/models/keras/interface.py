@@ -120,3 +120,8 @@ class DeepEnsembleModel(ProbabilisticModel, Protocol):
             of the ensemble.
         """
         raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def dtype(self) -> tf.DType:
+        """The prediction dtype."""

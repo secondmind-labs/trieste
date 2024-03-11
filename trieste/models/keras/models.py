@@ -289,6 +289,14 @@ class DeepEnsemble(
 
         return unflatten(predicted_means), unflatten(predicted_vars)
 
+    @property
+    def dtype(self) -> tf.DType:
+        """The prediction dtype."""
+        if self._model.model.dtype == "float64":
+            return tf.float64
+        else:
+            return tf.float32
+
     def predict_ensemble(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
         Returns mean and variance at ``query_points`` for each member of the ensemble. First tensor
