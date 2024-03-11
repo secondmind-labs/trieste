@@ -1012,12 +1012,13 @@ class UpdatableTrustRegion(SearchSpace):
         """
         self.region_index = region_index
         self.input_active_dims = input_active_dims
+        self._initialized = False
 
     @property
     def requires_initialization(self) -> bool:
         """Return `True` if the search space needs to be re-initialized with the latest models
         and datasets, and `False` if it can be just updated."""
-        return False
+        return not self._initialized
 
     @abstractmethod
     def initialize(
@@ -1553,7 +1554,6 @@ class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox):
         self._kappa = kappa
         self._min_eps = min_eps
 
-        self._initialized = False
         self._step_is_success = False
         self.eps = 0.0
         self._init_eps()
@@ -1896,15 +1896,10 @@ class TURBOBox(UpdatableTrustRegionBox):
                 f"success tolerance must be an integer greater than 0, got {self.failure_tolerance}"
             )
 
-        self._initialized = False
         self.y_min = np.inf
         # Initialise to the full global search space size.
         self.tr_width = global_search_space.upper - global_search_space.lower
         self._update_bounds()
-
-    @property
-    def requires_initialization(self) -> bool:
-        return not self._initialized
 
     def _set_tr_width(self, models: Optional[Mapping[Tag, ProbabilisticModelType]] = None) -> None:
         # Set the width of the trust region based on the local model.
@@ -2078,6 +2073,7 @@ class FixedPointTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
     ) -> None:
         # Pick a random point from the global search space.
         self._points = self.global_search_space.sample(1)
+        self._initialized = True
 
     def update(
         self,
@@ -2134,7 +2130,6 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
         self._beta = beta
         self._kappa = kappa
         self._min_eps = min_eps
-        self._initialized = False
         self._step_is_success = False
         self._init_location()
         self._compute_global_distances()
@@ -2402,6 +2397,8 @@ class UpdatableTrustRegionProduct(TaggedProductSearchSpace, UpdatableTrustRegion
     ) -> None:
         for region in self.regions.values():
             region.initialize(models, datasets, *args, **kwargs)
+        # This is not used for the product region, but set it for consistency.
+        self._initialized = True
 
     def update(
         self,
