@@ -26,6 +26,7 @@ import tensorflow_probability as tfp
 from check_shapes.exceptions import ShapeMismatchError
 from scipy import stats
 
+from tests.unit.models.gpflow.test_interface import _QuadraticPredictor
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, quadratic, random_seed
 from tests.util.models.gpflow.models import (
     GaussianProcess,
@@ -353,9 +354,12 @@ def test_batch_reparametrization_sampler_samples_are_repeatable(qmc: bool, qmc_s
 
 @pytest.mark.parametrize("qmc", [True, False])
 @pytest.mark.parametrize("qmc_skip", [True, False])
-def test_batch_reparametrization_sampler_doesnt_cast(qmc: bool, qmc_skip: bool) -> None:
-    sampler = BatchReparametrizationSampler(100, _dim_two_gp(), qmc=qmc, qmc_skip=qmc_skip)
-    xs = tf.random.uniform([3, 5, 7, 2], dtype=tf.float64)
+@pytest.mark.parametrize("dtype", [tf.float32, tf.float64])
+def test_batch_reparametrization_sampler_doesnt_cast(
+    qmc: bool, qmc_skip: bool, dtype: tf.DType
+) -> None:
+    sampler = BatchReparametrizationSampler(100, _QuadraticPredictor(), qmc=qmc, qmc_skip=qmc_skip)
+    xs = tf.random.uniform([3, 1, 7, 7], dtype=dtype)
 
     original_tf_cast = tf.cast
 
