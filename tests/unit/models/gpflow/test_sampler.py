@@ -370,7 +370,9 @@ def test_batch_reparametrization_sampler_doesnt_cast(
         return original_tf_cast(x, dtype)
 
     with patch("tensorflow.cast", side_effect=patched_tf_cast):
-        npt.assert_allclose(sampler.sample(xs), sampler.sample(xs))
+        samples = sampler.sample(xs)
+        assert samples.dtype is dtype
+        npt.assert_allclose(samples, sampler.sample(xs))
 
 
 @pytest.mark.parametrize("qmc", [True, False])
