@@ -56,19 +56,23 @@ def _num_outputs_fixture(request: Any) -> int:
     return request.param
 
 
+@pytest.mark.parametrize(
+    "dtype", [pytest.param(tf.float64, id="float64"), pytest.param(tf.float32, id="float32")]
+)
 def test_ensemble_trajectory_sampler_returns_trajectory_function_with_correctly_shaped_output(
     num_evals: int,
     batch_size: int,
     dim: int,
     diversify: bool,
     num_outputs: int,
+    dtype: tf.DType,
 ) -> None:
     """
     Inputs should be [N,B,d] while output should be [N,B,M]. Note that for diversify
     option only single output models are allowed.
     """
-    example_data = empty_dataset([dim], [num_outputs])
-    test_data = tf.random.uniform([num_evals, batch_size, dim])  # [N, B, d]
+    example_data = empty_dataset([dim], [num_outputs], dtype)
+    test_data = tf.random.uniform([num_evals, batch_size, dim], dtype=dtype)  # [N, B, d]
 
     model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE)
 
@@ -84,7 +88,9 @@ def test_ensemble_trajectory_sampler_returns_trajectory_function_with_correctly_
         return original_tf_cast(x, dtype)
 
     with patch("tensorflow.cast", side_effect=patched_tf_cast):
-        assert trajectory(test_data).shape == (num_evals, batch_size, num_outputs)
+        samples = trajectory(test_data)
+        assert samples.dtype == dtype
+        assert samples.shape == (num_evals, batch_size, num_outputs)
 
 
 def test_ensemble_trajectory_sampler_returns_deterministic_trajectory(

@@ -292,10 +292,7 @@ class DeepEnsemble(
     @property
     def dtype(self) -> tf.DType:
         """The prediction dtype."""
-        if self._model.model.dtype == "float64":
-            return tf.float64
-        else:
-            return tf.float32
+        return self._model.output_dtype
 
     def predict_ensemble(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
