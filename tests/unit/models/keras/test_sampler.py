@@ -239,7 +239,7 @@ def test_ensemble_trajectory_sampler_eps_broadcasted_correctly() -> None:
     """
     We check if eps are broadcasted correctly in diversify mode.
     """
-    example_data = empty_dataset([1], [1])
+    example_data = empty_dataset([1], [1], tf.float32)
     test_data = tf.linspace([-10.0], [10.0], 100)
     test_data = tf.expand_dims(test_data, -2)  # [N, 1, d]
     test_data = tf.tile(test_data, [1, 2, 1])  # [N, 2, D]
@@ -370,7 +370,7 @@ def test_ensemble_trajectory_sampler_update_trajectory_updates_and_doesnt_retrac
     batch_size = 2
     num_data = 100
 
-    example_data = empty_dataset([dim], [1])
+    example_data = empty_dataset([dim], [1], tf.float32)
     test_data = tf.random.uniform([num_data, batch_size, dim])  # [N, B, d]
 
     model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE)
@@ -450,7 +450,7 @@ def test_ensemble_trajectory_sampler_returns_state(batch_size: int, diversify: b
     dim = 3
     num_evals = 10
 
-    example_data = empty_dataset([dim], [1])
+    example_data = empty_dataset([dim], [1], tf.float32)
     test_data = tf.random.uniform([num_evals, batch_size, dim])  # [N, B, d]
 
     model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE)

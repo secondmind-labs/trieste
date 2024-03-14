@@ -530,8 +530,8 @@ def test_deep_ensemble_prepare_data_call(
     bootstrap_data: bool,
 ) -> None:
     n_rows = 100
-    x = tf.constant(np.arange(0, n_rows, 1), shape=[n_rows, 1])
-    y = tf.constant(np.arange(0, n_rows, 1), shape=[n_rows, 1])
+    x = tf.constant(np.arange(0, n_rows, 1), shape=[n_rows, 1], dtype=tf.float32)
+    y = tf.constant(np.arange(0, n_rows, 1), shape=[n_rows, 1], dtype=tf.float32)
     example_data = Dataset(x, y)
 
     model, _, _ = trieste_deep_ensemble_model(example_data, ensemble_size, bootstrap_data, False)
