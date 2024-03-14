@@ -222,7 +222,7 @@ def bichon_ranjan_criterion(
         t = (threshold - mean) / stdev
         t_plus = t + alpha
         t_minus = t - alpha
-        normal = tfp.distributions.Normal(tf.cast(0, x.dtype), tf.cast(1, x.dtype))
+        normal = tfp.distributions.Normal(tf.constant(0, x.dtype), tf.constant(1, x.dtype))
 
         if delta == 1:
             G = (
@@ -361,11 +361,11 @@ class integrated_variance_reduction(AcquisitionFunctionClass):
         self._integration_points = integration_points
 
         if threshold is None:
-            self._weights = tf.cast(1.0, integration_points.dtype)
+            self._weights = tf.constant(1.0, integration_points.dtype)
 
         else:
             if isinstance(threshold, float):
-                t_threshold = tf.cast([threshold], integration_points.dtype)
+                t_threshold = tf.constant([threshold], integration_points.dtype)
             else:
                 t_threshold = tf.cast(threshold, integration_points.dtype)
 
@@ -504,10 +504,10 @@ class bayesian_active_learning_by_disagreement(AcquisitionFunctionClass):
         mean, variance = self._model.predict(tf.squeeze(x, -2))
         variance = tf.maximum(variance, self._jitter)
 
-        normal = tfp.distributions.Normal(tf.cast(0, mean.dtype), tf.cast(1, mean.dtype))
+        normal = tfp.distributions.Normal(tf.constant(0, mean.dtype), tf.constant(1, mean.dtype))
         p = normal.cdf((mean / tf.sqrt(variance + 1)))
 
-        C2 = (math.pi * tf.math.log(tf.cast(2, mean.dtype))) / 2
+        C2 = (math.pi * tf.math.log(tf.constant(2, mean.dtype))) / 2
         Ef = (tf.sqrt(C2) / tf.sqrt(variance + C2)) * tf.exp(-(mean**2) / (2 * (variance + C2)))
 
         return -p * tf.math.log(p + self._jitter) - (1 - p) * tf.math.log(1 - p + self._jitter) - Ef

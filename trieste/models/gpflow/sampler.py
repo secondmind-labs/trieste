@@ -243,7 +243,7 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
                 else:
                     skip = tf.constant(0)
                 normal_samples = qmc_normal_samples(
-                    self._sample_size * mean.shape[-1], batch_size, skip
+                    self._sample_size * mean.shape[-1], batch_size, skip, dtype=cov.dtype
                 )  # [S*L, B]
                 normal_samples = tf.reshape(
                     normal_samples, (mean.shape[-1], self._sample_size, batch_size)
@@ -251,7 +251,7 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
                 normal_samples = tf.transpose(normal_samples, perm=[0, 2, 1])  # [L, B, S]
             else:
                 normal_samples = tf.random.normal(
-                    [tf.shape(mean)[-1], batch_size, self._sample_size], dtype=tf.float64
+                    [tf.shape(mean)[-1], batch_size, self._sample_size], dtype=cov.dtype
                 )  # [L, B, S]
             return normal_samples
 
@@ -276,7 +276,7 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
         identity = tf.eye(batch_size, dtype=cov.dtype)  # [B, B]
         cov_cholesky = tf.linalg.cholesky(cov + jitter * identity)  # [..., L, B, B]
 
-        variance_contribution = cov_cholesky @ tf.cast(self._eps, cov.dtype)  # [..., L, B, S]
+        variance_contribution = cov_cholesky @ self._eps  # [..., L, B, S]
 
         leading_indices = tf.range(tf.rank(variance_contribution) - 3)
         absolute_trailing_indices = [-1, -2, -3] + tf.rank(variance_contribution)

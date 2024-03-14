@@ -205,7 +205,7 @@ class min_value_entropy_search(AcquisitionFunctionClass):
             fsd, CLAMP_LB, fmean.dtype.max
         )  # clip below to improve numerical stability
 
-        normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
+        normal = tfp.distributions.Normal(tf.constant(0, fmean.dtype), tf.constant(1, fmean.dtype))
         gamma = (tf.squeeze(self._samples) - fmean) / fsd
 
         log_minus_cdf = normal.log_cdf(-gamma)
@@ -496,7 +496,7 @@ class gibbon_quality_term(AcquisitionFunctionClass):
         )  # clip below to improve numerical stability
         gamma = (tf.squeeze(self._samples) - fmean) / fsd
 
-        normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
+        normal = tfp.distributions.Normal(tf.constant(0, fmean.dtype), tf.constant(1, fmean.dtype))
         log_minus_cdf = normal.log_cdf(-gamma)
         ratio = tf.math.exp(normal.log_prob(gamma) - log_minus_cdf)
         inner_log = 1 + rho_squared * ratio * (gamma - ratio)
@@ -785,7 +785,7 @@ class mumbo(AcquisitionFunctionClass):
         rho_squared = (cov**2) / (fvar * yvar)
         rho_squared = tf.clip_by_value(rho_squared, 0.0, 1.0)
 
-        normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
+        normal = tfp.distributions.Normal(tf.constant(0, fmean.dtype), tf.constant(1, fmean.dtype))
         gamma = (tf.squeeze(self._samples) - fmean) / fsd
         log_minus_cdf = normal.log_cdf(-gamma)
         ratio = tf.math.exp(normal.log_prob(gamma) - log_minus_cdf)

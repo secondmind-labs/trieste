@@ -34,43 +34,43 @@ from ...space import Box, SearchSpace
 from ...types import TensorType
 from ..gpflow.models import GaussianProcessRegression
 
-KERNEL_LENGTHSCALE = tf.cast(0.2, dtype=gpflow.default_float())
+KERNEL_LENGTHSCALE = tf.constant(0.2, dtype=gpflow.default_float())
 """
 Default value of the kernel lengthscale parameter.
 """
 
 
-KERNEL_PRIOR_SCALE = tf.cast(1.0, dtype=gpflow.default_float())
+KERNEL_PRIOR_SCALE = tf.constant(1.0, dtype=gpflow.default_float())
 """
 Default value of the scaling factor for the kernel lengthscale and variance parameters.
 """
 
 
-CLASSIFICATION_KERNEL_VARIANCE_NOISE_FREE = tf.cast(100.0, dtype=gpflow.default_float())
+CLASSIFICATION_KERNEL_VARIANCE_NOISE_FREE = tf.constant(100.0, dtype=gpflow.default_float())
 """
 Default value of the kernel variance parameter for classification models in the noise free case.
 """
 
 
-CLASSIFICATION_KERNEL_VARIANCE = tf.cast(1.0, dtype=gpflow.default_float())
+CLASSIFICATION_KERNEL_VARIANCE = tf.constant(1.0, dtype=gpflow.default_float())
 """
 Default value of the kernel variance parameter for classification models.
 """
 
 
-MAX_NUM_INDUCING_POINTS = tf.cast(500, dtype=tf.int32)
+MAX_NUM_INDUCING_POINTS = tf.constant(500, dtype=tf.int32)
 """
 Default maximum number of inducing points.
 """
 
 
-NUM_INDUCING_POINTS_PER_DIM = tf.cast(25, dtype=tf.int32)
+NUM_INDUCING_POINTS_PER_DIM = tf.constant(25, dtype=tf.int32)
 """
 Default number of inducing points per dimension of the search space.
 """
 
 
-SIGNAL_NOISE_RATIO_LIKELIHOOD = tf.cast(10, dtype=gpflow.default_float())
+SIGNAL_NOISE_RATIO_LIKELIHOOD = tf.constant(10, dtype=gpflow.default_float())
 """
 Default value used for initializing (noise) variance parameter of the likelihood function.
 If user does not specify it, the noise variance is set to maintain the signal to noise ratio
@@ -264,7 +264,7 @@ def build_vgp_classifier(
 
     model_likelihood = gpflow.likelihoods.Bernoulli()
     kernel = _get_kernel(variance, search_space, kernel_priors, add_prior_to_variance)
-    mean = _get_mean_function(tf.cast(0.0, dtype=gpflow.default_float()))
+    mean = _get_mean_function(tf.constant(0.0, dtype=gpflow.default_float()))
 
     model = VGP(data.astuple(), kernel, model_likelihood, mean_function=mean)
 
@@ -336,7 +336,7 @@ def build_svgp(
 
     if classification:
         empirical_variance = CLASSIFICATION_KERNEL_VARIANCE
-        empirical_mean = tf.cast(0.0, dtype=gpflow.default_float())
+        empirical_mean = tf.constant(0.0, dtype=gpflow.default_float())
         model_likelihood = gpflow.likelihoods.Bernoulli()
     else:
         model_likelihood = gpflow.likelihoods.Gaussian()
@@ -400,7 +400,7 @@ def _get_lengthscales(search_space: SearchSpace) -> TensorType:
     )
     search_space_collapsed = tf.equal(search_space.upper, search_space.lower)
     lengthscales = tf.where(
-        search_space_collapsed, tf.cast(1.0, dtype=gpflow.default_float()), lengthscales
+        search_space_collapsed, tf.constant(1.0, dtype=gpflow.default_float()), lengthscales
     )
     return lengthscales
 
@@ -609,10 +609,10 @@ def _create_multifidelity_nonlinear_autoregressive_kernels(
 
         if add_prior_to_variance:
             interaction_kernel.variance.prior = tfp.distributions.LogNormal(
-                tf.cast(0.0, dtype=gpflow.default_float()), KERNEL_PRIOR_SCALE
+                tf.constant(0.0, dtype=gpflow.default_float()), KERNEL_PRIOR_SCALE
             )
             bias_kernel.variance.prior = tfp.distributions.LogNormal(
-                tf.cast(0.0, dtype=gpflow.default_float()), KERNEL_PRIOR_SCALE
+                tf.constant(0.0, dtype=gpflow.default_float()), KERNEL_PRIOR_SCALE
             )
 
         kernels.append(interaction_kernel * scale_kernel + bias_kernel)

@@ -128,14 +128,17 @@ def mk_dataset(
     )
 
 
-def empty_dataset(query_point_shape: ShapeLike, observation_shape: ShapeLike) -> Dataset:
+def empty_dataset(
+    query_point_shape: ShapeLike, observation_shape: ShapeLike, dtype: tf.DType = tf.float64
+) -> Dataset:
     """
     :param query_point_shape: The shape of a *single* query point.
     :param observation_shape: The shape of a *single* observation.
+    :param dtype: The dtype.
     :return: An empty dataset with points of the specified shapes, and dtype `tf.float64`.
     """
-    qp = tf.zeros(tf.TensorShape([0]) + query_point_shape, tf.float64)
-    obs = tf.zeros(tf.TensorShape([0]) + observation_shape, tf.float64)
+    qp = tf.zeros(tf.TensorShape([0]) + query_point_shape, dtype)
+    obs = tf.zeros(tf.TensorShape([0]) + observation_shape, dtype)
     return Dataset(qp, obs)
 
 

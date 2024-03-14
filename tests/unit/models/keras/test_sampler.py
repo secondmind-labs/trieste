@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import random
 from typing import Any, Callable, Optional, cast
+from unittest.mock import patch
 
 import numpy as np
 import numpy.testing as npt
@@ -55,26 +56,41 @@ def _num_outputs_fixture(request: Any) -> int:
     return request.param
 
 
+@pytest.mark.parametrize(
+    "dtype", [pytest.param(tf.float64, id="float64"), pytest.param(tf.float32, id="float32")]
+)
 def test_ensemble_trajectory_sampler_returns_trajectory_function_with_correctly_shaped_output(
     num_evals: int,
     batch_size: int,
     dim: int,
     diversify: bool,
     num_outputs: int,
+    dtype: tf.DType,
 ) -> None:
     """
     Inputs should be [N,B,d] while output should be [N,B,M]. Note that for diversify
     option only single output models are allowed.
     """
-    example_data = empty_dataset([dim], [num_outputs])
-    test_data = tf.random.uniform([num_evals, batch_size, dim])  # [N, B, d]
+    example_data = empty_dataset([dim], [num_outputs], dtype)
+    test_data = tf.random.uniform([num_evals, batch_size, dim], dtype=dtype)  # [N, B, d]
 
     model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE)
 
     sampler = DeepEnsembleTrajectorySampler(model, diversify=diversify)
     trajectory = sampler.get_trajectory()
 
-    assert trajectory(test_data).shape == (num_evals, batch_size, num_outputs)
+    original_tf_cast = tf.cast
+
+    def patched_tf_cast(x: TensorType, dtype: tf.DType) -> TensorType:
+        # ensure there are no unnecessary casts from float64 to float32 or vice versa
+        if isinstance(x, tf.Tensor) and x.dtype in (tf.float32, tf.float64) and x.dtype != dtype:
+            raise ValueError(f"unexpected cast: {x} to {dtype}")
+        return original_tf_cast(x, dtype)
+
+    with patch("tensorflow.cast", side_effect=patched_tf_cast):
+        samples = trajectory(test_data)
+        assert samples.dtype == dtype
+        assert samples.shape == (num_evals, batch_size, num_outputs)
 
 
 def test_ensemble_trajectory_sampler_returns_deterministic_trajectory(
@@ -223,7 +239,7 @@ def test_ensemble_trajectory_sampler_eps_broadcasted_correctly() -> None:
     """
     We check if eps are broadcasted correctly in diversify mode.
     """
-    example_data = empty_dataset([1], [1])
+    example_data = empty_dataset([1], [1], tf.float32)
     test_data = tf.linspace([-10.0], [10.0], 100)
     test_data = tf.expand_dims(test_data, -2)  # [N, 1, d]
     test_data = tf.tile(test_data, [1, 2, 1])  # [N, 2, D]
@@ -234,7 +250,7 @@ def test_ensemble_trajectory_sampler_eps_broadcasted_correctly() -> None:
     trajectory = trajectory_sampler.get_trajectory()
 
     _ = trajectory(test_data)  # first call needed to initialize the state
-    trajectory._eps.assign(tf.constant([[0], [1]], dtype=tf.float64))  # type: ignore
+    trajectory._eps.assign(tf.constant([[0], [1]], dtype=tf.float32))  # type: ignore
     evals = trajectory(test_data)
 
     npt.assert_array_less(
@@ -354,7 +370,7 @@ def test_ensemble_trajectory_sampler_update_trajectory_updates_and_doesnt_retrac
     batch_size = 2
     num_data = 100
 
-    example_data = empty_dataset([dim], [1])
+    example_data = empty_dataset([dim], [1], tf.float32)
     test_data = tf.random.uniform([num_data, batch_size, dim])  # [N, B, d]
 
     model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE)
@@ -434,7 +450,7 @@ def test_ensemble_trajectory_sampler_returns_state(batch_size: int, diversify: b
     dim = 3
     num_evals = 10
 
-    example_data = empty_dataset([dim], [1])
+    example_data = empty_dataset([dim], [1], tf.float32)
     test_data = tf.random.uniform([num_evals, batch_size, dim])  # [N, B, d]
 
     model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE)
@@ -443,7 +459,7 @@ def test_ensemble_trajectory_sampler_returns_state(batch_size: int, diversify: b
     trajectory = cast(deep_ensemble_trajectory, sampler.get_trajectory())
 
     if diversify:
-        dtype = tf.float64
+        dtype = tf.float32
         rnd_state_name = "eps"
     else:
         dtype = tf.int32
