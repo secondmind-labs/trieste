@@ -91,13 +91,21 @@ class GaussianProcess(
         mean_functions: Sequence[Callable[[TensorType], TensorType]],
         kernels: Sequence[tfp.math.psd_kernels.PositiveSemidefiniteKernel],
         noise_variance: float = 1.0,
+        event_shape: Optional[TensorType] = None,
     ):
         self._mean_functions = mean_functions
         self._kernels = kernels
         self._noise_variance = noise_variance
+        self._event_shape = event_shape
 
     def __repr__(self) -> str:
         return f"GaussianProcess({self._mean_functions!r}, {self._kernels!r})"
+
+    @property
+    def event_shape(self) -> TensorType:
+        if self._event_shape is None:
+            raise NotImplementedError("event_shape not specified for this model")
+        return self._event_shape
 
     @inherit_check_shapes
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
@@ -198,7 +206,7 @@ class QuadraticMeanAndRBFKernel(GaussianProcess, SupportsGetKernel, SupportsGetO
     ):
         self.kernel = tfp.math.psd_kernels.ExponentiatedQuadratic(kernel_amplitude)
         self.mean_function = lambda x: quadratic(x - tf.cast(x_shift, dtype=x.dtype))
-        super().__init__([self.mean_function], [self.kernel], noise_variance)
+        super().__init__([self.mean_function], [self.kernel], noise_variance, tf.constant([1]))
 
     def __repr__(self) -> str:
         return "QuadraticMeanAndRBFKernel()"

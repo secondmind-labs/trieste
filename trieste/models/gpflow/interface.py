@@ -102,6 +102,10 @@ class GPflowPredictor(
     def model(self) -> GPModel:
         """The underlying GPflow model."""
 
+    @property
+    def event_shape(self) -> TensorType:
+        return tf.constant([self.model.num_latent_gps])
+
     @inherit_check_shapes
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         mean, cov = (self._posterior or self.model).predict_f(query_points)
