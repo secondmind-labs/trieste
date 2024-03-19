@@ -1029,6 +1029,9 @@ class UpdatableTrustRegion(SearchSpace):
         """
         Initialize the search space using the given models and datasets.
 
+        Extending classes must set `self._initialized` to `True` after initialization in this
+        method.
+
         :param models: The model for each tag.
         :param datasets: The dataset for each tag.
         """
