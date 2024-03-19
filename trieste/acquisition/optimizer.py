@@ -754,15 +754,15 @@ def get_bounds_of_optimization(space: SearchSpace, starting_points: TensorType) 
     For each starting point, the bounds are obtained as follows depending on the type of search
     space:
     - For a `TaggedProductSearchSpace`, a "continuous relaxation" of the discrete subspaces is
-      built by creating bounds around the point. The discrete components of the created
-      search space are fixed at the respective component of the point, and the
-      remaining continuous components are set to the original bounds of the search space.
+    built by creating bounds around the point. The discrete components of the created
+    search space are fixed at the respective component of the point, and the
+    remaining continuous components are set to the original bounds of the search space.
     - For a `TaggedMultiSearchSpace`, the bounds for each point are obtained in a similar
-      manner as above, but based potentially on a different subspace for each point;
-      instead of sharing a single set of bounds from the common search space.
-      The subspaces are assigned to the optimization runs in a round-robin fashion along
-      dimension 1 (of size `V`) of the starting points. An error is raised if size `V` is not a
-      multiple of the number of subspaces.
+    manner as above, but based potentially on a different subspace for each point;
+    instead of sharing a single set of bounds from the common search space.
+    The subspaces are assigned to the optimization runs in a round-robin fashion along
+    dimension 1 (of size `V`) of the starting points. An error is raised if size `V` is not a
+    multiple of the number of subspaces.
     - For other types of search spaces, the original bounds are used for each optimization run.
 
     :param space: The original search space.
@@ -774,7 +774,7 @@ def get_bounds_of_optimization(space: SearchSpace, starting_points: TensorType) 
         is equal to the number of individual optimization runs, i.e. `num_optimization_runs` x `V`.
 
     For example, for a 2D `TaggedMultiSearchSpace` with two subspaces, each with a continuous
-    and a discrete component:
+    and a discrete component::
 
         space = TaggedMultiSearchSpace(
             [
@@ -788,17 +788,17 @@ def get_bounds_of_optimization(space: SearchSpace, starting_points: TensorType) 
         )
 
     Consider 2 optimization runs per point and a vectorization `V` of 4, for a total of 8
-    optimization runs. Given the following starting points:
+    optimization runs. Given the following starting points::
 
         starting_points = tf.constant(
             [
                 [[10, 11], [12, 13], [14, 15], [16, 17]],
                 [[20, 21], [22, 23], [24, 25], [26, 27]],
             ],
-            dtype=tf.float64,
+            dtype=tf.float64
         )
 
-    The returned list of bounds for the optimization would be:
+    The returned list of bounds for the optimization would be::
 
         [
             spo.Bounds([0, 11], [1, 11]),  # For point at index [0, 0], using subspace 0
