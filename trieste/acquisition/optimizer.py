@@ -831,7 +831,7 @@ def get_bounds_of_optimization(space: SearchSpace, starting_points: TensorType) 
         remainder = V % len(subspaces)
         tf.debugging.assert_equal(
             remainder,
-            tf.constant(0, dtype=remainder.dtype),
+            0,
             message=(
                 f"""
                 The vectorization of the target function {V} must be a multiple of the number of
