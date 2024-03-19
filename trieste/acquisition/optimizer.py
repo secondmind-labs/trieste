@@ -753,17 +753,17 @@ def get_bounds_of_optimization(space: SearchSpace, starting_points: TensorType) 
 
     For each starting point, the bounds are obtained as follows depending on the type of search
     space:
-        - For a `TaggedProductSearchSpace`, a "continuous relaxation" of the discrete subspaces is
-          built by creating bounds around the point. The discrete components of the created
-          search space are fixed at the respective component of the point, and the
-          remaining continuous components are set to the original bounds of the search space.
-        - For a `TaggedMultiSearchSpace`, the bounds for each point are obtained in a similar
-          manner as above, but based potentially on a different subspace for each point;
-          instead of sharing a single set of bounds from the common search space.
-          The subspaces are assigned to the optimization runs in a round-robin fashion along
-          dimension 1 (of size `V`) of the starting points. An error is raised if size `V` is not a
-          multiple of the number of subspaces.
-        - For other types of search spaces, the original bounds are used for each optimization run.
+    - For a `TaggedProductSearchSpace`, a "continuous relaxation" of the discrete subspaces is
+      built by creating bounds around the point. The discrete components of the created
+      search space are fixed at the respective component of the point, and the
+      remaining continuous components are set to the original bounds of the search space.
+    - For a `TaggedMultiSearchSpace`, the bounds for each point are obtained in a similar
+      manner as above, but based potentially on a different subspace for each point;
+      instead of sharing a single set of bounds from the common search space.
+      The subspaces are assigned to the optimization runs in a round-robin fashion along
+      dimension 1 (of size `V`) of the starting points. An error is raised if size `V` is not a
+      multiple of the number of subspaces.
+    - For other types of search spaces, the original bounds are used for each optimization run.
 
     :param space: The original search space.
     :param starting_points: The points at which to begin the optimizations, with shape
