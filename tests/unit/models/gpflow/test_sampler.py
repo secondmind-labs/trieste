@@ -16,7 +16,7 @@ from __future__ import annotations
 import math
 import unittest
 from typing import Any, Callable, List, Tuple, Type
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import gpflow
 import numpy.testing as npt
@@ -26,6 +26,7 @@ import tensorflow_probability as tfp
 from check_shapes.exceptions import ShapeMismatchError
 from scipy import stats
 
+from tests.unit.models.gpflow.test_interface import _QuadraticPredictor
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, quadratic, random_seed
 from tests.util.models.gpflow.models import (
     GaussianProcess,
@@ -57,6 +58,7 @@ from trieste.models.interfaces import (
     SupportsPredictJoint,
 )
 from trieste.objectives import Branin
+from trieste.types import TensorType
 
 REPARAMETRIZATION_SAMPLERS: List[Type[ReparametrizationSampler[SupportsPredictJoint]]] = [
     BatchReparametrizationSampler,
@@ -348,6 +350,29 @@ def test_batch_reparametrization_sampler_samples_are_repeatable(qmc: bool, qmc_s
     sampler = BatchReparametrizationSampler(100, _dim_two_gp(), qmc=qmc, qmc_skip=qmc_skip)
     xs = tf.random.uniform([3, 5, 7, 2], dtype=tf.float64)
     npt.assert_allclose(sampler.sample(xs), sampler.sample(xs))
+
+
+@pytest.mark.parametrize("qmc", [True, False])
+@pytest.mark.parametrize("qmc_skip", [True, False])
+@pytest.mark.parametrize("dtype", [tf.float32, tf.float64])
+def test_batch_reparametrization_sampler_doesnt_cast(
+    qmc: bool, qmc_skip: bool, dtype: tf.DType
+) -> None:
+    sampler = BatchReparametrizationSampler(100, _QuadraticPredictor(), qmc=qmc, qmc_skip=qmc_skip)
+    xs = tf.random.uniform([3, 1, 7, 7], dtype=dtype)
+
+    original_tf_cast = tf.cast
+
+    def patched_tf_cast(x: TensorType, dtype: tf.DType) -> TensorType:
+        # ensure there are no unnecessary casts from float64 to float32 or vice versa
+        if isinstance(x, tf.Tensor) and x.dtype in (tf.float32, tf.float64) and x.dtype != dtype:
+            raise ValueError(f"unexpected cast: {x} to {dtype}")
+        return original_tf_cast(x, dtype)
+
+    with patch("tensorflow.cast", side_effect=patched_tf_cast):
+        samples = sampler.sample(xs)
+        assert samples.dtype is dtype
+        npt.assert_allclose(samples, sampler.sample(xs))
 
 
 @pytest.mark.parametrize("qmc", [True, False])

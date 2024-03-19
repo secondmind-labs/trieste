@@ -25,6 +25,7 @@ Trieste model).
 from __future__ import annotations
 
 from typing import Callable, Tuple
+from unittest.mock import patch
 
 import gpflow.kernels
 import gpflux.layers
@@ -151,7 +152,17 @@ def test_dgp_reparam_sampler_sample_is_repeatable(
 
     sampler = DeepGaussianProcessReparamSampler(100, model)
     xs = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)[:, None, :]
-    npt.assert_allclose(sampler.sample(xs), sampler.sample(xs))
+
+    # also check there are no unnecessary casts from float64 to float32 or vice versa
+    original_tf_cast = tf.cast
+
+    def patched_tf_cast(x: TensorType, dtype: tf.DType) -> TensorType:
+        if isinstance(x, tf.Tensor) and x.dtype in (tf.float32, tf.float64) and x.dtype != dtype:
+            raise ValueError(f"unexpected cast: {x} to {dtype}")
+        return original_tf_cast(x, dtype)
+
+    with patch("tensorflow.cast", side_effect=patched_tf_cast):
+        npt.assert_allclose(sampler.sample(xs), sampler.sample(xs))
 
 
 @random_seed

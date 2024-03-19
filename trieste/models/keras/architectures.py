@@ -60,11 +60,12 @@ class KerasEnsemble:
                 f"received {networks} instead."
             )
 
-        input_shapes, output_shapes = [], []
+        input_shapes, output_shapes, output_dtypes = [], [], []
         for index, network in enumerate(networks):
             network.network_name = f"model_{index}_"
             input_shapes.append(network.input_tensor_spec.shape)
             output_shapes.append(network.output_tensor_spec.shape)
+            output_dtypes.append(network.output_tensor_spec.dtype)
 
         if not all(x == input_shapes[0] for x in input_shapes):
             raise ValueError(
@@ -76,7 +77,13 @@ class KerasEnsemble:
                 f"Output shapes for all networks must be the same, however"
                 f"received {output_shapes} instead."
             )
+        if not all(x == output_dtypes[0] for x in output_dtypes):
+            raise ValueError(
+                f"Output dtypes for all networks must be the same, however"
+                f"received {output_dtypes} instead."
+            )
         self.num_outputs = networks[0].flattened_output_shape
+        self.output_dtype = networks[0].output_tensor_spec.dtype
 
         self._networks = networks
 
@@ -301,7 +308,9 @@ class GaussianNetwork(KerasEnsembleNetwork):
     def _gen_hidden_layers(self, input_tensor: tf.Tensor) -> tf.Tensor:
         for index, hidden_layer_args in enumerate(self._hidden_layer_args):
             layer_name = f"{self.network_name}dense_{index}"
-            layer = tf.keras.layers.Dense(**hidden_layer_args, name=layer_name)
+            layer = tf.keras.layers.Dense(
+                **hidden_layer_args, name=layer_name, dtype=input_tensor.dtype.name
+            )
             input_tensor = layer(input_tensor)
 
         return input_tensor
@@ -311,21 +320,22 @@ class GaussianNetwork(KerasEnsembleNetwork):
         n_params = dist_layer.params_size(self.flattened_output_shape)
 
         parameter_layer = tf.keras.layers.Dense(
-            n_params, name=self.network_name + "dense_parameters"
+            n_params, name=self.network_name + "dense_parameters", dtype=input_tensor.dtype.name
         )(input_tensor)
 
         distribution = dist_layer(
             self.flattened_output_shape,
             tfp.python.distributions.Distribution.mean,
             name=self.output_layer_name,
+            dtype=input_tensor.dtype.name,
         )(parameter_layer)
 
         return distribution
 
     def _gen_single_output_layer(self, input_tensor: tf.Tensor) -> tf.Tensor:
-        parameter_layer = tf.keras.layers.Dense(2, name=self.network_name + "dense_parameters")(
-            input_tensor
-        )
+        parameter_layer = tf.keras.layers.Dense(
+            2, name=self.network_name + "dense_parameters", dtype=input_tensor.dtype.name
+        )(input_tensor)
 
         def distribution_fn(inputs: TensorType) -> tfp.distributions.Distribution:
             return tfp.distributions.Normal(inputs[..., :1], tf.math.softplus(inputs[..., 1:]))
@@ -334,6 +344,7 @@ class GaussianNetwork(KerasEnsembleNetwork):
             make_distribution_fn=distribution_fn,
             convert_to_tensor_fn=tfp.distributions.Distribution.mean,
             name=self.output_layer_name,
+            dtype=input_tensor.dtype.name,
         )(parameter_layer)
 
         return distribution

@@ -184,7 +184,9 @@ class GumbelSampler(ThompsonSampler[ProbabilisticModel]):
         fsd = tf.math.sqrt(fvar)
 
         def probf(y: tf.Tensor) -> tf.Tensor:  # Build empirical CDF for Pr(y*^hat<y)
-            unit_normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
+            unit_normal = tfp.distributions.Normal(
+                tf.constant(0, fmean.dtype), tf.constant(1, fmean.dtype)
+            )
             log_cdf = unit_normal.log_cdf(-(y - fmean) / fsd)
             return 1 - tf.exp(tf.reduce_sum(log_cdf, axis=0))
 
