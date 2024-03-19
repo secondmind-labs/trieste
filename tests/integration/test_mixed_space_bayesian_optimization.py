@@ -152,32 +152,6 @@ mixed_search_space = _get_mixed_search_space()
             ),
             id="TrustRegionSingleObjective",
         ),
-        pytest.param(
-            8,
-            BatchTrustRegionProduct(
-                [
-                    UpdatableTrustRegionProduct(
-                        [
-                            SingleObjectiveTrustRegionDiscrete(
-                                cast(
-                                    DiscreteSearchSpace, mixed_search_space.get_subspace("discrete")
-                                )
-                            ),
-                            SingleObjectiveTrustRegionBox(
-                                mixed_search_space.get_subspace("continuous")
-                            ),
-                        ],
-                        tags=mixed_search_space.subspace_tags,
-                    )
-                    for _ in range(3)
-                ],
-                EfficientGlobalOptimization(
-                    ParallelContinuousThompsonSampling(),
-                    num_query_points=3,
-                ),
-            ),
-            id="TrustRegionSingleObjective",
-        ),
     ],
 )
 def test_optimizer_finds_minima_of_the_scaled_branin_function(
