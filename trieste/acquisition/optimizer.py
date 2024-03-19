@@ -27,6 +27,7 @@ import numpy as np
 import scipy.optimize as spo
 import tensorflow as tf
 import tensorflow_probability as tfp
+from check_shapes import check_shapes
 
 from .. import logging
 from ..space import (
@@ -740,19 +741,75 @@ def get_bounds_of_box_relaxation_around_point(
     return spo.Bounds(space_with_fixed_discrete.lower, space_with_fixed_discrete.upper)
 
 
+@check_shapes(
+    "starting_points: [num_optimization_runs, V, D]",
+)
 def get_bounds_of_optimization(space: SearchSpace, starting_points: TensorType) -> List[spo.Bounds]:
     """
-    A function to return the bounds of the optimization for each of the
-    individual optimization runs. This function is used to provide the
-    bounds for the Scipy optimizer.
+    Returns a list of bounds for all the optimization runs, to be used in the Scipy optimizer.
+    The bounds are based on the provided search space and the starting points. The length of the
+    list is equal to the total number of individual optimization runs,
+    i.e. the number of starting points: `num_optimization_runs` x `V`.
+
+    For each starting point, the bounds are obtained as follows depending on the type of search
+    space:
+        - For a `TaggedProductSearchSpace`, a "continuous relaxation" of the discrete subspaces is
+          built by creating bounds around the point. The discrete components of the created
+          search space are fixed at the respective component of the point, and the
+          remaining continuous components are set to the original bounds of the search space.
+        - For a `TaggedMultiSearchSpace`, the bounds for each point are obtained in a similar
+          manner as above, but based potentially on a different subspace for each point;
+          instead of sharing a single set of bounds from the common search space.
+          The subspaces are assigned to the optimization runs in a round-robin fashion along
+          dimension 1 (of size `V`) of the starting points. An error is raised if size `V` is not a
+          multiple of the number of subspaces.
+        - For other types of search spaces, the original bounds are used for each optimization run.
 
     :param space: The original search space.
-    :param starting_points: The points at which to begin our optimizations of shape
-        [num_optimization_runs, V, D]. The leading dimension of
-        `starting_points` controls the number of individual optimization runs
-        for each of the V target functions.
+    :param starting_points: The points at which to begin the optimizations, with shape
+        `[num_optimization_runs, V, D]`. The leading dimension of `starting_points` controls the
+        number of individual optimization runs for each of the `V` starting points or target
+        functions.
     :return: A list of bounds for the Scipy optimizer. The length of the list
         is equal to the number of individual optimization runs, i.e. `num_optimization_runs` x `V`.
+
+    For example, for a 2D `TaggedMultiSearchSpace` with two subspaces, each with a continuous
+    and a discrete component:
+
+        space = TaggedMultiSearchSpace(
+            [
+                TaggedProductSearchSpace(
+                    [Box([0], [1]), DiscreteSearchSpace([[11], [15], [21], [25], [31], [35]])]
+                ),
+                TaggedProductSearchSpace(
+                    [Box([2], [3]), DiscreteSearchSpace([[13], [17], [23], [27], [33], [37]])]
+                )
+            ]
+        )
+
+    Consider 2 optimization runs per point and a vectorization `V` of 4, for a total of 8
+    optimization runs. Given the following starting points:
+
+        starting_points = tf.constant(
+            [
+                [[10, 11], [12, 13], [14, 15], [16, 17]],
+                [[20, 21], [22, 23], [24, 25], [26, 27]],
+            ],
+            dtype=tf.float64,
+        )
+
+    The returned list of bounds for the optimization would be:
+
+        [
+            spo.Bounds([0, 11], [1, 11]),  # For point at index [0, 0], using subspace 0
+            spo.Bounds([2, 13], [3, 13]),  #         //         [0, 1],       //       1
+            spo.Bounds([0, 15], [1, 15]),  #         //         [0, 2],       //       0
+            spo.Bounds([2, 17], [3, 17]),  #         //         [0, 3],       //       1
+            spo.Bounds([0, 21], [1, 21]),  #         //         [1, 0],       //       0
+            spo.Bounds([2, 23], [3, 23]),  #         //         [1, 1],       //       1
+            spo.Bounds([0, 25], [1, 25]),  #         //         [1, 2],       //       0
+            spo.Bounds([2, 27], [3, 27]),  #         //         [1, 3],       //       1
+        ]
     """
 
     num_optimization_runs_per_function, V, D = starting_points.shape
