@@ -1533,6 +1533,7 @@ class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox):
         global_search_space: SearchSpace,
         beta: float = 0.7,
         kappa: float = 1e-4,
+        zeta: float = 0.5,
         min_eps: float = 1e-2,
         region_index: Optional[int] = None,
         input_active_dims: Optional[Union[slice, Sequence[int]]] = None,
@@ -1544,6 +1545,8 @@ class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox):
         :param beta: The inverse of the trust region contraction factor.
         :param kappa: Scales the threshold for the minimal improvement required for a step to be
             considered a success.
+        :param zeta: The initial size of the search space is ``zeta`` times the size of the global
+            search space.
         :param min_eps: The minimal size of the search space. If the size of the search space is
             smaller than this, the search space is reinitialized.
         :param region_index: The index of the region in a multi-region search space. This is used to
@@ -1555,6 +1558,7 @@ class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox):
         super().__init__(global_search_space, region_index, input_active_dims)
         self._beta = beta
         self._kappa = kappa
+        self._zeta = zeta
         self._min_eps = min_eps
 
         self._step_is_success = False
@@ -1574,9 +1578,7 @@ class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox):
         return not self._initialized or tf.reduce_any(self.eps < self._min_eps)
 
     def _init_eps(self) -> None:
-        global_lower = self.global_search_space.lower
-        global_upper = self.global_search_space.upper
-        self.eps = 0.5 * (global_upper - global_lower) / (5.0 ** (1.0 / global_lower.shape[-1]))
+        self.eps = self._zeta * (self.global_search_space.upper - self.global_search_space.lower)
 
     def _update_bounds(self) -> None:
         self._lower = tf.reduce_max(
@@ -2109,6 +2111,7 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
         global_search_space: DiscreteSearchSpace,
         beta: float = 0.7,
         kappa: float = 1e-4,
+        zeta: float = 0.5,
         min_eps: float = 1e-2,
         region_index: Optional[int] = None,
         input_active_dims: Optional[Union[slice, Sequence[int]]] = None,
@@ -2121,6 +2124,8 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
         :param beta: The inverse of the trust region contraction factor.
         :param kappa: Scales the threshold for the minimal improvement required for a step to be
             considered a success.
+        :param zeta: The initial size of the search space is ``zeta`` times the size of the global
+            search space.
         :param min_eps: The minimal size of the search space. If the size of the search space is
             smaller than this, the search space is reinitialized.
         :param region_index: The index of the region in a multi-region search space. This is used to
@@ -2132,6 +2137,7 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
         super().__init__(global_search_space, region_index, input_active_dims)
         self._beta = beta
         self._kappa = kappa
+        self._zeta = zeta
         self._min_eps = min_eps
         self._step_is_success = False
         self._init_location()
@@ -2168,9 +2174,7 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
         )[0]
 
     def _init_eps(self) -> None:
-        global_lower = self.global_search_space.lower
-        global_upper = self.global_search_space.upper
-        self.eps = 0.5 * (global_upper - global_lower) / (5.0 ** (1.0 / global_lower.shape[-1]))
+        self.eps = self._zeta * (self.global_search_space.upper - self.global_search_space.lower)
 
     def _compute_global_distances(self) -> None:
         # Pairwise distances along each axis in the global search space.
