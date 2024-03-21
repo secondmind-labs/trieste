@@ -34,7 +34,7 @@ from ...space import Box, SearchSpace
 from ...types import TensorType
 from ..gpflow.models import GaussianProcessRegression
 
-KERNEL_LENGTHSCALE = tf.constant(0.2, dtype=gpflow.default_float())
+KERNEL_LENGTHSCALE = tf.cast(0.2, dtype=gpflow.default_float())
 """
 Default value of the kernel lengthscale parameter.
 """
