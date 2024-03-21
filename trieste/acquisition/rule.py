@@ -1545,7 +1545,7 @@ class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox):
         :param beta: The inverse of the trust region contraction factor.
         :param kappa: Scales the threshold for the minimal improvement required for a step to be
             considered a success.
-        :param zeta: The initial size of the search space is ``zeta`` times the size of the global
+        :param zeta: The initial size of the trust region is ``zeta`` times the size of the global
             search space.
         :param min_eps: The minimal size of the search space. If the size of the search space is
             smaller than this, the search space is reinitialized.
@@ -2124,7 +2124,7 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
         :param beta: The inverse of the trust region contraction factor.
         :param kappa: Scales the threshold for the minimal improvement required for a step to be
             considered a success.
-        :param zeta: The initial size of the search space is ``zeta`` times the size of the global
+        :param zeta: The initial size of the trust region is ``zeta`` times the size of the global
             search space.
         :param min_eps: The minimal size of the search space. If the size of the search space is
             smaller than this, the search space is reinitialized.
