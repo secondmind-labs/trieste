@@ -2174,7 +2174,7 @@ def test_trust_region_discrete_update_no_initialize(
     )
     tr.initialize(datasets=datasets)
     tr._location_ix = tf.constant([16], dtype=tf.int32)  # Location [5, 4].
-    tr._update_neighbors()
+    tr._update_bounds()
     location = tr.location
 
     assert not tr.requires_initialization

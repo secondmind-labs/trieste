@@ -1484,7 +1484,181 @@ class BatchTrustRegion(
         return filtered_datasets
 
 
-class UpdatableTrustRegionBox(Box, UpdatableTrustRegion):
+class UpdatableTrustRegionWithLocationInGlobalSearchSpace(UpdatableTrustRegion):
+    """An updatable trust region with a concept of a location within a global search space."""
+
+    def _init_location(
+        self,
+        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+        location_candidate: Optional[TensorType] = None,
+    ) -> None:
+        # Initialize the location of the region.
+        # If no candidate is provided, take a random location from the global search space.
+        if location_candidate is not None:
+            self.location = location_candidate
+        else:
+            self.location = tf.squeeze(self.global_search_space.sample(1), axis=0)
+
+    @property
+    @abstractmethod
+    def location(self) -> TensorType:
+        """The centre of the region."""
+
+    @location.setter
+    @abstractmethod
+    def location(self, location: TensorType) -> None:
+        """Set the centre of the region."""
+
+    @property
+    @abstractmethod
+    def global_search_space(self) -> SearchSpace:
+        """The global search space this region lives in."""
+
+
+class GenericUpdatableTrustRegion(UpdatableTrustRegionWithLocationInGlobalSearchSpace):
+    """A generic updatable search space for use with trust region acquisition rules."""
+
+    def __init__(
+        self,
+        beta: float = 0.7,
+        kappa: float = 1e-4,
+        zeta: float = 0.5,
+        min_eps: float = 1e-2,
+    ):
+        """
+        Calculates the bounds of the region from the location/centre and global bounds.
+
+        :param beta: The inverse of the trust region contraction factor.
+        :param kappa: Scales the threshold for the minimal improvement required for a step to be
+            considered a success.
+        :param zeta: The initial size of the trust region is ``zeta`` times the size of the global
+            search space.
+        :param min_eps: The minimal size of the search space. If the size of the search space is
+            smaller than this, the search space is reinitialized.
+        """
+        self._beta = beta
+        self._kappa = kappa
+        self._zeta = zeta
+        self._min_eps = min_eps
+        self._step_is_success = False
+        self._init_location()
+        self._init_eps()
+        self._update_bounds()
+        self._y_min = np.inf
+
+    def _init_eps(self) -> None:
+        self.eps = self._zeta * (self.global_search_space.upper - self.global_search_space.lower)
+
+    @abstractmethod
+    def _update_bounds(self) -> None:
+        # Update the local bounds of the region.
+        ...
+
+    @property
+    def requires_initialization(self) -> bool:
+        """
+        Return `True` if the search space needs to be initialized, and `False` otherwise.
+
+        If uninitialized, or the size of the region is less than the minimum size, re-initialize
+        the region.
+        """
+        return not self._initialized or tf.reduce_any(self.eps < self._min_eps)
+
+    def initialize(
+        self,
+        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+    ) -> None:
+        """
+        Initialize the region by sampling a location from the global search space and setting the
+        local region bounds around it.
+
+        :param models: The model for each tag.
+        :param datasets: The dataset for each tag.
+        """
+
+        datasets = self.select_in_region(datasets)
+        self._init_location(models, datasets)
+        self._step_is_success = False
+        self._init_eps()
+        self._update_bounds()
+        _, self._y_min = self.get_dataset_min(datasets)
+        self._initialized = True
+
+    def update(
+        self,
+        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+    ) -> None:
+        """
+        Update this region, including centre/location, using the given dataset.
+
+        If the new optimum improves over the previous optimum by some threshold (that scales
+        linearly with ``kappa``), the previous acquisition is considered successful.
+
+        If the previous acquisition was successful, the size is increased by a factor
+        ``1 / beta``. Conversely, if it was unsuccessful, the size is reduced by the factor
+        ``beta``.
+
+        :param models: The model for each tag.
+        :param datasets: The dataset for each tag.
+        """
+        datasets = self.select_in_region(datasets)
+        x_min, y_min = self.get_dataset_min(datasets)
+        self.location = x_min
+
+        tr_volume = tf.reduce_prod(self.upper - self.lower)
+        self._step_is_success = y_min < self._y_min - self._kappa * tr_volume
+        self.eps = self.eps / self._beta if self._step_is_success else self.eps * self._beta
+        self._update_bounds()
+        self._y_min = y_min
+
+    @check_shapes(
+        "query_points: [N, D]",
+        "values: [N, 1]",
+        "return[0]: [D]",
+        "return[1]: []",
+    )
+    def _get_min_contained_in_region(
+        self, query_points: TensorType, values: TensorType
+    ) -> Tuple[TensorType, TensorType]:
+        """
+        Calculate the minimum of the region using the given dataset. Only consider query points
+        that are contained in the region.
+
+        :param query_points: The query points corresponding to the values.
+        :param values: The values to find the minimum over.
+        :return: The query point and value of the minimum.
+        """
+        in_tr = self.contains(query_points)
+        in_tr_obs = tf.where(
+            tf.expand_dims(in_tr, axis=-1),
+            values,
+            tf.constant(np.inf, dtype=values.dtype),
+        )
+        ix = tf.argmin(in_tr_obs)
+        x_min = tf.gather(query_points, ix)
+        y_min = tf.gather(in_tr_obs, ix)
+
+        return tf.squeeze(x_min, axis=0), tf.squeeze(y_min)
+
+    @check_shapes(
+        "return[0]: [D]",
+        "return[1]: []",
+    )
+    @abstractmethod
+    def get_dataset_min(
+        self, datasets: Optional[Mapping[Tag, Dataset]]
+    ) -> Tuple[TensorType, TensorType]:
+        """
+        Calculate the minimum of the region using the given dataset.
+
+        :param datasets: The datasets to use for finding the minimum.
+        """
+
+
+class UpdatableTrustRegionBox(Box, UpdatableTrustRegionWithLocationInGlobalSearchSpace):
     """
     A simple updatable box search space with a centre location and an associated global search
     space.
@@ -1505,14 +1679,13 @@ class UpdatableTrustRegionBox(Box, UpdatableTrustRegion):
             of indices into the columns of the space. If `None`, all dimensions are active.
         """
         Box.__init__(self, global_search_space.lower, global_search_space.upper)
-        UpdatableTrustRegion.__init__(self, region_index, input_active_dims)
+        UpdatableTrustRegionWithLocationInGlobalSearchSpace.__init__(
+            self, region_index, input_active_dims
+        )
         self._global_search_space = global_search_space
-        # Random initial location in the global search space.
-        self.location = tf.squeeze(global_search_space.sample(1), axis=0)
 
     @property
     def location(self) -> TensorType:
-        """The centre of the box."""
         return self._location
 
     @location.setter
@@ -1521,11 +1694,10 @@ class UpdatableTrustRegionBox(Box, UpdatableTrustRegion):
 
     @property
     def global_search_space(self) -> SearchSpace:
-        """The global search space this search space lives in."""
         return self._global_search_space
 
 
-class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox):
+class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox, GenericUpdatableTrustRegion):
     """An updatable box search space for use with trust region acquisition rules."""
 
     def __init__(
@@ -1555,30 +1727,8 @@ class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox):
         :param input_active_dims: The active dimensions of the input space, either a slice or list
             of indices into the columns of the space. If `None`, all dimensions are active.
         """
-        super().__init__(global_search_space, region_index, input_active_dims)
-        self._beta = beta
-        self._kappa = kappa
-        self._zeta = zeta
-        self._min_eps = min_eps
-
-        self._step_is_success = False
-        self.eps = 0.0
-        self._init_eps()
-        self._update_bounds()
-        self._y_min = np.inf
-
-    @property
-    def requires_initialization(self) -> bool:
-        """
-        Return `True` if the search space needs to be initialized, and `False` otherwise.
-
-        If uninitialized, or the size of the box is less than the minimum size, re-initialize
-        the box.
-        """
-        return not self._initialized or tf.reduce_any(self.eps < self._min_eps)
-
-    def _init_eps(self) -> None:
-        self.eps = self._zeta * (self.global_search_space.upper - self.global_search_space.lower)
+        UpdatableTrustRegionBox.__init__(self, global_search_space, region_index, input_active_dims)
+        GenericUpdatableTrustRegion.__init__(self, beta, kappa, zeta, min_eps)
 
     def _update_bounds(self) -> None:
         self._lower = tf.reduce_max(
@@ -1588,57 +1738,15 @@ class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox):
             [self.global_search_space.upper, self.location + self.eps], axis=0
         )
 
-    def initialize(
-        self,
-        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
-        datasets: Optional[Mapping[Tag, Dataset]] = None,
-    ) -> None:
-        """
-        Initialize the box by sampling a location from the global search space and setting the
-        bounds.
-        """
-        datasets = self.select_in_region(datasets)
-
-        self.location = tf.squeeze(self.global_search_space.sample(1), axis=0)
-        self._step_is_success = False
-        self._init_eps()
-        self._update_bounds()
-        _, self._y_min = self.get_dataset_min(datasets)
-        self._initialized = True
-
-    def update(
-        self,
-        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
-        datasets: Optional[Mapping[Tag, Dataset]] = None,
-    ) -> None:
-        """
-        Update this box, including centre/location, using the given dataset.
-
-        If the new optimum improves over the previous optimum by some threshold (that scales
-        linearly with ``kappa``), the previous acquisition is considered successful.
-
-        If the previous acquisition was successful, the size is increased by a factor
-        ``1 / beta``. Conversely, if it was unsuccessful, the size is reduced by the factor
-        ``beta``.
-        """
-        datasets = self.select_in_region(datasets)
-        x_min, y_min = self.get_dataset_min(datasets)
-        self.location = x_min
-
-        tr_volume = tf.reduce_prod(self.upper - self.lower)
-        self._step_is_success = y_min < self._y_min - self._kappa * tr_volume
-        self.eps = self.eps / self._beta if self._step_is_success else self.eps * self._beta
-        self._update_bounds()
-        self._y_min = y_min
-
-    @check_shapes(
-        "return[0]: [D]",
-        "return[1]: []",
-    )
+    @inherit_check_shapes
     def get_dataset_min(
         self, datasets: Optional[Mapping[Tag, Dataset]]
     ) -> Tuple[TensorType, TensorType]:
-        """Calculate the minimum of the box using the given dataset."""
+        """
+        Calculate the minimum of the region using the given dataset.
+
+        :param datasets: The datasets to use for finding the minimum.
+        """
         if (
             datasets is None
             or len(datasets) != 1
@@ -1646,18 +1754,7 @@ class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox):
         ):
             raise ValueError("""a single OBJECTIVE dataset must be provided""")
         dataset = next(iter(datasets.values()))
-
-        in_tr = self.contains(dataset.query_points)
-        in_tr_obs = tf.where(
-            tf.expand_dims(in_tr, axis=-1),
-            dataset.observations,
-            tf.constant(np.inf, dtype=dataset.observations.dtype),
-        )
-        ix = tf.argmin(in_tr_obs)
-        x_min = tf.gather(dataset.query_points, ix)
-        y_min = tf.gather(in_tr_obs, ix)
-
-        return tf.squeeze(x_min, axis=0), tf.squeeze(y_min)
+        return self._get_min_contained_in_region(dataset.query_points, dataset.observations)
 
 
 class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, UpdatableTrustRegionBox]):
@@ -1862,6 +1959,7 @@ class TURBOBox(UpdatableTrustRegionBox):
             of indices into the columns of the space. If `None`, all dimensions are active.
         """
         super().__init__(global_search_space, region_index, input_active_dims)
+        self._init_location()
 
         search_space_max_width = tf.reduce_max(
             global_search_space.upper - global_search_space.lower
@@ -2014,7 +2112,10 @@ class TURBOBox(UpdatableTrustRegionBox):
         return tf.squeeze(x_min, axis=0), tf.squeeze(y_min)
 
 
-class UpdatableTrustRegionDiscrete(DiscreteSearchSpace, UpdatableTrustRegion):
+class UpdatableTrustRegionDiscrete(
+    DiscreteSearchSpace,
+    UpdatableTrustRegionWithLocationInGlobalSearchSpace,
+):
     """
     An updatable discrete search space with an associated global search space.
     """
@@ -2035,17 +2136,21 @@ class UpdatableTrustRegionDiscrete(DiscreteSearchSpace, UpdatableTrustRegion):
         """
         # Ensure global_points is a copied tensor, in case a variable is passed in.
         DiscreteSearchSpace.__init__(self, tf.constant(global_search_space.points))
-        UpdatableTrustRegion.__init__(self, region_index, input_active_dims)
+        UpdatableTrustRegionWithLocationInGlobalSearchSpace.__init__(
+            self, region_index, input_active_dims
+        )
         self._global_search_space = global_search_space
 
     @property
-    @abstractmethod
     def location(self) -> TensorType:
-        """Center of the region."""
+        return self._location
+
+    @location.setter
+    def location(self, location: TensorType) -> None:
+        self._location = location
 
     @property
     def global_search_space(self) -> DiscreteSearchSpace:
-        """The global space this search space lives in."""
         return self._global_search_space
 
 
@@ -2064,12 +2169,7 @@ class FixedPointTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
     ):
         super().__init__(global_search_space, region_index, input_active_dims)
         # Random initial point from the global search space.
-        self._points = self.global_search_space.sample(1)
-
-    @property
-    def location(self) -> TensorType:
-        """The location point of the region."""
-        return tf.squeeze(self._points, axis=0)  # Only one point.
+        self._init_location()
 
     def initialize(
         self,
@@ -2077,7 +2177,7 @@ class FixedPointTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> None:
         # Pick a random point from the global search space.
-        self._points = self.global_search_space.sample(1)
+        self._init_location(models, datasets)
         self._initialized = True
 
     def update(
@@ -2089,7 +2189,7 @@ class FixedPointTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
         pass
 
 
-class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
+class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete, GenericUpdatableTrustRegion):
     """
     An updatable discrete trust region that maintains a set of neighboring points around a
     single location point, allowing for local exploration of the search space. The region is
@@ -2134,34 +2234,29 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
         :param input_active_dims: The active dimensions of the input space, either a slice or list
             of indices into the columns of the space. If `None`, all dimensions are active.
         """
-        super().__init__(global_search_space, region_index, input_active_dims)
-        self._beta = beta
-        self._kappa = kappa
-        self._zeta = zeta
-        self._min_eps = min_eps
-        self._step_is_success = False
-        self._init_location()
+        UpdatableTrustRegionDiscrete.__init__(
+            self, global_search_space, region_index, input_active_dims
+        )
         self._compute_global_distances()
-        self._init_eps()
-        self._update_neighbors()
-        self._y_min = np.inf
-
-    @property
-    def requires_initialization(self) -> bool:
-        """
-        Return `True` if the search space needs to be initialized, and `False` otherwise.
-
-        If uninitialized, or the size of the region is less than the minimum size, re-initialize
-        the region.
-        """
-        return not self._initialized or tf.reduce_any(self.eps < self._min_eps)
+        GenericUpdatableTrustRegion.__init__(self, beta, kappa, zeta, min_eps)
 
     @property
     def location(self) -> TensorType:
-        """Center point of the region."""
         return tf.reshape(tf.gather(self.global_search_space.points, self._location_ix), (-1,))
 
-    def _init_location(self) -> None:
+    @location.setter
+    def location(self, location: TensorType) -> None:
+        self._location_ix = tf.where(
+            tf.reduce_all(self.global_search_space.points == location, axis=-1)
+        )
+        self._location_ix = tf.squeeze(self._location_ix, axis=-1)
+
+    def _init_location(
+        self,
+        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+        location_candidate: Optional[TensorType] = None,
+    ) -> None:
         # Random initial location index from the global search space.
         self._location_ix = tf.random.categorical(
             tf.ones(
@@ -2173,9 +2268,6 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
             1,
         )[0]
 
-    def _init_eps(self) -> None:
-        self.eps = self._zeta * (self.global_search_space.upper - self.global_search_space.lower)
-
     def _compute_global_distances(self) -> None:
         # Pairwise distances along each axis in the global search space.
         points = self.global_search_space.points
@@ -2183,7 +2275,7 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
             tf.expand_dims(points, -2) - tf.expand_dims(points, -3)
         )  # [num_points, num_points, D]
 
-    def _update_neighbors(self) -> None:
+    def _update_bounds(self) -> None:
         # Indices of the neighbors within the trust region.
         neighbors_mask = tf.reduce_all(
             tf.gather(self._global_distances, self._location_ix) <= self.eps, axis=-1
@@ -2194,63 +2286,7 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
         # Points within the trust region (including the location point).
         self._points = tf.gather(self.global_search_space.points, self._neighbor_ixs)
 
-    def initialize(
-        self,
-        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
-        datasets: Optional[Mapping[Tag, Dataset]] = None,
-    ) -> None:
-        """
-        Initialize the region by sampling a location from the global search space and selecting
-        the neighboring points within the trust region.
-
-        :param models: The model for each tag.
-        :param datasets: The dataset for each tag.
-        """
-
-        datasets = self.select_in_region(datasets)
-        self._init_location()
-        self._step_is_success = False
-        self._init_eps()
-        self._update_neighbors()
-        _, self._y_min = self.get_dataset_min(datasets)
-        self._initialized = True
-
-    def update(
-        self,
-        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
-        datasets: Optional[Mapping[Tag, Dataset]] = None,
-    ) -> None:
-        """
-        Update this region, including location and neighbors, using the given dataset.
-
-        If the new optimum improves over the previous optimum by some threshold (that scales
-        linearly with ``kappa``), the previous acquisition is considered successful.
-
-        If the previous acquisition was successful, the size is increased by a factor
-        ``1 / beta``. Conversely, if it was unsuccessful, the size is reduced by the factor
-        ``beta``.
-
-        :param models: The model for each tag.
-        :param datasets: The dataset for each tag.
-        """
-
-        datasets = self.select_in_region(datasets)
-        x_min, y_min = self.get_dataset_min(datasets)
-        self._location_ix = tf.where(
-            tf.reduce_all(self.global_search_space.points == x_min, axis=-1)
-        )
-        self._location_ix = tf.squeeze(self._location_ix, axis=-1)
-
-        tr_volume = tf.reduce_prod(self.upper - self.lower)
-        self._step_is_success = y_min < self._y_min - self._kappa * tr_volume
-        self.eps = self.eps / self._beta if self._step_is_success else self.eps * self._beta
-        self._update_neighbors()
-        self._y_min = y_min
-
-    @check_shapes(
-        "return[0]: [D]",
-        "return[1]: []",
-    )
+    @inherit_check_shapes
     def get_dataset_min(
         self, datasets: Optional[Mapping[Tag, Dataset]]
     ) -> Tuple[TensorType, TensorType]:
@@ -2266,24 +2302,7 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
         ):
             raise ValueError("""a single OBJECTIVE dataset must be provided""")
         dataset = next(iter(datasets.values()))
-
-        in_tr = self.contains(dataset.query_points)
-        in_tr_obs = tf.where(
-            tf.expand_dims(in_tr, axis=-1),
-            dataset.observations,
-            tf.constant(np.inf, dtype=dataset.observations.dtype),
-        )
-        ix = tf.argmin(in_tr_obs)
-        x_min = tf.gather(dataset.query_points, ix)
-        y_min = tf.gather(in_tr_obs, ix)
-
-        return tf.squeeze(x_min, axis=0), tf.squeeze(y_min)
-
-
-UpdatableTrustRegionWithGlobalSearchSpace = Union[
-    UpdatableTrustRegionBox, UpdatableTrustRegionDiscrete
-]
-"""A type alias for updatable trust regions with a global search space."""
+        return self._get_min_contained_in_region(dataset.query_points, dataset.observations)
 
 
 class UpdatableTrustRegionProduct(TaggedProductSearchSpace, UpdatableTrustRegion):
@@ -2298,7 +2317,7 @@ class UpdatableTrustRegionProduct(TaggedProductSearchSpace, UpdatableTrustRegion
 
     def __init__(
         self,
-        regions: Sequence[UpdatableTrustRegionWithGlobalSearchSpace],
+        regions: Sequence[UpdatableTrustRegionWithLocationInGlobalSearchSpace],
         tags: Optional[Sequence[str]] = None,
         region_index: Optional[int] = None,
     ):
@@ -2374,7 +2393,7 @@ class UpdatableTrustRegionProduct(TaggedProductSearchSpace, UpdatableTrustRegion
             region.region_index = region_index
 
     @property
-    def regions(self) -> Mapping[str, UpdatableTrustRegionWithGlobalSearchSpace]:
+    def regions(self) -> Mapping[str, UpdatableTrustRegionWithLocationInGlobalSearchSpace]:
         """The sub-regions of the product trust region."""
         _regions = {}
         for tag, region in self._spaces.items():
@@ -2468,7 +2487,9 @@ class BatchTrustRegionProduct(
             else:
                 num_query_points = 1
 
-            def create_subregions() -> Sequence[UpdatableTrustRegionWithGlobalSearchSpace]:
+            def create_subregions() -> (
+                Sequence[UpdatableTrustRegionWithLocationInGlobalSearchSpace]
+            ):
                 # Take a global product search space and convert each of its subspaces to an
                 # updatable trust sub-region. These sub-regions are then used to create a
                 # trust region product.
@@ -2476,7 +2497,7 @@ class BatchTrustRegionProduct(
                     search_space, TaggedProductSearchSpace
                 ), "search_space should be a TaggedProductSearchSpace"
 
-                subregions: List[UpdatableTrustRegionWithGlobalSearchSpace] = []
+                subregions: List[UpdatableTrustRegionWithLocationInGlobalSearchSpace] = []
                 for tag in search_space.subspace_tags:
                     subspace = search_space.get_subspace(tag)
                     if isinstance(subspace, DiscreteSearchSpace):
