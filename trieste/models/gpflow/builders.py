@@ -34,6 +34,9 @@ from ...space import Box, SearchSpace
 from ...types import TensorType
 from ..gpflow.models import GaussianProcessRegression
 
+# NOTE: As a static non-Tensor, this should really be a tf.constant (like the other constants).
+# However, changing it breaks serialisation during the expected_improvement.pct.py notebook.
+# See https://github.com/secondmind-labs/trieste/issues/833 for details.
 KERNEL_LENGTHSCALE = tf.cast(0.2, dtype=gpflow.default_float())
 """
 Default value of the kernel lengthscale parameter.
