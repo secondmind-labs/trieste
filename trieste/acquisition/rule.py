@@ -1012,6 +1012,13 @@ class UpdatableTrustRegion(SearchSpace):
         """
         self.region_index = region_index
         self.input_active_dims = input_active_dims
+        self._initialized = False
+
+    @property
+    def requires_initialization(self) -> bool:
+        """Return `True` if the search space needs to be re-initialized with the latest models
+        and datasets, and `False` if it can be just updated."""
+        return not self._initialized
 
     @abstractmethod
     def initialize(
@@ -1021,6 +1028,9 @@ class UpdatableTrustRegion(SearchSpace):
     ) -> None:
         """
         Initialize the search space using the given models and datasets.
+
+        Extending classes must set `self._initialized` to `True` after initialization in this
+        method.
 
         :param models: The model for each tag.
         :param datasets: The dataset for each tag.
@@ -1436,7 +1446,11 @@ class BatchTrustRegion(
         # Update subspaces with the latest datasets.
         assert self._subspaces is not None
         for subspace in self._subspaces:
-            subspace.update(models, datasets)
+            # Re-initialize or update the subspace, depending on the property.
+            if subspace.requires_initialization:
+                subspace.initialize(models, datasets)
+            else:
+                subspace.update(models, datasets)
         self.maybe_initialize_subspaces(self._subspaces, models, datasets)
 
         # Filter out points that are not in any of the subspaces. This is done by creating a mask
@@ -1519,6 +1533,7 @@ class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox):
         global_search_space: SearchSpace,
         beta: float = 0.7,
         kappa: float = 1e-4,
+        zeta: float = 0.5,
         min_eps: float = 1e-2,
         region_index: Optional[int] = None,
         input_active_dims: Optional[Union[slice, Sequence[int]]] = None,
@@ -1530,6 +1545,8 @@ class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox):
         :param beta: The inverse of the trust region contraction factor.
         :param kappa: Scales the threshold for the minimal improvement required for a step to be
             considered a success.
+        :param zeta: The initial size of the trust region is ``zeta`` times the size of the global
+            search space.
         :param min_eps: The minimal size of the search space. If the size of the search space is
             smaller than this, the search space is reinitialized.
         :param region_index: The index of the region in a multi-region search space. This is used to
@@ -1541,19 +1558,27 @@ class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox):
         super().__init__(global_search_space, region_index, input_active_dims)
         self._beta = beta
         self._kappa = kappa
+        self._zeta = zeta
         self._min_eps = min_eps
 
-        self._initialized = False
         self._step_is_success = False
         self.eps = 0.0
         self._init_eps()
         self._update_bounds()
         self._y_min = np.inf
 
+    @property
+    def requires_initialization(self) -> bool:
+        """
+        Return `True` if the search space needs to be initialized, and `False` otherwise.
+
+        If uninitialized, or the size of the box is less than the minimum size, re-initialize
+        the box.
+        """
+        return not self._initialized or tf.reduce_any(self.eps < self._min_eps)
+
     def _init_eps(self) -> None:
-        global_lower = self.global_search_space.lower
-        global_upper = self.global_search_space.upper
-        self.eps = 0.5 * (global_upper - global_lower) / (5.0 ** (1.0 / global_lower.shape[-1]))
+        self.eps = self._zeta * (self.global_search_space.upper - self.global_search_space.lower)
 
     def _update_bounds(self) -> None:
         self._lower = tf.reduce_max(
@@ -1587,8 +1612,7 @@ class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox):
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> None:
         """
-        Update this box, including centre/location, using the given dataset. If the size of the
-        box is less than the minimum size, re-initialize the box.
+        Update this box, including centre/location, using the given dataset.
 
         If the new optimum improves over the previous optimum by some threshold (that scales
         linearly with ``kappa``), the previous acquisition is considered successful.
@@ -1597,10 +1621,6 @@ class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox):
         ``1 / beta``. Conversely, if it was unsuccessful, the size is reduced by the factor
         ``beta``.
         """
-        if not self._initialized or tf.reduce_any(self.eps < self._min_eps):
-            self.initialize(models, datasets)
-            return
-
         datasets = self.select_in_region(datasets)
         x_min, y_min = self.get_dataset_min(datasets)
         self.location = x_min
@@ -1881,7 +1901,6 @@ class TURBOBox(UpdatableTrustRegionBox):
                 f"success tolerance must be an integer greater than 0, got {self.failure_tolerance}"
             )
 
-        self._initialized = False
         self.y_min = np.inf
         # Initialise to the full global search space size.
         self.tr_width = global_search_space.upper - global_search_space.lower
@@ -1944,10 +1963,6 @@ class TURBOBox(UpdatableTrustRegionBox):
         models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> None:
-        if not self._initialized:
-            self.initialize(models, datasets)
-            return
-
         # Use the full dataset to determine the best point.
         datasets = self.select_in_region(datasets)
         x_min, y_min = self.get_dataset_min(datasets)
@@ -2063,6 +2078,7 @@ class FixedPointTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
     ) -> None:
         # Pick a random point from the global search space.
         self._points = self.global_search_space.sample(1)
+        self._initialized = True
 
     def update(
         self,
@@ -2095,6 +2111,7 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
         global_search_space: DiscreteSearchSpace,
         beta: float = 0.7,
         kappa: float = 1e-4,
+        zeta: float = 0.5,
         min_eps: float = 1e-2,
         region_index: Optional[int] = None,
         input_active_dims: Optional[Union[slice, Sequence[int]]] = None,
@@ -2107,6 +2124,8 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
         :param beta: The inverse of the trust region contraction factor.
         :param kappa: Scales the threshold for the minimal improvement required for a step to be
             considered a success.
+        :param zeta: The initial size of the trust region is ``zeta`` times the size of the global
+            search space.
         :param min_eps: The minimal size of the search space. If the size of the search space is
             smaller than this, the search space is reinitialized.
         :param region_index: The index of the region in a multi-region search space. This is used to
@@ -2118,14 +2137,24 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
         super().__init__(global_search_space, region_index, input_active_dims)
         self._beta = beta
         self._kappa = kappa
+        self._zeta = zeta
         self._min_eps = min_eps
-        self._initialized = False
         self._step_is_success = False
         self._init_location()
         self._compute_global_distances()
         self._init_eps()
         self._update_neighbors()
         self._y_min = np.inf
+
+    @property
+    def requires_initialization(self) -> bool:
+        """
+        Return `True` if the search space needs to be initialized, and `False` otherwise.
+
+        If uninitialized, or the size of the region is less than the minimum size, re-initialize
+        the region.
+        """
+        return not self._initialized or tf.reduce_any(self.eps < self._min_eps)
 
     @property
     def location(self) -> TensorType:
@@ -2145,9 +2174,7 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
         )[0]
 
     def _init_eps(self) -> None:
-        global_lower = self.global_search_space.lower
-        global_upper = self.global_search_space.upper
-        self.eps = 0.5 * (global_upper - global_lower) / (5.0 ** (1.0 / global_lower.shape[-1]))
+        self.eps = self._zeta * (self.global_search_space.upper - self.global_search_space.lower)
 
     def _compute_global_distances(self) -> None:
         # Pairwise distances along each axis in the global search space.
@@ -2194,8 +2221,7 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> None:
         """
-        Update this region, including location and neighbors, using the given dataset. If the
-        size of the region is less than the minimum size, re-initialize the region.
+        Update this region, including location and neighbors, using the given dataset.
 
         If the new optimum improves over the previous optimum by some threshold (that scales
         linearly with ``kappa``), the previous acquisition is considered successful.
@@ -2207,10 +2233,6 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
         :param models: The model for each tag.
         :param datasets: The dataset for each tag.
         """
-
-        if not self._initialized or tf.reduce_any(self.eps < self._min_eps):
-            self.initialize(models, datasets)
-            return
 
         datasets = self.select_in_region(datasets)
         x_min, y_min = self.get_dataset_min(datasets)
@@ -2329,6 +2351,15 @@ class UpdatableTrustRegionProduct(TaggedProductSearchSpace, UpdatableTrustRegion
             dim_ix += dims
 
     @property
+    def requires_initialization(self) -> bool:
+        """
+        Return `True` if the search space needs to be initialized, and `False` otherwise.
+
+        Re-initialize the whole product region if any of the sub-regions need to be re-initialized.
+        """
+        return any(region.requires_initialization for region in self.regions.values())
+
+    @property
     def region_index(self) -> Optional[int]:
         """The index of the region in a multi-region search space."""
         return self._region_index
@@ -2373,6 +2404,8 @@ class UpdatableTrustRegionProduct(TaggedProductSearchSpace, UpdatableTrustRegion
     ) -> None:
         for region in self.regions.values():
             region.initialize(models, datasets, *args, **kwargs)
+        # This is not used for the product region, but set it for consistency.
+        self._initialized = True
 
     def update(
         self,

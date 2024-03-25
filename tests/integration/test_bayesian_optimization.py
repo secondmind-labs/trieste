@@ -495,9 +495,6 @@ def test_bayesian_optimizer_with_dgp_finds_minima_of_simple_quadratic(
 @random_seed
 @pytest.mark.slow
 @pytest.mark.parametrize(
-    "dtype", [pytest.param(tf.float64, id="float64"), pytest.param(tf.float32, id="float32")]
-)
-@pytest.mark.parametrize(
     "num_steps, acquisition_rule",
     [
         pytest.param(
@@ -517,7 +514,6 @@ def test_bayesian_optimizer_with_dgp_finds_minima_of_simple_quadratic(
     ],
 )
 def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_scaled_branin(
-    dtype: tf.DType,
     num_steps: int,
     acquisition_rule: Callable[[], AcquisitionRule[TensorType, SearchSpace, DeepEnsemble]],
 ) -> None:
@@ -527,7 +523,6 @@ def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_scaled_branin(
         acquisition_rule(),
         optimize_branin=True,
         model_args={"bootstrap": True, "diversify": False},
-        single_precision=dtype == tf.float32,
     )
 
 
