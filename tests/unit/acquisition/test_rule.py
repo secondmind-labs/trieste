@@ -1387,7 +1387,8 @@ def test_trust_region_box_get_dataset_min_outside_search_space() -> None:
     npt.assert_array_equal(y_min, tf.constant([np.inf], dtype=tf.float64))
 
 
-def test_trust_region_box_initialize() -> None:
+@pytest.mark.parametrize("zeta", [None, 0.1, 0.7])
+def test_trust_region_box_initialize(zeta: Optional[float]) -> None:
     """Initialize sets the box to a random location, and sets the eps and y_min values."""
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     datasets = {
@@ -1397,10 +1398,15 @@ def test_trust_region_box_initialize() -> None:
         )
     }
     # Includes a quick test of input_active_dims. The irrelevant input dimension should be ignored.
-    trb = SingleObjectiveTrustRegionBox(search_space, input_active_dims=[1, 2])
+    if zeta is not None:
+        trb = SingleObjectiveTrustRegionBox(search_space, zeta=zeta, input_active_dims=[1, 2])
+    else:
+        trb = SingleObjectiveTrustRegionBox(search_space, input_active_dims=[1, 2])
     trb.initialize(datasets=datasets)
 
-    exp_eps = 0.5 * (search_space.upper - search_space.lower) / 5.0 ** (1.0 / 2.0)
+    exp_zeta = zeta if zeta is not None else 0.5  # Default value.
+    exp_eps = exp_zeta * (search_space.upper - search_space.lower)
+
     npt.assert_array_equal(trb.eps, exp_eps)
     npt.assert_array_compare(np.less_equal, search_space.lower, trb.location)
     npt.assert_array_compare(np.less_equal, trb.location, search_space.upper)
@@ -1419,7 +1425,7 @@ def test_trust_region_box_requires_initialization() -> None:
             tf.constant([[0.7], [0.9]], dtype=tf.float64),
         )
     }
-    trb = SingleObjectiveTrustRegionBox(search_space, min_eps=0.5)
+    trb = SingleObjectiveTrustRegionBox(search_space, min_eps=0.7)
     trb.initialize(datasets=datasets)
     location = trb.location
 
@@ -1446,9 +1452,12 @@ def test_trust_region_box_update_no_initialize() -> None:
         )
     }
     # Includes a quick test of input_active_dims. The irrelevant input dimension should be ignored.
-    trb = SingleObjectiveTrustRegionBox(search_space, min_eps=0.1, input_active_dims=[0, 2])
+    trb = SingleObjectiveTrustRegionBox(
+        search_space, zeta=0.3, min_eps=0.1, input_active_dims=[0, 2]
+    )
     trb.initialize(datasets=datasets)
     trb.location = tf.constant([0.5, 0.5], dtype=tf.float64)
+    trb._update_bounds()
     location = trb.location
 
     assert not trb.requires_initialization
@@ -1641,12 +1650,13 @@ class TestTrustRegionBox(SingleObjectiveTrustRegionBox):
         global_search_space: SearchSpace,
         beta: float = 0.7,
         kappa: float = 1e-4,
+        zeta: float = 0.5,
         min_eps: float = 1e-2,
         init_eps: float = 0.07,
     ):
         self._location = fixed_location
         self._init_eps_val = init_eps
-        super().__init__(global_search_space, beta, kappa, min_eps)
+        super().__init__(global_search_space, beta=beta, kappa=kappa, zeta=zeta, min_eps=min_eps)
 
     @property
     def location(self) -> TensorType:
@@ -1667,7 +1677,11 @@ def test_multi_trust_region_box_inits_regions_that_need_it() -> None:
 
     subspaces = [
         TestTrustRegionBox(
-            tf.constant([0.5 + i * 0.1], dtype=tf.float64), search_space, min_eps=0.3, init_eps=0.4
+            tf.constant([0.5 + i * 0.1], dtype=tf.float64),
+            search_space,
+            zeta=0.1,
+            min_eps=0.3,
+            init_eps=0.4,
         )
         for i in range(3)
     ]
@@ -2087,7 +2101,10 @@ def test_trust_region_discrete_get_dataset_min_outside_search_space(
     npt.assert_array_equal(y_min, tf.constant([np.inf], dtype=tf.float64))
 
 
-def test_trust_region_discrete_initialize(discrete_search_space: DiscreteSearchSpace) -> None:
+@pytest.mark.parametrize("zeta", [None, 0.1, 0.7])
+def test_trust_region_discrete_initialize(
+    discrete_search_space: DiscreteSearchSpace, zeta: Optional[float]
+) -> None:
     """Check initialize sets the region to a random location, and sets the eps and y_min values."""
     datasets = {
         OBJECTIVE: Dataset(  # Points outside the search space should be ignored.
@@ -2096,10 +2113,17 @@ def test_trust_region_discrete_initialize(discrete_search_space: DiscreteSearchS
         )
     }
     # Includes a quick test of input_active_dims. The irrelevant input dimension should be ignored.
-    tr = SingleObjectiveTrustRegionDiscrete(discrete_search_space, input_active_dims=[1, 2])
+    if zeta is not None:
+        tr = SingleObjectiveTrustRegionDiscrete(
+            discrete_search_space, zeta=zeta, input_active_dims=[1, 2]
+        )
+    else:
+        tr = SingleObjectiveTrustRegionDiscrete(discrete_search_space, input_active_dims=[1, 2])
     tr.initialize(datasets=datasets)
 
-    exp_eps = 0.5 * (discrete_search_space.upper - discrete_search_space.lower) / 5.0 ** (1.0 / 2.0)
+    exp_zeta = zeta if zeta is not None else 0.5  # Default value.
+    exp_eps = exp_zeta * (discrete_search_space.upper - discrete_search_space.lower)
+
     npt.assert_array_equal(tr.eps, exp_eps)
     npt.assert_array_compare(np.less_equal, discrete_search_space.lower, tr.location)
     npt.assert_array_compare(np.less_equal, tr.location, discrete_search_space.upper)
@@ -2119,7 +2143,7 @@ def test_trust_region_discrete_requires_initialization(
             tf.constant([[0.7], [0.9]], dtype=tf.float64),
         )
     }
-    tr = SingleObjectiveTrustRegionDiscrete(discrete_search_space, min_eps=3.0)
+    tr = SingleObjectiveTrustRegionDiscrete(discrete_search_space, min_eps=4.0)
     tr.initialize(datasets=datasets)
     tr._location_ix = tf.constant([], dtype=tf.int32)
     location = tr.location
