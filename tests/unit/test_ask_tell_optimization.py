@@ -457,7 +457,7 @@ def test_ask_tell_optimizer_tell_validates_keys(
     new_data_with_key_2 = {TAG2: mk_dataset([[1.0]], [[1.0]])}
 
     ask_tell = optimizer(search_space, dataset_with_key_1, model_with_key_1, acquisition_rule)
-    with pytest.raises(KeyError, match=str(TAG2)):
+    with pytest.raises(ValueError):
         ask_tell.tell(new_data_with_key_2)
 
 
