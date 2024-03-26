@@ -1516,6 +1516,7 @@ class UpdatableTrustRegionWithLocationInGlobalSearchSpace(UpdatableTrustRegion):
         """The global search space this region lives in."""
 
 
+# TODO: what is a good name for this class?
 class GenericUpdatableTrustRegion(UpdatableTrustRegionWithLocationInGlobalSearchSpace):
     """A generic updatable search space for use with trust region acquisition rules."""
 
@@ -1542,9 +1543,13 @@ class GenericUpdatableTrustRegion(UpdatableTrustRegionWithLocationInGlobalSearch
         self._zeta = zeta
         self._min_eps = min_eps
         self._step_is_success = False
+        # Randomly pick initial value of `self.location` for setting the bounds from the
+        # global search space.
         self._init_location()
         self._init_eps()
         self._update_bounds()
+        # Initial value of the region minimum is set to infinity as we have not yet observed any
+        # data.
         self._y_min = np.inf
 
     def _init_eps(self) -> None:
@@ -1569,6 +1574,7 @@ class GenericUpdatableTrustRegion(UpdatableTrustRegionWithLocationInGlobalSearch
         self,
         models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
         datasets: Optional[Mapping[Tag, Dataset]] = None,
+        location_candidate: Optional[TensorType] = None,
     ) -> None:
         """
         Initialize the region by sampling a location from the global search space and setting the
@@ -1576,10 +1582,15 @@ class GenericUpdatableTrustRegion(UpdatableTrustRegionWithLocationInGlobalSearch
 
         :param models: The model for each tag.
         :param datasets: The dataset for each tag.
+        :param location_candidate: A candidate for the location of the search space. If not
+            None, this is used instead of sampling a new location.
         """
 
+        # This returns datasets that are relevant for this region only, for each tag present in the
+        # dataset. Per tag it return a local dataset with a matching region index where it can;
+        # failing that it will return the global dataset for that tag.
         datasets = self.select_in_region(datasets)
-        self._init_location(models, datasets)
+        self._init_location(models, datasets, location_candidate=location_candidate)
         self._step_is_success = False
         self._init_eps()
         self._update_bounds()
@@ -1604,15 +1615,20 @@ class GenericUpdatableTrustRegion(UpdatableTrustRegionWithLocationInGlobalSearch
         :param models: The model for each tag.
         :param datasets: The dataset for each tag.
         """
-        datasets = self.select_in_region(datasets)
+        datasets = self.select_in_region(datasets)  # See `select_in_region` comment above.
         x_min, y_min = self.get_dataset_min(datasets)
-        self.location = x_min
 
         tr_volume = tf.reduce_prod(self.upper - self.lower)
         self._step_is_success = y_min < self._y_min - self._kappa * tr_volume
         self.eps = self.eps / self._beta if self._step_is_success else self.eps * self._beta
+
+        # Only update the location if the step was successful.
+        # TODO: check that this change is acceptable.
+        if self._step_is_success:
+            self.location = x_min
+            self._y_min = y_min
+
         self._update_bounds()
-        self._y_min = y_min
 
     @check_shapes(
         "query_points: [N, D]",
@@ -1620,25 +1636,43 @@ class GenericUpdatableTrustRegion(UpdatableTrustRegionWithLocationInGlobalSearch
         "return[0]: [D]",
         "return[1]: []",
     )
-    def _get_min_contained_in_region(
-        self, query_points: TensorType, values: TensorType
+    def get_values_min(
+        self,
+        query_points: TensorType,
+        values: TensorType,
+        num_query_points: Optional[int] = None,
+        in_region_only: bool = True,
     ) -> Tuple[TensorType, TensorType]:
         """
-        Calculate the minimum of the region using the given dataset. Only consider query points
-        that are contained in the region.
+        Calculate the minimum of the region over the given values, returning the query point and
+        value of the minimum. Optionally, only consider query points that are contained in the
+        region.
 
         :param query_points: The query points corresponding to the values.
         :param values: The values to find the minimum over.
+        :param num_query_points: The number of latest query points to use for calculating the
+            minimum. If None, all query points are used.
+        :param in_region_only: If True, only consider points contained in the region.
         :return: The query point and value of the minimum.
         """
-        in_tr = self.contains(query_points)
-        in_tr_obs = tf.where(
-            tf.expand_dims(in_tr, axis=-1),
-            values,
-            tf.constant(np.inf, dtype=values.dtype),
-        )
+
+        if num_query_points is None:
+            qps = query_points
+        else:
+            qps = query_points[-num_query_points:]
+
+        if in_region_only:
+            in_tr = self.contains(qps)  # Only consider points in the region.
+            in_tr_obs = tf.where(
+                tf.expand_dims(in_tr, axis=-1),
+                values,
+                tf.constant(np.inf, dtype=values.dtype),
+            )
+        else:
+            in_tr_obs = values  # Consider all points.
+
         ix = tf.argmin(in_tr_obs)
-        x_min = tf.gather(query_points, ix)
+        x_min = tf.gather(qps, ix)
         y_min = tf.gather(in_tr_obs, ix)
 
         return tf.squeeze(x_min, axis=0), tf.squeeze(y_min)
@@ -1647,15 +1681,28 @@ class GenericUpdatableTrustRegion(UpdatableTrustRegionWithLocationInGlobalSearch
         "return[0]: [D]",
         "return[1]: []",
     )
-    @abstractmethod
     def get_dataset_min(
         self, datasets: Optional[Mapping[Tag, Dataset]]
     ) -> Tuple[TensorType, TensorType]:
         """
-        Calculate the minimum of the region using the given dataset.
+        Calculate the minimum of the region using the given dataset, returning the query point and
+        value of the minimum.
+
+        The default implementation supports a single objective dataset only. This can be
+        overridden by subclasses to support multiple datasets.
 
         :param datasets: The datasets to use for finding the minimum.
+        :return: The query point and value of the minimum.
         """
+
+        if (
+            datasets is None
+            or len(datasets) != 1
+            or LocalizedTag.from_tag(next(iter(datasets))).global_tag != OBJECTIVE
+        ):
+            raise ValueError("""a single OBJECTIVE dataset must be provided""")
+        dataset = next(iter(datasets.values()))
+        return self.get_values_min(dataset.query_points, dataset.observations, in_region_only=True)
 
 
 class UpdatableTrustRegionBox(Box, UpdatableTrustRegionWithLocationInGlobalSearchSpace):
@@ -1666,7 +1713,7 @@ class UpdatableTrustRegionBox(Box, UpdatableTrustRegionWithLocationInGlobalSearc
 
     def __init__(
         self,
-        global_search_space: SearchSpace,
+        global_search_space: Box,
         region_index: Optional[int] = None,
         input_active_dims: Optional[Union[slice, Sequence[int]]] = None,
     ):
@@ -1693,7 +1740,7 @@ class UpdatableTrustRegionBox(Box, UpdatableTrustRegionWithLocationInGlobalSearc
         self._location = location
 
     @property
-    def global_search_space(self) -> SearchSpace:
+    def global_search_space(self) -> Box:
         return self._global_search_space
 
 
@@ -1702,7 +1749,7 @@ class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox, GenericUpdatableTru
 
     def __init__(
         self,
-        global_search_space: SearchSpace,
+        global_search_space: Box,
         beta: float = 0.7,
         kappa: float = 1e-4,
         zeta: float = 0.5,
@@ -1738,24 +1785,6 @@ class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox, GenericUpdatableTru
             [self.global_search_space.upper, self.location + self.eps], axis=0
         )
 
-    @inherit_check_shapes
-    def get_dataset_min(
-        self, datasets: Optional[Mapping[Tag, Dataset]]
-    ) -> Tuple[TensorType, TensorType]:
-        """
-        Calculate the minimum of the region using the given dataset.
-
-        :param datasets: The datasets to use for finding the minimum.
-        """
-        if (
-            datasets is None
-            or len(datasets) != 1
-            or LocalizedTag.from_tag(next(iter(datasets))).global_tag != OBJECTIVE
-        ):
-            raise ValueError("""a single OBJECTIVE dataset must be provided""")
-        dataset = next(iter(datasets.values()))
-        return self._get_min_contained_in_region(dataset.query_points, dataset.observations)
-
 
 class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, UpdatableTrustRegionBox]):
     """
@@ -1780,6 +1809,9 @@ class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, UpdatableTrus
             else:
                 num_query_points = 1
 
+            assert isinstance(
+                search_space, Box
+            ), f"search space should be a Box, got {type(search_space)}"
             init_subspaces: Tuple[UpdatableTrustRegionBox, ...] = tuple(
                 SingleObjectiveTrustRegionBox(search_space) for _ in range(num_query_points)
             )
@@ -1835,7 +1867,7 @@ class TREGOBox(SingleObjectiveTrustRegionBox):
 
     def __init__(
         self,
-        global_search_space: SearchSpace,
+        global_search_space: Box,
         beta: float = 0.7,
         kappa: float = 1e-4,
         min_eps: float = 1e-2,
@@ -1878,6 +1910,7 @@ class TREGOBox(SingleObjectiveTrustRegionBox):
         self,
         models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
         datasets: Optional[Mapping[Tag, Dataset]] = None,
+        location_candidate: Optional[TensorType] = None,
     ) -> None:
         # `True` if the search space is global, else `False` if it is local.
         # May be a scalar boolean `TensorType` instead of a `bool`.
@@ -1887,7 +1920,7 @@ class TREGOBox(SingleObjectiveTrustRegionBox):
         # here are inverted.
         self._is_global = self._initialized
 
-        super().initialize(models, datasets)
+        super().initialize(models, datasets, location_candidate=location_candidate)
 
     def get_datasets_filter_mask(
         self, datasets: Optional[Mapping[Tag, Dataset]]
@@ -1912,7 +1945,6 @@ class TREGOBox(SingleObjectiveTrustRegionBox):
     def get_dataset_min(
         self, datasets: Optional[Mapping[Tag, Dataset]]
     ) -> Tuple[TensorType, TensorType]:
-        """Calculate the minimum of the box using the given dataset."""
         if (
             datasets is None
             or len(datasets) != 1
@@ -1922,11 +1954,7 @@ class TREGOBox(SingleObjectiveTrustRegionBox):
         dataset = next(iter(datasets.values()))
 
         # Always return the global minimum.
-        ix = tf.argmin(dataset.observations)
-        x_min = tf.gather(dataset.query_points, ix)
-        y_min = tf.gather(dataset.observations, ix)
-
-        return tf.squeeze(x_min, axis=0), tf.squeeze(y_min)
+        return self.get_values_min(dataset.query_points, dataset.observations, in_region_only=False)
 
 
 class TURBOBox(UpdatableTrustRegionBox):
@@ -1934,7 +1962,7 @@ class TURBOBox(UpdatableTrustRegionBox):
 
     def __init__(
         self,
-        global_search_space: SearchSpace,
+        global_search_space: Box,
         L_min: Optional[float] = None,
         L_init: Optional[float] = None,
         L_max: Optional[float] = None,
@@ -2143,11 +2171,17 @@ class UpdatableTrustRegionDiscrete(
 
     @property
     def location(self) -> TensorType:
-        return self._location
+        # TODO: what if the location is not in the global search space?
+        return tf.reshape(tf.gather(self.global_search_space.points, self._location_ix), (-1,))
 
     @location.setter
     def location(self, location: TensorType) -> None:
-        self._location = location
+        # Keep the index of the location in the global search space, instead of directly storing
+        # the location.
+        self._location_ix = tf.where(
+            tf.reduce_all(self.global_search_space.points == location, axis=-1)
+        )
+        self._location_ix = tf.squeeze(self._location_ix, axis=-1)
 
     @property
     def global_search_space(self) -> DiscreteSearchSpace:
@@ -2237,36 +2271,10 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete, GenericUp
         UpdatableTrustRegionDiscrete.__init__(
             self, global_search_space, region_index, input_active_dims
         )
+        # Need to compute the distances before initializing `GenericUpdatableTrustRegion` as it
+        # uses the distances to set the initial location and update the bounds.
         self._compute_global_distances()
         GenericUpdatableTrustRegion.__init__(self, beta, kappa, zeta, min_eps)
-
-    @property
-    def location(self) -> TensorType:
-        return tf.reshape(tf.gather(self.global_search_space.points, self._location_ix), (-1,))
-
-    @location.setter
-    def location(self, location: TensorType) -> None:
-        self._location_ix = tf.where(
-            tf.reduce_all(self.global_search_space.points == location, axis=-1)
-        )
-        self._location_ix = tf.squeeze(self._location_ix, axis=-1)
-
-    def _init_location(
-        self,
-        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
-        datasets: Optional[Mapping[Tag, Dataset]] = None,
-        location_candidate: Optional[TensorType] = None,
-    ) -> None:
-        # Random initial location index from the global search space.
-        self._location_ix = tf.random.categorical(
-            tf.ones(
-                (
-                    1,
-                    self.global_search_space.points.shape[0],
-                )
-            ),
-            1,
-        )[0]
 
     def _compute_global_distances(self) -> None:
         # Pairwise distances along each axis in the global search space.
@@ -2285,24 +2293,6 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete, GenericUp
         self._neighbor_ixs = tf.squeeze(self._neighbor_ixs, axis=-1)
         # Points within the trust region (including the location point).
         self._points = tf.gather(self.global_search_space.points, self._neighbor_ixs)
-
-    @inherit_check_shapes
-    def get_dataset_min(
-        self, datasets: Optional[Mapping[Tag, Dataset]]
-    ) -> Tuple[TensorType, TensorType]:
-        """
-        Calculate the minimum of the region using the given dataset.
-
-        :param datasets: The datasets to use for finding the minimum.
-        """
-        if (
-            datasets is None
-            or len(datasets) != 1
-            or LocalizedTag.from_tag(next(iter(datasets))).global_tag != OBJECTIVE
-        ):
-            raise ValueError("""a single OBJECTIVE dataset must be provided""")
-        dataset = next(iter(datasets.values()))
-        return self._get_min_contained_in_region(dataset.query_points, dataset.observations)
 
 
 class UpdatableTrustRegionProduct(TaggedProductSearchSpace, UpdatableTrustRegion):
@@ -2502,8 +2492,10 @@ class BatchTrustRegionProduct(
                     subspace = search_space.get_subspace(tag)
                     if isinstance(subspace, DiscreteSearchSpace):
                         subregions.append(FixedPointTrustRegionDiscrete(subspace))
-                    else:
+                    elif isinstance(subspace, Box):
                         subregions.append(SingleObjectiveTrustRegionBox(subspace))
+                    else:
+                        raise ValueError(f"unsupported search space type: {type(subspace)}")
                 return subregions
 
             init_subspaces: Tuple[UpdatableTrustRegionProduct, ...] = tuple(
