@@ -13,7 +13,7 @@
 # limitations under the License.
 import copy
 import functools
-from typing import Dict, Mapping, Tuple, Union
+from typing import Dict, Mapping, Optional, Sequence, Tuple, Union
 
 import tensorflow as tf
 from check_shapes import check_shapes
@@ -162,14 +162,24 @@ def copy_to_local_models(
 def with_local_datasets(
     datasets: Mapping[Tag, Dataset],
     num_local_datasets: int,
+    local_dataset_indices: Optional[Sequence[TensorType]] = None,
 ) -> Dict[Tag, Dataset]:
     """
-    Helper method to add local datasets if they do not already exist, by copying global datasets.
+    Helper method to add local datasets if they do not already exist, by copying global datasets
+    or a subset thereof.
 
     :param datasets: The original datasets.
     :param num_local_datasets: The number of local datasets to add per global tag.
+    :param local_dataset_indices: Optional sequence of indices, indicating which parts of
+        the global datasets should be copied. If None then the entire datasets are copied.
     :return: The updated mapping of datasets.
     """
+    if local_dataset_indices is not None and len(local_dataset_indices) != num_local_datasets:
+        raise ValueError(
+            f"local_dataset_indices should have {num_local_datasets} entries, "
+            f"has {len(local_dataset_indices)}"
+        )
+
     updated_datasets = {}
     for tag in datasets:
         updated_datasets[tag] = datasets[tag]
@@ -178,7 +188,19 @@ def with_local_datasets(
             for i in range(num_local_datasets):
                 target_ltag = LocalizedTag(ltag.global_tag, i)
                 if target_ltag not in datasets:
-                    updated_datasets[target_ltag] = datasets[tag]
+                    if local_dataset_indices is None:
+                        updated_datasets[target_ltag] = datasets[tag]
+                    else:
+                        # TODO: use sparse tensors instead
+                        updated_datasets[target_ltag] = Dataset(
+                            query_points=tf.gather(
+                                datasets[tag].query_points, local_dataset_indices[i]
+                            ),
+                            observations=tf.gather(
+                                datasets[tag].observations, local_dataset_indices[i]
+                            ),
+                        )
+
     return updated_datasets
 
 
