@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from typing import Dict, Generic, Mapping, Sequence, Type, TypeVar, cast, overload
+from typing import Dict, Generic, Mapping, Optional, Sequence, Type, TypeVar, cast, overload
 
 import tensorflow as tf
 
@@ -250,11 +250,13 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
             # exist in datasets. We want to copy this initial dataset to all the regions.
             num_local_datasets = self._acquisition_rule.num_local_datasets
             if self.track_data:
-                datasets = self._datasets = with_local_datasets(self._dataset, num_local_datasets)
+                datasets = self._datasets = with_local_datasets(self._datasets, num_local_datasets)
             else:
                 self._dataset_len = len(next(iter(self._datasets.values())).query_points)
                 self._dataset_ixs = [tf.range(self._dataset_len) for _ in range(num_local_datasets)]
-                datasets = with_local_datasets(self._dataset, num_local_datasets, self._dataset_ixs)
+                datasets = with_local_datasets(
+                    self._datasets, num_local_datasets, self._dataset_ixs
+                )
         self._filtered_datasets = self._acquisition_rule.filter_datasets(self._models, datasets)
 
         if fit_model:
@@ -456,7 +458,9 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         return query_points
 
     def tell(
-        self, new_data: Mapping[Tag, Dataset] | Dataset, new_data_ixs: Sequence[TensorType]
+        self,
+        new_data: Mapping[Tag, Dataset] | Dataset,
+        new_data_ixs: Optional[Sequence[TensorType]] = None,
     ) -> None:
         """Updates optimizer state with new data.
 
@@ -488,7 +492,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         if self.track_data:
             for tag, new_dataset in new_data.items():
                 self._datasets[tag] += new_dataset
-            datasets = self._datasets
+            datasets: Mapping[Tag, Dataset] = self._datasets
         elif not isinstance(self._acquisition_rule, LocalDatasetsAcquisitionRule):
             datasets = new_data
         else:
@@ -499,7 +503,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
                 if num_new_points < 0 or num_new_points % len(self._dataset_ixs) != 0:
                     raise ValueError(
                         "Cannot infer new data points as datasets haven't increased by "
-                        f"a multiple of {len(self._datset_ixs)}"
+                        f"a multiple of {len(self._dataset_ixs)}"
                     )
                 for i in range(len(self._dataset_ixs)):
                     self._dataset_ixs[i] = tf.concat(
