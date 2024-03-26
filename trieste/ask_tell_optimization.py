@@ -22,7 +22,9 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from typing import Dict, Generic, Mapping, Type, TypeVar, cast, overload
+from typing import Dict, Generic, Mapping, Sequence, Type, TypeVar, cast, overload
+
+import tensorflow as tf
 
 from .models.utils import optimize_model_and_save_result
 
@@ -85,6 +87,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         models: Mapping[Tag, ProbabilisticModelType],
         *,
         fit_model: bool = True,
+        track_data: bool = True,
     ):
         ...
 
@@ -97,6 +100,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         acquisition_rule: AcquisitionRule[TensorType, SearchSpaceType, ProbabilisticModelType],
         *,
         fit_model: bool = True,
+        track_data: bool = True,
     ):
         ...
 
@@ -112,6 +116,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         acquisition_state: StateType | None,
         *,
         fit_model: bool = True,
+        track_data: bool = True,
     ):
         ...
 
@@ -123,6 +128,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         models: ProbabilisticModelType,
         *,
         fit_model: bool = True,
+        track_data: bool = True,
     ):
         ...
 
@@ -135,6 +141,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         acquisition_rule: AcquisitionRule[TensorType, SearchSpaceType, ProbabilisticModelType],
         *,
         fit_model: bool = True,
+        track_data: bool = True,
     ):
         ...
 
@@ -150,6 +157,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         acquisition_state: StateType | None = None,
         *,
         fit_model: bool = True,
+        track_data: bool = True,
     ):
         ...
 
@@ -167,6 +175,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         acquisition_state: StateType | None = None,
         *,
         fit_model: bool = True,
+        track_data: bool = True,
     ):
         """
         :param search_space: The space over which to search for the next query point.
@@ -181,6 +190,9 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         :param acquisition_state: The optional acquisition state for stateful acquisitions.
         :param fit_model: If `True` (default), models passed in will be optimized on the given data.
             If `False`, the models are assumed to be optimized already.
+        :param track_data: If `True` (default), the optimizer will track the changing
+            datasets via a local copy. If `False`, it will infer new datasets from
+            updates to the global datasets (optionally using indices passed in to `tell`).
         :raise ValueError: If any of the following are true:
             - the keys in ``datasets`` and ``models`` do not match
             - ``datasets`` or ``models`` are empty
@@ -191,9 +203,6 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
 
         if not datasets or not models:
             raise ValueError("dicts of datasets and models must be populated.")
-
-        # Copy the dataset so we don't change the one provided by the user.
-        datasets = deepcopy(datasets)
 
         if isinstance(datasets, Dataset):
             datasets = {OBJECTIVE: datasets}
@@ -216,6 +225,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
 
         self._datasets = datasets
         self._models = models
+        self.track_data = track_data
 
         self._query_plot_dfs: dict[int, pd.DataFrame] = {}
         self._observation_plot_dfs = observation_plot_init(self._datasets)
@@ -234,20 +244,18 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         else:
             self._acquisition_rule = acquisition_rule
 
-        # In order to support local datasets, account for the case where there may be an initial
-        # dataset that is not tagged per region. In this case, only the global dataset will
-        # exist in datasets. We want to copy this initial dataset to all the regions.
-        # Copy the global dataset if the local version for the subspace is not available.
-        #
-        # Only applies to a subset of acquisition rules, i.e. ones that have subspaces and
-        # hence use local datasets.
         if isinstance(self._acquisition_rule, LocalDatasetsAcquisitionRule):
-            self._datasets = with_local_datasets(
-                self._datasets, self._acquisition_rule.num_local_datasets
-            )
-        self._filtered_datasets = self._acquisition_rule.filter_datasets(
-            self._models, self._datasets
-        )
+            # In order to support local datasets, account for the case where there may be an initial
+            # dataset that is not tagged per region. In this case, only the global dataset will
+            # exist in datasets. We want to copy this initial dataset to all the regions.
+            num_local_datasets = self._acquisition_rule.num_local_datasets
+            if self.track_data:
+                datasets = self._datasets = with_local_datasets(self._dataset, num_local_datasets)
+            else:
+                self._dataset_len = len(next(iter(self._datasets.values())).query_points)
+                self._dataset_ixs = [tf.range(self._dataset_len) for _ in range(num_local_datasets)]
+                datasets = with_local_datasets(self._dataset, num_local_datasets, self._dataset_ixs)
+        self._filtered_datasets = self._acquisition_rule.filter_datasets(self._models, datasets)
 
         if fit_model:
             with Timer() as initial_model_fitting_timer:
@@ -447,30 +455,75 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
 
         return query_points
 
-    def tell(self, new_data: Mapping[Tag, Dataset] | Dataset) -> None:
+    def tell(
+        self, new_data: Mapping[Tag, Dataset] | Dataset, new_data_ixs: Sequence[TensorType]
+    ) -> None:
         """Updates optimizer state with new data.
 
-        :param new_data: New observed data.
+        :param new_data: New observed data. If `track_data` is `False`, this refers to all
+            the data.
+        :param new_data_ixs: Indices to the new observed local data, if `track_data` is `False`.
+            If unspecified, inferred from the change in dataset sizes.
         :raise ValueError: If keys in ``new_data`` do not match those in already built dataset.
         """
         if isinstance(new_data, Dataset):
             new_data = {OBJECTIVE: new_data}
 
         # The datasets must have the same keys as the existing datasets. Only exception is if
-        # the existing datasets are all global, in which case the dataset will be appropriately
-        # updated below for the next iteration.
-        datasets_indices = {LocalizedTag.from_tag(tag).local_index for tag in self._datasets.keys()}
-        if self._datasets.keys() != new_data.keys() and datasets_indices != {None}:
+        # the existing datasets are all global and the new data contains local datasets too.
+        if all(LocalizedTag.from_tag(tag).local_index is None for tag in self._datasets.keys()):
+            global_old = {LocalizedTag.from_tag(tag).global_tag for tag in self._datasets.keys()}
+            global_new = {LocalizedTag.from_tag(tag).global_tag for tag in new_data.keys()}
+            if global_new != global_old:
+                raise ValueError(
+                    f"new_data global keys {global_new} doesn't "
+                    f"match dataset global keys {global_old}"
+                )
+        elif self._datasets.keys() != new_data.keys():
             raise ValueError(
                 f"new_data keys {new_data.keys()} doesn't "
                 f"match dataset keys {self._datasets.keys()}"
             )
 
-        for tag, new_dataset in new_data.items():
-            self._datasets[tag] += new_dataset
-        self._filtered_datasets = self._acquisition_rule.filter_datasets(
-            self._models, self._datasets
-        )
+        if self.track_data:
+            for tag, new_dataset in new_data.items():
+                self._datasets[tag] += new_dataset
+            datasets = self._datasets
+        elif not isinstance(self._acquisition_rule, LocalDatasetsAcquisitionRule):
+            datasets = new_data
+        else:
+            if new_data_ixs is None:
+                # infer dataset indices from change in dataset sizes
+                new_dataset_len = len(next(iter(new_data.values())).query_points)
+                num_new_points = new_dataset_len - self._dataset_len
+                if num_new_points < 0 or num_new_points % len(self._dataset_ixs) != 0:
+                    raise ValueError(
+                        "Cannot infer new data points as datasets haven't increased by "
+                        f"a multiple of {len(self._datset_ixs)}"
+                    )
+                for i in range(len(self._dataset_ixs)):
+                    self._dataset_ixs[i] = tf.concat(
+                        [
+                            self._dataset_ixs[i],
+                            tf.range(0, num_new_points, len(self._dataset_ixs))
+                            + self._dataset_len
+                            + i,
+                        ],
+                        -1,
+                    )
+            else:
+                # use explicit indices
+                if len(new_data_ixs) != len(self._dataset_ixs):
+                    raise ValueError(
+                        f"new_data_ixs has {len(new_data_ixs)} entries, "
+                        f"expected {len(self._dataset_ixs)}"
+                    )
+                for i in range(len(self._dataset_ixs)):
+                    self._dataset_ixs[i] = tf.concat([self._dataset_ixs[i], new_data_ixs[i]], -1)
+            datasets = with_local_datasets(new_data, len(self._dataset_ixs), self._dataset_ixs)
+            self._dataset_len = len(next(iter(datasets.values())).query_points)
+
+        self._filtered_datasets = self._acquisition_rule.filter_datasets(self._models, datasets)
 
         with Timer() as model_fitting_timer:
             for tag, model in self._models.items():
@@ -483,7 +536,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         if summary_writer:
             with summary_writer.as_default(step=logging.get_step_number()):
                 write_summary_observations(
-                    self._datasets,
+                    datasets,
                     self._models,
                     new_data,
                     model_fitting_timer,
