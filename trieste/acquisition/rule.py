@@ -1743,6 +1743,12 @@ class UpdatableTrustRegionBox(Box, UpdatableTrustRegionWithLocationInGlobalSearc
     def global_search_space(self) -> Box:
         return self._global_search_space
 
+    def _get_bounds_within_distance(self, eps: TensorType) -> Tuple[TensorType, TensorType]:
+        # Helper method to get the box bounds within a distance `eps` of the region location.
+        lower = tf.reduce_max([self.global_search_space.lower, self.location - eps], axis=0)
+        upper = tf.reduce_min([self.global_search_space.upper, self.location + eps], axis=0)
+        return lower, upper
+
 
 class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox, GenericUpdatableTrustRegion):
     """An updatable box search space for use with trust region acquisition rules."""
@@ -1778,12 +1784,7 @@ class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox, GenericUpdatableTru
         GenericUpdatableTrustRegion.__init__(self, beta, kappa, zeta, min_eps)
 
     def _update_bounds(self) -> None:
-        self._lower = tf.reduce_max(
-            [self.global_search_space.lower, self.location - self.eps], axis=0
-        )
-        self._upper = tf.reduce_min(
-            [self.global_search_space.upper, self.location + self.eps], axis=0
-        )
+        self._lower, self._upper = self._get_bounds_within_distance(self.eps)
 
 
 class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, UpdatableTrustRegionBox]):
@@ -2187,6 +2188,31 @@ class UpdatableTrustRegionDiscrete(
     def global_search_space(self) -> DiscreteSearchSpace:
         return self._global_search_space
 
+    def _compute_global_distances(self) -> TensorType:
+        # Helper method to compute and return pairwise distances along each axis in the
+        # global search space.
+        points = self.global_search_space.points
+        return tf.abs(
+            tf.expand_dims(points, -2) - tf.expand_dims(points, -3)
+        )  # [num_points, num_points, D]
+
+    def _get_points_within_distance(
+        self, global_distances: TensorType, eps: TensorType
+    ) -> TensorType:
+        # Helper method to return subset of global points within a given `eps` distance of the
+        # region location. Takes the precomputed pairwise distances tensor and the trust region
+        # size `eps`.
+
+        # Indices of the neighbors within the trust region.
+        neighbors_mask = tf.reduce_all(
+            tf.gather(global_distances, self._location_ix) <= eps, axis=-1
+        )
+        neighbors_mask = tf.reshape(neighbors_mask, (-1,))
+        neighbor_ixs = tf.where(neighbors_mask)
+        neighbor_ixs = tf.squeeze(neighbor_ixs, axis=-1)
+        # Points within the trust region (including the location point).
+        return tf.gather(self.global_search_space.points, neighbor_ixs)
+
 
 class FixedPointTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
     """
@@ -2273,26 +2299,11 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete, GenericUp
         )
         # Need to compute the distances before initializing `GenericUpdatableTrustRegion` as it
         # uses the distances to set the initial location and update the bounds.
-        self._compute_global_distances()
+        self._global_distances = self._compute_global_distances()
         GenericUpdatableTrustRegion.__init__(self, beta, kappa, zeta, min_eps)
 
-    def _compute_global_distances(self) -> None:
-        # Pairwise distances along each axis in the global search space.
-        points = self.global_search_space.points
-        self._global_distances = tf.abs(
-            tf.expand_dims(points, -2) - tf.expand_dims(points, -3)
-        )  # [num_points, num_points, D]
-
     def _update_bounds(self) -> None:
-        # Indices of the neighbors within the trust region.
-        neighbors_mask = tf.reduce_all(
-            tf.gather(self._global_distances, self._location_ix) <= self.eps, axis=-1
-        )
-        neighbors_mask = tf.reshape(neighbors_mask, (-1,))
-        self._neighbor_ixs = tf.where(neighbors_mask)
-        self._neighbor_ixs = tf.squeeze(self._neighbor_ixs, axis=-1)
-        # Points within the trust region (including the location point).
-        self._points = tf.gather(self.global_search_space.points, self._neighbor_ixs)
+        self._points = self._get_points_within_distance(self._global_distances, self.eps)
 
 
 class UpdatableTrustRegionProduct(TaggedProductSearchSpace, UpdatableTrustRegion):
