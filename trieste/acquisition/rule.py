@@ -2172,17 +2172,16 @@ class UpdatableTrustRegionDiscrete(
 
     @property
     def location(self) -> TensorType:
-        # TODO: what if the location is not in the global search space?
         return tf.reshape(tf.gather(self.global_search_space.points, self._location_ix), (-1,))
 
     @location.setter
     def location(self, location: TensorType) -> None:
         # Keep the index of the location in the global search space, instead of directly storing
         # the location.
-        self._location_ix = tf.where(
-            tf.reduce_all(self.global_search_space.points == location, axis=-1)
-        )
-        self._location_ix = tf.squeeze(self._location_ix, axis=-1)
+        location_ix = tf.where(tf.reduce_all(self.global_search_space.points == location, axis=-1))
+        if tf.size(location_ix) == 0:
+            raise ValueError(f"location {location} not found in the global search space")
+        self._location_ix = tf.squeeze(location_ix, axis=-1)
 
     @property
     def global_search_space(self) -> DiscreteSearchSpace:

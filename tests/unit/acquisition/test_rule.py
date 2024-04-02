@@ -1647,7 +1647,7 @@ class TestTrustRegionBox(SingleObjectiveTrustRegionBox):
     def __init__(
         self,
         fixed_location: TensorType,
-        global_search_space: SearchSpace,
+        global_search_space: Box,
         beta: float = 0.7,
         kappa: float = 1e-4,
         zeta: float = 0.5,
@@ -2073,6 +2073,15 @@ def test_trust_region_discrete_get_dataset_min_raises_if_dataset_is_faulty(
         tr.get_dataset_min(datasets)
 
 
+def test_trust_region_discrete_raises_on_location_not_found(
+    discrete_search_space: DiscreteSearchSpace,
+) -> None:
+    """Check that an error is raised if the location is not found in the global search space."""
+    tr = SingleObjectiveTrustRegionDiscrete(discrete_search_space)
+    with pytest.raises(ValueError, match="location .* not found in the global search space"):
+        tr.location = tf.constant([0.0, 0.0], dtype=tf.float64)
+
+
 def test_trust_region_discrete_get_dataset_min(discrete_search_space: DiscreteSearchSpace) -> None:
     """Check get_dataset_min picks the minimum x and y values from the dataset."""
     dataset = Dataset(
@@ -2217,7 +2226,7 @@ def test_trust_region_discrete_update_size(
         new_point = tr.sample(1)
     else:
         # Pick point outside the region.
-        new_point = tf.constant([[1, 1]], dtype=dtype)
+        new_point = tf.constant([[1, 2]], dtype=dtype)
 
     # Add a new min point to the dataset.
     assert not tr.requires_initialization
