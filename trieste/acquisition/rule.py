@@ -1623,7 +1623,6 @@ class GenericUpdatableTrustRegion(UpdatableTrustRegionWithLocationInGlobalSearch
         self.eps = self.eps / self._beta if self._step_is_success else self.eps * self._beta
 
         # Only update the location if the step was successful.
-        # TODO: check that this change is acceptable.
         if self._step_is_success:
             self.location = x_min
             self._y_min = y_min
