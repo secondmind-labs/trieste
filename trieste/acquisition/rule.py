@@ -1095,7 +1095,7 @@ class UpdatableTrustRegion(SearchSpace):
 
         # No selection for models.
         # Nothing to do if active dimensions are not set.
-        if not isinstance(value, (Dataset, tf.Tensor)) or self.input_active_dims is None:
+        if isinstance(value, ProbabilisticModel) or self.input_active_dims is None:
             return value
 
         # Select components of query points for datasets.
