@@ -78,6 +78,9 @@ def _model_stack() -> (
 
 def test_model_stack_predict() -> None:
     stack, (model01, model2, model3) = _model_stack()
+    assert all(
+        isinstance(model, TrainableProbabilisticModel) for model in (stack, model01, model2, model3)
+    )
     query_points = tf.random.uniform([5, 7, 3])
     mean, var = stack.predict(query_points)
 
