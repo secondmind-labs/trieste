@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping, Optional, Sequence
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -31,7 +31,7 @@ from trieste.acquisition.utils import (
 )
 from trieste.data import Dataset
 from trieste.space import Box, SearchSpaceType
-from trieste.types import Tag
+from trieste.types import Tag, TensorType
 from trieste.utils.misc import LocalizedTag
 
 
@@ -164,6 +164,50 @@ def test_with_local_datasets(
                 assert datasets[ltag] is original_datasets[ltag]
             else:
                 assert datasets[ltag] is original_datasets[global_tag]
+
+
+@pytest.mark.parametrize(
+    "datasets, indices",
+    [
+        (
+            {
+                "a": Dataset(tf.constant([[1.0, 2.0], [3.0, 4.0]]), tf.constant([[5.0], [6.0]])),
+                "b": Dataset(tf.constant([[7.0, 8.0], [9.0, 1.0]]), tf.constant([[2.0], [3.0]])),
+            },
+            [tf.constant([0]), tf.constant([0, 1])],
+        ),
+        (
+            {
+                "a": Dataset(tf.constant([[1.0, 2.0], [3.0, 4.0]]), tf.constant([[5.0], [6.0]])),
+                "b": Dataset(tf.constant([[7.0, 8.0], [9.0, 1.0]]), tf.constant([[2.0], [3.0]])),
+            },
+            [tf.constant([], dtype=tf.int32), tf.constant([0])],
+        ),
+    ],
+)
+def test_with_local_datasets_indices(
+    datasets: Mapping[Tag, Dataset], indices: Sequence[TensorType]
+) -> None:
+    original_datasets = dict(datasets).copy()
+    global_tags = {t for t in original_datasets if not LocalizedTag.from_tag(t).is_local}
+    num_global_datasets = len(global_tags)
+
+    num_local_datasets = len(indices)
+    datasets = with_local_datasets(datasets, num_local_datasets, indices)
+    for d in datasets.items():
+        print(d)
+        print("\n\n")
+    assert len(datasets) == num_global_datasets * (1 + num_local_datasets)
+
+    for global_tag in global_tags:
+        assert datasets[global_tag] is original_datasets[global_tag]
+        for i in range(num_local_datasets):
+            ltag = LocalizedTag(global_tag, i)
+            if ltag in original_datasets:
+                assert datasets[ltag] is original_datasets[ltag]
+            else:
+                assert len(datasets[ltag].query_points) == len(indices[i])
+                assert len(datasets[ltag].observations) == len(indices[i])
 
 
 @pytest.mark.parametrize(

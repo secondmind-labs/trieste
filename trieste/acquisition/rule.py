@@ -1095,6 +1095,8 @@ class UpdatableTrustRegion(SearchSpace):
 
         # No selection for models.
         # Nothing to do if active dimensions are not set.
+        # NOTE: do not replace with isinstance(value, ProbabilisticModel) until
+        # https://github.com/secondmind-labs/trieste/issues/836 has been fixed.
         if not isinstance(value, (Dataset, tf.Tensor)) or self.input_active_dims is None:
             return value
 
