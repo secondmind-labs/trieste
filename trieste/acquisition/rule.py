@@ -1925,7 +1925,7 @@ class TURBOBox(UpdatableTrustRegionBox):
 
         # Select the input lengthscales that are active for this region.
         if tf.size(lengthscales) > 1:
-            lengthscales = self.with_input_active_dims(lengthscales)
+            lengthscales = self.with_input_active_dims(tf.convert_to_tensor(lengthscales))
 
         self.tr_width = (
             lengthscales
