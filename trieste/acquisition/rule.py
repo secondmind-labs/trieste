@@ -1493,8 +1493,17 @@ class UpdatableTrustRegionWithLocationInGlobalSearchSpace(UpdatableTrustRegion):
         datasets: Optional[Mapping[Tag, Dataset]] = None,
         location_candidate: Optional[TensorType] = None,
     ) -> None:
-        # Initialize the location of the region.
-        # If no candidate is provided, take a random location from the global search space.
+        """
+        Initialize the location of the region, either by sampling a new location from the global
+        search space, or by using a candidate location if provided.
+
+        Derived classes can override this method to provide custom initialization logic.
+
+        :param models: The model for each tag.
+        :param datasets: The dataset for each tag.
+        :param location_candidate: A candidate for the location of the search space. If not
+            None, this is used instead of sampling a new location.
+        """
         if location_candidate is not None:
             self.location = location_candidate
         else:
