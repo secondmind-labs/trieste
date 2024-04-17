@@ -991,7 +991,7 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
         return thompson_samples
 
 
-class UpdatableTrustRegion(SearchSpace):
+class UpdatableSearchSpace(SearchSpace):
     """A search space that can be updated."""
 
     def __init__(
@@ -1136,7 +1136,7 @@ class UpdatableTrustRegion(SearchSpace):
         self, mapping: Optional[Mapping[Tag, Union[TensorType, Dataset, ProbabilisticModel]]]
     ) -> Optional[Mapping[Tag, Union[TensorType, Dataset, ProbabilisticModel]]]:
         """
-        Select items belonging to this region for acquisition.
+        Select items belonging to this region for, e.g., acquisition.
 
         :param mapping: The mapping of items for each tag.
         :return: The items belonging to this region (or `None` if there aren't any).
@@ -1162,6 +1162,47 @@ class UpdatableTrustRegion(SearchSpace):
                 _mapping[tag] = self.with_input_active_dims(mapping[tag])
 
         return _mapping if _mapping else None
+
+
+class UpdatableTrustRegion(UpdatableSearchSpace):
+    """An updatable trust region with a concept of a location within a global search space."""
+
+    def _init_location(
+        self,
+        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+        location_candidate: Optional[TensorType] = None,
+    ) -> None:
+        """
+        Initialize the location of the region, either by sampling a new location from the global
+        search space, or by using a candidate location if provided.
+
+        Derived classes can override this method to provide custom initialization logic.
+
+        :param models: The model for each tag.
+        :param datasets: The dataset for each tag.
+        :param location_candidate: A candidate for the location of the search space. If not
+            None, this is used instead of sampling a new location.
+        """
+        if location_candidate is not None:
+            self.location = location_candidate
+        else:
+            self.location = tf.squeeze(self.global_search_space.sample(1), axis=0)
+
+    @property
+    @abstractmethod
+    def location(self) -> TensorType:
+        """The centre of the region."""
+
+    @location.setter
+    @abstractmethod
+    def location(self, location: TensorType) -> None:
+        """Set the centre of the region."""
+
+    @property
+    @abstractmethod
+    def global_search_space(self) -> SearchSpace:
+        """The global search space this region lives in."""
 
     def get_datasets_filter_mask(
         self, datasets: Optional[Mapping[Tag, Dataset]]
@@ -1484,49 +1525,8 @@ class BatchTrustRegion(
         return filtered_datasets
 
 
-class UpdatableTrustRegionWithLocationInGlobalSearchSpace(UpdatableTrustRegion):
-    """An updatable trust region with a concept of a location within a global search space."""
-
-    def _init_location(
-        self,
-        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
-        datasets: Optional[Mapping[Tag, Dataset]] = None,
-        location_candidate: Optional[TensorType] = None,
-    ) -> None:
-        """
-        Initialize the location of the region, either by sampling a new location from the global
-        search space, or by using a candidate location if provided.
-
-        Derived classes can override this method to provide custom initialization logic.
-
-        :param models: The model for each tag.
-        :param datasets: The dataset for each tag.
-        :param location_candidate: A candidate for the location of the search space. If not
-            None, this is used instead of sampling a new location.
-        """
-        if location_candidate is not None:
-            self.location = location_candidate
-        else:
-            self.location = tf.squeeze(self.global_search_space.sample(1), axis=0)
-
-    @property
-    @abstractmethod
-    def location(self) -> TensorType:
-        """The centre of the region."""
-
-    @location.setter
-    @abstractmethod
-    def location(self, location: TensorType) -> None:
-        """Set the centre of the region."""
-
-    @property
-    @abstractmethod
-    def global_search_space(self) -> SearchSpace:
-        """The global search space this region lives in."""
-
-
 # TODO: what is a good name for this class?
-class GenericUpdatableTrustRegion(UpdatableTrustRegionWithLocationInGlobalSearchSpace):
+class GenericUpdatableTrustRegion(UpdatableTrustRegion):
     """A generic updatable search space for use with trust region acquisition rules."""
 
     def __init__(
@@ -1713,7 +1713,7 @@ class GenericUpdatableTrustRegion(UpdatableTrustRegionWithLocationInGlobalSearch
         return self.get_values_min(dataset.query_points, dataset.observations, in_region_only=True)
 
 
-class UpdatableTrustRegionBox(Box, UpdatableTrustRegionWithLocationInGlobalSearchSpace):
+class UpdatableTrustRegionBox(Box, UpdatableTrustRegion):
     """
     A simple updatable box search space with a centre location and an associated global search
     space.
@@ -1734,9 +1734,7 @@ class UpdatableTrustRegionBox(Box, UpdatableTrustRegionWithLocationInGlobalSearc
             of indices into the columns of the space. If `None`, all dimensions are active.
         """
         Box.__init__(self, global_search_space.lower, global_search_space.upper)
-        UpdatableTrustRegionWithLocationInGlobalSearchSpace.__init__(
-            self, region_index, input_active_dims
-        )
+        UpdatableTrustRegion.__init__(self, region_index, input_active_dims)
         self._global_search_space = global_search_space
 
     @property
@@ -2149,10 +2147,7 @@ class TURBOBox(UpdatableTrustRegionBox):
         return tf.squeeze(x_min, axis=0), tf.squeeze(y_min)
 
 
-class UpdatableTrustRegionDiscrete(
-    DiscreteSearchSpace,
-    UpdatableTrustRegionWithLocationInGlobalSearchSpace,
-):
+class UpdatableTrustRegionDiscrete(DiscreteSearchSpace, UpdatableTrustRegion):
     """
     An updatable discrete search space with an associated global search space.
     """
@@ -2173,9 +2168,7 @@ class UpdatableTrustRegionDiscrete(
         """
         # Ensure global_points is a copied tensor, in case a variable is passed in.
         DiscreteSearchSpace.__init__(self, tf.constant(global_search_space.points))
-        UpdatableTrustRegionWithLocationInGlobalSearchSpace.__init__(
-            self, region_index, input_active_dims
-        )
+        UpdatableTrustRegion.__init__(self, region_index, input_active_dims)
         self._global_search_space = global_search_space
 
     @property
@@ -2325,7 +2318,7 @@ class UpdatableTrustRegionProduct(TaggedProductSearchSpace, UpdatableTrustRegion
 
     def __init__(
         self,
-        regions: Sequence[UpdatableTrustRegionWithLocationInGlobalSearchSpace],
+        regions: Sequence[UpdatableTrustRegion],
         tags: Optional[Sequence[str]] = None,
         region_index: Optional[int] = None,
     ):
@@ -2401,7 +2394,7 @@ class UpdatableTrustRegionProduct(TaggedProductSearchSpace, UpdatableTrustRegion
             region.region_index = region_index
 
     @property
-    def regions(self) -> Mapping[str, UpdatableTrustRegionWithLocationInGlobalSearchSpace]:
+    def regions(self) -> Mapping[str, UpdatableTrustRegion]:
         """The sub-regions of the product trust region."""
         _regions = {}
         for tag, region in self._spaces.items():
@@ -2416,6 +2409,10 @@ class UpdatableTrustRegionProduct(TaggedProductSearchSpace, UpdatableTrustRegion
         sub-regions.
         """
         return tf.concat([region.location for region in self.regions.values()], axis=-1)
+
+    @location.setter
+    def location(self, location: TensorType) -> None:
+        raise NotImplementedError("setting the location of a product region is not supported")
 
     @property
     def global_search_space(self) -> TaggedProductSearchSpace:
@@ -2495,9 +2492,7 @@ class BatchTrustRegionProduct(
             else:
                 num_query_points = 1
 
-            def create_subregions() -> (
-                Sequence[UpdatableTrustRegionWithLocationInGlobalSearchSpace]
-            ):
+            def create_subregions() -> Sequence[UpdatableTrustRegion]:
                 # Take a global product search space and convert each of its subspaces to an
                 # updatable trust sub-region. These sub-regions are then used to create a
                 # trust region product.
@@ -2505,7 +2500,7 @@ class BatchTrustRegionProduct(
                     search_space, TaggedProductSearchSpace
                 ), "search_space should be a TaggedProductSearchSpace"
 
-                subregions: List[UpdatableTrustRegionWithLocationInGlobalSearchSpace] = []
+                subregions: List[UpdatableTrustRegion] = []
                 for tag in search_space.subspace_tags:
                     subspace = search_space.get_subspace(tag)
                     if isinstance(subspace, DiscreteSearchSpace):
