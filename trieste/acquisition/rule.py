@@ -994,24 +994,7 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
 class UpdatableSearchSpace(SearchSpace):
     """A search space that can be updated."""
 
-    def __init__(
-        self,
-        region_index: Optional[int] = None,
-        input_active_dims: Optional[Union[slice, Sequence[int]]] = None,
-    ) -> None:
-        """
-        :param region_index: The index of the region in a multi-region search space. This is used to
-            identify the local models and datasets to use for acquisition. If `None`, the
-            global models and datasets are used.
-        :param input_active_dims: The active dimensions of the input space, either a slice or list
-            of indices into the columns of the space. If `None`, all dimensions are active.
-
-            When this region is part of a product search-space (via `UpdatableTrustRegionProduct`),
-            this is used to select the active dimensions of the full input space that belong to this
-            region.
-        """
-        self.region_index = region_index
-        self.input_active_dims = input_active_dims
+    def __init__(self) -> None:
         self._initialized = False
 
     @property
@@ -1048,6 +1031,67 @@ class UpdatableSearchSpace(SearchSpace):
         :param models: The model for each tag.
         :param datasets: The dataset for each tag.
         """
+
+
+class UpdatableTrustRegion(UpdatableSearchSpace):
+    """An updatable trust region with a concept of a location within a global search space."""
+
+    def __init__(
+        self,
+        region_index: Optional[int] = None,
+        input_active_dims: Optional[Union[slice, Sequence[int]]] = None,
+    ) -> None:
+        """
+        :param region_index: The index of the region in a multi-region search space. This is used to
+            identify the local models and datasets to use for acquisition. If `None`, the
+            global models and datasets are used.
+        :param input_active_dims: The active dimensions of the input space, either a slice or list
+            of indices into the columns of the space. If `None`, all dimensions are active.
+
+            When this region is part of a product search-space (via `UpdatableTrustRegionProduct`),
+            this is used to select the active dimensions of the full input space that belong to this
+            region.
+        """
+        super().__init__()
+        self.region_index = region_index
+        self.input_active_dims = input_active_dims
+
+    def _init_location(
+        self,
+        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+        location_candidate: Optional[TensorType] = None,
+    ) -> None:
+        """
+        Initialize the location of the region, either by sampling a new location from the global
+        search space, or by using a candidate location if provided.
+
+        Derived classes can override this method to provide custom initialization logic.
+
+        :param models: The model for each tag.
+        :param datasets: The dataset for each tag.
+        :param location_candidate: A candidate for the location of the search space. If not
+            None, this is used instead of sampling a new location.
+        """
+        if location_candidate is not None:
+            self.location = location_candidate
+        else:
+            self.location = tf.squeeze(self.global_search_space.sample(1), axis=0)
+
+    @property
+    @abstractmethod
+    def location(self) -> TensorType:
+        """The center of the region."""
+
+    @location.setter
+    @abstractmethod
+    def location(self, location: TensorType) -> None:
+        """Set the center of the region."""
+
+    @property
+    @abstractmethod
+    def global_search_space(self) -> SearchSpace:
+        """The global search space this region lives in."""
 
     def _get_tags(self, tags: Set[Tag]) -> Tuple[Set[Tag], Set[Tag]]:
         # Separate tags into local (matching index) and global tags (without matching
@@ -1162,47 +1206,6 @@ class UpdatableSearchSpace(SearchSpace):
                 _mapping[tag] = self.with_input_active_dims(mapping[tag])
 
         return _mapping if _mapping else None
-
-
-class UpdatableTrustRegion(UpdatableSearchSpace):
-    """An updatable trust region with a concept of a location within a global search space."""
-
-    def _init_location(
-        self,
-        models: Optional[Mapping[Tag, ProbabilisticModelType]] = None,
-        datasets: Optional[Mapping[Tag, Dataset]] = None,
-        location_candidate: Optional[TensorType] = None,
-    ) -> None:
-        """
-        Initialize the location of the region, either by sampling a new location from the global
-        search space, or by using a candidate location if provided.
-
-        Derived classes can override this method to provide custom initialization logic.
-
-        :param models: The model for each tag.
-        :param datasets: The dataset for each tag.
-        :param location_candidate: A candidate for the location of the search space. If not
-            None, this is used instead of sampling a new location.
-        """
-        if location_candidate is not None:
-            self.location = location_candidate
-        else:
-            self.location = tf.squeeze(self.global_search_space.sample(1), axis=0)
-
-    @property
-    @abstractmethod
-    def location(self) -> TensorType:
-        """The center of the region."""
-
-    @location.setter
-    @abstractmethod
-    def location(self, location: TensorType) -> None:
-        """Set the center of the region."""
-
-    @property
-    @abstractmethod
-    def global_search_space(self) -> SearchSpace:
-        """The global search space this region lives in."""
 
     def get_datasets_filter_mask(
         self, datasets: Optional[Mapping[Tag, Dataset]]
