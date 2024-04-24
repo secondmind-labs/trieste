@@ -1192,12 +1192,12 @@ class UpdatableTrustRegion(UpdatableSearchSpace):
     @property
     @abstractmethod
     def location(self) -> TensorType:
-        """The centre of the region."""
+        """The center of the region."""
 
     @location.setter
     @abstractmethod
     def location(self, location: TensorType) -> None:
-        """Set the centre of the region."""
+        """Set the center of the region."""
 
     @property
     @abstractmethod
@@ -1525,9 +1525,21 @@ class BatchTrustRegion(
         return filtered_datasets
 
 
-# TODO: what is a good name for this class?
-class GenericUpdatableTrustRegion(UpdatableTrustRegion):
-    """A generic updatable search space for use with trust region acquisition rules."""
+class HypercubeTrustRegion(UpdatableTrustRegion):
+    """
+    An abstract updatable trust region that defines a hypercube region in the global search space.
+    The region is defined by a location and a size in each dimension. This class is used to
+    implement different types of search spaces, e.g. continuous (SingleObjectiveTrustRegionBox) and
+    discrete (SingleObjectiveTrustRegionDiscrete).
+
+    Derived classes must implement the `_update_domain` method to update the domain of the region
+    based on the location and size.
+
+    In the default implementation, the region is updated based on the minimum observed value in
+    the region from a single objective dataset. The region is expanded if the minimum is improved,
+    and contracted otherwise. Derived classes can override how this minimum is calculated, e.g. by
+    utilizing multiple datasets.
+    """
 
     def __init__(
         self,
@@ -1537,7 +1549,7 @@ class GenericUpdatableTrustRegion(UpdatableTrustRegion):
         min_eps: float = 1e-2,
     ):
         """
-        Calculates the bounds of the region from the location/centre and global bounds.
+        Calculates the bounds of the region from the location/center and global bounds.
 
         :param beta: The inverse of the trust region contraction factor.
         :param kappa: Scales the threshold for the minimal improvement required for a step to be
@@ -1556,7 +1568,7 @@ class GenericUpdatableTrustRegion(UpdatableTrustRegion):
         # global search space.
         self._init_location()
         self._init_eps()
-        self._update_bounds()
+        self._update_domain()
         # Initial value of the region minimum is set to infinity as we have not yet observed any
         # data.
         self._y_min = np.inf
@@ -1565,8 +1577,8 @@ class GenericUpdatableTrustRegion(UpdatableTrustRegion):
         self.eps = self._zeta * (self.global_search_space.upper - self.global_search_space.lower)
 
     @abstractmethod
-    def _update_bounds(self) -> None:
-        # Update the local bounds of the region.
+    def _update_domain(self) -> None:
+        """Update the local domain of the region."""
         ...
 
     @property
@@ -1602,7 +1614,7 @@ class GenericUpdatableTrustRegion(UpdatableTrustRegion):
         self._init_location(models, datasets, location_candidate=location_candidate)
         self._step_is_success = False
         self._init_eps()
-        self._update_bounds()
+        self._update_domain()
         _, self._y_min = self.get_dataset_min(datasets)
         self._initialized = True
 
@@ -1612,7 +1624,7 @@ class GenericUpdatableTrustRegion(UpdatableTrustRegion):
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> None:
         """
-        Update this region, including centre/location, using the given dataset.
+        Update this region, including center/location, using the given dataset.
 
         If the new optimum improves over the previous optimum by some threshold (that scales
         linearly with ``kappa``), the previous acquisition is considered successful.
@@ -1636,7 +1648,7 @@ class GenericUpdatableTrustRegion(UpdatableTrustRegion):
             self.location = x_min
             self._y_min = y_min
 
-        self._update_bounds()
+        self._update_domain()
 
     @check_shapes(
         "query_points: [N, D]",
@@ -1715,7 +1727,7 @@ class GenericUpdatableTrustRegion(UpdatableTrustRegion):
 
 class UpdatableTrustRegionBox(Box, UpdatableTrustRegion):
     """
-    A simple updatable box search space with a centre location and an associated global search
+    A simple updatable box search space with a center location and an associated global search
     space.
     """
 
@@ -1756,8 +1768,11 @@ class UpdatableTrustRegionBox(Box, UpdatableTrustRegion):
         return lower, upper
 
 
-class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox, GenericUpdatableTrustRegion):
-    """An updatable box search space for use with trust region acquisition rules."""
+class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox, HypercubeTrustRegion):
+    """
+    An updatable continuous trust region that defines a box region in the global search space.
+    The region is updated based on the best point found in the region.
+    """
 
     def __init__(
         self,
@@ -1770,7 +1785,7 @@ class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox, GenericUpdatableTru
         input_active_dims: Optional[Union[slice, Sequence[int]]] = None,
     ):
         """
-        Calculates the bounds of the box from the location/centre and global bounds.
+        Calculates the bounds of the box from the location/center and global bounds.
 
         :param global_search_space: The global search space this search space lives in.
         :param beta: The inverse of the trust region contraction factor.
@@ -1787,9 +1802,9 @@ class SingleObjectiveTrustRegionBox(UpdatableTrustRegionBox, GenericUpdatableTru
             of indices into the columns of the space. If `None`, all dimensions are active.
         """
         UpdatableTrustRegionBox.__init__(self, global_search_space, region_index, input_active_dims)
-        GenericUpdatableTrustRegion.__init__(self, beta, kappa, zeta, min_eps)
+        HypercubeTrustRegion.__init__(self, beta, kappa, zeta, min_eps)
 
-    def _update_bounds(self) -> None:
+    def _update_domain(self) -> None:
         self._lower, self._upper = self._get_bounds_within_distance(self.eps)
 
 
@@ -1903,7 +1918,7 @@ class TREGOBox(SingleObjectiveTrustRegionBox):
         if not self._is_global:
             self._eps = eps
 
-    def _update_bounds(self) -> None:
+    def _update_domain(self) -> None:
         self._is_global = self._step_is_success or not self._is_global
 
         # Use global bounds in global mode.
@@ -1911,7 +1926,7 @@ class TREGOBox(SingleObjectiveTrustRegionBox):
             self._lower = self.global_search_space.lower
             self._upper = self.global_search_space.upper
         else:
-            super()._update_bounds()
+            super()._update_domain()
 
     def initialize(
         self,
@@ -1923,7 +1938,7 @@ class TREGOBox(SingleObjectiveTrustRegionBox):
         # May be a scalar boolean `TensorType` instead of a `bool`.
         #
         # Start in global mode at construction time. Use local mode for subsequent
-        # re-initializations. Note the calls to `_update_bounds` switch the mode, so the values
+        # re-initializations. Note the calls to `_update_domain` switch the mode, so the values
         # here are inverted.
         self._is_global = self._initialized
 
@@ -2037,7 +2052,7 @@ class TURBOBox(UpdatableTrustRegionBox):
         self.y_min = np.inf
         # Initialise to the full global search space size.
         self.tr_width = global_search_space.upper - global_search_space.lower
-        self._update_bounds()
+        self._update_domain()
 
     def _set_tr_width(self, models: Optional[Mapping[Tag, ProbabilisticModelType]] = None) -> None:
         # Set the width of the trust region based on the local model.
@@ -2066,7 +2081,7 @@ class TURBOBox(UpdatableTrustRegionBox):
             / tf.reduce_prod(lengthscales) ** (1.0 / self.global_search_space.lower.shape[-1])
         )  # keep volume fixed
 
-    def _update_bounds(self) -> None:
+    def _update_domain(self) -> None:
         self._lower = tf.reduce_max(
             [self.global_search_space.lower, self.location - self.tr_width / 2.0], axis=0
         )
@@ -2088,7 +2103,7 @@ class TURBOBox(UpdatableTrustRegionBox):
 
         models = self.select_in_region(models)
         self._set_tr_width(models)
-        self._update_bounds()
+        self._update_domain()
         self._initialized = True
 
     def update(
@@ -2122,7 +2137,7 @@ class TURBOBox(UpdatableTrustRegionBox):
 
         models = self.select_in_region(models)
         self._set_tr_width(models)
-        self._update_bounds()
+        self._update_domain()
 
     @check_shapes(
         "return[0]: [D]",
@@ -2249,7 +2264,7 @@ class FixedPointTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
         pass
 
 
-class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete, GenericUpdatableTrustRegion):
+class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete, HypercubeTrustRegion):
     """
     An updatable discrete trust region that maintains a set of neighboring points around a
     single location point, allowing for local exploration of the search space. The region is
@@ -2297,12 +2312,12 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete, GenericUp
         UpdatableTrustRegionDiscrete.__init__(
             self, global_search_space, region_index, input_active_dims
         )
-        # Need to compute the distances before initializing `GenericUpdatableTrustRegion` as it
+        # Need to compute the distances before initializing `HypercubeTrustRegion` as it
         # uses the distances to set the initial location and update the bounds.
         self._global_distances = self._compute_global_distances()
-        GenericUpdatableTrustRegion.__init__(self, beta, kappa, zeta, min_eps)
+        HypercubeTrustRegion.__init__(self, beta, kappa, zeta, min_eps)
 
-    def _update_bounds(self) -> None:
+    def _update_domain(self) -> None:
         self._points = self._get_points_within_distance(self._global_distances, self.eps)
 
 

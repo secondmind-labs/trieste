@@ -1457,7 +1457,7 @@ def test_trust_region_box_update_no_initialize() -> None:
     )
     trb.initialize(datasets=datasets)
     trb.location = tf.constant([0.5, 0.5], dtype=tf.float64)
-    trb._update_bounds()
+    trb._update_domain()
     location = trb.location
 
     assert not trb.requires_initialization
@@ -2183,7 +2183,7 @@ def test_trust_region_discrete_update_no_initialize(
     )
     tr.initialize(datasets=datasets)
     tr._location_ix = tf.constant([16], dtype=tf.int32)  # Location [5, 4].
-    tr._update_bounds()
+    tr._update_domain()
     location = tr.location
 
     assert not tr.requires_initialization
