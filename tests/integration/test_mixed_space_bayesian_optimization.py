@@ -109,7 +109,7 @@ mixed_search_space = _get_mixed_search_space()
                                 )
                             ),
                             SingleObjectiveTrustRegionBox(
-                                mixed_search_space.get_subspace("continuous")
+                                cast(Box, mixed_search_space.get_subspace("continuous"))
                             ),
                         ],
                         tags=mixed_search_space.subspace_tags,
@@ -138,7 +138,7 @@ mixed_search_space = _get_mixed_search_space()
                                 )
                             ),
                             SingleObjectiveTrustRegionBox(
-                                mixed_search_space.get_subspace("continuous")
+                                cast(Box, mixed_search_space.get_subspace("continuous"))
                             ),
                         ],
                         tags=mixed_search_space.subspace_tags,
