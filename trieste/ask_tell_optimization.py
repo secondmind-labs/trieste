@@ -176,7 +176,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         *,
         fit_model: bool = True,
         track_data: bool = True,
-        local_dataset_ixs: Optional[Sequence[TensorType]] = None,
+        local_data_ixs: Optional[Sequence[TensorType]] = None,
     ):
         """
         :param search_space: The space over which to search for the next query point.
@@ -193,10 +193,10 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
             If `False`, the models are assumed to be optimized already.
         :param track_data: If `True` (default), the optimizer will track the changing
             datasets via a local copy. If `False`, it will infer new datasets from
-            updates to the global datasets (optionally using `dataset_ixs` and indices passed in
-            to `tell`).
-        :param local_dataset_ixs: Local data indices. If unspecified, assumes that the initial data
-            is global.
+            updates to the global datasets (optionally using `local_data_ixs` and indices passed
+            in to `tell`).
+        :param local_data_ixs: Indices to the local data in the initial dataset. If unspecified,
+            assumes that the initial dataset is global.
         :raise ValueError: If any of the following are true:
             - the keys in ``datasets`` and ``models`` do not match
             - ``datasets`` or ``models`` are empty
@@ -257,8 +257,8 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
                 datasets = self._datasets = with_local_datasets(self._datasets, num_local_datasets)
             else:
                 self._dataset_len = len(next(iter(self._datasets.values())).query_points)
-                if local_dataset_ixs is not None:
-                    self._dataset_ixs = list(local_dataset_ixs)
+                if local_data_ixs is not None:
+                    self._dataset_ixs = list(local_data_ixs)
                 else:
                     self._dataset_ixs = [
                         tf.range(self._dataset_len) for _ in range(num_local_datasets)
@@ -313,10 +313,12 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
             raise ValueError(f"Expected a single dataset, found {len(datasets)}")
 
     @property
-    def local_dataset_ixs(self) -> Optional[Sequence[TensorType]]:
-        """Indices to the local datasets. Only stored for LocalDatasetsAcquisitionRule rules
+    def local_data_ixs(self) -> Optional[Sequence[TensorType]]:
+        """Indices to the local data. Only stored for LocalDatasetsAcquisitionRule rules
         when `track_data` is `False`."""
-        return self._dataset_ixs
+        if isinstance(self._acquisition_rule, LocalDatasetsAcquisitionRule) and not self.track_data:
+            return self._dataset_ixs
+        return None
 
     @property
     def models(self) -> Mapping[Tag, ProbabilisticModelType]:
