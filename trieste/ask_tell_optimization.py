@@ -176,7 +176,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         *,
         fit_model: bool = True,
         track_data: bool = True,
-        dataset_ixs: Optional[Sequence[TensorType]] = None,
+        local_dataset_ixs: Optional[Sequence[TensorType]] = None,
     ):
         """
         :param search_space: The space over which to search for the next query point.
@@ -195,7 +195,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
             datasets via a local copy. If `False`, it will infer new datasets from
             updates to the global datasets (optionally using `dataset_ixs` and indices passed in
             to `tell`).
-        :param dataset_ixs: Local data indices. If unspecified, assumes that the initial data
+        :param local_dataset_ixs: Local data indices. If unspecified, assumes that the initial data
             is global.
         :raise ValueError: If any of the following are true:
             - the keys in ``datasets`` and ``models`` do not match
@@ -257,8 +257,8 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
                 datasets = self._datasets = with_local_datasets(self._datasets, num_local_datasets)
             else:
                 self._dataset_len = len(next(iter(self._datasets.values())).query_points)
-                if dataset_ixs is not None:
-                    self._dataset_ixs = list(dataset_ixs)
+                if local_dataset_ixs is not None:
+                    self._dataset_ixs = list(local_dataset_ixs)
                 else:
                     self._dataset_ixs = [
                         tf.range(self._dataset_len) for _ in range(num_local_datasets)
