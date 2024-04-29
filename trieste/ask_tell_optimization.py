@@ -256,10 +256,10 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
             if self.track_data:
                 datasets = self._datasets = with_local_datasets(self._datasets, num_local_datasets)
             else:
+                self._dataset_len = len(next(iter(self._datasets.values())).query_points)
                 if dataset_ixs is not None:
                     self._dataset_ixs = list(dataset_ixs)
                 else:
-                    self._dataset_len = len(next(iter(self._datasets.values())).query_points)
                     self._dataset_ixs = [
                         tf.range(self._dataset_len) for _ in range(num_local_datasets)
                     ]
