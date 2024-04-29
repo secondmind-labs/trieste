@@ -195,8 +195,8 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
             datasets via a local copy. If `False`, it will infer new datasets from
             updates to the global datasets (optionally using `local_data_ixs` and indices passed
             in to `tell`).
-        :param local_data_ixs: Indices to the local data in the initial dataset. If unspecified,
-            assumes that the initial dataset is global.
+        :param local_data_ixs: Indices to the local data in the initial datasets. If unspecified,
+            assumes that the initial datasets are global.
         :raise ValueError: If any of the following are true:
             - the keys in ``datasets`` and ``models`` do not match
             - ``datasets`` or ``models`` are empty
