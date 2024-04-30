@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from copy import deepcopy
+from dataclasses import dataclass
 from typing import Dict, Generic, Mapping, Optional, Sequence, Type, TypeVar, cast, overload
 
 import tensorflow as tf
@@ -69,6 +70,21 @@ ProbabilisticModelType = TypeVar(
 """ Contravariant type variable bound to :class:`ProbabilisticModel`. """
 
 AskTellOptimizerType = TypeVar("AskTellOptimizerType")
+
+
+@dataclass(frozen=True)
+class AskTellOptimizerState(Generic[StateType, ProbabilisticModelType]):
+    """
+    Internal state for an Ask/Tell optimizer. This can be obtained using the optimizer's
+    `state` property, and can be used to initialise a new instance of the optimizer.
+    """
+
+    record: Record[StateType, ProbabilisticModelType]
+    """ A record of the current state of the optimization. """
+
+    local_data_ixs: Optional[Sequence[TensorType]]
+    """ Indices to the local data, for LocalDatasetsAcquisitionRule rules
+    when `track_data` is `False`. """
 
 
 class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType]):
@@ -436,6 +452,15 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         """
         record: Record[StateType, ProbabilisticModelType] = self.to_record(copy=copy)
         return OptimizationResult(Ok(record), [])
+
+    @property
+    def state(self) -> AskTellOptimizerState[SearchSpaceType, ProbabilisticModelType]:
+        """Returns the AskTellOptimizer state, comprising the current optimization state
+        alongside any internal AskTellOptimizer state."""
+        return AskTellOptimizerState(
+            record=self.to_record(copy=False),
+            local_data_ixs=self.local_data_ixs,
+        )
 
     def ask(self) -> TensorType:
         """Suggests a point (or points in batch mode) to observe by optimizing the acquisition
