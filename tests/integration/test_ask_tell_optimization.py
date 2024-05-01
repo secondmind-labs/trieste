@@ -245,11 +245,10 @@ def _test_ask_tell_optimization_finds_minima(
                 if track_data:
                     ask_tell.tell(new_data_point)
                 else:
-                    initial_dataset[OBJECTIVE] += (
-                        new_data_point
-                        if isinstance(new_data_point, Dataset)
-                        else new_data_point[OBJECTIVE]
-                    )
+                    if isinstance(new_data_point, Dataset):
+                        new_data_point = {OBJECTIVE: new_data_point}
+                    for tag in initial_dataset.keys():
+                        initial_dataset[tag] += new_data_point[tag]
                     ask_tell.tell(initial_dataset)
 
     result: OptimizationResult[

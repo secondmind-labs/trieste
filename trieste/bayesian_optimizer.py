@@ -999,6 +999,9 @@ def write_summary_observations(
 ) -> None:
     """Write TensorBoard summary for the current step observations."""
     for tag in models:
+        if tag not in tagged_output:
+            continue
+
         with tf.name_scope(f"{tag}.model"):
             models[tag].log(datasets[tag])
 
