@@ -16,6 +16,7 @@ from __future__ import annotations
 import copy
 import pickle
 import tempfile
+from dataclasses import replace
 from typing import Callable, Mapping, Tuple, Union
 
 import numpy.testing as npt
@@ -229,8 +230,12 @@ def _test_ask_tell_optimization_finds_minima(
 
                 if reload_state:
                     state = pickle.loads(written_state)
+                    state_record = state.record
+                    if not track_data:
+                        # reload using the up-to-date dataset
+                        state_record = replace(state_record, datasets=initial_dataset)
                     ask_tell = AskTellOptimizer.from_record(
-                        state.record,
+                        state_record,
                         search_space,
                         acquisition_rule_fn(),
                         track_data=track_data,
