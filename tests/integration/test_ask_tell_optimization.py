@@ -34,8 +34,8 @@ from trieste.acquisition.rule import (
     TREGOBox,
 )
 from trieste.acquisition.utils import copy_to_local_models
-from trieste.ask_tell_optimization import AskTellOptimizer
-from trieste.bayesian_optimizer import OptimizationResult, Record
+from trieste.ask_tell_optimization import AskTellOptimizer, AskTellOptimizerState
+from trieste.bayesian_optimizer import OptimizationResult
 from trieste.data import Dataset
 from trieste.logging import set_step_number, tensorboard_writer
 from trieste.models import TrainableProbabilisticModel
@@ -150,8 +150,10 @@ def test_ask_tell_optimizer_finds_minima_of_the_scaled_branin_function(
 
 
 @random_seed
+@pytest.mark.parametrize("track_data", [True, False])
 @pytest.mark.parametrize(*copy.deepcopy(OPTIMIZER_PARAMS))
 def test_ask_tell_optimizer_finds_minima_of_simple_quadratic(
+    track_data: bool,
     num_steps: int,
     reload_state: bool,
     acquisition_rule_fn: AcquisitionRuleFunction | Tuple[AcquisitionRuleFunction, int],
@@ -159,7 +161,11 @@ def test_ask_tell_optimizer_finds_minima_of_simple_quadratic(
     # for speed reasons we sometimes test with a simple quadratic defined on the same search space
     # branin; currently assume that every rule should be able to solve this in 5 steps
     _test_ask_tell_optimization_finds_minima(
-        False, min(num_steps, 5), reload_state, acquisition_rule_fn
+        False,
+        min(num_steps, 5),
+        reload_state,
+        acquisition_rule_fn,
+        track_data=track_data,
     )
 
 
@@ -168,6 +174,7 @@ def _test_ask_tell_optimization_finds_minima(
     num_steps: int,
     reload_state: bool,
     acquisition_rule_fn: AcquisitionRuleFunction | Tuple[AcquisitionRuleFunction, int],
+    track_data: bool = True,
 ) -> None:
     # For the case when optimization state is saved and reload on each iteration
     # we need to use new acquisition function object to imitate real life usage
@@ -195,7 +202,7 @@ def _test_ask_tell_optimization_finds_minima(
         with tensorboard_writer(summary_writer):
             set_step_number(0)
             ask_tell = AskTellOptimizer(
-                search_space, initial_dataset, models, acquisition_rule_fn()
+                search_space, initial_dataset, models, acquisition_rule_fn(), track_data=track_data
             )
 
             for i in range(1, num_steps + 1):
@@ -206,10 +213,10 @@ def _test_ask_tell_optimization_finds_minima(
                 new_point = ask_tell.ask()
 
                 if reload_state:
-                    state: Record[
+                    state: AskTellOptimizerState[
                         None | State[TensorType, AsynchronousRuleState | BatchTrustRegionBox.State],
                         GaussianProcessRegression,
-                    ] = ask_tell.to_record()
+                    ] = ask_tell.to_state()
                     written_state = pickle.dumps(state)
 
                 # If query points are rank 3, then use a batched observer.
@@ -223,10 +230,22 @@ def _test_ask_tell_optimization_finds_minima(
                 if reload_state:
                     state = pickle.loads(written_state)
                     ask_tell = AskTellOptimizer.from_record(
-                        state, search_space, acquisition_rule_fn()
+                        state.record,
+                        search_space,
+                        acquisition_rule_fn(),
+                        track_data=track_data,
+                        local_data_ixs=state.local_data_ixs,
                     )
 
-                ask_tell.tell(new_data_point)
+                if track_data:
+                    ask_tell.tell(new_data_point)
+                else:
+                    initial_dataset[OBJECTIVE] += (
+                        new_data_point
+                        if isinstance(new_data_point, Dataset)
+                        else new_data_point[OBJECTIVE]
+                    )
+                    ask_tell.tell(initial_dataset)
 
     result: OptimizationResult[
         None | State[TensorType, AsynchronousRuleState | BatchTrustRegionBox.State],

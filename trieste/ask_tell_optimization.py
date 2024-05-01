@@ -390,6 +390,8 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
             ProbabilisticModelType,
         ]
         | None = None,
+        track_data: bool = True,
+        local_data_ixs: Optional[Sequence[TensorType]] = None,
     ) -> AskTellOptimizerType:
         """Creates new :class:`~AskTellOptimizer` instance from provided optimization state.
         Model training isn't triggered upon creation of the instance.
@@ -415,6 +417,8 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
             acquisition_rule=acquisition_rule,
             acquisition_state=record.acquisition_state,
             fit_model=False,
+            track_data=track_data,
+            local_data_ixs=local_data_ixs,
         )
 
     def to_record(self, copy: bool = True) -> Record[StateType, ProbabilisticModelType]:
@@ -453,8 +457,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         record: Record[StateType, ProbabilisticModelType] = self.to_record(copy=copy)
         return OptimizationResult(Ok(record), [])
 
-    @property
-    def state(self) -> AskTellOptimizerState[SearchSpaceType, ProbabilisticModelType]:
+    def to_state(self) -> AskTellOptimizerState[StateType, ProbabilisticModelType]:
         """Returns the AskTellOptimizer state, comprising the current optimization state
         alongside any internal AskTellOptimizer state."""
         return AskTellOptimizerState(
