@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 from itertools import zip_longest
-from typing import Mapping, Optional, Type, Union
+from typing import Mapping, Optional, Sequence, Type, Union
 
 import numpy.testing as npt
 import pytest
@@ -73,7 +73,7 @@ def search_space() -> Box:
 
 @pytest.fixture
 def init_dataset() -> Dataset:
-    return mk_dataset([[0.0], [1.0]], [[0.0], [1.0]])
+    return mk_dataset([[0.0], [0.5]], [[0.0], [0.5]])
 
 
 @pytest.fixture
@@ -740,3 +740,57 @@ def test_ask_tell_optimizer_no_training_with_non_trainable_model(
     ask_tell.tell(new_data)
     state_record: Record[None, ProbabilisticModel] = ask_tell.to_record()
     assert_datasets_allclose(state_record.dataset, init_dataset + new_data)
+
+
+@pytest.mark.parametrize("optimizer", OPTIMIZERS)
+@pytest.mark.parametrize(
+    "new_data_ixs", [None, [tf.constant([2, 3, 4]), tf.constant([7]), tf.constant([3])]]
+)
+def test_ask_tell_optimizer_tracks_local_data_ixs(
+    search_space: Box,
+    init_dataset: Dataset,
+    model: TrainableProbabilisticModel,
+    local_acquisition_rule: LocalDatasetsAcquisitionRule[
+        TensorType, Box, TrainableProbabilisticModel
+    ],
+    optimizer: OptimizerType,
+    new_data_ixs: Optional[Sequence[TensorType]],
+) -> None:
+    ask_tell = optimizer(
+        search_space, init_dataset, model, local_acquisition_rule, track_data=False
+    )
+    new_data = mk_dataset(
+        [[x / 100] for x in range(75, 75 + 6)], [[x / 100] for x in range(75, 75 + 6)]
+    )
+    ask_tell.tell(init_dataset + new_data, new_data_ixs=new_data_ixs)
+
+    if new_data_ixs is None:
+        # default is to assign new points round-robin
+        expected_indices = [[0, 1, 2, 5], [0, 1, 3, 6], [0, 1, 4, 7]]
+    else:
+        expected_indices = [[0, 1, 2, 3, 4], [0, 1, 7], [0, 1, 3]]
+
+    assert ask_tell.local_data_ixs is not None
+    for ixs, expected_ixs in zip_longest(ask_tell.local_data_ixs, expected_indices):
+        assert ixs.numpy().tolist() == expected_ixs
+
+
+@pytest.mark.parametrize("optimizer", OPTIMIZERS)
+def test_ask_tell_optimizer_raises_when_round_robin_fails(
+    search_space: Box,
+    init_dataset: Dataset,
+    model: TrainableProbabilisticModel,
+    local_acquisition_rule: LocalDatasetsAcquisitionRule[
+        TensorType, Box, TrainableProbabilisticModel
+    ],
+    optimizer: OptimizerType,
+) -> None:
+    ask_tell = optimizer(
+        search_space, init_dataset, model, local_acquisition_rule, track_data=False
+    )
+    # five points can't be round-robined properly across three datasets
+    new_data = mk_dataset(
+        [[x / 100] for x in range(75, 75 + 5)], [[x / 100] for x in range(75, 75 + 5)]
+    )
+    with pytest.raises(ValueError):
+        ask_tell.tell(init_dataset + new_data)
