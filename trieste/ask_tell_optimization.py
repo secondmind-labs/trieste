@@ -272,7 +272,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
             if self.track_data:
                 datasets = self._datasets = with_local_datasets(self._datasets, num_local_datasets)
             else:
-                self._dataset_len = len(next(iter(self._datasets.values())).query_points)
+                self._dataset_len = self.dataset_len(self._datasets)
                 if local_data_ixs is not None:
                     self._dataset_ixs = list(local_data_ixs)
                 else:
@@ -377,6 +377,18 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
     def acquisition_state(self) -> StateType | None:
         """The current acquisition state."""
         return self._acquisition_state
+
+    @classmethod
+    def dataset_len(cls, datasets: Mapping[Tag, Dataset]) -> int:
+        """Helper method for inferring the global dataset size."""
+        dataset_lens = {
+            len(dataset.query_points)
+            for tag, dataset in datasets.items()
+            if not LocalizedTag.from_tag(tag).is_local
+        }
+        if len(dataset_lens) != 1:
+            raise ValueError(f"Expected unique global dataset size, got {dataset_lens}")
+        return next(iter(dataset_lens))
 
     @classmethod
     def from_record(
@@ -543,7 +555,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         else:
             if new_data_ixs is None:
                 # infer dataset indices from change in dataset sizes
-                new_dataset_len = len(next(iter(new_data.values())).query_points)
+                new_dataset_len = self.dataset_len(new_data)
                 num_new_points = new_dataset_len - self._dataset_len
                 if num_new_points < 0 or num_new_points % len(self._dataset_ixs) != 0:
                     raise ValueError(
@@ -570,7 +582,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
                 for i in range(len(self._dataset_ixs)):
                     self._dataset_ixs[i] = tf.concat([self._dataset_ixs[i], new_data_ixs[i]], -1)
             datasets = with_local_datasets(new_data, len(self._dataset_ixs), self._dataset_ixs)
-            self._dataset_len = len(next(iter(datasets.values())).query_points)
+            self._dataset_len = self.dataset_len(datasets)
 
         self._filtered_datasets = self._acquisition_rule.filter_datasets(self._models, datasets)
 
