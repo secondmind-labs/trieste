@@ -104,6 +104,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         *,
         fit_model: bool = True,
         track_data: bool = True,
+        local_data_ixs: Optional[Sequence[TensorType]] = None,
     ):
         ...
 
@@ -117,6 +118,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         *,
         fit_model: bool = True,
         track_data: bool = True,
+        local_data_ixs: Optional[Sequence[TensorType]] = None,
     ):
         ...
 
@@ -133,6 +135,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         *,
         fit_model: bool = True,
         track_data: bool = True,
+        local_data_ixs: Optional[Sequence[TensorType]] = None,
     ):
         ...
 
@@ -145,6 +148,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         *,
         fit_model: bool = True,
         track_data: bool = True,
+        local_data_ixs: Optional[Sequence[TensorType]] = None,
     ):
         ...
 
@@ -158,6 +162,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         *,
         fit_model: bool = True,
         track_data: bool = True,
+        local_data_ixs: Optional[Sequence[TensorType]] = None,
     ):
         ...
 
@@ -174,6 +179,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         *,
         fit_model: bool = True,
         track_data: bool = True,
+        local_data_ixs: Optional[Sequence[TensorType]] = None,
     ):
         ...
 

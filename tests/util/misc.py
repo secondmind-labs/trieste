@@ -24,7 +24,7 @@ import numpy.testing as npt
 import tensorflow as tf
 from typing_extensions import Final
 
-from trieste.acquisition.rule import AcquisitionRule
+from trieste.acquisition.rule import AcquisitionRule, LocalDatasetsAcquisitionRule
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.objectives import Branin, Hartmann6
@@ -192,6 +192,16 @@ class FixedAcquisitionRule(AcquisitionRule[TensorType, SearchSpace, Probabilisti
         :return: The fixed value specified on initialisation.
         """
         return self._qp
+
+
+class FixedLocalAcquisitionRule(
+    LocalDatasetsAcquisitionRule[TensorType, SearchSpace, ProbabilisticModel], FixedAcquisitionRule
+):
+    """A local dataset acquisition rule that returns the same fixed value on every step."""
+
+    @property
+    def num_local_datasets(self) -> int:
+        return 3
 
 
 ShapeLike = Union[tf.TensorShape, Sequence[int]]

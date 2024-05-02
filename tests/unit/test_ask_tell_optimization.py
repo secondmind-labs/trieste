@@ -13,13 +13,19 @@
 # limitations under the License.
 from __future__ import annotations
 
+from itertools import zip_longest
 from typing import Mapping, Optional, Type, Union
 
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
-from tests.util.misc import FixedAcquisitionRule, assert_datasets_allclose, mk_dataset
+from tests.util.misc import (
+    FixedAcquisitionRule,
+    FixedLocalAcquisitionRule,
+    assert_datasets_allclose,
+    mk_dataset,
+)
 from tests.util.models.gpflow.models import (
     GaussianProcess,
     PseudoTrainableProbModel,
@@ -28,7 +34,11 @@ from tests.util.models.gpflow.models import (
 )
 from trieste.acquisition.rule import AcquisitionRule, LocalDatasetsAcquisitionRule
 from trieste.acquisition.utils import copy_to_local_models
-from trieste.ask_tell_optimization import AskTellOptimizer, AskTellOptimizerNoTraining
+from trieste.ask_tell_optimization import (
+    AskTellOptimizer,
+    AskTellOptimizerNoTraining,
+    AskTellOptimizerState,
+)
 from trieste.bayesian_optimizer import OptimizationResult, Record
 from trieste.data import Dataset
 from trieste.models.interfaces import ProbabilisticModel, TrainableProbabilisticModel
@@ -63,12 +73,17 @@ def search_space() -> Box:
 
 @pytest.fixture
 def init_dataset() -> Dataset:
-    return mk_dataset([[0.0]], [[0.0]])
+    return mk_dataset([[0.0], [1.0]], [[0.0], [1.0]])
 
 
 @pytest.fixture
 def acquisition_rule() -> AcquisitionRule[TensorType, Box, ProbabilisticModel]:
     return FixedAcquisitionRule([[0.0]])
+
+
+@pytest.fixture
+def local_acquisition_rule() -> LocalDatasetsAcquisitionRule[TensorType, Box, ProbabilisticModel]:
+    return FixedLocalAcquisitionRule([[0.0]])
 
 
 @pytest.fixture
@@ -84,6 +99,7 @@ OptimizerType = Union[
 ]
 
 
+@pytest.mark.parametrize("track_data", [True, False])
 @pytest.mark.parametrize("optimizer", OPTIMIZERS)
 def test_ask_tell_optimizer_suggests_new_point(
     search_space: Box,
@@ -91,8 +107,9 @@ def test_ask_tell_optimizer_suggests_new_point(
     model: TrainableProbabilisticModel,
     acquisition_rule: AcquisitionRule[TensorType, Box, TrainableProbabilisticModel],
     optimizer: OptimizerType,
+    track_data: bool,
 ) -> None:
-    ask_tell = optimizer(search_space, init_dataset, model, acquisition_rule)
+    ask_tell = optimizer(search_space, init_dataset, model, acquisition_rule, track_data=track_data)
 
     new_point = ask_tell.ask()
 
@@ -115,7 +132,7 @@ def test_ask_tell_optimizer_with_default_acquisition_suggests_new_point(
 
 @pytest.mark.parametrize("optimizer", OPTIMIZERS)
 @pytest.mark.parametrize("copy", [True, False])
-def test_ask_tell_optimizer_returns_complete_state(
+def test_ask_tell_optimizer_returns_complete_record(
     search_space: Box,
     init_dataset: Dataset,
     model: TrainableProbabilisticModel,
@@ -134,7 +151,7 @@ def test_ask_tell_optimizer_returns_complete_state(
 
 @pytest.mark.parametrize("optimizer", OPTIMIZERS)
 @pytest.mark.parametrize("copy", [True, False])
-def test_ask_tell_optimizer_loads_from_state(
+def test_ask_tell_optimizer_loads_from_record(
     search_space: Box,
     init_dataset: Dataset,
     model: TrainableProbabilisticModel,
@@ -151,6 +168,69 @@ def test_ask_tell_optimizer_loads_from_state(
 
     assert_datasets_allclose(old_state.dataset, new_state.dataset)
     assert isinstance(new_state.model, type(old_state.model))
+
+
+@pytest.mark.parametrize("optimizer", OPTIMIZERS)
+def test_ask_tell_optimizer_returns_complete_state(
+    search_space: Box,
+    init_dataset: Dataset,
+    model: TrainableProbabilisticModel,
+    local_acquisition_rule: LocalDatasetsAcquisitionRule[
+        TensorType, Box, TrainableProbabilisticModel
+    ],
+    optimizer: OptimizerType,
+) -> None:
+    ask_tell = optimizer(
+        search_space, init_dataset, model, local_acquisition_rule, track_data=False
+    )
+
+    state: AskTellOptimizerState[None, TrainableProbabilisticModel] = ask_tell.to_state()
+
+    assert_datasets_allclose(state.record.dataset, init_dataset)
+    assert isinstance(state.record.model, type(model))
+    assert state.record.acquisition_state is None
+    assert state.local_data_ixs is not None
+    npt.assert_array_equal(
+        state.local_data_ixs,
+        [
+            tf.range(len(init_dataset.query_points))
+            for _ in range(local_acquisition_rule.num_local_datasets)
+        ],
+    )
+
+
+@pytest.mark.parametrize("optimizer", OPTIMIZERS)
+def test_ask_tell_optimizer_loads_from_state(
+    search_space: Box,
+    init_dataset: Dataset,
+    model: TrainableProbabilisticModel,
+    local_acquisition_rule: LocalDatasetsAcquisitionRule[
+        TensorType, Box, TrainableProbabilisticModel
+    ],
+    optimizer: OptimizerType,
+) -> None:
+    old_state: AskTellOptimizerState[None, TrainableProbabilisticModel] = AskTellOptimizerState(
+        record=Record({OBJECTIVE: init_dataset}, {OBJECTIVE: model}, None),
+        local_data_ixs=[
+            tf.range(len(init_dataset.query_points))
+            for _ in range(local_acquisition_rule.num_local_datasets)
+        ],
+    )
+
+    ask_tell = optimizer.from_record(
+        old_state.record,
+        search_space,
+        local_acquisition_rule,
+        track_data=False,
+        local_data_ixs=old_state.local_data_ixs,
+    )
+    new_state: AskTellOptimizerState[None, TrainableProbabilisticModel] = ask_tell.to_state()
+
+    assert_datasets_allclose(new_state.record.dataset, old_state.record.dataset)
+    assert old_state.record.model is new_state.record.model
+    assert new_state.local_data_ixs is not None
+    assert old_state.local_data_ixs is not None
+    npt.assert_array_equal(new_state.local_data_ixs, old_state.local_data_ixs)
 
 
 @pytest.mark.parametrize("optimizer", OPTIMIZERS)
@@ -186,6 +266,23 @@ def test_ask_tell_optimizer_updates_state_with_new_data(
     state_record: Record[None, TrainableProbabilisticModel] = ask_tell.to_record()
 
     assert_datasets_allclose(state_record.dataset, init_dataset + new_data)
+
+
+@pytest.mark.parametrize("optimizer", OPTIMIZERS)
+def test_ask_tell_optimizer_doesnt_update_state_with_new_data(
+    search_space: Box,
+    init_dataset: Dataset,
+    model: TrainableProbabilisticModel,
+    acquisition_rule: AcquisitionRule[TensorType, Box, TrainableProbabilisticModel],
+    optimizer: OptimizerType,
+) -> None:
+    new_data = mk_dataset([[1.0]], [[1.0]])
+    ask_tell = optimizer(search_space, init_dataset, model, acquisition_rule, track_data=False)
+
+    ask_tell.tell(new_data)
+    state_record: Record[None, TrainableProbabilisticModel] = ask_tell.to_record()
+
+    assert_datasets_allclose(state_record.dataset, init_dataset)
 
 
 @pytest.mark.parametrize("optimizer", OPTIMIZERS)
@@ -299,6 +396,38 @@ def test_ask_tell_optimizer_model_setter_errors(
     )
     with pytest.raises(ValueError):
         two_models.model = model
+
+
+@pytest.mark.parametrize("optimizer", OPTIMIZERS)
+@pytest.mark.parametrize("track_data", [False, True])
+def test_ask_tell_optimizer_local_data_ixs_property(
+    search_space: Box,
+    init_dataset: Dataset,
+    model: TrainableProbabilisticModel,
+    local_acquisition_rule: LocalDatasetsAcquisitionRule[
+        TensorType, Box, TrainableProbabilisticModel
+    ],
+    optimizer: OptimizerType,
+    track_data: bool,
+) -> None:
+    local_data_ixs = [
+        tf.range(min(i, len(init_dataset.query_points)))
+        for i in range(local_acquisition_rule.num_local_datasets)
+    ]
+    ask_tell = optimizer(
+        search_space,
+        init_dataset,
+        model,
+        local_acquisition_rule,
+        track_data=track_data,
+        local_data_ixs=local_data_ixs,
+    )
+    if track_data:
+        assert ask_tell.local_data_ixs is None
+    else:
+        assert ask_tell.local_data_ixs is not None
+        for expected, actual in zip_longest(local_data_ixs, ask_tell.local_data_ixs):
+            npt.assert_array_equal(expected, actual)
 
 
 def test_ask_tell_optimizer_trains_model(
