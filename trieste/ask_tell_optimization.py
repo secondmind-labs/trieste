@@ -76,7 +76,7 @@ AskTellOptimizerType = TypeVar("AskTellOptimizerType")
 class AskTellOptimizerState(Generic[StateType, ProbabilisticModelType]):
     """
     Internal state for an Ask/Tell optimizer. This can be obtained using the optimizer's
-    `state` property, and can be used to initialise a new instance of the optimizer.
+    `to_state` method, and can be used to initialise a new instance of the optimizer.
     """
 
     record: Record[StateType, ProbabilisticModelType]
@@ -475,11 +475,19 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         record: Record[StateType, ProbabilisticModelType] = self.to_record(copy=copy)
         return OptimizationResult(Ok(record), [])
 
-    def to_state(self) -> AskTellOptimizerState[StateType, ProbabilisticModelType]:
+    def to_state(
+        self, copy: bool = True
+    ) -> AskTellOptimizerState[StateType, ProbabilisticModelType]:
         """Returns the AskTellOptimizer state, comprising the current optimization state
-        alongside any internal AskTellOptimizer state."""
+        alongside any internal AskTellOptimizer state.
+
+        :param copy: Whether to return a copy of the current state or the original. Copying
+            is not supported for all model types. However, continuing the optimization will
+            modify the original state.
+        :return: An :class:`AskTellOptimizerState` object.
+        """
         return AskTellOptimizerState(
-            record=self.to_record(copy=False),
+            record=self.to_record(copy=copy),
             local_data_ixs=self.local_data_ixs,
         )
 
@@ -559,35 +567,34 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         elif not isinstance(self._acquisition_rule, LocalDatasetsAcquisitionRule):
             datasets = new_data
         else:
+            num_local_datasets = len(self._dataset_ixs)
             if new_data_ixs is None:
                 # infer dataset indices from change in dataset sizes
                 new_dataset_len = self.dataset_len(new_data)
                 num_new_points = new_dataset_len - self._dataset_len
-                if num_new_points < 0 or num_new_points % len(self._dataset_ixs) != 0:
+                if num_new_points < 0 or num_new_points % num_local_datasets != 0:
                     raise ValueError(
                         "Cannot infer new data points as datasets haven't increased by "
-                        f"a multiple of {len(self._dataset_ixs)}"
+                        f"a multiple of {num_local_datasets}"
                     )
-                for i in range(len(self._dataset_ixs)):
+                for i in range(num_local_datasets):
                     self._dataset_ixs[i] = tf.concat(
                         [
                             self._dataset_ixs[i],
-                            tf.range(0, num_new_points, len(self._dataset_ixs))
-                            + self._dataset_len
-                            + i,
+                            tf.range(0, num_new_points, num_local_datasets) + self._dataset_len + i,
                         ],
                         -1,
                     )
             else:
                 # use explicit indices
-                if len(new_data_ixs) != len(self._dataset_ixs):
+                if len(new_data_ixs) != num_local_datasets:
                     raise ValueError(
                         f"new_data_ixs has {len(new_data_ixs)} entries, "
-                        f"expected {len(self._dataset_ixs)}"
+                        f"expected {num_local_datasets}"
                     )
-                for i in range(len(self._dataset_ixs)):
+                for i in range(num_local_datasets):
                     self._dataset_ixs[i] = tf.concat([self._dataset_ixs[i], new_data_ixs[i]], -1)
-            datasets = with_local_datasets(new_data, len(self._dataset_ixs), self._dataset_ixs)
+            datasets = with_local_datasets(new_data, num_local_datasets, self._dataset_ixs)
             self._dataset_len = self.dataset_len(datasets)
 
         self._filtered_datasets = self._acquisition_rule.filter_datasets(self._models, datasets)

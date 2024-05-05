@@ -194,9 +194,6 @@ def test_with_local_datasets_indices(
 
     num_local_datasets = len(indices)
     datasets = with_local_datasets(datasets, num_local_datasets, indices)
-    for d in datasets.items():
-        print(d)
-        print("\n\n")
     assert len(datasets) == num_global_datasets * (1 + num_local_datasets)
 
     for global_tag in global_tags:
