@@ -476,7 +476,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         return OptimizationResult(Ok(record), [])
 
     def to_state(
-        self, copy: bool = True
+        self, copy: bool = False
     ) -> AskTellOptimizerState[StateType, ProbabilisticModelType]:
         """Returns the AskTellOptimizer state, comprising the current optimization state
         alongside any internal AskTellOptimizer state.
