@@ -1139,7 +1139,9 @@ class UpdatableTrustRegion(UpdatableSearchSpace):
 
         # No selection for models.
         # Nothing to do if active dimensions are not set.
-        if isinstance(value, ProbabilisticModel) or self.input_active_dims is None:
+        # NOTE: do not replace with isinstance(value, ProbabilisticModel) until
+        # https://github.com/secondmind-labs/trieste/issues/836 has been fixed.
+        if not isinstance(value, (Dataset, tf.Tensor)) or self.input_active_dims is None:
             return value
 
         # Select components of query points for datasets.
@@ -2076,7 +2078,7 @@ class TURBOBox(UpdatableTrustRegionBox):
 
         # Select the input lengthscales that are active for this region.
         if tf.size(lengthscales) > 1:
-            lengthscales = self.with_input_active_dims(lengthscales)
+            lengthscales = self.with_input_active_dims(tf.convert_to_tensor(lengthscales))
 
         self.tr_width = (
             lengthscales

@@ -22,7 +22,10 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from typing import Dict, Generic, Mapping, Type, TypeVar, cast, overload
+from dataclasses import dataclass
+from typing import Dict, Generic, Mapping, Optional, Sequence, Type, TypeVar, cast, overload
+
+import tensorflow as tf
 
 from .models.utils import optimize_model_and_save_result
 
@@ -69,6 +72,21 @@ ProbabilisticModelType = TypeVar(
 AskTellOptimizerType = TypeVar("AskTellOptimizerType")
 
 
+@dataclass(frozen=True)
+class AskTellOptimizerState(Generic[StateType, ProbabilisticModelType]):
+    """
+    Internal state for an Ask/Tell optimizer. This can be obtained using the optimizer's
+    `to_state` method, and can be used to initialise a new instance of the optimizer.
+    """
+
+    record: Record[StateType, ProbabilisticModelType]
+    """ A record of the current state of the optimization. """
+
+    local_data_ixs: Optional[Sequence[TensorType]]
+    """ Indices to the local data, for LocalDatasetsAcquisitionRule rules
+    when `track_data` is `False`. """
+
+
 class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType]):
     """
     This class provides Ask/Tell optimization interface. It is designed for those use cases
@@ -85,6 +103,8 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         models: Mapping[Tag, ProbabilisticModelType],
         *,
         fit_model: bool = True,
+        track_data: bool = True,
+        local_data_ixs: Optional[Sequence[TensorType]] = None,
     ):
         ...
 
@@ -97,6 +117,8 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         acquisition_rule: AcquisitionRule[TensorType, SearchSpaceType, ProbabilisticModelType],
         *,
         fit_model: bool = True,
+        track_data: bool = True,
+        local_data_ixs: Optional[Sequence[TensorType]] = None,
     ):
         ...
 
@@ -112,6 +134,8 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         acquisition_state: StateType | None,
         *,
         fit_model: bool = True,
+        track_data: bool = True,
+        local_data_ixs: Optional[Sequence[TensorType]] = None,
     ):
         ...
 
@@ -123,6 +147,8 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         models: ProbabilisticModelType,
         *,
         fit_model: bool = True,
+        track_data: bool = True,
+        local_data_ixs: Optional[Sequence[TensorType]] = None,
     ):
         ...
 
@@ -135,6 +161,8 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         acquisition_rule: AcquisitionRule[TensorType, SearchSpaceType, ProbabilisticModelType],
         *,
         fit_model: bool = True,
+        track_data: bool = True,
+        local_data_ixs: Optional[Sequence[TensorType]] = None,
     ):
         ...
 
@@ -150,6 +178,8 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         acquisition_state: StateType | None = None,
         *,
         fit_model: bool = True,
+        track_data: bool = True,
+        local_data_ixs: Optional[Sequence[TensorType]] = None,
     ):
         ...
 
@@ -167,6 +197,8 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         acquisition_state: StateType | None = None,
         *,
         fit_model: bool = True,
+        track_data: bool = True,
+        local_data_ixs: Optional[Sequence[TensorType]] = None,
     ):
         """
         :param search_space: The space over which to search for the next query point.
@@ -181,6 +213,12 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         :param acquisition_state: The optional acquisition state for stateful acquisitions.
         :param fit_model: If `True` (default), models passed in will be optimized on the given data.
             If `False`, the models are assumed to be optimized already.
+        :param track_data: If `True` (default), the optimizer will track the changing
+            datasets via a local copy. If `False`, it will infer new datasets from
+            updates to the global datasets (optionally using `local_data_ixs` and indices passed
+            in to `tell`).
+        :param local_data_ixs: Indices to the local data in the initial datasets. If unspecified,
+            assumes that the initial datasets are global.
         :raise ValueError: If any of the following are true:
             - the keys in ``datasets`` and ``models`` do not match
             - ``datasets`` or ``models`` are empty
@@ -191,9 +229,6 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
 
         if not datasets or not models:
             raise ValueError("dicts of datasets and models must be populated.")
-
-        # Copy the dataset so we don't change the one provided by the user.
-        datasets = deepcopy(datasets)
 
         if isinstance(datasets, Dataset):
             datasets = {OBJECTIVE: datasets}
@@ -216,6 +251,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
 
         self._datasets = datasets
         self._models = models
+        self.track_data = track_data
 
         self._query_plot_dfs: dict[int, pd.DataFrame] = {}
         self._observation_plot_dfs = observation_plot_init(self._datasets)
@@ -234,20 +270,25 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         else:
             self._acquisition_rule = acquisition_rule
 
-        # In order to support local datasets, account for the case where there may be an initial
-        # dataset that is not tagged per region. In this case, only the global dataset will
-        # exist in datasets. We want to copy this initial dataset to all the regions.
-        # Copy the global dataset if the local version for the subspace is not available.
-        #
-        # Only applies to a subset of acquisition rules, i.e. ones that have subspaces and
-        # hence use local datasets.
         if isinstance(self._acquisition_rule, LocalDatasetsAcquisitionRule):
-            self._datasets = with_local_datasets(
-                self._datasets, self._acquisition_rule.num_local_datasets
-            )
-        self._filtered_datasets = self._acquisition_rule.filter_datasets(
-            self._models, self._datasets
-        )
+            # In order to support local datasets, account for the case where there may be an initial
+            # dataset that is not tagged per region. In this case, only the global dataset will
+            # exist in datasets. We want to copy this initial dataset to all the regions.
+            num_local_datasets = self._acquisition_rule.num_local_datasets
+            if self.track_data:
+                datasets = self._datasets = with_local_datasets(self._datasets, num_local_datasets)
+            else:
+                self._dataset_len = self.dataset_len(self._datasets)
+                if local_data_ixs is not None:
+                    self._dataset_ixs = list(local_data_ixs)
+                else:
+                    self._dataset_ixs = [
+                        tf.range(self._dataset_len) for _ in range(num_local_datasets)
+                    ]
+                datasets = with_local_datasets(
+                    self._datasets, num_local_datasets, self._dataset_ixs
+                )
+        self._filtered_datasets = self._acquisition_rule.filter_datasets(self._models, datasets)
 
         if fit_model:
             with Timer() as initial_model_fitting_timer:
@@ -294,6 +335,14 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
             raise ValueError(f"Expected a single dataset, found {len(datasets)}")
 
     @property
+    def local_data_ixs(self) -> Optional[Sequence[TensorType]]:
+        """Indices to the local data. Only stored for LocalDatasetsAcquisitionRule rules
+        when `track_data` is `False`."""
+        if isinstance(self._acquisition_rule, LocalDatasetsAcquisitionRule) and not self.track_data:
+            return self._dataset_ixs
+        return None
+
+    @property
     def models(self) -> Mapping[Tag, ProbabilisticModelType]:
         """The current models."""
         return self._models
@@ -336,6 +385,18 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         return self._acquisition_state
 
     @classmethod
+    def dataset_len(cls, datasets: Mapping[Tag, Dataset]) -> int:
+        """Helper method for inferring the global dataset size."""
+        dataset_lens = {
+            len(dataset.query_points)
+            for tag, dataset in datasets.items()
+            if not LocalizedTag.from_tag(tag).is_local
+        }
+        if len(dataset_lens) != 1:
+            raise ValueError(f"Expected unique global dataset size, got {dataset_lens}")
+        return next(iter(dataset_lens))
+
+    @classmethod
     def from_record(
         cls: Type[AskTellOptimizerType],
         record: Record[StateType, ProbabilisticModelType]
@@ -347,6 +408,8 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
             ProbabilisticModelType,
         ]
         | None = None,
+        track_data: bool = True,
+        local_data_ixs: Optional[Sequence[TensorType]] = None,
     ) -> AskTellOptimizerType:
         """Creates new :class:`~AskTellOptimizer` instance from provided optimization state.
         Model training isn't triggered upon creation of the instance.
@@ -372,6 +435,8 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
             acquisition_rule=acquisition_rule,
             acquisition_state=record.acquisition_state,
             fit_model=False,
+            track_data=track_data,
+            local_data_ixs=local_data_ixs,
         )
 
     def to_record(self, copy: bool = True) -> Record[StateType, ProbabilisticModelType]:
@@ -410,6 +475,22 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         record: Record[StateType, ProbabilisticModelType] = self.to_record(copy=copy)
         return OptimizationResult(Ok(record), [])
 
+    def to_state(
+        self, copy: bool = False
+    ) -> AskTellOptimizerState[StateType, ProbabilisticModelType]:
+        """Returns the AskTellOptimizer state, comprising the current optimization state
+        alongside any internal AskTellOptimizer state.
+
+        :param copy: Whether to return a copy of the current state or the original. Copying
+            is not supported for all model types. However, continuing the optimization will
+            modify the original state.
+        :return: An :class:`AskTellOptimizerState` object.
+        """
+        return AskTellOptimizerState(
+            record=self.to_record(copy=copy),
+            local_data_ixs=self.local_data_ixs,
+        )
+
     def ask(self) -> TensorType:
         """Suggests a point (or points in batch mode) to observe by optimizing the acquisition
         function. If the acquisition is stateful, its state is saved.
@@ -447,30 +528,76 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
 
         return query_points
 
-    def tell(self, new_data: Mapping[Tag, Dataset] | Dataset) -> None:
+    def tell(
+        self,
+        new_data: Mapping[Tag, Dataset] | Dataset,
+        new_data_ixs: Optional[Sequence[TensorType]] = None,
+    ) -> None:
         """Updates optimizer state with new data.
 
-        :param new_data: New observed data.
+        :param new_data: New observed data. If `track_data` is `False`, this refers to all
+            the data.
+        :param new_data_ixs: Indices to the new observed local data, if `track_data` is `False`.
+            If unspecified, inferred from the change in dataset sizes.
         :raise ValueError: If keys in ``new_data`` do not match those in already built dataset.
         """
         if isinstance(new_data, Dataset):
             new_data = {OBJECTIVE: new_data}
 
         # The datasets must have the same keys as the existing datasets. Only exception is if
-        # the existing datasets are all global, in which case the dataset will be appropriately
-        # updated below for the next iteration.
-        datasets_indices = {LocalizedTag.from_tag(tag).local_index for tag in self._datasets.keys()}
-        if self._datasets.keys() != new_data.keys() and datasets_indices != {None}:
+        # the existing datasets are all global and the new data contains local datasets too.
+        if all(LocalizedTag.from_tag(tag).local_index is None for tag in self._datasets.keys()):
+            global_old = {LocalizedTag.from_tag(tag).global_tag for tag in self._datasets.keys()}
+            global_new = {LocalizedTag.from_tag(tag).global_tag for tag in new_data.keys()}
+            if global_new != global_old:
+                raise ValueError(
+                    f"new_data global keys {global_new} doesn't "
+                    f"match dataset global keys {global_old}"
+                )
+        elif self._datasets.keys() != new_data.keys():
             raise ValueError(
                 f"new_data keys {new_data.keys()} doesn't "
                 f"match dataset keys {self._datasets.keys()}"
             )
 
-        for tag, new_dataset in new_data.items():
-            self._datasets[tag] += new_dataset
-        self._filtered_datasets = self._acquisition_rule.filter_datasets(
-            self._models, self._datasets
-        )
+        if self.track_data:
+            for tag, new_dataset in new_data.items():
+                self._datasets[tag] += new_dataset
+            datasets: Mapping[Tag, Dataset] = self._datasets
+        elif not isinstance(self._acquisition_rule, LocalDatasetsAcquisitionRule):
+            datasets = new_data
+        else:
+            num_local_datasets = len(self._dataset_ixs)
+            if new_data_ixs is None:
+                # infer dataset indices from change in dataset sizes
+                new_dataset_len = self.dataset_len(new_data)
+                num_new_points = new_dataset_len - self._dataset_len
+                if num_new_points < 0 or num_new_points % num_local_datasets != 0:
+                    raise ValueError(
+                        "Cannot infer new data points as datasets haven't increased by "
+                        f"a multiple of {num_local_datasets}"
+                    )
+                for i in range(num_local_datasets):
+                    self._dataset_ixs[i] = tf.concat(
+                        [
+                            self._dataset_ixs[i],
+                            tf.range(0, num_new_points, num_local_datasets) + self._dataset_len + i,
+                        ],
+                        -1,
+                    )
+            else:
+                # use explicit indices
+                if len(new_data_ixs) != num_local_datasets:
+                    raise ValueError(
+                        f"new_data_ixs has {len(new_data_ixs)} entries, "
+                        f"expected {num_local_datasets}"
+                    )
+                for i in range(num_local_datasets):
+                    self._dataset_ixs[i] = tf.concat([self._dataset_ixs[i], new_data_ixs[i]], -1)
+            datasets = with_local_datasets(new_data, num_local_datasets, self._dataset_ixs)
+            self._dataset_len = self.dataset_len(datasets)
+
+        self._filtered_datasets = self._acquisition_rule.filter_datasets(self._models, datasets)
 
         with Timer() as model_fitting_timer:
             for tag, model in self._models.items():
@@ -483,7 +610,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         if summary_writer:
             with summary_writer.as_default(step=logging.get_step_number()):
                 write_summary_observations(
-                    self._datasets,
+                    datasets,
                     self._models,
                     new_data,
                     model_fitting_timer,
