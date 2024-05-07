@@ -116,7 +116,7 @@ class KerasEnsemble:
         """
         inputs, outputs = zip(*[network.connect_layers() for network in self._networks])
 
-        return tf.keras.Model(inputs=inputs, outputs=outputs)
+        return tf.keras.Model(inputs=inputs, outputs=outputs, dtype=self.output_dtype)
 
     def __getstate__(self) -> dict[str, Any]:
         # When pickling use to_json to save the model.
