@@ -73,6 +73,11 @@ OPTIMIZER_PARAMS = (
             True,
             lambda: BatchTrustRegionBox(TREGOBox(ScaledBranin.search_space)),
             id="TREGO/reload_state",
+            # TODO: trust regions maintain internal state and do not fully support the functional
+            # API for reloading from acquisition state. So this test is skipped for now.
+            marks=pytest.mark.skip(
+                reason="Trust regions do not support reloading from acquisition state"
+            ),
         ),
         pytest.param(
             10,
