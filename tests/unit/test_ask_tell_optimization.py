@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 from itertools import zip_longest
-from typing import Mapping, Optional, Sequence, Type, Union
+from typing import Any, Mapping, Optional, Sequence, Type, Union
 
 import numpy.testing as npt
 import pytest
@@ -94,8 +94,8 @@ def model() -> TrainableProbabilisticModel:
 # most of the tests below should be run for both AskTellOptimizer and AskTellOptimizerNoTraining
 OPTIMIZERS = [AskTellOptimizer, AskTellOptimizerNoTraining]
 OptimizerType = Union[
-    Type[AskTellOptimizer[Box, TrainableProbabilisticModel]],
-    Type[AskTellOptimizerNoTraining[Box, TrainableProbabilisticModel]],
+    Type[AskTellOptimizer[Box, TrainableProbabilisticModel, Any]],
+    Type[AskTellOptimizerNoTraining[Box, TrainableProbabilisticModel, Any]],
 ]
 
 

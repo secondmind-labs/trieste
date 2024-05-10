@@ -40,6 +40,8 @@ from typing import (
 import numpy as np
 from check_shapes import check_shapes, inherit_check_shapes
 
+from ..ask_tell_optimization import StateType
+
 try:
     import pymoo
     from pymoo.algorithms.moo.nsga2 import NSGA2
@@ -172,7 +174,7 @@ class AcquisitionRule(ABC, Generic[ResultType, SearchSpaceType, ProbabilisticMod
 
     def filter_datasets(
         self, models: Mapping[Tag, ProbabilisticModelType], datasets: Mapping[Tag, Dataset]
-    ) -> Mapping[Tag, Dataset]:
+    ) -> Mapping[Tag, Dataset] | State[StateType | None, Mapping[Tag, Dataset]]:
         """
         Filter the post-acquisition datasets before they are used for model training. For example,
         this can be used to remove points from the post-acquisition datasets that are no longer in

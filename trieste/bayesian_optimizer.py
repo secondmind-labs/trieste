@@ -763,7 +763,15 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         datasets = with_local_datasets(
                             datasets, acquisition_rule.num_local_datasets
                         )
-                    filtered_datasets = acquisition_rule.filter_datasets(models, datasets)
+                    filtered_datasets_or_callable: Mapping[Tag, Dataset] | State[
+                        StateType | None, Mapping[Tag, Dataset]
+                    ] = acquisition_rule.filter_datasets(models, datasets)
+                    if callable(filtered_datasets_or_callable):
+                        acquisition_state, filtered_datasets = filtered_datasets_or_callable(
+                            acquisition_state
+                        )
+                    else:
+                        filtered_datasets = filtered_datasets_or_callable
 
                     if fit_model and fit_initial_model:
                         with Timer() as initial_model_fitting_timer:
@@ -806,7 +814,16 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
                     for tag, new_dataset in tagged_output.items():
                         datasets[tag] += new_dataset
-                    filtered_datasets = acquisition_rule.filter_datasets(models, datasets)
+
+                    filtered_datasets_or_callable = acquisition_rule.filter_datasets(
+                        models, datasets
+                    )
+                    if callable(filtered_datasets_or_callable):
+                        acquisition_state, filtered_datasets = filtered_datasets_or_callable(
+                            acquisition_state
+                        )
+                    else:
+                        filtered_datasets = filtered_datasets_or_callable
 
                     with Timer() as model_fitting_timer:
                         if fit_model:

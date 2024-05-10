@@ -87,7 +87,7 @@ class AskTellOptimizerState(Generic[StateType, ProbabilisticModelType]):
     when `track_data` is `False`. """
 
 
-class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType]):
+class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType, StateType]):
     """
     This class provides Ask/Tell optimization interface. It is designed for those use cases
     when control of the optimization loop by Trieste is impossible or not desirable.
@@ -97,7 +97,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
 
     @overload
     def __init__(
-        self,
+        self: AskTellOptimizerABC[SearchSpaceType, ProbabilisticModelType, None],
         search_space: SearchSpaceType,
         datasets: Mapping[Tag, Dataset],
         models: Mapping[Tag, ProbabilisticModelType],
@@ -110,7 +110,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
 
     @overload
     def __init__(
-        self,
+        self: AskTellOptimizerABC[SearchSpaceType, ProbabilisticModelType, None],
         search_space: SearchSpaceType,
         datasets: Mapping[Tag, Dataset],
         models: Mapping[Tag, ProbabilisticModelType],
@@ -141,7 +141,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
 
     @overload
     def __init__(
-        self,
+        self: AskTellOptimizerABC[SearchSpaceType, ProbabilisticModelType, None],
         search_space: SearchSpaceType,
         datasets: Dataset,
         models: ProbabilisticModelType,
@@ -154,7 +154,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
 
     @overload
     def __init__(
-        self,
+        self: AskTellOptimizerABC[SearchSpaceType, ProbabilisticModelType, None],
         search_space: SearchSpaceType,
         datasets: Dataset,
         models: ProbabilisticModelType,
@@ -288,7 +288,15 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
                 datasets = with_local_datasets(
                     self._datasets, num_local_datasets, self._dataset_ixs
                 )
-        self._filtered_datasets = self._acquisition_rule.filter_datasets(self._models, datasets)
+        filtered_datasets: Mapping[Tag, Dataset] | State[
+            StateType | None, Mapping[Tag, Dataset]
+        ] = self._acquisition_rule.filter_datasets(self._models, datasets)
+        if callable(filtered_datasets):
+            self._acquisition_state, self._filtered_datasets = filtered_datasets(
+                self._acquisition_state
+            )
+        else:
+            self._filtered_datasets = filtered_datasets
 
         if fit_model:
             with Timer() as initial_model_fitting_timer:
@@ -511,6 +519,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
 
         if callable(points_or_stateful):
             self._acquisition_state, query_points = points_or_stateful(self._acquisition_state)
+            # TODO: keep acquire acquisition state separate from general state
         else:
             query_points = points_or_stateful
 
@@ -597,7 +606,15 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
             datasets = with_local_datasets(new_data, num_local_datasets, self._dataset_ixs)
             self._dataset_len = self.dataset_len(datasets)
 
-        self._filtered_datasets = self._acquisition_rule.filter_datasets(self._models, datasets)
+        filtered_datasets: Mapping[Tag, Dataset] | State[
+            StateType | None, Mapping[Tag, Dataset]
+        ] = self._acquisition_rule.filter_datasets(self._models, datasets)
+        if callable(filtered_datasets):
+            self._acquisition_state, self._filtered_datasets = filtered_datasets(
+                self._acquisition_state
+            )
+        else:
+            self._filtered_datasets = filtered_datasets
 
         with Timer() as model_fitting_timer:
             for tag, model in self._models.items():
@@ -624,7 +641,9 @@ TrainableProbabilisticModelType = TypeVar(
 """ Contravariant type variable bound to :class:`TrainableProbabilisticModel`. """
 
 
-class AskTellOptimizer(AskTellOptimizerABC[SearchSpaceType, TrainableProbabilisticModelType]):
+class AskTellOptimizer(
+    AskTellOptimizerABC[SearchSpaceType, TrainableProbabilisticModelType, StateType]
+):
     """
     This class provides Ask/Tell optimization interface with the default model training
     using the TrainableProbabilisticModel interface.
@@ -635,7 +654,9 @@ class AskTellOptimizer(AskTellOptimizerABC[SearchSpaceType, TrainableProbabilist
         optimize_model_and_save_result(model, dataset)
 
 
-class AskTellOptimizerNoTraining(AskTellOptimizerABC[SearchSpaceType, ProbabilisticModelType]):
+class AskTellOptimizerNoTraining(
+    AskTellOptimizerABC[SearchSpaceType, ProbabilisticModelType, StateType]
+):
     """
     This class provides Ask/Tell optimization interface with no model training performed
     during the Tell stage or at initialization.
