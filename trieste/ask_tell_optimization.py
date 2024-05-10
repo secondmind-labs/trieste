@@ -23,7 +23,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Dict, Generic, Mapping, Optional, Sequence, Type, TypeVar, cast, overload
+from typing import Any, Dict, Generic, Mapping, Optional, Sequence, Type, TypeVar, cast, overload
 
 import tensorflow as tf
 
@@ -87,7 +87,7 @@ class AskTellOptimizerState(Generic[StateType, ProbabilisticModelType]):
     when `track_data` is `False`. """
 
 
-class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType, StateType]):
+class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType]):
     """
     This class provides Ask/Tell optimization interface. It is designed for those use cases
     when control of the optimization loop by Trieste is impossible or not desirable.
@@ -97,7 +97,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType, 
 
     @overload
     def __init__(
-        self: AskTellOptimizerABC[SearchSpaceType, ProbabilisticModelType, None],
+        self,
         search_space: SearchSpaceType,
         datasets: Mapping[Tag, Dataset],
         models: Mapping[Tag, ProbabilisticModelType],
@@ -110,7 +110,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType, 
 
     @overload
     def __init__(
-        self: AskTellOptimizerABC[SearchSpaceType, ProbabilisticModelType, None],
+        self,
         search_space: SearchSpaceType,
         datasets: Mapping[Tag, Dataset],
         models: Mapping[Tag, ProbabilisticModelType],
@@ -141,7 +141,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType, 
 
     @overload
     def __init__(
-        self: AskTellOptimizerABC[SearchSpaceType, ProbabilisticModelType, None],
+        self,
         search_space: SearchSpaceType,
         datasets: Dataset,
         models: ProbabilisticModelType,
@@ -154,7 +154,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType, 
 
     @overload
     def __init__(
-        self: AskTellOptimizerABC[SearchSpaceType, ProbabilisticModelType, None],
+        self,
         search_space: SearchSpaceType,
         datasets: Dataset,
         models: ProbabilisticModelType,
@@ -606,8 +606,9 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType, 
             datasets = with_local_datasets(new_data, num_local_datasets, self._dataset_ixs)
             self._dataset_len = self.dataset_len(datasets)
 
+        # TODO: add comment
         filtered_datasets: Mapping[Tag, Dataset] | State[
-            StateType | None, Mapping[Tag, Dataset]
+            Any | None, Mapping[Tag, Dataset]
         ] = self._acquisition_rule.filter_datasets(self._models, datasets)
         if callable(filtered_datasets):
             self._acquisition_state, self._filtered_datasets = filtered_datasets(
@@ -641,9 +642,7 @@ TrainableProbabilisticModelType = TypeVar(
 """ Contravariant type variable bound to :class:`TrainableProbabilisticModel`. """
 
 
-class AskTellOptimizer(
-    AskTellOptimizerABC[SearchSpaceType, TrainableProbabilisticModelType, StateType]
-):
+class AskTellOptimizer(AskTellOptimizerABC[SearchSpaceType, TrainableProbabilisticModelType]):
     """
     This class provides Ask/Tell optimization interface with the default model training
     using the TrainableProbabilisticModel interface.
@@ -654,9 +653,7 @@ class AskTellOptimizer(
         optimize_model_and_save_result(model, dataset)
 
 
-class AskTellOptimizerNoTraining(
-    AskTellOptimizerABC[SearchSpaceType, ProbabilisticModelType, StateType]
-):
+class AskTellOptimizerNoTraining(AskTellOptimizerABC[SearchSpaceType, ProbabilisticModelType]):
     """
     This class provides Ask/Tell optimization interface with no model training performed
     during the Tell stage or at initialization.
