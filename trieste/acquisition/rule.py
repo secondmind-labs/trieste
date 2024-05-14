@@ -1511,25 +1511,30 @@ class BatchTrustRegion(
         def state_func(
             state: BatchTrustRegionState[UpdatableTrustRegionType] | None,
         ) -> Tuple[BatchTrustRegionState[UpdatableTrustRegionType] | None, Mapping[Tag, Dataset]]:
-            assert state is not None
-            assert self._tags == state.subspace_tags, (
-                f"The tags of the state acquisition space "
-                f"{state.subspace_tags} should be the same as the tags of the "
-                f"BatchTrustRegion acquisition rule {self._tags}"
-            )
-            assert len(state.subspaces) == len(state.subspace_tags), (
-                f"Inconsistent number of subspaces: {len(state.subspaces)} subspaces"
-                f"and {len(state.subspace_tags)} tags"
-            )
+            if state is not None:
+                assert self._tags == state.subspace_tags, (
+                    f"The tags of the state acquisition space "
+                    f"{state.subspace_tags} should be the same as the tags of the "
+                    f"BatchTrustRegion acquisition rule {self._tags}"
+                )
+                assert len(state.subspaces) == len(state.subspace_tags), (
+                    f"Inconsistent number of subspaces: {len(state.subspaces)} subspaces"
+                    f"and {len(state.subspace_tags)} tags"
+                )
+                subspaces = tuple(state.subspaces)
+            else:
+                assert self._init_subspaces is not None, "the subspaces have not been initialized"
+                assert self._tags is not None
+                subspaces = self._init_subspaces
 
             # Update subspaces with the latest datasets.
-            for subspace in state.subspaces:
+            for subspace in subspaces:
                 # Re-initialize or update the subspace, depending on the property.
                 if subspace.requires_initialization:
                     subspace.initialize(models, datasets)
                 else:
                     subspace.update(models, datasets)
-            self.maybe_initialize_subspaces(state.subspaces, models, datasets)
+            self.maybe_initialize_subspaces(subspaces, models, datasets)
 
             # Filter out points that are not in any of the subspaces. This is done by creating a
             # mask for each local dataset that is True for points that are in any subspace.
@@ -1539,7 +1544,7 @@ class BatchTrustRegion(
                 if LocalizedTag.from_tag(tag).is_local
             }
 
-            for subspace in state.subspaces:
+            for subspace in subspaces:
                 in_region_masks = subspace.get_datasets_filter_mask(datasets)
                 if in_region_masks is not None:
                     for tag, in_region in in_region_masks.items():
@@ -1559,7 +1564,8 @@ class BatchTrustRegion(
                 if not LocalizedTag.from_tag(tag).is_local:
                     filtered_datasets[tag] = dataset
 
-            return state, filtered_datasets
+            state_ = BatchTrustRegionState(subspaces, self._tags)
+            return state_, filtered_datasets
 
         return state_func
 
