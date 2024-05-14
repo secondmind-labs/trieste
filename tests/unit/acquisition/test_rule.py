@@ -612,13 +612,14 @@ def test_trego_for_default_state(
 
     model = QuadraticMeanAndRBFKernel()
     state, query_point = tr.acquire_single(search_space, model, dataset=dataset)(None)
-    tr.filter_datasets({OBJECTIVE: model}, {OBJECTIVE: dataset})
+    state, _ = tr.filter_datasets({OBJECTIVE: model}, {OBJECTIVE: dataset})(state)
 
     assert state is not None
     ret_subspace = state.acquisition_space.get_subspace("0")
     assert isinstance(ret_subspace, TREGOBox)
     npt.assert_array_almost_equal(ret_subspace.lower, lower_bound)
     npt.assert_array_almost_equal(ret_subspace.upper, upper_bound)
+    npt.assert_array_almost_equal(ret_subspace._y_min, [0.012])
 
     npt.assert_array_almost_equal(query_point, [expected_query_point], 5)
     npt.assert_array_almost_equal(subspace.lower, lower_bound)
@@ -676,7 +677,7 @@ def test_trego_successful_global_to_global_trust_region_unchanged(
         model,
         datasets={OBJECTIVE: dataset},
     )(previous_state)
-    tr.filter_datasets(model, {OBJECTIVE: dataset})
+    current_state, _ = tr.filter_datasets(model, {OBJECTIVE: dataset})(current_state)
 
     assert current_state is not None
     current_subspace = current_state.acquisition_space.get_subspace("0")
@@ -723,7 +724,7 @@ def test_trego_for_unsuccessful_global_to_local_trust_region_unchanged(
         model,
         datasets={OBJECTIVE: dataset},
     )(previous_state)
-    tr.filter_datasets(model, {OBJECTIVE: dataset})
+    current_state, _ = tr.filter_datasets(model, {OBJECTIVE: dataset})(current_state)
 
     assert current_state is not None
     current_subspace = current_state.acquisition_space.get_subspace("0")
@@ -768,7 +769,7 @@ def test_trego_for_successful_local_to_global_trust_region_increased(
         model,
         datasets={OBJECTIVE: dataset},
     )(previous_state)
-    tr.filter_datasets(model, {OBJECTIVE: dataset})
+    current_state, _ = tr.filter_datasets(model, {OBJECTIVE: dataset})(current_state)
 
     assert current_state is not None
     current_subspace = current_state.acquisition_space.get_subspace("0")
@@ -812,7 +813,7 @@ def test_trego_for_unsuccessful_local_to_global_trust_region_reduced(
         model,
         datasets={OBJECTIVE: dataset},
     )(previous_state)
-    tr.filter_datasets(model, {OBJECTIVE: dataset})
+    current_state, _ = tr.filter_datasets(model, {OBJECTIVE: dataset})(current_state)
 
     assert current_state is not None
     current_subspace = current_state.acquisition_space.get_subspace("0")
@@ -1001,7 +1002,7 @@ def test_turbo_for_default_state(
         lengthscales=tf.constant(lengthscales, dtype=tf.float64), variance=1e-5
     )  # need a gpflow kernel for TURBOBox
     state, query_point = tr.acquire_single(search_space, model, dataset=dataset)(None)
-    tr.filter_datasets({OBJECTIVE: model}, {OBJECTIVE: dataset})
+    state, _ = tr.filter_datasets({OBJECTIVE: model}, {OBJECTIVE: dataset})(state)
 
     assert state is not None
     state_region = state.acquisition_space.get_subspace("0")
@@ -1072,7 +1073,7 @@ def test_turbo_doesnt_change_size_unless_needed() -> None:
                 models,
                 datasets={OBJECTIVE: dataset},
             )(previous_state)
-            tr.filter_datasets(models, {OBJECTIVE: dataset})
+            current_state, _ = tr.filter_datasets(models, {OBJECTIVE: dataset})(current_state)
 
             assert current_state is not None
             state_region = current_state.acquisition_space.get_subspace("0")
@@ -1149,7 +1150,7 @@ def test_turbo_does_change_size_correctly_when_needed() -> None:
             models,
             datasets={OBJECTIVE: dataset},
         )(previous_state)
-        tr.filter_datasets(models, {OBJECTIVE: dataset})
+        current_state, _ = tr.filter_datasets(models, {OBJECTIVE: dataset})(current_state)
 
         assert current_state is not None
         state_region = current_state.acquisition_space.get_subspace("0")
@@ -1223,7 +1224,7 @@ def test_turbo_restarts_tr_when_too_small() -> None:
         models,
         datasets={OBJECTIVE: dataset},
     )(previous_state)
-    tr.filter_datasets(models, {OBJECTIVE: dataset})
+    current_state, _ = tr.filter_datasets(models, {OBJECTIVE: dataset})(current_state)
 
     assert current_state is not None
     state_region = current_state.acquisition_space.get_subspace("0")
@@ -1747,7 +1748,7 @@ def test_multi_trust_region_box_acquire_with_state() -> None:
     )
     state_func = mtb.acquire(search_space, models, {OBJECTIVE: dataset})
     next_state, points = state_func(state)
-    mtb.filter_datasets(models, {OBJECTIVE: dataset})
+    next_state, _ = mtb.filter_datasets(models, {OBJECTIVE: dataset})(next_state)
 
     assert next_state is not None
     assert points.shape == [1, 3, 2]
