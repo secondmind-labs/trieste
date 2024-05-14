@@ -681,9 +681,7 @@ def test_trego_successful_global_to_global_trust_region_unchanged(
 
     assert current_state is not None
     current_subspace = current_state.acquisition_space.get_subspace("0")
-    assert isinstance(current_subspace, TREGOBox)
-    npt.assert_array_almost_equal(current_subspace.lower, lower_bound)
-    npt.assert_array_almost_equal(current_subspace.upper, upper_bound)
+    assert current_subspace is subspace
 
     npt.assert_array_almost_equal(subspace._eps, eps)
     assert subspace._is_global
@@ -728,9 +726,7 @@ def test_trego_for_unsuccessful_global_to_local_trust_region_unchanged(
 
     assert current_state is not None
     current_subspace = current_state.acquisition_space.get_subspace("0")
-    assert isinstance(current_subspace, TREGOBox)
-    npt.assert_array_almost_equal(current_subspace.lower, acquisition_space.lower)
-    npt.assert_array_almost_equal(current_subspace.upper, acquisition_space.upper)
+    assert current_subspace is subspace
 
     npt.assert_array_almost_equal(subspace._eps, eps)
     assert not subspace._is_global
@@ -773,9 +769,7 @@ def test_trego_for_successful_local_to_global_trust_region_increased(
 
     assert current_state is not None
     current_subspace = current_state.acquisition_space.get_subspace("0")
-    assert isinstance(current_subspace, TREGOBox)
-    npt.assert_array_almost_equal(current_subspace.lower, acquisition_space.lower)
-    npt.assert_array_almost_equal(current_subspace.upper, acquisition_space.upper)
+    assert current_subspace is subspace
 
     npt.assert_array_less(eps, subspace._eps)  # current TR larger than previous
     assert subspace._is_global
@@ -817,9 +811,7 @@ def test_trego_for_unsuccessful_local_to_global_trust_region_reduced(
 
     assert current_state is not None
     current_subspace = current_state.acquisition_space.get_subspace("0")
-    assert isinstance(current_subspace, TREGOBox)
-    npt.assert_array_almost_equal(current_subspace.lower, acquisition_space.lower)
-    npt.assert_array_almost_equal(current_subspace.upper, acquisition_space.upper)
+    assert current_subspace is subspace
 
     npt.assert_array_less(subspace._eps, eps)  # current TR smaller than previous
     assert subspace._is_global
@@ -1006,9 +998,7 @@ def test_turbo_for_default_state(
 
     assert state is not None
     state_region = state.acquisition_space.get_subspace("0")
-    assert isinstance(state_region, TURBOBox)
-    npt.assert_array_almost_equal(state_region.lower, orig_region.lower)
-    npt.assert_array_almost_equal(state_region.upper, orig_region.upper)
+    assert state_region is region
     npt.assert_array_almost_equal(region.lower, lower_bound)
     npt.assert_array_almost_equal(region.upper, tf.constant(exp_upper, dtype=tf.float64))
     npt.assert_array_almost_equal(region.y_min, [0.012])
