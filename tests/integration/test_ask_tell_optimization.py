@@ -30,9 +30,11 @@ from trieste.acquisition.rule import (
     AsynchronousGreedy,
     AsynchronousRuleState,
     BatchTrustRegionBox,
+    BatchTrustRegionState,
     EfficientGlobalOptimization,
     SingleObjectiveTrustRegionBox,
     TREGOBox,
+    UpdatableTrustRegionBox,
 )
 from trieste.acquisition.utils import copy_to_local_models
 from trieste.ask_tell_optimization import AskTellOptimizer, AskTellOptimizerState
@@ -136,7 +138,10 @@ AcquisitionRuleFunction = Union[
     Callable[
         [],
         AcquisitionRule[
-            State[TensorType, Union[AsynchronousRuleState, BatchTrustRegionBox.State]],
+            State[
+                TensorType,
+                Union[AsynchronousRuleState, BatchTrustRegionState[UpdatableTrustRegionBox]],
+            ],
             Box,
             TrainableProbabilisticModel,
         ],
@@ -220,7 +225,11 @@ def _test_ask_tell_optimization_finds_minima(
 
                 if reload_state:
                     state: AskTellOptimizerState[
-                        None | State[TensorType, AsynchronousRuleState | BatchTrustRegionBox.State],
+                        None
+                        | State[
+                            TensorType,
+                            AsynchronousRuleState | BatchTrustRegionState[UpdatableTrustRegionBox],
+                        ],
                         GaussianProcessRegression,
                     ] = ask_tell.to_state()
                     written_state = pickle.dumps(state)
@@ -257,7 +266,8 @@ def _test_ask_tell_optimization_finds_minima(
                     ask_tell.tell(initial_dataset)
 
     result: OptimizationResult[
-        None | State[TensorType, AsynchronousRuleState | BatchTrustRegionBox.State],
+        None
+        | State[TensorType, AsynchronousRuleState | BatchTrustRegionState[UpdatableTrustRegionBox]],
         GaussianProcessRegression,
     ] = ask_tell.to_result()
     dataset = result.try_get_final_dataset()

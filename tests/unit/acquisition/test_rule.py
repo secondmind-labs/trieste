@@ -50,6 +50,7 @@ from trieste.acquisition.rule import (
     BatchHypervolumeSharpeRatioIndicator,
     BatchTrustRegionBox,
     BatchTrustRegionProduct,
+    BatchTrustRegionState,
     DiscreteThompsonSampling,
     EfficientGlobalOptimization,
     FixedPointTrustRegionDiscrete,
@@ -59,6 +60,7 @@ from trieste.acquisition.rule import (
     TREGOBox,
     TURBOBox,
     UpdatableTrustRegion,
+    UpdatableTrustRegionBox,
     UpdatableTrustRegionProduct,
 )
 from trieste.acquisition.sampler import (
@@ -667,7 +669,7 @@ def test_trego_successful_global_to_global_trust_region_unchanged(
     )
     tr = BatchTrustRegionBox(subspace, rule)
 
-    previous_state = BatchTrustRegionBox.State(TaggedMultiSearchSpace([subspace]))
+    previous_state = BatchTrustRegionState[UpdatableTrustRegionBox]([subspace], ["0"])
     model = {OBJECTIVE: QuadraticMeanAndRBFKernel()}
     current_state, query_point = tr.acquire(
         search_space,
@@ -714,7 +716,7 @@ def test_trego_for_unsuccessful_global_to_local_trust_region_unchanged(
 
     previous_subspace_copy = copy.deepcopy(subspace)
 
-    previous_state = BatchTrustRegionBox.State(TaggedMultiSearchSpace([subspace]))
+    previous_state = BatchTrustRegionState[UpdatableTrustRegionBox]([subspace], ["0"])
     model = {OBJECTIVE: QuadraticMeanAndRBFKernel()}
     current_state, query_point = tr.acquire(
         search_space,
@@ -759,7 +761,7 @@ def test_trego_for_successful_local_to_global_trust_region_increased(
     )
     tr = BatchTrustRegionBox(subspace, rule)
 
-    previous_state = BatchTrustRegionBox.State(TaggedMultiSearchSpace([subspace]))
+    previous_state = BatchTrustRegionState[UpdatableTrustRegionBox]([subspace], ["0"])
     model = {OBJECTIVE: QuadraticMeanAndRBFKernel()}
     current_state, _ = tr.acquire(
         search_space,
@@ -803,7 +805,7 @@ def test_trego_for_unsuccessful_local_to_global_trust_region_reduced(
     )
     tr = BatchTrustRegionBox(subspace, rule)
 
-    previous_state = BatchTrustRegionBox.State(TaggedMultiSearchSpace([subspace]))
+    previous_state = BatchTrustRegionState[UpdatableTrustRegionBox]([subspace], ["0"])
     model = {OBJECTIVE: QuadraticMeanAndRBFKernel()}
     current_state, _ = tr.acquire(
         search_space,
@@ -827,17 +829,21 @@ def test_trego_for_unsuccessful_local_to_global_trust_region_reduced(
 def test_trego_always_uses_global_dataset() -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     dataset = Dataset(
-        tf.constant([[0.1, 0.2], [-0.1, -0.2], [1.1, 2.3]]), tf.constant([[0.4], [0.5], [0.6]])
+        tf.constant([[0.1, 0.2], [-0.1, -0.2], [1.1, 2.3]], dtype=tf.float64),
+        tf.constant([[0.4], [0.5], [0.6]], dtype=tf.float64),
     )
     tr = BatchTrustRegionBox(TREGOBox(search_space))  # type: ignore[var-annotated]
+    state, _ = tr.acquire(
+        search_space, {OBJECTIVE: QuadraticMeanAndRBFKernel()}, {OBJECTIVE: dataset}
+    )(None)
     new_data = Dataset(
-        tf.constant([[0.5, -0.2], [0.7, 0.2], [1.1, 0.3], [0.5, 0.5]]),
-        tf.constant([[0.7], [0.8], [0.9], [1.0]]),
+        tf.constant([[0.5, -0.2], [0.7, 0.2], [1.1, 0.3], [0.5, 0.5]], dtype=tf.float64),
+        tf.constant([[0.7], [0.8], [0.9], [1.0]], dtype=tf.float64),
     )
-    updated_datasets = tr.filter_datasets(
+    _, updated_datasets = tr.filter_datasets(
         {LocalizedTag(OBJECTIVE, 0): QuadraticMeanAndRBFKernel()},
         {OBJECTIVE: dataset + new_data, LocalizedTag(OBJECTIVE, 0): dataset + new_data},
-    )
+    )(state)
 
     # Both the local and global datasets should match.
     assert updated_datasets.keys() == {OBJECTIVE, LocalizedTag(OBJECTIVE, 0)}
@@ -859,7 +865,7 @@ def test_trego_state_deepcopy() -> None:
         tf.constant(7.8),
         False,
     )
-    tr_state = BatchTrustRegionBox.State(TaggedMultiSearchSpace([subspace]))
+    tr_state = BatchTrustRegionState[UpdatableTrustRegionBox]([subspace], ["0"])
     tr_state_copy = copy.deepcopy(tr_state)
     tr_subspace = tr_state.acquisition_space.get_subspace("0")
     tr_subspace_copy = tr_state_copy.acquisition_space.get_subspace("0")
@@ -927,8 +933,8 @@ def test_turbo_heuristics_for_param_init_work() -> None:
     search_space = Box(lower_bound, upper_bound)
     rule = BatchTrustRegionBox(TURBOBox(search_space))  # type: ignore[var-annotated]
     rule.acquire(search_space, {OBJECTIVE: QuadraticMeanAndRBFKernel()})
-    assert rule._subspaces is not None
-    region = rule._subspaces[0]
+    assert rule._init_subspaces is not None
+    region = rule._init_subspaces[0]
     assert isinstance(region, TURBOBox)
 
     assert region.L_init == 0.8 * 3.0
@@ -1059,8 +1065,8 @@ def test_turbo_doesnt_change_size_unless_needed() -> None:
                 success_counter,
                 previous_y_min,
             )
-            previous_state = BatchTrustRegionBox.State(TaggedMultiSearchSpace([region]))
-            tr._subspaces = (region,)
+            previous_state = BatchTrustRegionState[UpdatableTrustRegionBox]([region], ["0"])
+            tr._init_subspaces = (region,)
             current_state, _ = tr.acquire(
                 search_space,
                 models,
@@ -1088,8 +1094,8 @@ def test_turbo_doesnt_change_size_unless_needed() -> None:
             success_counter,
             previous_y_min,
         )
-        previous_state = BatchTrustRegionBox.State(TaggedMultiSearchSpace([region]))
-        tr._subspaces = (region,)
+        previous_state = BatchTrustRegionState[UpdatableTrustRegionBox]([region], ["0"])
+        tr._init_subspaces = (region,)
         current_state, _ = tr.acquire(
             search_space,
             models,
@@ -1136,8 +1142,8 @@ def test_turbo_does_change_size_correctly_when_needed() -> None:
             2,
             previous_y_min,
         )
-        previous_state = BatchTrustRegionBox.State(TaggedMultiSearchSpace([region]))
-        tr._subspaces = (region,)
+        previous_state = BatchTrustRegionState[UpdatableTrustRegionBox]([region], ["0"])
+        tr._init_subspaces = (region,)
         current_state, _ = tr.acquire(
             search_space,
             models,
@@ -1164,8 +1170,8 @@ def test_turbo_does_change_size_correctly_when_needed() -> None:
             success_counter,
             previous_y_min,
         )
-        previous_state = BatchTrustRegionBox.State(TaggedMultiSearchSpace([region]))
-        tr._subspaces = (region,)
+        previous_state = BatchTrustRegionState[UpdatableTrustRegionBox]([region], ["0"])
+        tr._init_subspaces = (region,)
         current_state, _ = tr.acquire(
             search_space,
             models,
@@ -1210,8 +1216,8 @@ def test_turbo_restarts_tr_when_too_small() -> None:
     region = turbo_create_region(
         search_space, previous_search_space, L, failure_counter, success_counter, previous_y_min
     )
-    previous_state = BatchTrustRegionBox.State(TaggedMultiSearchSpace([region]))
-    tr._subspaces = (region,)
+    previous_state = BatchTrustRegionState[UpdatableTrustRegionBox]([region], ["0"])
+    tr._init_subspaces = (region,)
     current_state, _ = tr.acquire(
         search_space,
         models,
@@ -1232,8 +1238,8 @@ def test_turbo_restarts_tr_when_too_small() -> None:
     region = turbo_create_region(
         search_space, previous_search_space, 0.5**6 - 0.1, 1, success_counter, previous_y_min
     )
-    previous_state = BatchTrustRegionBox.State(TaggedMultiSearchSpace([region]))
-    tr._subspaces = (region,)
+    previous_state = BatchTrustRegionState[UpdatableTrustRegionBox]([region], ["0"])
+    tr._init_subspaces = (region,)
     current_state, _ = tr.acquire(
         search_space,
         models,
@@ -1254,7 +1260,7 @@ def test_turbo_restarts_tr_when_too_small() -> None:
 def test_turbo_state_deepcopy() -> None:
     search_space = Box(tf.constant([1.2]), tf.constant([3.4]))
     subspace = turbo_create_region(search_space, search_space, 0.8, 0, 0, tf.constant(7.8))
-    tr_state = BatchTrustRegionBox.State(TaggedMultiSearchSpace([subspace]))
+    tr_state = BatchTrustRegionState[UpdatableTrustRegionBox]([subspace], ["0"])
     tr_state_copy = copy.deepcopy(tr_state)
     tr_subspace = tr_state.acquisition_space.get_subspace("0")
     tr_subspace_copy = tr_state_copy.acquisition_space.get_subspace("0")
@@ -1545,9 +1551,9 @@ def test_multi_trust_region_box_no_subspace(
     mtb.acquire(search_space, {})
 
     assert mtb._tags is not None
-    assert mtb._subspaces is not None
-    assert len(mtb._subspaces) == exp_num_subspaces
-    for i, (subspace, tag) in enumerate(zip(mtb._subspaces, mtb._tags)):
+    assert mtb._init_subspaces is not None
+    assert len(mtb._init_subspaces) == exp_num_subspaces
+    for i, (subspace, tag) in enumerate(zip(mtb._init_subspaces, mtb._tags)):
         assert isinstance(subspace, SingleObjectiveTrustRegionBox)
         assert subspace.global_search_space == search_space
         assert tag == f"{i}"
@@ -1558,7 +1564,7 @@ def test_multi_trust_region_box_single_subspace() -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     subspace = SingleObjectiveTrustRegionBox(search_space)
     mtb = BatchTrustRegionBox(subspace)  # type: ignore[var-annotated]
-    assert mtb._subspaces == (subspace,)
+    assert mtb._init_subspaces == (subspace,)
     assert mtb._tags == ("0",)
 
 
@@ -1628,9 +1634,7 @@ def test_multi_trust_region_box_raises_on_mismatched_tags() -> None:
     subspaces = [SingleObjectiveTrustRegionBox(search_space) for _ in range(2)]
     mtb = BatchTrustRegionBox(subspaces, base_rule)
 
-    state = BatchTrustRegionBox.State(
-        acquisition_space=TaggedMultiSearchSpace(subspaces, tags=["a", "b"])
-    )
+    state = BatchTrustRegionState[UpdatableTrustRegionBox](subspaces, ["a", "b"])
     models = {OBJECTIVE: QuadraticMeanAndRBFKernelWithSamplers(dataset)}
     state_func = mtb.acquire(
         search_space,
@@ -1733,7 +1737,7 @@ def test_multi_trust_region_box_acquire_with_state() -> None:
         TestTrustRegionBox(tf.constant([0.3, 0.3], dtype=tf.float64) + 1e-7, search_space),
     ]
     mtb = BatchTrustRegionBox(subspaces, base_rule)
-    state = BatchTrustRegionBox.State(acquisition_space=TaggedMultiSearchSpace(subspaces))
+    state = BatchTrustRegionState[UpdatableTrustRegionBox](subspaces, ["0", "1", "2"])
     for subspace in subspaces:
         subspace.initialize(datasets={OBJECTIVE: init_dataset})
 
@@ -1928,7 +1932,7 @@ def test_multi_trust_region_box_updated_datasets_are_in_regions(
         num_query_points=num_query_points_per_region,
     )
     rule = BatchTrustRegionBox(subspaces, base_rule)
-    _, points = rule.acquire(search_space, models, datasets)(None)
+    state, points = rule.acquire(search_space, models, datasets)(None)
     observer = mk_batch_observer(quadratic)
     new_data = observer(points)
     assert not isinstance(new_data, Dataset)
@@ -1938,7 +1942,7 @@ def test_multi_trust_region_box_updated_datasets_are_in_regions(
         _, dataset = get_value_for_tag(datasets, *[tag, LocalizedTag.from_tag(tag).global_tag])
         assert dataset is not None
         updated_datasets[tag] = dataset + new_data[tag]
-    filtered_datasets = rule.filter_datasets(models, updated_datasets)
+    _, filtered_datasets = rule.filter_datasets(models, updated_datasets)(state)
 
     # Check local datasets.
     for i, subspace in enumerate(subspaces):
@@ -1997,7 +2001,7 @@ def test_multi_trust_region_box_state_deepcopy() -> None:
     ]
     for _subspace in subspaces:
         _subspace.initialize(datasets={OBJECTIVE: dataset})
-    state = BatchTrustRegionBox.State(acquisition_space=TaggedMultiSearchSpace(subspaces))
+    state = BatchTrustRegionState[UpdatableTrustRegionBox](subspaces, ["0", "1", "2"])
 
     state_copy = copy.deepcopy(state)
     assert state_copy is not state
@@ -2491,9 +2495,9 @@ def test_batch_trust_region_product_no_subspace(
     tr_rule.acquire(search_space, {})
 
     assert tr_rule._tags is not None
-    assert tr_rule._subspaces is not None
-    assert len(tr_rule._subspaces) == exp_num_subspaces
-    for i, (subspace, tag) in enumerate(zip(tr_rule._subspaces, tr_rule._tags)):
+    assert tr_rule._init_subspaces is not None
+    assert len(tr_rule._init_subspaces) == exp_num_subspaces
+    for i, (subspace, tag) in enumerate(zip(tr_rule._init_subspaces, tr_rule._tags)):
         assert isinstance(subspace, UpdatableTrustRegionProduct)
         assert subspace.global_search_space == search_space
         assert tag == f"{i}"
