@@ -1503,11 +1503,11 @@ class BatchTrustRegion(
         :return: A boolean mask of length V, where V is the number of subspaces.
         """
 
-    def filter_datasets(
+    # AcquisitionRule should really have been generic in StateType, but that's too big a change
+    # to make now, hence the type override
+    def filter_datasets(  # type: ignore[override]
         self, models: Mapping[Tag, ProbabilisticModelType], datasets: Mapping[Tag, Dataset]
     ) -> types.State[BatchTrustRegionState[UpdatableTrustRegionType] | None, Mapping[Tag, Dataset]]:
-        # TODO: ???
-
         def state_func(
             state: BatchTrustRegionState[UpdatableTrustRegionType] | None,
         ) -> Tuple[BatchTrustRegionState[UpdatableTrustRegionType] | None, Mapping[Tag, Dataset]]:
