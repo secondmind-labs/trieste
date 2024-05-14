@@ -1092,7 +1092,7 @@ def test_turbo_doesnt_change_size_unless_needed() -> None:
             models,
             datasets={OBJECTIVE: dataset},
         )(previous_state)
-        tr.filter_datasets(models, {OBJECTIVE: dataset})
+        current_state, _ = tr.filter_datasets(models, {OBJECTIVE: dataset})(current_state)
 
         assert current_state is not None
         state_region = current_state.acquisition_space.get_subspace("0")
@@ -1168,7 +1168,7 @@ def test_turbo_does_change_size_correctly_when_needed() -> None:
             models,
             datasets={OBJECTIVE: dataset},
         )(previous_state)
-        tr.filter_datasets(models, {OBJECTIVE: dataset})
+        current_state, _ = tr.filter_datasets(models, {OBJECTIVE: dataset})(current_state)
 
         assert current_state is not None
         state_region = current_state.acquisition_space.get_subspace("0")
@@ -1236,7 +1236,7 @@ def test_turbo_restarts_tr_when_too_small() -> None:
         models,
         datasets={OBJECTIVE: dataset},
     )(previous_state)
-    tr.filter_datasets(models, {OBJECTIVE: dataset})
+    current_state, _ = tr.filter_datasets(models, {OBJECTIVE: dataset})(current_state)
 
     assert current_state is not None
     state_region = current_state.acquisition_space.get_subspace("0")
@@ -1695,7 +1695,7 @@ def test_multi_trust_region_box_inits_regions_that_need_it() -> None:
     assert bool(subspaces[2].requires_initialization) is False
 
     mtb = BatchTrustRegionBox(subspaces)  # type: ignore[var-annotated]
-    mtb.filter_datasets({OBJECTIVE: model}, {OBJECTIVE: dataset})
+    mtb.filter_datasets({OBJECTIVE: model}, {OBJECTIVE: dataset})(None)
 
     # Check that the second region was re-initialized.
     assert subspaces[0].eps < 0.35  # Expect reduction.
