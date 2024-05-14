@@ -519,7 +519,8 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
 
         if callable(points_or_stateful):
             self._acquisition_state, query_points = points_or_stateful(self._acquisition_state)
-            # TODO: keep acquire acquisition state separate from general state
+            # TODO: keep acquire acquisition state separate from general state, so we
+            # can return it in to_record
         else:
             query_points = points_or_stateful
 

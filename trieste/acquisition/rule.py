@@ -40,8 +40,6 @@ from typing import (
 import numpy as np
 from check_shapes import check_shapes, inherit_check_shapes
 
-from ..ask_tell_optimization import StateType
-
 try:
     import pymoo
     from pymoo.algorithms.moo.nsga2 import NSGA2
@@ -95,6 +93,9 @@ from .optimizer import (
 )
 from .sampler import ExactThompsonSampler, ThompsonSampler
 from .utils import get_unique_points_mask, select_nth_output
+
+StateType = TypeVar("StateType")
+""" Unbound type variable. """
 
 ResultType = TypeVar("ResultType", covariant=True)
 """ Unbound covariant type variable. """
@@ -179,7 +180,7 @@ class AcquisitionRule(ABC, Generic[ResultType, SearchSpaceType, ProbabilisticMod
         Filter the post-acquisition datasets before they are used for model training. For example,
         this can be used to remove points from the post-acquisition datasets that are no longer in
         the search space.
-        Some rules may also update their internal state.
+        Rules that need to update their internal state should return a State callable.
 
         :param models: The model for each tag.
         :param datasets: The updated datasets after previous acquisition step.
@@ -1289,15 +1290,15 @@ class BatchTrustRegion(
             :class:`~trieste.acquisition.EfficientGlobalOptimization` otherwise.
         """
         # If init_subspaces are not provided, leave it to the subclasses to create them.
-        self._subspaces = None
+        self._init_subspaces = None
         self._tags = None
         if init_subspaces is not None:
             if not isinstance(init_subspaces, Sequence):
                 init_subspaces = [init_subspaces]
-            self._subspaces = tuple(init_subspaces)
-            for index, subspace in enumerate(self._subspaces):
+            self._init_subspaces = tuple(init_subspaces)
+            for index, subspace in enumerate(self._init_subspaces):
                 subspace.region_index = index  # Override the index.
-            self._tags = tuple(str(index) for index in range(len(init_subspaces)))
+            self._tags = tuple(str(index) for index, _ in enumerate(self._init_subspaces))
 
         self._rule = rule
         # The rules for each subspace. These are only used when we want to run the base rule
@@ -1308,12 +1309,12 @@ class BatchTrustRegion(
 
     def __repr__(self) -> str:
         """"""
-        return f"""{self.__class__.__name__}({self._subspaces!r}, {self._rule!r})"""
+        return f"""{self.__class__.__name__}({self._init_subspaces!r}, {self._rule!r})"""
 
     @property
     def num_local_datasets(self) -> int:
-        assert self._subspaces is not None, "the subspaces have not been initialized"
-        return len(self._subspaces)
+        assert self._init_subspaces is not None, "the subspaces have not been initialized"
+        return len(self._init_subspaces)
 
     def acquire(
         self,
@@ -1338,14 +1339,14 @@ class BatchTrustRegion(
             points from the previous acquisition state.
         """
 
-        # Subspaces should be set by the time we call `acquire`.
+        # Subspaces should be initialised by the time we call `acquire`.
         assert self._tags is not None
-        assert self._subspaces is not None
+        assert self._init_subspaces is not None
 
         # Implement heuristic defaults for the rule if not specified by the user.
         if self._rule is None:
             # Use first subspace to determine the type of the base rule.
-            if isinstance(self._subspaces[0], TURBOBox):
+            if isinstance(self._init_subspaces[0], TURBOBox):
                 # Default to Thompson sampling with batches of size 1.
                 self._rule = DiscreteThompsonSampling(
                     tf.minimum(100 * search_space.dimension, 5_000), 1
@@ -1386,27 +1387,27 @@ class BatchTrustRegion(
         ) -> Tuple[BatchTrustRegion.State | None, TensorType]:
             # Check again to keep mypy happy.
             assert self._tags is not None
-            assert self._subspaces is not None
+            assert self._init_subspaces is not None
             assert self._rule is not None
 
-            # If state is set, the tags should be the same as the tags of the acquisition space
-            # in the state.
+            # If state is set, the tags should be the same as the tags of the initial space.
             if state is not None:
                 assert (
                     self._tags == state.acquisition_space.subspace_tags
                 ), f"""The tags of the state acquisition space
                     {state.acquisition_space.subspace_tags} should be the same as the tags of the
                     BatchTrustRegion acquisition rule {self._tags}"""
-
-            # Never use the subspaces from the passed in state, as we may have modified the
-            # subspaces in filter_datasets.
-            acquisition_space = TaggedMultiSearchSpace(self._subspaces, self._tags)
+                acquisition_space = state.acquisition_space
+            else:
+                acquisition_space = TaggedMultiSearchSpace(self._init_subspaces, self._tags)
 
             # If the base rule is a sequence, run it sequentially for each subspace.
             # See earlier comments.
             if self._rules is not None:
                 _points = []
-                for subspace, rule in zip(self._subspaces, self._rules):
+                for tag, rule in zip(self._tags, self._rules):
+                    subspace = acquisition_space.get_subspace(tag)
+                    assert isinstance(subspace, UpdatableTrustRegion)
                     _models = subspace.select_in_region(models)
                     _datasets = subspace.select_in_region(datasets)
                     assert _models is not None
@@ -1438,9 +1439,8 @@ class BatchTrustRegion(
                     _datasets = None
                 points = self._rule.acquire(acquisition_space, models, _datasets)
 
-            # We may modify the regions in filter_datasets later, so return a copy.
-            state_ = BatchTrustRegion.State(copy.deepcopy(acquisition_space))
-            return state_, tf.reshape(points, [-1, len(self._subspaces), points.shape[-1]])
+            state_ = BatchTrustRegion.State(acquisition_space)
+            return state_, tf.reshape(points, [-1, len(self._init_subspaces), points.shape[-1]])
 
         return state_func
 
@@ -1490,46 +1490,66 @@ class BatchTrustRegion(
 
     def filter_datasets(
         self, models: Mapping[Tag, ProbabilisticModelType], datasets: Mapping[Tag, Dataset]
-    ) -> Mapping[Tag, Dataset]:
-        # Update subspaces with the latest datasets.
-        assert self._subspaces is not None
-        for subspace in self._subspaces:
-            # Re-initialize or update the subspace, depending on the property.
-            if subspace.requires_initialization:
-                subspace.initialize(models, datasets)
-            else:
-                subspace.update(models, datasets)
-        self.maybe_initialize_subspaces(self._subspaces, models, datasets)
+    ) -> types.State[StateType | None, Mapping[Tag, Dataset]]:
+        # TODO: ???
 
-        # Filter out points that are not in any of the subspaces. This is done by creating a mask
-        # for each local dataset that is True for points that are in any subspace.
-        used_masks = {
-            tag: tf.zeros(dataset.query_points.shape[:-1], dtype=tf.bool)
-            for tag, dataset in datasets.items()
-            if LocalizedTag.from_tag(tag).is_local
-        }
+        def state_func(
+            state: BatchTrustRegion.State | None,
+        ) -> Tuple[BatchTrustRegion.State | None, Mapping[Tag, Dataset]]:
+            assert state is not None
+            assert (
+                self._tags == state.acquisition_space.subspace_tags
+            ), f"""The tags of the state acquisition space
+                {state.acquisition_space.subspace_tags} should be the same as the tags of the
+                BatchTrustRegion acquisition rule {self._tags}"""
 
-        for subspace in self._subspaces:
-            in_region_masks = subspace.get_datasets_filter_mask(datasets)
-            if in_region_masks is not None:
-                for tag, in_region in in_region_masks.items():
-                    ltag = LocalizedTag.from_tag(tag)
-                    assert ltag.is_local, f"can only filter local tags, got {tag}"
-                    used_masks[tag] = tf.logical_or(used_masks[tag], in_region)
+            # Update subspaces with the latest datasets.
+            subspaces: list[UpdatableTrustRegionType] = []
+            for subspace_tag in state.acquisition_space.subspace_tags:
+                subspace = state.acquisition_space.get_subspace(subspace_tag)
+                # TODO: state doesn't check UpdatableTrustRegionType!
+                assert isinstance(subspace, UpdatableTrustRegion)
+                subspaces.append(subspace)
 
-        filtered_datasets = {}
-        for tag, used_mask in used_masks.items():
-            filtered_datasets[tag] = Dataset(
-                tf.boolean_mask(datasets[tag].query_points, used_mask),
-                tf.boolean_mask(datasets[tag].observations, used_mask),
-            )
+            for subspace in subspaces:
+                # Re-initialize or update the subspace, depending on the property.
+                if subspace.requires_initialization:
+                    subspace.initialize(models, datasets)
+                else:
+                    subspace.update(models, datasets)
+            self.maybe_initialize_subspaces(subspaces, models, datasets)
 
-        # Include global datasets unmodified.
-        for tag, dataset in datasets.items():
-            if not LocalizedTag.from_tag(tag).is_local:
-                filtered_datasets[tag] = dataset
+            # Filter out points that are not in any of the subspaces. This is done by creating a mask
+            # for each local dataset that is True for points that are in any subspace.
+            used_masks = {
+                tag: tf.zeros(dataset.query_points.shape[:-1], dtype=tf.bool)
+                for tag, dataset in datasets.items()
+                if LocalizedTag.from_tag(tag).is_local
+            }
 
-        return filtered_datasets
+            for subspace in subspaces:
+                in_region_masks = subspace.get_datasets_filter_mask(datasets)
+                if in_region_masks is not None:
+                    for tag, in_region in in_region_masks.items():
+                        ltag = LocalizedTag.from_tag(tag)
+                        assert ltag.is_local, f"can only filter local tags, got {tag}"
+                        used_masks[tag] = tf.logical_or(used_masks[tag], in_region)
+
+            filtered_datasets = {}
+            for tag, used_mask in used_masks.items():
+                filtered_datasets[tag] = Dataset(
+                    tf.boolean_mask(datasets[tag].query_points, used_mask),
+                    tf.boolean_mask(datasets[tag].observations, used_mask),
+                )
+
+            # Include global datasets unmodified.
+            for tag, dataset in datasets.items():
+                if not LocalizedTag.from_tag(tag).is_local:
+                    filtered_datasets[tag] = dataset
+
+            return state, filtered_datasets
+
+        return state_func
 
 
 class HypercubeTrustRegion(UpdatableTrustRegion):
@@ -1827,7 +1847,7 @@ class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, UpdatableTrus
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> types.State[BatchTrustRegion.State | None, TensorType]:
-        if self._subspaces is None:
+        if self._init_subspaces is None:
             # If no initial subspaces were provided, create N default subspaces, where N is the
             # number of query points in the base-rule.
             # Currently the detection for N is only implemented for EGO.
@@ -1844,14 +1864,14 @@ class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, UpdatableTrus
             init_subspaces: Tuple[UpdatableTrustRegionBox, ...] = tuple(
                 SingleObjectiveTrustRegionBox(search_space) for _ in range(num_query_points)
             )
-            self._subspaces = init_subspaces
-            for index, subspace in enumerate(self._subspaces):
+            self._init_subspaces = init_subspaces
+            for index, subspace in enumerate(self._init_subspaces):
                 subspace.region_index = index  # Override the index.
             self._tags = tuple(str(index) for index in range(self.num_local_datasets))
 
         # Ensure passed in global search space is always the same as the search space passed to
         # the subspaces.
-        for subspace in self._subspaces:
+        for subspace in self._init_subspaces:
             assert subspace.global_search_space == search_space, (
                 "The global search space of the subspaces should be the same as the "
                 "search space passed to the BatchTrustRegionBox acquisition rule. "
@@ -2503,7 +2523,7 @@ class BatchTrustRegionProduct(
         models: Mapping[Tag, ProbabilisticModelType],
         datasets: Optional[Mapping[Tag, Dataset]] = None,
     ) -> types.State[BatchTrustRegion.State | None, TensorType]:
-        if self._subspaces is None:
+        if self._init_subspaces is None:
             # If no initial subspaces were provided, create N default subspaces, where N is the
             # number of query points in the base-rule.
             # Currently the detection for N is only implemented for EGO.
@@ -2536,14 +2556,14 @@ class BatchTrustRegionProduct(
             init_subspaces: Tuple[UpdatableTrustRegionProduct, ...] = tuple(
                 UpdatableTrustRegionProduct(create_subregions()) for _ in range(num_query_points)
             )
-            self._subspaces = init_subspaces
-            for index, subspace in enumerate(self._subspaces):
+            self._init_subspaces = init_subspaces
+            for index, subspace in enumerate(self._init_subspaces):
                 subspace.region_index = index  # Override the index.
             self._tags = tuple(str(index) for index in range(self.num_local_datasets))
 
         # Ensure passed in global search space is always the same as the search space passed to
         # the subspaces.
-        for subspace in self._subspaces:
+        for subspace in self._init_subspaces:
             assert subspace.global_search_space == search_space, (
                 "The global search space of the subspaces should be the same as the "
                 "search space passed to the BatchTrustRegionProduct acquisition rule. "
