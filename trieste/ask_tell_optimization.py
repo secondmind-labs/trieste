@@ -23,7 +23,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, Dict, Generic, Mapping, Optional, Sequence, Type, TypeVar, cast, overload
+from typing import Dict, Generic, Mapping, Optional, Sequence, Type, TypeVar, cast, overload
 
 import tensorflow as tf
 
@@ -610,13 +610,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
             datasets = with_local_datasets(new_data, num_local_datasets, self._dataset_ixs)
             self._dataset_len = self.dataset_len(datasets)
 
-        # It would be nice to make AskTellOptimizer generic in StateType. However, trying this
-        # results in lots of obligatory type annotations that weren't previously needed
-        # (even though mypy should be able to infer StateType from the relevant @overload).
-        # So instead we've settled for having StateType be Any here (but not in __init__).
-        filtered_datasets: Mapping[Tag, Dataset] | State[
-            Any | None, Mapping[Tag, Dataset]
-        ] = self._acquisition_rule.filter_datasets(self._models, datasets)
+        filtered_datasets = self._acquisition_rule.filter_datasets(self._models, datasets)
         if callable(filtered_datasets):
             self._acquisition_state, self._filtered_datasets = filtered_datasets(
                 self._acquisition_state
