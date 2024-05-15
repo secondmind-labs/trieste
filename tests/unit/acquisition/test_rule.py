@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import copy
 from collections.abc import Mapping
-from typing import Any, Callable, List, Optional, Union
+from typing import Any, Callable, List, Optional, Sequence, Union, cast
 from unittest.mock import ANY, MagicMock
 
 import gpflow
@@ -620,12 +620,7 @@ def test_trego_for_default_state(
     npt.assert_array_almost_equal(ret_subspace.lower, lower_bound)
     npt.assert_array_almost_equal(ret_subspace.upper, upper_bound)
     npt.assert_array_almost_equal(ret_subspace._y_min, [0.012])
-
-    npt.assert_array_almost_equal(query_point, [expected_query_point], 5)
-    npt.assert_array_almost_equal(subspace.lower, lower_bound)
-    npt.assert_array_almost_equal(subspace.upper, upper_bound)
-    npt.assert_array_almost_equal(subspace._y_min, [0.012])
-    assert subspace._is_global
+    assert ret_subspace._is_global
 
 
 def trego_create_subspace(
@@ -680,14 +675,13 @@ def test_trego_successful_global_to_global_trust_region_unchanged(
     current_state, _ = tr.filter_datasets(model, {OBJECTIVE: dataset})(current_state)
 
     assert current_state is not None
-    current_subspace = current_state.acquisition_space.get_subspace("0")
-    assert current_subspace is subspace
-
-    npt.assert_array_almost_equal(subspace._eps, eps)
-    assert subspace._is_global
+    current_subspace = current_state.subspaces[0]
+    assert isinstance(current_subspace, TREGOBox)
+    npt.assert_array_almost_equal(current_subspace._eps, eps)
+    assert current_subspace._is_global
     npt.assert_array_almost_equal(query_point, [expected_query_point], 5)
-    npt.assert_array_almost_equal(subspace.lower, lower_bound)
-    npt.assert_array_almost_equal(subspace.upper, upper_bound)
+    npt.assert_array_almost_equal(current_subspace.lower, lower_bound)
+    npt.assert_array_almost_equal(current_subspace.upper, upper_bound)
 
 
 @pytest.mark.parametrize(
@@ -726,12 +720,11 @@ def test_trego_for_unsuccessful_global_to_local_trust_region_unchanged(
 
     assert current_state is not None
     current_subspace = current_state.acquisition_space.get_subspace("0")
-    assert current_subspace is subspace
-
-    npt.assert_array_almost_equal(subspace._eps, eps)
-    assert not subspace._is_global
-    npt.assert_array_less(lower_bound, subspace.lower)
-    npt.assert_array_less(subspace.upper, upper_bound)
+    assert isinstance(current_subspace, TREGOBox)
+    npt.assert_array_almost_equal(current_subspace._eps, eps)
+    assert not current_subspace._is_global
+    npt.assert_array_less(lower_bound, current_subspace.lower)
+    npt.assert_array_less(current_subspace.upper, upper_bound)
     assert query_point[0][0] in previous_subspace_copy
 
 
@@ -769,12 +762,11 @@ def test_trego_for_successful_local_to_global_trust_region_increased(
 
     assert current_state is not None
     current_subspace = current_state.acquisition_space.get_subspace("0")
-    assert current_subspace is subspace
-
-    npt.assert_array_less(eps, subspace._eps)  # current TR larger than previous
-    assert subspace._is_global
-    npt.assert_array_almost_equal(subspace.lower, lower_bound)
-    npt.assert_array_almost_equal(subspace.upper, upper_bound)
+    assert isinstance(current_subspace, TREGOBox)
+    npt.assert_array_less(eps, current_subspace._eps)  # current TR larger than previous
+    assert current_subspace._is_global
+    npt.assert_array_almost_equal(current_subspace.lower, lower_bound)
+    npt.assert_array_almost_equal(current_subspace.upper, upper_bound)
 
 
 @pytest.mark.parametrize(
@@ -811,12 +803,11 @@ def test_trego_for_unsuccessful_local_to_global_trust_region_reduced(
 
     assert current_state is not None
     current_subspace = current_state.acquisition_space.get_subspace("0")
-    assert current_subspace is subspace
-
-    npt.assert_array_less(subspace._eps, eps)  # current TR smaller than previous
-    assert subspace._is_global
-    npt.assert_array_almost_equal(subspace.lower, lower_bound)
-    npt.assert_array_almost_equal(subspace.upper, upper_bound)
+    assert isinstance(current_subspace, TREGOBox)
+    npt.assert_array_less(current_subspace._eps, eps)  # current TR smaller than previous
+    assert current_subspace._is_global
+    npt.assert_array_almost_equal(current_subspace.lower, lower_bound)
+    npt.assert_array_almost_equal(current_subspace.upper, upper_bound)
 
 
 def test_trego_always_uses_global_dataset() -> None:
@@ -998,13 +989,13 @@ def test_turbo_for_default_state(
 
     assert state is not None
     state_region = state.acquisition_space.get_subspace("0")
-    assert state_region is region
-    npt.assert_array_almost_equal(region.lower, lower_bound)
-    npt.assert_array_almost_equal(region.upper, tf.constant(exp_upper, dtype=tf.float64))
-    npt.assert_array_almost_equal(region.y_min, [0.012])
-    npt.assert_array_almost_equal(region.L, tf.cast(0.8, dtype=tf.float64))
-    assert region.success_counter == 0
-    assert region.failure_counter == 0
+    assert isinstance(state_region, TURBOBox)
+    npt.assert_array_almost_equal(state_region.lower, lower_bound)
+    npt.assert_array_almost_equal(state_region.upper, tf.constant(exp_upper, dtype=tf.float64))
+    npt.assert_array_almost_equal(state_region.y_min, [0.012])
+    npt.assert_array_almost_equal(state_region.L, tf.cast(0.8, dtype=tf.float64))
+    assert state_region.success_counter == 0
+    assert state_region.failure_counter == 0
 
 
 def turbo_create_region(
@@ -1068,11 +1059,13 @@ def test_turbo_doesnt_change_size_unless_needed() -> None:
             assert current_state is not None
             state_region = current_state.acquisition_space.get_subspace("0")
             assert isinstance(state_region, TURBOBox)
-            npt.assert_array_almost_equal(region.L, tf.cast(0.8, dtype=tf.float64))
-            npt.assert_array_almost_equal(region.lower, lower_bound)
-            npt.assert_array_almost_equal(region.upper, tf.constant([0.8, 0.2], dtype=tf.float64))
-            assert region.success_counter == success_counter + 1
-            assert region.failure_counter == 0
+            npt.assert_array_almost_equal(state_region.L, tf.cast(0.8, dtype=tf.float64))
+            npt.assert_array_almost_equal(state_region.lower, lower_bound)
+            npt.assert_array_almost_equal(
+                state_region.upper, tf.constant([0.8, 0.2], dtype=tf.float64)
+            )
+            assert state_region.success_counter == success_counter + 1
+            assert state_region.failure_counter == 0
 
     # failure but not enough to trigger size change
     previous_y_min = dataset.observations[0]  # force failure
@@ -1097,11 +1090,11 @@ def test_turbo_doesnt_change_size_unless_needed() -> None:
         assert current_state is not None
         state_region = current_state.acquisition_space.get_subspace("0")
         assert isinstance(state_region, TURBOBox)
-        npt.assert_array_almost_equal(region.L, tf.cast(0.8, dtype=tf.float64))
-        npt.assert_array_almost_equal(region.lower, lower_bound)
-        npt.assert_array_almost_equal(region.upper, tf.constant([0.8, 0.2], dtype=tf.float64))
-        assert region.success_counter == 0
-        assert region.failure_counter == 1
+        npt.assert_array_almost_equal(state_region.L, tf.cast(0.8, dtype=tf.float64))
+        npt.assert_array_almost_equal(state_region.lower, lower_bound)
+        npt.assert_array_almost_equal(state_region.upper, tf.constant([0.8, 0.2], dtype=tf.float64))
+        assert state_region.success_counter == 0
+        assert state_region.failure_counter == 1
 
 
 def test_turbo_does_change_size_correctly_when_needed() -> None:
@@ -1145,11 +1138,11 @@ def test_turbo_does_change_size_correctly_when_needed() -> None:
         assert current_state is not None
         state_region = current_state.acquisition_space.get_subspace("0")
         assert isinstance(state_region, TURBOBox)
-        npt.assert_array_almost_equal(region.L, tf.cast(1.6, dtype=tf.float64))
-        npt.assert_array_almost_equal(region.lower, lower_bound)
-        npt.assert_array_almost_equal(region.upper, tf.constant([1.0, 0.4], dtype=tf.float64))
-        assert region.success_counter == 0
-        assert region.failure_counter == 0
+        npt.assert_array_almost_equal(state_region.L, tf.cast(1.6, dtype=tf.float64))
+        npt.assert_array_almost_equal(state_region.lower, lower_bound)
+        npt.assert_array_almost_equal(state_region.upper, tf.constant([1.0, 0.4], dtype=tf.float64))
+        assert state_region.success_counter == 0
+        assert state_region.failure_counter == 0
     # hits failure limit
     previous_y_min = dataset.observations[0]  # force failure
     for success_counter in [0, 1, 2]:
@@ -1173,11 +1166,11 @@ def test_turbo_does_change_size_correctly_when_needed() -> None:
         assert current_state is not None
         state_region = current_state.acquisition_space.get_subspace("0")
         assert isinstance(state_region, TURBOBox)
-        npt.assert_array_almost_equal(region.L, tf.cast(0.4, dtype=tf.float64))
-        npt.assert_array_almost_equal(region.lower, lower_bound)
-        npt.assert_array_almost_equal(region.upper, tf.constant([0.4, 0.1], dtype=tf.float64))
-        assert region.success_counter == 0
-        assert region.failure_counter == 0
+        npt.assert_array_almost_equal(state_region.L, tf.cast(0.4, dtype=tf.float64))
+        npt.assert_array_almost_equal(state_region.lower, lower_bound)
+        npt.assert_array_almost_equal(state_region.upper, tf.constant([0.4, 0.1], dtype=tf.float64))
+        assert state_region.success_counter == 0
+        assert state_region.failure_counter == 0
 
 
 def test_turbo_restarts_tr_when_too_small() -> None:
@@ -1219,11 +1212,11 @@ def test_turbo_restarts_tr_when_too_small() -> None:
     assert current_state is not None
     state_region = current_state.acquisition_space.get_subspace("0")
     assert isinstance(state_region, TURBOBox)
-    npt.assert_array_almost_equal(region.L, tf.cast(0.8, dtype=tf.float64))
-    npt.assert_array_almost_equal(region.lower, lower_bound)
-    npt.assert_array_almost_equal(region.upper, tf.constant([0.8, 0.2], dtype=tf.float64))
-    assert region.success_counter == 0
-    assert region.failure_counter == 0
+    npt.assert_array_almost_equal(state_region.L, tf.cast(0.8, dtype=tf.float64))
+    npt.assert_array_almost_equal(state_region.lower, lower_bound)
+    npt.assert_array_almost_equal(state_region.upper, tf.constant([0.8, 0.2], dtype=tf.float64))
+    assert state_region.success_counter == 0
+    assert state_region.failure_counter == 0
 
     # secondly check what happens if L is too small after triggering decreasing the region
     region = turbo_create_region(
@@ -1241,11 +1234,11 @@ def test_turbo_restarts_tr_when_too_small() -> None:
     assert current_state is not None
     state_region = current_state.acquisition_space.get_subspace("0")
     assert isinstance(state_region, TURBOBox)
-    npt.assert_array_almost_equal(region.L, tf.cast(0.8, dtype=tf.float64))
-    npt.assert_array_almost_equal(region.lower, lower_bound)
-    npt.assert_array_almost_equal(region.upper, tf.constant([0.8, 0.2], dtype=tf.float64))
-    assert region.success_counter == 0
-    assert region.failure_counter == 0
+    npt.assert_array_almost_equal(state_region.L, tf.cast(0.8, dtype=tf.float64))
+    npt.assert_array_almost_equal(state_region.lower, lower_bound)
+    npt.assert_array_almost_equal(state_region.upper, tf.constant([0.8, 0.2], dtype=tf.float64))
+    assert state_region.success_counter == 0
+    assert state_region.failure_counter == 0
 
 
 def test_turbo_state_deepcopy() -> None:
@@ -1695,12 +1688,13 @@ def test_multi_trust_region_box_inits_regions_that_need_it() -> None:
     assert bool(subspaces[2].requires_initialization) is False
 
     mtb = BatchTrustRegionBox(subspaces)  # type: ignore[var-annotated]
-    mtb.filter_datasets({OBJECTIVE: model}, {OBJECTIVE: dataset})(None)
+    state, _ = mtb.filter_datasets({OBJECTIVE: model}, {OBJECTIVE: dataset})(None)
 
     # Check that the second region was re-initialized.
-    assert subspaces[0].eps < 0.35  # Expect reduction.
-    assert subspaces[1].eps == 0.4  # Expect re-initialized value.
-    assert subspaces[2].eps < 0.32  # Expect reduction.
+    assert state is not None
+    assert cast(TestTrustRegionBox, state.subspaces[0]).eps < 0.35  # Expect reduction.
+    assert cast(TestTrustRegionBox, state.subspaces[1]).eps == 0.4  # Expect re-initialized value.
+    assert cast(TestTrustRegionBox, state.subspaces[2]).eps < 0.32  # Expect reduction.
 
 
 def test_multi_trust_region_box_acquire_with_state() -> None:
@@ -1748,7 +1742,7 @@ def test_multi_trust_region_box_acquire_with_state() -> None:
     # subspace.
     for point, subspace, exp_obs, exp_eps in zip(
         points[0],
-        subspaces,
+        cast(Sequence[TestTrustRegionBox], next_state.subspaces),
         [dataset.observations[0], dataset.observations[2], dataset.observations[0]],
         [0.1, 0.1, 0.07],  # First two regions updated, third region initialized.
     ):

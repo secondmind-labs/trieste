@@ -173,9 +173,10 @@ class AcquisitionRule(ABC, Generic[ResultType, SearchSpaceType, ProbabilisticMod
             datasets=None if dataset is None else {OBJECTIVE: dataset},
         )
 
+    # AcquisitionRule should really have been generic in StateType, but that's too big a change now
     def filter_datasets(
         self, models: Mapping[Tag, ProbabilisticModelType], datasets: Mapping[Tag, Dataset]
-    ) -> Mapping[Tag, Dataset] | State[StateType | None, Mapping[Tag, Dataset]]:
+    ) -> Mapping[Tag, Dataset] | State[Any | None, Mapping[Tag, Dataset]]:
         """
         Filter the post-acquisition datasets before they are used for model training. For example,
         this can be used to remove points from the post-acquisition datasets that are no longer in
@@ -1421,7 +1422,6 @@ class BatchTrustRegion(
             if self._rules is not None:
                 _points = []
                 for tag, subspace, rule in zip(self._tags, subspaces, self._rules):
-                    assert isinstance(subspace, UpdatableTrustRegion)
                     _models = subspace.select_in_region(models)
                     _datasets = subspace.select_in_region(datasets)
                     assert _models is not None
@@ -1503,9 +1503,7 @@ class BatchTrustRegion(
         :return: A boolean mask of length V, where V is the number of subspaces.
         """
 
-    # AcquisitionRule should really have been generic in StateType, but that's too big a change
-    # to make now, hence the type override
-    def filter_datasets(  # type: ignore[override]
+    def filter_datasets(
         self, models: Mapping[Tag, ProbabilisticModelType], datasets: Mapping[Tag, Dataset]
     ) -> types.State[BatchTrustRegionState[UpdatableTrustRegionType] | None, Mapping[Tag, Dataset]]:
         def state_func(
@@ -1526,6 +1524,9 @@ class BatchTrustRegion(
                 assert self._init_subspaces is not None, "the subspaces have not been initialized"
                 assert self._tags is not None
                 subspaces = self._init_subspaces
+
+            # make a deepcopy to avoid modifying any user copies
+            subspaces = copy.deepcopy(subspaces)
 
             # Update subspaces with the latest datasets.
             for subspace in subspaces:

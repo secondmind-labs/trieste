@@ -814,3 +814,42 @@ def test_ask_tell_optimizer_raises_with_badly_shaped_new_data_idxs(
     )
     with pytest.raises(ValueError, match="new_data_ixs has 1"):
         ask_tell.tell(init_dataset + new_data, new_data_ixs=[tf.constant([[4]])])
+
+
+@pytest.mark.parametrize("optimizer", OPTIMIZERS)
+def test_ask_tell_optimizer_use_pre_filter_state_in_to_record(
+    search_space: Box,
+    init_dataset: Dataset,
+    model: TrainableProbabilisticModel,
+    local_acquisition_rule: LocalDatasetsAcquisitionRule[
+        TensorType, Box, TrainableProbabilisticModel
+    ],
+    optimizer: OptimizerType,
+) -> None:
+    ask_tell = optimizer(
+        search_space, init_dataset, model, local_acquisition_rule, track_data=False
+    )
+    new_data = mk_dataset(
+        [[x / 100] for x in range(75, 75 + 6)], [[x / 100] for x in range(75, 75 + 6)]
+    )
+
+    # the internal acquisition state is incremented every time we call either ask or tell
+    # and once at initialisation; however, the state reported in to_record() is only updated
+    # after calling ask
+    assert ask_tell.to_record().acquisition_state is None
+    ask_tell.ask()
+    assert ask_tell.to_record().acquisition_state == 2
+    ask_tell.tell(init_dataset + new_data)
+    assert ask_tell.to_record().acquisition_state == 2
+    ask_tell.ask()
+    assert ask_tell.to_record().acquisition_state == 4
+    ask_tell.tell(init_dataset + new_data + new_data)
+    assert ask_tell.to_record().acquisition_state == 4
+
+    # the pattern continues for a copy made using the reported state
+    ask_tell_copy = optimizer.from_record(
+        ask_tell.to_record(), search_space, local_acquisition_rule, track_data=False
+    )
+    assert ask_tell_copy.to_record().acquisition_state == 4
+    ask_tell_copy.ask()
+    assert ask_tell_copy.to_record().acquisition_state == 6

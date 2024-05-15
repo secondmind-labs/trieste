@@ -17,7 +17,18 @@ import functools
 import os
 import random
 from collections.abc import Container, Mapping
-from typing import Any, Callable, NoReturn, Optional, Sequence, TypeVar, Union, cast, overload
+from typing import (
+    Any,
+    Callable,
+    NoReturn,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+    cast,
+    overload,
+)
 
 import numpy as np
 import numpy.testing as npt
@@ -30,7 +41,7 @@ from trieste.models import ProbabilisticModel
 from trieste.objectives import Branin, Hartmann6
 from trieste.objectives.utils import mk_observer
 from trieste.space import SearchSpace
-from trieste.types import Tag, TensorType
+from trieste.types import State, Tag, TensorType
 from trieste.utils import shapes_equal
 
 TF_DEBUGGING_ERROR_TYPES: Final[tuple[type[Exception], ...]] = (
@@ -195,13 +206,36 @@ class FixedAcquisitionRule(AcquisitionRule[TensorType, SearchSpace, Probabilisti
 
 
 class FixedLocalAcquisitionRule(
-    LocalDatasetsAcquisitionRule[TensorType, SearchSpace, ProbabilisticModel], FixedAcquisitionRule
+    LocalDatasetsAcquisitionRule[State[int | None, TensorType], SearchSpace, ProbabilisticModel],
+    FixedAcquisitionRule,
 ):
-    """A local dataset acquisition rule that returns the same fixed value on every step."""
+    """A local dataset acquisition rule that returns the same fixed value on every step and
+    keeps track of a counter internal State."""
 
     @property
     def num_local_datasets(self) -> int:
         return 3
+
+    def acquire(
+        self,
+        search_space: SearchSpace,
+        models: Mapping[Tag, ProbabilisticModel],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+    ) -> TensorType:
+        def state_func(state: int | None) -> tuple[int | None, TensorType]:
+            new_state = 1 if state is None else state + 1
+            return new_state, self._qp
+
+        return state_func
+
+    def filter_datasets(
+        self, models: Mapping[Tag, ProbabilisticModel], datasets: Mapping[Tag, Dataset]
+    ) -> Mapping[Tag, Dataset] | State[int | None, Mapping[Tag, Dataset]]:
+        def state_func(state: int | None) -> Tuple[int | None, Mapping[Tag, Dataset]]:
+            new_state = 1 if state is None else state + 1
+            return new_state, datasets
+
+        return state_func
 
 
 ShapeLike = Union[tf.TensorShape, Sequence[int]]

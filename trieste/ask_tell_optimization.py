@@ -225,7 +225,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
             - default acquisition is used but incompatible with other inputs
         """
         self._search_space = search_space
-        self._acquisition_state = acquisition_state
+        self._acquisition_record = self._acquisition_state = acquisition_state
 
         if not datasets or not models:
             raise ValueError("dicts of datasets and models must be populated.")
@@ -459,7 +459,10 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         try:
             datasets_copy = deepcopy(self._datasets) if copy else self._datasets
             models_copy = deepcopy(self._models) if copy else self._models
-            state_copy = deepcopy(self._acquisition_state) if copy else self._acquisition_state
+            # use the state as it was at acquisition time, not the one modified in
+            # filter_datasets in preparation for the next acquisition, so we can reinitialise
+            # the AskTellOptimizer using the record
+            state_copy = deepcopy(self._acquisition_record) if copy else self._acquisition_record
         except Exception as e:
             raise NotImplementedError(
                 "Failed to copy the optimization state. Some models do not support "
@@ -519,8 +522,8 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
 
         if callable(points_or_stateful):
             self._acquisition_state, query_points = points_or_stateful(self._acquisition_state)
-            # TODO: keep acquire acquisition state separate from general state, so we
-            # can return it in to_record
+            # also keep a copy of the state to return in to_record
+            self._acquisition_record = self._acquisition_state
         else:
             query_points = points_or_stateful
 
