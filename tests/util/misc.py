@@ -206,15 +206,19 @@ class FixedAcquisitionRule(AcquisitionRule[TensorType, SearchSpace, Probabilisti
 
 
 class FixedLocalAcquisitionRule(
-    LocalDatasetsAcquisitionRule[State[Optional[int], TensorType], SearchSpace, ProbabilisticModel],
     FixedAcquisitionRule,
+    LocalDatasetsAcquisitionRule[State[Optional[int], TensorType], SearchSpace, ProbabilisticModel],
 ):
     """A local dataset acquisition rule that returns the same fixed value on every step and
     keeps track of a counter internal State."""
 
+    def __init__(self, query_points: TensorType, num_local_datasets: int) -> None:
+        super().__init__(query_points)
+        self._num_local_datasets = num_local_datasets
+
     @property
     def num_local_datasets(self) -> int:
-        return 3
+        return self._num_local_datasets
 
     def acquire(
         self,

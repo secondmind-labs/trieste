@@ -23,13 +23,14 @@ import pytest
 import tensorflow as tf
 from check_shapes import inherit_check_shapes
 
-from tests.unit.test_ask_tell_optimization import DatasetChecker, LocalDatasetsFixedAcquisitionRule
+from tests.unit.test_ask_tell_optimization import DatasetChecker
 from tests.util.misc import (
     FixedAcquisitionRule,
     assert_datasets_allclose,
     empty_dataset,
     mk_dataset,
     quadratic,
+    FixedLocalAcquisitionRule,
 )
 from tests.util.models.gpflow.models import (
     GaussianProcess,
@@ -281,7 +282,7 @@ def test_bayesian_optimizer_creates_correct_datasets_for_rank3_points(
         model._tag = tag
 
     optimizer = BayesianOptimizer(lambda x: Dataset(x, x), search_space)
-    rule = LocalDatasetsFixedAcquisitionRule(query_points, batch_size)
+    rule = FixedLocalAcquisitionRule(query_points, batch_size)
     optimizer.optimize(1, init_data, models, rule).final_result.unwrap()
 
 
