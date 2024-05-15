@@ -716,3 +716,17 @@ def test_bayesian_optimizer_optimize_tracked_state(save_to_disk: bool) -> None:
                 history[step].models[NA].predict(tf.constant([[0.0]], tf.float64))
             )
             npt.assert_allclose(variance_from_saved_model, 1.0 / (step + 1))
+
+
+def test_bayesian_optimizer_uses_pre_filter_state_in_history() -> None:
+    rule = FixedLocalAcquisitionRule([[0.0]], 3)
+    result = BayesianOptimizer(_quadratic_observer, Box([0], [1])).optimize(
+        5,
+        {NA: mk_dataset([[0.0]], [[0.0]])},
+        {NA: _PseudoTrainableQuadratic()},
+        rule,
+    )
+    # the states gets updated by both filter_datasets and acquire, but it's the post-acquire
+    # state that's returned in the history
+    acquisition_states = [record.acquisition_state for record in result.history]
+    assert acquisition_states == [None, 2, 4, 6, 8]

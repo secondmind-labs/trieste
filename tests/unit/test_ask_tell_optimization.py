@@ -803,7 +803,7 @@ def test_ask_tell_optimizer_raises_with_badly_shaped_new_data_idxs(
 
 
 @pytest.mark.parametrize("optimizer", OPTIMIZERS)
-def test_ask_tell_optimizer_use_pre_filter_state_in_to_record(
+def test_ask_tell_optimizer_uses_pre_filter_state_in_to_record(
     search_space: Box,
     init_dataset: Dataset,
     model: TrainableProbabilisticModel,
