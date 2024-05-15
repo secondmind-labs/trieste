@@ -44,7 +44,7 @@ from trieste.data import Dataset
 from trieste.models.interfaces import ProbabilisticModel, TrainableProbabilisticModel
 from trieste.objectives.utils import mk_batch_observer
 from trieste.observer import OBJECTIVE
-from trieste.space import Box, SearchSpace
+from trieste.space import Box
 from trieste.types import State, Tag, TensorType
 from trieste.utils.misc import LocalizedTag
 

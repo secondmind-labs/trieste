@@ -26,11 +26,11 @@ from check_shapes import inherit_check_shapes
 from tests.unit.test_ask_tell_optimization import DatasetChecker
 from tests.util.misc import (
     FixedAcquisitionRule,
+    FixedLocalAcquisitionRule,
     assert_datasets_allclose,
     empty_dataset,
     mk_dataset,
     quadratic,
-    FixedLocalAcquisitionRule,
 )
 from tests.util.models.gpflow.models import (
     GaussianProcess,
