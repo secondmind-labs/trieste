@@ -94,9 +94,6 @@ from .optimizer import (
 from .sampler import ExactThompsonSampler, ThompsonSampler
 from .utils import get_unique_points_mask, select_nth_output
 
-StateType = TypeVar("StateType")
-""" Unbound type variable. """
-
 ResultType = TypeVar("ResultType", covariant=True)
 """ Unbound covariant type variable. """
 
