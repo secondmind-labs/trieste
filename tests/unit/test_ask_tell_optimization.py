@@ -217,12 +217,11 @@ def test_ask_tell_optimizer_loads_from_state(
         ],
     )
 
-    ask_tell = optimizer.from_record(
-        old_state.record,
+    ask_tell = optimizer.from_state(
+        old_state,
         search_space,
         local_acquisition_rule,
         track_data=False,
-        local_data_ixs=old_state.local_data_ixs,
     )
     new_state: AskTellOptimizerState[None, TrainableProbabilisticModel] = ask_tell.to_state()
 

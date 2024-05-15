@@ -428,6 +428,8 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
             on each optimization step. Defaults to
             :class:`~trieste.acquisition.rule.EfficientGlobalOptimization` with default
             arguments.
+        :param track_data: Whether the optimizer tracks the changing datasets via a local copy.
+        :param local_data_ixs: Indices to local data for local rules with `track_data` False.
         :return: New instance of :class:`~AskTellOptimizer`.
         """
         # we are recovering previously saved optimization state
@@ -485,6 +487,39 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         """
         record: Record[StateType, ProbabilisticModelType] = self.to_record(copy=copy)
         return OptimizationResult(Ok(record), [])
+
+    @classmethod
+    def from_state(
+        cls: Type[AskTellOptimizerType],
+        state: AskTellOptimizerState[StateType, ProbabilisticModelType],
+        search_space: SearchSpaceType,
+        acquisition_rule: AcquisitionRule[
+            TensorType | State[StateType | None, TensorType],
+            SearchSpaceType,
+            ProbabilisticModelType,
+        ]
+        | None = None,
+        track_data: bool = True,
+    ) -> AskTellOptimizerType:
+        """Creates new :class:`~AskTellOptimizer` instance from provided AskTellOptimizer state.
+        Model training isn't triggered upon creation of the instance.
+
+        :param state: AskTellOptimizer state.
+        :param search_space: The space over which to search for the next query point.
+        :param acquisition_rule: The acquisition rule, which defines how to search for a new point
+            on each optimization step. Defaults to
+            :class:`~trieste.acquisition.rule.EfficientGlobalOptimization` with default
+            arguments.
+        :param track_data: Whether the optimizer tracks the changing datasets via a local copy.
+        :return: New instance of :class:`~AskTellOptimizer`.
+        """
+        return cls.from_record(  # type: ignore
+            state.record,
+            search_space,
+            acquisition_rule,
+            track_data=track_data,
+            local_data_ixs=state.local_data_ixs,
+        )
 
     def to_state(
         self, copy: bool = False
