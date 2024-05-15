@@ -206,7 +206,7 @@ class FixedAcquisitionRule(AcquisitionRule[TensorType, SearchSpace, Probabilisti
 
 
 class FixedLocalAcquisitionRule(
-    LocalDatasetsAcquisitionRule[State[int | None, TensorType], SearchSpace, ProbabilisticModel],
+    LocalDatasetsAcquisitionRule[State[Optional[int], TensorType], SearchSpace, ProbabilisticModel],
     FixedAcquisitionRule,
 ):
     """A local dataset acquisition rule that returns the same fixed value on every step and
