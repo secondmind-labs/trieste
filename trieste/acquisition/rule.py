@@ -1576,7 +1576,7 @@ class HypercubeTrustRegion(UpdatableTrustRegion):
         self._update_domain()
         # Initial value of the region minimum is set to infinity as we have not yet observed any
         # data.
-        self._y_min = np.inf
+        self._y_min = tf.constant(np.inf, dtype=self.location.dtype)
 
     def _init_eps(self) -> None:
         self.eps = self._zeta * (self.global_search_space.upper - self.global_search_space.lower)
@@ -1620,7 +1620,9 @@ class HypercubeTrustRegion(UpdatableTrustRegion):
         self._step_is_success = False
         self._init_eps()
         self._update_domain()
-        _, self._y_min = self.get_dataset_min(datasets)
+        # We haven't necessarily observed any data yet for this region; force first step to always
+        # be successful by setting the minimum to infinity.
+        self._y_min = tf.constant(np.inf, dtype=self.location.dtype)
         self._initialized = True
 
     def update(
