@@ -1935,16 +1935,18 @@ class TREGOBox(SingleObjectiveTrustRegionBox):
         global_search_space: Box,
         beta: float = 0.7,
         kappa: float = 1e-4,
+        zeta: float = 0.5,
         min_eps: float = 1e-2,
         region_index: Optional[int] = None,
         input_active_dims: Optional[Union[slice, Sequence[int]]] = None,
     ):
         self._is_global = False
         super().__init__(
-            global_search_space,
-            beta,
-            kappa,
-            min_eps,
+            global_search_space=global_search_space,
+            beta=beta,
+            kappa=kappa,
+            zeta=zeta,
+            min_eps=min_eps,
             region_index=region_index,
             input_active_dims=input_active_dims,
         )
