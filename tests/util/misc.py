@@ -215,13 +215,14 @@ class FixedLocalAcquisitionRule(
     def __init__(self, query_points: TensorType, num_local_datasets: int) -> None:
         super().__init__(query_points)
         self._num_local_datasets = num_local_datasets
+        self._initialize_subspaces_calls = 0
 
     @property
     def num_local_datasets(self) -> int:
         return self._num_local_datasets
 
     def initialize_subspaces(self, search_space: SearchSpaceType) -> None:
-        pass
+        self._initialize_subspaces_calls += 1
 
     def acquire(
         self,

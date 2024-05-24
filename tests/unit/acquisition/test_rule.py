@@ -619,6 +619,7 @@ def test_trego_for_default_state(
     assert isinstance(ret_subspace, TREGOBox)
     npt.assert_array_almost_equal(ret_subspace.lower, lower_bound)
     npt.assert_array_almost_equal(ret_subspace.upper, upper_bound)
+    npt.assert_array_almost_equal(query_point, [expected_query_point], 5)
     npt.assert_array_almost_equal(ret_subspace._y_min, [0.012])
     assert ret_subspace._is_global
 
@@ -1525,14 +1526,19 @@ def test_trust_region_box_update_size(success: bool) -> None:
         (RandomSampling(num_query_points=2), 1),
     ],
 )
+@pytest.mark.parametrize("acquire", [True, False])
 def test_multi_trust_region_box_no_subspace(
     rule: AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel],
     exp_num_subspaces: int,
+    acquire: bool,
 ) -> None:
     """Check multi trust region works when no subspace is provided."""
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     mtb = BatchTrustRegionBox(rule=rule)
-    mtb.acquire(search_space, {})
+    if acquire:
+        mtb.acquire(search_space, {})
+    else:
+        mtb.initialize_subspaces(search_space)
 
     assert mtb._tags is not None
     assert mtb._init_subspaces is not None
@@ -2466,18 +2472,23 @@ def test_updatable_tr_product_datasets_filter_mask_value() -> None:
         (RandomSampling(num_query_points=2), 1),
     ],
 )
+@pytest.mark.parametrize("acquire", [True, False])
 def test_batch_trust_region_product_no_subspace(
     discrete_search_space: DiscreteSearchSpace,
     continuous_search_space: Box,
     rule: AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel],
     exp_num_subspaces: int,
+    acquire: bool,
 ) -> None:
     """Check batch trust region creates default subspaces when none are provided at init."""
     search_space = TaggedProductSearchSpace(
         [discrete_search_space, continuous_search_space, discrete_search_space]
     )
     tr_rule = BatchTrustRegionProduct(rule=rule)
-    tr_rule.acquire(search_space, {})
+    if acquire:
+        tr_rule.acquire(search_space, {})
+    else:
+        tr_rule.initialize_subspaces(search_space)
 
     assert tr_rule._tags is not None
     assert tr_rule._init_subspaces is not None

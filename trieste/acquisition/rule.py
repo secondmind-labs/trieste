@@ -1459,7 +1459,7 @@ class BatchTrustRegion(
                 points = self._rule.acquire(acquisition_space, models, _datasets)
 
             state_ = BatchTrustRegionState(subspaces, self._tags)
-            return state_, tf.reshape(points, [-1, len(self._init_subspaces), points.shape[-1]])
+            return state_, tf.reshape(points, [-1, len(subspaces), points.shape[-1]])
 
         return state_func
 

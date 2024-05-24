@@ -839,3 +839,19 @@ def test_ask_tell_optimizer_uses_pre_filter_state_in_to_record(
     assert ask_tell_copy.to_record().acquisition_state == 4
     ask_tell_copy.ask()
     assert ask_tell_copy.to_record().acquisition_state == 6
+
+
+@pytest.mark.parametrize("optimizer", OPTIMIZERS)
+def test_ask_tell_optimizer_calls_initialize_subspaces(
+    search_space: Box,
+    init_dataset: Dataset,
+    model: TrainableProbabilisticModel,
+    local_acquisition_rule: LocalDatasetsAcquisitionRule[
+        TensorType, Box, TrainableProbabilisticModel
+    ],
+    optimizer: OptimizerType,
+) -> None:
+    assert isinstance(local_acquisition_rule, FixedLocalAcquisitionRule)
+    assert local_acquisition_rule._initialize_subspaces_calls == 0
+    optimizer(search_space, init_dataset, model, local_acquisition_rule, track_data=False)
+    assert local_acquisition_rule._initialize_subspaces_calls == 1
