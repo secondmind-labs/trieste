@@ -767,6 +767,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         datasets = with_local_datasets(
                             datasets, acquisition_rule.num_local_datasets
                         )
+                        acquisition_rule.initialize_subspaces(self._search_space)
+
                     filtered_datasets_or_callable: Mapping[Tag, Dataset] | State[
                         StateType | None, Mapping[Tag, Dataset]
                     ] = acquisition_rule.filter_datasets(models, datasets)

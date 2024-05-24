@@ -730,3 +730,15 @@ def test_bayesian_optimizer_uses_pre_filter_state_in_history() -> None:
     # state that's returned in the history
     acquisition_states = [record.acquisition_state for record in result.history]
     assert acquisition_states == [None, 2, 4, 6, 8]
+
+
+def test_bayesian_optimizer_calls_initialize_subspaces() -> None:
+    rule = FixedLocalAcquisitionRule([[0.0]], 3)
+    assert rule._initialize_subspaces_calls == 0
+    BayesianOptimizer(_quadratic_observer, Box([0], [1])).optimize(
+        5,
+        {NA: mk_dataset([[0.0]], [[0.0]])},
+        {NA: _PseudoTrainableQuadratic()},
+        rule,
+    )
+    assert rule._initialize_subspaces_calls == 1
