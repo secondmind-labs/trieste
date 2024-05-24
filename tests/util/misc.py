@@ -35,7 +35,7 @@ import numpy.testing as npt
 import tensorflow as tf
 from typing_extensions import Final
 
-from trieste.acquisition.rule import AcquisitionRule, LocalDatasetsAcquisitionRule
+from trieste.acquisition.rule import AcquisitionRule, LocalDatasetsAcquisitionRule, SearchSpaceType
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.objectives import Branin, Hartmann6
@@ -219,6 +219,9 @@ class FixedLocalAcquisitionRule(
     @property
     def num_local_datasets(self) -> int:
         return self._num_local_datasets
+
+    def initialize_subspaces(self, search_space: SearchSpaceType) -> None:
+        pass
 
     def acquire(
         self,

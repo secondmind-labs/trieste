@@ -288,6 +288,8 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
                 datasets = with_local_datasets(
                     self._datasets, num_local_datasets, self._dataset_ixs
                 )
+            self._acquisition_rule.initialize_subspaces(search_space)
+
         filtered_datasets: Mapping[Tag, Dataset] | State[
             StateType | None, Mapping[Tag, Dataset]
         ] = self._acquisition_rule.filter_datasets(self._models, datasets)

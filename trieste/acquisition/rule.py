@@ -199,6 +199,10 @@ class LocalDatasetsAcquisitionRule(
     def num_local_datasets(self) -> int:
         """The number of local datasets required by this rule."""
 
+    @abstractmethod
+    def initialize_subspaces(self, search_space: SearchSpaceType) -> None:
+        """Create local subspaces for when no initial subspaces are provided."""
+
 
 class EfficientGlobalOptimization(
     AcquisitionRule[TensorType, SearchSpaceType, ProbabilisticModelType]
@@ -1348,6 +1352,9 @@ class BatchTrustRegion(
             points from the previous acquisition state.
         """
 
+        # initialize subspaces
+        self.initialize_subspaces(search_space)
+
         # Subspaces should be initialised by the time we call `acquire`.
         assert self._tags is not None
         assert self._init_subspaces is not None
@@ -1857,18 +1864,13 @@ class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, UpdatableTrus
     This is intended to be used for single-objective optimization with batching.
     """
 
-    def acquire(
-        self,
-        search_space: SearchSpace,
-        models: Mapping[Tag, ProbabilisticModelType],
-        datasets: Optional[Mapping[Tag, Dataset]] = None,
-    ) -> types.State[BatchTrustRegionState[UpdatableTrustRegionBox] | None, TensorType]:
+    def initialize_subspaces(self, search_space: SearchSpace) -> None:
+        # If no initial subspaces were provided, create N default subspaces, where N is the
+        # number of query points in the base-rule.
+        # Currently the detection for N is only implemented for EGO.
+        # Note: the reason we don't create the default subspaces in `__init__` is because we
+        # don't have the global search space at that point.
         if self._init_subspaces is None:
-            # If no initial subspaces were provided, create N default subspaces, where N is the
-            # number of query points in the base-rule.
-            # Currently the detection for N is only implemented for EGO.
-            # Note: the reason we don't create the default subspaces in `__init__` is because we
-            # don't have the global search space at that point.
             if isinstance(self._rule, EfficientGlobalOptimization):
                 num_query_points = self._rule._num_query_points
             else:
@@ -1885,15 +1887,22 @@ class BatchTrustRegionBox(BatchTrustRegion[ProbabilisticModelType, UpdatableTrus
                 subspace.region_index = index  # Override the index.
             self._tags = tuple(str(index) for index in range(self.num_local_datasets))
 
+    def acquire(
+        self,
+        search_space: SearchSpace,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+    ) -> types.State[BatchTrustRegionState[UpdatableTrustRegionBox] | None, TensorType]:
         # Ensure passed in global search space is always the same as the search space passed to
         # the subspaces.
-        for subspace in self._init_subspaces:
-            assert subspace.global_search_space == search_space, (
-                "The global search space of the subspaces should be the same as the "
-                "search space passed to the BatchTrustRegionBox acquisition rule. "
-                "If you want to change the global search space, you should recreate the rule. "
-                "Note: all subspaces should be initialized with the same global search space."
-            )
+        if self._init_subspaces is not None:
+            for subspace in self._init_subspaces:
+                assert subspace.global_search_space == search_space, (
+                    "The global search space of the subspaces should be the same as the "
+                    "search space passed to the BatchTrustRegionBox acquisition rule. "
+                    "If you want to change the global search space, you should recreate the rule. "
+                    "Note: all subspaces should be initialized with the same global search space."
+                )
 
         return super().acquire(search_space, models, datasets)
 
@@ -2535,12 +2544,7 @@ class BatchTrustRegionProduct(
     spaces. This is intended to be used for single-objective optimization with batching.
     """
 
-    def acquire(
-        self,
-        search_space: SearchSpace,
-        models: Mapping[Tag, ProbabilisticModelType],
-        datasets: Optional[Mapping[Tag, Dataset]] = None,
-    ) -> types.State[BatchTrustRegionState[UpdatableTrustRegionProduct] | None, TensorType]:
+    def initialize_subspaces(self, search_space: SearchSpaceType) -> None:
         if self._init_subspaces is None:
             # If no initial subspaces were provided, create N default subspaces, where N is the
             # number of query points in the base-rule.
@@ -2579,15 +2583,22 @@ class BatchTrustRegionProduct(
                 subspace.region_index = index  # Override the index.
             self._tags = tuple(str(index) for index in range(self.num_local_datasets))
 
+    def acquire(
+        self,
+        search_space: SearchSpace,
+        models: Mapping[Tag, ProbabilisticModelType],
+        datasets: Optional[Mapping[Tag, Dataset]] = None,
+    ) -> types.State[BatchTrustRegionState[UpdatableTrustRegionProduct] | None, TensorType]:
         # Ensure passed in global search space is always the same as the search space passed to
         # the subspaces.
-        for subspace in self._init_subspaces:
-            assert subspace.global_search_space == search_space, (
-                "The global search space of the subspaces should be the same as the "
-                "search space passed to the BatchTrustRegionProduct acquisition rule. "
-                "If you want to change the global search space, you should recreate the rule. "
-                "Note: all subspaces should be initialized with the same global search space."
-            )
+        if self._init_subspaces is not None:
+            for subspace in self._init_subspaces:
+                assert subspace.global_search_space == search_space, (
+                    "The global search space of the subspaces should be the same as the "
+                    "search space passed to the BatchTrustRegionProduct acquisition rule. "
+                    "If you want to change the global search space, you should recreate the rule. "
+                    "Note: all subspaces should be initialized with the same global search space."
+                )
 
         return super().acquire(search_space, models, datasets)
 
