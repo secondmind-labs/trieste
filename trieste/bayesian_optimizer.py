@@ -709,6 +709,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             FrozenRecord[StateType, TrainableProbabilisticModelType]
             | Record[StateType, TrainableProbabilisticModelType]
         ] = []
+        history_state = acquisition_state
         query_plot_dfs: dict[int, pd.DataFrame] = {}
         observation_plot_dfs = observation_plot_init(datasets)
 
@@ -734,15 +735,18 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             try:
                 if track_state:
                     try:
+                        # note that we use the state as it was at acquisition time, not the one
+                        # modified in filter_datasets in preparation for the next acquisition,
+                        # so we can restart the optimization correctly (and also for plotting)
                         if track_path is None:
                             datasets_copy = copy.deepcopy(datasets)
                             models_copy = copy.deepcopy(models)
-                            acquisition_state_copy = copy.deepcopy(acquisition_state)
-                            record = Record(datasets_copy, models_copy, acquisition_state_copy)
+                            history_state_copy = copy.deepcopy(history_state)
+                            record = Record(datasets_copy, models_copy, history_state_copy)
                             history.append(record)
                         else:
                             track_path = Path(track_path)
-                            record = Record(datasets, models, acquisition_state)
+                            record = Record(datasets, models, history_state)
                             file_name = OptimizationResult.step_filename(step, num_steps)
                             history.append(record.save(track_path / file_name))
                     except Exception as e:
@@ -763,7 +767,17 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         datasets = with_local_datasets(
                             datasets, acquisition_rule.num_local_datasets
                         )
-                    filtered_datasets = acquisition_rule.filter_datasets(models, datasets)
+                        acquisition_rule.initialize_subspaces(self._search_space)
+
+                    filtered_datasets_or_callable: Mapping[Tag, Dataset] | State[
+                        StateType | None, Mapping[Tag, Dataset]
+                    ] = acquisition_rule.filter_datasets(models, datasets)
+                    if callable(filtered_datasets_or_callable):
+                        acquisition_state, filtered_datasets = filtered_datasets_or_callable(
+                            acquisition_state
+                        )
+                    else:
+                        filtered_datasets = filtered_datasets_or_callable
 
                     if fit_model and fit_initial_model:
                         with Timer() as initial_model_fitting_timer:
@@ -789,6 +803,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         )
                         if callable(points_or_stateful):
                             acquisition_state, query_points = points_or_stateful(acquisition_state)
+                            history_state = acquisition_state
                         else:
                             query_points = points_or_stateful
 
@@ -806,7 +821,16 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
                     for tag, new_dataset in tagged_output.items():
                         datasets[tag] += new_dataset
-                    filtered_datasets = acquisition_rule.filter_datasets(models, datasets)
+
+                    filtered_datasets_or_callable = acquisition_rule.filter_datasets(
+                        models, datasets
+                    )
+                    if callable(filtered_datasets_or_callable):
+                        acquisition_state, filtered_datasets = filtered_datasets_or_callable(
+                            acquisition_state
+                        )
+                    else:
+                        filtered_datasets = filtered_datasets_or_callable
 
                     with Timer() as model_fitting_timer:
                         if fit_model:
@@ -860,7 +884,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
         tf.print("Optimization completed without errors", output_stream=absl.logging.INFO)
 
-        record = Record(datasets, models, acquisition_state)
+        record = Record(datasets, models, history_state)
         result = OptimizationResult(Ok(record), history)
         if track_state and track_path is not None:
             result.save_result(Path(track_path) / OptimizationResult.RESULTS_FILENAME)

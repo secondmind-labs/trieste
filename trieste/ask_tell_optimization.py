@@ -225,7 +225,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
             - default acquisition is used but incompatible with other inputs
         """
         self._search_space = search_space
-        self._acquisition_state = acquisition_state
+        self._acquisition_record = self._acquisition_state = acquisition_state
 
         if not datasets or not models:
             raise ValueError("dicts of datasets and models must be populated.")
@@ -288,7 +288,17 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
                 datasets = with_local_datasets(
                     self._datasets, num_local_datasets, self._dataset_ixs
                 )
-        self._filtered_datasets = self._acquisition_rule.filter_datasets(self._models, datasets)
+            self._acquisition_rule.initialize_subspaces(search_space)
+
+        filtered_datasets: Mapping[Tag, Dataset] | State[
+            StateType | None, Mapping[Tag, Dataset]
+        ] = self._acquisition_rule.filter_datasets(self._models, datasets)
+        if callable(filtered_datasets):
+            self._acquisition_state, self._filtered_datasets = filtered_datasets(
+                self._acquisition_state
+            )
+        else:
+            self._filtered_datasets = filtered_datasets
 
         if fit_model:
             with Timer() as initial_model_fitting_timer:
@@ -420,6 +430,8 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
             on each optimization step. Defaults to
             :class:`~trieste.acquisition.rule.EfficientGlobalOptimization` with default
             arguments.
+        :param track_data: Whether the optimizer tracks the changing datasets via a local copy.
+        :param local_data_ixs: Indices to local data for local rules with `track_data` False.
         :return: New instance of :class:`~AskTellOptimizer`.
         """
         # we are recovering previously saved optimization state
@@ -451,7 +463,10 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         try:
             datasets_copy = deepcopy(self._datasets) if copy else self._datasets
             models_copy = deepcopy(self._models) if copy else self._models
-            state_copy = deepcopy(self._acquisition_state) if copy else self._acquisition_state
+            # use the state as it was at acquisition time, not the one modified in
+            # filter_datasets in preparation for the next acquisition, so we can reinitialise
+            # the AskTellOptimizer using the record
+            state_copy = deepcopy(self._acquisition_record) if copy else self._acquisition_record
         except Exception as e:
             raise NotImplementedError(
                 "Failed to copy the optimization state. Some models do not support "
@@ -474,6 +489,39 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         """
         record: Record[StateType, ProbabilisticModelType] = self.to_record(copy=copy)
         return OptimizationResult(Ok(record), [])
+
+    @classmethod
+    def from_state(
+        cls: Type[AskTellOptimizerType],
+        state: AskTellOptimizerState[StateType, ProbabilisticModelType],
+        search_space: SearchSpaceType,
+        acquisition_rule: AcquisitionRule[
+            TensorType | State[StateType | None, TensorType],
+            SearchSpaceType,
+            ProbabilisticModelType,
+        ]
+        | None = None,
+        track_data: bool = True,
+    ) -> AskTellOptimizerType:
+        """Creates new :class:`~AskTellOptimizer` instance from provided AskTellOptimizer state.
+        Model training isn't triggered upon creation of the instance.
+
+        :param state: AskTellOptimizer state.
+        :param search_space: The space over which to search for the next query point.
+        :param acquisition_rule: The acquisition rule, which defines how to search for a new point
+            on each optimization step. Defaults to
+            :class:`~trieste.acquisition.rule.EfficientGlobalOptimization` with default
+            arguments.
+        :param track_data: Whether the optimizer tracks the changing datasets via a local copy.
+        :return: New instance of :class:`~AskTellOptimizer`.
+        """
+        return cls.from_record(  # type: ignore
+            state.record,
+            search_space,
+            acquisition_rule,
+            track_data=track_data,
+            local_data_ixs=state.local_data_ixs,
+        )
 
     def to_state(
         self, copy: bool = False
@@ -511,6 +559,8 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
 
         if callable(points_or_stateful):
             self._acquisition_state, query_points = points_or_stateful(self._acquisition_state)
+            # also keep a copy of the state to return in to_record
+            self._acquisition_record = self._acquisition_state
         else:
             query_points = points_or_stateful
 
@@ -597,7 +647,13 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
             datasets = with_local_datasets(new_data, num_local_datasets, self._dataset_ixs)
             self._dataset_len = self.dataset_len(datasets)
 
-        self._filtered_datasets = self._acquisition_rule.filter_datasets(self._models, datasets)
+        filtered_datasets = self._acquisition_rule.filter_datasets(self._models, datasets)
+        if callable(filtered_datasets):
+            self._acquisition_state, self._filtered_datasets = filtered_datasets(
+                self._acquisition_state
+            )
+        else:
+            self._filtered_datasets = filtered_datasets
 
         with Timer() as model_fitting_timer:
             for tag, model in self._models.items():

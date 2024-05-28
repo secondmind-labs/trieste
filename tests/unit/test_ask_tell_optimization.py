@@ -44,7 +44,7 @@ from trieste.data import Dataset
 from trieste.models.interfaces import ProbabilisticModel, TrainableProbabilisticModel
 from trieste.objectives.utils import mk_batch_observer
 from trieste.observer import OBJECTIVE
-from trieste.space import Box, SearchSpace
+from trieste.space import Box
 from trieste.types import State, Tag, TensorType
 from trieste.utils.misc import LocalizedTag
 
@@ -83,7 +83,7 @@ def acquisition_rule() -> AcquisitionRule[TensorType, Box, ProbabilisticModel]:
 
 @pytest.fixture
 def local_acquisition_rule() -> LocalDatasetsAcquisitionRule[TensorType, Box, ProbabilisticModel]:
-    return FixedLocalAcquisitionRule([[0.0]])
+    return FixedLocalAcquisitionRule([[0.0]], 3)
 
 
 @pytest.fixture
@@ -217,12 +217,11 @@ def test_ask_tell_optimizer_loads_from_state(
         ],
     )
 
-    ask_tell = optimizer.from_record(
-        old_state.record,
+    ask_tell = optimizer.from_state(
+        old_state,
         search_space,
         local_acquisition_rule,
         track_data=False,
-        local_data_ixs=old_state.local_data_ixs,
     )
     new_state: AskTellOptimizerState[None, TrainableProbabilisticModel] = ask_tell.to_state()
 
@@ -670,19 +669,6 @@ class DatasetChecker(QuadraticMeanAndRBFKernel, PseudoTrainableProbModel):
         self.update_count += 1
 
 
-class LocalDatasetsFixedAcquisitionRule(
-    FixedAcquisitionRule,
-    LocalDatasetsAcquisitionRule[TensorType, SearchSpace, ProbabilisticModel],
-):
-    def __init__(self, query_points: TensorType, num_local_datasets: int) -> None:
-        super().__init__(query_points)
-        self._num_local_datasets = num_local_datasets
-
-    @property
-    def num_local_datasets(self) -> int:
-        return self._num_local_datasets
-
-
 # Check that the correct dataset is routed to the model.
 # Note: this test is almost identical to the one in test_bayesian_optimizer.py.
 @pytest.mark.parametrize("use_global_model", [True, False])
@@ -717,7 +703,7 @@ def test_ask_tell_optimizer_creates_correct_datasets_for_rank3_points(
         model._tag = tag
 
     observer = mk_batch_observer(lambda x: Dataset(x, x))
-    rule = LocalDatasetsFixedAcquisitionRule(query_points, batch_size)
+    rule = FixedLocalAcquisitionRule(query_points, batch_size)
     ask_tell = AskTellOptimizer(search_space, init_data, models, rule)
 
     points = ask_tell.ask()
@@ -814,3 +800,58 @@ def test_ask_tell_optimizer_raises_with_badly_shaped_new_data_idxs(
     )
     with pytest.raises(ValueError, match="new_data_ixs has 1"):
         ask_tell.tell(init_dataset + new_data, new_data_ixs=[tf.constant([[4]])])
+
+
+@pytest.mark.parametrize("optimizer", OPTIMIZERS)
+def test_ask_tell_optimizer_uses_pre_filter_state_in_to_record(
+    search_space: Box,
+    init_dataset: Dataset,
+    model: TrainableProbabilisticModel,
+    local_acquisition_rule: LocalDatasetsAcquisitionRule[
+        TensorType, Box, TrainableProbabilisticModel
+    ],
+    optimizer: OptimizerType,
+) -> None:
+    ask_tell = optimizer(
+        search_space, init_dataset, model, local_acquisition_rule, track_data=False
+    )
+    new_data = mk_dataset(
+        [[x / 100] for x in range(75, 75 + 6)], [[x / 100] for x in range(75, 75 + 6)]
+    )
+
+    # the internal acquisition state is incremented every time we call either ask or tell
+    # and once at initialisation; however, the state reported in to_record() is only updated
+    # after calling ask
+    assert ask_tell.to_record().acquisition_state is None
+    ask_tell.ask()
+    assert ask_tell.to_record().acquisition_state == 2
+    ask_tell.tell(init_dataset + new_data)
+    assert ask_tell.to_record().acquisition_state == 2
+    ask_tell.ask()
+    assert ask_tell.to_record().acquisition_state == 4
+    ask_tell.tell(init_dataset + new_data + new_data)
+    assert ask_tell.to_record().acquisition_state == 4
+
+    # the pattern continues for a copy made using the reported state
+    ask_tell_copy = optimizer.from_record(
+        ask_tell.to_record(), search_space, local_acquisition_rule, track_data=False
+    )
+    assert ask_tell_copy.to_record().acquisition_state == 4
+    ask_tell_copy.ask()
+    assert ask_tell_copy.to_record().acquisition_state == 6
+
+
+@pytest.mark.parametrize("optimizer", OPTIMIZERS)
+def test_ask_tell_optimizer_calls_initialize_subspaces(
+    search_space: Box,
+    init_dataset: Dataset,
+    model: TrainableProbabilisticModel,
+    local_acquisition_rule: LocalDatasetsAcquisitionRule[
+        TensorType, Box, TrainableProbabilisticModel
+    ],
+    optimizer: OptimizerType,
+) -> None:
+    assert isinstance(local_acquisition_rule, FixedLocalAcquisitionRule)
+    assert local_acquisition_rule._initialize_subspaces_calls == 0
+    optimizer(search_space, init_dataset, model, local_acquisition_rule, track_data=False)
+    assert local_acquisition_rule._initialize_subspaces_calls == 1
