@@ -59,7 +59,6 @@ The following tutorials explain how to use and extend specific Trieste functiona
 * How do I use Trieste in asynchronous objective evaluation mode?
 
   * :doc:`Example of using greedy batch acquisition functions and Python multiprocessing module.<notebooks/asynchronous_greedy_multiprocessing>`
-  * :doc:`Example of using non-greedy batch acquisition functions and Ray.<notebooks/asynchronous_nongreedy_batch_ray>`
 
 .. toctree::
    :hidden:
