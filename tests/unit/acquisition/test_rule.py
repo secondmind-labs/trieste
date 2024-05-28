@@ -620,7 +620,7 @@ def test_trego_for_default_state(
     npt.assert_array_almost_equal(ret_subspace.lower, lower_bound)
     npt.assert_array_almost_equal(ret_subspace.upper, upper_bound)
     npt.assert_array_almost_equal(query_point, [expected_query_point], 5)
-    npt.assert_array_almost_equal(ret_subspace._y_min, [0.012])
+    npt.assert_array_almost_equal(ret_subspace._y_min, [np.inf])
     assert ret_subspace._is_global
 
 
@@ -1684,9 +1684,9 @@ def test_multi_trust_region_box_inits_regions_that_need_it() -> None:
 
     # Change all eps values, with the second region have a lower eps than the min. This region
     # should be re-initialized.
-    subspaces[0].eps = 0.35
+    subspaces[0].eps = 0.45
     subspaces[1].eps = 0.25
-    subspaces[2].eps = 0.32
+    subspaces[2].eps = 0.42
 
     # Check the property values.
     assert bool(subspaces[0].requires_initialization) is False
@@ -1698,9 +1698,9 @@ def test_multi_trust_region_box_inits_regions_that_need_it() -> None:
 
     # Check that the second region was re-initialized.
     assert state is not None
-    assert cast(TestTrustRegionBox, state.subspaces[0]).eps < 0.35  # Expect reduction.
+    assert cast(TestTrustRegionBox, state.subspaces[0]).eps > 0.45  # Expect increase, step success.
     assert cast(TestTrustRegionBox, state.subspaces[1]).eps == 0.4  # Expect re-initialized value.
-    assert cast(TestTrustRegionBox, state.subspaces[2]).eps < 0.32  # Expect reduction.
+    assert cast(TestTrustRegionBox, state.subspaces[0]).eps > 0.42  # Expect increase, step success.
 
 
 def test_multi_trust_region_box_acquire_with_state() -> None:
@@ -1742,14 +1742,15 @@ def test_multi_trust_region_box_acquire_with_state() -> None:
 
     assert next_state is not None
     assert points.shape == [1, 3, 2]
-    # The regions correspond to first, third and first points in the dataset.
+    # The regions correspond to first, third and first points in the dataset. However, for the
+    #   region that is initialized, the point is not used and value is set to infinity.
     # First two regions should be updated.
     # The third region should be initialized and not updated, as it is too close to the first
     # subspace.
     for point, subspace, exp_obs, exp_eps in zip(
         points[0],
         cast(Sequence[TestTrustRegionBox], next_state.subspaces),
-        [dataset.observations[0], dataset.observations[2], dataset.observations[0]],
+        [dataset.observations[0], dataset.observations[2], np.inf],
         [0.1, 0.1, 0.07],  # First two regions updated, third region initialized.
     ):
         assert point in subspace
