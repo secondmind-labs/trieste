@@ -50,13 +50,14 @@ from trieste.acquisition.rule import (
     AsynchronousOptimization,
     AsynchronousRuleState,
     BatchHypervolumeSharpeRatioIndicator,
-    BatchTrustRegion,
     BatchTrustRegionBox,
+    BatchTrustRegionState,
     DiscreteThompsonSampling,
     EfficientGlobalOptimization,
     SingleObjectiveTrustRegionBox,
     TREGOBox,
     TURBOBox,
+    UpdatableTrustRegionBox,
 )
 from trieste.acquisition.sampler import ThompsonSamplerFromTrajectory
 from trieste.acquisition.utils import copy_to_local_models
@@ -287,7 +288,9 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
 AcquisitionRuleType = Union[
     AcquisitionRule[TensorType, SearchSpace, TrainableProbabilisticModelType],
     AcquisitionRule[
-        State[TensorType, Union[AsynchronousRuleState, BatchTrustRegion.State]],
+        State[
+            TensorType, Union[AsynchronousRuleState, BatchTrustRegionState[UpdatableTrustRegionBox]]
+        ],
         Box,
         TrainableProbabilisticModelType,
     ],

@@ -23,9 +23,10 @@ import pytest
 import tensorflow as tf
 from check_shapes import inherit_check_shapes
 
-from tests.unit.test_ask_tell_optimization import DatasetChecker, LocalDatasetsFixedAcquisitionRule
+from tests.unit.test_ask_tell_optimization import DatasetChecker
 from tests.util.misc import (
     FixedAcquisitionRule,
+    FixedLocalAcquisitionRule,
     assert_datasets_allclose,
     empty_dataset,
     mk_dataset,
@@ -281,7 +282,7 @@ def test_bayesian_optimizer_creates_correct_datasets_for_rank3_points(
         model._tag = tag
 
     optimizer = BayesianOptimizer(lambda x: Dataset(x, x), search_space)
-    rule = LocalDatasetsFixedAcquisitionRule(query_points, batch_size)
+    rule = FixedLocalAcquisitionRule(query_points, batch_size)
     optimizer.optimize(1, init_data, models, rule).final_result.unwrap()
 
 
@@ -715,3 +716,29 @@ def test_bayesian_optimizer_optimize_tracked_state(save_to_disk: bool) -> None:
                 history[step].models[NA].predict(tf.constant([[0.0]], tf.float64))
             )
             npt.assert_allclose(variance_from_saved_model, 1.0 / (step + 1))
+
+
+def test_bayesian_optimizer_uses_pre_filter_state_in_history() -> None:
+    rule = FixedLocalAcquisitionRule([[0.0]], 3)
+    result = BayesianOptimizer(_quadratic_observer, Box([0], [1])).optimize(
+        5,
+        {NA: mk_dataset([[0.0]], [[0.0]])},
+        {NA: _PseudoTrainableQuadratic()},
+        rule,
+    )
+    # the states gets updated by both filter_datasets and acquire, but it's the post-acquire
+    # state that's returned in the history
+    acquisition_states = [record.acquisition_state for record in result.history]
+    assert acquisition_states == [None, 2, 4, 6, 8]
+
+
+def test_bayesian_optimizer_calls_initialize_subspaces() -> None:
+    rule = FixedLocalAcquisitionRule([[0.0]], 3)
+    assert rule._initialize_subspaces_calls == 0
+    BayesianOptimizer(_quadratic_observer, Box([0], [1])).optimize(
+        5,
+        {NA: mk_dataset([[0.0]], [[0.0]])},
+        {NA: _PseudoTrainableQuadratic()},
+        rule,
+    )
+    assert rule._initialize_subspaces_calls == 1
