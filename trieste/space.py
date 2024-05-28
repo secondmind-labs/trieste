@@ -627,7 +627,7 @@ class Box(SearchSpace):
         # Internal common method to sample from the space using a Halton sequence.
         tf.debugging.assert_non_negative(num_samples)
         if num_samples == 0:
-            return tf.constant([])
+            return tf.constant([], dtype=self._lower.dtype)
         if seed is not None:  # ensure reproducibility
             tf.random.set_seed(seed)
         dim = tf.shape(self._lower)[-1]
@@ -660,7 +660,7 @@ class Box(SearchSpace):
         """
         tf.debugging.assert_non_negative(num_samples)
         if num_samples == 0:
-            return tf.constant([])
+            return tf.constant([], dtype=self._lower.dtype)
         if skip is None:  # generate random skip
             skip = tf.random.uniform([1], maxval=2**16, dtype=tf.int32)[0]
         dim = tf.shape(self._lower)[-1]
