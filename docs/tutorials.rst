@@ -68,7 +68,6 @@ The following tutorials explain how to use and extend specific Trieste functiona
    notebooks/data_transformation
    notebooks/recovering_from_errors
    notebooks/asynchronous_greedy_multiprocessing
-   notebooks/asynchronous_nongreedy_batch_ray
    notebooks/visualizing_with_tensorboard
    notebooks/code_overview
 
