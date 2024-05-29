@@ -1577,3 +1577,17 @@ def test_nonlinear_constraints_multioutput_raises() -> None:
     )
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         nlc.residual(points)
+
+
+@pytest.mark.parametrize("dtype", [tf.float32, tf.float64])
+def test_box_empty_sobol_sampling_returns_correct_dtype(dtype: tf.DType) -> None:
+    box = Box(tf.zeros((3,), dtype=dtype), tf.ones((3,), dtype=dtype))
+    sobol_samples = box.sample_sobol(0)
+    assert sobol_samples.dtype == dtype
+
+
+@pytest.mark.parametrize("dtype", [tf.float32, tf.float64])
+def test_box_empty_halton_sampling_returns_correct_dtype(dtype: tf.DType) -> None:
+    box = Box(tf.zeros((3,), dtype=dtype), tf.ones((3,), dtype=dtype))
+    sobol_samples = box.sample_halton(0)
+    assert sobol_samples.dtype == dtype
