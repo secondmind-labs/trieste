@@ -230,8 +230,8 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
             in to `tell`).
         :param local_data_ixs: Indices to the local data in the initial datasets. If unspecified,
             assumes that the initial datasets are global.
-        :param local_data_len: Length of the data when the passed in `local_data_ixs` were
-            measured. If the data has increased since then the indices are extended.
+        :param local_data_len: Optional length of the data when the passed in `local_data_ixs`
+            were measured. If the data has increased since then, the indices are extended.
         :raise ValueError: If any of the following are true:
             - the keys in ``datasets`` and ``models`` do not match
             - ``datasets`` or ``models`` are empty
