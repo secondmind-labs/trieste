@@ -190,6 +190,7 @@ def test_ask_tell_optimizer_returns_complete_state(
     assert isinstance(state.record.model, type(model))
     assert state.record.acquisition_state is None
     assert state.local_data_ixs is not None
+    assert state.local_data_len == 2
     npt.assert_array_equal(
         state.local_data_ixs,
         [
@@ -215,6 +216,7 @@ def test_ask_tell_optimizer_loads_from_state(
             tf.range(len(init_dataset.query_points))
             for _ in range(local_acquisition_rule.num_local_datasets)
         ],
+        local_data_len=len(init_dataset.query_points),
     )
 
     ask_tell = optimizer.from_state(
@@ -230,6 +232,7 @@ def test_ask_tell_optimizer_loads_from_state(
     assert new_state.local_data_ixs is not None
     assert old_state.local_data_ixs is not None
     npt.assert_array_equal(new_state.local_data_ixs, old_state.local_data_ixs)
+    assert old_state.local_data_len == new_state.local_data_len == len(init_dataset.query_points)
 
 
 @pytest.mark.parametrize("optimizer", OPTIMIZERS)
@@ -423,10 +426,12 @@ def test_ask_tell_optimizer_local_data_ixs_property(
     )
     if track_data:
         assert ask_tell.local_data_ixs is None
+        assert ask_tell.local_data_len is None
     else:
         assert ask_tell.local_data_ixs is not None
         for expected, actual in zip_longest(local_data_ixs, ask_tell.local_data_ixs):
             npt.assert_array_equal(expected, actual)
+        assert ask_tell.local_data_len == len(init_dataset.query_points)
 
 
 def test_ask_tell_optimizer_trains_model(
@@ -759,6 +764,7 @@ def test_ask_tell_optimizer_tracks_local_data_ixs(
     assert ask_tell.local_data_ixs is not None
     for ixs, expected_ixs in zip_longest(ask_tell.local_data_ixs, expected_indices):
         assert ixs.numpy().tolist() == expected_ixs
+    assert ask_tell.local_data_len == len(init_dataset + new_data)
 
 
 @pytest.mark.parametrize("optimizer", OPTIMIZERS)
@@ -800,6 +806,70 @@ def test_ask_tell_optimizer_raises_with_badly_shaped_new_data_idxs(
     )
     with pytest.raises(ValueError, match="new_data_ixs has 1"):
         ask_tell.tell(init_dataset + new_data, new_data_ixs=[tf.constant([[4]])])
+
+
+@pytest.mark.parametrize("optimizer", OPTIMIZERS)
+@pytest.mark.parametrize(
+    "local_data_len,expected_indices",
+    [
+        (None, [[0, 1], [0], [1]]),
+        (2, [[0, 1, 2, 5], [0, 3, 6], [1, 4, 7]]),  # extended via round-robin
+        (8, [[0, 1], [0], [1]]),
+    ],
+)
+def test_ask_tell_optimizer_local_data_len(
+    search_space: Box,
+    model: TrainableProbabilisticModel,
+    local_acquisition_rule: LocalDatasetsAcquisitionRule[
+        TensorType, Box, TrainableProbabilisticModel
+    ],
+    optimizer: OptimizerType,
+    local_data_len: Optional[int],
+    expected_indices: Sequence[list[int]],
+) -> None:
+    dataset = mk_dataset(
+        [[x / 100] for x in range(75, 75 + 8)], [[x / 100] for x in range(75, 75 + 8)]
+    )
+    local_data_ixs = [tf.constant([0, 1]), tf.constant([0]), tf.constant([1])]
+    ask_tell = optimizer(
+        search_space,
+        dataset,
+        model,
+        local_acquisition_rule,
+        track_data=False,
+        local_data_ixs=local_data_ixs,
+        local_data_len=local_data_len,
+    )
+
+    assert ask_tell.local_data_ixs is not None
+    for ixs, expected_ixs in zip_longest(ask_tell.local_data_ixs, expected_indices):
+        assert ixs.numpy().tolist() == expected_ixs
+    assert ask_tell.local_data_len == len(dataset)
+
+
+@pytest.mark.parametrize("optimizer", OPTIMIZERS)
+def test_ask_tell_optimizer_raises_with_inconsistent_local_data_len(
+    search_space: Box,
+    model: TrainableProbabilisticModel,
+    local_acquisition_rule: LocalDatasetsAcquisitionRule[
+        TensorType, Box, TrainableProbabilisticModel
+    ],
+    optimizer: OptimizerType,
+) -> None:
+    dataset = mk_dataset(
+        [[x / 100] for x in range(75, 75 + 8)], [[x / 100] for x in range(75, 75 + 8)]
+    )
+    local_data_ixs = [tf.constant([0, 1]), tf.constant([0]), tf.constant([1])]
+    with pytest.raises(ValueError, match="Cannot infer new data points"):
+        optimizer(
+            search_space,
+            dataset,
+            model,
+            local_acquisition_rule,
+            track_data=False,
+            local_data_ixs=local_data_ixs,
+            local_data_len=6,
+        )
 
 
 @pytest.mark.parametrize("optimizer", OPTIMIZERS)

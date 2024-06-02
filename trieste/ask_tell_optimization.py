@@ -86,6 +86,10 @@ class AskTellOptimizerState(Generic[StateType, ProbabilisticModelType]):
     """ Indices to the local data, for LocalDatasetsAcquisitionRule rules
     when `track_data` is `False`. """
 
+    local_data_len: Optional[int]
+    """ Length of the datasets, for LocalDatasetsAcquisitionRule rules
+    when `track_data` is `False`. """
+
 
 class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType]):
     """
@@ -105,6 +109,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         fit_model: bool = True,
         track_data: bool = True,
         local_data_ixs: Optional[Sequence[TensorType]] = None,
+        local_data_len: Optional[int] = None,
     ):
         ...
 
@@ -119,6 +124,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         fit_model: bool = True,
         track_data: bool = True,
         local_data_ixs: Optional[Sequence[TensorType]] = None,
+        local_data_len: Optional[int] = None,
     ):
         ...
 
@@ -136,6 +142,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         fit_model: bool = True,
         track_data: bool = True,
         local_data_ixs: Optional[Sequence[TensorType]] = None,
+        local_data_len: Optional[int] = None,
     ):
         ...
 
@@ -149,6 +156,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         fit_model: bool = True,
         track_data: bool = True,
         local_data_ixs: Optional[Sequence[TensorType]] = None,
+        local_data_len: Optional[int] = None,
     ):
         ...
 
@@ -163,6 +171,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         fit_model: bool = True,
         track_data: bool = True,
         local_data_ixs: Optional[Sequence[TensorType]] = None,
+        local_data_len: Optional[int] = None,
     ):
         ...
 
@@ -180,6 +189,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         fit_model: bool = True,
         track_data: bool = True,
         local_data_ixs: Optional[Sequence[TensorType]] = None,
+        local_data_len: Optional[int] = None,
     ):
         ...
 
@@ -199,6 +209,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         fit_model: bool = True,
         track_data: bool = True,
         local_data_ixs: Optional[Sequence[TensorType]] = None,
+        local_data_len: Optional[int] = None,
     ):
         """
         :param search_space: The space over which to search for the next query point.
@@ -219,6 +230,8 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
             in to `tell`).
         :param local_data_ixs: Indices to the local data in the initial datasets. If unspecified,
             assumes that the initial datasets are global.
+        :param local_data_len: Optional length of the data when the passed in `local_data_ixs`
+            were measured. If the data has increased since then, the indices are extended.
         :raise ValueError: If any of the following are true:
             - the keys in ``datasets`` and ``models`` do not match
             - ``datasets`` or ``models`` are empty
@@ -281,10 +294,29 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
                 self._dataset_len = self.dataset_len(self._datasets)
                 if local_data_ixs is not None:
                     self._dataset_ixs = list(local_data_ixs)
+                    if local_data_len is not None:
+                        # infer new dataset indices from change in dataset sizes
+                        num_new_points = self._dataset_len - local_data_len
+                        if num_new_points < 0 or num_new_points % num_local_datasets != 0:
+                            raise ValueError(
+                                "Cannot infer new data points as datasets haven't increased by "
+                                f"a multiple of {num_local_datasets}"
+                            )
+                        for i in range(num_local_datasets):
+                            self._dataset_ixs[i] = tf.concat(
+                                [
+                                    self._dataset_ixs[i],
+                                    tf.range(0, num_new_points, num_local_datasets)
+                                    + local_data_len
+                                    + i,
+                                ],
+                                -1,
+                            )
                 else:
                     self._dataset_ixs = [
                         tf.range(self._dataset_len) for _ in range(num_local_datasets)
                     ]
+
                 datasets = with_local_datasets(
                     self._datasets, num_local_datasets, self._dataset_ixs
                 )
@@ -350,6 +382,14 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         when `track_data` is `False`."""
         if isinstance(self._acquisition_rule, LocalDatasetsAcquisitionRule) and not self.track_data:
             return self._dataset_ixs
+        return None
+
+    @property
+    def local_data_len(self) -> Optional[int]:
+        """Data length. Only stored for LocalDatasetsAcquisitionRule rules
+        when `track_data` is `False`."""
+        if isinstance(self._acquisition_rule, LocalDatasetsAcquisitionRule) and not self.track_data:
+            return self._dataset_len
         return None
 
     @property
@@ -420,6 +460,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         | None = None,
         track_data: bool = True,
         local_data_ixs: Optional[Sequence[TensorType]] = None,
+        local_data_len: Optional[int] = None,
     ) -> AskTellOptimizerType:
         """Creates new :class:`~AskTellOptimizer` instance from provided optimization state.
         Model training isn't triggered upon creation of the instance.
@@ -432,6 +473,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
             arguments.
         :param track_data: Whether the optimizer tracks the changing datasets via a local copy.
         :param local_data_ixs: Indices to local data for local rules with `track_data` False.
+        :param local_data_len: Original data length for local rules with `track_data` False.
         :return: New instance of :class:`~AskTellOptimizer`.
         """
         # we are recovering previously saved optimization state
@@ -449,6 +491,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
             fit_model=False,
             track_data=track_data,
             local_data_ixs=local_data_ixs,
+            local_data_len=local_data_len,
         )
 
     def to_record(self, copy: bool = True) -> Record[StateType, ProbabilisticModelType]:
@@ -521,6 +564,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
             acquisition_rule,
             track_data=track_data,
             local_data_ixs=state.local_data_ixs,
+            local_data_len=state.local_data_len,
         )
 
     def to_state(
@@ -537,6 +581,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         return AskTellOptimizerState(
             record=self.to_record(copy=copy),
             local_data_ixs=self.local_data_ixs,
+            local_data_len=self.local_data_len,
         )
 
     def ask(self) -> TensorType:
