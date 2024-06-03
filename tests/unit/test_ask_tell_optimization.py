@@ -954,3 +954,5 @@ def test_ask_tell_optimizer_dataset_len_raises_on_inconsistently_sized_datasets(
         AskTellOptimizer.dataset_len(
             {"tag": init_dataset, "empty": Dataset(tf.zeros([0, 2]), tf.zeros([0, 2]))}
         )
+    with pytest.raises(ValueError):
+        AskTellOptimizer.dataset_len({})
