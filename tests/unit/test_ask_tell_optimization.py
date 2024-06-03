@@ -925,3 +925,23 @@ def test_ask_tell_optimizer_calls_initialize_subspaces(
     assert local_acquisition_rule._initialize_subspaces_calls == 0
     optimizer(search_space, init_dataset, model, local_acquisition_rule, track_data=False)
     assert local_acquisition_rule._initialize_subspaces_calls == 1
+
+
+@pytest.mark.parametrize("variable", [False, True])
+def test_ask_tell_optimizer_dataset_len(
+    init_dataset: Dataset,
+    variable: bool,
+) -> None:
+    if variable:
+        dataset = Dataset(
+            tf.Variable(
+                init_dataset.query_points, shape=[None, *init_dataset.query_points.shape[1:]]
+            ),
+            tf.Variable(
+                init_dataset.observations, shape=[None, *init_dataset.observations.shape[1:]]
+            ),
+        )
+    else:
+        dataset = init_dataset
+
+    assert AskTellOptimizer.dataset_len({"tag": dataset}) == 2

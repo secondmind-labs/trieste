@@ -437,14 +437,17 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
     @classmethod
     def dataset_len(cls, datasets: Mapping[Tag, Dataset]) -> int:
         """Helper method for inferring the global dataset size."""
-        dataset_lens = {
-            len(dataset.query_points)
+        dataset_lens = [
+            tf.shape(dataset.query_points)[0]
             for tag, dataset in datasets.items()
             if not LocalizedTag.from_tag(tag).is_local
-        }
-        if len(dataset_lens) != 1:
+        ]
+        if dataset_lens and tf.reduce_all(
+            [tf.equal(tensor, dataset_lens[0]) for tensor in dataset_lens]
+        ):
+            return next(iter(dataset_lens))
+        else:
             raise ValueError(f"Expected unique global dataset size, got {dataset_lens}")
-        return next(iter(dataset_lens))
 
     @classmethod
     def from_record(
