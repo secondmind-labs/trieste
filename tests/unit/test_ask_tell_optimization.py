@@ -928,7 +928,7 @@ def test_ask_tell_optimizer_calls_initialize_subspaces(
 
 
 @pytest.mark.parametrize("variable", [False, True])
-def test_ask_tell_optimizer_dataset_len(
+def test_ask_tell_optimizer_dataset_len_variables(
     init_dataset: Dataset,
     variable: bool,
 ) -> None:
@@ -945,3 +945,12 @@ def test_ask_tell_optimizer_dataset_len(
         dataset = init_dataset
 
     assert AskTellOptimizer.dataset_len({"tag": dataset}) == 2
+
+
+def test_ask_tell_optimizer_dataset_len_raises_on_inconsistently_sized_datasets(
+    init_dataset: Dataset,
+) -> None:
+    with pytest.raises(ValueError):
+        AskTellOptimizer.dataset_len(
+            {"tag": init_dataset, "empty": Dataset(tf.zeros([0, 2]), tf.zeros([0, 2]))}
+        )
