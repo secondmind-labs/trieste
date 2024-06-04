@@ -445,7 +445,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         if dataset_lens and tf.reduce_all(
             [tf.equal(tensor, dataset_lens[0]) for tensor in dataset_lens]
         ):
-            return next(iter(dataset_lens))
+            return int(next(iter(dataset_lens)))
         else:
             raise ValueError(f"Expected unique global dataset size, got {dataset_lens}")
 
