@@ -442,12 +442,11 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
             for tag, dataset in datasets.items()
             if not LocalizedTag.from_tag(tag).is_local
         ]
-        if dataset_lens and tf.reduce_all(
-            [tf.equal(tensor, dataset_lens[0]) for tensor in dataset_lens]
-        ):
-            return int(next(iter(dataset_lens)))
+        unique_lens, unique_idxs = tf.unique(dataset_lens)
+        if len(unique_idxs) == 1:
+            return int(unique_lens[0])
         else:
-            raise ValueError(f"Expected unique global dataset size, got {dataset_lens}")
+            raise ValueError(f"Expected unique global dataset size, got {unique_lens}")
 
     @classmethod
     def from_record(
