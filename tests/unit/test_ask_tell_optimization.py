@@ -945,6 +945,7 @@ def test_ask_tell_optimizer_dataset_len_variables(
         dataset = init_dataset
 
     assert AskTellOptimizer.dataset_len({"tag": dataset}) == 2
+    assert AskTellOptimizer.dataset_len({"tag1": dataset, "tag2": dataset}) == 2
 
 
 def test_ask_tell_optimizer_dataset_len_raises_on_inconsistently_sized_datasets(
