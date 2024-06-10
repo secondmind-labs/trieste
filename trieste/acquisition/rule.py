@@ -1514,7 +1514,7 @@ class BatchTrustRegion(
             state: BatchTrustRegionState[UpdatableTrustRegionType] | None,
         ) -> Tuple[BatchTrustRegionState[UpdatableTrustRegionType] | None, Mapping[Tag, Dataset]]:
             if state is not None:
-                assert self._tags == state.subspace_tags, (
+                assert self._tags == tuple(state.subspace_tags), (
                     f"The tags of the state acquisition space "
                     f"{state.subspace_tags} should be the same as the tags of the "
                     f"BatchTrustRegion acquisition rule {self._tags}"
