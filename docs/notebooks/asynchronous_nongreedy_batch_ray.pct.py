@@ -11,6 +11,9 @@
 # silence TF warnings and info messages, only print errors
 # https://stackoverflow.com/questions/35911252/disable-tensorflow-debugging-information
 import os
+from pathlib import Path
+
+from ray.exceptions import LocalRayletDiedError
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
@@ -155,11 +158,16 @@ while points_observed < num_observations:
 
     # we saw enough results to ask for a new batch
 
-    new_observations = [
-        observation
-        for worker in finished_workers
-        for observation in ray.get(worker)
-    ]
+    try:
+        new_observations = [
+            observation
+            for worker in finished_workers
+            for observation in ray.get(worker)
+        ]
+    except LocalRayletDiedError:
+        print("")
+        print("=======raylet.out=======")
+        print(Path("raylet.out").read_text())
 
     # new_observations is a list of tuples (point, observation value)
     # here we turn it into a Dataset and tell it to Trieste
