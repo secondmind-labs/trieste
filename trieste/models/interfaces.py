@@ -240,7 +240,7 @@ class FastUpdateModel(ProbabilisticModel, Protocol):
         :param additional_data: Dataset with query_points with shape [..., N, D] and observations
                  with shape [..., N, L]
         :return: The mean and variance of the independent marginal distributions at each point in
-            ``query_points``, with shape [..., L, M, M].
+            ``query_points``, with shape [..., M, L] each.
         """
         raise NotImplementedError
 
@@ -253,7 +253,7 @@ class FastUpdateModel(ProbabilisticModel, Protocol):
         :param additional_data: Dataset with query_points with shape [..., N, D] and observations
                  with shape [..., N, L]
         :return: The mean and covariance of the joint marginal distribution at each batch of points
-            in ``query_points``, with shape [..., L, M, M].
+            in ``query_points``, with shape [..., M, L] and [..., L, M, M], respectively.
         """
         raise NotImplementedError
 
