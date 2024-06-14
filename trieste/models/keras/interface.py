@@ -58,6 +58,10 @@ class KerasPredictor(ProbabilisticModel, ABC):
         raise NotImplementedError
 
     @property
+    def event_shape(self) -> TensorType:
+        return tf.constant([self.model.output_shape[0][-1]])
+
+    @property
     def optimizer(self) -> KerasOptimizer:
         """The optimizer wrapper for training the model."""
         return self._optimizer

@@ -528,6 +528,10 @@ def test_bayesian_optimizer_optimize_raises_for_negative_steps(num_steps: int) -
 
 def test_bayesian_optimizer_optimize_is_noop_for_zero_steps() -> None:
     class _UnusableModel(TrainableProbabilisticModel):
+        @property
+        def event_shape(self) -> TensorType:
+            assert False
+
         def predict(self, query_points: TensorType) -> NoReturn:
             assert False
 
