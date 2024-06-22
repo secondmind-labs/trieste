@@ -303,8 +303,10 @@ AcquisitionRuleType = Union[
 @pytest.mark.parametrize(*GPR_OPTIMIZER_PARAMS())
 def test_bayesian_optimizer_with_gpr_finds_minima_of_scaled_branin(
     num_steps: int,
-    acquisition_rule: AcquisitionRuleType[GaussianProcessRegression]
-    | Tuple[AcquisitionRuleType[GaussianProcessRegression], int],
+    acquisition_rule: (
+        AcquisitionRuleType[GaussianProcessRegression]
+        | Tuple[AcquisitionRuleType[GaussianProcessRegression], int]
+    ),
 ) -> None:
     _test_optimizer_finds_minimum(
         GaussianProcessRegression,
@@ -318,8 +320,10 @@ def test_bayesian_optimizer_with_gpr_finds_minima_of_scaled_branin(
 @pytest.mark.parametrize(*GPR_OPTIMIZER_PARAMS())
 def test_bayesian_optimizer_with_gpr_finds_minima_of_simple_quadratic(
     num_steps: int,
-    acquisition_rule: AcquisitionRuleType[GaussianProcessRegression]
-    | Tuple[AcquisitionRuleType[GaussianProcessRegression], int],
+    acquisition_rule: (
+        AcquisitionRuleType[GaussianProcessRegression]
+        | Tuple[AcquisitionRuleType[GaussianProcessRegression], int]
+    ),
 ) -> None:
     # for speed reasons we sometimes test with a simple quadratic defined on the same search space
     # branin; currently assume that every rule should be able to solve this in 6 steps
@@ -601,8 +605,10 @@ def test_bayesian_optimizer_with_PCTS_and_deep_ensemble_finds_minima_of_simple_q
 def _test_optimizer_finds_minimum(
     model_type: Type[TrainableProbabilisticModelType],
     num_steps: Optional[int],
-    acquisition_rule: AcquisitionRuleType[TrainableProbabilisticModelType]
-    | Tuple[AcquisitionRuleType[TrainableProbabilisticModelType], int],
+    acquisition_rule: (
+        AcquisitionRuleType[TrainableProbabilisticModelType]
+        | Tuple[AcquisitionRuleType[TrainableProbabilisticModelType], int]
+    ),
     optimize_branin: bool = False,
     model_args: Optional[Mapping[str, Any]] = None,
     check_regret: bool = False,
@@ -752,9 +758,9 @@ def _test_optimizer_finds_minimum(
                 # check history saved ok
                 assert len(result.history) <= (num_steps or 2)
                 assert len(result.loaded_history) == len(result.history)
-                loaded_result: OptimizationResult[
-                    None, TrainableProbabilisticModel
-                ] = OptimizationResult.from_path(Path(tmpdirname) / "history")
+                loaded_result: OptimizationResult[None, TrainableProbabilisticModel] = (
+                    OptimizationResult.from_path(Path(tmpdirname) / "history")
+                )
                 assert loaded_result.final_result.is_ok
                 assert len(loaded_result.history) == len(result.history)
 

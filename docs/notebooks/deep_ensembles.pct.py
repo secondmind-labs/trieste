@@ -72,7 +72,7 @@ data = Dataset(inputs, outputs)
 
 
 # %%
-from gpflow import tf_keras
+from gpflow.keras import tf_keras
 from trieste.models.keras import (
     DeepEnsemble,
     KerasPredictor,

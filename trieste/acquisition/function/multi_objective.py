@@ -55,9 +55,9 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder[Probabilistic
 
     def __init__(
         self,
-        reference_point_spec: Sequence[float]
-        | TensorType
-        | Callable[..., TensorType] = get_reference_point,
+        reference_point_spec: (
+            Sequence[float] | TensorType | Callable[..., TensorType]
+        ) = get_reference_point,
     ):
         """
         :param reference_point_spec: this method is used to determine how the reference point is
@@ -262,9 +262,9 @@ class BatchMonteCarloExpectedHypervolumeImprovement(
     def __init__(
         self,
         sample_size: int,
-        reference_point_spec: Sequence[float]
-        | TensorType
-        | Callable[..., TensorType] = get_reference_point,
+        reference_point_spec: (
+            Sequence[float] | TensorType | Callable[..., TensorType]
+        ) = get_reference_point,
         *,
         jitter: float = DEFAULTS.JITTER,
     ):
@@ -426,9 +426,9 @@ class ExpectedConstrainedHypervolumeImprovement(
         objective_tag: Tag,
         constraint_builder: AcquisitionFunctionBuilder[ProbabilisticModelType],
         min_feasibility_probability: float | TensorType = 0.5,
-        reference_point_spec: Sequence[float]
-        | TensorType
-        | Callable[..., TensorType] = get_reference_point,
+        reference_point_spec: (
+            Sequence[float] | TensorType | Callable[..., TensorType]
+        ) = get_reference_point,
     ):
         """
         :param objective_tag: The tag for the objective data and model.
@@ -520,9 +520,11 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
     def __init__(
         self,
         objective_tag: Tag = OBJECTIVE,
-        base_acquisition_function_builder: AcquisitionFunctionBuilder[ProbabilisticModelType]
-        | SingleModelAcquisitionBuilder[ProbabilisticModelType]
-        | None = None,
+        base_acquisition_function_builder: (
+            AcquisitionFunctionBuilder[ProbabilisticModelType]
+            | SingleModelAcquisitionBuilder[ProbabilisticModelType]
+            | None
+        ) = None,
     ):
         """
         Initializes the HIPPO acquisition function builder.
@@ -534,9 +536,9 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
         """
         self._objective_tag = objective_tag
         if base_acquisition_function_builder is None:
-            self._base_builder: AcquisitionFunctionBuilder[
-                ProbabilisticModelType
-            ] = ExpectedHypervolumeImprovement().using(self._objective_tag)
+            self._base_builder: AcquisitionFunctionBuilder[ProbabilisticModelType] = (
+                ExpectedHypervolumeImprovement().using(self._objective_tag)
+            )
         else:
             if isinstance(base_acquisition_function_builder, SingleModelAcquisitionBuilder):
                 self._base_builder = base_acquisition_function_builder.using(self._objective_tag)

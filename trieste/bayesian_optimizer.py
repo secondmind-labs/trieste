@@ -381,8 +381,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             EarlyStopCallback[TrainableProbabilisticModel, object]
         ] = None,
         start_step: int = 0,
-    ) -> OptimizationResult[None, TrainableProbabilisticModel]:
-        ...
+    ) -> OptimizationResult[None, TrainableProbabilisticModel]: ...
 
     @overload
     def optimize(
@@ -405,8 +404,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         # this should really be OptimizationResult[None], but tf.Tensor is untyped so the type
         # checker can't differentiate between TensorType and State[S | None, TensorType], and
         # the return types clash. object is close enough to None that object will do.
-    ) -> OptimizationResult[object, TrainableProbabilisticModelType]:
-        ...
+    ) -> OptimizationResult[object, TrainableProbabilisticModelType]: ...
 
     @overload
     def optimize(
@@ -426,8 +424,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             EarlyStopCallback[TrainableProbabilisticModelType, object]
         ] = None,
         start_step: int = 0,
-    ) -> OptimizationResult[object, TrainableProbabilisticModelType]:
-        ...
+    ) -> OptimizationResult[object, TrainableProbabilisticModelType]: ...
 
     @overload
     def optimize(
@@ -448,8 +445,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
         start_step: int = 0,
-    ) -> OptimizationResult[StateType, TrainableProbabilisticModelType]:
-        ...
+    ) -> OptimizationResult[StateType, TrainableProbabilisticModelType]: ...
 
     @overload
     def optimize(
@@ -470,8 +466,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
         start_step: int = 0,
-    ) -> OptimizationResult[StateType, TrainableProbabilisticModelType]:
-        ...
+    ) -> OptimizationResult[StateType, TrainableProbabilisticModelType]: ...
 
     @overload
     def optimize(
@@ -488,8 +483,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             EarlyStopCallback[TrainableProbabilisticModel, object]
         ] = None,
         start_step: int = 0,
-    ) -> OptimizationResult[None, TrainableProbabilisticModel]:
-        ...
+    ) -> OptimizationResult[None, TrainableProbabilisticModel]: ...
 
     @overload
     def optimize(
@@ -509,8 +503,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             EarlyStopCallback[TrainableProbabilisticModelType, object]
         ] = None,
         start_step: int = 0,
-    ) -> OptimizationResult[object, TrainableProbabilisticModelType]:
-        ...
+    ) -> OptimizationResult[object, TrainableProbabilisticModelType]: ...
 
     @overload
     def optimize(
@@ -530,8 +523,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             EarlyStopCallback[TrainableProbabilisticModelType, object]
         ] = None,
         start_step: int = 0,
-    ) -> OptimizationResult[object, TrainableProbabilisticModelType]:
-        ...
+    ) -> OptimizationResult[object, TrainableProbabilisticModelType]: ...
 
     @overload
     def optimize(
@@ -552,8 +544,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
         start_step: int = 0,
-    ) -> OptimizationResult[StateType, TrainableProbabilisticModelType]:
-        ...
+    ) -> OptimizationResult[StateType, TrainableProbabilisticModelType]: ...
 
     @overload
     def optimize(
@@ -574,20 +565,21 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
             EarlyStopCallback[TrainableProbabilisticModelType, StateType]
         ] = None,
         start_step: int = 0,
-    ) -> OptimizationResult[StateType, TrainableProbabilisticModelType]:
-        ...
+    ) -> OptimizationResult[StateType, TrainableProbabilisticModelType]: ...
 
     def optimize(
         self,
         num_steps: int,
         datasets: Mapping[Tag, Dataset] | Dataset,
         models: Mapping[Tag, TrainableProbabilisticModelType] | TrainableProbabilisticModelType,
-        acquisition_rule: AcquisitionRule[
-            TensorType | State[StateType | None, TensorType],
-            SearchSpaceType,
-            TrainableProbabilisticModelType,
-        ]
-        | None = None,
+        acquisition_rule: (
+            AcquisitionRule[
+                TensorType | State[StateType | None, TensorType],
+                SearchSpaceType,
+                TrainableProbabilisticModelType,
+            ]
+            | None
+        ) = None,
         acquisition_state: StateType | None = None,
         *,
         track_state: bool = True,
@@ -769,9 +761,9 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         )
                         acquisition_rule.initialize_subspaces(self._search_space)
 
-                    filtered_datasets_or_callable: Mapping[Tag, Dataset] | State[
-                        StateType | None, Mapping[Tag, Dataset]
-                    ] = acquisition_rule.filter_datasets(models, datasets)
+                    filtered_datasets_or_callable: (
+                        Mapping[Tag, Dataset] | State[StateType | None, Mapping[Tag, Dataset]]
+                    ) = acquisition_rule.filter_datasets(models, datasets)
                     if callable(filtered_datasets_or_callable):
                         acquisition_state, filtered_datasets = filtered_datasets_or_callable(
                             acquisition_state

@@ -279,8 +279,7 @@ class SearchSpace(ABC):
         """
 
     @overload
-    def __mul__(self: SearchSpaceType, other: SearchSpaceType) -> SearchSpaceType:
-        ...
+    def __mul__(self: SearchSpaceType, other: SearchSpaceType) -> SearchSpaceType: ...
 
     @overload
     def __mul__(self: SearchSpaceType, other: SearchSpace) -> SearchSpace:  # type: ignore[misc]
@@ -494,8 +493,7 @@ class Box(SearchSpace):
         upper: Sequence[float],
         constraints: Optional[Sequence[Constraint]] = None,
         ctol: float | TensorType = 1e-7,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
@@ -504,8 +502,7 @@ class Box(SearchSpace):
         upper: TensorType,
         constraints: Optional[Sequence[Constraint]] = None,
         ctol: float | TensorType = 1e-7,
-    ):
-        ...
+    ): ...
 
     def __init__(
         self,

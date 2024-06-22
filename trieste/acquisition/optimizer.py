@@ -847,9 +847,11 @@ def get_bounds_of_optimization(space: SearchSpace, starting_points: TensorType) 
         # Otherwise, we use the original bounds.
         bounds = [
             [
-                get_bounds_of_box_relaxation_around_point(ss, starting_points[i : i + 1, j])
-                if isinstance(ss, TaggedProductSearchSpace)
-                else spo.Bounds(ss.lower, ss.upper)
+                (
+                    get_bounds_of_box_relaxation_around_point(ss, starting_points[i : i + 1, j])
+                    if isinstance(ss, TaggedProductSearchSpace)
+                    else spo.Bounds(ss.lower, ss.upper)
+                )
                 for j, ss in enumerate(subspaces)
             ]
             for i in tf.range(num_optimization_runs_per_function)
