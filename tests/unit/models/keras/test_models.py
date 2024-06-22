@@ -24,6 +24,7 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflow.keras import tf_keras
 from tensorflow.python.keras.callbacks import Callback
 
 from tests.util.misc import ShapeLike, empty_dataset, random_seed
@@ -178,7 +179,7 @@ def test_deep_ensemble_optimizer_changed_correctly() -> None:
         "batch_size": 10,
     }
     custom_optimizer = tf.optimizers.RMSprop()
-    custom_loss = tf.keras.losses.MeanSquaredError()
+    custom_loss = tf_keras.losses.MeanSquaredError()
     optimizer_wrapper = KerasOptimizer(custom_optimizer, custom_fit_args, custom_loss)
 
     keras_ensemble = trieste_keras_ensemble_model(example_data, _ENSEMBLE_SIZE)
@@ -243,7 +244,7 @@ def test_deep_ensemble_resets_lr_with_lr_schedule() -> None:
         "epochs": epochs,
         "batch_size": 100,
         "verbose": 0,
-        "callbacks": tf.keras.callbacks.LearningRateScheduler(scheduler),
+        "callbacks": tf_keras.callbacks.LearningRateScheduler(scheduler),
     }
     optimizer = KerasOptimizer(tf.optimizers.Adam(init_lr), fit_args)
     model = DeepEnsemble(keras_ensemble, optimizer)
@@ -272,7 +273,7 @@ def test_deep_ensemble_with_lr_scheduler() -> None:
         "verbose": 0,
     }
 
-    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+    lr_schedule = tf_keras.optimizers.schedules.ExponentialDecay(
         initial_learning_rate=init_lr, decay_steps=1, decay_rate=0.5
     )
     optimizer = KerasOptimizer(tf.optimizers.Adam(lr_schedule), fit_args)
@@ -424,7 +425,7 @@ def test_deep_ensemble_optimize(ensemble_size: int, bootstrap_data: bool, epochs
         "epochs": epochs,
         "batch_size": 10,
     }
-    custom_loss = tf.keras.losses.MeanSquaredError()
+    custom_loss = tf_keras.losses.MeanSquaredError()
     optimizer_wrapper = KerasOptimizer(custom_optimizer, custom_fit_args, custom_loss)
 
     model = DeepEnsemble(keras_ensemble, optimizer_wrapper, bootstrap_data)
@@ -658,22 +659,22 @@ def test_deep_ensemble_deep_copies_optimizer_state() -> None:
     "callbacks",
     [
         [
-            tf.keras.callbacks.CSVLogger("csv"),
-            tf.keras.callbacks.EarlyStopping(monitor="loss", patience=100),
-            tf.keras.callbacks.History(),
-            tf.keras.callbacks.LambdaCallback(lambda epoch, lr: lr),
-            tf.keras.callbacks.LearningRateScheduler(lambda epoch, lr: lr),
-            tf.keras.callbacks.ProgbarLogger(),
-            tf.keras.callbacks.ReduceLROnPlateau(),
-            tf.keras.callbacks.RemoteMonitor(),
-            tf.keras.callbacks.TensorBoard(),
-            tf.keras.callbacks.TerminateOnNaN(),
+            tf_keras.callbacks.CSVLogger("csv"),
+            tf_keras.callbacks.EarlyStopping(monitor="loss", patience=100),
+            tf_keras.callbacks.History(),
+            tf_keras.callbacks.LambdaCallback(lambda epoch, lr: lr),
+            tf_keras.callbacks.LearningRateScheduler(lambda epoch, lr: lr),
+            tf_keras.callbacks.ProgbarLogger(),
+            tf_keras.callbacks.ReduceLROnPlateau(),
+            tf_keras.callbacks.RemoteMonitor(),
+            tf_keras.callbacks.TensorBoard(),
+            tf_keras.callbacks.TerminateOnNaN(),
         ],
         pytest.param(
             [
-                tf.keras.callbacks.experimental.BackupAndRestore("backup"),
-                tf.keras.callbacks.BaseLogger(),
-                tf.keras.callbacks.ModelCheckpoint("weights"),
+                tf_keras.callbacks.experimental.BackupAndRestore("backup"),
+                tf_keras.callbacks.BaseLogger(),
+                tf_keras.callbacks.ModelCheckpoint("weights"),
             ],
             marks=pytest.mark.skip(reason="callbacks currently causing optimize to fail"),
         ),
@@ -704,12 +705,12 @@ def test_deep_ensemble_deep_copies_optimizer_callback_models() -> None:
     model.optimize(new_example_data)
 
     callback = model.optimizer.fit_args["callbacks"][0]
-    assert isinstance(callback, tf.keras.callbacks.EarlyStopping)
+    assert isinstance(callback, tf_keras.callbacks.EarlyStopping)
     assert callback.model is model.model
 
     model_copy = copy.deepcopy(model)
     callback_copy = model_copy.optimizer.fit_args["callbacks"][0]
-    assert isinstance(callback_copy, tf.keras.callbacks.EarlyStopping)
+    assert isinstance(callback_copy, tf_keras.callbacks.EarlyStopping)
     assert callback_copy.model is model_copy.model is not callback.model
     npt.assert_equal(callback_copy.model.get_weights(), callback.model.get_weights())
 

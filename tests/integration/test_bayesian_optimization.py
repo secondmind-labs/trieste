@@ -25,6 +25,7 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 from _pytest.mark import ParameterSet
+from gpflow.keras import tf_keras
 
 from tests.util.misc import random_seed
 from trieste.acquisition import (
@@ -712,13 +713,13 @@ def _test_optimizer_finds_minimum(
                 "batch_size": 20,
                 "epochs": 200,
                 "callbacks": [
-                    tf.keras.callbacks.EarlyStopping(
+                    tf_keras.callbacks.EarlyStopping(
                         monitor="loss", patience=25, restore_best_weights=True
                     )
                 ],
                 "verbose": 0,
             }
-            de_optimizer = KerasOptimizer(tf.keras.optimizers.Adam(0.01), fit_args)
+            de_optimizer = KerasOptimizer(tf_keras.optimizers.Adam(0.01), fit_args)
             model = DeepEnsemble(keras_ensemble, de_optimizer, **model_args)
 
         else:

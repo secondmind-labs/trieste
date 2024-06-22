@@ -21,6 +21,7 @@ from __future__ import annotations
 from typing import Any, Mapping, Optional, Tuple
 
 import tensorflow as tf
+from gpflow.keras import tf_keras
 from packaging.version import Version
 
 from trieste.data import Dataset
@@ -67,7 +68,7 @@ def trieste_deep_ensemble_model(
 ) -> Tuple[DeepEnsemble, KerasEnsemble, KerasOptimizer]:
     keras_ensemble = trieste_keras_ensemble_model(example_data, ensemble_size, independent_normal)
 
-    optimizer = tf.keras.optimizers.Adam()
+    optimizer = tf_keras.optimizers.Adam()
     fit_args = {
         "batch_size": 100,
         "epochs": 1,
@@ -83,7 +84,7 @@ def trieste_deep_ensemble_model(
     return model, keras_ensemble, optimizer_wrapper
 
 
-def keras_optimizer_weights(optimizer: tf.keras.optimizers.Optimizer) -> Optional[TensorType]:
+def keras_optimizer_weights(optimizer: tf_keras.optimizers.Optimizer) -> Optional[TensorType]:
     # optimizer weight API was changed in TF 2.11: https://github.com/keras-team/keras/issues/16983
     if Version(tf.__version__) < Version("2.11"):
         return optimizer.get_weights()

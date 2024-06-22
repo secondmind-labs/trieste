@@ -26,6 +26,7 @@ import dill
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflow.keras import tf_keras
 
 try:
     from keras.src.saving.serialization_lib import SafeModeScope
@@ -94,7 +95,7 @@ class KerasEnsemble:
         return f"KerasEnsemble({self._networks!r})"
 
     @property
-    def model(self) -> tf.keras.Model:
+    def model(self) -> tf_keras.Model:
         """Returns built but uncompiled Keras ensemble model."""
         return self._model
 
@@ -106,7 +107,7 @@ class KerasEnsemble:
         """
         return len(self._networks)
 
-    def _build_ensemble(self) -> tf.keras.Model:
+    def _build_ensemble(self) -> tf_keras.Model:
         """
         Builds the ensemble model by combining all the individual networks in a single Keras model.
         This method relies on ``connect_layers`` method of :class:`KerasEnsembleNetwork` objects
@@ -116,7 +117,7 @@ class KerasEnsemble:
         """
         inputs, outputs = zip(*[network.connect_layers() for network in self._networks])
 
-        return tf.keras.Model(inputs=inputs, outputs=outputs)
+        return tf_keras.Model(inputs=inputs, outputs=outputs)
 
     def __getstate__(self) -> dict[str, Any]:
         # When pickling use to_json to save the model.
@@ -148,7 +149,7 @@ class KerasEnsemble:
         # TF 2.15 disallows loading lambdas without "safe-mode" being disabled
         # unfortunately, tfp.layers.DistributionLambda seems to use lambdas
         with SafeModeScope(False):
-            self._model = tf.keras.models.model_from_json(
+            self._model = tf_keras.models.model_from_json(
                 state["_model"], custom_objects={"MultivariateNormalTriL": MultivariateNormalTriL}
             )
         self._model.set_weights(state["_weights"])
@@ -160,7 +161,7 @@ class KerasEnsemble:
                 self._model.history.set_model(self._model)
             elif self._model.history.model:
                 model_json, weights = self._model.history.model
-                model = tf.keras.models.model_from_json(
+                model = tf_keras.models.model_from_json(
                     model_json,
                     custom_objects={"MultivariateNormalTriL": MultivariateNormalTriL},
                 )
@@ -297,8 +298,8 @@ class GaussianNetwork(KerasEnsembleNetwork):
         self._hidden_layer_args = hidden_layer_args
         self._independent = independent
 
-    def _gen_input_tensor(self) -> tf.keras.Input:
-        input_tensor = tf.keras.Input(
+    def _gen_input_tensor(self) -> tf_keras.Input:
+        input_tensor = tf_keras.Input(
             shape=self.input_tensor_spec.shape,
             dtype=self.input_tensor_spec.dtype,
             name=self.input_layer_name,
@@ -308,7 +309,7 @@ class GaussianNetwork(KerasEnsembleNetwork):
     def _gen_hidden_layers(self, input_tensor: tf.Tensor) -> tf.Tensor:
         for index, hidden_layer_args in enumerate(self._hidden_layer_args):
             layer_name = f"{self.network_name}dense_{index}"
-            layer = tf.keras.layers.Dense(
+            layer = tf_keras.layers.Dense(
                 **hidden_layer_args, name=layer_name, dtype=input_tensor.dtype.name
             )
             input_tensor = layer(input_tensor)
@@ -319,7 +320,7 @@ class GaussianNetwork(KerasEnsembleNetwork):
         dist_layer = tfp.layers.IndependentNormal if self._independent else MultivariateNormalTriL
         n_params = dist_layer.params_size(self.flattened_output_shape)
 
-        parameter_layer = tf.keras.layers.Dense(
+        parameter_layer = tf_keras.layers.Dense(
             n_params, name=self.network_name + "dense_parameters", dtype=input_tensor.dtype.name
         )(input_tensor)
 
@@ -333,7 +334,7 @@ class GaussianNetwork(KerasEnsembleNetwork):
         return distribution
 
     def _gen_single_output_layer(self, input_tensor: tf.Tensor) -> tf.Tensor:
-        parameter_layer = tf.keras.layers.Dense(
+        parameter_layer = tf_keras.layers.Dense(
             2, name=self.network_name + "dense_parameters", dtype=input_tensor.dtype.name
         )(input_tensor)
 

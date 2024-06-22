@@ -20,6 +20,7 @@ from typing import Optional
 import tensorflow as tf
 import tensorflow_probability as tfp
 from check_shapes import inherit_check_shapes
+from gpflow.keras import tf_keras
 from typing_extensions import Protocol, runtime_checkable
 
 from ...data import Dataset
@@ -53,7 +54,7 @@ class KerasPredictor(ProbabilisticModel, ABC):
 
     @property
     @abstractmethod
-    def model(self) -> tf.keras.Model:
+    def model(self) -> tf_keras.Model:
         """The compiled Keras model."""
         raise NotImplementedError
 

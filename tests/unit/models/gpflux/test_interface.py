@@ -22,6 +22,7 @@ import pytest
 import tensorflow as tf
 from check_shapes import inherit_check_shapes
 from gpflow.conditionals.util import sample_mvn
+from gpflow.keras import tf_keras
 from gpflux.helpers import construct_basic_inducing_variables, construct_basic_kernel
 from gpflux.layers import GPLayer
 from gpflux.models import DeepGP
@@ -53,11 +54,11 @@ class _QuadraticPredictor(GPfluxPredictor):
         return self._model_gpflux
 
     @property
-    def model_keras(self) -> tf.keras.Model:
+    def model_keras(self) -> tf_keras.Model:
         return self._model_keras
 
     @property
-    def optimizer(self) -> tf.keras.optimizers.Optimizer:
+    def optimizer(self) -> tf_keras.optimizers.Optimizer:
         return self._optimizer
 
     @inherit_check_shapes

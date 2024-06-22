@@ -72,6 +72,7 @@ data = Dataset(inputs, outputs)
 
 
 # %%
+from gpflow import tf_keras
 from trieste.models.keras import (
     DeepEnsemble,
     KerasPredictor,
@@ -94,7 +95,7 @@ def build_cubic_model(data: Dataset) -> DeepEnsemble:
         "epochs": 1000,
         "verbose": 0,
     }
-    optimizer = KerasOptimizer(tf.keras.optimizers.Adam(0.01), fit_args)
+    optimizer = KerasOptimizer(tf_keras.optimizers.Adam(0.01), fit_args)
 
     return DeepEnsemble(keras_ensemble, optimizer)
 
@@ -205,11 +206,11 @@ def build_model(data: Dataset) -> DeepEnsemble:
         "batch_size": 10,
         "epochs": 1000,
         "callbacks": [
-            tf.keras.callbacks.EarlyStopping(monitor="loss", patience=100)
+            tf_keras.callbacks.EarlyStopping(monitor="loss", patience=100)
         ],
         "verbose": 0,
     }
-    optimizer = KerasOptimizer(tf.keras.optimizers.Adam(0.001), fit_args)
+    optimizer = KerasOptimizer(tf_keras.optimizers.Adam(0.001), fit_args)
 
     return DeepEnsemble(keras_ensemble, optimizer)
 

@@ -17,6 +17,7 @@ from __future__ import annotations
 import gpflow
 import pytest
 import tensorflow as tf
+from gpflow.keras import tf_keras
 
 from tests.util.misc import empty_dataset, raise_exc
 from trieste.models.keras import KerasPredictor
@@ -25,7 +26,7 @@ from trieste.models.optimizer import KerasOptimizer
 
 class _DummyKerasPredictor(KerasPredictor):
     @property
-    def model(self) -> tf.keras.Model:
+    def model(self) -> tf_keras.Model:
         return raise_exc
 
 

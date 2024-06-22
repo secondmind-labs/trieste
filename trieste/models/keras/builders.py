@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from typing import Union
 
-import tensorflow as tf
+from gpflow.keras import tf_keras
 
 from ...data import Dataset
 from .architectures import GaussianNetwork, KerasEnsemble
@@ -34,7 +34,7 @@ def build_keras_ensemble(
     ensemble_size: int = 5,
     num_hidden_layers: int = 2,
     units: int = 25,
-    activation: Union[str, tf.keras.layers.Activation] = "relu",
+    activation: Union[str, tf_keras.layers.Activation] = "relu",
     independent_normal: bool = False,
 ) -> KerasEnsemble:
     """

@@ -18,6 +18,7 @@ import numpy as np
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflow.keras import tf_keras
 
 from tests.util.misc import empty_dataset
 from tests.util.models.keras.models import trieste_keras_ensemble_model
@@ -64,7 +65,7 @@ def test_keras_ensemble_model_attributes() -> None:
     example_data = empty_dataset([1], [1])
     keras_ensemble = trieste_keras_ensemble_model(example_data, _ENSEMBLE_SIZE)
 
-    assert isinstance(keras_ensemble.model, tf.keras.Model)
+    assert isinstance(keras_ensemble.model, tf_keras.Model)
 
 
 def test_keras_ensemble_ensemble_size_attributes(ensemble_size: int) -> None:
@@ -94,7 +95,7 @@ def test_keras_ensemble_build_ensemble_seems_correct(
     keras_ensemble = trieste_keras_ensemble_model(example_data, ensemble_size, independent_normal)
 
     # basics
-    assert isinstance(keras_ensemble.model, tf.keras.Model)
+    assert isinstance(keras_ensemble.model, tf_keras.Model)
     assert keras_ensemble.model.built
 
     # check ensemble size
@@ -150,14 +151,14 @@ def test_keras_ensemble_network_raises_on_incorrect_tensor_spec() -> None:
         _DummyKerasEnsembleNetwork(
             [1],
             tf.TensorSpec(shape=(1,), dtype=tf.float32),
-            tf.keras.losses.MeanSquaredError(),
+            tf_keras.losses.MeanSquaredError(),
         )
 
     with pytest.raises(ValueError):
         _DummyKerasEnsembleNetwork(
             tf.TensorSpec(shape=(1,), dtype=tf.float32),
             [1],
-            tf.keras.losses.MeanSquaredError(),
+            tf_keras.losses.MeanSquaredError(),
         )
 
 
@@ -232,7 +233,7 @@ def test_gaussian_network_is_correctly_constructed(
         hidden_layer_args,
     )
     network_input, network_output = network.connect_layers()
-    network_built = tf.keras.Model(inputs=network_input, outputs=network_output)
+    network_built = tf_keras.Model(inputs=network_input, outputs=network_output)
 
     # check input shape
     assert network_input.shape[1:] == tf.TensorShape(query_point_shape)
@@ -243,7 +244,7 @@ def test_gaussian_network_is_correctly_constructed(
     assert predictions.shape == tf.TensorShape([n_obs] + observation_shape)
 
     # check layers
-    assert isinstance(network_built.layers[0], tf.keras.layers.InputLayer)
+    assert isinstance(network_built.layers[0], tf_keras.layers.InputLayer)
     assert len(network_built.layers[1:-2]) == num_hidden_layers
     assert isinstance(network_built.layers[-1], tfp.layers.DistributionLambda)
 
@@ -253,7 +254,7 @@ def test_multivariatenormaltril_layer_fails_to_serialilze() -> None:
     # (with different errors in TF2.4 and TF2.5). When that's fixed we can remove our workaround.
     layer = tfp.layers.MultivariateNormalTriL(1)
     with pytest.raises(Exception):
-        serialized = tf.keras.utils.serialize_keras_object(layer)
-        tf.keras.utils.deserialize_keras_object(
+        serialized = tf_keras.utils.serialize_keras_object(layer)
+        tf_keras.utils.deserialize_keras_object(
             serialized, custom_objects={"MultivariateNormalTriL": tfp.layers.MultivariateNormalTriL}
         )

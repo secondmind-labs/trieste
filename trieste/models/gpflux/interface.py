@@ -19,6 +19,7 @@ from abc import ABC, abstractmethod
 import tensorflow as tf
 from check_shapes import inherit_check_shapes
 from gpflow.base import Module
+from gpflow.keras import tf_keras
 
 from ...types import TensorType
 from ..interfaces import SupportsGetObservationNoise, SupportsPredictY
@@ -51,7 +52,7 @@ class GPfluxPredictor(SupportsGetObservationNoise, SupportsPredictY, ABC):
 
     @property
     @abstractmethod
-    def model_keras(self) -> tf.keras.Model:
+    def model_keras(self) -> tf_keras.Model:
         """Returns the compiled Keras model for training."""
 
     @property
