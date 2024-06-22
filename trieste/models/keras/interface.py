@@ -43,10 +43,10 @@ class KerasPredictor(ProbabilisticModel, ABC):
         :raise ValueError: If the optimizer is not an instance of :class:`~tf.optimizers.Optimizer`.
         """
         if optimizer is None:
-            optimizer = KerasOptimizer(tf.optimizers.Adam())
+            optimizer = KerasOptimizer(tf_keras.optimizers.Adam())
         self._optimizer = optimizer
 
-        if not isinstance(optimizer.optimizer, tf.optimizers.Optimizer):
+        if not isinstance(optimizer.optimizer, tf_keras.optimizers.Optimizer):
             raise ValueError(
                 f"Optimizer for `KerasPredictor` models must be an instance of a "
                 f"`tf.optimizers.Optimizer`, received {type(optimizer.optimizer)} instead."

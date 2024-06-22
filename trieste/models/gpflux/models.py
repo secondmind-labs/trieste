@@ -122,7 +122,7 @@ class DeepGaussianProcess(
             )
         self._num_rff_features = num_rff_features
 
-        if not isinstance(self.optimizer.optimizer, tf.optimizers.Optimizer):
+        if not isinstance(self.optimizer.optimizer, tf_keras.optimizers.Optimizer):
             raise ValueError(
                 f"Optimizer for `DeepGaussianProcess` must be an instance of a "
                 f"`tf.optimizers.Optimizer` or `tf.keras.optimizers.Optimizer`, "

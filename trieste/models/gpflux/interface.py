@@ -16,7 +16,6 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-import tensorflow as tf
 from check_shapes import inherit_check_shapes
 from gpflow.base import Module
 from gpflow.keras import tf_keras
@@ -41,7 +40,7 @@ class GPfluxPredictor(SupportsGetObservationNoise, SupportsPredictY, ABC):
             :class:`~tf.optimizers.Adam` optimizer with 0.01 learning rate.
         """
         if optimizer is None:
-            optimizer = KerasOptimizer(tf.optimizers.Adam(0.01))
+            optimizer = KerasOptimizer(tf_keras.optimizers.Adam(0.01))
 
         self._optimizer = optimizer
 

@@ -153,7 +153,7 @@ def trieste_deep_gaussian_process(
         "verbose": 0,
         "callbacks": tf_keras.callbacks.LearningRateScheduler(scheduler),
     }
-    optimizer = KerasOptimizer(tf.optimizers.Adam(learning_rate), fit_args)
+    optimizer = KerasOptimizer(tf_keras.optimizers.Adam(learning_rate), fit_args)
 
     model = DeepGaussianProcess(dgp, optimizer)
 

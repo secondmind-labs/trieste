@@ -166,7 +166,7 @@ def test_deep_gaussian_process_optimize(
     dataset = Dataset(*data)
 
     fit_args = {"batch_size": batch_size, "epochs": 10, "verbose": 0}
-    optimizer = KerasOptimizer(tf.optimizers.Adam(), fit_args)
+    optimizer = KerasOptimizer(tf_keras.optimizers.Adam(), fit_args)
 
     model = DeepGaussianProcess(two_layer_model(x_observed), optimizer)
     elbo = model.model_gpflux.elbo(data)
@@ -271,7 +271,7 @@ def test_deep_gaussian_process_resets_lr_with_lr_schedule(
         "verbose": 0,
         "callbacks": tf_keras.callbacks.LearningRateScheduler(scheduler),
     }
-    optimizer = KerasOptimizer(tf.optimizers.Adam(init_lr), fit_args)
+    optimizer = KerasOptimizer(tf_keras.optimizers.Adam(init_lr), fit_args)
 
     model = DeepGaussianProcess(two_layer_model(x), optimizer)
 
@@ -300,7 +300,7 @@ def test_deep_gaussian_process_with_lr_scheduler(
     lr_schedule = tf_keras.optimizers.schedules.ExponentialDecay(
         initial_learning_rate=init_lr, decay_steps=1, decay_rate=0.5
     )
-    optimizer = KerasOptimizer(tf.optimizers.Adam(lr_schedule), fit_args)
+    optimizer = KerasOptimizer(tf_keras.optimizers.Adam(lr_schedule), fit_args)
     model = DeepGaussianProcess(two_layer_model(x), optimizer)
 
     optimize_model_and_save_result(model, Dataset(x, y))
@@ -325,7 +325,7 @@ def test_deep_gaussian_process_default_optimizer_is_correct(
     }
 
     assert isinstance(model.optimizer, KerasOptimizer)
-    assert isinstance(model.optimizer.optimizer, tf.optimizers.Optimizer)
+    assert isinstance(model.optimizer.optimizer, tf_keras.optimizers.Optimizer)
     assert model_fit_args == fit_args
 
 
@@ -347,7 +347,7 @@ def test_deep_gaussian_process_subclass_default_optimizer_is_correct(
     }
 
     assert isinstance(model.optimizer, KerasOptimizer)
-    assert isinstance(model.optimizer.optimizer, tf.optimizers.Optimizer)
+    assert isinstance(model.optimizer.optimizer, tf_keras.optimizers.Optimizer)
     assert model_fit_args == fit_args
 
 
@@ -530,7 +530,7 @@ def test_deepgp_log(
 
     model = DeepGaussianProcess(
         single_layer_dgp_model(x_observed),
-        KerasOptimizer(tf.optimizers.Adam(), {"batch_size": 200, "epochs": 3, "verbose": 0}),
+        KerasOptimizer(tf_keras.optimizers.Adam(), {"batch_size": 200, "epochs": 3, "verbose": 0}),
     )
     model.optimize(dataset)
 

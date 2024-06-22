@@ -13,6 +13,7 @@
 # %%
 import numpy as np
 import tensorflow as tf
+from gpflow.keras import tf_keras
 
 np.random.seed(1793)
 tf.random.set_seed(1793)
@@ -64,7 +65,7 @@ model = SparseVariational(
     num_rff_features=1_000,
     inducing_point_selector=inducing_point_selector,
     optimizer=BatchOptimizer(
-        tf.optimizers.Adam(0.1), max_iter=100, batch_size=50, compile=True
+        tf_keras.optimizers.Adam(0.1), max_iter=100, batch_size=50, compile=True
     ),
 )
 

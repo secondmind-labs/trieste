@@ -36,13 +36,13 @@ from trieste.types import TensorType
 class _QuadraticPredictor(GPfluxPredictor):
     def __init__(
         self,
-        optimizer: tf.optimizers.Optimizer | None = None,
+        optimizer: tf_keras.optimizers.Optimizer | None = None,
         likelihood: gpflow.likelihoods.Likelihood = gpflow.likelihoods.Gaussian(0.01),
     ):
         super().__init__(optimizer=optimizer)
 
         if optimizer is None:
-            self._optimizer = tf.optimizers.Adam()
+            self._optimizer = tf_keras.optimizers.Adam()
         else:
             self._optimizer = optimizer
         self._model_gpflux = _QuadraticGPModel(likelihood=likelihood)

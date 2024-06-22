@@ -41,6 +41,7 @@ from gpflow.inducing_variables import (
     SeparateIndependentInducingVariables,
     SharedIndependentInducingVariables,
 )
+from gpflow.keras import tf_keras
 from gpflow.models import SGPR, SVGP, VGP
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, random_seed
@@ -181,7 +182,7 @@ def test_gpflow_wrappers_ref_optimize(gpflow_interface_factory: ModelFactoryType
             .prefetch(tf.data.experimental.AUTOTUNE)
             .repeat()
         )
-        tf.optimizers.Adam().minimize(
+        tf_keras.optimizers.Adam().minimize(
             reference_model.training_loss_closure(data=data_iter, compile=False),
             reference_model.trainable_variables,
         )
@@ -404,7 +405,7 @@ def test_gaussian_process_regression_raises_for_invalid_init() -> None:
         GaussianProcessRegression(gpr_model(x, y), optimizer=optimizer1)
 
     with pytest.raises(ValueError):
-        optimizer2 = Optimizer(tf.optimizers.Adam())
+        optimizer2 = Optimizer(tf_keras.optimizers.Adam())
         GaussianProcessRegression(gpr_model(x, y), optimizer=optimizer2)
 
 
@@ -789,7 +790,7 @@ def test_sparse_gaussian_process_regression_raises_for_invalid_init() -> None:
         SparseGaussianProcessRegression(sgpr_model(x, y), optimizer=optimizer1)
 
     with pytest.raises(ValueError):
-        optimizer2 = Optimizer(tf.optimizers.Adam())
+        optimizer2 = Optimizer(tf_keras.optimizers.Adam())
         SparseGaussianProcessRegression(sgpr_model(x, y), optimizer=optimizer2)
 
 
@@ -1049,7 +1050,7 @@ def test_variational_gaussian_process_raises_for_invalid_init() -> None:
         VariationalGaussianProcess(vgp_model(x, y), optimizer=optimizer, use_natgrads=True)
 
     with pytest.raises(ValueError):
-        optimizer = Optimizer(tf.optimizers.Adam())
+        optimizer = Optimizer(tf_keras.optimizers.Adam())
         VariationalGaussianProcess(vgp_model(x, y), optimizer=optimizer, use_natgrads=False)
 
 
@@ -1153,7 +1154,7 @@ def test_variational_gaussian_process_trajectory_sampler_has_correct_samples(
 ) -> None:
     x_observed = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
     y_observed = _3x_plus_gaussian_noise(x_observed)
-    optimizer = BatchOptimizer(tf.optimizers.Adam(), max_iter=20)
+    optimizer = BatchOptimizer(tf_keras.optimizers.Adam(), max_iter=20)
     likelihood = gpflow.likelihoods.Gaussian(noise_var)
     kernel = gpflow.kernels.Matern32(lengthscales=0.2)
     if use_mean_function:
@@ -1241,7 +1242,7 @@ def test_variational_gaussian_process_optimize_with_and_without_natgrads(
 
     if use_natgrads:
         optimizer = BatchOptimizer(
-            tf.optimizers.Adam(),
+            tf_keras.optimizers.Adam(),
             max_iter=10,
             batch_size=10,
             dataset_builder=batcher,
@@ -1270,7 +1271,7 @@ def test_variational_gaussian_process_optimize_natgrads_only_updates_variational
         def optimize(self, model: tf.Module, dataset: Dataset) -> None:
             pass
 
-    optimizer = DummyBatchOptimizer(tf.optimizers.Adam(), compile=compile, max_iter=10)
+    optimizer = DummyBatchOptimizer(tf_keras.optimizers.Adam(), compile=compile, max_iter=10)
 
     model = VariationalGaussianProcess(
         vgp_matern_model(x_observed[:10], y_observed[:10]), optimizer=optimizer, use_natgrads=True
@@ -1305,7 +1306,7 @@ def test_variational_gaussian_process_default_optimizer_is_correct(use_natgrads:
 
     if use_natgrads:
         assert isinstance(model.optimizer, BatchOptimizer)
-        assert isinstance(model.optimizer.optimizer, tf.optimizers.Optimizer)
+        assert isinstance(model.optimizer.optimizer, tf_keras.optimizers.Optimizer)
     else:
         assert isinstance(model.optimizer, Optimizer)
         assert isinstance(model.optimizer.optimizer, gpflow.optimizers.Scipy)
@@ -1488,7 +1489,7 @@ def test_sparse_variational_optimize_with_defaults() -> None:
     y_observed = _3x_plus_gaussian_noise(x_observed)
     data = x_observed, y_observed
     dataset = Dataset(*data)
-    optimizer = BatchOptimizer(tf.optimizers.Adam(), max_iter=20)
+    optimizer = BatchOptimizer(tf_keras.optimizers.Adam(), max_iter=20)
     model = SparseVariational(svgp_model(x_observed, y_observed), optimizer=optimizer)
     loss = model.model.training_loss(data)
     model.optimize(dataset)
@@ -1502,7 +1503,7 @@ def test_sparse_variational_optimize(batcher: DatasetTransformer, compile: bool)
     dataset = Dataset(*data)
 
     optimizer = BatchOptimizer(
-        tf.optimizers.Adam(),
+        tf_keras.optimizers.Adam(),
         max_iter=10,
         batch_size=10,
         dataset_builder=batcher,
@@ -1536,7 +1537,7 @@ def test_sparse_variational_trajectory_sampler_has_correct_samples(
         mean = gpflow.mean_functions.Zero()
 
     svgp = svgp_model_by_type(x, kernel_type + "+shared", whiten, len(x), noise_var, mean)
-    optimizer = BatchOptimizer(tf.optimizers.Adam(1.0), max_iter=10)
+    optimizer = BatchOptimizer(tf_keras.optimizers.Adam(1.0), max_iter=10)
     model = SparseVariational(svgp, optimizer=optimizer)
     model.update(Dataset(x, y))
     model.optimize(Dataset(x, y))
@@ -1572,7 +1573,7 @@ def test_sparse_variational_default_optimizer_is_correct() -> None:
     model = SparseVariational(svgp_model(x_observed, y_observed))
 
     assert isinstance(model.optimizer, BatchOptimizer)
-    assert isinstance(model.optimizer.optimizer, tf.optimizers.Optimizer)
+    assert isinstance(model.optimizer.optimizer, tf_keras.optimizers.Optimizer)
 
 
 def test_sparse_variational_raises_for_invalid_init() -> None:
@@ -1590,7 +1591,7 @@ def test_sparse_variational_raises_for_invalid_init() -> None:
         SparseVariational(svgp_model(x_observed, y_observed), optimizer=optimizer1)
 
     with pytest.raises(ValueError):
-        optimizer2 = Optimizer(tf.optimizers.Adam())
+        optimizer2 = Optimizer(tf_keras.optimizers.Adam())
         SparseVariational(svgp_model(x_observed, y_observed), optimizer=optimizer2)
 
 
@@ -1607,7 +1608,9 @@ def test_sparse_variational_pairwise_covariance_for_non_whitened(
     y2 = y1 * 0.5
 
     svgp = svgp_model_by_type(x, mo_type, whiten)
-    model = SparseVariational(svgp, BatchOptimizer(tf.optimizers.Adam(), max_iter=3, batch_size=10))
+    model = SparseVariational(
+        svgp, BatchOptimizer(tf_keras.optimizers.Adam(), max_iter=3, batch_size=10)
+    )
     model.model.whiten = whiten
 
     model.optimize(Dataset(x, tf.concat([y1, y2], axis=-1)))
@@ -1657,7 +1660,7 @@ def test_sparse_variational_inducing_updates_preserves_posterior(
         inducing_point_selector = DummyInducingPointSelector(xnew)
         model = SparseVariational(
             svgp,
-            BatchOptimizer(tf.optimizers.Adam(), max_iter=3, batch_size=10),
+            BatchOptimizer(tf_keras.optimizers.Adam(), max_iter=3, batch_size=10),
             inducing_point_selector=inducing_point_selector,
         )
 

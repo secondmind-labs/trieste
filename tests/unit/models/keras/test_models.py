@@ -107,10 +107,10 @@ def _ensemblise_data(
     return inputs, outputs
 
 
-@pytest.mark.parametrize("optimizer", [tf.optimizers.Adam(), tf.optimizers.RMSprop()])
+@pytest.mark.parametrize("optimizer", [tf_keras.optimizers.Adam(), tf_keras.optimizers.RMSprop()])
 @pytest.mark.parametrize("diversify", [False, True])
 def test_deep_ensemble_repr(
-    optimizer: tf.optimizers.Optimizer, bootstrap_data: bool, diversify: bool
+    optimizer: tf_keras.optimizers.Optimizer, bootstrap_data: bool, diversify: bool
 ) -> None:
     example_data = empty_dataset([1], [1])
 
@@ -165,7 +165,7 @@ def test_deep_ensemble_default_optimizer_is_correct() -> None:
     del model.optimizer.fit_args["callbacks"]
 
     assert isinstance(model.optimizer, KerasOptimizer)
-    assert isinstance(model.optimizer.optimizer, tf.optimizers.Optimizer)
+    assert isinstance(model.optimizer.optimizer, tf_keras.optimizers.Optimizer)
     assert model.optimizer.fit_args == default_fit_args
     assert model.optimizer.loss == default_loss
 
@@ -178,7 +178,7 @@ def test_deep_ensemble_optimizer_changed_correctly() -> None:
         "epochs": 10,
         "batch_size": 10,
     }
-    custom_optimizer = tf.optimizers.RMSprop()
+    custom_optimizer = tf_keras.optimizers.RMSprop()
     custom_loss = tf_keras.losses.MeanSquaredError()
     optimizer_wrapper = KerasOptimizer(custom_optimizer, custom_fit_args, custom_loss)
 
@@ -246,7 +246,7 @@ def test_deep_ensemble_resets_lr_with_lr_schedule() -> None:
         "verbose": 0,
         "callbacks": tf_keras.callbacks.LearningRateScheduler(scheduler),
     }
-    optimizer = KerasOptimizer(tf.optimizers.Adam(init_lr), fit_args)
+    optimizer = KerasOptimizer(tf_keras.optimizers.Adam(init_lr), fit_args)
     model = DeepEnsemble(keras_ensemble, optimizer)
 
     npt.assert_allclose(model.model.optimizer.lr.numpy(), init_lr, rtol=1e-6)
@@ -276,7 +276,7 @@ def test_deep_ensemble_with_lr_scheduler() -> None:
     lr_schedule = tf_keras.optimizers.schedules.ExponentialDecay(
         initial_learning_rate=init_lr, decay_steps=1, decay_rate=0.5
     )
-    optimizer = KerasOptimizer(tf.optimizers.Adam(lr_schedule), fit_args)
+    optimizer = KerasOptimizer(tf_keras.optimizers.Adam(lr_schedule), fit_args)
     model = DeepEnsemble(keras_ensemble, optimizer)
 
     model.optimize(example_data)
@@ -419,7 +419,7 @@ def test_deep_ensemble_optimize(ensemble_size: int, bootstrap_data: bool, epochs
 
     keras_ensemble = trieste_keras_ensemble_model(example_data, ensemble_size, False)
 
-    custom_optimizer = tf.optimizers.RMSprop()
+    custom_optimizer = tf_keras.optimizers.RMSprop()
     custom_fit_args = {
         "verbose": 0,
         "epochs": epochs,
@@ -444,7 +444,7 @@ def test_deep_ensemble_loss(bootstrap_data: bool) -> None:
     example_data = _get_example_data([100, 1])
 
     loss = negative_log_likelihood
-    optimizer = tf.optimizers.Adam()
+    optimizer = tf_keras.optimizers.Adam()
 
     model = DeepEnsemble(
         trieste_keras_ensemble_model(example_data, _ENSEMBLE_SIZE, False),
@@ -470,7 +470,7 @@ def test_deep_ensemble_predict_ensemble() -> None:
     example_data = _get_example_data([100, 1])
 
     loss = negative_log_likelihood
-    optimizer = tf.optimizers.Adam()
+    optimizer = tf_keras.optimizers.Adam()
 
     model = DeepEnsemble(
         trieste_keras_ensemble_model(example_data, _ENSEMBLE_SIZE, False),

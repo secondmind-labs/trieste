@@ -134,7 +134,7 @@ def test_keras_ensemble_can_be_compiled() -> None:
     example_data = empty_dataset([1], [1])
     keras_ensemble = trieste_keras_ensemble_model(example_data, _ENSEMBLE_SIZE)
 
-    keras_ensemble.model.compile(tf.optimizers.Adam(), negative_log_likelihood)
+    keras_ensemble.model.compile(tf_keras.optimizers.Adam(), negative_log_likelihood)
 
     assert keras_ensemble.model.compiled_loss is not None
     assert keras_ensemble.model.compiled_metrics is not None
