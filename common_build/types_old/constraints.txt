@@ -1,5 +1,0 @@
-mypy==1.4.1
-mypy-extensions==1.0.0
-tomli==2.0.1
-types-PyYAML==6.0.12.20240311
-typing_extensions==4.12.2
