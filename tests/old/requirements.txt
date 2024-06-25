@@ -19,6 +19,3 @@ PyYAML
 # pin to older version of TF (for now)
 tensorflow ~= 2.8.0
 tensorflow-probability ~= 0.13.0
-
-# later numpy doesn't support Python 3.7
-numpy < 1.22.0

@@ -68,7 +68,7 @@ query_point, observation, arg_min_idx = result.try_get_optimal_point()
 
 ## Installation
 
-Trieste supports Python 3.8+ and TensorFlow 2.5+, and uses [semantic versioning](https://semver.org/).
+Trieste supports Python 3.9+ and TensorFlow 2.5+, and uses [semantic versioning](https://semver.org/).
 
 
 ### For users
