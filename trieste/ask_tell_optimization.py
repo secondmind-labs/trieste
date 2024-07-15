@@ -297,7 +297,9 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
                     if local_data_len is not None:
                         # infer new dataset indices from change in dataset sizes
                         num_new_points = self._dataset_len - local_data_len
-                        if num_new_points < 0 or num_new_points % num_local_datasets != 0:
+                        if num_new_points < 0 or (
+                            num_local_datasets > 0 and num_new_points % num_local_datasets != 0
+                        ):
                             raise ValueError(
                                 "Cannot infer new data points as datasets haven't increased by "
                                 f"a multiple of {num_local_datasets}"
@@ -669,7 +671,9 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
                 # infer dataset indices from change in dataset sizes
                 new_dataset_len = self.dataset_len(new_data)
                 num_new_points = new_dataset_len - self._dataset_len
-                if num_new_points < 0 or num_new_points % num_local_datasets != 0:
+                if num_new_points < 0 or (
+                    num_local_datasets > 0 and num_new_points % num_local_datasets != 0
+                ):
                     raise ValueError(
                         "Cannot infer new data points as datasets haven't increased by "
                         f"a multiple of {num_local_datasets}"
