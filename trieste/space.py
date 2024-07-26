@@ -554,10 +554,10 @@ class CategoricalSearchSpace(DiscreteSearchSpace):
         :return: A tensor of string tags.
         """
 
-        tag_tensors = [tf.constant(tags) for tags in self._tags]
-
         def extract_tags(row: TensorType) -> TensorType:
-            return tf.stack([tf.gather(tag_tensors[i], row[i]) for i in range(len(row))])
+            return tf.stack(
+                [tf.gather(tf.constant(self._tags[i]), row[i]) for i in range(len(row))]
+            )
 
         return tf.map_fn(extract_tags, indices, dtype=tf.string)
 
