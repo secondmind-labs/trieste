@@ -17,6 +17,7 @@ from __future__ import annotations
 import operator
 from abc import ABC, abstractmethod
 from functools import reduce
+from itertools import chain
 from typing import Callable, Optional, Sequence, Tuple, TypeVar, Union, overload
 
 import numpy as np
@@ -422,7 +423,7 @@ class DiscreteSearchSpace(SearchSpace):
         return self._dimension
 
     def _contains(self, value: TensorType) -> TensorType:
-        comparison = tf.math.equal(self._points, tf.expand_dims(value, -2))  # [..., N, D]
+        comparison = tf.math.equal(self.points, tf.expand_dims(value, -2))  # [..., N, D]
         return tf.reduce_any(tf.reduce_all(comparison, axis=-1), axis=-1)  # [...]
 
     def sample(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
@@ -478,6 +479,115 @@ class DiscreteSearchSpace(SearchSpace):
         if not isinstance(other, DiscreteSearchSpace):
             return NotImplemented
         return bool(tf.reduce_all(tf.sort(self.points, 0) == tf.sort(other.points, 0)))
+
+
+class CategoricalSearchSpace(DiscreteSearchSpace):
+    r"""
+    A categorical :class:`SearchSpace` representing a finite set :math:`\mathcal{C}` of categories,
+    or a finite Cartesian product :math:`\mathcal{C_1} \times \cdots \times \mathcal{C_n}` of
+    such sets.
+
+    For example:
+
+        >>> CategoricalSearchSpace(5)
+        CategoricalSearchSpace([('0', '1', '2', '3', '4')])
+        >>> CategoricalSearchSpace(["Red", "Green", "Blue"])
+        CategoricalSearchSpace([('Red', 'Green', 'Blue')])
+        >>> CategoricalSearchSpace([2,3])
+        CategoricalSearchSpace([('0', '1'), ('0', '1', '2')])
+
+    Note that internally categories are represented by numeric indices:
+
+        >>> rgb = CategoricalSearchSpace(["Red", "Green", "Blue"])
+        >>> assert tf.constant([1]) in rgb
+        >>> assert tf.constant([3]) not in rgb
+        >>> rgb.sample(3)
+        <tf.Tensor: shape=(3, 1), dtype=int32, numpy=
+        array([[1],
+               [2],
+               [0]], dtype=int32)>
+        >>> rgb.to_tags(rgb.sample(3))
+        <tf.Tensor: shape=(3, 1), dtype=string, numpy=
+        array([[b'Red'],
+               [b'Blue'],
+               [b'Red']], dtype=object)>
+
+    """
+
+    def __init__(self, categories: int | Sequence[int] | Sequence[str] | Sequence[Sequence[str]]):
+        """
+        :param categories: Number of categories or category names. Can be an array for
+            multidimensional spaces.
+        """
+        if isinstance(categories, int) or all(isinstance(x, str) for x in categories):
+            categories = [categories]
+
+        if all(isinstance(x, int) for x in categories):
+            tags = [tuple(f"{i}" for i in range(n)) for n in categories]
+        else:
+            tags = [tuple(ts) for ts in categories]
+
+        self._tags = tags
+
+        # TODO: inherit from GridSearchSpace to avoid generating the points explicitly?
+        ranges = [tf.range(len(ts)) for ts in tags]
+        meshgrid = tf.meshgrid(*ranges, indexing="ij")
+        points = tf.reshape(tf.stack(meshgrid, axis=-1), [-1, len(tags)])
+
+        super().__init__(points)
+
+    def __repr__(self) -> str:
+        """"""
+        return f"CategoricalSearchSpace({self._tags!r})"
+
+    @property
+    def tags(self) -> Sequence[Sequence[str]]:
+        """The tags of the categories."""
+        return self._tags
+
+    def to_tags(self, indices: TensorType) -> TensorType:
+        """
+        Convert a tensor of indices (such as one returned by :meth:`sample`) to one of
+        category tags.
+
+        :param indices: A tensor of integer indices.
+        :return: A tensor of string tags.
+        """
+
+        tag_tensors = [tf.constant(tags) for tags in self._tags]
+
+        def extract_tags(row: TensorType) -> TensorType:
+            return tf.stack([tf.gather(tag_tensors[i], row[i]) for i in range(len(row))])
+
+        return tf.map_fn(extract_tags, indices, dtype=tf.string)
+
+    def product(self, other: DiscreteSearchSpace) -> CategoricalSearchSpace:
+        r"""
+        Return the Cartesian product of the two :class:`CategoricalSearchSpace`\ s. For example:
+
+            >>> rgb = CategoricalSearchSpace(["Red", "Green", "Blue"])
+            >>> yn = CategoricalSearchSpace(["Yes", "No"])
+            >>> rgb * yn
+            CategoricalSearchSpace([('Red', 'Green', 'Blue'), ('Yes', 'No')])
+
+        :param other: A :class:`CategoricalSearchSpace`.
+        :return: The Cartesian product of the two :class:`CategoricalSearchSpace`\ s.
+        """
+        if not isinstance(other, CategoricalSearchSpace):
+            return NotImplemented
+
+        return CategoricalSearchSpace(tuple(chain(self.tags, other.tags)))
+
+    def __eq__(self, other: object) -> bool:
+        """
+        :param other: A search space.
+        :return: Whether the search space is identical to this one.
+        """
+        if not isinstance(other, CategoricalSearchSpace):
+            return NotImplemented
+        return self.tags == other.tags
+
+    # TODO: is_bounded / is_categorical / lower / upper
 
 
 class Box(SearchSpace):
