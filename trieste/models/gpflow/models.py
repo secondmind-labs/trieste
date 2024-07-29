@@ -41,6 +41,7 @@ from ...types import TensorType
 from ...utils import DEFAULTS, jit
 from ...utils.misc import flatten_leading_dims
 from ..interfaces import (
+    EncoderFunction,
     FastUpdateModel,
     HasTrajectorySampler,
     SupportsCovarianceWithTopFidelity,
@@ -90,6 +91,7 @@ class GaussianProcessRegression(
         num_kernel_samples: int = 10,
         num_rff_features: int = 1000,
         use_decoupled_sampler: bool = True,
+        encoder: EncoderFunction | None = None,
     ):
         """
         :param model: The GPflow model to wrap.
@@ -105,8 +107,10 @@ class GaussianProcessRegression(
         :param use_decoupled_sampler: If True use a decoupled random Fourier feature sampler, else
             just use a random Fourier feature sampler. The decoupled sampler suffers less from
             overestimating variance and can typically get away with a lower num_rff_features.
+        :param encoder: Optional encoder with which to transform query points before
+            generating predictions.
         """
-        super().__init__(optimizer)
+        super().__init__(optimizer, encoder)
         self._model = model
 
         check_optimizer(self.optimizer)
@@ -551,6 +555,7 @@ class SparseGaussianProcessRegression(
         inducing_point_selector: Optional[
             InducingPointSelector[SparseGaussianProcessRegression]
         ] = None,
+        encoder: EncoderFunction | None = None,
     ):
         """
         :param model: The GPflow model to wrap.
@@ -566,8 +571,10 @@ class SparseGaussianProcessRegression(
         :raise NotImplementedError (or ValueError): If we try to use a model with invalid
             ``num_rff_features``, or an ``inducing_point_selector`` with a model
             that has more than one set of inducing points.
+        :param encoder: Optional encoder with which to transform query points before
+            generating predictions.
         """
-        super().__init__(optimizer)
+        super().__init__(optimizer, encoder)
         self._model = model
 
         check_optimizer(self.optimizer)
@@ -858,6 +865,7 @@ class SparseVariational(
         optimizer: Optimizer | None = None,
         num_rff_features: int = 1000,
         inducing_point_selector: Optional[InducingPointSelector[SparseVariational]] = None,
+        encoder: EncoderFunction | None = None,
     ):
         """
         :param model: The underlying GPflow sparse variational model.
@@ -874,6 +882,8 @@ class SparseVariational(
             the optimization progresses.
         :raise NotImplementedError: If we try to use an inducing_point_selector with a model
             that has more than one set of inducing points.
+        :param encoder: Optional encoder with which to transform query points before
+            generating predictions.
         """
 
         tf.debugging.assert_rank(
@@ -883,7 +893,7 @@ class SparseVariational(
         if optimizer is None:
             optimizer = BatchOptimizer(tf.optimizers.Adam(), batch_size=100, compile=True)
 
-        super().__init__(optimizer)
+        super().__init__(optimizer, encoder)
         self._model = model
 
         if num_rff_features <= 0:
@@ -1132,6 +1142,7 @@ class VariationalGaussianProcess(
         use_natgrads: bool = False,
         natgrad_gamma: Optional[float] = None,
         num_rff_features: int = 1000,
+        encoder: EncoderFunction | None = None,
     ):
         """
         :param model: The GPflow :class:`~gpflow.models.VGP`.
@@ -1150,6 +1161,8 @@ class VariationalGaussianProcess(
         :raise ValueError (or InvalidArgumentError): If ``model``'s :attr:`q_sqrt` is not rank 3
             or if attempting to combine natural gradients with a :class:`~gpflow.optimizers.Scipy`
             optimizer.
+        :param encoder: Optional encoder with which to transform query points before
+            generating predictions.
         """
         tf.debugging.assert_rank(model.q_sqrt, 3)
 
@@ -1158,7 +1171,7 @@ class VariationalGaussianProcess(
         elif optimizer is None and use_natgrads:
             optimizer = BatchOptimizer(tf.optimizers.Adam(), batch_size=100, compile=True)
 
-        super().__init__(optimizer)
+        super().__init__(optimizer, encoder)
 
         check_optimizer(self.optimizer)
 

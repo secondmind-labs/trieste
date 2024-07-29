@@ -22,6 +22,7 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
+from tensorflow.python.framework.errors_impl import InvalidArgumentError
 
 from tests.util.misc import assert_datasets_allclose, quadratic, random_seed
 from tests.util.models.gpflow.models import (
@@ -35,6 +36,7 @@ from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.data import Dataset
 from trieste.models import TrainableModelStack, TrainableProbabilisticModel
 from trieste.models.interfaces import (
+    CategoryOneHotEncoding,
     TrainablePredictJointReparamModelStack,
     TrainablePredictYModelStack,
     TrainableSupportsPredictJoint,
@@ -216,3 +218,42 @@ def test_model_stack_reparam_sampler() -> None:
     npt.assert_allclose(var[..., :2], var01, rtol=0.04)
     npt.assert_allclose(var[..., 2:3], var2, rtol=0.04)
     npt.assert_allclose(var[..., 3:], var3, rtol=0.04)
+
+
+@pytest.mark.parametrize(
+    "num_categories, query_points, encoded_points",
+    [
+        (1, tf.constant([0, 0]), tf.constant([[1], [1]], dtype=tf.float32)),
+        (
+            3,
+            tf.constant([0, 2, 1]),
+            tf.constant([[1, 0, 0], [0, 0, 1], [0, 1, 0]], dtype=tf.float32),
+        ),
+        (
+            4,
+            tf.constant([0, 2, 2]),
+            tf.constant([[1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 1, 0]], dtype=tf.float32),
+        ),
+    ],
+)
+def test_category_one_hot_encoding(
+    num_categories: int, query_points: TensorType, encoded_points: TensorType
+) -> None:
+    encoder = CategoryOneHotEncoding(num_categories)
+    points = encoder(query_points)
+    npt.assert_array_equal(encoded_points, points)
+
+
+@pytest.mark.parametrize(
+    "num_categories, query_points, exception",
+    [
+        (0, tf.constant([]), ValueError),
+        (2, tf.constant([0, 2, 1]), InvalidArgumentError),
+    ],
+)
+def test_category_one_hot_encoding_value_errors(
+    num_categories: int, query_points: TensorType, exception: type
+) -> None:
+    with pytest.raises(exception):
+        encoder = CategoryOneHotEncoding(num_categories)
+        encoder(query_points)

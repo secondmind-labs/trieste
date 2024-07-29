@@ -501,16 +501,11 @@ class CategoricalSearchSpace(DiscreteSearchSpace):
         >>> rgb = CategoricalSearchSpace(["Red", "Green", "Blue"])
         >>> assert tf.constant([1]) in rgb
         >>> assert tf.constant([3]) not in rgb
-        >>> rgb.sample(3)
-        <tf.Tensor: shape=(3, 1), dtype=int32, numpy=
-        array([[1],
-               [2],
-               [0]], dtype=int32)>
-        >>> rgb.to_tags(rgb.sample(3))
+        >>> rgb.to_tags(tf.constant([[1], [0], [2]]))
         <tf.Tensor: shape=(3, 1), dtype=string, numpy=
-        array([[b'Red'],
-               [b'Blue'],
-               [b'Red']], dtype=object)>
+        array([[b'Green'],
+               [b'Red'],
+               [b'Blue']], dtype=object)>
 
     """
 
@@ -520,12 +515,13 @@ class CategoricalSearchSpace(DiscreteSearchSpace):
             multidimensional spaces.
         """
         if isinstance(categories, int) or all(isinstance(x, str) for x in categories):
-            categories = [categories]
+            categories = [categories]  # type: ignore[assignment]
 
+        assert isinstance(categories, Sequence)
         if all(isinstance(x, int) for x in categories):
-            tags = [tuple(f"{i}" for i in range(n)) for n in categories]
+            tags = [tuple(f"{i}" for i in range(n)) for n in categories]  # type: ignore[arg-type]
         else:
-            tags = [tuple(ts) for ts in categories]
+            tags = [tuple(ts) for ts in categories]  # type: ignore[arg-type]
 
         self._tags = tags
 

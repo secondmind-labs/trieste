@@ -20,6 +20,7 @@ from typing import Any, Callable, Generic, Optional, Sequence, TypeVar
 import gpflow
 import tensorflow as tf
 from check_shapes import check_shapes
+from gpflow.keras import tf_keras
 from typing_extensions import Protocol, runtime_checkable
 
 from ..data import Dataset
@@ -742,3 +743,29 @@ class SupportsCovarianceWithTopFidelity(ProbabilisticModel, Protocol):
         :return: The covariance with the top fidelity for the `query_points`, of shape [N, P]
         """
         raise NotImplementedError
+
+
+EncoderFunction = Callable[[TensorType], TensorType]
+"""Type alias for query point encoders. These transform query points into a type that can
+be used internally by models."""
+
+
+class EncoderFunctionClass(ABC):
+    """An :class:`EncoderFunctionClass` is an encoder function represented using a class
+    rather than as a standalone function.
+    """
+
+    @abstractmethod
+    def __call__(self, x: TensorType) -> TensorType:
+        """Call encoder function."""
+
+
+class CategoryOneHotEncoding(EncoderFunctionClass):
+    def __init__(self, num_categories: int):
+        """ """
+        self._encoder = tf_keras.layers.CategoryEncoding(
+            num_tokens=num_categories, output_mode="one_hot"
+        )
+
+    def __call__(self, x: TensorType) -> TensorType:
+        return self._encoder(x)
