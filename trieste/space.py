@@ -32,6 +32,9 @@ from .types import TensorType
 SearchSpaceType = TypeVar("SearchSpaceType", bound="SearchSpace")
 """ A type variable bound to :class:`SearchSpace`. """
 
+DiscreteSearchSpaceType = TypeVar("DiscreteSearchSpaceType", bound="GeneralDiscreteSearchSpace")
+""" A type variable bound to :class:`GeneralDiscreteSearchSpace`. """
+
 DEFAULT_DTYPE: tf.DType = tf.float64
 """ Default dtype to use when none is provided. """
 

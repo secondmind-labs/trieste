@@ -64,6 +64,7 @@ from ..observer import OBJECTIVE
 from ..space import (
     Box,
     DiscreteSearchSpace,
+    DiscreteSearchSpaceType,
     SearchSpace,
     TaggedMultiSearchSpace,
     TaggedProductSearchSpace,
@@ -2218,14 +2219,16 @@ class TURBOBox(UpdatableTrustRegionBox):
         return tf.squeeze(x_min, axis=0), tf.squeeze(y_min)
 
 
-class UpdatableTrustRegionDiscrete(DiscreteSearchSpace, UpdatableTrustRegion):
+class UpdatableTrustRegionDiscreteMixin(UpdatableTrustRegion, Generic[DiscreteSearchSpaceType]):
     """
-    An updatable discrete search space with an associated global search space.
+    A mixin for updatable discrete search spaces with an associated global search space.
+    Specific subclasses define distance metrics appropriate for specific types of discrete
+    spaces.
     """
 
     def __init__(
         self,
-        global_search_space: DiscreteSearchSpace,
+        global_search_space: DiscreteSearchSpaceType,
         region_index: Optional[int] = None,
         input_active_dims: Optional[Union[slice, Sequence[int]]] = None,
     ):
@@ -2237,8 +2240,7 @@ class UpdatableTrustRegionDiscrete(DiscreteSearchSpace, UpdatableTrustRegion):
         :param input_active_dims: The active dimensions of the input space, either a slice or list
             of indices into the columns of the space. If `None`, all dimensions are active.
         """
-        # Ensure global_points is a copied tensor, in case a variable is passed in.
-        DiscreteSearchSpace.__init__(self, tf.constant(global_search_space.points))
+        # subclasses should also initialise this using the global_search_space
         UpdatableTrustRegion.__init__(self, region_index, input_active_dims)
         self._global_search_space = global_search_space
 
@@ -2256,16 +2258,8 @@ class UpdatableTrustRegionDiscrete(DiscreteSearchSpace, UpdatableTrustRegion):
         self._location_ix = tf.squeeze(location_ix, axis=-1)
 
     @property
-    def global_search_space(self) -> DiscreteSearchSpace:
+    def global_search_space(self) -> DiscreteSearchSpaceType:
         return self._global_search_space
-
-    def _compute_global_distances(self) -> TensorType:
-        # Helper method to compute and return pairwise distances along each axis in the
-        # global search space.
-        points = self.global_search_space.points
-        return tf.abs(
-            tf.expand_dims(points, -2) - tf.expand_dims(points, -3)
-        )  # [num_points, num_points, D]
 
     def _get_points_within_distance(
         self, global_distances: TensorType, eps: TensorType
@@ -2285,11 +2279,12 @@ class UpdatableTrustRegionDiscrete(DiscreteSearchSpace, UpdatableTrustRegion):
         return tf.gather(self.global_search_space.points, neighbor_ixs)
 
 
-class FixedPointTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
+class UpdatableTrustRegionDiscrete(
+    DiscreteSearchSpace, UpdatableTrustRegionDiscreteMixin[DiscreteSearchSpace]
+):
+
     """
-    A discrete trust region with a fixed point location that does not change across active learning
-    steps. The fixed point is selected at random from the global (discrete) search space at
-    initialization time.
+    An updatable discrete search space with an associated global search space.
     """
 
     def __init__(
@@ -2298,9 +2293,30 @@ class FixedPointTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
         region_index: Optional[int] = None,
         input_active_dims: Optional[Union[slice, Sequence[int]]] = None,
     ):
-        super().__init__(global_search_space, region_index, input_active_dims)
-        # Random initial point from the global search space.
-        self._init_location()
+        # Ensure global_points is a copied tensor, in case a variable is passed in.
+        DiscreteSearchSpace.__init__(self, tf.constant(global_search_space.points))
+        UpdatableTrustRegionDiscreteMixin.__init__(
+            self, global_search_space, region_index, input_active_dims
+        )
+
+    def _compute_global_distances(self) -> TensorType:
+        # Helper method to compute and return pairwise distances along each axis in the
+        # global search space.
+        points = self.global_search_space.points
+        return tf.abs(
+            tf.expand_dims(points, -2) - tf.expand_dims(points, -3)
+        )  # [num_points, num_points, D]
+
+
+# TODO: define UpdatableTrustRegionCategorical
+
+
+class FixedPointTrustRegionMixin(UpdatableTrustRegion):
+    """
+    A mixin for discrete trust regions with fixed point locations that do not change across
+    active learning steps. The fixed point is selected at random from the global (discrete)
+    search space at initialization time.
+    """
 
     def initialize(
         self,
@@ -2318,6 +2334,21 @@ class FixedPointTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
     ) -> None:
         # Keep the point fixed, no updates needed.
         pass
+
+
+class FixedPointTrustRegionDiscrete(UpdatableTrustRegionDiscrete, FixedPointTrustRegionMixin):
+    def __init__(
+        self,
+        global_search_space: DiscreteSearchSpace,
+        region_index: Optional[int] = None,
+        input_active_dims: Optional[Union[slice, Sequence[int]]] = None,
+    ):
+        super().__init__(global_search_space, region_index, input_active_dims)
+        # Random initial point from the global search space.
+        self._init_location()
+
+
+# TODO: define FixedPointTrustRegionCategorical
 
 
 class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete, HypercubeTrustRegion):
@@ -2375,6 +2406,9 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete, Hypercube
 
     def _update_domain(self) -> None:
         self._points = self._get_points_within_distance(self._global_distances, self.eps)
+
+
+# TODO: define SingleObjectiveTrustRegionCategorical
 
 
 class UpdatableTrustRegionProduct(TaggedProductSearchSpace, UpdatableTrustRegion):
