@@ -25,6 +25,7 @@ import scipy.optimize as spo
 import tensorflow as tf
 import tensorflow_probability as tfp
 from check_shapes import check_shapes
+from gpflow.keras import tf_keras
 
 from .types import TensorType
 
@@ -33,6 +34,9 @@ SearchSpaceType = TypeVar("SearchSpaceType", bound="SearchSpace")
 
 DEFAULT_DTYPE: tf.DType = tf.float64
 """ Default dtype to use when none is provided. """
+
+EncoderFunction = Callable[[TensorType], TensorType]
+""" Type alias for point encoders. These transform points from one search space to another. """
 
 
 class SampleTimeoutError(Exception):
@@ -514,14 +518,20 @@ class CategoricalSearchSpace(DiscreteSearchSpace):
         :param categories: Number of categories or category names. Can be an array for
             multidimensional spaces.
         """
-        if isinstance(categories, int) or all(isinstance(x, str) for x in categories):
+        if isinstance(categories, int) or any(isinstance(x, str) for x in categories):
             categories = [categories]  # type: ignore[assignment]
 
         assert isinstance(categories, Sequence)
         if all(isinstance(x, int) for x in categories):
-            tags = [tuple(f"{i}" for i in range(n)) for n in categories]  # type: ignore[arg-type]
+            category_lens: Sequence[int] = categories  # type: ignore[assignment]
+            if any(x <= 0 for x in category_lens):
+                raise ValueError("Number of categories must be positive")
+            tags = [tuple(f"{i}" for i in range(n)) for n in category_lens]
         else:
-            tags = [tuple(ts) for ts in categories]  # type: ignore[arg-type]
+            category_names: Sequence[Sequence[str]] = categories  # type: ignore[assignment]
+            if any(len(ts) == 0 for ts in category_names):
+                raise ValueError("Category name lists cannot be empty")
+            tags = [tuple(ts) for ts in category_names]
 
         self._tags = tags
 
@@ -540,6 +550,31 @@ class CategoricalSearchSpace(DiscreteSearchSpace):
     def tags(self) -> Sequence[Sequence[str]]:
         """The tags of the categories."""
         return self._tags
+
+    @property
+    def one_hot_encoder(self) -> EncoderFunction:
+        """A one-hot encoder for the numerical indices."""
+
+        def encoder(x: TensorType) -> TensorType:
+            if tf.rank(x) != 2:
+                raise ValueError(
+                    f"Invalid input for one-hot encoding: expected rank 2, got {tf.rank(x)}"
+                )
+            if x.shape[1] != len(self.tags):
+                raise ValueError(
+                    "Invalid input for one-hot encoding: "
+                    f"expected {len(self.tags)} tags, got {x.shape[1]}"
+                )
+            columns = tf.split(x, x.shape[1], axis=1)
+            encoders = [
+                tf_keras.layers.CategoryEncoding(num_tokens=len(ts), output_mode="one_hot")
+                for ts in self.tags
+            ]
+            return tf.concat(
+                [encoder(column) for encoder, column in zip(encoders, columns)], axis=1
+            )
+
+        return encoder
 
     def to_tags(self, indices: TensorType) -> TensorType:
         """

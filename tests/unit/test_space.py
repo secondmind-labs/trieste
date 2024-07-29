@@ -22,11 +22,13 @@ from typing import Any, Container, List, Optional, Sequence, Type
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
+from tensorflow.python.framework.errors_impl import InvalidArgumentError
 from typing_extensions import Final
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, various_shapes
 from trieste.space import (
     Box,
+    CategoricalSearchSpace,
     CollectionSearchSpace,
     Constraint,
     DiscreteSearchSpace,
@@ -1591,3 +1593,67 @@ def test_box_empty_halton_sampling_returns_correct_dtype(dtype: tf.DType) -> Non
     box = Box(tf.zeros((3,), dtype=dtype), tf.ones((3,), dtype=dtype))
     sobol_samples = box.sample_halton(0)
     assert sobol_samples.dtype == dtype
+
+
+@pytest.mark.parametrize(
+    "search_space, query_points, encoded_points",
+    [
+        (
+            CategoricalSearchSpace(["V"]),
+            tf.constant([[0], [0]]),
+            tf.constant([[1], [1]], dtype=tf.float32),
+        ),
+        (
+            CategoricalSearchSpace(["R", "G", "B"]),
+            tf.constant([[0], [2], [1]]),
+            tf.constant([[1, 0, 0], [0, 0, 1], [0, 1, 0]], dtype=tf.float32),
+        ),
+        (
+            CategoricalSearchSpace(["R", "G", "B", "A"]),
+            tf.constant([[0], [2], [2]]),
+            tf.constant([[1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 1, 0]], dtype=tf.float32),
+        ),
+        (
+            CategoricalSearchSpace([["R", "G", "B"], ["Y", "N"]]),
+            tf.constant([[0, 0], [2, 0], [1, 1]]),
+            tf.constant([[1, 0, 0, 1, 0], [0, 0, 1, 1, 0], [0, 1, 0, 0, 1]], dtype=tf.float32),
+        ),
+    ],
+)
+def test_categorical_search_space_one_hot_encoding(
+    search_space: CategoricalSearchSpace, query_points: TensorType, encoded_points: TensorType
+) -> None:
+    encoder = search_space.one_hot_encoder
+    points = encoder(query_points)
+    npt.assert_array_equal(encoded_points, points)
+
+
+@pytest.mark.parametrize(
+    "search_space, query_points, exception",
+    [
+        pytest.param(
+            CategoricalSearchSpace(["Y", "N"]),
+            tf.constant([0, 2, 1]),
+            ValueError,
+            id="Wrong input rank",
+        ),
+        pytest.param(
+            CategoricalSearchSpace(["Y", "N"]),
+            tf.constant([[0], [2], [1]]),
+            InvalidArgumentError,
+            id="Out of range input value",
+        ),
+        pytest.param(
+            CategoricalSearchSpace([["R", "G", "B"], ["Y", "N"]]),
+            tf.constant([[0], [1], [1]]),
+            ValueError,
+            id="Wrong input shape",
+        ),
+    ],
+)
+def test_category_one_hot_encoding_value_errors(
+    search_space: CategoricalSearchSpace, query_points: TensorType, exception: type
+) -> None:
+    with pytest.raises(exception):
+        encoder = search_space.one_hot_encoder
+        encoder(query_points)

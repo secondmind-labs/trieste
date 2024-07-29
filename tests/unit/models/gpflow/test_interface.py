@@ -24,7 +24,6 @@ from gpflow.models import GPModel
 from tests.util.misc import random_seed
 from trieste.data import Dataset
 from trieste.models.gpflow import BatchReparametrizationSampler, GPflowPredictor
-from trieste.models.interfaces import CategoryOneHotEncoding
 from trieste.space import CategoricalSearchSpace
 
 
@@ -119,7 +118,7 @@ def test_gpflow_reparam_sampler_returns_reparam_sampler_with_correct_samples() -
 def test_gpflow_categorical_predict() -> None:
     search_space = CategoricalSearchSpace(["Red", "Green", "Blue"])
     query_points = search_space.sample(10)
-    model = _QuadraticPredictor(encoder=CategoryOneHotEncoding(3))
+    model = _QuadraticPredictor(encoder=search_space.one_hot_encoder)
     mean, variance = model.predict(query_points)
     assert mean.shape == [10, 1]
     assert variance.shape == [10, 1]

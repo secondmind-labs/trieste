@@ -37,11 +37,11 @@ from ...data import (
     check_and_extract_fidelity_query_points,
     split_dataset_by_fidelity,
 )
+from ...space import EncoderFunction
 from ...types import TensorType
 from ...utils import DEFAULTS, jit
 from ...utils.misc import flatten_leading_dims
 from ..interfaces import (
-    EncoderFunction,
     FastUpdateModel,
     HasTrajectorySampler,
     SupportsCovarianceWithTopFidelity,

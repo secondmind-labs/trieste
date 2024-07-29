@@ -26,9 +26,9 @@ from typing_extensions import Protocol
 
 from ... import logging
 from ...data import Dataset
+from ...space import EncoderFunction
 from ...types import TensorType
 from ..interfaces import (
-    EncoderFunction,
     HasReparamSampler,
     ReparametrizationSampler,
     SupportsGetKernel,
