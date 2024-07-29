@@ -18,23 +18,14 @@ import operator
 from abc import ABC, abstractmethod
 from functools import reduce
 from itertools import chain
-from typing import (
-    Callable,
-    Optional,
-    Protocol,
-    Sequence,
-    Tuple,
-    TypeVar,
-    Union,
-    overload,
-    runtime_checkable,
-)
+from typing import Callable, Optional, Sequence, Tuple, TypeVar, Union, overload
 
 import numpy as np
 import scipy.optimize as spo
 import tensorflow as tf
 import tensorflow_probability as tfp
 from check_shapes import check_shapes
+from typing_extensions import Protocol, runtime_checkable
 
 from .types import TensorType
 
@@ -387,10 +378,11 @@ class SearchSpace(ABC):
         return False
 
 
-class DiscreteSearchSpaceABC(SearchSpace):
+class GeneralDiscreteSearchSpace(SearchSpace):
     """
-    An ABC representing different types of discrete search spaces. This contains
-    a default implementation using explicitly provided points which subclasses may ignore.
+    An ABC representing different types of discrete search spaces (not just numerical).
+    This contains a default implementation using explicitly provided points which subclasses
+    may ignore.
     """
 
     def __init__(self, points: TensorType):
@@ -446,7 +438,7 @@ class DiscreteSearchSpaceABC(SearchSpace):
             return tf.gather(self.points, sampled_indices)[0, :, :]  # [num_samples, D]
 
 
-class DiscreteSearchSpace(DiscreteSearchSpaceABC):
+class DiscreteSearchSpace(GeneralDiscreteSearchSpace):
     r"""
     A discrete :class:`SearchSpace` representing a finite set of :math:`D`-dimensional points in
     :math:`\mathbb{R}^D`.
@@ -512,11 +504,11 @@ class HasOneHotEncoder(Protocol):
 
 
 def one_hot_encoder(space: SearchSpace) -> EncoderFunction:
-    "A utility function for one-hot encoding a search space (when it supports it)."
+    "A utility function for one-hot encoding a search space when it supports it."
     return space.one_hot_encoder if isinstance(space, HasOneHotEncoder) else lambda x: x
 
 
-class CategoricalSearchSpace(DiscreteSearchSpaceABC, HasOneHotEncoder):
+class CategoricalSearchSpace(GeneralDiscreteSearchSpace, HasOneHotEncoder):
     r"""
     A categorical :class:`SearchSpace` representing a finite set :math:`\mathcal{C}` of categories,
     or a finite Cartesian product :math:`\mathcal{C_1} \times \cdots \times \mathcal{C_n}` of
