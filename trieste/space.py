@@ -18,7 +18,17 @@ import operator
 from abc import ABC, abstractmethod
 from functools import reduce
 from itertools import chain
-from typing import Callable, Optional, Sequence, Tuple, TypeVar, Union, overload
+from typing import (
+    Callable,
+    Optional,
+    Protocol,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+    overload,
+    runtime_checkable,
+)
 
 import numpy as np
 import scipy.optimize as spo
@@ -492,7 +502,22 @@ class DiscreteSearchSpace(DiscreteSearchSpaceABC):
         return bool(tf.reduce_all(tf.sort(self.points, 0) == tf.sort(other.points, 0)))
 
 
-class CategoricalSearchSpace(DiscreteSearchSpaceABC):
+@runtime_checkable
+class HasOneHotEncoder(Protocol):
+    """A search space that contains default logic for one-hot encoding."""
+
+    @property
+    @abstractmethod
+    def one_hot_encoder(self) -> EncoderFunction:
+        "A one-hot encoder for points in the search space."
+
+
+def one_hot_encoder(space: SearchSpace) -> EncoderFunction:
+    "A utility function for one-hot encoding a search space (when it supports it)."
+    return space.one_hot_encoder if isinstance(space, HasOneHotEncoder) else lambda x: x
+
+
+class CategoricalSearchSpace(DiscreteSearchSpaceABC, HasOneHotEncoder):
     r"""
     A categorical :class:`SearchSpace` representing a finite set :math:`\mathcal{C}` of categories,
     or a finite Cartesian product :math:`\mathcal{C_1} \times \cdots \times \mathcal{C_n}` of
@@ -547,7 +572,6 @@ class CategoricalSearchSpace(DiscreteSearchSpaceABC):
         meshgrid = tf.meshgrid(*ranges, indexing="ij")
         points = tf.reshape(tf.stack(meshgrid, axis=-1), [-1, len(tags)])
 
-        # TODO
         super().__init__(points)
 
     def __repr__(self) -> str:
@@ -623,7 +647,7 @@ class CategoricalSearchSpace(DiscreteSearchSpaceABC):
             return NotImplemented
         return self.tags == other.tags
 
-    # TODO: is_bounded / is_categorical / lower / upper
+    # TODO: is_bounded / lower / upper
 
 
 class Box(SearchSpace):
@@ -1134,7 +1158,7 @@ class CollectionSearchSpace(SearchSpace):
         return self._tags == other._tags and self._spaces == other._spaces
 
 
-class TaggedProductSearchSpace(CollectionSearchSpace):
+class TaggedProductSearchSpace(CollectionSearchSpace, HasOneHotEncoder):
     r"""
     Product :class:`SearchSpace` consisting of a product of
     multiple :class:`SearchSpace`. This class provides functionality for
@@ -1281,6 +1305,23 @@ class TaggedProductSearchSpace(CollectionSearchSpace):
         :return: The Cartesian product of this search space with the ``other``.
         """
         return TaggedProductSearchSpace(spaces=[self, other])
+
+    @property
+    def one_hot_encoder(self) -> EncoderFunction:
+        """An encoder that one-hot-encodes all subpsaces that support it (and leaves
+        the other subspaces unchanged)."""
+
+        def encoder(x: TensorType) -> TensorType:
+            components = []
+            for tag in self.subspace_tags:
+                component = self.get_subspace_component(tag, x)
+                space = self.get_subspace(tag)
+                if isinstance(space, HasOneHotEncoder):
+                    component = space.one_hot_encoder(component)
+                components.append(component)
+            return tf.concat(components, axis=1)
+
+        return encoder
 
 
 class TaggedMultiSearchSpace(CollectionSearchSpace):

@@ -37,6 +37,7 @@ from trieste.space import (
     SearchSpace,
     TaggedMultiSearchSpace,
     TaggedProductSearchSpace,
+    one_hot_encoder,
 )
 from trieste.types import TensorType
 
@@ -1618,12 +1619,22 @@ def test_box_empty_halton_sampling_returns_correct_dtype(dtype: tf.DType) -> Non
             tf.constant([[0, 0], [2, 0], [1, 1]]),
             tf.constant([[1, 0, 0, 1, 0], [0, 0, 1, 1, 0], [0, 1, 0, 0, 1]], dtype=tf.float32),
         ),
+        (
+            TaggedProductSearchSpace([Box([0.0], [1.0]), CategoricalSearchSpace(["R", "G", "B"])]),
+            tf.constant([[0.5, 0], [0.3, 2]]),
+            tf.constant([[0.5, 1, 0, 0], [0.3, 0, 0, 1]], dtype=tf.float32),
+        ),
+        (
+            Box([0.0], [1.0]),
+            tf.constant([[0.5], [0.3]]),
+            tf.constant([[0.5], [0.3]], dtype=tf.float32),
+        ),
     ],
 )
 def test_categorical_search_space_one_hot_encoding(
-    search_space: CategoricalSearchSpace, query_points: TensorType, encoded_points: TensorType
+    search_space: SearchSpace, query_points: TensorType, encoded_points: TensorType
 ) -> None:
-    encoder = search_space.one_hot_encoder
+    encoder = one_hot_encoder(search_space)
     points = encoder(query_points)
     npt.assert_array_equal(encoded_points, points)
 
