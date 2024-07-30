@@ -27,9 +27,16 @@ from tensorflow.python.keras.callbacks import Callback
 
 from ... import logging
 from ...data import Dataset
+from ...space import EncoderFunction
 from ...types import TensorType
 from ...utils import flatten_leading_dims
-from ..interfaces import HasTrajectorySampler, TrainableProbabilisticModel, TrajectorySampler
+from ..interfaces import (
+    HasEncoder,
+    HasTrajectorySampler,
+    TrainableProbabilisticModel,
+    TrajectorySampler,
+    encode_query_points,
+)
 from ..optimizer import KerasOptimizer
 from ..utils import write_summary_data_based_metrics
 from .architectures import KerasEnsemble, MultivariateNormalTriL
@@ -39,7 +46,7 @@ from .utils import negative_log_likelihood, sample_model_index, sample_with_repl
 
 
 class DeepEnsemble(
-    KerasPredictor, TrainableProbabilisticModel, DeepEnsembleModel, HasTrajectorySampler
+    KerasPredictor, TrainableProbabilisticModel, DeepEnsembleModel, HasTrajectorySampler, HasEncoder
 ):
     """
     A :class:`~trieste.model.TrainableProbabilisticModel` wrapper for deep ensembles built using
@@ -75,7 +82,7 @@ class DeepEnsemble(
     behaviour you would like, you will need to subclass the model and overwrite the
     :meth:`optimize` method.
 
-    Currently we do not support setting up the model with dictionary config.
+    Currently, we do not support setting up the model with dictionary config.
     """
 
     def __init__(
@@ -86,6 +93,7 @@ class DeepEnsemble(
         diversify: bool = False,
         continuous_optimisation: bool = True,
         compile_args: Optional[Mapping[str, Any]] = None,
+        encoder: EncoderFunction | None = None,
     ) -> None:
         """
         :param model: A Keras ensemble model with probabilistic networks as ensemble members. The
@@ -98,12 +106,12 @@ class DeepEnsemble(
             See https://keras.io/api/models/model_training_apis/#fit-method for a list of possible
             arguments.
         :param bootstrap: Sample with replacement data for training each network in the ensemble.
-            By default set to `False`.
+            By default, set to `False`.
         :param diversify: Whether to use quantiles from the approximate Gaussian distribution of
             the ensemble as trajectories instead of mean predictions when calling
             :meth:`trajectory_sampler`. This mode can be used to increase the diversity
             in case of optimizing very large batches of trajectories. By
-            default set to `False`.
+            default, set to `False`.
         :param continuous_optimisation: If True (default), the optimizer will keep track of the
             number of epochs across BO iterations and use this number as initial_epoch. This is
             essential to allow monitoring of model training across BO iterations.
@@ -112,6 +120,8 @@ class DeepEnsemble(
             See https://keras.io/api/models/model_training_apis/#compile-method for a
             list of possible arguments. The ``optimizer``, ``loss`` and ``metrics`` arguments
             must not be included.
+        :param encoder: Optional encoder with which to transform query points before
+            generating predictions.
         :raise ValueError: If ``model`` is not an instance of
             :class:`~trieste.models.keras.KerasEnsemble`, or ensemble has less than two base
             learners (networks), or `compile_args` contains disallowed arguments.
@@ -164,6 +174,11 @@ class DeepEnsemble(
         self._model = model
         self._bootstrap = bootstrap
         self._diversify = diversify
+        self._encoder = encoder
+
+    @property
+    def encoder(self) -> EncoderFunction | None:
+        return self._encoder
 
     def __repr__(self) -> str:
         """"""
@@ -245,6 +260,7 @@ class DeepEnsemble(
         return self._model.model(x_transformed)
 
     @inherit_check_shapes
+    @encode_query_points
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         r"""
         Returns mean and variance at ``query_points`` for the whole ensemble.
@@ -294,6 +310,7 @@ class DeepEnsemble(
         """The prediction dtype."""
         return self._model.output_dtype
 
+    @encode_query_points
     def predict_ensemble(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
         Returns mean and variance at ``query_points`` for each member of the ensemble. First tensor
@@ -315,6 +332,7 @@ class DeepEnsemble(
         return predicted_means, predicted_vars
 
     @inherit_check_shapes
+    @encode_query_points
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         """
         Return ``num_samples`` samples at ``query_points``. We use the mixture approximation in
@@ -333,6 +351,7 @@ class DeepEnsemble(
 
         return samples  # [num_samples, len(query_points), 1]
 
+    @encode_query_points
     def sample_ensemble(self, query_points: TensorType, num_samples: int) -> TensorType:
         """
         Return ``num_samples`` samples at ``query_points``. Each sample is taken from a Gaussian

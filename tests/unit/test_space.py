@@ -1478,6 +1478,7 @@ def _nlc_func(x: TensorType) -> TensorType:
         (CategoricalSearchSpace([3]), CategoricalSearchSpace([3, 2]), False),
         (CategoricalSearchSpace(3), CategoricalSearchSpace(["0", "1", "2"]), True),
         (CategoricalSearchSpace(3), CategoricalSearchSpace(["R", "G", "B"]), False),
+        (CategoricalSearchSpace(3), DiscreteSearchSpace(tf.constant([[0], [1]])), False),
     ],
 )
 def test___eq___search_spaces(a: SearchSpace, b: SearchSpace, equal: bool) -> None:
@@ -1817,7 +1818,8 @@ def test_categorical_search_space_one_hot_encoding__raises(
 @pytest.mark.parametrize(
     "space",
     [
-        CategoricalSearchSpace(3),
+        CategoricalSearchSpace([3, 2]),
+        CategoricalSearchSpace(["R", "G", "B"]),
         TaggedProductSearchSpace([Box([-1, -2], [2, 3]), CategoricalSearchSpace(2)]),
     ],
 )
