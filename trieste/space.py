@@ -271,6 +271,11 @@ class SearchSpace(ABC):
 
     @property
     @abstractmethod
+    def has_bounds(self) -> bool:
+        """Whether the search space has meaningful numerical bounds."""
+
+    @property
+    @abstractmethod
     def lower(self) -> TensorType:
         """The lowest value taken by each search space dimension."""
 
@@ -399,16 +404,6 @@ class GeneralDiscreteSearchSpace(SearchSpace):
         self._dimension = tf.shape(self._points)[-1]
 
     @property
-    def lower(self) -> TensorType:
-        """The lowest value taken across all points by each search space dimension."""
-        return tf.reduce_min(self.points, -2)
-
-    @property
-    def upper(self) -> TensorType:
-        """The highest value taken across all points by each search space dimension."""
-        return tf.reduce_max(self.points, -2)
-
-    @property
     def points(self) -> TensorType:
         """All the points in this space."""
         return self._points
@@ -458,6 +453,20 @@ class DiscreteSearchSpace(GeneralDiscreteSearchSpace):
     def __repr__(self) -> str:
         """"""
         return f"DiscreteSearchSpace({self._points!r})"
+
+    @property
+    def has_bounds(self) -> bool:
+        return True
+
+    @property
+    def lower(self) -> TensorType:
+        """The lowest value taken across all points by each search space dimension."""
+        return tf.reduce_min(self.points, -2)
+
+    @property
+    def upper(self) -> TensorType:
+        """The highest value taken across all points by each search space dimension."""
+        return tf.reduce_max(self.points, -2)
 
     def product(self, other: DiscreteSearchSpace) -> DiscreteSearchSpace:
         r"""
@@ -585,6 +594,18 @@ class CategoricalSearchSpace(GeneralDiscreteSearchSpace, HasOneHotEncoder):
         return f"CategoricalSearchSpace({self._tags!r})"
 
     @property
+    def has_bounds(self) -> bool:
+        return False
+
+    @property
+    def lower(self) -> TensorType:
+        raise AttributeError("Categorical search spaces do not have numerical bounds")
+
+    @property
+    def upper(self) -> TensorType:
+        raise AttributeError("Categorical search spaces do not have numerical bounds")
+
+    @property
     def tags(self) -> Sequence[Sequence[str]]:
         """The tags of the categories."""
         return self._tags
@@ -652,8 +673,6 @@ class CategoricalSearchSpace(GeneralDiscreteSearchSpace, HasOneHotEncoder):
         if not isinstance(other, CategoricalSearchSpace):
             return NotImplemented
         return self.tags == other.tags
-
-    # TODO: is_bounded / lower / upper
 
 
 class Box(SearchSpace):
@@ -734,6 +753,10 @@ class Box(SearchSpace):
     def __repr__(self) -> str:
         """"""
         return f"Box({self._lower!r}, {self._upper!r}, {self._constraints!r}, {self._ctol!r})"
+
+    @property
+    def has_bounds(self) -> bool:
+        return True
 
     @property
     def lower(self) -> tf.Tensor:
@@ -1096,6 +1119,11 @@ class CollectionSearchSpace(SearchSpace):
                 {[self.get_subspace(tag) for tag in self.subspace_tags]},
                 tags = {self.subspace_tags})
                 """
+
+    @property
+    def has_bounds(self) -> bool:
+        """Whether the search space has meaningful numerical bounds."""
+        return all(self.get_subspace(tag).has_bounds for tag in self.subspace_tags)
 
     @property
     def subspace_lower(self) -> Sequence[TensorType]:

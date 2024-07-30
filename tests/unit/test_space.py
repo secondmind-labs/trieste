@@ -49,6 +49,10 @@ class Integers(SearchSpace):
         self.limit: Final[int] = exclusive_limit
 
     @property
+    def has_bounds(self) -> bool:
+        return True
+
+    @property
     def lower(self) -> None:
         pass
 
@@ -187,6 +191,7 @@ def test_discrete_search_space_returns_correct_dimension(
 def test_discrete_search_space_returns_correct_bounds(
     space: DiscreteSearchSpace, lower: tf.Tensor, upper: tf.Tensor
 ) -> None:
+    assert space.has_bounds
     npt.assert_array_equal(space.lower, lower)
     npt.assert_array_equal(space.upper, upper)
 
@@ -409,6 +414,7 @@ def test_box_returns_correct_dimension(space: Box, dimension: int) -> None:
 def test_box_bounds_attributes() -> None:
     lower, upper = tf.zeros([2]), tf.ones([2])
     box = Box(lower, upper)
+    assert box.has_bounds
     npt.assert_array_equal(box.lower, lower)
     npt.assert_array_equal(box.upper, upper)
 
@@ -1110,6 +1116,7 @@ def test_product_space_returns_correct_bounds(
     spaces: Sequence[SearchSpace], lower: tf.Tensor, upper: tf.Tensor
 ) -> None:
     for space in (TaggedProductSearchSpace(spaces=spaces), reduce(operator.mul, spaces)):
+        assert space.has_bounds
         npt.assert_array_equal(space.lower, lower)
         npt.assert_array_equal(space.upper, upper)
 
@@ -1805,3 +1812,20 @@ def test_categorical_search_space_one_hot_encoding__raises(
     encoder = one_hot_encoder(search_space)
     with pytest.raises(exception):
         encoder(query_points)
+
+
+@pytest.mark.parametrize(
+    "space",
+    [
+        CategoricalSearchSpace(3),
+        TaggedProductSearchSpace([Box([-1, -2], [2, 3]), CategoricalSearchSpace(2)]),
+    ],
+)
+def test_unbound_search_spaces(
+    space: SearchSpace,
+) -> None:
+    assert not space.has_bounds
+    with pytest.raises(AttributeError):
+        space.lower
+    with pytest.raises(AttributeError):
+        space.upper
