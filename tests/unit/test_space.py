@@ -1707,6 +1707,33 @@ def test_categorical_search_space__tags(
 
 
 @pytest.mark.parametrize(
+    "categories, indices, expected_tags",
+    [
+        (3, tf.constant([[0], [2], [2]]), tf.constant([["0"], ["2"], ["2"]])),
+        (["A", "B", "C"], tf.constant([[0], [2], [2]]), tf.constant([["A"], ["C"], ["C"]])),
+        (
+            (3, 2),
+            tf.constant([[0, 1], [2, 0], [2, 1]]),
+            tf.constant([["0", "1"], ["2", "0"], ["2", "1"]]),
+        ),
+        (
+            [("A", "B", "C"), ("Y", "N")],
+            tf.constant([[0, 1], [2, 0], [2, 1]]),
+            tf.constant([["A", "N"], ["C", "Y"], ["C", "N"]]),
+        ),
+    ],
+)
+def test_categorical_search_space__to_tags(
+    categories: int | Sequence[int] | Sequence[str] | Sequence[Sequence[str]],
+    indices: TensorType,
+    expected_tags: TensorType,
+) -> None:
+    search_space = CategoricalSearchSpace(categories)
+    tags = search_space.to_tags(indices)
+    npt.assert_array_equal(tags, expected_tags)
+
+
+@pytest.mark.parametrize(
     "search_space, query_points, encoded_points",
     [
         (
