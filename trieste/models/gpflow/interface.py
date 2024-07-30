@@ -29,6 +29,7 @@ from ...data import Dataset
 from ...space import EncoderFunction
 from ...types import TensorType
 from ..interfaces import (
+    HasEncoder,
     HasReparamSampler,
     ReparametrizationSampler,
     SupportsGetKernel,
@@ -36,6 +37,7 @@ from ..interfaces import (
     SupportsPredictJoint,
     SupportsPredictY,
     TrainableProbabilisticModel,
+    encode_query_points,
 )
 from ..optimizer import Optimizer
 from ..utils import (
@@ -53,6 +55,7 @@ class GPflowPredictor(
     SupportsPredictY,
     HasReparamSampler,
     TrainableProbabilisticModel,
+    HasEncoder,
     ABC,
 ):
     """A trainable wrapper for a GPflow Gaussian process model."""
@@ -70,6 +73,10 @@ class GPflowPredictor(
         self._optimizer = optimizer
         self._encoder = encoder
         self._posterior: Optional[BasePosterior] = None
+
+    @property
+    def encoder(self) -> EncoderFunction | None:
+        return self._encoder
 
     @property
     def optimizer(self) -> Optimizer:
@@ -107,9 +114,8 @@ class GPflowPredictor(
         """The underlying GPflow model."""
 
     @inherit_check_shapes
+    @encode_query_points
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        if self._encoder is not None:
-            query_points = self._encoder(query_points)
         mean, cov = (self._posterior or self.model).predict_f(query_points)
         # posterior predict can return negative variance values [cf GPFlow issue #1813]
         if self._posterior is not None:
@@ -117,9 +123,8 @@ class GPflowPredictor(
         return mean, cov
 
     @inherit_check_shapes
+    @encode_query_points
     def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        if self._encoder is not None:
-            query_points = self._encoder(query_points)
         mean, cov = (self._posterior or self.model).predict_f(query_points, full_cov=True)
         # posterior predict can return negative variance values [cf GPFlow issue #1813]
         if self._posterior is not None:
@@ -129,15 +134,13 @@ class GPflowPredictor(
         return mean, cov
 
     @inherit_check_shapes
+    @encode_query_points
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
-        if self._encoder is not None:
-            query_points = self._encoder(query_points)
         return self.model.predict_f_samples(query_points, num_samples)
 
     @inherit_check_shapes
+    @encode_query_points
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        if self._encoder is not None:
-            query_points = self._encoder(query_points)
         return self.model.predict_y(query_points)
 
     def get_kernel(self) -> gpflow.kernels.Kernel:

@@ -14,8 +14,9 @@
 
 from __future__ import annotations
 
+import functools
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Generic, Optional, Sequence, TypeVar
+from typing import Any, Callable, Generic, Optional, Sequence, TypeVar, cast
 
 import gpflow
 import tensorflow as tf
@@ -23,6 +24,7 @@ from check_shapes import check_shapes
 from typing_extensions import Protocol, runtime_checkable
 
 from ..data import Dataset
+from ..space import EncoderFunction
 from ..types import TensorType
 from ..utils import DEFAULTS
 
@@ -742,3 +744,37 @@ class SupportsCovarianceWithTopFidelity(ProbabilisticModel, Protocol):
         :return: The covariance with the top fidelity for the `query_points`, of shape [N, P]
         """
         raise NotImplementedError
+
+
+@runtime_checkable
+class HasEncoder(ProbabilisticModel, Protocol):
+    """A probabilistic model that has an associated query point encoder.
+
+    Can be used in conjunction with the @encode_query_points decorator to define models
+    that encode points before generating predictions, etc.
+    """
+
+    @property
+    @abstractmethod
+    def encoder(self) -> EncoderFunction | None:
+        """Query point encoder."""
+
+
+C = TypeVar("C", bound=Callable[..., object])
+""" Type variable bound to `typing.Callable`. """
+
+
+def encode_query_points(f: C) -> C:
+    """Decorator for encoding query points, applicable to HasEncoder model methods such as predict
+    whose first argument is query_points.
+    """
+
+    @functools.wraps(f)
+    def decorated(self: HasEncoder, query_points: TensorType, *args: Any, **kwargs: Any) -> Any:
+        if not isinstance(self, HasEncoder):
+            raise TypeError("Query point encoder not defined")
+        if self.encoder:
+            query_points = self.encoder(query_points)
+        return f(self, query_points, *args, **kwargs)
+
+    return cast(C, decorated)
