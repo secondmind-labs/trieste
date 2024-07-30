@@ -547,11 +547,21 @@ class CategoricalSearchSpace(GeneralDiscreteSearchSpace, HasOneHotEncoder):
         if isinstance(categories, int) or any(isinstance(x, str) for x in categories):
             categories = [categories]  # type: ignore[assignment]
 
-        assert isinstance(categories, Sequence)
-        if all(isinstance(x, int) for x in categories):
+        if not isinstance(categories, Sequence) or not (
+            all(
+                isinstance(x, Sequence)
+                and not isinstance(x, str)
+                and all(isinstance(y, str) for y in x)
+                for x in categories
+            )
+            or all(isinstance(x, int) for x in categories)
+        ):
+            raise TypeError("Invalid category description: expected either numbers or names.")
+
+        elif any(isinstance(x, int) for x in categories):
             category_lens: Sequence[int] = categories  # type: ignore[assignment]
             if any(x <= 0 for x in category_lens):
-                raise ValueError("Number of categories must be positive")
+                raise ValueError("Numbers of categories must be positive")
             tags = [tuple(f"{i}" for i in range(n)) for n in category_lens]
         else:
             category_names: Sequence[Sequence[str]] = categories  # type: ignore[assignment]
@@ -564,7 +574,9 @@ class CategoricalSearchSpace(GeneralDiscreteSearchSpace, HasOneHotEncoder):
         # TODO: inherit from GridSearchSpace to avoid generating the points explicitly?
         ranges = [tf.range(len(ts)) for ts in tags]
         meshgrid = tf.meshgrid(*ranges, indexing="ij")
-        points = tf.reshape(tf.stack(meshgrid, axis=-1), [-1, len(tags)])
+        points = (
+            tf.reshape(tf.stack(meshgrid, axis=-1), [-1, len(tags)]) if tags else tf.zeros([0, 0])
+        )
 
         super().__init__(points)
 

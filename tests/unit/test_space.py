@@ -32,6 +32,7 @@ from trieste.space import (
     CollectionSearchSpace,
     Constraint,
     DiscreteSearchSpace,
+    GeneralDiscreteSearchSpace,
     LinearConstraint,
     NonlinearConstraint,
     SearchSpace,
@@ -210,22 +211,47 @@ def test_discrete_search_space_contains_raises_for_invalid_shapes(
 
 
 @pytest.mark.parametrize("num_samples", [0, 1, 3, 5, 6, 10, 20])
-def test_discrete_search_space_sampling(num_samples: int) -> None:
-    search_space = DiscreteSearchSpace(_points_in_2D_search_space())
+@pytest.mark.parametrize(
+    "search_space",
+    [
+        pytest.param(DiscreteSearchSpace(_points_in_2D_search_space()), id="DiscreteSearchSpace"),
+        pytest.param(CategoricalSearchSpace([3, 2]), id="CategoricalSearchSpace"),
+    ],
+)
+def test_discrete_search_space_sampling(
+    search_space: GeneralDiscreteSearchSpace, num_samples: int
+) -> None:
     samples = search_space.sample(num_samples)
     assert all(sample in search_space for sample in samples)
     assert len(samples) == num_samples
 
 
 @pytest.mark.parametrize("seed", [1, 42, 123])
-def test_discrete_search_space_sampling_returns_same_points_for_same_seed(seed: int) -> None:
-    search_space = DiscreteSearchSpace(_points_in_2D_search_space())
+@pytest.mark.parametrize(
+    "search_space",
+    [
+        pytest.param(DiscreteSearchSpace(_points_in_2D_search_space()), id="DiscreteSearchSpace"),
+        pytest.param(CategoricalSearchSpace([3, 2]), id="CategoricalSearchSpace"),
+    ],
+)
+def test_discrete_search_space_sampling_returns_same_points_for_same_seed(
+    search_space: GeneralDiscreteSearchSpace, seed: int
+) -> None:
     random_samples_1 = search_space.sample(num_samples=100, seed=seed)
     random_samples_2 = search_space.sample(num_samples=100, seed=seed)
     npt.assert_allclose(random_samples_1, random_samples_2)
 
 
-def test_discrete_search_space_sampling_returns_different_points_for_different_call() -> None:
+@pytest.mark.parametrize(
+    "search_space",
+    [
+        pytest.param(DiscreteSearchSpace(_points_in_2D_search_space()), id="DiscreteSearchSpace"),
+        pytest.param(CategoricalSearchSpace([3, 2]), id="CategoricalSearchSpace"),
+    ],
+)
+def test_discrete_search_space_sampling_returns_different_points_for_different_call(
+    search_space: GeneralDiscreteSearchSpace,
+) -> None:
     search_space = DiscreteSearchSpace(_points_in_2D_search_space())
     random_samples_1 = search_space.sample(num_samples=100)
     random_samples_2 = search_space.sample(num_samples=100)
@@ -1597,6 +1623,45 @@ def test_box_empty_halton_sampling_returns_correct_dtype(dtype: tf.DType) -> Non
 
 
 @pytest.mark.parametrize(
+    "categories, points",
+    [
+        pytest.param([], tf.zeros([0, 0])),
+        pytest.param(3, tf.constant([[0], [1], [2]])),
+        pytest.param([3], tf.constant([[0], [1], [2]])),
+        pytest.param([3, 2], tf.constant([[0, 0], [0, 1], [1, 0], [1, 1], [2, 0], [2, 1]])),
+        pytest.param(["R", "G", "B"], tf.constant([[0], [1], [2]])),
+        pytest.param([["R", "G", "B"]], tf.constant([[0], [1], [2]])),
+        pytest.param(
+            [["R", "G", "B"], ["Y", "N"]],
+            tf.constant([[0, 0], [0, 1], [1, 0], [1, 1], [2, 0], [2, 1]]),
+        ),
+    ],
+)
+def test_categorical_search_space__points(
+    categories: int | Sequence[int] | Sequence[str] | Sequence[Sequence[str]], points: TensorType
+) -> None:
+    space = CategoricalSearchSpace(categories)
+    npt.assert_array_equal(space.points, points)
+    contains = space.contains(points)
+    assert len(contains) == len(points)
+    assert tf.reduce_all(contains)
+
+
+@pytest.mark.parametrize(
+    "categories, exception",
+    [
+        pytest.param([3, 0, 2], ValueError, id="Empty category size"),
+        pytest.param([-2, 1], ValueError, id="Negative category size"),
+        pytest.param([["R", "G", "B"], [], ["Y", "N"]], ValueError, id="Empty category list"),
+        pytest.param([3, ["A", "B"]], TypeError, id="Mixed description types"),
+    ],
+)
+def test_categorical_search_space__raises(categories: Any, exception: type) -> None:
+    with pytest.raises(exception):
+        CategoricalSearchSpace(categories)
+
+
+@pytest.mark.parametrize(
     "search_space, query_points, encoded_points",
     [
         (
@@ -1662,9 +1727,9 @@ def test_categorical_search_space_one_hot_encoding(
         ),
     ],
 )
-def test_category_one_hot_encoding_value_errors(
+def test_categorical_search_space_one_hot_encoding__raises(
     search_space: CategoricalSearchSpace, query_points: TensorType, exception: type
 ) -> None:
+    encoder = one_hot_encoder(search_space)
     with pytest.raises(exception):
-        encoder = search_space.one_hot_encoder
         encoder(query_points)
