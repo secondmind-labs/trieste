@@ -1467,6 +1467,10 @@ def _nlc_func(x: TensorType) -> TensorType:
             ),
             False,
         ),
+        (CategoricalSearchSpace([3, 2]), CategoricalSearchSpace([3, 2]), True),
+        (CategoricalSearchSpace([3]), CategoricalSearchSpace([3, 2]), False),
+        (CategoricalSearchSpace(3), CategoricalSearchSpace(["0", "1", "2"]), True),
+        (CategoricalSearchSpace(3), CategoricalSearchSpace(["R", "G", "B"]), False),
     ],
 )
 def test___eq___search_spaces(a: SearchSpace, b: SearchSpace, equal: bool) -> None:
@@ -1659,6 +1663,47 @@ def test_categorical_search_space__points(
 def test_categorical_search_space__raises(categories: Any, exception: type) -> None:
     with pytest.raises(exception):
         CategoricalSearchSpace(categories)
+
+
+@pytest.mark.parametrize(
+    "space1, space2, expected_product",
+    [
+        (CategoricalSearchSpace(3), CategoricalSearchSpace(2), CategoricalSearchSpace([3, 2])),
+        (CategoricalSearchSpace([]), CategoricalSearchSpace(2), CategoricalSearchSpace([2])),
+        (
+            CategoricalSearchSpace(["R", "G", "B"]),
+            CategoricalSearchSpace(["Y", "N"]),
+            CategoricalSearchSpace([["R", "G", "B"], ["Y", "N"]]),
+        ),
+    ],
+)
+def test_categorical_search_space__product(
+    space1: CategoricalSearchSpace,
+    space2: CategoricalSearchSpace,
+    expected_product: CategoricalSearchSpace,
+) -> None:
+    product = space1 * space2
+    assert product == expected_product
+    npt.assert_array_equal(product.points, expected_product.points)
+    assert product.tags == expected_product.tags
+
+
+@pytest.mark.parametrize(
+    "categories, tags",
+    [
+        ([], []),
+        (3, [("0", "1", "2")]),
+        ([2, 3], [("0", "1"), ("0", "1", "2")]),
+        (["R", "G", "B"], [("R", "G", "B")]),
+        ([["R", "G", "B"], ["Y", "N"]], [("R", "G", "B"), ("Y", "N")]),
+    ],
+)
+def test_categorical_search_space__tags(
+    categories: int | Sequence[int] | Sequence[str] | Sequence[Sequence[str]],
+    tags: Sequence[Sequence[str]],
+) -> None:
+    search_space = CategoricalSearchSpace(categories)
+    assert search_space.tags == tags
 
 
 @pytest.mark.parametrize(
