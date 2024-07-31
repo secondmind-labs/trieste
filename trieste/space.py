@@ -17,6 +17,7 @@ from __future__ import annotations
 import operator
 from abc import ABC, abstractmethod
 from functools import reduce
+from itertools import chain
 from typing import Callable, Optional, Sequence, Tuple, TypeVar, Union, overload
 
 import numpy as np
@@ -24,6 +25,7 @@ import scipy.optimize as spo
 import tensorflow as tf
 import tensorflow_probability as tfp
 from check_shapes import check_shapes
+from typing_extensions import Protocol, runtime_checkable
 
 from .types import TensorType
 
@@ -32,6 +34,9 @@ SearchSpaceType = TypeVar("SearchSpaceType", bound="SearchSpace")
 
 DEFAULT_DTYPE: tf.DType = tf.float64
 """ Default dtype to use when none is provided. """
+
+EncoderFunction = Callable[[TensorType], TensorType]
+""" Type alias for point encoders. These transform points from one search space to another. """
 
 
 class SampleTimeoutError(Exception):
@@ -263,6 +268,11 @@ class SearchSpace(ABC):
 
     @property
     @abstractmethod
+    def has_bounds(self) -> bool:
+        """Whether the search space has meaningful numerical bounds."""
+
+    @property
+    @abstractmethod
     def lower(self) -> TensorType:
         """The lowest value taken by each search space dimension."""
 
@@ -369,22 +379,15 @@ class SearchSpace(ABC):
     @property
     def has_constraints(self) -> bool:
         """Returns `True` if this search space has any explicit constraints specified."""
-        # By default assume there are no constraints; can be overridden by a subclass.
+        # By default, assume there are no constraints; can be overridden by a subclass.
         return False
 
 
-class DiscreteSearchSpace(SearchSpace):
-    r"""
-    A discrete :class:`SearchSpace` representing a finite set of :math:`D`-dimensional points in
-    :math:`\mathbb{R}^D`.
-
-    For example:
-
-        >>> points = tf.constant([[-1.0, 0.4], [-1.0, 0.6], [0.0, 0.4]])
-        >>> search_space = DiscreteSearchSpace(points)
-        >>> assert tf.constant([0.0, 0.4]) in search_space
-        >>> assert tf.constant([1.0, 0.5]) not in search_space
-
+class GeneralDiscreteSearchSpace(SearchSpace):
+    """
+    An ABC representing different types of discrete search spaces (not just numerical).
+    This contains a default implementation using explicitly provided points which subclasses
+    may ignore.
     """
 
     def __init__(self, points: TensorType):
@@ -397,20 +400,6 @@ class DiscreteSearchSpace(SearchSpace):
         self._points = points
         self._dimension = tf.shape(self._points)[-1]
 
-    def __repr__(self) -> str:
-        """"""
-        return f"DiscreteSearchSpace({self._points!r})"
-
-    @property
-    def lower(self) -> TensorType:
-        """The lowest value taken across all points by each search space dimension."""
-        return tf.reduce_min(self.points, -2)
-
-    @property
-    def upper(self) -> TensorType:
-        """The highest value taken across all points by each search space dimension."""
-        return tf.reduce_max(self.points, -2)
-
     @property
     def points(self) -> TensorType:
         """All the points in this space."""
@@ -422,7 +411,7 @@ class DiscreteSearchSpace(SearchSpace):
         return self._dimension
 
     def _contains(self, value: TensorType) -> TensorType:
-        comparison = tf.math.equal(self._points, tf.expand_dims(value, -2))  # [..., N, D]
+        comparison = tf.math.equal(self.points, tf.expand_dims(value, -2))  # [..., N, D]
         return tf.reduce_any(tf.reduce_all(comparison, axis=-1), axis=-1)  # [...]
 
     def sample(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
@@ -442,6 +431,39 @@ class DiscreteSearchSpace(SearchSpace):
                 tf.ones((1, tf.shape(self.points)[0])), num_samples, seed=seed
             )
             return tf.gather(self.points, sampled_indices)[0, :, :]  # [num_samples, D]
+
+
+class DiscreteSearchSpace(GeneralDiscreteSearchSpace):
+    r"""
+    A discrete :class:`SearchSpace` representing a finite set of :math:`D`-dimensional points in
+    :math:`\mathbb{R}^D`.
+
+    For example:
+
+        >>> points = tf.constant([[-1.0, 0.4], [-1.0, 0.6], [0.0, 0.4]])
+        >>> search_space = DiscreteSearchSpace(points)
+        >>> assert tf.constant([0.0, 0.4]) in search_space
+        >>> assert tf.constant([1.0, 0.5]) not in search_space
+
+    """
+
+    def __repr__(self) -> str:
+        """"""
+        return f"DiscreteSearchSpace({self._points!r})"
+
+    @property
+    def has_bounds(self) -> bool:
+        return True
+
+    @property
+    def lower(self) -> TensorType:
+        """The lowest value taken across all points by each search space dimension."""
+        return tf.reduce_min(self.points, -2)
+
+    @property
+    def upper(self) -> TensorType:
+        """The highest value taken across all points by each search space dimension."""
+        return tf.reduce_max(self.points, -2)
 
     def product(self, other: DiscreteSearchSpace) -> DiscreteSearchSpace:
         r"""
@@ -478,6 +500,175 @@ class DiscreteSearchSpace(SearchSpace):
         if not isinstance(other, DiscreteSearchSpace):
             return NotImplemented
         return bool(tf.reduce_all(tf.sort(self.points, 0) == tf.sort(other.points, 0)))
+
+
+@runtime_checkable
+class HasOneHotEncoder(Protocol):
+    """A categorical search space that contains default logic for one-hot encoding."""
+
+    @property
+    @abstractmethod
+    def one_hot_encoder(self) -> EncoderFunction:
+        "A one-hot encoder for points in the search space."
+
+
+def one_hot_encoder(space: SearchSpace) -> EncoderFunction:
+    "A utility function for one-hot encoding a search space when it supports it."
+    return space.one_hot_encoder if isinstance(space, HasOneHotEncoder) else lambda x: x
+
+
+class CategoricalSearchSpace(GeneralDiscreteSearchSpace, HasOneHotEncoder):
+    r"""
+    A categorical :class:`SearchSpace` representing a finite set :math:`\mathcal{C}` of categories,
+    or a finite Cartesian product :math:`\mathcal{C}_1 \times \cdots \times \mathcal{C}_n` of
+    such sets.
+
+    For example:
+
+        >>> CategoricalSearchSpace(5)
+        CategoricalSearchSpace([('0', '1', '2', '3', '4')])
+        >>> CategoricalSearchSpace(["Red", "Green", "Blue"])
+        CategoricalSearchSpace([('Red', 'Green', 'Blue')])
+        >>> CategoricalSearchSpace([2,3])
+        CategoricalSearchSpace([('0', '1'), ('0', '1', '2')])
+
+    Note that internally categories are represented by numeric indices:
+
+        >>> rgb = CategoricalSearchSpace(["Red", "Green", "Blue"])
+        >>> assert tf.constant([1]) in rgb
+        >>> assert tf.constant([3]) not in rgb
+        >>> rgb.to_tags(tf.constant([[1], [0], [2]]))
+        <tf.Tensor: shape=(3, 1), dtype=string, numpy=
+        array([[b'Green'],
+               [b'Red'],
+               [b'Blue']], dtype=object)>
+
+    """
+
+    def __init__(self, categories: int | Sequence[int] | Sequence[str] | Sequence[Sequence[str]]):
+        """
+        :param categories: Number of categories or category names. Can be an array for
+            multidimensional spaces.
+        """
+        if isinstance(categories, int) or any(isinstance(x, str) for x in categories):
+            categories = [categories]  # type: ignore[assignment]
+
+        if not isinstance(categories, Sequence) or not (
+            all(
+                isinstance(x, Sequence)
+                and not isinstance(x, str)
+                and all(isinstance(y, str) for y in x)
+                for x in categories
+            )
+            or all(isinstance(x, int) for x in categories)
+        ):
+            raise TypeError("Invalid category description: expected either numbers or names.")
+
+        elif any(isinstance(x, int) for x in categories):
+            category_lens: Sequence[int] = categories  # type: ignore[assignment]
+            if any(x <= 0 for x in category_lens):
+                raise ValueError("Numbers of categories must be positive")
+            tags = [tuple(f"{i}" for i in range(n)) for n in category_lens]
+        else:
+            category_names: Sequence[Sequence[str]] = categories  # type: ignore[assignment]
+            if any(len(ts) == 0 for ts in category_names):
+                raise ValueError("Category name lists cannot be empty")
+            tags = [tuple(ts) for ts in category_names]
+
+        self._tags = tags
+
+        ranges = [tf.range(len(ts)) for ts in tags]
+        meshgrid = tf.meshgrid(*ranges, indexing="ij")
+        points = (
+            tf.reshape(tf.stack(meshgrid, axis=-1), [-1, len(tags)]) if tags else tf.zeros([0, 0])
+        )
+
+        super().__init__(points)
+
+    def __repr__(self) -> str:
+        """"""
+        return f"CategoricalSearchSpace({self._tags!r})"
+
+    @property
+    def has_bounds(self) -> bool:
+        return False
+
+    @property
+    def lower(self) -> TensorType:
+        raise AttributeError("Categorical search spaces do not have numerical bounds")
+
+    @property
+    def upper(self) -> TensorType:
+        raise AttributeError("Categorical search spaces do not have numerical bounds")
+
+    @property
+    def tags(self) -> Sequence[Sequence[str]]:
+        """The tags of the categories."""
+        return self._tags
+
+    @property
+    def one_hot_encoder(self) -> EncoderFunction:
+        """A one-hot encoder for the numerical indices."""
+
+        def encoder(x: TensorType) -> TensorType:
+            if tf.rank(x) != 2:
+                raise ValueError(
+                    f"Invalid input for one-hot encoding: expected rank 2, got {tf.rank(x)}"
+                )
+            if x.shape[1] != len(self.tags):
+                raise ValueError(
+                    "Invalid input for one-hot encoding: "
+                    f"expected {len(self.tags)} tags, got {x.shape[1]}"
+                )
+            columns = tf.split(x, x.shape[1], axis=1)
+            encoders = [
+                tf.keras.layers.CategoryEncoding(num_tokens=len(ts), output_mode="one_hot")
+                for ts in self.tags
+            ]
+            return tf.concat(
+                [encoder(column) for encoder, column in zip(encoders, columns)], axis=1
+            )
+
+        return encoder
+
+    def to_tags(self, indices: TensorType) -> TensorType:
+        """
+        Convert a tensor of indices (such as one returned by :meth:`sample`) to one of
+        category tags.
+
+        :param indices: A tensor of integer indices.
+        :return: A tensor of string tags.
+        """
+
+        def extract_tags(row: TensorType) -> TensorType:
+            return tf.stack(
+                [tf.gather(tf.constant(self._tags[i]), row[i]) for i in range(len(row))]
+            )
+
+        return tf.map_fn(extract_tags, indices, dtype=tf.string)
+
+    def product(self, other: CategoricalSearchSpace) -> CategoricalSearchSpace:
+        r"""
+        Return the Cartesian product of the two :class:`CategoricalSearchSpace`\ s. For example:
+
+            >>> rgb = CategoricalSearchSpace(["Red", "Green", "Blue"])
+            >>> yn = CategoricalSearchSpace(["Yes", "No"])
+            >>> rgb * yn
+            CategoricalSearchSpace([('Red', 'Green', 'Blue'), ('Yes', 'No')])
+
+        :param other: A :class:`CategoricalSearchSpace`.
+        :return: The Cartesian product of the two :class:`CategoricalSearchSpace`\ s.
+        """
+        return CategoricalSearchSpace(tuple(chain(self.tags, other.tags)))
+
+    def __eq__(self, other: object) -> bool:
+        """
+        :param other: A search space.
+        :return: Whether the search space is identical to this one.
+        """
+        if not isinstance(other, CategoricalSearchSpace):
+            return NotImplemented
+        return self.tags == other.tags
 
 
 class Box(SearchSpace):
@@ -558,6 +749,10 @@ class Box(SearchSpace):
     def __repr__(self) -> str:
         """"""
         return f"Box({self._lower!r}, {self._upper!r}, {self._constraints!r}, {self._ctol!r})"
+
+    @property
+    def has_bounds(self) -> bool:
+        return True
 
     @property
     def lower(self) -> tf.Tensor:
@@ -922,6 +1117,11 @@ class CollectionSearchSpace(SearchSpace):
                 """
 
     @property
+    def has_bounds(self) -> bool:
+        """Whether the search space has meaningful numerical bounds."""
+        return all(self.get_subspace(tag).has_bounds for tag in self.subspace_tags)
+
+    @property
     def subspace_lower(self) -> Sequence[TensorType]:
         """The lowest values taken by each space dimension, in the same order as specified when
         initializing the space."""
@@ -988,7 +1188,7 @@ class CollectionSearchSpace(SearchSpace):
         return self._tags == other._tags and self._spaces == other._spaces
 
 
-class TaggedProductSearchSpace(CollectionSearchSpace):
+class TaggedProductSearchSpace(CollectionSearchSpace, HasOneHotEncoder):
     r"""
     Product :class:`SearchSpace` consisting of a product of
     multiple :class:`SearchSpace`. This class provides functionality for
@@ -1135,6 +1335,23 @@ class TaggedProductSearchSpace(CollectionSearchSpace):
         :return: The Cartesian product of this search space with the ``other``.
         """
         return TaggedProductSearchSpace(spaces=[self, other])
+
+    @property
+    def one_hot_encoder(self) -> EncoderFunction:
+        """An encoder that one-hot-encodes all subpsaces that support it (and leaves
+        the other subspaces unchanged)."""
+
+        def encoder(x: TensorType) -> TensorType:
+            components = []
+            for tag in self.subspace_tags:
+                component = self.get_subspace_component(tag, x)
+                space = self.get_subspace(tag)
+                if isinstance(space, HasOneHotEncoder):
+                    component = space.one_hot_encoder(component)
+                components.append(component)
+            return tf.concat(components, axis=1)
+
+        return encoder
 
 
 class TaggedMultiSearchSpace(CollectionSearchSpace):
