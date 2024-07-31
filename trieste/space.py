@@ -32,9 +32,6 @@ from .types import TensorType
 SearchSpaceType = TypeVar("SearchSpaceType", bound="SearchSpace")
 """ A type variable bound to :class:`SearchSpace`. """
 
-DiscreteSearchSpaceType = TypeVar("DiscreteSearchSpaceType", bound="GeneralDiscreteSearchSpace")
-""" A type variable bound to :class:`GeneralDiscreteSearchSpace`. """
-
 DEFAULT_DTYPE: tf.DType = tf.float64
 """ Default dtype to use when none is provided. """
 
@@ -507,7 +504,7 @@ class DiscreteSearchSpace(GeneralDiscreteSearchSpace):
 
 @runtime_checkable
 class HasOneHotEncoder(Protocol):
-    """A search space that contains default logic for one-hot encoding."""
+    """A categorical search space that contains default logic for one-hot encoding."""
 
     @property
     @abstractmethod
@@ -523,7 +520,7 @@ def one_hot_encoder(space: SearchSpace) -> EncoderFunction:
 class CategoricalSearchSpace(GeneralDiscreteSearchSpace, HasOneHotEncoder):
     r"""
     A categorical :class:`SearchSpace` representing a finite set :math:`\mathcal{C}` of categories,
-    or a finite Cartesian product :math:`\mathcal{C_1} \times \cdots \times \mathcal{C_n}` of
+    or a finite Cartesian product :math:`\mathcal{C}_1 \times \cdots \times \mathcal{C}_n` of
     such sets.
 
     For example:
@@ -580,7 +577,6 @@ class CategoricalSearchSpace(GeneralDiscreteSearchSpace, HasOneHotEncoder):
 
         self._tags = tags
 
-        # TODO: inherit from GridSearchSpace to avoid generating the points explicitly?
         ranges = [tf.range(len(ts)) for ts in tags]
         meshgrid = tf.meshgrid(*ranges, indexing="ij")
         points = (
