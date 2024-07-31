@@ -332,7 +332,6 @@ class DeepEnsemble(
         return predicted_means, predicted_vars
 
     @inherit_check_shapes
-    @encode_query_points
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         """
         Return ``num_samples`` samples at ``query_points``. We use the mixture approximation in

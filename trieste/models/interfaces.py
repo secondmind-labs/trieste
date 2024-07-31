@@ -765,8 +765,9 @@ C = TypeVar("C", bound=Callable[..., object])
 
 
 def encode_query_points(f: C) -> C:
-    """Decorator for encoding query points, applicable to HasEncoder model methods such as predict
-    whose first argument is query_points.
+    """
+    Decorator for automatically encoding query points, applicable to HasEncoder model methods
+    such as predict whose first argument is query_points.
     """
 
     @functools.wraps(f)
