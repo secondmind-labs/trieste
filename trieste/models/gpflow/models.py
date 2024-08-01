@@ -166,9 +166,11 @@ class GaussianProcessRegression(
     @inherit_check_shapes
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         f_mean, f_var = self.predict(query_points)
-        return self.model.likelihood.predict_mean_and_var(query_points, f_mean, f_var)
+        return self.model.likelihood.predict_mean_and_var(self.encode(query_points), f_mean, f_var)
 
     def update(self, dataset: Dataset) -> None:
+        dataset = self.encode(dataset)
+
         self._ensure_variable_model_data()
 
         x, y = self.model.data[0].value(), self.model.data[1].value()
@@ -201,6 +203,8 @@ class GaussianProcessRegression(
         :return: Covariance matrix between the sets of query points with shape [..., L, N, M]
             (L being the number of latent GPs = number of output dimensions)
         """
+        query_points_1, query_points2 = map(self.encode, (query_points_1, query_points_2))
+
         tf.debugging.assert_shapes(
             [(query_points_1, [..., "N", "D"]), (query_points_2, ["M", "D"])]
         )
@@ -273,6 +277,7 @@ class GaussianProcessRegression(
 
         :param dataset: The data with which to optimize the `model`.
         """
+        dataset = self.encode(dataset)
 
         num_trainable_params_with_priors_or_constraints = tf.reduce_sum(
             [

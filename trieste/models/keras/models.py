@@ -35,7 +35,6 @@ from ..interfaces import (
     HasTrajectorySampler,
     TrainableProbabilisticModel,
     TrajectorySampler,
-    encode_query_points,
 )
 from ..optimizer import KerasOptimizer
 from ..utils import write_summary_data_based_metrics
@@ -260,7 +259,6 @@ class DeepEnsemble(
         return self._model.model(x_transformed)
 
     @inherit_check_shapes
-    @encode_query_points
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         r"""
         Returns mean and variance at ``query_points`` for the whole ensemble.
@@ -290,6 +288,7 @@ class DeepEnsemble(
         """
         # handle leading batch dimensions, while still allowing `Functional` to
         # "allow (None,) and (None, 1) Tensors to be passed interchangeably"
+        query_points = self.encode(query_points)
         input_dims = min(len(query_points.shape), len(self.model.input_shape[0]))
         flat_x, unflatten = flatten_leading_dims(query_points, output_dims=input_dims)
         ensemble_distributions = self.ensemble_distributions(flat_x)
@@ -310,7 +309,6 @@ class DeepEnsemble(
         """The prediction dtype."""
         return self._model.output_dtype
 
-    @encode_query_points
     def predict_ensemble(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
         Returns mean and variance at ``query_points`` for each member of the ensemble. First tensor
@@ -325,7 +323,7 @@ class DeepEnsemble(
         :return: The predicted mean and variance of the observations at the specified
             ``query_points`` for each member of the ensemble.
         """
-        ensemble_distributions = self.ensemble_distributions(query_points)
+        ensemble_distributions = self.ensemble_distributions(self.encode(query_points))
         predicted_means = tf.convert_to_tensor([dist.mean() for dist in ensemble_distributions])
         predicted_vars = tf.convert_to_tensor([dist.variance() for dist in ensemble_distributions])
 
@@ -350,7 +348,6 @@ class DeepEnsemble(
 
         return samples  # [num_samples, len(query_points), 1]
 
-    @encode_query_points
     def sample_ensemble(self, query_points: TensorType, num_samples: int) -> TensorType:
         """
         Return ``num_samples`` samples at ``query_points``. Each sample is taken from a Gaussian
@@ -363,7 +360,7 @@ class DeepEnsemble(
         :return: The samples. For a predictive distribution with event shape E, this has shape
             [..., S, N] + E, where S is the number of samples.
         """
-        ensemble_distributions = self.ensemble_distributions(query_points)
+        ensemble_distributions = self.ensemble_distributions(self.encode(query_points))
         network_indices = sample_model_index(self.ensemble_size, num_samples)
 
         stacked_samples = []

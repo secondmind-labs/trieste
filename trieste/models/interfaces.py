@@ -14,9 +14,8 @@
 
 from __future__ import annotations
 
-import functools
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Generic, Optional, Sequence, TypeVar, cast
+from typing import Any, Callable, Generic, Optional, Sequence, TypeVar, overload
 
 import gpflow
 import tensorflow as tf
@@ -748,34 +747,26 @@ class SupportsCovarianceWithTopFidelity(ProbabilisticModel, Protocol):
 
 @runtime_checkable
 class HasEncoder(ProbabilisticModel, Protocol):
-    """A probabilistic model that has an associated query point encoder.
-
-    Can be used in conjunction with the @encode_query_points decorator to define models
-    that encode points before generating predictions, etc.
-    """
+    """A probabilistic model that has an associated query point encoder."""
 
     @property
     @abstractmethod
     def encoder(self) -> EncoderFunction | None:
         """Query point encoder."""
 
+    @overload
+    def encode(self, points: TensorType) -> TensorType:
+        ...
 
-C = TypeVar("C", bound=Callable[..., object])
-""" Type variable bound to `typing.Callable`. """
+    @overload
+    def encode(self, points: Dataset) -> Dataset:
+        ...
 
-
-def encode_query_points(f: C) -> C:
-    """
-    Decorator for automatically encoding query points, applicable to HasEncoder model methods
-    such as predict whose first argument is query_points.
-    """
-
-    @functools.wraps(f)
-    def decorated(self: HasEncoder, query_points: TensorType, *args: Any, **kwargs: Any) -> Any:
-        if not isinstance(self, HasEncoder):
-            raise TypeError("Query point encoder not defined")
-        if self.encoder:
-            query_points = self.encoder(query_points)
-        return f(self, query_points, *args, **kwargs)
-
-    return cast(C, decorated)
+    def encode(self, points: Dataset | TensorType) -> Dataset | TensorType:
+        """Encode points or Dataset using the query point encoder."""
+        if self.encoder is None:
+            return points
+        elif isinstance(points, Dataset):
+            return Dataset(self.encoder(points.query_points), points.observations)
+        else:
+            return self.encoder(points)

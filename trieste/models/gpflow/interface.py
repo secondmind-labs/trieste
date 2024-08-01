@@ -37,7 +37,6 @@ from ..interfaces import (
     SupportsPredictJoint,
     SupportsPredictY,
     TrainableProbabilisticModel,
-    encode_query_points,
 )
 from ..optimizer import Optimizer
 from ..utils import (
@@ -114,18 +113,18 @@ class GPflowPredictor(
         """The underlying GPflow model."""
 
     @inherit_check_shapes
-    @encode_query_points
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        mean, cov = (self._posterior or self.model).predict_f(query_points)
+        mean, cov = (self._posterior or self.model).predict_f(self.encode(query_points))
         # posterior predict can return negative variance values [cf GPFlow issue #1813]
         if self._posterior is not None:
             cov = tf.clip_by_value(cov, 1e-12, cov.dtype.max)
         return mean, cov
 
     @inherit_check_shapes
-    @encode_query_points
     def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        mean, cov = (self._posterior or self.model).predict_f(query_points, full_cov=True)
+        mean, cov = (self._posterior or self.model).predict_f(
+            self.encode(query_points), full_cov=True
+        )
         # posterior predict can return negative variance values [cf GPFlow issue #1813]
         if self._posterior is not None:
             cov = tf.linalg.set_diag(
@@ -134,14 +133,12 @@ class GPflowPredictor(
         return mean, cov
 
     @inherit_check_shapes
-    @encode_query_points
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
-        return self.model.predict_f_samples(query_points, num_samples)
+        return self.model.predict_f_samples(self.encode(query_points), num_samples)
 
     @inherit_check_shapes
-    @encode_query_points
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        return self.model.predict_y(query_points)
+        return self.model.predict_y(self.encode(query_points))
 
     def get_kernel(self) -> gpflow.kernels.Kernel:
         """
