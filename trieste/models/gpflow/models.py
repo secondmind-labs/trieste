@@ -42,7 +42,7 @@ from ...types import TensorType
 from ...utils import DEFAULTS, jit
 from ...utils.misc import flatten_leading_dims
 from ..interfaces import (
-    FastUpdateModel,
+    EncodedFastUpdateModel,
     HasTrajectorySampler,
     SupportsCovarianceWithTopFidelity,
     SupportsGetInducingVariables,
@@ -67,7 +67,7 @@ from .utils import (
 
 class GaussianProcessRegression(
     GPflowPredictor,
-    FastUpdateModel,
+    EncodedFastUpdateModel,
     EncodedSupportsCovarianceBetweenPoints,
     SupportsGetInternalData,
     HasTrajectorySampler,
@@ -352,7 +352,7 @@ class GaussianProcessRegression(
         """
         return Dataset(self.model.data[0], self.model.data[1])
 
-    def conditional_predict_f(
+    def conditional_predict_f_encoded(
         self, query_points: TensorType, additional_data: Dataset
     ) -> tuple[TensorType, TensorType]:
         """
@@ -417,7 +417,7 @@ class GaussianProcessRegression(
 
         return mean_qp_new, var_qp_new
 
-    def conditional_predict_joint(
+    def conditional_predict_joint_encoded(
         self, query_points: TensorType, additional_data: Dataset
     ) -> tuple[TensorType, TensorType]:
         """
@@ -487,7 +487,7 @@ class GaussianProcessRegression(
 
         return mean_qp_new, cov_qp_new
 
-    def conditional_predict_f_sample(
+    def conditional_predict_f_sample_encoded(
         self, query_points: TensorType, additional_data: Dataset, num_samples: int
     ) -> TensorType:
         """
@@ -508,7 +508,7 @@ class GaussianProcessRegression(
         )  # [..., (S), P, N]
         return tf.linalg.adjoint(samples)  # [..., (S), N, L]
 
-    def conditional_predict_y(
+    def conditional_predict_y_encoded(
         self, query_points: TensorType, additional_data: Dataset
     ) -> tuple[TensorType, TensorType]:
         """

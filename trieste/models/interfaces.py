@@ -748,8 +748,8 @@ class SupportsCovarianceWithTopFidelity(ProbabilisticModel, Protocol):
 class EncodedProbabilisticModel(ProbabilisticModel):
     """A probabilistic model with an associated query point encoder.
 
-    Classes that inherit from this (or the other associated mixins below) need only
-    implement the relevant _encoded methods (e.g. predict_encoded), to which the public
+    Classes that inherit from this (or the other associated mixins below) should implement the
+    relevant _encoded methods (e.g. predict_encoded instead of predict), to which the public
     methods delegate after encoding their input. Take care to use the correct methods internally
     to avoid encoding twice accidentally.
     """
@@ -796,7 +796,7 @@ class EncodedProbabilisticModel(ProbabilisticModel):
 
 
 class EncodedTrainableProbabilisticModel(EncodedProbabilisticModel, TrainableProbabilisticModel):
-    """A trainable probabilistic model with an associated query point encoders."""
+    """A trainable probabilistic model with an associated query point encoder."""
 
     @abstractmethod
     def update_encoded(self, dataset: Dataset) -> None:
@@ -816,6 +816,8 @@ class EncodedTrainableProbabilisticModel(EncodedProbabilisticModel, TrainablePro
 
 
 class EncodedSupportsPredictJoint(EncodedProbabilisticModel, SupportsPredictJoint):
+    """A probabilistic model that supports predict_joint with an associated query point encoder."""
+
     @abstractmethod
     def predict_joint_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """Implementation of predict_joint on encoded query points."""
@@ -826,6 +828,8 @@ class EncodedSupportsPredictJoint(EncodedProbabilisticModel, SupportsPredictJoin
 
 
 class EncodedSupportsPredictY(EncodedProbabilisticModel, SupportsPredictY):
+    """A probabilistic model that supports predict_y with an associated query point encoder."""
+
     @abstractmethod
     def predict_y_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """Implementation of predict_y on encoded query points."""
@@ -833,3 +837,59 @@ class EncodedSupportsPredictY(EncodedProbabilisticModel, SupportsPredictY):
     @final
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         return self.predict_y_encoded(self.encode(query_points))
+
+
+class EncodedFastUpdateModel(EncodedProbabilisticModel, FastUpdateModel):
+    """A fast update model with an associated query point encoder."""
+
+    @abstractmethod
+    def conditional_predict_f_encoded(
+        self, query_points: TensorType, additional_data: Dataset
+    ) -> tuple[TensorType, TensorType]:
+        """Implementation of conditional_predict_f on encoded query points."""
+
+    @abstractmethod
+    def conditional_predict_joint_encoded(
+        self, query_points: TensorType, additional_data: Dataset
+    ) -> tuple[TensorType, TensorType]:
+        """Implementation of conditional_predict_joint on encoded query points."""
+
+    @abstractmethod
+    def conditional_predict_f_sample_encoded(
+        self, query_points: TensorType, additional_data: Dataset, num_samples: int
+    ) -> TensorType:
+        """Implementation of conditional_predict_f_sample on encoded query points."""
+
+    @abstractmethod
+    def conditional_predict_y_encoded(
+        self, query_points: TensorType, additional_data: Dataset
+    ) -> tuple[TensorType, TensorType]:
+        """Implementation of conditional_predict_y on encoded query points."""
+
+    def conditional_predict_f(
+        self, query_points: TensorType, additional_data: Dataset
+    ) -> tuple[TensorType, TensorType]:
+        return self.conditional_predict_f_encoded(
+            self.encode(query_points), self.encode(additional_data)
+        )
+
+    def conditional_predict_joint(
+        self, query_points: TensorType, additional_data: Dataset
+    ) -> tuple[TensorType, TensorType]:
+        return self.conditional_predict_joint_encoded(
+            self.encode(query_points), self.encode(additional_data)
+        )
+
+    def conditional_predict_f_sample(
+        self, query_points: TensorType, additional_data: Dataset, num_samples: int
+    ) -> TensorType:
+        return self.conditional_predict_f_sample_encoded(
+            self.encode(query_points), self.encode(additional_data), num_samples
+        )
+
+    def conditional_predict_y(
+        self, query_points: TensorType, additional_data: Dataset
+    ) -> tuple[TensorType, TensorType]:
+        return self.conditional_predict_y_encoded(
+            self.encode(query_points), self.encode(additional_data)
+        )
