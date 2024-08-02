@@ -226,7 +226,7 @@ class EncodedSupportsCovarianceBetweenPoints(
     def covariance_between_points_encoded(
         self, query_points_1: TensorType, query_points_2: TensorType
     ) -> TensorType:
-        ...
+        """Implementation of covariance_between_points on encoded query points."""
 
     @final
     def covariance_between_points(
