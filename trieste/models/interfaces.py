@@ -866,6 +866,7 @@ class EncodedFastUpdateModel(EncodedProbabilisticModel, FastUpdateModel):
     ) -> tuple[TensorType, TensorType]:
         """Implementation of conditional_predict_y on encoded query points."""
 
+    @final
     def conditional_predict_f(
         self, query_points: TensorType, additional_data: Dataset
     ) -> tuple[TensorType, TensorType]:
@@ -873,6 +874,7 @@ class EncodedFastUpdateModel(EncodedProbabilisticModel, FastUpdateModel):
             self.encode(query_points), self.encode(additional_data)
         )
 
+    @final
     def conditional_predict_joint(
         self, query_points: TensorType, additional_data: Dataset
     ) -> tuple[TensorType, TensorType]:
@@ -880,6 +882,7 @@ class EncodedFastUpdateModel(EncodedProbabilisticModel, FastUpdateModel):
             self.encode(query_points), self.encode(additional_data)
         )
 
+    @final
     def conditional_predict_f_sample(
         self, query_points: TensorType, additional_data: Dataset, num_samples: int
     ) -> TensorType:
@@ -887,6 +890,7 @@ class EncodedFastUpdateModel(EncodedProbabilisticModel, FastUpdateModel):
             self.encode(query_points), self.encode(additional_data), num_samples
         )
 
+    @final
     def conditional_predict_y(
         self, query_points: TensorType, additional_data: Dataset
     ) -> tuple[TensorType, TensorType]:
