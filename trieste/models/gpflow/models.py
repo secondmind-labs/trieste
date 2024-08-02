@@ -643,7 +643,7 @@ class SparseGaussianProcessRegression(
         if not is_variable(self._model.num_data):
             self._model.num_data = tf.Variable(self._model.num_data, trainable=False)
 
-    def optimize(self, dataset: Dataset) -> OptimizeResult:
+    def optimize_impl(self, dataset: Dataset) -> OptimizeResult:
         """
         Optimize the model with the specified `dataset`.
 
@@ -653,7 +653,7 @@ class SparseGaussianProcessRegression(
         self.update_posterior_cache()
         return result
 
-    def update(self, dataset: Dataset) -> None:
+    def update_impl(self, dataset: Dataset) -> None:
         self._ensure_variable_model_data()
 
         x, y = self.model.data[0].value(), self.model.data[1].value()
@@ -946,7 +946,7 @@ class SparseVariational(
         f_mean, f_var = self.predict_impl(query_points)
         return self.model.likelihood.predict_mean_and_var(query_points, f_mean, f_var)
 
-    def update(self, dataset: Dataset) -> None:
+    def update_impl(self, dataset: Dataset) -> None:
         self._ensure_variable_model_data()
 
         # Hard-code asserts from _assert_data_is_compatible because model doesn't store dataset
@@ -988,7 +988,7 @@ class SparseVariational(
                 self._update_inducing_variables(new_inducing_points)
                 self.update_posterior_cache()
 
-    def optimize(self, dataset: Dataset) -> OptimizeResult:
+    def optimize_impl(self, dataset: Dataset) -> OptimizeResult:
         """
         Optimize the model with the specified `dataset`.
 
@@ -1262,7 +1262,7 @@ class VariationalGaussianProcess(
         f_mean, f_var = self.predict_impl(query_points)
         return self.model.likelihood.predict_mean_and_var(query_points, f_mean, f_var)
 
-    def update(self, dataset: Dataset, *, jitter: float = DEFAULTS.JITTER) -> None:
+    def update_impl(self, dataset: Dataset, *, jitter: float = DEFAULTS.JITTER) -> None:
         """
         Update the model given the specified ``dataset``. Does not train the model.
 
@@ -1274,7 +1274,7 @@ class VariationalGaussianProcess(
         update_vgp_data(self.model, (dataset.query_points, dataset.observations))
         self.update_posterior_cache()
 
-    def optimize(self, dataset: Dataset) -> Optional[OptimizeResult]:
+    def optimize_impl(self, dataset: Dataset) -> Optional[OptimizeResult]:
         """
         :class:`VariationalGaussianProcess` has a custom `optimize` method that (optionally) permits
         alternating between standard optimization steps (for kernel parameters) and natural gradient
@@ -1355,7 +1355,7 @@ class VariationalGaussianProcess(
 
         return DecoupledTrajectorySampler(self, self._num_rff_features)
 
-    def covariance_between_points(
+    def covariance_between_points_impl(
         self, query_points_1: TensorType, query_points_2: TensorType
     ) -> TensorType:
         r"""

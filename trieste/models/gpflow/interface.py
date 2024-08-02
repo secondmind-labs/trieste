@@ -49,13 +49,13 @@ from .sampler import BatchReparametrizationSampler
 
 
 class GPflowPredictor(
-    EncodedProbabilisticModel,
     EncodedSupportsPredictJoint,
     SupportsGetKernel,
     SupportsGetObservationNoise,
     EncodedSupportsPredictY,
     HasReparamSampler,
     EncodedTrainableProbabilisticModel,
+    EncodedProbabilisticModel,
     ABC,
 ):
     """A trainable wrapper for a GPflow Gaussian process model."""
