@@ -22,7 +22,7 @@ import tensorflow as tf
 from check_shapes import inherit_check_shapes
 from gpflow.models import GPModel
 from gpflow.posteriors import BasePosterior, PrecomputeCacheType
-from typing_extensions import Protocol
+from typing_extensions import Protocol, final
 
 from ... import logging
 from ...data import Dataset
@@ -228,6 +228,7 @@ class EncodedSupportsCovarianceBetweenPoints(
     ) -> TensorType:
         ...
 
+    @final
     def covariance_between_points(
         self, query_points_1: TensorType, query_points_2: TensorType
     ) -> TensorType:

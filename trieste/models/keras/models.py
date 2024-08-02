@@ -126,7 +126,7 @@ class DeepEnsemble(
         if model.ensemble_size < 2:
             raise ValueError(f"Ensemble size must be greater than 1 but got {model.ensemble_size}.")
 
-        super().__init__(optimizer)
+        super().__init__(optimizer, encoder)
 
         if compile_args is None:
             compile_args = {}
@@ -171,11 +171,6 @@ class DeepEnsemble(
         self._model = model
         self._bootstrap = bootstrap
         self._diversify = diversify
-        self._encoder = encoder
-
-    @property
-    def encoder(self) -> EncoderFunction | None:
-        return self._encoder
 
     def __repr__(self) -> str:
         """"""
