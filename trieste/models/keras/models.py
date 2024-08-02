@@ -257,7 +257,7 @@ class DeepEnsemble(
         return self._model.model(x_transformed)
 
     @inherit_check_shapes
-    def predict_impl(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+    def predict_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         r"""
         Returns mean and variance at ``query_points`` for the whole ensemble.
 
@@ -327,7 +327,7 @@ class DeepEnsemble(
         return predicted_means, predicted_vars
 
     @inherit_check_shapes
-    def sample_impl(self, query_points: TensorType, num_samples: int) -> TensorType:
+    def sample_encoded(self, query_points: TensorType, num_samples: int) -> TensorType:
         """
         Return ``num_samples`` samples at ``query_points``. We use the mixture approximation in
         :meth:`predict` for ``query_points`` and sample ``num_samples`` times from a Gaussian
@@ -339,7 +339,7 @@ class DeepEnsemble(
             [..., S, N] + E, where S is the number of samples.
         """
 
-        predicted_means, predicted_vars = self.predict_impl(query_points)
+        predicted_means, predicted_vars = self.predict_encoded(query_points)
         normal = tfp.distributions.Normal(predicted_means, tf.sqrt(predicted_vars))
         samples = normal.sample(num_samples)
 
@@ -377,7 +377,7 @@ class DeepEnsemble(
         """
         return DeepEnsembleTrajectorySampler(self, self._diversify)
 
-    def update_impl(self, dataset: Dataset) -> None:
+    def update_encoded(self, dataset: Dataset) -> None:
         """
         Neural networks are parametric models and do not need to update data.
         `TrainableProbabilisticModel` interface, however, requires an update method, so
@@ -385,7 +385,7 @@ class DeepEnsemble(
         """
         return
 
-    def optimize_impl(self, dataset: Dataset) -> keras.callbacks.History:
+    def optimize_encoded(self, dataset: Dataset) -> keras.callbacks.History:
         """
         Optimize the underlying Keras ensemble model with the specified ``dataset``.
 

@@ -114,7 +114,7 @@ class GPflowPredictor(
         """The underlying GPflow model."""
 
     @inherit_check_shapes
-    def predict_impl(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+    def predict_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         mean, cov = (self._posterior or self.model).predict_f(query_points)
         # posterior predict can return negative variance values [cf GPFlow issue #1813]
         if self._posterior is not None:
@@ -122,7 +122,7 @@ class GPflowPredictor(
         return mean, cov
 
     @inherit_check_shapes
-    def predict_joint_impl(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+    def predict_joint_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         mean, cov = (self._posterior or self.model).predict_f(query_points, full_cov=True)
         # posterior predict can return negative variance values [cf GPFlow issue #1813]
         if self._posterior is not None:
@@ -132,11 +132,11 @@ class GPflowPredictor(
         return mean, cov
 
     @inherit_check_shapes
-    def sample_impl(self, query_points: TensorType, num_samples: int) -> TensorType:
+    def sample_encoded(self, query_points: TensorType, num_samples: int) -> TensorType:
         return self.model.predict_f_samples(query_points, num_samples)
 
     @inherit_check_shapes
-    def predict_y_impl(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+    def predict_y_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         return self.model.predict_y(query_points)
 
     def get_kernel(self) -> gpflow.kernels.Kernel:
@@ -223,7 +223,7 @@ class EncodedSupportsCovarianceBetweenPoints(
     EncodedProbabilisticModel, SupportsCovarianceBetweenPoints
 ):
     @abstractmethod
-    def covariance_between_points_impl(
+    def covariance_between_points_encoded(
         self, query_points_1: TensorType, query_points_2: TensorType
     ) -> TensorType:
         ...
@@ -231,6 +231,6 @@ class EncodedSupportsCovarianceBetweenPoints(
     def covariance_between_points(
         self, query_points_1: TensorType, query_points_2: TensorType
     ) -> TensorType:
-        return self.covariance_between_points_impl(
+        return self.covariance_between_points_encoded(
             self.encode(query_points_1), self.encode(query_points_2)
         )

@@ -164,11 +164,11 @@ class GaussianProcessRegression(
         )
 
     @inherit_check_shapes
-    def predict_y_impl(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        f_mean, f_var = self.predict_impl(query_points)
+    def predict_y_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        f_mean, f_var = self.predict_encoded(query_points)
         return self.model.likelihood.predict_mean_and_var(query_points, f_mean, f_var)
 
-    def update_impl(self, dataset: Dataset) -> None:
+    def update_encoded(self, dataset: Dataset) -> None:
         self._ensure_variable_model_data()
 
         x, y = self.model.data[0].value(), self.model.data[1].value()
@@ -185,7 +185,7 @@ class GaussianProcessRegression(
         self.model.data[1].assign(dataset.observations)
         self.update_posterior_cache()
 
-    def covariance_between_points_impl(
+    def covariance_between_points_encoded(
         self, query_points_1: TensorType, query_points_2: TensorType
     ) -> TensorType:
         r"""
@@ -253,7 +253,7 @@ class GaussianProcessRegression(
 
         return cov
 
-    def optimize_impl(self, dataset: Dataset) -> OptimizeResult:
+    def optimize_encoded(self, dataset: Dataset) -> OptimizeResult:
         """
         Optimize the model with the specified `dataset`.
 
@@ -377,10 +377,10 @@ class GaussianProcessRegression(
             "should have shape [M, D]",
         )
 
-        mean_add, cov_add = self.predict_joint_impl(
+        mean_add, cov_add = self.predict_joint_encoded(
             additional_data.query_points
         )  # [..., N, L], [..., L, N, N]
-        mean_qp, var_qp = self.predict_impl(query_points)  # [M, L], [M, L]
+        mean_qp, var_qp = self.predict_encoded(query_points)  # [M, L], [M, L]
 
         cov_cross = self.covariance_between_points(
             additional_data.query_points, query_points
@@ -448,7 +448,7 @@ class GaussianProcessRegression(
         query_points_r = tf.broadcast_to(query_points, new_shape)  # [..., M, D]
         points = tf.concat([additional_data.query_points, query_points_r], axis=-2)  # [..., N+M, D]
 
-        mean, cov = self.predict_joint_impl(points)  # [..., N+M, L], [..., L, N+M, N+M]
+        mean, cov = self.predict_joint_encoded(points)  # [..., N+M, L], [..., L, N+M, N+M]
 
         N = tf.shape(additional_data.query_points)[-2]
 
@@ -616,8 +616,8 @@ class SparseGaussianProcessRegression(
         return self._inducing_point_selector
 
     @inherit_check_shapes
-    def predict_y_impl(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        f_mean, f_var = self.predict_impl(query_points)
+    def predict_y_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        f_mean, f_var = self.predict_encoded(query_points)
         return self.model.likelihood.predict_mean_and_var(query_points, f_mean, f_var)
 
     def _ensure_variable_model_data(self) -> None:
@@ -643,7 +643,7 @@ class SparseGaussianProcessRegression(
         if not is_variable(self._model.num_data):
             self._model.num_data = tf.Variable(self._model.num_data, trainable=False)
 
-    def optimize_impl(self, dataset: Dataset) -> OptimizeResult:
+    def optimize_encoded(self, dataset: Dataset) -> OptimizeResult:
         """
         Optimize the model with the specified `dataset`.
 
@@ -653,7 +653,7 @@ class SparseGaussianProcessRegression(
         self.update_posterior_cache()
         return result
 
-    def update_impl(self, dataset: Dataset) -> None:
+    def update_encoded(self, dataset: Dataset) -> None:
         self._ensure_variable_model_data()
 
         x, y = self.model.data[0].value(), self.model.data[1].value()
@@ -785,7 +785,7 @@ class SparseGaussianProcessRegression(
 
         return inducing_points, q_mu, q_sqrt, whiten
 
-    def covariance_between_points_impl(
+    def covariance_between_points_encoded(
         self, query_points_1: TensorType, query_points_2: TensorType
     ) -> TensorType:
         r"""
@@ -942,11 +942,11 @@ class SparseVariational(
         return self._inducing_point_selector
 
     @inherit_check_shapes
-    def predict_y_impl(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        f_mean, f_var = self.predict_impl(query_points)
+    def predict_y_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        f_mean, f_var = self.predict_encoded(query_points)
         return self.model.likelihood.predict_mean_and_var(query_points, f_mean, f_var)
 
-    def update_impl(self, dataset: Dataset) -> None:
+    def update_encoded(self, dataset: Dataset) -> None:
         self._ensure_variable_model_data()
 
         # Hard-code asserts from _assert_data_is_compatible because model doesn't store dataset
@@ -988,7 +988,7 @@ class SparseVariational(
                 self._update_inducing_variables(new_inducing_points)
                 self.update_posterior_cache()
 
-    def optimize_impl(self, dataset: Dataset) -> OptimizeResult:
+    def optimize_encoded(self, dataset: Dataset) -> OptimizeResult:
         """
         Optimize the model with the specified `dataset`.
 
@@ -1026,7 +1026,9 @@ class SparseVariational(
         if whiten:
             new_q_mu, new_q_sqrt = _whiten_points(self, new_inducing_points)
         else:
-            new_q_mu, new_f_cov = self.predict_joint_impl(new_inducing_points)  # [N, L], [L, N, N]
+            new_q_mu, new_f_cov = self.predict_joint_encoded(
+                new_inducing_points
+            )  # [N, L], [L, N, N]
             new_q_mu -= self.model.mean_function(new_inducing_points)
             jitter_mat = DEFAULTS.JITTER * tf.eye(
                 tf.shape(new_inducing_points)[0], dtype=new_f_cov.dtype
@@ -1071,7 +1073,7 @@ class SparseVariational(
 
         return inducing_points, self.model.q_mu, self.model.q_sqrt, self.model.whiten
 
-    def covariance_between_points_impl(
+    def covariance_between_points_encoded(
         self, query_points_1: TensorType, query_points_2: TensorType
     ) -> TensorType:
         r"""
@@ -1258,11 +1260,11 @@ class VariationalGaussianProcess(
         return self._model
 
     @inherit_check_shapes
-    def predict_y_impl(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        f_mean, f_var = self.predict_impl(query_points)
+    def predict_y_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        f_mean, f_var = self.predict_encoded(query_points)
         return self.model.likelihood.predict_mean_and_var(query_points, f_mean, f_var)
 
-    def update_impl(self, dataset: Dataset, *, jitter: float = DEFAULTS.JITTER) -> None:
+    def update_encoded(self, dataset: Dataset, *, jitter: float = DEFAULTS.JITTER) -> None:
         """
         Update the model given the specified ``dataset``. Does not train the model.
 
@@ -1274,7 +1276,7 @@ class VariationalGaussianProcess(
         update_vgp_data(self.model, (dataset.query_points, dataset.observations))
         self.update_posterior_cache()
 
-    def optimize_impl(self, dataset: Dataset) -> Optional[OptimizeResult]:
+    def optimize_encoded(self, dataset: Dataset) -> Optional[OptimizeResult]:
         """
         :class:`VariationalGaussianProcess` has a custom `optimize` method that (optionally) permits
         alternating between standard optimization steps (for kernel parameters) and natural gradient
@@ -1355,7 +1357,7 @@ class VariationalGaussianProcess(
 
         return DecoupledTrajectorySampler(self, self._num_rff_features)
 
-    def covariance_between_points_impl(
+    def covariance_between_points_encoded(
         self, query_points_1: TensorType, query_points_2: TensorType
     ) -> TensorType:
         r"""
