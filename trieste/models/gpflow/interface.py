@@ -29,14 +29,15 @@ from ...data import Dataset
 from ...space import EncoderFunction
 from ...types import TensorType
 from ..interfaces import (
-    HasEncoder,
+    EncodedProbabilisticModel,
+    EncodedSupportsPredictJoint,
+    EncodedSupportsPredictY,
+    EncodedTrainableProbabilisticModel,
     HasReparamSampler,
     ReparametrizationSampler,
     SupportsGetKernel,
     SupportsGetObservationNoise,
     SupportsPredictJoint,
-    SupportsPredictY,
-    TrainableProbabilisticModel,
 )
 from ..optimizer import Optimizer
 from ..utils import (
@@ -48,13 +49,13 @@ from .sampler import BatchReparametrizationSampler
 
 
 class GPflowPredictor(
-    SupportsPredictJoint,
+    EncodedProbabilisticModel,
+    EncodedSupportsPredictJoint,
     SupportsGetKernel,
     SupportsGetObservationNoise,
-    SupportsPredictY,
+    EncodedSupportsPredictY,
     HasReparamSampler,
-    TrainableProbabilisticModel,
-    HasEncoder,
+    EncodedTrainableProbabilisticModel,
     ABC,
 ):
     """A trainable wrapper for a GPflow Gaussian process model."""
@@ -113,18 +114,16 @@ class GPflowPredictor(
         """The underlying GPflow model."""
 
     @inherit_check_shapes
-    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        mean, cov = (self._posterior or self.model).predict_f(self.encode(query_points))
+    def predict_impl(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        mean, cov = (self._posterior or self.model).predict_f(query_points)
         # posterior predict can return negative variance values [cf GPFlow issue #1813]
         if self._posterior is not None:
             cov = tf.clip_by_value(cov, 1e-12, cov.dtype.max)
         return mean, cov
 
     @inherit_check_shapes
-    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        mean, cov = (self._posterior or self.model).predict_f(
-            self.encode(query_points), full_cov=True
-        )
+    def predict_joint_impl(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        mean, cov = (self._posterior or self.model).predict_f(query_points, full_cov=True)
         # posterior predict can return negative variance values [cf GPFlow issue #1813]
         if self._posterior is not None:
             cov = tf.linalg.set_diag(
@@ -133,12 +132,12 @@ class GPflowPredictor(
         return mean, cov
 
     @inherit_check_shapes
-    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
-        return self.model.predict_f_samples(self.encode(query_points), num_samples)
+    def sample_impl(self, query_points: TensorType, num_samples: int) -> TensorType:
+        return self.model.predict_f_samples(query_points, num_samples)
 
     @inherit_check_shapes
-    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-        return self.model.predict_y(self.encode(query_points))
+    def predict_y_impl(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        return self.model.predict_y(query_points)
 
     def get_kernel(self) -> gpflow.kernels.Kernel:
         """
@@ -218,3 +217,20 @@ class SupportsCovarianceBetweenPoints(SupportsPredictJoint, Protocol):
             (L being the number of latent GPs = number of output dimensions)
         """
         raise NotImplementedError
+
+
+class EncodedSupportsCovarianceBetweenPoints(
+    EncodedProbabilisticModel, SupportsCovarianceBetweenPoints
+):
+    @abstractmethod
+    def covariance_between_points_impl(
+        self, query_points_1: TensorType, query_points_2: TensorType
+    ) -> TensorType:
+        ...
+
+    def covariance_between_points(
+        self, query_points_1: TensorType, query_points_2: TensorType
+    ) -> TensorType:
+        return self.covariance_between_points_impl(
+            self.encode(query_points_1), self.encode(query_points_2)
+        )

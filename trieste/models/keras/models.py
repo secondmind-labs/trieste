@@ -30,12 +30,7 @@ from ...data import Dataset
 from ...space import EncoderFunction
 from ...types import TensorType
 from ...utils import flatten_leading_dims
-from ..interfaces import (
-    HasEncoder,
-    HasTrajectorySampler,
-    TrainableProbabilisticModel,
-    TrajectorySampler,
-)
+from ..interfaces import EncodedTrainableProbabilisticModel, HasTrajectorySampler, TrajectorySampler
 from ..optimizer import KerasOptimizer
 from ..utils import write_summary_data_based_metrics
 from .architectures import KerasEnsemble, MultivariateNormalTriL
@@ -45,7 +40,10 @@ from .utils import negative_log_likelihood, sample_model_index, sample_with_repl
 
 
 class DeepEnsemble(
-    KerasPredictor, TrainableProbabilisticModel, DeepEnsembleModel, HasTrajectorySampler, HasEncoder
+    KerasPredictor,
+    EncodedTrainableProbabilisticModel,
+    DeepEnsembleModel,
+    HasTrajectorySampler,
 ):
     """
     A :class:`~trieste.model.TrainableProbabilisticModel` wrapper for deep ensembles built using
@@ -259,7 +257,7 @@ class DeepEnsemble(
         return self._model.model(x_transformed)
 
     @inherit_check_shapes
-    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+    def predict_impl(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         r"""
         Returns mean and variance at ``query_points`` for the whole ensemble.
 
@@ -288,7 +286,6 @@ class DeepEnsemble(
         """
         # handle leading batch dimensions, while still allowing `Functional` to
         # "allow (None,) and (None, 1) Tensors to be passed interchangeably"
-        query_points = self.encode(query_points)
         input_dims = min(len(query_points.shape), len(self.model.input_shape[0]))
         flat_x, unflatten = flatten_leading_dims(query_points, output_dims=input_dims)
         ensemble_distributions = self.ensemble_distributions(flat_x)
@@ -330,7 +327,7 @@ class DeepEnsemble(
         return predicted_means, predicted_vars
 
     @inherit_check_shapes
-    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
+    def sample_impl(self, query_points: TensorType, num_samples: int) -> TensorType:
         """
         Return ``num_samples`` samples at ``query_points``. We use the mixture approximation in
         :meth:`predict` for ``query_points`` and sample ``num_samples`` times from a Gaussian
@@ -342,7 +339,7 @@ class DeepEnsemble(
             [..., S, N] + E, where S is the number of samples.
         """
 
-        predicted_means, predicted_vars = self.predict(query_points)
+        predicted_means, predicted_vars = self.predict_impl(query_points)
         normal = tfp.distributions.Normal(predicted_means, tf.sqrt(predicted_vars))
         samples = normal.sample(num_samples)
 
@@ -380,7 +377,7 @@ class DeepEnsemble(
         """
         return DeepEnsembleTrajectorySampler(self, self._diversify)
 
-    def update(self, dataset: Dataset) -> None:
+    def update_impl(self, dataset: Dataset) -> None:
         """
         Neural networks are parametric models and do not need to update data.
         `TrainableProbabilisticModel` interface, however, requires an update method, so
@@ -388,7 +385,7 @@ class DeepEnsemble(
         """
         return
 
-    def optimize(self, dataset: Dataset) -> keras.callbacks.History:
+    def optimize_impl(self, dataset: Dataset) -> keras.callbacks.History:
         """
         Optimize the underlying Keras ensemble model with the specified ``dataset``.
 

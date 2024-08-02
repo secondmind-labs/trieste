@@ -746,13 +746,21 @@ class SupportsCovarianceWithTopFidelity(ProbabilisticModel, Protocol):
 
 
 @runtime_checkable
-class HasEncoder(ProbabilisticModel, Protocol):
+class EncodedProbabilisticModel(ProbabilisticModel, Protocol):
     """A probabilistic model that has an associated query point encoder."""
 
     @property
     @abstractmethod
     def encoder(self) -> EncoderFunction | None:
         """Query point encoder."""
+
+    @abstractmethod
+    def predict_impl(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        ...
+
+    @abstractmethod
+    def sample_impl(self, query_points: TensorType, num_samples: int) -> TensorType:
+        ...
 
     @overload
     def encode(self, points: TensorType) -> TensorType:
@@ -770,3 +778,44 @@ class HasEncoder(ProbabilisticModel, Protocol):
             return Dataset(self.encoder(points.query_points), points.observations)
         else:
             return self.encoder(points)
+
+    # TODO: shape checking
+    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        return self.predict_impl(self.encode(query_points))
+
+    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
+        return self.sample_impl(self.encode(query_points), num_samples)
+
+
+class EncodedTrainableProbabilisticModel(EncodedProbabilisticModel, TrainableProbabilisticModel):
+    @abstractmethod
+    def update_impl(self, dataset: Dataset) -> None:
+        ...
+
+    @abstractmethod
+    def optimize_impl(self, dataset: Dataset) -> Any:
+        ...
+
+    def update(self, dataset: Dataset) -> None:
+        return self.update_impl(self.encode(dataset))
+
+    def optimize(self, dataset: Dataset) -> Any:
+        return self.optimize_impl(self.encode(dataset))
+
+
+class EncodedSupportsPredictJoint(EncodedProbabilisticModel, SupportsPredictJoint):
+    @abstractmethod
+    def predict_joint_impl(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        ...
+
+    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        return self.predict_joint_impl(self.encode(query_points))
+
+
+class EncodedSupportsPredictY(EncodedProbabilisticModel, SupportsPredictY):
+    @abstractmethod
+    def predict_y_impl(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        ...
+
+    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        return self.predict_y_impl(self.encode(query_points))
