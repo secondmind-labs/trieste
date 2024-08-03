@@ -19,7 +19,7 @@ from typing import Any, Callable, Generic, Optional, Sequence, TypeVar, overload
 
 import gpflow
 import tensorflow as tf
-from check_shapes import check_shapes
+from check_shapes import check_shapes, inherit_check_shapes
 from typing_extensions import Protocol, final, runtime_checkable
 
 from ..data import Dataset
@@ -776,8 +776,6 @@ class EncodedProbabilisticModel(ProbabilisticModel):
         else:
             return self.encoder(points)
 
-    # TODO: figure out shape checking
-
     @abstractmethod
     def predict_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """Implementation of predict on encoded query points."""
@@ -787,10 +785,12 @@ class EncodedProbabilisticModel(ProbabilisticModel):
         """Implementation of sample on encoded query points."""
 
     @final
+    @inherit_check_shapes
     def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         return self.predict_encoded(self.encode(query_points))
 
     @final
+    @inherit_check_shapes
     def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
         return self.sample_encoded(self.encode(query_points), num_samples)
 
@@ -823,6 +823,7 @@ class EncodedSupportsPredictJoint(EncodedProbabilisticModel, SupportsPredictJoin
         """Implementation of predict_joint on encoded query points."""
 
     @final
+    @inherit_check_shapes
     def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         return self.predict_joint_encoded(self.encode(query_points))
 
@@ -835,6 +836,7 @@ class EncodedSupportsPredictY(EncodedProbabilisticModel, SupportsPredictY):
         """Implementation of predict_y on encoded query points."""
 
     @final
+    @inherit_check_shapes
     def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         return self.predict_y_encoded(self.encode(query_points))
 
