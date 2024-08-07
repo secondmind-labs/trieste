@@ -933,6 +933,7 @@ def test_collection_space_contains_raises_on_point_of_different_shape(
     [
         (TaggedMultiSearchSpace, Box([-1, -2], [2, 3]), [2, 2]),
         (TaggedProductSearchSpace, Box([-1], [2]), [3]),
+        (TaggedProductSearchSpace, CategoricalSearchSpace(["A", "B", "C"]), [3]),
     ],
 )
 @pytest.mark.parametrize("num_samples", [0, 1, 10])
@@ -1186,10 +1187,10 @@ def test_product_space_fix_subspace_doesnt_fix_undesired_subspace(points: tf.Ten
             [
                 Box([-1, -2], [2, 3]),
                 DiscreteSearchSpace(tf.constant([[-0.5]])),
-                Box([-1], [2]),
+                CategoricalSearchSpace([3, 2]),
             ],
             ["A", "B", "C"],
-            {"A": [0, 2], "B": [2, 3], "C": [3, 4]},
+            {"A": [0, 2], "B": [2, 3], "C": [3, 5]},
         ),
     ],
 )
@@ -1638,21 +1639,24 @@ def test_box_empty_halton_sampling_returns_correct_dtype(dtype: tf.DType) -> Non
     "categories, points",
     [
         pytest.param([], tf.zeros([0, 0])),
-        pytest.param(3, tf.constant([[0], [1], [2]])),
-        pytest.param([3], tf.constant([[0], [1], [2]])),
-        pytest.param([3, 2], tf.constant([[0, 0], [0, 1], [1, 0], [1, 1], [2, 0], [2, 1]])),
-        pytest.param(["R", "G", "B"], tf.constant([[0], [1], [2]])),
-        pytest.param([["R", "G", "B"]], tf.constant([[0], [1], [2]])),
+        pytest.param(3, tf.constant([[0.0], [1.0], [2.0]])),
+        pytest.param([3], tf.constant([[0.0], [1.0], [2.0]])),
+        pytest.param(
+            [3, 2],
+            tf.constant([[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0], [2.0, 0.0], [2.0, 1.0]]),
+        ),
+        pytest.param(["R", "G", "B"], tf.constant([[0.0], [1.0], [2.0]])),
+        pytest.param([["R", "G", "B"]], tf.constant([[0.0], [1.0], [2.0]])),
         pytest.param(
             [["R", "G", "B"], ["Y", "N"]],
-            tf.constant([[0, 0], [0, 1], [1, 0], [1, 1], [2, 0], [2, 1]]),
+            tf.constant([[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0], [2.0, 0.0], [2.0, 1.0]]),
         ),
     ],
 )
 def test_categorical_search_space__points(
     categories: int | Sequence[int] | Sequence[str] | Sequence[Sequence[str]], points: TensorType
 ) -> None:
-    space = CategoricalSearchSpace(categories)
+    space = CategoricalSearchSpace(categories, dtype=tf.float32)
     npt.assert_array_equal(space.points, points)
     contains = space.contains(points)
     assert len(contains) == len(points)
@@ -1718,15 +1722,15 @@ def test_categorical_search_space__tags(
     "categories, indices, expected_tags",
     [
         (3, tf.constant([[0], [2], [2]]), tf.constant([["0"], ["2"], ["2"]])),
-        (["A", "B", "C"], tf.constant([[0], [2], [2]]), tf.constant([["A"], ["C"], ["C"]])),
+        (["A", "B", "C"], tf.constant([[0.0], [2.0], [2.0]]), tf.constant([["A"], ["C"], ["C"]])),
         (
             (3, 2),
-            tf.constant([[0, 1], [2, 0], [2, 1]]),
+            tf.constant([[0, 1.0], [2.0, 0.0], [2.0, 1.0]]),
             tf.constant([["0", "1"], ["2", "0"], ["2", "1"]]),
         ),
         (
             [("A", "B", "C"), ("Y", "N")],
-            tf.constant([[0, 1], [2, 0], [2, 1]]),
+            tf.constant([[0.0, 1.0], [2.0, 0.0], [2.0, 1.0]]),
             tf.constant([["A", "N"], ["C", "Y"], ["C", "N"]]),
         ),
     ],
