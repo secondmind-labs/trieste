@@ -548,10 +548,15 @@ class CategoricalSearchSpace(GeneralDiscreteSearchSpace, HasOneHotEncoder):
 
     """
 
-    def __init__(self, categories: int | Sequence[int] | Sequence[str] | Sequence[Sequence[str]]):
+    def __init__(
+        self,
+        categories: int | Sequence[int] | Sequence[str] | Sequence[Sequence[str]],
+        dtype: tf.DType = DEFAULT_DTYPE,
+    ):
         """
         :param categories: Number of categories or category names. Can be an array for
             multidimensional spaces.
+        :param dtype: The dtype of the returned indices, either tf.float32 or tf.float64.
         """
         if isinstance(categories, int) or any(isinstance(x, str) for x in categories):
             categories = [categories]  # type: ignore[assignment]
@@ -582,7 +587,7 @@ class CategoricalSearchSpace(GeneralDiscreteSearchSpace, HasOneHotEncoder):
 
         self._tags = tags
 
-        ranges = [tf.range(len(ts)) for ts in tags]
+        ranges = [tf.range(len(ts), dtype=dtype) for ts in tags]
         meshgrid = tf.meshgrid(*ranges, indexing="ij")
         points = (
             tf.reshape(tf.stack(meshgrid, axis=-1), [-1, len(tags)]) if tags else tf.zeros([0, 0])
@@ -642,6 +647,10 @@ class CategoricalSearchSpace(GeneralDiscreteSearchSpace, HasOneHotEncoder):
         :param indices: A tensor of integer indices.
         :return: A tensor of string tags.
         """
+        if indices.dtype.is_floating:
+            if not tf.reduce_all(tf.math.equal(indices, tf.math.floor(indices))):
+                raise ValueError("Non-integral indices passed to to_tags")
+            indices = tf.cast(indices, dtype=tf.int32)
 
         def extract_tags(row: TensorType) -> TensorType:
             return tf.stack(
