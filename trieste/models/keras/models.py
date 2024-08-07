@@ -22,7 +22,6 @@ import keras.callbacks
 import tensorflow as tf
 import tensorflow_probability as tfp
 import tensorflow_probability.python.distributions as tfd
-from check_shapes import inherit_check_shapes
 from tensorflow.python.keras.callbacks import Callback
 
 from ... import logging
