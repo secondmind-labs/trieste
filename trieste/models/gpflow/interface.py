@@ -19,7 +19,6 @@ from typing import Any, Optional
 
 import gpflow
 import tensorflow as tf
-from check_shapes import inherit_check_shapes
 from gpflow.models import GPModel
 from gpflow.posteriors import BasePosterior, PrecomputeCacheType
 from typing_extensions import Protocol, final

@@ -35,6 +35,7 @@ from ..space import (
     CollectionSearchSpace,
     Constraint,
     DiscreteSearchSpace,
+    GeneralDiscreteSearchSpace,
     SearchSpace,
     SearchSpaceType,
     TaggedMultiSearchSpace,
@@ -101,7 +102,7 @@ def automatic_optimizer_selector(
     :return: The batch of points in ``space`` that maximises ``target_func``, with shape [1, D].
     """
 
-    if isinstance(space, DiscreteSearchSpace):
+    if isinstance(space, GeneralDiscreteSearchSpace):
         return optimize_discrete(space, target_func)
 
     elif isinstance(space, (Box, CollectionSearchSpace)):
@@ -151,11 +152,11 @@ def _get_max_discrete_points(
 
 
 def optimize_discrete(
-    space: DiscreteSearchSpace,
+    space: GeneralDiscreteSearchSpace,
     target_func: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]],
 ) -> TensorType:
     """
-    An :const:`AcquisitionOptimizer` for :class:'DiscreteSearchSpace' spaces.
+    An :const:`AcquisitionOptimizer` for :class:'GeneralDiscreteSearchSpace' spaces.
 
     When this functions receives an acquisition-integer tuple as its `target_func`,it evaluates
     all the points in the search space for each of the individual V functions making
