@@ -1755,6 +1755,11 @@ def test_categorical_search_space__to_tags(
             tf.constant([[1, 0, 0], [0, 0, 1], [0, 1, 0]], dtype=tf.float32),
         ),
         (
+            CategoricalSearchSpace(["R", "G", "B"]),
+            tf.constant([[[[[0]]]]]),
+            tf.constant([[[[[1, 0, 0]]]]], dtype=tf.float32),
+        ),
+        (
             CategoricalSearchSpace(["R", "G", "B", "A"]),
             tf.constant([[0], [2], [2]]),
             tf.constant([[1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 1, 0]], dtype=tf.float32),
@@ -1765,9 +1770,22 @@ def test_categorical_search_space__to_tags(
             tf.constant([[1, 0, 0, 1, 0], [0, 0, 1, 1, 0], [0, 1, 0, 0, 1]], dtype=tf.float32),
         ),
         (
+            CategoricalSearchSpace([["R", "G", "B"], ["Y", "N"]]),
+            tf.constant([[[0, 0], [0, 0]], [[2, 0], [1, 1]]]),
+            tf.constant(
+                [[[1, 0, 0, 1, 0], [1, 0, 0, 1, 0]], [[0, 0, 1, 1, 0], [0, 1, 0, 0, 1]]],
+                dtype=tf.float32,
+            ),
+        ),
+        (
             TaggedProductSearchSpace([Box([0.0], [1.0]), CategoricalSearchSpace(["R", "G", "B"])]),
             tf.constant([[0.5, 0], [0.3, 2]]),
             tf.constant([[0.5, 1, 0, 0], [0.3, 0, 0, 1]], dtype=tf.float32),
+        ),
+        (
+            TaggedProductSearchSpace([Box([0.0], [1.0]), CategoricalSearchSpace(["R", "G", "B"])]),
+            tf.constant([[[0.5, 0]], [[0.3, 2]]]),
+            tf.constant([[[0.5, 1, 0, 0]], [[0.3, 0, 0, 1]]], dtype=tf.float32),
         ),
         (
             Box([0.0], [1.0]),
@@ -1790,7 +1808,7 @@ def test_categorical_search_space_one_hot_encoding(
         pytest.param(
             CategoricalSearchSpace(["Y", "N"]),
             tf.constant([0, 2, 1]),
-            ValueError,
+            InvalidArgumentError,
             id="Wrong input rank",
         ),
         pytest.param(
