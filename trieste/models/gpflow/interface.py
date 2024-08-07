@@ -113,7 +113,6 @@ class GPflowPredictor(
     def model(self) -> GPModel:
         """The underlying GPflow model."""
 
-    @inherit_check_shapes
     def predict_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         mean, cov = (self._posterior or self.model).predict_f(query_points)
         # posterior predict can return negative variance values [cf GPFlow issue #1813]
@@ -121,7 +120,6 @@ class GPflowPredictor(
             cov = tf.clip_by_value(cov, 1e-12, cov.dtype.max)
         return mean, cov
 
-    @inherit_check_shapes
     def predict_joint_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         mean, cov = (self._posterior or self.model).predict_f(query_points, full_cov=True)
         # posterior predict can return negative variance values [cf GPFlow issue #1813]
@@ -131,11 +129,9 @@ class GPflowPredictor(
             )
         return mean, cov
 
-    @inherit_check_shapes
     def sample_encoded(self, query_points: TensorType, num_samples: int) -> TensorType:
         return self.model.predict_f_samples(query_points, num_samples)
 
-    @inherit_check_shapes
     def predict_y_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         return self.model.predict_y(query_points)
 

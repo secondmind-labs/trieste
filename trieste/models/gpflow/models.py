@@ -163,7 +163,6 @@ class GaussianProcessRegression(
             ),
         )
 
-    @inherit_check_shapes
     def predict_y_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         f_mean, f_var = self.predict_encoded(query_points)
         return self.model.likelihood.predict_mean_and_var(query_points, f_mean, f_var)
@@ -615,7 +614,6 @@ class SparseGaussianProcessRegression(
     ) -> Optional[InducingPointSelector[SparseGaussianProcessRegression]]:
         return self._inducing_point_selector
 
-    @inherit_check_shapes
     def predict_y_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         f_mean, f_var = self.predict_encoded(query_points)
         return self.model.likelihood.predict_mean_and_var(query_points, f_mean, f_var)
@@ -941,7 +939,6 @@ class SparseVariational(
     def inducing_point_selector(self) -> Optional[InducingPointSelector[SparseVariational]]:
         return self._inducing_point_selector
 
-    @inherit_check_shapes
     def predict_y_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         f_mean, f_var = self.predict_encoded(query_points)
         return self.model.likelihood.predict_mean_and_var(query_points, f_mean, f_var)
@@ -1259,7 +1256,6 @@ class VariationalGaussianProcess(
     def model(self) -> VGP:
         return self._model
 
-    @inherit_check_shapes
     def predict_y_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         f_mean, f_var = self.predict_encoded(query_points)
         return self.model.likelihood.predict_mean_and_var(query_points, f_mean, f_var)
