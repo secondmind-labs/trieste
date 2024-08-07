@@ -1745,6 +1745,12 @@ def test_categorical_search_space__to_tags(
     npt.assert_array_equal(tags, expected_tags)
 
 
+def test_categorical_search_space__to_tags_raises_for_non_integers() -> None:
+    search_space = CategoricalSearchSpace(["A", "B", "C"], dtype=tf.float32)
+    with pytest.raises(ValueError):
+        search_space.to_tags(tf.constant([[1.0], [1.2]]))
+
+
 @pytest.mark.parametrize(
     "search_space, query_points, encoded_points",
     [
