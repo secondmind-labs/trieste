@@ -28,6 +28,7 @@ from check_shapes import check_shapes
 from typing_extensions import Protocol, runtime_checkable
 
 from .types import TensorType
+from .utils import flatten_leading_dims
 
 SearchSpaceType = TypeVar("SearchSpaceType", bound="SearchSpace")
 """ A type variable bound to :class:`SearchSpace`. """
@@ -531,6 +532,8 @@ class CategoricalSearchSpace(GeneralDiscreteSearchSpace, HasOneHotEncoder):
         CategoricalSearchSpace([('Red', 'Green', 'Blue')])
         >>> CategoricalSearchSpace([2,3])
         CategoricalSearchSpace([('0', '1'), ('0', '1', '2')])
+        >>> CategoricalSearchSpace([["R", "G", "B"], ["Y", "N"]])
+        CategoricalSearchSpace([('R', 'G', 'B'), ('Y', 'N')])
 
     Note that internally categories are represented by numeric indices:
 
@@ -562,7 +565,9 @@ class CategoricalSearchSpace(GeneralDiscreteSearchSpace, HasOneHotEncoder):
             )
             or all(isinstance(x, int) for x in categories)
         ):
-            raise TypeError("Invalid category description: expected either numbers or names.")
+            raise TypeError(
+                f"Invalid category description {categories!r}: " "expected either numbers or names."
+            )
 
         elif any(isinstance(x, int) for x in categories):
             category_lens: Sequence[int] = categories  # type: ignore[assignment]
@@ -611,23 +616,21 @@ class CategoricalSearchSpace(GeneralDiscreteSearchSpace, HasOneHotEncoder):
         """A one-hot encoder for the numerical indices."""
 
         def encoder(x: TensorType) -> TensorType:
-            if tf.rank(x) != 2:
-                raise ValueError(
-                    f"Invalid input for one-hot encoding: expected rank 2, got {tf.rank(x)}"
-                )
-            if x.shape[1] != len(self.tags):
+            flat_x, unflatten = flatten_leading_dims(x)
+            if flat_x.shape[-1] != len(self.tags):
                 raise ValueError(
                     "Invalid input for one-hot encoding: "
-                    f"expected {len(self.tags)} tags, got {x.shape[1]}"
+                    f"expected {len(self.tags)} tags, got {flat_x.shape[-1]}"
                 )
-            columns = tf.split(x, x.shape[1], axis=1)
+            columns = tf.split(flat_x, flat_x.shape[-1], axis=1)
             encoders = [
                 tf.keras.layers.CategoryEncoding(num_tokens=len(ts), output_mode="one_hot")
                 for ts in self.tags
             ]
-            return tf.concat(
+            encoded = tf.concat(
                 [encoder(column) for encoder, column in zip(encoders, columns)], axis=1
             )
+            return unflatten(encoded)
 
         return encoder
 
@@ -1349,7 +1352,7 @@ class TaggedProductSearchSpace(CollectionSearchSpace, HasOneHotEncoder):
                 if isinstance(space, HasOneHotEncoder):
                     component = space.one_hot_encoder(component)
                 components.append(component)
-            return tf.concat(components, axis=1)
+            return tf.concat(components, axis=-1)
 
         return encoder
 
