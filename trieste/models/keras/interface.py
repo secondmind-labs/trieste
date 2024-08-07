@@ -74,11 +74,9 @@ class KerasPredictor(EncodedProbabilisticModel, ABC):
     def encoder(self) -> EncoderFunction | None:
         return self._encoder
 
-    @inherit_check_shapes
     def predict_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         return self.model.predict(query_points)
 
-    @inherit_check_shapes
     def sample_encoded(self, query_points: TensorType, num_samples: int) -> TensorType:
         raise NotImplementedError(
             """
