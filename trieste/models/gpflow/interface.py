@@ -77,6 +77,10 @@ class GPflowPredictor(
     def encoder(self) -> EncoderFunction | None:
         return self._encoder
 
+    @encoder.setter
+    def encoder(self, encoder: EncoderFunction | None) -> None:
+        self._encoder = encoder
+
     @property
     def optimizer(self) -> Optimizer:
         """The optimizer with which to train the model."""

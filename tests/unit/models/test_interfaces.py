@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+from typing import Optional
 
 import gpflow
 import numpy as np
@@ -35,12 +36,17 @@ from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.data import Dataset
 from trieste.models import TrainableModelStack, TrainableProbabilisticModel
 from trieste.models.interfaces import (
+    EncodedProbabilisticModel,
+    EncodedSupportsPredictJoint,
+    EncodedSupportsPredictY,
+    EncodedTrainableProbabilisticModel,
     TrainablePredictJointReparamModelStack,
     TrainablePredictYModelStack,
     TrainableSupportsPredictJoint,
     TrainableSupportsPredictJointHasReparamSampler,
 )
 from trieste.models.utils import get_last_optimization_result, optimize_model_and_save_result
+from trieste.space import EncoderFunction
 from trieste.types import TensorType
 
 
@@ -216,3 +222,84 @@ def test_model_stack_reparam_sampler() -> None:
     npt.assert_allclose(var[..., :2], var01, rtol=0.04)
     npt.assert_allclose(var[..., 2:3], var2, rtol=0.04)
     npt.assert_allclose(var[..., 3:], var3, rtol=0.04)
+
+
+class _EncodedModel(
+    EncodedTrainableProbabilisticModel,
+    EncodedSupportsPredictJoint,
+    EncodedSupportsPredictY,
+    EncodedProbabilisticModel,
+):
+    def __init__(self) -> None:
+        self._dataset: Dataset | None = None
+
+    @property
+    def dataset(self) -> Dataset | None:
+        return self._dataset
+
+    @property
+    def encoder(self) -> EncoderFunction | None:
+        return lambda x: x + 1
+
+    def predict_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        return query_points, query_points
+
+    def sample_encoded(self, query_points: TensorType, num_samples: int) -> TensorType:
+        return tf.tile(tf.expand_dims(query_points, 0), [num_samples, 1, 1])
+
+    def log(self, dataset: Optional[Dataset] = None) -> None:
+        pass
+
+    def update_encoded(self, dataset: Dataset) -> None:
+        self._dataset = dataset
+
+    def optimize_encoded(self, dataset: Dataset) -> None:
+        self._dataset = dataset
+
+    def predict_joint_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        b, d = query_points.shape
+        return query_points, tf.zeros([d, b, b])
+
+    def predict_y_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        return self.predict_encoded(query_points)
+
+
+def test_encoded_probabilistic_model() -> None:
+    model = _EncodedModel()
+    query_points = tf.random.uniform([3, 5])
+    mean, var = model.predict(query_points)
+    npt.assert_allclose(mean, query_points + 1)
+    npt.assert_allclose(var, query_points + 1)
+    samples = model.sample(query_points, 10)
+    assert len(samples) == 10
+    for i in range(10):
+        npt.assert_allclose(samples[i], query_points + 1)
+
+
+def test_encoded_trainable_probabilistic_model() -> None:
+    model = _EncodedModel()
+    assert model.dataset is None
+    for method in model.update, model.optimize:
+        query_points = tf.random.uniform([3, 5])
+        observations = tf.random.uniform([3, 1])
+        dataset = Dataset(query_points, observations)
+        method(dataset)
+        assert model.dataset is not None
+        npt.assert_allclose(model._dataset.query_points, query_points + 1)
+        npt.assert_allclose(model._dataset.observations, observations)
+
+
+def test_encoded_supports_predict_joint() -> None:
+    model = _EncodedModel()
+    query_points = tf.random.uniform([3, 5])
+    mean, var = model.predict_joint(query_points)
+    npt.assert_allclose(mean, query_points + 1)
+    npt.assert_allclose(var, tf.zeros([5, 3, 3]))
+
+
+def test_encoded_supports_predict_y() -> None:
+    model = _EncodedModel()
+    query_points = tf.random.uniform([3, 5])
+    mean, var = model.predict_y(query_points)
+    npt.assert_allclose(mean, query_points + 1)
+    npt.assert_allclose(var, query_points + 1)

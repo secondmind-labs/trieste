@@ -73,6 +73,10 @@ class KerasPredictor(EncodedProbabilisticModel, ABC):
     def encoder(self) -> EncoderFunction | None:
         return self._encoder
 
+    @encoder.setter
+    def encoder(self, encoder: EncoderFunction | None) -> None:
+        self._encoder = encoder
+
     def predict_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         return self.model.predict(query_points)
 
