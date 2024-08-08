@@ -538,8 +538,8 @@ class CategoricalSearchSpace(GeneralDiscreteSearchSpace, HasOneHotEncoder):
     Note that internally categories are represented by numeric indices:
 
         >>> rgb = CategoricalSearchSpace(["Red", "Green", "Blue"])
-        >>> assert tf.constant([1]) in rgb
-        >>> assert tf.constant([3]) not in rgb
+        >>> assert tf.constant([1], dtype=tf.float64) in rgb
+        >>> assert tf.constant([3], dtype=tf.float64) not in rgb
         >>> rgb.to_tags(tf.constant([[1], [0], [2]]))
         <tf.Tensor: shape=(3, 1), dtype=string, numpy=
         array([[b'Green'],
