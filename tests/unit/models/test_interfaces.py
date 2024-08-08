@@ -231,11 +231,7 @@ class _EncodedModel(
     EncodedProbabilisticModel,
 ):
     def __init__(self) -> None:
-        self._dataset: Dataset | None = None
-
-    @property
-    def dataset(self) -> Dataset | None:
-        return self._dataset
+        self.dataset: Dataset | None = None
 
     @property
     def encoder(self) -> EncoderFunction | None:
@@ -251,10 +247,10 @@ class _EncodedModel(
         pass
 
     def update_encoded(self, dataset: Dataset) -> None:
-        self._dataset = dataset
+        self.dataset = dataset
 
     def optimize_encoded(self, dataset: Dataset) -> None:
-        self._dataset = dataset
+        self.dataset = dataset
 
     def predict_joint_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         b, d = query_points.shape
@@ -285,8 +281,11 @@ def test_encoded_trainable_probabilistic_model() -> None:
         dataset = Dataset(query_points, observations)
         method(dataset)
         assert model.dataset is not None
-        npt.assert_allclose(model._dataset.query_points, query_points + 1)
-        npt.assert_allclose(model._dataset.observations, observations)
+        # no idea why mypy thinks model.dataset couldn't have changed here
+        npt.assert_allclose(  # type: ignore[unreachable]
+            model.dataset.query_points, query_points + 1
+        )
+        npt.assert_allclose(model.dataset.observations, observations)
 
 
 def test_encoded_supports_predict_joint() -> None:
