@@ -230,12 +230,13 @@ class _EncodedModel(
     EncodedSupportsPredictY,
     EncodedProbabilisticModel,
 ):
-    def __init__(self) -> None:
+    def __init__(self, encoder: EncoderFunction | None = None) -> None:
         self.dataset: Dataset | None = None
+        self._encoder = (lambda x: x + 1) if encoder is None else encoder
 
     @property
     def encoder(self) -> EncoderFunction | None:
-        return lambda x: x + 1
+        return self._encoder
 
     def predict_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         return query_points, query_points
@@ -302,3 +303,12 @@ def test_encoded_supports_predict_y() -> None:
     mean, var = model.predict_y(query_points)
     npt.assert_allclose(mean, query_points + 1)
     npt.assert_allclose(var, query_points + 1)
+
+
+def test_encoded_probabilistic_model_keras_embedding() -> None:
+    encoder = tf.keras.layers.Embedding(3, 2)
+    model = _EncodedModel(encoder=encoder)
+    query_points = tf.random.uniform([3, 5], minval=0, maxval=3, dtype=tf.int32)
+    mean, var = model.predict(query_points)
+    assert mean.shape == (3, 5, 2)
+    npt.assert_allclose(mean, encoder(query_points))
