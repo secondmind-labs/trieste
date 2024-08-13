@@ -72,7 +72,7 @@ def test_dataset_raises_for_different_leading_shapes(
 
 def test_dataset_does_not_raise_with_unspecified_leading_dimension() -> None:
     @contextlib.contextmanager
-    def does_not_raise():
+    def does_not_raise() -> None:
         try:
             yield
         except Exception as e:
