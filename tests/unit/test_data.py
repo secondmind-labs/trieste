@@ -71,13 +71,6 @@ def test_dataset_raises_for_different_leading_shapes(
 
 
 def test_dataset_does_not_raise_with_unspecified_leading_dimension() -> None:
-    @contextlib.contextmanager
-    def does_not_raise() -> None:
-        try:
-            yield
-        except Exception as e:
-            pytest.fail(f"An exception was raised: {e}")
-
     query_points = tf.zeros((2, 2))
     observations = tf.zeros((2, 1))
 
@@ -92,23 +85,9 @@ def test_dataset_does_not_raise_with_unspecified_leading_dimension() -> None:
         dtype=tf.float64,
     )
 
-    with does_not_raise():
-        Dataset(
-            query_points=query_points_var,
-            observations=observations
-        )
-
-    with does_not_raise():
-        Dataset(
-            query_points=query_points,
-            observations=observations_var
-        )
-
-    with does_not_raise():
-        Dataset(
-            query_points=query_points_var,
-            observations=observations_var
-        )
+    Dataset(query_points=query_points_var, observations=observations)
+    Dataset(query_points=query_points, observations=observations_var)
+    Dataset(query_points=query_points_var, observations=observations_var)
 
 
 @pytest.mark.parametrize(
