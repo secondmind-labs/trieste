@@ -52,7 +52,7 @@ class Dataset:
         if (
             self.query_points.shape[:-1] != self.observations.shape[:-1]
             # can't check dynamic shapes, so trust that they're ok (if not, they'll fail later)
-            and None not in self.query_points.shape[:-1]
+            and None not in self.query_points.shape[:-1] and None not in self.observations.shape[:-1]
         ):
             raise ValueError(
                 f"Leading shapes of query_points and observations must match. Got shapes"

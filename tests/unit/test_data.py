@@ -13,8 +13,10 @@
 # limitations under the License.
 from __future__ import annotations
 
+import contextlib
 import copy
 
+import numpy as np
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
@@ -66,6 +68,47 @@ def test_dataset_raises_for_different_leading_shapes(
 
     with pytest.raises(ValueError, match="(L|l)eading"):
         Dataset(query_points, observations)
+
+
+def test_dataset_does_not_raise_with_unspecified_leading_dimension() -> None:
+    @contextlib.contextmanager
+    def does_not_raise():
+        try:
+            yield
+        except Exception as e:
+            pytest.fail(f"An exception was raised: {e}")
+
+    query_points = tf.zeros((2, 2))
+    observations = tf.zeros((2, 1))
+
+    query_points_var = tf.Variable(
+        initial_value=np.zeros((0, 2)),
+        shape=(None, 2),
+        dtype=tf.float64,
+    )
+    observations_var = tf.Variable(
+        initial_value=np.zeros((0, 1)),
+        shape=(None, 1),
+        dtype=tf.float64,
+    )
+
+    with does_not_raise():
+        Dataset(
+            query_points=query_points_var,
+            observations=observations
+        )
+
+    with does_not_raise():
+        Dataset(
+            query_points=query_points,
+            observations=observations_var
+        )
+
+    with does_not_raise():
+        Dataset(
+            query_points=query_points_var,
+            observations=observations_var
+        )
 
 
 @pytest.mark.parametrize(
