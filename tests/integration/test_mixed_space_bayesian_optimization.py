@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from typing import cast
 
+import gpflow
 import numpy as np
 import numpy.testing as npt
 import pytest
@@ -248,18 +249,22 @@ def test_optimizer_finds_minima_of_the_categorical_scaled_branin_function(
         TensorType, TaggedProductSearchSpace, TrainableProbabilisticModel
     ],
 ) -> None:
-    # TODO: pick random points for categories (making sure to include minimizers)
-    problem = categorical_scaled_branin(ScaledBranin.minimizers[..., 0])
+    # 6 categories mapping to 3 random points plus the 3 minimizer points
+    points = tf.concat(
+        [tf.random.uniform([3], dtype=tf.float64), ScaledBranin.minimizers[..., 0]], 0
+    )
+    problem = categorical_scaled_branin(tf.random.shuffle(points))
     initial_query_points = problem.search_space.sample(5)
     observer = mk_observer(problem.objective)
     initial_data = observer(initial_query_points)
 
     # model uses one-hot encoding for the categorical inputs
     encoder = one_hot_encoder(problem.search_space)
+    kernel = gpflow.kernels.Matern52(
+        variance=tf.math.reduce_variance(initial_data.observations), lengthscales=0.1
+    )
     model = GaussianProcessRegression(
-        build_gpr(
-            encode_dataset(initial_data, encoder), problem.search_space, likelihood_variance=1e-8
-        ),
+        build_gpr(encode_dataset(initial_data, encoder), kernel=kernel, likelihood_variance=1e-8),
         encoder=encoder,
     )
 
@@ -275,5 +280,7 @@ def test_optimizer_finds_minima_of_the_categorical_scaled_branin_function(
     best_x = dataset.query_points[arg_min_idx]
 
     relative_minimizer_err = tf.abs((best_x - problem.minimizers) / problem.minimizers)
-    assert tf.reduce_any(tf.reduce_all(relative_minimizer_err < 0.1, axis=-1), axis=0)
+    assert tf.reduce_any(
+        tf.reduce_all(relative_minimizer_err < 0.1, axis=-1), axis=0
+    ), relative_minimizer_err
     npt.assert_allclose(best_y, problem.minimum, rtol=0.005)
