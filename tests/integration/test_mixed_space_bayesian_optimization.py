@@ -39,6 +39,7 @@ from trieste.acquisition.rule import (
 from trieste.bayesian_optimizer import BayesianOptimizer
 from trieste.models import TrainableProbabilisticModel
 from trieste.models.gpflow import GaussianProcessRegression, build_gpr
+from trieste.models.interfaces import encode_dataset
 from trieste.objectives import ScaledBranin, SingleObjectiveTestProblem
 from trieste.objectives.single_objectives import scaled_branin
 from trieste.objectives.utils import mk_observer
@@ -247,14 +248,19 @@ def test_optimizer_finds_minima_of_the_categorical_scaled_branin_function(
         TensorType, TaggedProductSearchSpace, TrainableProbabilisticModel
     ],
 ) -> None:
-    # TODO: pick random points for categories (including minimizers)
+    # TODO: pick random points for categories (making sure to include minimizers)
     problem = categorical_scaled_branin(ScaledBranin.minimizers[..., 0])
     initial_query_points = problem.search_space.sample(5)
     observer = mk_observer(problem.objective)
     initial_data = observer(initial_query_points)
+
+    # model uses one-hot encoding for the categorical inputs
+    encoder = one_hot_encoder(problem.search_space)
     model = GaussianProcessRegression(
-        build_gpr(initial_data, mixed_search_space, likelihood_variance=1e-8),
-        encoder=one_hot_encoder(problem.search_space),
+        build_gpr(
+            encode_dataset(initial_data, encoder), problem.search_space, likelihood_variance=1e-8
+        ),
+        encoder=encoder,
     )
 
     dataset = (
