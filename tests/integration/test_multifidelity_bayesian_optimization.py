@@ -38,11 +38,13 @@ from trieste.objectives import (
 )
 from trieste.objectives.utils import mk_observer
 from trieste.observer import SingleObserver
-from trieste.space import TaggedProductSearchSpace
+from trieste.space import SearchSpaceType, TaggedProductSearchSpace
 from trieste.types import TensorType
 
 
-def _build_observer(problem: SingleObjectiveMultifidelityTestProblem) -> SingleObserver:
+def _build_observer(
+    problem: SingleObjectiveMultifidelityTestProblem[SearchSpaceType],
+) -> SingleObserver:
     objective_function = problem.objective
 
     def noisy_objective(x: TensorType) -> TensorType:
@@ -57,7 +59,7 @@ def _build_observer(problem: SingleObjectiveMultifidelityTestProblem) -> SingleO
 
 
 def _build_nested_multifidelity_dataset(
-    problem: SingleObjectiveMultifidelityTestProblem, observer: SingleObserver
+    problem: SingleObjectiveMultifidelityTestProblem[SearchSpaceType], observer: SingleObserver
 ) -> Dataset:
     num_fidelities = problem.num_fidelities
     initial_sample_sizes = [10 + 2 * (num_fidelities - i) for i in range(num_fidelities)]
@@ -83,7 +85,7 @@ def _build_nested_multifidelity_dataset(
 @random_seed
 @pytest.mark.parametrize("problem", ((Linear2Fidelity), (Linear3Fidelity), (Linear5Fidelity)))
 def test_multifidelity_bo_finds_minima_of_linear_problem(
-    problem: SingleObjectiveMultifidelityTestProblem,
+    problem: SingleObjectiveMultifidelityTestProblem[SearchSpaceType],
 ) -> None:
     observer = _build_observer(problem)
     initial_data = _build_nested_multifidelity_dataset(problem, observer)

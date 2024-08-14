@@ -586,6 +586,7 @@ class CategoricalSearchSpace(GeneralDiscreteSearchSpace, HasOneHotEncoder):
             tags = [tuple(ts) for ts in category_names]
 
         self._tags = tags
+        self._dtype = dtype
 
         ranges = [tf.range(len(ts), dtype=dtype) for ts in tags]
         meshgrid = tf.meshgrid(*ranges, indexing="ij")
@@ -633,7 +634,11 @@ class CategoricalSearchSpace(GeneralDiscreteSearchSpace, HasOneHotEncoder):
                 for ts in self.tags
             ]
             encoded = tf.concat(
-                [encoder(column) for encoder, column in zip(encoders, columns)], axis=1
+                [
+                    tf.cast(encoder(column), dtype=self._dtype)
+                    for encoder, column in zip(encoders, columns)
+                ],
+                axis=1,
             )
             return unflatten(encoded)
 

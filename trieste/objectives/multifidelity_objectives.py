@@ -19,13 +19,13 @@ from dataclasses import dataclass
 import numpy as np
 import tensorflow as tf
 
-from ..space import Box, DiscreteSearchSpace, SearchSpace, TaggedProductSearchSpace
+from ..space import Box, DiscreteSearchSpace, SearchSpace, SearchSpaceType, TaggedProductSearchSpace
 from ..types import TensorType
 from .single_objectives import SingleObjectiveTestProblem
 
 
 @dataclass(frozen=True)
-class SingleObjectiveMultifidelityTestProblem(SingleObjectiveTestProblem):
+class SingleObjectiveMultifidelityTestProblem(SingleObjectiveTestProblem[SearchSpaceType]):
     num_fidelities: int
     """The number of fidelities of test function"""
 
