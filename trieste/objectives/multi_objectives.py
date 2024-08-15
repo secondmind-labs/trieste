@@ -24,7 +24,7 @@ import tensorflow as tf
 from check_shapes import check_shape, check_shapes
 from typing_extensions import Protocol
 
-from ..space import Box
+from ..space import Box, SearchSpaceType
 from ..types import TensorType
 from .single_objectives import ObjectiveTestProblem
 
@@ -44,7 +44,7 @@ class GenParetoOptimalPoints(Protocol):
 
 
 @dataclass(frozen=True)
-class MultiObjectiveTestProblem(ObjectiveTestProblem):
+class MultiObjectiveTestProblem(ObjectiveTestProblem[SearchSpaceType]):
     """
     Convenience container class for synthetic multi-objective test functions, containing
     a generator for the pareto optimal points, which can be used as a reference of performance
@@ -73,7 +73,7 @@ def vlmop2(x: TensorType, d: int) -> TensorType:
     return tf.stack([y1, y2], axis=-1)
 
 
-def VLMOP2(input_dim: int) -> MultiObjectiveTestProblem:
+def VLMOP2(input_dim: int) -> MultiObjectiveTestProblem[Box]:
     """
     The VLMOP2 problem, typically evaluated over :math:`[-2, 2]^d`.
     The idea pareto fronts lies on -1/sqrt(d) - 1/sqrt(d) and x1=...=xdim.
@@ -152,7 +152,7 @@ def dtlz1(x: TensorType, m: int, k: int, d: int) -> TensorType:
     )
 
 
-def DTLZ1(input_dim: int, num_objective: int) -> MultiObjectiveTestProblem:
+def DTLZ1(input_dim: int, num_objective: int) -> MultiObjectiveTestProblem[Box]:
     """
     The DTLZ1 problem, the idea pareto fronts lie on a linear hyper-plane.
     See :cite:`deb2002scalable` for details.
@@ -212,7 +212,7 @@ def dtlz2(x: TensorType, m: int, d: int) -> TensorType:
     )
 
 
-def DTLZ2(input_dim: int, num_objective: int) -> MultiObjectiveTestProblem:
+def DTLZ2(input_dim: int, num_objective: int) -> MultiObjectiveTestProblem[Box]:
     """
     The DTLZ2 problem, the idea pareto fronts lie on (part of) a unit hyper sphere.
     See :cite:`deb2002scalable` for details.

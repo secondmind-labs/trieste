@@ -745,6 +745,11 @@ class SupportsCovarianceWithTopFidelity(ProbabilisticModel, Protocol):
         raise NotImplementedError
 
 
+def encode_dataset(dataset: Dataset, encoder: EncoderFunction) -> Dataset:
+    """Return a new Dataset with the query points encoded using the given encoder."""
+    return Dataset(encoder(dataset.query_points), dataset.observations)
+
+
 class EncodedProbabilisticModel(ProbabilisticModel):
     """A probabilistic model with an associated query point encoder.
 
@@ -772,7 +777,7 @@ class EncodedProbabilisticModel(ProbabilisticModel):
         if self.encoder is None:
             return points
         elif isinstance(points, Dataset):
-            return Dataset(self.encoder(points.query_points), points.observations)
+            return encode_dataset(points, self.encoder)
         else:
             return self.encoder(points)
 

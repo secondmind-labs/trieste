@@ -23,12 +23,12 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from math import pi
-from typing import Callable, Sequence
+from typing import Callable, Generic, Sequence
 
 import tensorflow as tf
 from check_shapes import check_shapes
 
-from ..space import Box, Constraint, LinearConstraint, NonlinearConstraint
+from ..space import Box, Constraint, LinearConstraint, NonlinearConstraint, SearchSpaceType
 from ..types import TensorType
 
 ObjectiveTestFunction = Callable[[TensorType], TensorType]
@@ -36,7 +36,7 @@ ObjectiveTestFunction = Callable[[TensorType], TensorType]
 
 
 @dataclass(frozen=True)
-class ObjectiveTestProblem:
+class ObjectiveTestProblem(Generic[SearchSpaceType]):
     """
     Convenience container class for synthetic objective test functions.
     """
@@ -47,7 +47,7 @@ class ObjectiveTestProblem:
     objective: ObjectiveTestFunction
     """The synthetic test function"""
 
-    search_space: Box
+    search_space: SearchSpaceType
     """The (continuous) search space of the test function"""
 
     @property
@@ -62,7 +62,7 @@ class ObjectiveTestProblem:
 
 
 @dataclass(frozen=True)
-class SingleObjectiveTestProblem(ObjectiveTestProblem):
+class SingleObjectiveTestProblem(ObjectiveTestProblem[SearchSpaceType]):
     """
     Convenience container class for synthetic single-objective test functions,
     including the global minimizers and minimum.
