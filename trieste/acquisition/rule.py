@@ -1628,7 +1628,7 @@ class HypercubeTrustRegion(UpdatableTrustRegion):
     def _init_eps(self) -> None:
         if isinstance(self.global_search_space, HasOneHotEncoder):
             # categorical space distance is hardcoded to a (Hamming) distance of 1
-            self.eps = tf.constant(1)
+            self.eps = 1
         else:
             self.eps = self._zeta * (
                 self.global_search_space.upper - self.global_search_space.lower
