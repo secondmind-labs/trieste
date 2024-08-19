@@ -77,6 +77,7 @@ from trieste.objectives.utils import mk_batch_observer
 from trieste.observer import OBJECTIVE
 from trieste.space import (
     Box,
+    CategoricalSearchSpace,
     DiscreteSearchSpace,
     SearchSpace,
     TaggedMultiSearchSpace,
@@ -2058,28 +2059,40 @@ def discrete_search_space() -> DiscreteSearchSpace:
 
 
 @pytest.fixture
+def categorical_search_space() -> CategoricalSearchSpace:
+    return CategoricalSearchSpace([10, 3])
+
+
+@pytest.fixture
 def continuous_search_space() -> Box:
     return Box([0.0], [1.0])
 
 
+@pytest.mark.parametrize("space_fixture", ["discrete_search_space", "categorical_search_space"])
 @pytest.mark.parametrize("with_initialize", [True, False])
 def test_fixed_trust_region_discrete_initialize(
-    discrete_search_space: DiscreteSearchSpace, with_initialize: bool
+    space_fixture: str,
+    with_initialize: bool,
+    request: Any,
 ) -> None:
     """Check that FixedTrustRegionDiscrete inits correctly by picking a single point from the global
     search space."""
-    tr = FixedPointTrustRegionDiscrete(discrete_search_space)
+    search_space = request.getfixturevalue(space_fixture)
+    tr = FixedPointTrustRegionDiscrete(search_space)
     if with_initialize:
         tr.initialize()
     assert tr.location.shape == (2,)
-    assert tr.location in discrete_search_space
+    assert tr.location in search_space
 
 
+@pytest.mark.parametrize("space_fixture", ["discrete_search_space", "categorical_search_space"])
 def test_fixed_trust_region_discrete_update(
-    discrete_search_space: DiscreteSearchSpace,
+    space_fixture: str,
+    request: Any,
 ) -> None:
     """Update call should not change the location of the region."""
-    tr = FixedPointTrustRegionDiscrete(discrete_search_space)
+    search_space = request.getfixturevalue(space_fixture)
+    tr = FixedPointTrustRegionDiscrete(search_space)
     tr.initialize()
     orig_location = tr.location.numpy()
     assert not tr.requires_initialization
@@ -2103,13 +2116,16 @@ def test_trust_region_discrete_get_dataset_min_raises_if_dataset_is_faulty(
         tr.get_dataset_min(datasets)
 
 
+@pytest.mark.parametrize("space_fixture", ["discrete_search_space", "categorical_search_space"])
 def test_trust_region_discrete_raises_on_location_not_found(
-    discrete_search_space: DiscreteSearchSpace,
+    space_fixture: str,
+    request: Any,
 ) -> None:
     """Check that an error is raised if the location is not found in the global search space."""
-    tr = SingleObjectiveTrustRegionDiscrete(discrete_search_space)
+    search_space = request.getfixturevalue(space_fixture)
+    tr = SingleObjectiveTrustRegionDiscrete(search_space)
     with pytest.raises(ValueError, match="location .* not found in the global search space"):
-        tr.location = tf.constant([0.0, 0.0], dtype=tf.float64)
+        tr.location = tf.constant([0.1, 0.0], dtype=tf.float64)
 
 
 def test_trust_region_discrete_get_dataset_min(discrete_search_space: DiscreteSearchSpace) -> None:
@@ -2169,6 +2185,24 @@ def test_trust_region_discrete_initialize(
     npt.assert_array_compare(np.less_equal, discrete_search_space.lower, tr.lower)
     npt.assert_array_compare(np.less_equal, tr.upper, discrete_search_space.upper)
     npt.assert_array_compare(np.less_equal, tr.upper - tr.lower, 2 * exp_eps)
+    npt.assert_array_equal(tr._y_min, tf.constant([np.inf], dtype=tf.float64))
+
+
+def test_trust_region_categorical_initialize(
+    categorical_search_space: CategoricalSearchSpace,
+) -> None:
+    """Check initialize sets the region to a random location, and sets the eps and y_min values."""
+    datasets = {
+        OBJECTIVE: Dataset(  # Points outside the search space should be ignored.
+            tf.constant([[0, 1, 2, 0], [4, -4, -5, 3]], dtype=tf.float64),
+            tf.constant([[0.7], [0.9]], dtype=tf.float64),
+        )
+    }
+    tr = SingleObjectiveTrustRegionDiscrete(categorical_search_space, input_active_dims=[1, 2])
+    tr.initialize(datasets=datasets)
+
+    npt.assert_array_equal(tr.eps, 1)
+    assert tr.location in categorical_search_space
     npt.assert_array_equal(tr._y_min, tf.constant([np.inf], dtype=tf.float64))
 
 
