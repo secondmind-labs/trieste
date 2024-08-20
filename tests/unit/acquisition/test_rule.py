@@ -2257,12 +2257,20 @@ def test_trust_region_discrete_update_no_initialize(
 
 @pytest.mark.parametrize("dtype", [tf.float32, tf.float64])
 @pytest.mark.parametrize("success", [True, False])
+@pytest.mark.parametrize("space_fixture", ["discrete_search_space", "categorical_search_space"])
 def test_trust_region_discrete_update_size(
-    dtype: tf.DType, success: bool, discrete_search_space: DiscreteSearchSpace
+    dtype: tf.DType, success: bool, space_fixture: str, request: Any
 ) -> None:
-    discrete_search_space = DiscreteSearchSpace(  # Convert to the correct dtype.
-        tf.cast(discrete_search_space.points, dtype=dtype)
-    )
+    search_space = request.getfixturevalue(space_fixture)
+    categorical = isinstance(search_space, CategoricalSearchSpace)
+
+    # Convert to the correct dtype.
+    if isinstance(search_space, DiscreteSearchSpace):
+        search_space = DiscreteSearchSpace(tf.cast(search_space.points, dtype=dtype))
+    else:
+        assert isinstance(search_space, CategoricalSearchSpace)
+        search_space = CategoricalSearchSpace(search_space.tags, dtype=dtype)
+
     """Check that update shrinks/expands region on successful/unsuccessful step."""
     datasets = {
         OBJECTIVE: Dataset(
@@ -2270,7 +2278,7 @@ def test_trust_region_discrete_update_size(
             tf.constant([[0.5], [0.3], [1.0]], dtype=dtype),
         )
     }
-    tr = SingleObjectiveTrustRegionDiscrete(discrete_search_space, min_eps=0.1)
+    tr = SingleObjectiveTrustRegionDiscrete(search_space, min_eps=0.1)
     tr.initialize(datasets=datasets)
 
     # Ensure there is at least one point captured in the region.
@@ -2286,11 +2294,17 @@ def test_trust_region_discrete_update_size(
     eps = tr.eps
 
     if success:
-        # Sample a point from the region.
-        new_point = tr.sample(1)
+        # Sample a point from the region. For categorical spaces ensure that
+        # it's a different point to tr.location (this must exist)
+        for _ in range(10):
+            new_point = tr.sample(1)
+            if not (categorical and tf.reduce_all(new_point[0] == tr.location)):
+                break
+        else:
+            assert False, "TR contains just one point"
     else:
         # Pick point outside the region.
-        new_point = tf.constant([[1, 2]], dtype=dtype)
+        new_point = tf.constant([[10, 1]], dtype=dtype)
 
     # Add a new min point to the dataset.
     assert not tr.requires_initialization
@@ -2303,7 +2317,7 @@ def test_trust_region_discrete_update_size(
     tr.update(datasets=datasets)
 
     assert tr.location.dtype == dtype
-    assert tr.eps.dtype == dtype
+    assert tr.eps == 1 if categorical else tr.eps.dtype == dtype
     assert tr.points.dtype == dtype
 
     if success:
@@ -2311,20 +2325,25 @@ def test_trust_region_discrete_update_size(
         new_point = np.squeeze(new_point)
         npt.assert_array_equal(new_point, tr.location)
         npt.assert_allclose(new_min, tr._y_min)
-        # Check that the region is larger by beta.
-        npt.assert_allclose(eps / tr._beta, tr.eps)
+        # Check that the region is larger by beta (except for categorical)
+        npt.assert_allclose(1 if categorical else eps / tr._beta, tr.eps)
     else:
         # Check that the location is the old min point.
         orig_point = np.squeeze(orig_point)
         npt.assert_array_equal(orig_point, tr.location)
         npt.assert_allclose(orig_min, tr._y_min)
-        # Check that the region is smaller by beta.
-        npt.assert_allclose(eps * tr._beta, tr.eps)
+        # Check that the region is smaller by beta (except for categorical)
+        npt.assert_allclose(1 if categorical else eps * tr._beta, tr.eps)
 
     # Check the new set of neighbors.
-    neighbors_mask = tf.abs(discrete_search_space.points - tr.location) <= tr.eps
-    neighbors_mask = tf.reduce_all(neighbors_mask, axis=-1)
-    neighbors = tf.boolean_mask(discrete_search_space.points, neighbors_mask)
+    if categorical:
+        # Hammond distance
+        neighbors_mask = tf.where(search_space.points != tr.location, 1, 0)
+        neighbors_mask = tf.reduce_sum(neighbors_mask, axis=-1) <= tr.eps
+    else:
+        neighbors_mask = tf.abs(search_space.points - tr.location) <= tr.eps
+        neighbors_mask = tf.reduce_all(neighbors_mask, axis=-1)
+    neighbors = tf.boolean_mask(search_space.points, neighbors_mask)
     npt.assert_array_equal(tr.points, neighbors)
 
 
