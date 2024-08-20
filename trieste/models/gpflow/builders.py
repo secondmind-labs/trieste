@@ -21,7 +21,7 @@ universally good solutions.
 from __future__ import annotations
 
 import math
-from typing import Optional, Sequence, Type
+from typing import Callable, Optional, Sequence, Type
 
 import gpflow
 import tensorflow as tf
@@ -30,9 +30,10 @@ from gpflow.kernels import Stationary
 from gpflow.models import GPR, SGPR, SVGP, VGP, GPModel
 
 from ...data import Dataset, split_dataset_by_fidelity
-from ...space import Box, SearchSpace
+from ...space import Box, EncoderFunction, SearchSpace, one_hot_encoded_space, one_hot_encoder
 from ...types import TensorType
 from ..gpflow.models import GaussianProcessRegression
+from ..interfaces import encode_dataset
 
 # NOTE: As a static non-Tensor, this should really be a tf.constant (like the other constants).
 # However, changing it breaks serialisation during the expected_improvement.pct.py notebook.
@@ -88,6 +89,8 @@ def build_gpr(
     likelihood_variance: Optional[float] = None,
     trainable_likelihood: bool = False,
     kernel: Optional[gpflow.kernels.Kernel] = None,
+    encoder: EncoderFunction | None = None,
+    space_encoder: Callable[[SearchSpace], SearchSpace] | None = None,
 ) -> GPR:
     """
     Build a :class:`~gpflow.models.GPR` model with sensible initial parameters and
@@ -118,8 +121,20 @@ def build_gpr(
         non-trainable. By default set to `False`.
     :param kernel: The kernel to use in the model, defaults to letting the function set up a
         :class:`~gpflow.kernels.Matern52` kernel.
+    :param encoder: Encoder with which to transform the dataset before training. Defaults to
+        one_hot_encoder if the search_space is specified.
+    :param space_encoder: Encoder with which to transform search_space before generating a kernel.
+        Defaults to one_hot_encoded_space.
     :return: A :class:`~gpflow.models.GPR` model.
     """
+    if search_space is not None:
+        encoder = one_hot_encoder(search_space) if encoder is None else encoder
+        space_encoder = one_hot_encoded_space if space_encoder is None else space_encoder
+        search_space = space_encoder(search_space)
+
+    if encoder is not None:
+        data = encode_dataset(data, encoder)
+
     empirical_mean, empirical_variance, _ = _get_data_stats(data)
 
     if kernel is None:

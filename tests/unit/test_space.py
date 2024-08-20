@@ -1760,9 +1760,9 @@ def test_categorical_search_space__to_tags_raises_for_non_integers() -> None:
             tf.constant([[1], [1]], dtype=tf.float64),
         ),
         (
-            CategoricalSearchSpace(["R", "G", "B"]),
-            tf.constant([[0], [2], [1]], dtype=tf.float64),
-            tf.constant([[1, 0, 0], [0, 0, 1], [0, 1, 0]], dtype=tf.float64),
+            CategoricalSearchSpace(["R", "G", "B"], dtype=tf.float32),
+            tf.constant([[0], [2], [1]], dtype=tf.float32),
+            tf.constant([[1, 0, 0], [0, 0, 1], [0, 1, 0]], dtype=tf.float32),
         ),
         (
             CategoricalSearchSpace(["R", "G", "B"]),
@@ -1770,9 +1770,9 @@ def test_categorical_search_space__to_tags_raises_for_non_integers() -> None:
             tf.constant([[[[[1, 0, 0]]]]], dtype=tf.float64),
         ),
         (
-            CategoricalSearchSpace(["R", "G", "B", "A"]),
-            tf.constant([[0], [2], [2]], dtype=tf.float64),
-            tf.constant([[1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 1, 0]], dtype=tf.float64),
+            CategoricalSearchSpace(["R", "G", "B", "A"], dtype=tf.float32),
+            tf.constant([[0], [2], [2]], dtype=tf.float32),
+            tf.constant([[1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 1, 0]], dtype=tf.float32),
         ),
         (
             CategoricalSearchSpace([["R", "G", "B"], ["Y", "N"]]),
