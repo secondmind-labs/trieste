@@ -264,7 +264,7 @@ def test_optimizer_finds_minima_of_the_categorical_scaled_branin_function(
     )
 
     dataset = (
-        BayesianOptimizer(observer, mixed_search_space)
+        BayesianOptimizer(observer, problem.search_space)
         .optimize(num_steps, initial_data, model, acquisition_rule)
         .try_get_final_dataset()
     )

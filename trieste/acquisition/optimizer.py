@@ -34,7 +34,6 @@ from ..space import (
     Box,
     CollectionSearchSpace,
     Constraint,
-    DiscreteSearchSpace,
     GeneralDiscreteSearchSpace,
     SearchSpace,
     SearchSpaceType,
@@ -735,7 +734,7 @@ def get_bounds_of_box_relaxation_around_point(
     space_with_fixed_discrete = space
     for tag in space.subspace_tags:
         if isinstance(
-            space.get_subspace(tag), DiscreteSearchSpace
+            space.get_subspace(tag), GeneralDiscreteSearchSpace
         ):  # convert discrete subspaces to box spaces.
             subspace_value = space.get_subspace_component(tag, current_point)
             space_with_fixed_discrete = space_with_fixed_discrete.fix_subspace(tag, subspace_value)
