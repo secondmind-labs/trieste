@@ -518,6 +518,20 @@ def one_hot_encoder(space: SearchSpace) -> EncoderFunction:
     return space.one_hot_encoder if isinstance(space, HasOneHotEncoder) else lambda x: x
 
 
+def one_hot_encoded_space(space: SearchSpace) -> SearchSpace:
+    "A bounded search space corresponding to the one-hot encoding of the given space."
+
+    if isinstance(space, GeneralDiscreteSearchSpace) and isinstance(space, HasOneHotEncoder):
+        return DiscreteSearchSpace(space.one_hot_encoder(space.points))
+    elif isinstance(space, TaggedProductSearchSpace):
+        spaces = [one_hot_encoded_space(space.get_subspace(tag)) for tag in space.subspace_tags]
+        return TaggedProductSearchSpace(spaces=spaces, tags=space.subspace_tags)
+    elif isinstance(space, HasOneHotEncoder):
+        raise NotImplementedError(f"Unsupported one-hot-encoded space {type(space)}")
+    else:
+        return space
+
+
 class CategoricalSearchSpace(GeneralDiscreteSearchSpace, HasOneHotEncoder):
     r"""
     A categorical :class:`SearchSpace` representing a finite set :math:`\mathcal{C}` of categories,
