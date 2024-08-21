@@ -134,7 +134,7 @@ mixed_search_space = _get_mixed_search_space()
             id="TrustRegionSingleObjectiveFixed",
         ),
         pytest.param(
-            8,
+            10,
             BatchTrustRegionProduct(
                 [
                     UpdatableTrustRegionProduct(
