@@ -43,6 +43,7 @@ from trieste.models.gpflow import (
     VariationalGaussianProcess,
 )
 from trieste.models.optimizer import DatasetTransformer, Optimizer
+from trieste.space import EncoderFunction
 from trieste.types import TensorType
 
 
@@ -58,12 +59,15 @@ from trieste.types import TensorType
 )
 def _gpflow_interface_factory(request: Any) -> ModelFactoryType:
     def model_interface_factory(
-        x: TensorType, y: TensorType, optimizer: Optimizer | None = None
+        x: TensorType,
+        y: TensorType,
+        optimizer: Optimizer | None = None,
+        encoder: EncoderFunction | None = None,
     ) -> tuple[GPflowPredictor, Callable[[TensorType, TensorType], GPModel]]:
         model_interface: Callable[..., GPflowPredictor] = request.param[0]
         base_model: GaussianProcessRegression = request.param[1](x, y)
         reference_model: Callable[[TensorType, TensorType], GPModel] = request.param[1]
-        return model_interface(base_model, optimizer=optimizer), reference_model
+        return model_interface(base_model, optimizer=optimizer, encoder=encoder), reference_model
 
     return model_interface_factory
 

@@ -36,6 +36,7 @@ from trieste.objectives import (
     SingleObjectiveTestProblem,
     Trid10,
 )
+from trieste.space import Box, SearchSpaceType
 
 
 @pytest.fixture(
@@ -58,12 +59,12 @@ from trieste.objectives import (
         Levy8,
     ],
 )
-def _problem_fixture(request: Any) -> Tuple[SingleObjectiveTestProblem, int]:
+def _problem_fixture(request: Any) -> Tuple[SingleObjectiveTestProblem[SearchSpaceType], int]:
     return request.param
 
 
 def test_objective_maps_minimizers_to_minimum(
-    problem: SingleObjectiveTestProblem,
+    problem: SingleObjectiveTestProblem[SearchSpaceType],
 ) -> None:
     objective = problem.objective
     minimizers = problem.minimizers
@@ -74,7 +75,7 @@ def test_objective_maps_minimizers_to_minimum(
 
 
 def test_no_function_values_are_less_than_global_minimum(
-    problem: SingleObjectiveTestProblem,
+    problem: SingleObjectiveTestProblem[Box],
 ) -> None:
     objective = problem.objective
     space = problem.search_space
@@ -86,7 +87,7 @@ def test_no_function_values_are_less_than_global_minimum(
 @pytest.mark.parametrize("num_obs", [5, 1])
 @pytest.mark.parametrize("dtype", [tf.float32, tf.float64])
 def test_objective_has_correct_shape_and_dtype(
-    problem: SingleObjectiveTestProblem,
+    problem: SingleObjectiveTestProblem[SearchSpaceType],
     num_obs: int,
     dtype: tf.DType,
 ) -> None:
@@ -120,7 +121,7 @@ def test_objective_has_correct_shape_and_dtype(
 )
 @pytest.mark.parametrize("num_obs", [5, 1])
 def test_search_space_has_correct_shape_and_default_dtype(
-    problem: SingleObjectiveTestProblem,
+    problem: SingleObjectiveTestProblem[SearchSpaceType],
     input_dim: int,
     num_obs: int,
 ) -> None:

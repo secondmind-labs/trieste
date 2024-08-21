@@ -19,31 +19,38 @@ from typing import Optional
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-from check_shapes import inherit_check_shapes
 from typing_extensions import Protocol, runtime_checkable
 
 from ...data import Dataset
+from ...space import EncoderFunction
 from ...types import TensorType
-from ..interfaces import ProbabilisticModel
+from ..interfaces import EncodedProbabilisticModel, ProbabilisticModel
 from ..optimizer import KerasOptimizer
 
 
-class KerasPredictor(ProbabilisticModel, ABC):
+class KerasPredictor(EncodedProbabilisticModel, ABC):
     """
     This is an interface for trainable wrappers of TensorFlow and Keras neural network models.
     """
 
-    def __init__(self, optimizer: Optional[KerasOptimizer] = None):
+    def __init__(
+        self,
+        optimizer: Optional[KerasOptimizer] = None,
+        encoder: EncoderFunction | None = None,
+    ):
         """
         :param optimizer: The optimizer wrapper containing the optimizer with which to train the
             model and arguments for the wrapper and the optimizer. The optimizer must
             be an instance of a :class:`~tf.optimizers.Optimizer`. Defaults to
             :class:`~tf.optimizers.Adam` optimizer with default parameters.
+        :param encoder: Optional encoder with which to transform query points before
+            generating predictions.
         :raise ValueError: If the optimizer is not an instance of :class:`~tf.optimizers.Optimizer`.
         """
         if optimizer is None:
             optimizer = KerasOptimizer(tf.optimizers.Adam())
         self._optimizer = optimizer
+        self._encoder = encoder
 
         if not isinstance(optimizer.optimizer, tf.optimizers.Optimizer):
             raise ValueError(
@@ -62,12 +69,18 @@ class KerasPredictor(ProbabilisticModel, ABC):
         """The optimizer wrapper for training the model."""
         return self._optimizer
 
-    @inherit_check_shapes
-    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+    @property
+    def encoder(self) -> EncoderFunction | None:
+        return self._encoder
+
+    @encoder.setter
+    def encoder(self, encoder: EncoderFunction | None) -> None:
+        self._encoder = encoder
+
+    def predict_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         return self.model.predict(query_points)
 
-    @inherit_check_shapes
-    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
+    def sample_encoded(self, query_points: TensorType, num_samples: int) -> TensorType:
         raise NotImplementedError(
             """
             KerasPredictor does not implement sampling. Acquisition
