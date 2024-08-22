@@ -2337,7 +2337,7 @@ def test_trust_region_discrete_update_size(
 
     # Check the new set of neighbors.
     if categorical:
-        # Hammond distance
+        # Hamming distance
         neighbors_mask = tf.where(search_space.points != tr.location, 1, 0)
         neighbors_mask = tf.reduce_sum(neighbors_mask, axis=-1) <= tr.eps
     else:

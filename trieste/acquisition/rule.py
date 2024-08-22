@@ -2280,7 +2280,7 @@ class UpdatableTrustRegionDiscrete(DiscreteSearchSpace, UpdatableTrustRegion):
             return tf.math.reduce_sum(
                 tf.where(tf.expand_dims(points, -2) == tf.expand_dims(points, -3), 0, 1),
                 axis=-1,
-                keepdims=True,  # (keep last dim for distance calculation below)
+                keepdims=True,  # (keep last dim for reduce_all distance calculation below)
             )  # [num_points, num_points, 1]
         else:
             return tf.abs(
