@@ -136,7 +136,7 @@ mixed_search_space = _get_mixed_search_space()
             id="TrustRegionSingleObjectiveFixed",
         ),
         pytest.param(
-            10,
+            8,
             BatchTrustRegionProduct(
                 [
                     UpdatableTrustRegionProduct(
@@ -271,7 +271,7 @@ cat_problem = _get_categorical_problem()
     [
         pytest.param(25, EfficientGlobalOptimization(), id="EfficientGlobalOptimization"),
         pytest.param(
-            8,
+            10,
             BatchTrustRegionProduct(
                 [
                     UpdatableTrustRegionProduct(
