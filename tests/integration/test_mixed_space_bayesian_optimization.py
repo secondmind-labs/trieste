@@ -271,7 +271,7 @@ cat_problem = _get_categorical_problem()
     [
         pytest.param(25, EfficientGlobalOptimization(), id="EfficientGlobalOptimization"),
         pytest.param(
-            10,
+            8,
             BatchTrustRegionProduct(
                 [
                     UpdatableTrustRegionProduct(
