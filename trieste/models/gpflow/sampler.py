@@ -29,6 +29,7 @@ from gpflux.layers.basis_functions.fourier_features import RandomFourierFeatures
 from gpflux.math import compute_A_inv_b
 from typing_extensions import Protocol, TypeGuard, runtime_checkable
 
+from ...space import EncoderFunction
 from ...types import TensorType
 from ...utils import DEFAULTS, flatten_leading_dims
 from ..interfaces import (
@@ -43,6 +44,7 @@ from ..interfaces import (
     TrajectoryFunction,
     TrajectoryFunctionClass,
     TrajectorySampler,
+    get_encoder,
 )
 
 _IntTensorType = Union[tf.Tensor, int]
@@ -397,6 +399,7 @@ class FeatureDecompositionTrajectorySampler(
             feature_functions=self._feature_functions,
             weight_sampler=weight_sampler,
             mean_function=self._mean_function,
+            encoder=get_encoder(self._model),
         )
 
     def update_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction:
@@ -873,15 +876,18 @@ class feature_decomposition_trajectory(TrajectoryFunctionClass):
         feature_functions: Callable[[TensorType], TensorType],
         weight_sampler: Callable[[int], TensorType],
         mean_function: Callable[[TensorType], TensorType],
+        encoder: EncoderFunction | None = None,
     ):
         """
         :param feature_functions: Set of feature function.
         :param weight_sampler: New sampler that generates feature weight samples.
         :param mean_function: The underlying model's mean function.
+        :param encoder: Optional encoder with which to transform input points.
         """
         self._feature_functions = feature_functions
         self._mean_function = mean_function
         self._weight_sampler = weight_sampler
+        self._encoder = encoder
         self._initialized = tf.Variable(False)
 
         self._weights_sample = tf.Variable(  # dummy init to be updated before trajectory evaluation
@@ -895,6 +901,9 @@ class feature_decomposition_trajectory(TrajectoryFunctionClass):
     @tf.function
     def __call__(self, inputs: TensorType) -> TensorType:  # [N, B, D] -> [N, B, L]
         """Call trajectory function."""
+
+        if self._encoder is not None:
+            inputs = self._encoder(inputs)
 
         if not self._initialized:  # work out desired batch size from input
             self._batch_size.assign(tf.shape(inputs)[-2])  # B

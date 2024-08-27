@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import dataclasses
 from typing import cast
 
 import numpy as np
@@ -47,6 +48,7 @@ from trieste.space import (
     Box,
     CategoricalSearchSpace,
     DiscreteSearchSpace,
+    EncoderFunction,
     TaggedProductSearchSpace,
     one_hot_encoder,
 )
@@ -167,15 +169,32 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
         TensorType, TaggedProductSearchSpace, TrainableProbabilisticModel
     ],
 ) -> None:
-    initial_query_points = mixed_search_space.sample(5)
-    observer = mk_observer(ScaledBranin.objective)
+    mixed_branin = cast(SingleObjectiveTestProblem[TaggedProductSearchSpace], ScaledBranin)
+    _test_optimizer_finds_problem_minima(
+        dataclasses.replace(mixed_branin, search_space=mixed_search_space),
+        num_steps,
+        acquisition_rule,
+    )
+
+
+def _test_optimizer_finds_problem_minima(
+    problem: SingleObjectiveTestProblem[TaggedProductSearchSpace],
+    num_steps: int,
+    acquisition_rule: AcquisitionRule[
+        TensorType, TaggedProductSearchSpace, TrainableProbabilisticModel
+    ],
+    encoder: EncoderFunction | None = None,
+) -> None:
+    initial_query_points = problem.search_space.sample(5)
+    observer = mk_observer(problem.objective)
     initial_data = observer(initial_query_points)
     model = GaussianProcessRegression(
-        build_gpr(initial_data, mixed_search_space, likelihood_variance=1e-8)
+        build_gpr(initial_data, problem.search_space, likelihood_variance=1e-8),
+        encoder=encoder,
     )
 
     dataset = (
-        BayesianOptimizer(observer, mixed_search_space)
+        BayesianOptimizer(observer, problem.search_space)
         .optimize(num_steps, initial_data, model, acquisition_rule)
         .try_get_final_dataset()
     )
@@ -185,7 +204,7 @@ def test_optimizer_finds_minima_of_the_scaled_branin_function(
     best_y = dataset.observations[arg_min_idx]
     best_x = dataset.query_points[arg_min_idx]
 
-    relative_minimizer_err = tf.abs((best_x - ScaledBranin.minimizers) / ScaledBranin.minimizers)
+    relative_minimizer_err = tf.abs((best_x - problem.minimizers) / problem.minimizers)
     # these accuracies are the current best for the given number of optimization steps, which makes
     # this is a regression test
     assert tf.reduce_any(tf.reduce_all(relative_minimizer_err < 0.1, axis=-1), axis=0)
@@ -210,7 +229,7 @@ def categorical_scaled_branin(
     continuous_space = Box([0], [1])
     search_space = TaggedProductSearchSpace(
         spaces=[categorical_space, continuous_space],
-        tags=["discrete", "continuous"],
+        tags=["categorical", "continuous"],
     )
 
     def objective(x: TensorType) -> TensorType:
@@ -234,11 +253,50 @@ def categorical_scaled_branin(
     )
 
 
+def _get_categorical_problem() -> SingleObjectiveTestProblem[TaggedProductSearchSpace]:
+    # a categorical scaled branin problem with 6 categories mapping to 3 random points
+    # plus the 3 minimizer points (to guarantee that the minimum is present)
+    points = tf.concat(
+        [tf.random.uniform([3], dtype=tf.float64), ScaledBranin.minimizers[..., 0]], 0
+    )
+    return categorical_scaled_branin(tf.random.shuffle(points))
+
+
+cat_problem = _get_categorical_problem()
+
+
 @random_seed
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule",
     [
         pytest.param(25, EfficientGlobalOptimization(), id="EfficientGlobalOptimization"),
+        pytest.param(
+            8,
+            BatchTrustRegionProduct(
+                [
+                    UpdatableTrustRegionProduct(
+                        [
+                            SingleObjectiveTrustRegionDiscrete(
+                                cast(
+                                    CategoricalSearchSpace,
+                                    cat_problem.search_space.get_subspace("categorical"),
+                                )
+                            ),
+                            SingleObjectiveTrustRegionBox(
+                                cast(Box, cat_problem.search_space.get_subspace("continuous"))
+                            ),
+                        ],
+                        tags=cat_problem.search_space.subspace_tags,
+                    )
+                    for _ in range(3)
+                ],
+                EfficientGlobalOptimization(
+                    ParallelContinuousThompsonSampling(),
+                    num_query_points=3,
+                ),
+            ),
+            id="TrustRegionSingleObjective",
+        ),
     ],
 )
 def test_optimizer_finds_minima_of_the_categorical_scaled_branin_function(
@@ -247,35 +305,10 @@ def test_optimizer_finds_minima_of_the_categorical_scaled_branin_function(
         TensorType, TaggedProductSearchSpace, TrainableProbabilisticModel
     ],
 ) -> None:
-    # 6 categories mapping to 3 random points plus the 3 minimizer points
-    points = tf.concat(
-        [tf.random.uniform([3], dtype=tf.float64), ScaledBranin.minimizers[..., 0]], 0
-    )
-    problem = categorical_scaled_branin(tf.random.shuffle(points))
-    initial_query_points = problem.search_space.sample(5)
-    observer = mk_observer(problem.objective)
-    initial_data = observer(initial_query_points)
-
     # model uses one-hot encoding for the categorical inputs
-    encoder = one_hot_encoder(problem.search_space)
-    model = GaussianProcessRegression(
-        build_gpr(initial_data, problem.search_space, likelihood_variance=1e-8),
-        encoder=encoder,
+    _test_optimizer_finds_problem_minima(
+        cat_problem,
+        num_steps,
+        acquisition_rule,
+        encoder=one_hot_encoder(cat_problem.search_space),
     )
-
-    dataset = (
-        BayesianOptimizer(observer, problem.search_space)
-        .optimize(num_steps, initial_data, model, acquisition_rule)
-        .try_get_final_dataset()
-    )
-
-    arg_min_idx = tf.squeeze(tf.argmin(dataset.observations, axis=0))
-
-    best_y = dataset.observations[arg_min_idx]
-    best_x = dataset.query_points[arg_min_idx]
-
-    relative_minimizer_err = tf.abs((best_x - problem.minimizers) / problem.minimizers)
-    assert tf.reduce_any(
-        tf.reduce_all(relative_minimizer_err < 0.1, axis=-1), axis=0
-    ), relative_minimizer_err
-    npt.assert_allclose(best_y, problem.minimum, rtol=0.005)
