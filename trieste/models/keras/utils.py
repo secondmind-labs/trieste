@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Callable, Optional
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -22,6 +22,14 @@ from gpflow.keras import tf_keras
 
 from ...data import Dataset
 from ...types import TensorType
+
+try:
+    register_keras_serializable = tf_keras.saving.register_keras_serializable()
+except AttributeError:  # pragma: no cover (tested but not by coverage)
+
+    # not required in earlier version of TF
+    def register_keras_serializable(func: Callable[..., object]) -> Callable[..., object]:
+        return func
 
 
 def get_tensor_spec_from_data(dataset: Dataset) -> tuple[tf.TensorSpec, tf.TensorSpec]:
@@ -123,7 +131,7 @@ def sample_model_index(
     return indices
 
 
-@tf_keras.saving.register_keras_serializable()
+@register_keras_serializable
 def negative_log_likelihood(
     y_true: TensorType, y_pred: tfp.distributions.Distribution
 ) -> TensorType:
