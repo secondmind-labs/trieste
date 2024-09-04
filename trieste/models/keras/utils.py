@@ -18,6 +18,7 @@ from typing import Optional
 
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflow.keras import tf_keras
 
 from ...data import Dataset
 from ...types import TensorType
@@ -122,6 +123,7 @@ def sample_model_index(
     return indices
 
 
+@tf_keras.saving.register_keras_serializable()
 def negative_log_likelihood(
     y_true: TensorType, y_pred: tfp.distributions.Distribution
 ) -> TensorType:
