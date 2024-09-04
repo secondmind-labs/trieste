@@ -25,6 +25,7 @@ import scipy.optimize as spo
 import tensorflow as tf
 import tensorflow_probability as tfp
 from check_shapes import check_shapes
+from gpflow.keras import tf_keras
 from typing_extensions import Protocol, runtime_checkable
 
 from .types import TensorType
@@ -643,7 +644,7 @@ class CategoricalSearchSpace(GeneralDiscreteSearchSpace, HasOneHotEncoder):
                 )
             columns = tf.split(flat_x, flat_x.shape[-1], axis=1)
             encoders = [
-                tf.keras.layers.CategoryEncoding(num_tokens=len(ts), output_mode="one_hot")
+                tf_keras.layers.CategoryEncoding(num_tokens=len(ts), output_mode="one_hot")
                 for ts in self.tags
             ]
             encoded = tf.concat(
