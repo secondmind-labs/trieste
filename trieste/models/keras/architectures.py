@@ -29,8 +29,8 @@ import tensorflow_probability as tfp
 from gpflow.keras import tf_keras
 
 try:
-    from keras.src.saving.serialization_lib import SafeModeScope
-except ImportError:  # pragma: no cover (tested but not by coverage)
+    SafeModeScope = tf_keras.src.saving.serialization_lib.SafeModeScope
+except AttributeError:  # pragma: no cover (tested but not by coverage)
     SafeModeScope = contextlib.nullcontext
 from tensorflow_probability.python.layers.distribution_layer import DistributionLambda, _serialize
 
@@ -147,7 +147,7 @@ class KerasEnsemble:
         # When unpickling restore the model using model_from_json.
         self.__dict__.update(state)
         # TF 2.15 disallows loading lambdas without "safe-mode" being disabled
-        # unfortunately, tfp.layers.DistributionLambda seems to use lambdas
+        # unfortunately, tfp.layers.DistributionLambda uses lambdas
         with SafeModeScope(False):
             self._model = tf_keras.models.model_from_json(
                 state["_model"], custom_objects={"MultivariateNormalTriL": MultivariateNormalTriL}
