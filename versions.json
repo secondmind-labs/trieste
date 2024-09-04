@@ -4,8 +4,16 @@
     "url": "https://secondmind-labs.github.io/trieste/develop/"
   },
   {
-    "version": "3.3.3",
-    "url": "https://secondmind-labs.github.io/trieste/3.3.3/"
+    "version": "4.0.0",
+    "url": "https://secondmind-labs.github.io/trieste/4.0.0/"
+  },
+  {
+    "version": "3.4.0",
+    "url": "https://secondmind-labs.github.io/trieste/3.4.0/"
+  },
+  {
+    "version": "3.3.4",
+    "url": "https://secondmind-labs.github.io/trieste/3.3.4/"
   },
   {
     "version": "3.2.0",

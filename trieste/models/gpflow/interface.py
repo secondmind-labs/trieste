@@ -19,22 +19,24 @@ from typing import Any, Optional
 
 import gpflow
 import tensorflow as tf
-from check_shapes import inherit_check_shapes
 from gpflow.models import GPModel
 from gpflow.posteriors import BasePosterior, PrecomputeCacheType
-from typing_extensions import Protocol
+from typing_extensions import Protocol, final
 
 from ... import logging
 from ...data import Dataset
+from ...space import EncoderFunction
 from ...types import TensorType
 from ..interfaces import (
+    EncodedProbabilisticModel,
+    EncodedSupportsPredictJoint,
+    EncodedSupportsPredictY,
+    EncodedTrainableProbabilisticModel,
     HasReparamSampler,
     ReparametrizationSampler,
     SupportsGetKernel,
     SupportsGetObservationNoise,
     SupportsPredictJoint,
-    SupportsPredictY,
-    TrainableProbabilisticModel,
 )
 from ..optimizer import Optimizer
 from ..utils import (
@@ -46,26 +48,38 @@ from .sampler import BatchReparametrizationSampler
 
 
 class GPflowPredictor(
-    SupportsPredictJoint,
+    EncodedSupportsPredictJoint,
     SupportsGetKernel,
     SupportsGetObservationNoise,
-    SupportsPredictY,
+    EncodedSupportsPredictY,
     HasReparamSampler,
-    TrainableProbabilisticModel,
+    EncodedTrainableProbabilisticModel,
+    EncodedProbabilisticModel,
     ABC,
 ):
     """A trainable wrapper for a GPflow Gaussian process model."""
 
-    def __init__(self, optimizer: Optimizer | None = None):
+    def __init__(self, optimizer: Optimizer | None = None, encoder: EncoderFunction | None = None):
         """
         :param optimizer: The optimizer with which to train the model. Defaults to
             :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
+        :param encoder: Optional encoder with which to transform query points before
+            generating predictions.
         """
         if optimizer is None:
             optimizer = Optimizer(gpflow.optimizers.Scipy(), compile=True)
 
         self._optimizer = optimizer
+        self._encoder = encoder
         self._posterior: Optional[BasePosterior] = None
+
+    @property
+    def encoder(self) -> EncoderFunction | None:
+        return self._encoder
+
+    @encoder.setter
+    def encoder(self, encoder: EncoderFunction | None) -> None:
+        self._encoder = encoder
 
     @property
     def optimizer(self) -> Optimizer:
@@ -102,16 +116,14 @@ class GPflowPredictor(
     def model(self) -> GPModel:
         """The underlying GPflow model."""
 
-    @inherit_check_shapes
-    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+    def predict_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         mean, cov = (self._posterior or self.model).predict_f(query_points)
         # posterior predict can return negative variance values [cf GPFlow issue #1813]
         if self._posterior is not None:
             cov = tf.clip_by_value(cov, 1e-12, cov.dtype.max)
         return mean, cov
 
-    @inherit_check_shapes
-    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+    def predict_joint_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         mean, cov = (self._posterior or self.model).predict_f(query_points, full_cov=True)
         # posterior predict can return negative variance values [cf GPFlow issue #1813]
         if self._posterior is not None:
@@ -120,12 +132,10 @@ class GPflowPredictor(
             )
         return mean, cov
 
-    @inherit_check_shapes
-    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
+    def sample_encoded(self, query_points: TensorType, num_samples: int) -> TensorType:
         return self.model.predict_f_samples(query_points, num_samples)
 
-    @inherit_check_shapes
-    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+    def predict_y_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         return self.model.predict_y(query_points)
 
     def get_kernel(self) -> gpflow.kernels.Kernel:
@@ -206,3 +216,21 @@ class SupportsCovarianceBetweenPoints(SupportsPredictJoint, Protocol):
             (L being the number of latent GPs = number of output dimensions)
         """
         raise NotImplementedError
+
+
+class EncodedSupportsCovarianceBetweenPoints(
+    EncodedProbabilisticModel, SupportsCovarianceBetweenPoints
+):
+    @abstractmethod
+    def covariance_between_points_encoded(
+        self, query_points_1: TensorType, query_points_2: TensorType
+    ) -> TensorType:
+        """Implementation of covariance_between_points on encoded query points."""
+
+    @final
+    def covariance_between_points(
+        self, query_points_1: TensorType, query_points_2: TensorType
+    ) -> TensorType:
+        return self.covariance_between_points_encoded(
+            self.encode(query_points_1), self.encode(query_points_2)
+        )

@@ -19,6 +19,7 @@ import tensorflow as tf
 from check_shapes.exceptions import ShapeMismatchError
 
 from trieste.objectives.multi_objectives import DTLZ1, DTLZ2, VLMOP2, MultiObjectiveTestProblem
+from trieste.space import SearchSpaceType
 from trieste.types import TensorType
 
 
@@ -117,7 +118,7 @@ def test_dtlz2_has_expected_output(
     ],
 )
 def test_gen_pareto_front_is_equal_to_math_defined(
-    obj_type: Callable[[int, int], MultiObjectiveTestProblem],
+    obj_type: Callable[[int, int], MultiObjectiveTestProblem[SearchSpaceType]],
     input_dim: int,
     num_obj: int,
     gen_pf_num: int,
@@ -140,7 +141,7 @@ def test_gen_pareto_front_is_equal_to_math_defined(
     ],
 )
 def test_func_raises_specified_input_dim_not_align_with_actual_input_dim(
-    obj_inst: MultiObjectiveTestProblem, actual_x: TensorType
+    obj_inst: MultiObjectiveTestProblem[SearchSpaceType], actual_x: TensorType
 ) -> None:
     with pytest.raises(ShapeMismatchError):
         obj_inst.objective(actual_x)
@@ -160,7 +161,7 @@ def test_func_raises_specified_input_dim_not_align_with_actual_input_dim(
 @pytest.mark.parametrize("num_obs", [1, 5, 10])
 @pytest.mark.parametrize("dtype", [tf.float32, tf.float64])
 def test_objective_has_correct_shape_and_dtype(
-    problem: MultiObjectiveTestProblem,
+    problem: MultiObjectiveTestProblem[SearchSpaceType],
     input_dim: int,
     num_obj: int,
     num_obs: int,
