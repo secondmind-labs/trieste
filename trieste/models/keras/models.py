@@ -18,7 +18,6 @@ import re
 from typing import Any, Dict, Mapping, Optional
 
 import dill
-import keras.callbacks
 import tensorflow as tf
 import tensorflow_probability as tfp
 import tensorflow_probability.python.distributions as tfd
@@ -378,7 +377,7 @@ class DeepEnsemble(
         """
         return
 
-    def optimize_encoded(self, dataset: Dataset) -> keras.callbacks.History:
+    def optimize_encoded(self, dataset: Dataset) -> tf_keras.callbacks.History:
         """
         Optimize the underlying Keras ensemble model with the specified ``dataset``.
 
@@ -523,7 +522,7 @@ class DeepEnsemble(
                     callback._writers = writers
 
         # don't serialize any history optimization result
-        if isinstance(state.get("_last_optimization_result"), keras.callbacks.History):
+        if isinstance(state.get("_last_optimization_result"), tf_keras.callbacks.History):
             state["_last_optimization_result"] = ...
 
         return state

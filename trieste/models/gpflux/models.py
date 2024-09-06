@@ -18,7 +18,6 @@ from typing import Any, Callable, Mapping, Optional
 
 import dill
 import gpflow
-import keras.callbacks
 import tensorflow as tf
 from check_shapes import inherit_check_shapes
 from gpflow.inducing_variables import InducingPoints
@@ -232,7 +231,7 @@ class DeepGaussianProcess(
                 self._model_keras.history.model = history_model
 
         # don't try to serialize any other copies of the history callback
-        if isinstance(state.get("_last_optimization_result"), keras.callbacks.History):
+        if isinstance(state.get("_last_optimization_result"), tf_keras.callbacks.History):
             state["_last_optimization_result"] = ...
 
         return state
@@ -367,7 +366,7 @@ class DeepGaussianProcess(
 
             inputs = layer(inputs)
 
-    def optimize(self, dataset: Dataset) -> keras.callbacks.History:
+    def optimize(self, dataset: Dataset) -> tf_keras.callbacks.History:
         """
         Optimize the model with the specified `dataset`.
         :param dataset: The data with which to optimize the `model`.
