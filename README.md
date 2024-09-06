@@ -111,6 +111,13 @@ Alternatively, you can copy and paste the tutorials into fresh notebooks and avo
 $ pip install trieste[plotting]
 ```
 
+### Importing Keras
+
+Like [tensorflow-probability](https://www.tensorflow.org/probability), Trieste currently uses Keras 2. When using Tensorflow versions 2.16 onwards (which default to Keras 3) this needs to be imported from `tf_keras` rather than `tf.keras`. Alternatively, for a shortcut that works with all versions of Tensorflow, you can write:
+```python
+from gpflow.keras import tf_keras
+```
+
 ## The Trieste Community
 
 ### Getting help
