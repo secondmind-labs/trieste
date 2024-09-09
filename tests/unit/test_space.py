@@ -1760,6 +1760,11 @@ def test_categorical_search_space__to_tags_raises_for_non_integers() -> None:
             tf.constant([[1], [1]], dtype=tf.float64),
         ),
         (
+            CategoricalSearchSpace(["Y", "N"]),
+            tf.constant([[0], [1], [0]], dtype=tf.float64),
+            tf.constant([[0], [1], [0]], dtype=tf.float64),
+        ),
+        (
             CategoricalSearchSpace(["R", "G", "B"], dtype=tf.float32),
             tf.constant([[0], [2], [1]], dtype=tf.float32),
             tf.constant([[1, 0, 0], [0, 0, 1], [0, 1, 0]], dtype=tf.float32),
@@ -1777,13 +1782,13 @@ def test_categorical_search_space__to_tags_raises_for_non_integers() -> None:
         (
             CategoricalSearchSpace([["R", "G", "B"], ["Y", "N"]]),
             tf.constant([[0, 0], [2, 0], [1, 1]], dtype=tf.float64),
-            tf.constant([[1, 0, 0, 1, 0], [0, 0, 1, 1, 0], [0, 1, 0, 0, 1]], dtype=tf.float64),
+            tf.constant([[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 1]], dtype=tf.float64),
         ),
         (
             CategoricalSearchSpace([["R", "G", "B"], ["Y", "N"]]),
             tf.constant([[[0, 0], [0, 0]], [[2, 0], [1, 1]]], dtype=tf.float64),
             tf.constant(
-                [[[1, 0, 0, 1, 0], [1, 0, 0, 1, 0]], [[0, 0, 1, 1, 0], [0, 1, 0, 0, 1]]],
+                [[[1, 0, 0, 0], [1, 0, 0, 0]], [[0, 0, 1, 0], [0, 1, 0, 1]]],
                 dtype=tf.float64,
             ),
         ),
@@ -1824,6 +1829,12 @@ def test_categorical_search_space_one_hot_encoding(
         pytest.param(
             CategoricalSearchSpace(["Y", "N"]),
             tf.constant([[0], [2], [1]]),
+            ValueError,
+            id="Out of range binary input value",
+        ),
+        pytest.param(
+            CategoricalSearchSpace(["Y", "N", "maybe"]),
+            tf.constant([[0], [3], [1]]),
             InvalidArgumentError,
             id="Out of range input value",
         ),

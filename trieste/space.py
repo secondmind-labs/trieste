@@ -633,7 +633,14 @@ class CategoricalSearchSpace(GeneralDiscreteSearchSpace, HasOneHotEncoder):
 
     @property
     def one_hot_encoder(self) -> EncoderFunction:
-        """A one-hot encoder for the numerical indices."""
+        """A one-hot encoder for the numerical indices. Note that binary categories
+        are left unchanged instead of adding an unnecessary second feature."""
+
+        def binary_encoder(x: TensorType) -> TensorType:
+            # no need to one-hot encode binary categories (but we should still validate)
+            if not tf.reduce_all((x == 0) | (x == 1)):
+                raise ValueError(f"Invalid value {x}")
+            return x
 
         def encoder(x: TensorType) -> TensorType:
             flat_x, unflatten = flatten_leading_dims(x)
@@ -644,7 +651,9 @@ class CategoricalSearchSpace(GeneralDiscreteSearchSpace, HasOneHotEncoder):
                 )
             columns = tf.split(flat_x, flat_x.shape[-1], axis=1)
             encoders = [
-                tf.keras.layers.CategoryEncoding(num_tokens=len(ts), output_mode="one_hot")
+                binary_encoder
+                if len(ts) == 2
+                else tf.keras.layers.CategoryEncoding(num_tokens=len(ts), output_mode="one_hot")
                 for ts in self.tags
             ]
             encoded = tf.concat(
