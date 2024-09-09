@@ -360,9 +360,10 @@ def test_joint_batch_acquisition_rule_acquire(
     search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
     num_query_points = 4
     acq = _JointBatchModelMinusMeanMaximumSingleBuilder()
-    acq_rule: AcquisitionRule[TensorType, Box, ProbabilisticModel] | AcquisitionRule[
-        State[TensorType, AsynchronousRuleState], Box, ProbabilisticModel
-    ] = rule_fn(acq, num_query_points)
+    acq_rule: (
+        AcquisitionRule[TensorType, Box, ProbabilisticModel]
+        | AcquisitionRule[State[TensorType, AsynchronousRuleState], Box, ProbabilisticModel]
+    ) = rule_fn(acq, num_query_points)
 
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
     points_or_stateful = acq_rule.acquire_single(
@@ -432,9 +433,10 @@ def test_greedy_batch_acquisition_rule_acquire(
     num_query_points = 4
     acq = _GreedyBatchModelMinusMeanMaximumSingleBuilder()
     assert acq._update_count == 0
-    acq_rule: AcquisitionRule[TensorType, Box, ProbabilisticModel] | AcquisitionRule[
-        State[TensorType, AsynchronousRuleState], Box, ProbabilisticModel
-    ] = rule_fn(acq, num_query_points)
+    acq_rule: (
+        AcquisitionRule[TensorType, Box, ProbabilisticModel]
+        | AcquisitionRule[State[TensorType, AsynchronousRuleState], Box, ProbabilisticModel]
+    ) = rule_fn(acq, num_query_points)
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
     points_or_stateful = acq_rule.acquire_single(
         search_space, QuadraticMeanAndRBFKernel(), dataset=dataset
@@ -1692,8 +1694,7 @@ class TestTrustRegionBox(SingleObjectiveTrustRegionBox):
         return self._location
 
     @location.setter
-    def location(self, location: TensorType) -> None:
-        ...
+    def location(self, location: TensorType) -> None: ...
 
     def _init_eps(self) -> None:
         self.eps = tf.constant(self._init_eps_val, dtype=tf.float64)

@@ -18,10 +18,10 @@ import re
 from typing import Any, Dict, Mapping, Optional
 
 import dill
-import keras.callbacks
 import tensorflow as tf
 import tensorflow_probability as tfp
 import tensorflow_probability.python.distributions as tfd
+from gpflow.keras import tf_keras
 from tensorflow.python.keras.callbacks import Callback
 
 from ... import logging
@@ -141,7 +141,7 @@ class DeepEnsemble(
                 "epochs": 3000,
                 "batch_size": 16,
                 "callbacks": [
-                    tf.keras.callbacks.EarlyStopping(
+                    tf_keras.callbacks.EarlyStopping(
                         monitor="loss", patience=50, restore_best_weights=True
                     )
                 ],
@@ -161,7 +161,7 @@ class DeepEnsemble(
         )
 
         if not isinstance(
-            self.optimizer.optimizer.lr, tf.keras.optimizers.schedules.LearningRateSchedule
+            self.optimizer.optimizer.lr, tf_keras.optimizers.schedules.LearningRateSchedule
         ):
             self.original_lr = self.optimizer.optimizer.lr.numpy()
         self._absolute_epochs = 0
@@ -179,7 +179,7 @@ class DeepEnsemble(
         )
 
     @property
-    def model(self) -> tf.keras.Model:
+    def model(self) -> tf_keras.Model:
         """Returns compiled Keras ensemble model."""
         return self._model.model
 
@@ -377,7 +377,7 @@ class DeepEnsemble(
         """
         return
 
-    def optimize_encoded(self, dataset: Dataset) -> keras.callbacks.History:
+    def optimize_encoded(self, dataset: Dataset) -> tf_keras.callbacks.History:
         """
         Optimize the underlying Keras ensemble model with the specified ``dataset``.
 
@@ -417,7 +417,7 @@ class DeepEnsemble(
         # different. Therefore, we make sure the learning rate is set back to its initial value.
         # However, this is not needed for `LearningRateSchedule` instances.
         if not isinstance(
-            self.optimizer.optimizer.lr, tf.keras.optimizers.schedules.LearningRateSchedule
+            self.optimizer.optimizer.lr, tf_keras.optimizers.schedules.LearningRateSchedule
         ):
             self.optimizer.optimizer.lr.assign(self.original_lr)
 
@@ -503,7 +503,7 @@ class DeepEnsemble(
                     elif callback.model:
                         callback.model = (callback.model.to_json(), callback.model.get_weights())
                     # don't pickle tensorboard writers either; they'll be recreated when needed
-                    if isinstance(callback, tf.keras.callbacks.TensorBoard):
+                    if isinstance(callback, tf_keras.callbacks.TensorBoard):
                         tensorboard_writers.append(callback._writers)
                         callback._writers = {}
                 state["_optimizer"] = dill.dumps(state["_optimizer"])
@@ -516,13 +516,13 @@ class DeepEnsemble(
                 for callback, model in zip(callbacks, saved_models):
                     callback.model = model
                 for callback, writers in zip(
-                    (cb for cb in callbacks if isinstance(cb, tf.keras.callbacks.TensorBoard)),
+                    (cb for cb in callbacks if isinstance(cb, tf_keras.callbacks.TensorBoard)),
                     tensorboard_writers,
                 ):
                     callback._writers = writers
 
         # don't serialize any history optimization result
-        if isinstance(state.get("_last_optimization_result"), keras.callbacks.History):
+        if isinstance(state.get("_last_optimization_result"), tf_keras.callbacks.History):
             state["_last_optimization_result"] = ...
 
         return state
@@ -538,7 +538,7 @@ class DeepEnsemble(
                 callback.set_model(self.model)
             elif callback.model:
                 model_json, weights = callback.model
-                model = tf.keras.models.model_from_json(
+                model = tf_keras.models.model_from_json(
                     model_json,
                     custom_objects={"MultivariateNormalTriL": MultivariateNormalTriL},
                 )

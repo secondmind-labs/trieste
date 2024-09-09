@@ -15,14 +15,14 @@
 from typing import Union
 
 import pytest
-import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflow.keras import tf_keras
 
 from tests.util.misc import empty_dataset
 from trieste.models.keras import build_keras_ensemble
 
 
-@pytest.mark.parametrize("units, activation", [(10, "relu"), (50, tf.keras.activations.tanh)])
+@pytest.mark.parametrize("units, activation", [(10, "relu"), (50, tf_keras.activations.tanh)])
 @pytest.mark.parametrize("ensemble_size", [2, 5])
 @pytest.mark.parametrize("independent_normal", [False, True])
 @pytest.mark.parametrize("num_hidden_layers", [0, 1, 3])
@@ -32,7 +32,7 @@ def test_build_keras_ensemble(
     ensemble_size: int,
     num_hidden_layers: int,
     units: int,
-    activation: Union[str, tf.keras.layers.Activation],
+    activation: Union[str, tf_keras.layers.Activation],
     independent_normal: bool,
 ) -> None:
     example_data = empty_dataset([num_outputs], [num_outputs])

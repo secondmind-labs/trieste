@@ -22,6 +22,7 @@ import pytest
 import tensorflow as tf
 from check_shapes import inherit_check_shapes
 from gpflow.conditionals.util import sample_mvn
+from gpflow.keras import tf_keras
 from gpflux.helpers import construct_basic_inducing_variables, construct_basic_kernel
 from gpflux.layers import GPLayer
 from gpflux.models import DeepGP
@@ -35,13 +36,13 @@ from trieste.types import TensorType
 class _QuadraticPredictor(GPfluxPredictor):
     def __init__(
         self,
-        optimizer: tf.optimizers.Optimizer | None = None,
+        optimizer: tf_keras.optimizers.Optimizer | None = None,
         likelihood: gpflow.likelihoods.Likelihood = gpflow.likelihoods.Gaussian(0.01),
     ):
         super().__init__(optimizer=optimizer)
 
         if optimizer is None:
-            self._optimizer = tf.optimizers.Adam()
+            self._optimizer = tf_keras.optimizers.Adam()
         else:
             self._optimizer = optimizer
         self._model_gpflux = _QuadraticGPModel(likelihood=likelihood)
@@ -53,11 +54,11 @@ class _QuadraticPredictor(GPfluxPredictor):
         return self._model_gpflux
 
     @property
-    def model_keras(self) -> tf.keras.Model:
+    def model_keras(self) -> tf_keras.Model:
         return self._model_keras
 
     @property
-    def optimizer(self) -> tf.keras.optimizers.Optimizer:
+    def optimizer(self) -> tf_keras.optimizers.Optimizer:
         return self._optimizer
 
     @inherit_check_shapes

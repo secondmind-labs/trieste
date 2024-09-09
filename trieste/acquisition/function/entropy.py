@@ -67,8 +67,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder[ProbabilisticModelType
         num_samples: int = 5,
         grid_size: int = 1000,
         min_value_sampler: None = None,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
@@ -77,8 +76,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder[ProbabilisticModelType
         num_samples: int = 5,
         grid_size: int = 1000,
         min_value_sampler: Optional[ThompsonSampler[ProbabilisticModelType]] = None,
-    ):
-        ...
+    ): ...
 
     def __init__(
         self,
@@ -258,8 +256,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[GIBBONModelType]):
         grid_size: int = 1000,
         min_value_sampler: None = None,
         rescaled_repulsion: bool = True,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
@@ -269,8 +266,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[GIBBONModelType]):
         grid_size: int = 1000,
         min_value_sampler: Optional[ThompsonSampler[GIBBONModelType]] = None,
         rescaled_repulsion: bool = True,
-    ):
-        ...
+    ): ...
 
     def __init__(
         self,
@@ -656,8 +652,7 @@ class MUMBO(MinValueEntropySearch[MUMBOModelType]):
         num_samples: int = 5,
         grid_size: int = 1000,
         min_value_sampler: None = None,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
@@ -666,8 +661,7 @@ class MUMBO(MinValueEntropySearch[MUMBOModelType]):
         num_samples: int = 5,
         grid_size: int = 1000,
         min_value_sampler: Optional[ThompsonSampler[MUMBOModelType]] = None,
-    ):
-        ...
+    ): ...
 
     def __init__(
         self,

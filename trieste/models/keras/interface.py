@@ -19,6 +19,7 @@ from typing import Optional
 
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflow.keras import tf_keras
 from typing_extensions import Protocol, runtime_checkable
 
 from ...data import Dataset
@@ -48,11 +49,11 @@ class KerasPredictor(EncodedProbabilisticModel, ABC):
         :raise ValueError: If the optimizer is not an instance of :class:`~tf.optimizers.Optimizer`.
         """
         if optimizer is None:
-            optimizer = KerasOptimizer(tf.optimizers.Adam())
+            optimizer = KerasOptimizer(tf_keras.optimizers.Adam())
         self._optimizer = optimizer
         self._encoder = encoder
 
-        if not isinstance(optimizer.optimizer, tf.optimizers.Optimizer):
+        if not isinstance(optimizer.optimizer, tf_keras.optimizers.Optimizer):
             raise ValueError(
                 f"Optimizer for `KerasPredictor` models must be an instance of a "
                 f"`tf.optimizers.Optimizer`, received {type(optimizer.optimizer)} instead."
@@ -60,7 +61,7 @@ class KerasPredictor(EncodedProbabilisticModel, ABC):
 
     @property
     @abstractmethod
-    def model(self) -> tf.keras.Model:
+    def model(self) -> tf_keras.Model:
         """The compiled Keras model."""
         raise NotImplementedError
 

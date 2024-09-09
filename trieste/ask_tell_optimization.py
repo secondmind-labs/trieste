@@ -110,8 +110,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         track_data: bool = True,
         local_data_ixs: Optional[Sequence[TensorType]] = None,
         local_data_len: Optional[int] = None,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
@@ -125,8 +124,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         track_data: bool = True,
         local_data_ixs: Optional[Sequence[TensorType]] = None,
         local_data_len: Optional[int] = None,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
@@ -143,8 +141,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         track_data: bool = True,
         local_data_ixs: Optional[Sequence[TensorType]] = None,
         local_data_len: Optional[int] = None,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
@@ -157,8 +154,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         track_data: bool = True,
         local_data_ixs: Optional[Sequence[TensorType]] = None,
         local_data_len: Optional[int] = None,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
@@ -172,8 +168,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         track_data: bool = True,
         local_data_ixs: Optional[Sequence[TensorType]] = None,
         local_data_len: Optional[int] = None,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
@@ -190,20 +185,21 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         track_data: bool = True,
         local_data_ixs: Optional[Sequence[TensorType]] = None,
         local_data_len: Optional[int] = None,
-    ):
-        ...
+    ): ...
 
     def __init__(
         self,
         search_space: SearchSpaceType,
         datasets: Mapping[Tag, Dataset] | Dataset,
         models: Mapping[Tag, ProbabilisticModelType] | ProbabilisticModelType,
-        acquisition_rule: AcquisitionRule[
-            TensorType | State[StateType | None, TensorType],
-            SearchSpaceType,
-            ProbabilisticModelType,
-        ]
-        | None = None,
+        acquisition_rule: (
+            AcquisitionRule[
+                TensorType | State[StateType | None, TensorType],
+                SearchSpaceType,
+                ProbabilisticModelType,
+            ]
+            | None
+        ) = None,
         acquisition_state: StateType | None = None,
         *,
         fit_model: bool = True,
@@ -324,9 +320,9 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
                 )
             self._acquisition_rule.initialize_subspaces(search_space)
 
-        filtered_datasets: Mapping[Tag, Dataset] | State[
-            StateType | None, Mapping[Tag, Dataset]
-        ] = self._acquisition_rule.filter_datasets(self._models, datasets)
+        filtered_datasets: (
+            Mapping[Tag, Dataset] | State[StateType | None, Mapping[Tag, Dataset]]
+        ) = self._acquisition_rule.filter_datasets(self._models, datasets)
         if callable(filtered_datasets):
             self._acquisition_state, self._filtered_datasets = filtered_datasets(
                 self._acquisition_state
@@ -453,15 +449,19 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
     @classmethod
     def from_record(
         cls: Type[AskTellOptimizerType],
-        record: Record[StateType, ProbabilisticModelType]
-        | FrozenRecord[StateType, ProbabilisticModelType],
+        record: (
+            Record[StateType, ProbabilisticModelType]
+            | FrozenRecord[StateType, ProbabilisticModelType]
+        ),
         search_space: SearchSpaceType,
-        acquisition_rule: AcquisitionRule[
-            TensorType | State[StateType | None, TensorType],
-            SearchSpaceType,
-            ProbabilisticModelType,
-        ]
-        | None = None,
+        acquisition_rule: (
+            AcquisitionRule[
+                TensorType | State[StateType | None, TensorType],
+                SearchSpaceType,
+                ProbabilisticModelType,
+            ]
+            | None
+        ) = None,
         track_data: bool = True,
         local_data_ixs: Optional[Sequence[TensorType]] = None,
         local_data_len: Optional[int] = None,
@@ -542,12 +542,14 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         cls: Type[AskTellOptimizerType],
         state: AskTellOptimizerState[StateType, ProbabilisticModelType],
         search_space: SearchSpaceType,
-        acquisition_rule: AcquisitionRule[
-            TensorType | State[StateType | None, TensorType],
-            SearchSpaceType,
-            ProbabilisticModelType,
-        ]
-        | None = None,
+        acquisition_rule: (
+            AcquisitionRule[
+                TensorType | State[StateType | None, TensorType],
+                SearchSpaceType,
+                ProbabilisticModelType,
+            ]
+            | None
+        ) = None,
         track_data: bool = True,
     ) -> AskTellOptimizerType:
         """Creates new :class:`~AskTellOptimizer` instance from provided AskTellOptimizer state.

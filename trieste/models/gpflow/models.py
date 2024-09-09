@@ -25,6 +25,7 @@ from gpflow.inducing_variables import (
     SeparateIndependentInducingVariables,
     SharedIndependentInducingVariables,
 )
+from gpflow.keras import tf_keras
 from gpflow.logdensities import multivariate_normal
 from gpflow.models import GPR, SGPR, SVGP, VGP
 from gpflow.models.vgp import update_vgp_data
@@ -888,7 +889,7 @@ class SparseVariational(
         )
 
         if optimizer is None:
-            optimizer = BatchOptimizer(tf.optimizers.Adam(), batch_size=100, compile=True)
+            optimizer = BatchOptimizer(tf_keras.optimizers.Adam(), batch_size=100, compile=True)
 
         super().__init__(optimizer, encoder)
         self._model = model
@@ -1167,14 +1168,14 @@ class VariationalGaussianProcess(
         if optimizer is None and not use_natgrads:
             optimizer = Optimizer(gpflow.optimizers.Scipy(), compile=True)
         elif optimizer is None and use_natgrads:
-            optimizer = BatchOptimizer(tf.optimizers.Adam(), batch_size=100, compile=True)
+            optimizer = BatchOptimizer(tf_keras.optimizers.Adam(), batch_size=100, compile=True)
 
         super().__init__(optimizer, encoder)
 
         check_optimizer(self.optimizer)
 
         if use_natgrads:
-            if not isinstance(self.optimizer.optimizer, tf.optimizers.Optimizer):
+            if not isinstance(self.optimizer.optimizer, tf_keras.optimizers.Optimizer):
                 raise ValueError(
                     f"""
                     Natgrads can only be used with a BatchOptimizer wrapper using an instance of
@@ -1183,7 +1184,7 @@ class VariationalGaussianProcess(
                 )
             natgrad_gamma = 0.1 if natgrad_gamma is None else natgrad_gamma
         else:
-            if isinstance(self.optimizer.optimizer, tf.optimizers.Optimizer):
+            if isinstance(self.optimizer.optimizer, tf_keras.optimizers.Optimizer):
                 raise ValueError(
                     f"""
                     If not using natgrads an Optimizer wrapper should be used with

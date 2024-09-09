@@ -25,6 +25,7 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflow.keras import tf_keras
 
 from tests.util.misc import random_seed
 from tests.util.models.gpflow.models import ModelFactoryType
@@ -327,5 +328,5 @@ def test_check_optimizer_raises_for_invalid_optimizer_wrapper_combination() -> N
         check_optimizer(optimizer1)
 
     with pytest.raises(ValueError):
-        optimizer2 = Optimizer(tf.optimizers.Adam())
+        optimizer2 = Optimizer(tf_keras.optimizers.Adam())
         check_optimizer(optimizer2)

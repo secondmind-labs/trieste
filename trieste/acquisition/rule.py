@@ -218,8 +218,7 @@ class EfficientGlobalOptimization(
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
         initial_acquisition_function: Optional[AcquisitionFunction] = None,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
@@ -233,8 +232,7 @@ class EfficientGlobalOptimization(
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
         initial_acquisition_function: Optional[AcquisitionFunction] = None,
-    ):
-        ...
+    ): ...
 
     def __init__(
         self,
@@ -526,8 +524,7 @@ class AsynchronousOptimization(
         builder: None = None,
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
@@ -538,8 +535,7 @@ class AsynchronousOptimization(
         ),
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
-    ):
-        ...
+    ): ...
 
     def __init__(
         self,
@@ -699,8 +695,10 @@ class AsynchronousGreedy(
 
     def __init__(
         self,
-        builder: GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]
-        | SingleModelGreedyAcquisitionBuilder[ProbabilisticModelType],
+        builder: (
+            GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]
+            | SingleModelGreedyAcquisitionBuilder[ProbabilisticModelType]
+        ),
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
     ):
@@ -899,8 +897,7 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
         num_query_points: int,
         thompson_sampler: None = None,
         select_output: Callable[[TensorType], TensorType] = select_nth_output,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
@@ -909,8 +906,7 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
         num_query_points: int,
         thompson_sampler: Optional[ThompsonSampler[ProbabilisticModelType]] = None,
         select_output: Callable[[TensorType], TensorType] = select_nth_output,
-    ):
-        ...
+    ): ...
 
     def __init__(
         self,
@@ -1118,16 +1114,13 @@ class UpdatableTrustRegion(UpdatableSearchSpace):
         return local_gtags, global_tags
 
     @overload
-    def with_input_active_dims(self, value: TensorType) -> TensorType:
-        ...
+    def with_input_active_dims(self, value: TensorType) -> TensorType: ...
 
     @overload
-    def with_input_active_dims(self, value: Dataset) -> Dataset:
-        ...
+    def with_input_active_dims(self, value: Dataset) -> Dataset: ...
 
     @overload
-    def with_input_active_dims(self, value: ProbabilisticModel) -> ProbabilisticModel:
-        ...
+    def with_input_active_dims(self, value: ProbabilisticModel) -> ProbabilisticModel: ...
 
     def with_input_active_dims(
         self, value: Union[TensorType, Dataset, ProbabilisticModel]
@@ -1168,22 +1161,18 @@ class UpdatableTrustRegion(UpdatableSearchSpace):
             return selected_input
 
     @overload
-    def select_in_region(self, mapping: None) -> None:
-        ...
+    def select_in_region(self, mapping: None) -> None: ...
 
     @overload
-    def select_in_region(self, mapping: Mapping[Tag, TensorType]) -> Mapping[Tag, TensorType]:
-        ...
+    def select_in_region(self, mapping: Mapping[Tag, TensorType]) -> Mapping[Tag, TensorType]: ...
 
     @overload
-    def select_in_region(self, mapping: Mapping[Tag, Dataset]) -> Mapping[Tag, Dataset]:
-        ...
+    def select_in_region(self, mapping: Mapping[Tag, Dataset]) -> Mapping[Tag, Dataset]: ...
 
     @overload
     def select_in_region(
         self, mapping: Mapping[Tag, ProbabilisticModel]
-    ) -> Mapping[Tag, ProbabilisticModel]:
-        ...
+    ) -> Mapping[Tag, ProbabilisticModel]: ...
 
     def select_in_region(
         self, mapping: Optional[Mapping[Tag, Union[TensorType, Dataset, ProbabilisticModel]]]

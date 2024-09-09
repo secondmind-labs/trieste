@@ -21,6 +21,7 @@ from typing import Any, Dict, Tuple
 
 import gpflow
 import tensorflow as tf
+from gpflow.keras import tf_keras
 from gpflow.utilities import set_trainable
 from gpflux.architectures import Config, build_constant_input_dim_deep_gp
 from gpflux.helpers import construct_basic_kernel
@@ -150,9 +151,9 @@ def trieste_deep_gaussian_process(
         "batch_size": batch_size,
         "epochs": epochs,
         "verbose": 0,
-        "callbacks": tf.keras.callbacks.LearningRateScheduler(scheduler),
+        "callbacks": tf_keras.callbacks.LearningRateScheduler(scheduler),
     }
-    optimizer = KerasOptimizer(tf.optimizers.Adam(learning_rate), fit_args)
+    optimizer = KerasOptimizer(tf_keras.optimizers.Adam(learning_rate), fit_args)
 
     model = DeepGaussianProcess(dgp, optimizer)
 

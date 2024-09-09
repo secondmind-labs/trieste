@@ -20,5 +20,6 @@ PyYAML
 tensorflow ~= 2.8.0
 tensorflow-probability ~= 0.13.0
 
-# later numpy doesn't support Python 3.7
+# tensorflow-probability 0.13 depends on np.bool which is deprecated
 numpy < 1.22.0
+scipy < 1.8

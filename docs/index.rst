@@ -44,7 +44,7 @@ To install Trieste, run
 
    $ pip install trieste
 
-The library supports Python 3.7 onwards, and uses `semantic versioning <https://semver.org/>`_.
+The library supports Python 3.9 onwards, and uses `semantic versioning <https://semver.org/>`_.
 
 Getting help
 ------------
