@@ -765,12 +765,10 @@ class EncodedProbabilisticModel(ProbabilisticModel):
         """Query point encoder."""
 
     @overload
-    def encode(self, points: TensorType) -> TensorType:
-        ...
+    def encode(self, points: TensorType) -> TensorType: ...
 
     @overload
-    def encode(self, points: Dataset) -> Dataset:
-        ...
+    def encode(self, points: Dataset) -> Dataset: ...
 
     def encode(self, points: Dataset | TensorType) -> Dataset | TensorType:
         """Encode points or a Dataset using the query point encoder."""

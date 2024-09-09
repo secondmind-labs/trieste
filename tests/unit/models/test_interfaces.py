@@ -23,6 +23,7 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflow.keras import tf_keras
 
 from tests.util.misc import assert_datasets_allclose, quadratic, random_seed
 from tests.util.models.gpflow.models import (
@@ -66,12 +67,10 @@ class _QuadraticModel(
         )
 
 
-def _model_stack() -> (
-    tuple[
-        TrainablePredictJointReparamModelStack,
-        tuple[TrainableSupportsPredictJointHasReparamSampler, ...],
-    ]
-):
+def _model_stack() -> tuple[
+    TrainablePredictJointReparamModelStack,
+    tuple[TrainableSupportsPredictJointHasReparamSampler, ...],
+]:
     model01 = _QuadraticModel([0.0, 0.5], [1.0, 0.3])
     model2 = _QuadraticModel([2.0], [2.0])
     model3 = _QuadraticModel([-1.0], [0.1])
@@ -306,7 +305,7 @@ def test_encoded_supports_predict_y() -> None:
 
 
 def test_encoded_probabilistic_model_keras_embedding() -> None:
-    encoder = tf.keras.layers.Embedding(3, 2)
+    encoder = tf_keras.layers.Embedding(3, 2)
     model = _EncodedModel(encoder=encoder)
     query_points = tf.random.uniform([3, 5], minval=0, maxval=3, dtype=tf.int32)
     mean, var = model.predict(query_points)

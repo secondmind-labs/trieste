@@ -68,7 +68,7 @@ query_point, observation, arg_min_idx = result.try_get_optimal_point()
 
 ## Installation
 
-Trieste supports Python 3.7+ and TensorFlow 2.5+, and uses [semantic versioning](https://semver.org/).
+Trieste supports Python 3.9+ and TensorFlow 2.5+, and uses [semantic versioning](https://semver.org/).
 
 
 ### For users
@@ -109,6 +109,13 @@ $ jupyter-notebook notebooks
 Alternatively, you can copy and paste the tutorials into fresh notebooks and avoid installing the library from source. To ensure you have the required plotting dependencies, simply run:
 ```bash
 $ pip install trieste[plotting]
+```
+
+### Importing Keras
+
+Like [tensorflow-probability](https://www.tensorflow.org/probability), Trieste currently uses Keras 2. When using Tensorflow versions 2.16 onwards (which default to Keras 3) this needs to be imported from `tf_keras` rather than `tf.keras`. Alternatively, for a shortcut that works with all versions of Tensorflow, you can write:
+```python
+from gpflow.keras import tf_keras
 ```
 
 ## The Trieste Community

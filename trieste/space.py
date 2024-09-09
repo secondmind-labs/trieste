@@ -25,6 +25,7 @@ import scipy.optimize as spo
 import tensorflow as tf
 import tensorflow_probability as tfp
 from check_shapes import check_shapes
+from gpflow.keras import tf_keras
 from typing_extensions import Protocol, runtime_checkable
 
 from .types import TensorType
@@ -290,8 +291,7 @@ class SearchSpace(ABC):
         """
 
     @overload
-    def __mul__(self: SearchSpaceType, other: SearchSpaceType) -> SearchSpaceType:
-        ...
+    def __mul__(self: SearchSpaceType, other: SearchSpaceType) -> SearchSpaceType: ...
 
     @overload
     def __mul__(self: SearchSpaceType, other: SearchSpace) -> SearchSpace:  # type: ignore[misc]
@@ -653,7 +653,7 @@ class CategoricalSearchSpace(GeneralDiscreteSearchSpace, HasOneHotEncoder):
             encoders = [
                 binary_encoder
                 if len(ts) == 2
-                else tf.keras.layers.CategoryEncoding(num_tokens=len(ts), output_mode="one_hot")
+                else tf_keras.layers.CategoryEncoding(num_tokens=len(ts), output_mode="one_hot")
                 for ts in self.tags
             ]
             encoded = tf.concat(
@@ -725,8 +725,7 @@ class Box(SearchSpace):
         upper: Sequence[float],
         constraints: Optional[Sequence[Constraint]] = None,
         ctol: float | TensorType = 1e-7,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
@@ -735,8 +734,7 @@ class Box(SearchSpace):
         upper: TensorType,
         constraints: Optional[Sequence[Constraint]] = None,
         ctol: float | TensorType = 1e-7,
-    ):
-        ...
+    ): ...
 
     def __init__(
         self,

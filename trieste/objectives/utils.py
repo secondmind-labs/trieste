@@ -31,13 +31,11 @@ from ..utils.misc import LocalizedTag, flatten_leading_dims
 
 
 @overload
-def mk_observer(objective: Callable[[TensorType], TensorType]) -> SingleObserver:
-    ...
+def mk_observer(objective: Callable[[TensorType], TensorType]) -> SingleObserver: ...
 
 
 @overload
-def mk_observer(objective: Callable[[TensorType], TensorType], key: Tag) -> MultiObserver:
-    ...
+def mk_observer(objective: Callable[[TensorType], TensorType], key: Tag) -> MultiObserver: ...
 
 
 def mk_observer(

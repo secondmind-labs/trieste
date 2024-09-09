@@ -28,6 +28,7 @@ from typing import Any, Callable, Iterable, Optional, Tuple, Union
 import scipy
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflow.keras import tf_keras
 
 from ..data import Dataset
 from ..types import TensorType
@@ -160,7 +161,7 @@ class BatchOptimizer(Optimizer):
         for k, v in self.__dict__.items():
             if (
                 k == "optimizer"
-                and isinstance(v, tf.keras.optimizers.Optimizer)
+                and isinstance(v, tf_keras.optimizers.Optimizer)
                 and hasattr(v, "_distribution_strategy")
             ):
                 # avoid copying distribution strategy: reuse it instead
@@ -180,7 +181,7 @@ class BatchOptimizer(Optimizer):
 class KerasOptimizer:
     """Optimizer wrapper for training models implemented with Keras."""
 
-    optimizer: tf.keras.optimizers.Optimizer
+    optimizer: tf_keras.optimizers.Optimizer
     """ The underlying optimizer to use for training the model. """
 
     fit_args: dict[str, Any] = field(default_factory=lambda: {})
@@ -192,12 +193,12 @@ class KerasOptimizer:
 
     loss: Optional[
         Union[
-            tf.keras.losses.Loss, Callable[[TensorType, tfp.distributions.Distribution], TensorType]
+            tf_keras.losses.Loss, Callable[[TensorType, tfp.distributions.Distribution], TensorType]
         ]
     ] = None
     """ Optional loss function for training the model. """
 
-    metrics: Optional[list[tf.keras.metrics.Metric]] = None
+    metrics: Optional[list[tf_keras.metrics.Metric]] = None
     """ Optional metrics for monitoring the performance of the network. """
 
     def __deepcopy__(self, memo: dict[int, object]) -> KerasOptimizer:

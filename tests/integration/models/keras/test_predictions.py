@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-import tensorflow as tf
+from gpflow.keras import tf_keras
 
 from tests.util.misc import hartmann_6_dataset, random_seed
 from trieste.models.keras import DeepEnsemble, build_keras_ensemble
@@ -34,7 +34,7 @@ def test_neural_network_ensemble_predictions_close_to_actuals() -> None:
         "batch_size": 128,
         "epochs": 1500,
         "callbacks": [
-            tf.keras.callbacks.EarlyStopping(
+            tf_keras.callbacks.EarlyStopping(
                 monitor="loss", patience=100, restore_best_weights=True
             )
         ],
@@ -42,7 +42,7 @@ def test_neural_network_ensemble_predictions_close_to_actuals() -> None:
     }
     model = DeepEnsemble(
         keras_ensemble,
-        KerasOptimizer(tf.keras.optimizers.Adam(), fit_args),
+        KerasOptimizer(tf_keras.optimizers.Adam(), fit_args),
     )
     model.optimize(example_data)
     predicted_means, _ = model.predict(example_data.query_points)

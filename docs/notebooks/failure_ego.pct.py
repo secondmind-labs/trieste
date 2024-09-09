@@ -109,6 +109,8 @@ classification_model = build_vgp_classifier(
 # We'll train the GPR model with the default Scipy-based L-BFGS optimizer, and the VGP model with the custom algorithm above.
 
 # %%
+from gpflow.keras import tf_keras
+
 from trieste.models import TrainableProbabilisticModel
 from trieste.models.gpflow.models import (
     GaussianProcessRegression,
@@ -122,7 +124,7 @@ models: dict[Tag, TrainableProbabilisticModel] = {
     OBJECTIVE: GaussianProcessRegression(regression_model),
     FAILURE: VariationalGaussianProcess(
         classification_model,
-        BatchOptimizer(tf.optimizers.Adam(1e-3)),
+        BatchOptimizer(tf_keras.optimizers.Adam(1e-3)),
         use_natgrads=True,
     ),
 }

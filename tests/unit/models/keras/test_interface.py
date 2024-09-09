@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import gpflow
 import pytest
-import tensorflow as tf
+from gpflow.keras import tf_keras
 
 from tests.util.misc import empty_dataset, raise_exc
 from trieste.models.keras import KerasPredictor
@@ -25,7 +25,7 @@ from trieste.models.optimizer import KerasOptimizer
 
 class _DummyKerasPredictor(KerasPredictor):
     @property
-    def model(self) -> tf.keras.Model:
+    def model(self) -> tf_keras.Model:
         return raise_exc
 
 
@@ -39,13 +39,13 @@ def test_keras_predictor_default_optimizer_is_correct() -> None:
     model = _DummyKerasPredictor()
 
     assert isinstance(model._optimizer, KerasOptimizer)
-    assert isinstance(model._optimizer.optimizer, tf.optimizers.Adam)
+    assert isinstance(model._optimizer.optimizer, tf_keras.optimizers.Adam)
     assert isinstance(model.optimizer, KerasOptimizer)
-    assert isinstance(model.optimizer.optimizer, tf.optimizers.Adam)
+    assert isinstance(model.optimizer.optimizer, tf_keras.optimizers.Adam)
 
 
 def test_keras_predictor_check_optimizer_property() -> None:
-    optimizer = KerasOptimizer(tf.optimizers.RMSprop())
+    optimizer = KerasOptimizer(tf_keras.optimizers.RMSprop())
     model = _DummyKerasPredictor(optimizer)
 
     assert model.optimizer == optimizer
