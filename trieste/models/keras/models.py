@@ -29,7 +29,12 @@ from ...data import Dataset
 from ...space import EncoderFunction
 from ...types import TensorType
 from ...utils import flatten_leading_dims
-from ..interfaces import EncodedTrainableProbabilisticModel, HasTrajectorySampler, TrajectorySampler
+from ..interfaces import (
+    EncodedTrainableProbabilisticModel,
+    HasTrajectorySampler,
+    TrajectorySampler,
+    EncodedHasTrajectorySampler,
+)
 from ..optimizer import KerasOptimizer
 from ..utils import write_summary_data_based_metrics
 from .architectures import KerasEnsemble, MultivariateNormalTriL
@@ -42,7 +47,7 @@ class DeepEnsemble(
     KerasPredictor,
     EncodedTrainableProbabilisticModel,
     DeepEnsembleModel,
-    HasTrajectorySampler,
+    EncodedHasTrajectorySampler,
 ):
     """
     A :class:`~trieste.model.TrainableProbabilisticModel` wrapper for deep ensembles built using
@@ -359,7 +364,7 @@ class DeepEnsemble(
 
         return samples  # [num_samples, len(query_points), 1]
 
-    def trajectory_sampler(self) -> TrajectorySampler[DeepEnsemble]:
+    def trajectory_sampler_encoded(self) -> TrajectorySampler[DeepEnsemble]:
         """
         Return a trajectory sampler. For :class:`DeepEnsemble`, we use an ensemble
         sampler that randomly picks a network from the ensemble and uses its predicted means
