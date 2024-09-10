@@ -35,8 +35,9 @@ from tests.util.models.gpflow.models import (
 )
 from tests.util.models.models import fnc_2sin_x_over_3, fnc_3x_plus_10
 from trieste.data import Dataset
-from trieste.models import TrainableModelStack, TrainableProbabilisticModel
+from trieste.models import TrainableModelStack, TrainableProbabilisticModel, TrajectoryFunction
 from trieste.models.interfaces import (
+    EncodedHasTrajectorySampler,
     EncodedProbabilisticModel,
     EncodedSupportsPredictJoint,
     EncodedSupportsPredictY,
@@ -45,6 +46,7 @@ from trieste.models.interfaces import (
     TrainablePredictYModelStack,
     TrainableSupportsPredictJoint,
     TrainableSupportsPredictJointHasReparamSampler,
+    TrajectorySampler,
 )
 from trieste.models.utils import get_last_optimization_result, optimize_model_and_save_result
 from trieste.space import EncoderFunction
@@ -227,6 +229,7 @@ class _EncodedModel(
     EncodedTrainableProbabilisticModel,
     EncodedSupportsPredictJoint,
     EncodedSupportsPredictY,
+    EncodedHasTrajectorySampler,
     EncodedProbabilisticModel,
 ):
     def __init__(self, encoder: EncoderFunction | None = None) -> None:
@@ -258,6 +261,13 @@ class _EncodedModel(
 
     def predict_y_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         return self.predict_encoded(query_points)
+
+    def trajectory_sampler_encoded(self: _EncodedModel) -> TrajectorySampler[_EncodedModel]:
+        class DummyTrajectory(TrajectorySampler[_EncodedModel]):
+            def get_trajectory(self) -> TrajectoryFunction:
+                return lambda x: x + 1
+
+        return DummyTrajectory(self)
 
 
 def test_encoded_probabilistic_model() -> None:
@@ -311,3 +321,11 @@ def test_encoded_probabilistic_model_keras_embedding() -> None:
     mean, var = model.predict(query_points)
     assert mean.shape == (3, 5, 2)
     npt.assert_allclose(mean, encoder(query_points))
+
+
+def test_encoded_has_trajectory_sampler() -> None:
+    model = _EncodedModel()
+    query_points = tf.random.uniform([3, 5])
+    sampler = model.trajectory_sampler()
+    trajectory = sampler.get_trajectory()
+    npt.assert_allclose(trajectory(query_points), query_points + 2)

@@ -30,10 +30,9 @@ from ...space import EncoderFunction
 from ...types import TensorType
 from ...utils import flatten_leading_dims
 from ..interfaces import (
-    EncodedTrainableProbabilisticModel,
-    HasTrajectorySampler,
-    TrajectorySampler,
     EncodedHasTrajectorySampler,
+    EncodedTrainableProbabilisticModel,
+    TrajectorySampler,
 )
 from ..optimizer import KerasOptimizer
 from ..utils import write_summary_data_based_metrics
