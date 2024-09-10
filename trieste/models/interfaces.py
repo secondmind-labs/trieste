@@ -970,10 +970,3 @@ class EncodedFastUpdateModel(EncodedProbabilisticModel, FastUpdateModel):
         return self.conditional_predict_y_encoded(
             self.encode(query_points), self.encode(additional_data)
         )
-
-
-def get_encoder(model: ProbabilisticModel) -> EncoderFunction | None:
-    """Helper function for getting an encoder from model (which may or may not have one)."""
-    if isinstance(model, EncodedProbabilisticModel):
-        return model.encoder
-    return None
