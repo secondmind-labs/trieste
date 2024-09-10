@@ -518,6 +518,24 @@ def one_hot_encoder(space: SearchSpace) -> EncoderFunction:
     return space.one_hot_encoder if isinstance(space, HasOneHotEncoder) else lambda x: x
 
 
+def cast_encoder(
+    encoder: EncoderFunction,
+    input_dtype: Optional[tf.DType] = None,
+    output_dtype: Optional[tf.DType] = None,
+) -> EncoderFunction:
+    "A utility function for casting the input and/or output of an encoder."
+
+    def cast_and_encode(x: TensorType) -> TensorType:
+        if input_dtype is not None:
+            x = tf.cast(x, input_dtype)
+        y = encoder(x)
+        if output_dtype is not None:
+            y = tf.cast(y, output_dtype)
+        return y
+
+    return cast_and_encode
+
+
 def one_hot_encoded_space(space: SearchSpace) -> SearchSpace:
     "A bounded search space corresponding to the one-hot encoding of the given space."
 
@@ -633,7 +651,14 @@ class CategoricalSearchSpace(GeneralDiscreteSearchSpace, HasOneHotEncoder):
 
     @property
     def one_hot_encoder(self) -> EncoderFunction:
-        """A one-hot encoder for the numerical indices."""
+        """A one-hot encoder for the numerical indices. Note that binary categories
+        are left unchanged instead of adding an unnecessary second feature."""
+
+        def binary_encoder(x: TensorType) -> TensorType:
+            # no need to one-hot encode binary categories (but we should still validate)
+            if tf.reduce_any((x != 0) & (x != 1)):
+                raise ValueError(f"Invalid values {tf.boolean_mask(x, ((x != 0) & (x != 1)))}")
+            return x
 
         def encoder(x: TensorType) -> TensorType:
             flat_x, unflatten = flatten_leading_dims(x)
@@ -644,7 +669,11 @@ class CategoricalSearchSpace(GeneralDiscreteSearchSpace, HasOneHotEncoder):
                 )
             columns = tf.split(flat_x, flat_x.shape[-1], axis=1)
             encoders = [
-                tf_keras.layers.CategoryEncoding(num_tokens=len(ts), output_mode="one_hot")
+                (
+                    binary_encoder
+                    if len(ts) == 2
+                    else tf_keras.layers.CategoryEncoding(num_tokens=len(ts), output_mode="one_hot")
+                )
                 for ts in self.tags
             ]
             encoded = tf.concat(

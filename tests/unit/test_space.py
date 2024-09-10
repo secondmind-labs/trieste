@@ -38,6 +38,7 @@ from trieste.space import (
     SearchSpace,
     TaggedMultiSearchSpace,
     TaggedProductSearchSpace,
+    cast_encoder,
     one_hot_encoder,
 )
 from trieste.types import TensorType
@@ -1760,6 +1761,11 @@ def test_categorical_search_space__to_tags_raises_for_non_integers() -> None:
             tf.constant([[1], [1]], dtype=tf.float64),
         ),
         (
+            CategoricalSearchSpace(["Y", "N"]),
+            tf.constant([[0], [1], [0]], dtype=tf.float64),
+            tf.constant([[0], [1], [0]], dtype=tf.float64),
+        ),
+        (
             CategoricalSearchSpace(["R", "G", "B"], dtype=tf.float32),
             tf.constant([[0], [2], [1]], dtype=tf.float32),
             tf.constant([[1, 0, 0], [0, 0, 1], [0, 1, 0]], dtype=tf.float32),
@@ -1777,13 +1783,13 @@ def test_categorical_search_space__to_tags_raises_for_non_integers() -> None:
         (
             CategoricalSearchSpace([["R", "G", "B"], ["Y", "N"]]),
             tf.constant([[0, 0], [2, 0], [1, 1]], dtype=tf.float64),
-            tf.constant([[1, 0, 0, 1, 0], [0, 0, 1, 1, 0], [0, 1, 0, 0, 1]], dtype=tf.float64),
+            tf.constant([[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 1]], dtype=tf.float64),
         ),
         (
             CategoricalSearchSpace([["R", "G", "B"], ["Y", "N"]]),
             tf.constant([[[0, 0], [0, 0]], [[2, 0], [1, 1]]], dtype=tf.float64),
             tf.constant(
-                [[[1, 0, 0, 1, 0], [1, 0, 0, 1, 0]], [[0, 0, 1, 1, 0], [0, 1, 0, 0, 1]]],
+                [[[1, 0, 0, 0], [1, 0, 0, 0]], [[0, 0, 1, 0], [0, 1, 0, 1]]],
                 dtype=tf.float64,
             ),
         ),
@@ -1824,6 +1830,12 @@ def test_categorical_search_space_one_hot_encoding(
         pytest.param(
             CategoricalSearchSpace(["Y", "N"]),
             tf.constant([[0], [2], [1]]),
+            ValueError,
+            id="Out of range binary input value",
+        ),
+        pytest.param(
+            CategoricalSearchSpace(["Y", "N", "maybe"]),
+            tf.constant([[0], [3], [1]]),
             InvalidArgumentError,
             id="Out of range input value",
         ),
@@ -1859,3 +1871,19 @@ def test_unbound_search_spaces(
         space.lower
     with pytest.raises(AttributeError):
         space.upper
+
+
+@pytest.mark.parametrize("input_dtype", [None, tf.float64, tf.float32])
+@pytest.mark.parametrize("output_dtype", [None, tf.float64, tf.float32])
+def test_cast_encoder(input_dtype: Optional[tf.DType], output_dtype: Optional[tf.DType]) -> None:
+
+    query_points = tf.constant([1, 2, 3], dtype=tf.int32)
+
+    def add_encoder(x: TensorType) -> TensorType:
+        assert x.dtype is (input_dtype or tf.int32)
+        return x + 1
+
+    encoder = cast_encoder(add_encoder, input_dtype=input_dtype, output_dtype=output_dtype)
+    points = encoder(query_points)
+    assert points.dtype is (output_dtype or input_dtype or tf.int32)
+    npt.assert_array_equal(tf.cast(query_points + 1, points.dtype), points)
