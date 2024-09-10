@@ -844,6 +844,74 @@ class EncodedSupportsPredictY(EncodedProbabilisticModel, SupportsPredictY):
         return self.predict_y_encoded(self.encode(query_points))
 
 
+class EncodedTrajectoryFunction(TrajectoryFunctionClass):
+    """A trajectory function with an associated query point encoder."""
+
+    def __init__(self, trajectory: TrajectoryFunction, encoder: EncoderFunction):
+        """
+        :param sampler: The trajectory function to encode.
+        :param encoder: The query point encoder.
+        """
+        self._trajectory = trajectory
+        self._encoder = encoder
+
+    def __call__(self, x: TensorType) -> TensorType:
+        """Call and encode trajectory function."""
+        return self._encoder(self._trajectory(x))
+
+
+class EncodedTrajectorySampler(TrajectorySampler[ProbabilisticModelType]):
+    """A trajectory sampler with an associated query point encoder."""
+
+    def __init__(
+        self, sampler: TrajectorySampler[ProbabilisticModelType], encoder: EncoderFunction
+    ):
+        """
+        :param sampler: The trajectory sampler to encode.
+        :param encoder: The query point encoder.
+        """
+        self._sampler = sampler
+        self._encoder = encoder
+        super().__init__(sampler._model)
+
+    def __repr__(self) -> str:
+        """"""
+        return f"{self._sampler.__class__.__name__}({self._model!r}, encoder={self._encoder!r})"
+
+    def get_trajectory(self) -> TrajectoryFunction:
+        return EncodedTrajectoryFunction(self._sampler.get_trajectory(), self._encoder)
+
+    def resample_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction:
+        tf.debugging.Assert(isinstance(trajectory, EncodedTrajectoryFunction), [tf.constant([])])
+        resampled = self._sampler.resample_trajectory(trajectory._trajectory)  # type: ignore
+        return EncodedTrajectoryFunction(resampled, self._encoder)
+
+    def update_trajectory(self, trajectory: TrajectoryFunction) -> TrajectoryFunction:
+        tf.debugging.Assert(isinstance(trajectory, EncodedTrajectoryFunction), [tf.constant([])])
+        updated = self._sampler.update_trajectory(trajectory._trajectory)  # type: ignore
+        return EncodedTrajectoryFunction(updated, self._encoder)
+
+
+class EncodedHasTrajectorySampler(EncodedProbabilisticModel, HasTrajectorySampler):
+    """A probablistic model with an associated trajectory sampler and query point encoder."""
+
+    @abstractmethod
+    def trajectory_sampler_encoded(
+        self: ProbabilisticModelType,
+    ) -> TrajectorySampler[ProbabilisticModelType]:
+        """Implementation of trajectory_sampler on encoded query points."""
+
+    @final
+    def trajectory_sampler(
+        self: ProbabilisticModelType,
+    ) -> TrajectorySampler[ProbabilisticModelType]:
+        sampler = self.trajectory_sampler_encoded()  # type: ignore
+        encoder = self.encoder  # type: ignore
+        if encoder is not None:
+            sampler = EncodedTrajectorySampler(sampler, encoder)
+        return sampler
+
+
 class EncodedFastUpdateModel(EncodedProbabilisticModel, FastUpdateModel):
     """A fast update model with an associated query point encoder."""
 

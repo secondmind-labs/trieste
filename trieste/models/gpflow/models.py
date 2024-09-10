@@ -44,7 +44,7 @@ from ...utils import DEFAULTS, jit
 from ...utils.misc import flatten_leading_dims
 from ..interfaces import (
     EncodedFastUpdateModel,
-    HasTrajectorySampler,
+    EncodedHasTrajectorySampler,
     SupportsCovarianceWithTopFidelity,
     SupportsGetInducingVariables,
     SupportsGetInternalData,
@@ -71,7 +71,7 @@ class GaussianProcessRegression(
     EncodedFastUpdateModel,
     EncodedSupportsCovarianceBetweenPoints,
     SupportsGetInternalData,
-    HasTrajectorySampler,
+    EncodedHasTrajectorySampler,
 ):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.GPR`.
@@ -320,7 +320,7 @@ class GaussianProcessRegression(
 
         multiple_assign(self.model, current_best_parameters)
 
-    def trajectory_sampler(self) -> TrajectorySampler[GaussianProcessRegression]:
+    def trajectory_sampler_encoded(self) -> TrajectorySampler[GaussianProcessRegression]:
         """
         Return a trajectory sampler. For :class:`GaussianProcessRegression`, we build
         trajectories using a random Fourier feature approximation.
@@ -530,7 +530,7 @@ class SparseGaussianProcessRegression(
     EncodedSupportsCovarianceBetweenPoints,
     SupportsGetInducingVariables,
     SupportsGetInternalData,
-    HasTrajectorySampler,
+    EncodedHasTrajectorySampler,
 ):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.SGPR`.
@@ -809,7 +809,7 @@ class SparseGaussianProcessRegression(
             whiten=whiten,
         )
 
-    def trajectory_sampler(self) -> TrajectorySampler[SparseGaussianProcessRegression]:
+    def trajectory_sampler_encoded(self) -> TrajectorySampler[SparseGaussianProcessRegression]:
         """
         Return a trajectory sampler. For :class:`SparseGaussianProcessRegression`, we build
         trajectories using a decoupled random Fourier feature approximation. Note that this
@@ -844,7 +844,7 @@ class SparseVariational(
     GPflowPredictor,
     EncodedSupportsCovarianceBetweenPoints,
     SupportsGetInducingVariables,
-    HasTrajectorySampler,
+    EncodedHasTrajectorySampler,
 ):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.SVGP`.
@@ -1096,7 +1096,7 @@ class SparseVariational(
             whiten=whiten,
         )
 
-    def trajectory_sampler(self) -> TrajectorySampler[SparseVariational]:
+    def trajectory_sampler_encoded(self) -> TrajectorySampler[SparseVariational]:
         """
         Return a trajectory sampler. For :class:`SparseVariational`, we build
         trajectories using a decoupled random Fourier feature approximation.
@@ -1110,7 +1110,7 @@ class VariationalGaussianProcess(
     GPflowPredictor,
     EncodedSupportsCovarianceBetweenPoints,
     SupportsGetInducingVariables,
-    HasTrajectorySampler,
+    EncodedHasTrajectorySampler,
 ):
     r"""
     A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.VGP`.
@@ -1333,7 +1333,7 @@ class VariationalGaussianProcess(
         whiten = True  # GPflow's VGP model is hard-coded to use the whitened representation
         return inducing_points, q_mu, q_sqrt, whiten
 
-    def trajectory_sampler(self) -> TrajectorySampler[VariationalGaussianProcess]:
+    def trajectory_sampler_encoded(self) -> TrajectorySampler[VariationalGaussianProcess]:
         """
         Return a trajectory sampler. For :class:`VariationalGaussianProcess`, we build
         trajectories using a decoupled random Fourier feature approximation.
