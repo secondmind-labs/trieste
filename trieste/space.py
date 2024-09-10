@@ -656,8 +656,8 @@ class CategoricalSearchSpace(GeneralDiscreteSearchSpace, HasOneHotEncoder):
 
         def binary_encoder(x: TensorType) -> TensorType:
             # no need to one-hot encode binary categories (but we should still validate)
-            if not tf.reduce_all((x == 0) | (x == 1)):
-                raise ValueError(f"Invalid value {x}")
+            if tf.reduce_any((x != 0) & (x != 1)):
+                raise ValueError(f"Invalid values {tf.boolean_mask(x, ((x != 0) & (x != 1)))}")
             return x
 
         def encoder(x: TensorType) -> TensorType:
