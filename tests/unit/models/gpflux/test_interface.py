@@ -20,7 +20,6 @@ import gpflow
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
-from check_shapes import inherit_check_shapes
 from gpflow.conditionals.util import sample_mvn
 from gpflow.keras import tf_keras
 from gpflux.helpers import construct_basic_inducing_variables, construct_basic_kernel
