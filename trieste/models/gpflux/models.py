@@ -19,7 +19,6 @@ from typing import Any, Callable, Mapping, Optional
 import dill
 import gpflow
 import tensorflow as tf
-from check_shapes import inherit_check_shapes
 from gpflow.inducing_variables import InducingPoints
 from gpflow.keras import tf_keras
 from gpflux.layers import GPLayer, LatentVariableLayer
