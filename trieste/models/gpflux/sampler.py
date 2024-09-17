@@ -72,6 +72,7 @@ class DeepGaussianProcessReparamSampler(ReparametrizationSampler[GPfluxPredictor
             )
             for _ in range(len(self._model_gpflux.f_layers))
         ]
+        self._encode = lambda x: model.encode(x)
 
     @property
     def _model_gpflux(self) -> tf.Module:
@@ -96,7 +97,9 @@ class DeepGaussianProcessReparamSampler(ReparametrizationSampler[GPfluxPredictor
         tf.debugging.assert_shapes([(at, [..., 1, None])])
         tf.debugging.assert_greater_equal(jitter, 0.0)
 
-        samples = tf.repeat(at[..., None, :, :], self._sample_size, axis=-3)  # [..., S, 1, D]
+        samples = tf.repeat(
+            self._encode(at[..., None, :, :]), self._sample_size, axis=-3
+        )  # [..., S, 1, D]
         for i, layer in enumerate(self._model_gpflux.f_layers):
             if isinstance(layer, LatentVariableLayer):
                 if not self._initialized:
