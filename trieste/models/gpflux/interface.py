@@ -33,7 +33,9 @@ class GPfluxPredictor(SupportsGetObservationNoise, EncodedSupportsPredictY, ABC)
     `model_keras` and `model_gpflux`.
     """
 
-    def __init__(self, optimizer: KerasOptimizer | None = None, encoder: EncoderFunction | None = None):
+    def __init__(
+        self, optimizer: KerasOptimizer | None = None, encoder: EncoderFunction | None = None
+    ):
         """
         :param optimizer: The optimizer wrapper containing the optimizer with which to train the
             model and arguments for the wrapper and the optimizer. The optimizer must
