@@ -476,7 +476,8 @@ class dgp_feature_decomposition_trajectory(TrajectoryFunctionClass):
             DeepGaussianProcessDecoupledLayer(model, i, num_features)
             for i in range(len(model.model_gpflux.f_layers))
         ]
-        self._encode = lambda x: x if model.encoder is None else model.encoder.encode(x)
+
+        self._encode = lambda x: model.encode(x)
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:
