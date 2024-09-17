@@ -62,7 +62,7 @@ class _QuadraticPredictor(GPfluxPredictor):
         return self._optimizer
 
     @inherit_check_shapes
-    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
+    def sample_encoded(self, query_points: TensorType, num_samples: int) -> TensorType:
         # Taken from GPflow implementation of `GPModel.predict_f_samples` in gpflow.models.model
         mean, cov = self._model_gpflux.predict_f(query_points, full_cov=True)
         mean_for_sample = tf.linalg.adjoint(mean)
