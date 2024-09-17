@@ -29,6 +29,7 @@ from gpflux.models import DeepGP
 from tests.util.misc import random_seed
 from trieste.data import Dataset
 from trieste.models.gpflux import GPfluxPredictor
+from trieste.space import CategoricalSearchSpace, EncoderFunction, one_hot_encoder
 from trieste.types import TensorType
 
 
@@ -37,8 +38,9 @@ class _QuadraticPredictor(GPfluxPredictor):
         self,
         optimizer: tf_keras.optimizers.Optimizer | None = None,
         likelihood: gpflow.likelihoods.Likelihood = gpflow.likelihoods.Gaussian(0.01),
+        encoder: EncoderFunction | None = None,
     ):
-        super().__init__(optimizer=optimizer)
+        super().__init__(optimizer=optimizer, encoder=encoder)
 
         if optimizer is None:
             self._optimizer = tf_keras.optimizers.Adam()
@@ -150,3 +152,14 @@ def test_gpflux_predictor_get_observation_noise_raises_for_non_gaussian_likeliho
 
     with pytest.raises(NotImplementedError):
         model.get_observation_noise()
+
+
+def test_gpflux_categorical_predict() -> None:
+    search_space = CategoricalSearchSpace(["Red", "Green", "Blue"])
+    query_points = search_space.sample(10)
+    model = _QuadraticPredictor(encoder=one_hot_encoder(search_space))
+    mean, variance = model.predict(query_points)
+    assert mean.shape == [10, 1]
+    assert variance.shape == [10, 1]
+    npt.assert_allclose(mean, [[1.0]] * 10, rtol=0.01)
+    npt.assert_allclose(variance, [[1.0]] * 10, rtol=0.01)
