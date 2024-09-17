@@ -16,7 +16,6 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from check_shapes import inherit_check_shapes
 from gpflow.base import Module
 from gpflow.keras import tf_keras
 
