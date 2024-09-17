@@ -476,6 +476,7 @@ class dgp_feature_decomposition_trajectory(TrajectoryFunctionClass):
             DeepGaussianProcessDecoupledLayer(model, i, num_features)
             for i in range(len(model.model_gpflux.f_layers))
         ]
+        self._encode = lambda x: x if model.encoder is None else model.encoder.encode(x)
 
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:
@@ -486,6 +487,7 @@ class dgp_feature_decomposition_trajectory(TrajectoryFunctionClass):
             the batch dimension, and `D` is the input dimensionality.
         :return: Trajectory samples with shape `[N, B, L]`, where `L` is the number of outputs.
         """
+        x = self._encode(x)
         for layer in self._sampling_layers:
             x = layer(x)
         return x
