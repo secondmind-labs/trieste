@@ -61,7 +61,6 @@ class _QuadraticPredictor(GPfluxPredictor):
     def optimizer(self) -> tf_keras.optimizers.Optimizer:
         return self._optimizer
 
-    @inherit_check_shapes
     def sample_encoded(self, query_points: TensorType, num_samples: int) -> TensorType:
         # Taken from GPflow implementation of `GPModel.predict_f_samples` in gpflow.models.model
         mean, cov = self._model_gpflux.predict_f(query_points, full_cov=True)
