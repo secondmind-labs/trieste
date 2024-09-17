@@ -73,7 +73,6 @@ class GPfluxPredictor(SupportsGetObservationNoise, EncodedSupportsPredictY, ABC)
         """The optimizer wrapper for training the model."""
         return self._optimizer
 
-    @inherit_check_shapes
     def predict_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """Note: unless otherwise noted, this returns the mean and variance of the last layer
         conditioned on one sample from the previous layers."""
@@ -83,7 +82,6 @@ class GPfluxPredictor(SupportsGetObservationNoise, EncodedSupportsPredictY, ABC)
     def sample_encoded(self, query_points: TensorType, num_samples: int) -> TensorType:
         raise NotImplementedError
 
-    @inherit_check_shapes
     def predict_y_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """Note: unless otherwise noted, this will return the prediction conditioned on one sample
         from the lower layers."""
