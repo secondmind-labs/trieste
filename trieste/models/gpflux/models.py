@@ -19,7 +19,6 @@ from typing import Any, Callable, Mapping, Optional
 import dill
 import gpflow
 import tensorflow as tf
-from check_shapes import inherit_check_shapes
 from gpflow.inducing_variables import InducingPoints
 from gpflow.keras import tf_keras
 from gpflux.layers import GPLayer, LatentVariableLayer
@@ -28,12 +27,13 @@ from tensorflow.python.keras.callbacks import Callback
 
 from ... import logging
 from ...data import Dataset
+from ...space import EncoderFunction
 from ...types import TensorType
 from ..interfaces import (
+    EncodedTrainableProbabilisticModel,
     HasReparamSampler,
     HasTrajectorySampler,
     ReparametrizationSampler,
-    TrainableProbabilisticModel,
     TrajectorySampler,
 )
 from ..optimizer import KerasOptimizer
@@ -50,7 +50,7 @@ from .sampler import (
 
 
 class DeepGaussianProcess(
-    GPfluxPredictor, TrainableProbabilisticModel, HasReparamSampler, HasTrajectorySampler
+    GPfluxPredictor, EncodedTrainableProbabilisticModel, HasReparamSampler, HasTrajectorySampler
 ):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflux :class:`~gpflux.models.DeepGP` with
@@ -65,6 +65,7 @@ class DeepGaussianProcess(
         num_rff_features: int = 1000,
         continuous_optimisation: bool = True,
         compile_args: Optional[Mapping[str, Any]] = None,
+        encoder: EncoderFunction | None = None,
     ):
         """
         :param model: The underlying GPflux deep Gaussian process model. Passing in a named closure
@@ -88,6 +89,8 @@ class DeepGaussianProcess(
             See https://keras.io/api/models/model_training_apis/#compile-method for a
             list of possible arguments. The ``optimizer`` and ``metrics`` arguments
             must not be included.
+        :param encoder: Optional encoder with which to transform query points before
+            generating predictions.
         :raise ValueError: If ``model`` has unsupported layers, ``num_rff_features`` is less than 0,
             if the ``optimizer`` is not of a supported type, or `compile_args` contains
             disallowed arguments.
@@ -113,7 +116,7 @@ class DeepGaussianProcess(
                     f"`LatentVariableLayer`, received {type(layer)} instead."
                 )
 
-        super().__init__(optimizer)
+        super().__init__(optimizer, encoder)
 
         if num_rff_features <= 0:
             raise ValueError(
@@ -304,8 +307,7 @@ class DeepGaussianProcess(
     def model_keras(self) -> tf_keras.Model:
         return self._model_keras
 
-    @inherit_check_shapes
-    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
+    def sample_encoded(self, query_points: TensorType, num_samples: int) -> TensorType:
         trajectory = self.trajectory_sampler().get_trajectory()
         expanded_query_points = tf.expand_dims(query_points, -2)  # [N, 1, D]
         tiled_query_points = tf.tile(expanded_query_points, [1, num_samples, 1])  # [N, S, D]
@@ -329,7 +331,7 @@ class DeepGaussianProcess(
         """
         return DeepGaussianProcessDecoupledTrajectorySampler(self, self._num_rff_features)
 
-    def update(self, dataset: Dataset) -> None:
+    def update_encoded(self, dataset: Dataset) -> None:
         inputs = dataset.query_points
         new_num_data = inputs.shape[0]
         self.model_gpflux.num_data = new_num_data
@@ -366,7 +368,7 @@ class DeepGaussianProcess(
 
             inputs = layer(inputs)
 
-    def optimize(self, dataset: Dataset) -> tf_keras.callbacks.History:
+    def optimize_encoded(self, dataset: Dataset) -> tf_keras.callbacks.History:
         """
         Optimize the model with the specified `dataset`.
         :param dataset: The data with which to optimize the `model`.

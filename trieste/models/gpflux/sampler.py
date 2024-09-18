@@ -72,6 +72,7 @@ class DeepGaussianProcessReparamSampler(ReparametrizationSampler[GPfluxPredictor
             )
             for _ in range(len(self._model_gpflux.f_layers))
         ]
+        self._encode = lambda x: model.encode(x)
 
     @property
     def _model_gpflux(self) -> tf.Module:
@@ -96,7 +97,9 @@ class DeepGaussianProcessReparamSampler(ReparametrizationSampler[GPfluxPredictor
         tf.debugging.assert_shapes([(at, [..., 1, None])])
         tf.debugging.assert_greater_equal(jitter, 0.0)
 
-        samples = tf.repeat(at[..., None, :, :], self._sample_size, axis=-3)  # [..., S, 1, D]
+        samples = tf.repeat(
+            self._encode(at[..., None, :, :]), self._sample_size, axis=-3
+        )  # [..., S, 1, D]
         for i, layer in enumerate(self._model_gpflux.f_layers):
             if isinstance(layer, LatentVariableLayer):
                 if not self._initialized:
@@ -477,6 +480,8 @@ class dgp_feature_decomposition_trajectory(TrajectoryFunctionClass):
             for i in range(len(model.model_gpflux.f_layers))
         ]
 
+        self._encode = lambda x: model.encode(x)
+
     @tf.function
     def __call__(self, x: TensorType) -> TensorType:
         """
@@ -486,6 +491,7 @@ class dgp_feature_decomposition_trajectory(TrajectoryFunctionClass):
             the batch dimension, and `D` is the input dimensionality.
         :return: Trajectory samples with shape `[N, B, L]`, where `L` is the number of outputs.
         """
+        x = self._encode(x)
         for layer in self._sampling_layers:
             x = layer(x)
         return x
