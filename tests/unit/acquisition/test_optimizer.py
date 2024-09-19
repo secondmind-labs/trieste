@@ -802,7 +802,7 @@ def test_batchify_vectorized_for_continuous_optimizer_on_duplicated_toy_problems
         return tf.concat(individual_func, axis=-1)  # vectorize by repeating same function
 
     optimizer = batchify_vectorize(
-        generate_continuous_optimizer(num_initial_samples=1_000, num_optimization_runs=10),
+        generate_continuous_optimizer(num_initial_samples=20_000, num_optimization_runs=10),
         batch_size=vectorization,
     )
     maximizer = optimizer(search_space, target_function)
