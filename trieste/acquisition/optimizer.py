@@ -193,10 +193,18 @@ to conserve memory:
 """
 
 
-def sample_from_space(num_samples: int, batch_size: Optional[int] = None) -> InitialPointSampler:
+def sample_from_space(
+    num_samples: int,
+    batch_size: Optional[int] = None,
+    vectorization: int = 1,
+) -> InitialPointSampler:
     """
-    An initial point sampler that returns `num_samples` points. If `batch_size` is specified,
-    then these are returned in batches of that size, to preserve memory usage.
+    An initial point sampler that just samples from the search pace.
+
+    :param num_samples: Number of samples to return.
+    :param batch_size: If specified, points are return in batches of this size,
+        to preserve memory usage.
+    :param vectorization: Vectorization of the target function.
     """
     if num_samples <= 0:
         raise ValueError(f"num_samples must be positive, got {num_samples}")
@@ -204,11 +212,34 @@ def sample_from_space(num_samples: int, batch_size: Optional[int] = None) -> Ini
     if isinstance(batch_size, int) and batch_size <= 0:
         raise ValueError(f"batch_size must be positive, got {batch_size}")
 
+    if vectorization <= 0:
+        raise ValueError(f"vectorization must be positive, got {vectorization}")
+
     batch_size_int = batch_size or num_samples
 
     def sampler(space: SearchSpace) -> Iterable[TensorType]:
+
+        # generate additional points for each vectorization (rather than just replicating them)
+        if isinstance(space, TaggedMultiSearchSpace):
+            remainder = vectorization % len(space.subspace_tags)
+            tf.debugging.assert_equal(
+                remainder,
+                0,
+                message=(
+                    f"The vectorization of the target function {vectorization} must be a"
+                    f"multiple of the batch shape of initial samples "
+                    f"{len(space.subspace_tags)}."
+                ),
+            )
+            multiple = vectorization // len(space.subspace_tags)
+        else:
+            multiple = vectorization
+
         for offset in range(0, num_samples, batch_size_int):
-            yield space.sample(min(num_samples - offset, batch_size_int))
+            num_batch_samples = min(num_samples - offset, batch_size_int)
+            candidates = space.sample(num_batch_samples * multiple)
+            candidates = tf.reshape(candidates, [num_batch_samples, vectorization, -1])
+            yield candidates
 
     return sampler
 
@@ -363,12 +394,6 @@ def generate_continuous_optimizer(
     if num_recovery_runs < 0:
         raise ValueError(f"num_recovery_runs must be zero or greater, got {num_recovery_runs}")
 
-    initial_sampler = (
-        sample_from_space(num_initial_samples)
-        if not callable(num_initial_samples)
-        else num_initial_samples
-    )
-
     def optimize_continuous(
         space: Box | CollectionSearchSpace,
         target_func: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]],
@@ -399,6 +424,12 @@ def generate_continuous_optimizer(
 
         if V <= 0:
             raise ValueError(f"vectorization must be positive, got {V}")
+
+        initial_sampler = (
+            sample_from_space(num_initial_samples, vectorization=V)
+            if not callable(num_initial_samples)
+            else num_initial_samples
+        )
 
         initial_points = generate_initial_points(
             num_optimization_runs, initial_sampler, space, target_func, V

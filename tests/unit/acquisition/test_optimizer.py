@@ -1017,10 +1017,37 @@ def test_sample_from_space(num_samples: int, batch_size: Optional[int]) -> None:
     assert len(set(float(x) for batch in batches for x in batch)) == num_samples
 
 
-@pytest.mark.parametrize("num_samples,batch_size", [(0, None), (-5, None), (5, 0), (5, -5)])
-def test_sample_from_space_raises(num_samples: int, batch_size: Optional[int]) -> None:
+@pytest.mark.parametrize(
+    "space", [Box([0], [1]), TaggedMultiSearchSpace([Box([0], [1]), Box([0], [1])])]
+)
+def test_sample_from_space_vectorization(space: SearchSpace) -> None:
+    batches = list(sample_from_space(10, vectorization=4)(space))
+    assert len(batches) == 1
+    assert batches[0].shape == [10, 4, 1]
+    assert 0 <= tf.reduce_min(batches[0]) <= tf.reduce_max(batches[0]) <= 1
+    # check that the vector batches aren't all the same
+    assert tf.reduce_any((batches[0] - batches[0][:, 0:1, :]) != 0)
+
+
+@pytest.mark.parametrize(
+    "num_samples,batch_size,vectorization",
+    [(0, None, 1), (-5, None, 1), (5, 0, 1), (5, -5, 1), (5, 5, 0), (5, 5, -1)],
+)
+def test_sample_from_space_raises(
+    num_samples: int, batch_size: Optional[int], vectorization: int
+) -> None:
     with pytest.raises(ValueError):
-        sample_from_space(num_samples=num_samples, batch_size=batch_size)
+        sample_from_space(
+            num_samples=num_samples, batch_size=batch_size, vectorization=vectorization
+        )
+
+
+def test_sample_from_space_vectorization_raises_with_invalid_space() -> None:
+    # vectorisation of 3 not possible with 2 subspace multisearchspace
+    space = TaggedMultiSearchSpace([Box([0], [1]), Box([0], [1])])
+    sampler = sample_from_space(10, vectorization=3)
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        list(sampler(space))
 
 
 def test_optimize_continuous_raises_for_insufficient_starting_points() -> None:
