@@ -253,6 +253,7 @@ def categorical_scaled_branin(
     )
 
 
+@random_seed
 def _get_categorical_problem() -> SingleObjectiveTestProblem[TaggedProductSearchSpace]:
     # a categorical scaled branin problem with 6 categories mapping to 3 random points
     # plus the 3 minimizer points (to guarantee that the minimum is present)
