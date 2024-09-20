@@ -396,9 +396,14 @@ def sgpr_model(x: tf.Tensor, y: tf.Tensor, num_latent_gps: int = 1) -> SGPR:
     return SGPR((x, y), gpflow.kernels.Matern32(), x[:2], num_latent_gps=num_latent_gps)
 
 
-def svgp_model(x: tf.Tensor, y: tf.Tensor, num_latent_gps: int = 1) -> SVGP:
+def svgp_model(
+    x: tf.Tensor,
+    y: tf.Tensor,
+    num_latent_gps: int = 1,
+    kernel: gpflow.kernels.Kernel = gpflow.kernels.Matern32(),
+) -> SVGP:
     return SVGP(
-        gpflow.kernels.Matern32(),
+        kernel,
         gpflow.likelihoods.Gaussian(),
         x[:2],
         num_data=len(x),
@@ -406,13 +411,14 @@ def svgp_model(x: tf.Tensor, y: tf.Tensor, num_latent_gps: int = 1) -> SVGP:
     )
 
 
-def quadratic_mean_rbf_kernel_model(dataset: Dataset) -> QuadraticMeanAndRBFKernelWithSamplers:
+def quadratic_mean_rbf_kernel_model(
+    dataset: Dataset,
+    kernel: gpflow.kernels.Kernel = gpflow.kernels.RBF(),
+) -> QuadraticMeanAndRBFKernelWithSamplers:
     model = QuadraticMeanAndRBFKernelWithSamplers(
         noise_variance=tf.constant(0.9, dtype=tf.float64), dataset=dataset
     )
-    model.kernel = (
-        gpflow.kernels.RBF()
-    )  # need a gpflow kernel object for random feature decompositions
+    model.kernel = kernel  # need a gpflow kernel object for random feature decompositions
     return model
 
 
