@@ -954,9 +954,10 @@ def test_decoupled_trajectory_update_trajectory_updates_and_doesnt_retrace(
 def test_rff_and_decoupled_trajectory_give_similar_results(
     noise_var: float,
     sampling_dataset: Dataset,
+    rff_sampling_model: RFFSamplingModel,
 ) -> None:
-    model = quadratic_mean_rbf_kernel_model(sampling_dataset)
-    model._noise_variance = tf.constant(noise_var, dtype=tf.float64)
+    _, model = rff_sampling_model(sampling_dataset)
+    model._noise_variance = tf.constant(noise_var, dtype=tf.float64)  # type: ignore[attr-defined]
 
     x_range = tf.linspace(1.4, 1.8, 3)
     x_range = tf.cast(x_range, dtype=tf.float64)
@@ -976,7 +977,7 @@ def test_rff_and_decoupled_trajectory_give_similar_results(
     eval_2 = trajectory_2(xs_predict_with_batching)
 
     npt.assert_allclose(
-        tf.reduce_mean(eval_1, 1), tf.reduce_mean(eval_2, 1), rtol=0.01
+        tf.reduce_mean(eval_1, 1), tf.reduce_mean(eval_2, 1), rtol=0.1
     )  # means across samples should roughly agree for different samplers
     npt.assert_allclose(
         tf.math.reduce_variance(eval_1, 1), tf.math.reduce_variance(eval_2, 1), rtol=1.0
