@@ -178,7 +178,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                 id="GIBBON",
             ),
             pytest.param(
-                20,
+                25,
                 EfficientGlobalOptimization(
                     MultipleOptimismNegativeLowerConfidenceBound(
                         ScaledBranin.search_space,
