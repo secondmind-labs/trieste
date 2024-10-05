@@ -19,3 +19,7 @@ from .partition import (
     ExactPartition2dNonDominated,
     prepare_default_non_dominated_partition_bounds,
 )
+from .scalarization import (
+    Scalarizer,
+    Chebyshev,
+)

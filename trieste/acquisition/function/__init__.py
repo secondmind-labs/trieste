@@ -64,5 +64,8 @@ from .multi_objective import (
     ExpectedHypervolumeImprovement,
     batch_ehvi,
     expected_hv_improvement,
+    RandomScalarization,
+    random_scalarization,
+    hippo_penalizer,
 )
 from .utils import MultivariateNormalCDF

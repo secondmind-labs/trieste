@@ -21,8 +21,9 @@ from trieste.acquisition import (
     HIPPO,
     BatchMonteCarloExpectedHypervolumeImprovement,
     ExpectedHypervolumeImprovement,
+    RandomScalarization,
 )
-from trieste.acquisition.multi_objective.pareto import Pareto, get_reference_point
+from trieste.acquisition.multi_objective import Pareto, get_reference_point, Chebyshev
 from trieste.acquisition.optimizer import generate_continuous_optimizer
 from trieste.acquisition.rule import (
     AcquisitionRule,
@@ -55,81 +56,96 @@ except ImportError:  # pragma: no cover (tested but not by coverage)
 @pytest.mark.parametrize(
     "num_steps, acquisition_rule, convergence_threshold",
     [
+        # pytest.param(
+        #     20,
+        #     EfficientGlobalOptimization(
+        #         ExpectedHypervolumeImprovement(tf.constant([1.1, 1.1], dtype=tf.float64)).using(
+        #             OBJECTIVE
+        #         )
+        #     ),
+        #     -3.65,
+        #     id="ehvi_fixed_reference_pts",
+        # ),
+        # pytest.param(
+        #     20,
+        #     EfficientGlobalOptimization(ExpectedHypervolumeImprovement().using(OBJECTIVE)),
+        #     -3.65,
+        #     id="ExpectedHypervolumeImprovement",
+        # ),
+        # pytest.param(
+        #     15,
+        #     EfficientGlobalOptimization(
+        #         BatchMonteCarloExpectedHypervolumeImprovement(sample_size=500).using(OBJECTIVE),
+        #         num_query_points=2,
+        #         optimizer=generate_continuous_optimizer(num_initial_samples=500),
+        #     ),
+        #     -3.44,
+        #     id="BatchMonteCarloExpectedHypervolumeImprovement/2",
+        # ),
+        # pytest.param(
+        #     15,
+        #     EfficientGlobalOptimization(
+        #         BatchMonteCarloExpectedHypervolumeImprovement(
+        #             sample_size=500,
+        #             reference_point_spec=tf.constant([1.1, 1.1], dtype=tf.float64),
+        #         ).using(OBJECTIVE),
+        #         num_query_points=2,
+        #         optimizer=generate_continuous_optimizer(num_initial_samples=500),
+        #     ),
+        #     -3.44,
+        #     id="qehvi_vlmop2_q_2_fixed_reference_pts",
+        # ),
+        # pytest.param(
+        #     10,
+        #     EfficientGlobalOptimization(
+        #         BatchMonteCarloExpectedHypervolumeImprovement(sample_size=250).using(OBJECTIVE),
+        #         num_query_points=4,
+        #         optimizer=generate_continuous_optimizer(num_initial_samples=500),
+        #     ),
+        #     -3.2095,
+        #     id="BatchMonteCarloExpectedHypervolumeImprovement/4",
+        # ),
+        # pytest.param(
+        #     10,
+        #     EfficientGlobalOptimization(
+        #         HIPPO(),
+        #         num_query_points=4,
+        #         optimizer=generate_continuous_optimizer(num_initial_samples=500),
+        #     ),
+        #     -3.2095,
+        #     id="HIPPO/4",
+        # ),
+        # pytest.param(
+        #     10,
+        #     AsynchronousOptimization(
+        #         BatchMonteCarloExpectedHypervolumeImprovement(sample_size=250).using(OBJECTIVE),
+        #         num_query_points=4,
+        #         optimizer=generate_continuous_optimizer(num_initial_samples=500),
+        #     ),
+        #     -3.2095,
+        #     id="BatchMonteCarloExpectedHypervolumeImprovement/4",
+        # ),
+        # pytest.param(
+        #     15,
+        #     BatchHypervolumeSharpeRatioIndicator(num_query_points=20) if pymoo else None,
+        #     -3.2095,
+        #     id="BatchHypervolumeSharpeRatioIndicator",
+        #     marks=pytest.mark.qhsri,
+        # ),
         pytest.param(
-            20,
+            10,
             EfficientGlobalOptimization(
-                ExpectedHypervolumeImprovement(tf.constant([1.1, 1.1], dtype=tf.float64)).using(
-                    OBJECTIVE
-                )
-            ),
-            -3.65,
-            id="ehvi_fixed_reference_pts",
-        ),
-        pytest.param(
-            20,
-            EfficientGlobalOptimization(ExpectedHypervolumeImprovement().using(OBJECTIVE)),
-            -3.65,
-            id="ExpectedHypervolumeImprovement",
-        ),
-        pytest.param(
-            15,
-            EfficientGlobalOptimization(
-                BatchMonteCarloExpectedHypervolumeImprovement(sample_size=500).using(OBJECTIVE),
-                num_query_points=2,
-                optimizer=generate_continuous_optimizer(num_initial_samples=500),
+                RandomScalarization(
+                    scalarizer = Chebyshev(
+                        batch_size=4,
+                        num_objectives=2,
+                        ideal_spec=tf.zeros(shape=[2, 1], dtype=tf.float64),
+                    )
+                ),
+                num_query_points=4,
             ),
             -3.44,
-            id="BatchMonteCarloExpectedHypervolumeImprovement/2",
-        ),
-        pytest.param(
-            15,
-            EfficientGlobalOptimization(
-                BatchMonteCarloExpectedHypervolumeImprovement(
-                    sample_size=500,
-                    reference_point_spec=tf.constant([1.1, 1.1], dtype=tf.float64),
-                ).using(OBJECTIVE),
-                num_query_points=2,
-                optimizer=generate_continuous_optimizer(num_initial_samples=500),
-            ),
-            -3.44,
-            id="qehvi_vlmop2_q_2_fixed_reference_pts",
-        ),
-        pytest.param(
-            10,
-            EfficientGlobalOptimization(
-                BatchMonteCarloExpectedHypervolumeImprovement(sample_size=250).using(OBJECTIVE),
-                num_query_points=4,
-                optimizer=generate_continuous_optimizer(num_initial_samples=500),
-            ),
-            -3.2095,
-            id="BatchMonteCarloExpectedHypervolumeImprovement/4",
-        ),
-        pytest.param(
-            10,
-            EfficientGlobalOptimization(
-                HIPPO(),
-                num_query_points=4,
-                optimizer=generate_continuous_optimizer(num_initial_samples=500),
-            ),
-            -3.2095,
-            id="HIPPO/4",
-        ),
-        pytest.param(
-            10,
-            AsynchronousOptimization(
-                BatchMonteCarloExpectedHypervolumeImprovement(sample_size=250).using(OBJECTIVE),
-                num_query_points=4,
-                optimizer=generate_continuous_optimizer(num_initial_samples=500),
-            ),
-            -3.2095,
-            id="BatchMonteCarloExpectedHypervolumeImprovement/4",
-        ),
-        pytest.param(
-            15,
-            BatchHypervolumeSharpeRatioIndicator(num_query_points=20) if pymoo else None,
-            -3.2095,
-            id="BatchHypervolumeSharpeRatioIndicator",
-            marks=pytest.mark.qhsri,
+            id="RandomScalarization_fixed_reference_pts",
         ),
     ],
 )

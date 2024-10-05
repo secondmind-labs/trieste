@@ -25,7 +25,7 @@ import tensorflow_probability as tfp
 
 from ...data import Dataset
 from ...models import ProbabilisticModel, ReparametrizationSampler
-from ...models.interfaces import HasReparamSampler
+from ...models.interfaces import HasReparamSampler, HasTrajectorySampler
 from ...observer import OBJECTIVE
 from ...types import Tag, TensorType
 from ...utils import DEFAULTS
@@ -43,6 +43,7 @@ from ..multi_objective.pareto import (
     get_reference_point,
     prepare_default_non_dominated_partition_bounds,
 )
+from ..multi_objective.scalarization import Scalarizer
 from .function import ExpectedConstrainedImprovement
 
 
@@ -756,3 +757,123 @@ class hippo_penalizer:
         penalty = tf.reduce_prod(warped_d, axis=-1)  # [N,]
 
         return tf.reshape(penalty, (-1, 1))
+
+
+class RandomScalarization(VectorizedAcquisitionFunctionBuilder[HasTrajectorySampler]):
+    """
+    Acquisition function builder for performing batch random scalarization. For details see:    
+    http://proceedings.mlr.press/v115/paria20a/paria20a.pdf
+
+    For a convenient way to control the total memory usage of this acquisition function, see
+    :const:`split_acquisition_function_calls` wrapper.
+    """
+
+    def __init__(
+        self,
+        scalarizer: Scalarizer,
+    ):
+        """
+        :param scalarizer: The scalarizer that should be used to combine the outputs.
+        """
+        self._scalarizer = scalarizer
+
+    def prepare_acquisition_function(
+        self, models: Mapping[Tag, HasTrajectorySampler], datasets: Mapping[Tag, Dataset],
+    ) -> TrajectoryFunction:
+        """
+        :param models: The models for each tag.
+        :param datasets: The data from the observer.
+        :return: A mapping of negated trajectory sampled from the model.
+        :raise ValueError: If the model is not of a correct class or one of the objectives is not
+            present among the model tags.
+        """
+        for tag, model in models.items():
+            if not isinstance(model, HasTrajectorySampler):
+                raise ValueError(
+                    f"We only support models with a trajectory_sampler "
+                    f"method; received {model.__repr__()}"
+                    f"for output {tag}"
+                )
+
+        self._scalarizer.prepare(models, datasets)
+
+        self._trajectory_sampler = {  # pylint: disable=attribute-defined-outside-init
+            tag: model.trajectory_sampler() for tag, model in models.items()
+        }
+        self._trajectories = {  # pylint: disable=attribute-defined-outside-init
+            tag: sampler.get_trajectory() for tag, sampler in self._trajectory_sampler.items()
+        }
+        self._negated_trajectory = random_scalarization(  # pylint: disable=attribute-defined-outside-init
+            self._scalarizer,
+            self._trajectories,
+        )
+
+        return self._negated_trajectory
+
+    def update_acquisition_function(
+        self,
+        function: TrajectoryFunction,
+        models: Mapping[Tag, HasTrajectorySampler],
+        datasets: Mapping[Tag, Dataset],
+    ) -> TrajectoryFunction:
+        """
+        :param function: The trajectory function to update.
+        :param models: The models.
+        :param datasets: The data from the observer.
+        :return: A new trajectory sampled from the model.
+        """
+        self._scalarizer.update(models, datasets)
+
+        updated_trajectories = {
+            tag: sampler.update_trajectory(self._trajectories[tag])
+            for tag, sampler in self._trajectory_sampler.items()
+        }
+
+        if any(
+            updated_trajectories[tag] is not self._trajectories[tag]
+            for tag in self._trajectory_sampler
+        ):
+            self._trajectories = (  # pylint: disable=attribute-defined-outside-init
+                updated_trajectories
+            )
+            self._negated_trajectory = random_scalarization(  # pylint: disable=attribute-defined-outside-init
+                self._scalarizer,
+            )
+
+        return self._negated_trajectory
+
+
+def random_scalarization(
+    scalarizer: Scalarizer,
+    trajectories: Mapping[Tag, TrajectoryFunction],
+) -> TrajectoryFunction:
+    """
+    Returns a function that evaluates individual trajectories at ``x``, combines the trajectories
+    with the ``scalarizer`` and returns scalar values.
+    
+    Importantly, we assume that all objectives point in the same direction, in particular that
+    we are minimizing objectives or the smaller the better. We also assume objectives are scaled
+    to same units, in particular we assume a - stveinterval.
+
+    :param scalarizer: The scalarizer that should be used to combine the outputs.
+    :param trajectories: trajectories for all outputs.
+    :return: A single negated trajectory function.
+    """
+
+    @tf.function
+    def scalarized_objectives(x: TensorType) -> TensorType:
+        """
+        :param x: inputs in form [N, B, D]
+        """
+        objectives_trajectories = [
+            traj(x)[:, :, 0] for tag, traj in trajectories.items() if tag in objectives
+        ]
+        scalarized = scalarizer(tf.convert_to_tensor(objectives_trajectories))  # [N, B]
+
+        # we negate and then transform the scalarised to be positive, so that our acquisition
+        # function optimizers (which are maximizers) can be used to extract the minimizers
+        scalarized = tf.math.log(1 + tf.math.exp(tf.math.negative(scalarized)))
+
+        return scalarized
+
+    return scalarized_objectives
