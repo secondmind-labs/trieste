@@ -1,0 +1,119 @@
+:py:mod:`trieste.objectives.multi_objectives`
+=============================================
+
+.. py:module:: trieste.objectives.multi_objectives
+
+.. autoapi-nested-parse::
+
+   This module contains synthetic multi-objective functions, useful for experimentation.
+
+
+
+Module Contents
+---------------
+
+.. py:class:: GenParetoOptimalPoints
+
+
+   Bases: :py:obj:`typing_extensions.Protocol`
+
+   A Protocol representing a function that generates Pareto optimal points.
+
+   .. py:method:: __call__(n: int, seed: int | None = None) -> trieste.types.TensorType
+
+      Generate `n` Pareto optimal points.
+
+      :param n: The number of pareto optimal points to be generated.
+      :param seed: An integer used to create a random seed for distributions that
+       used to generate pareto optimal points.
+      :return: The Pareto optimal points
+
+
+
+.. py:class:: MultiObjectiveTestProblem
+
+
+   Bases: :py:obj:`trieste.objectives.single_objectives.ObjectiveTestProblem`
+
+   Convenience container class for synthetic multi-objective test functions, containing
+   a generator for the pareto optimal points, which can be used as a reference of performance
+   measure of certain multi-objective optimization algorithms.
+
+   .. py:attribute:: gen_pareto_optimal_points
+      :type: GenParetoOptimalPoints
+
+      Function to generate Pareto optimal points, given the number of points and an optional
+      random number seed.
+
+
+
+.. py:function:: vlmop2(x: trieste.types.TensorType, d: int) -> trieste.types.TensorType
+
+   The VLMOP2 synthetic function.
+
+   :param x: The points at which to evaluate the function, with shape [..., d].
+   :param d: The dimensionality of the synthetic function.
+   :return: The function values at ``x``, with shape [..., 2].
+   :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+
+
+.. py:function:: VLMOP2(input_dim: int) -> MultiObjectiveTestProblem
+
+   The VLMOP2 problem, typically evaluated over :math:`[-2, 2]^d`.
+   The idea pareto fronts lies on -1/sqrt(d) - 1/sqrt(d) and x1=...=xdim.
+
+   See :cite:`van1999multiobjective` and :cite:`fonseca1995multiobjective`
+   (the latter for discussion of pareto front property) for details.
+
+   :param input_dim: The input dimensionality of the synthetic function.
+   :return: The problem specification.
+
+
+.. py:function:: dtlz_mkd(input_dim: int, num_objective: int) -> tuple[int, int, int]
+
+   Return m/k/d values for dtlz synthetic functions.
+
+
+.. py:function:: dtlz1(x: trieste.types.TensorType, m: int, k: int, d: int) -> trieste.types.TensorType
+
+   The DTLZ1 synthetic function.
+
+   :param x: The points at which to evaluate the function, with shape [..., d].
+   :param m: The objective numbers.
+   :param k: The input dimensionality for g.
+   :param d: The dimensionality of the synthetic function.
+   :return: The function values at ``x``, with shape [..., m].
+   :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+
+
+.. py:function:: DTLZ1(input_dim: int, num_objective: int) -> MultiObjectiveTestProblem
+
+   The DTLZ1 problem, the idea pareto fronts lie on a linear hyper-plane.
+   See :cite:`deb2002scalable` for details.
+
+   :param input_dim: The input dimensionality of the synthetic function.
+   :param num_objective: The number of objectives.
+   :return: The problem specification.
+
+
+.. py:function:: dtlz2(x: trieste.types.TensorType, m: int, d: int) -> trieste.types.TensorType
+
+   The DTLZ2 synthetic function.
+
+   :param x: The points at which to evaluate the function, with shape [..., d].
+   :param m: The objective numbers.
+   :param d: The dimensionality of the synthetic function.
+   :return: The function values at ``x``, with shape [..., m].
+   :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+
+
+.. py:function:: DTLZ2(input_dim: int, num_objective: int) -> MultiObjectiveTestProblem
+
+   The DTLZ2 problem, the idea pareto fronts lie on (part of) a unit hyper sphere.
+   See :cite:`deb2002scalable` for details.
+
+   :param input_dim: The input dimensionality of the synthetic function.
+   :param num_objective: The number of objectives.
+   :return: The problem specification.
+
+

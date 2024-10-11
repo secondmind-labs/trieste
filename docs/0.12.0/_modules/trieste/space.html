@@ -1,0 +1,921 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.space &#8212; trieste 0.12.0 documentation</title>
+    
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+
+    
+  <link rel="stylesheet"
+    href="../../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/styles/pydata-sphinx-theme.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf">
+
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="None">
+    
+
+    <!-- Google Analytics -->
+    
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="60">
+    
+    <div class="container-fluid" id="banner"></div>
+
+    
+    <nav class="navbar navbar-light navbar-expand-lg bg-light fixed-top bd-navbar" id="navbar-main"><div class="container-xl">
+
+  <div id="navbar-start">
+    
+    
+
+<a class="navbar-brand" href="../../index.html">
+  <img src="../../_static/logo.png" class="logo" alt="logo">
+</a>
+
+
+    
+  </div>
+
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar-collapsible" aria-controls="navbar-collapsible" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  
+  <div id="navbar-collapsible" class="col-lg-9 collapse navbar-collapse">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <ul id="navbar-main-elements" class="navbar-nav">
+    <li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../index.html">
+  Trieste
+ </a>
+</li>
+
+<li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../autoapi/trieste/index.html">
+  API reference
+ </a>
+</li>
+
+<li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../tutorials.html">
+  Tutorials
+ </a>
+</li>
+
+    
+</ul>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+      <div class="navbar-end-item">
+        <div class="dropdown" id="version_switcher">
+    <button type="button" class="btn btn-primary btn-sm navbar-btn dropdown-toggle" id="version_switcher_button" data-toggle="dropdown">
+        0.12.0  <!-- this text may get changed later by javascript -->
+        <span class="caret"></span>
+    </button>
+    <div id="version_switcher_menu" class="dropdown-menu list-group-flush py-0" aria-labelledby="version_switcher_button">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+</div>
+
+<!-- NOTE: this JS must live here (not in our global JS file) because it relies
+     on being processed by Jinja before it is run (specifically for replacing
+     variables _modules/trieste/space and {'json_url': 'https://secondmind-labs.github.io/trieste/versions.json', 'version_match': '0.12.0'}.
+-->
+
+<script type="text/javascript">
+// Check if corresponding page path exists in other version of docs
+// and, if so, go there instead of the homepage of the other docs version
+function checkPageExistsAndRedirect(event) {
+    const currentFilePath = "_modules/trieste/space.html",
+          tryUrl = event.target.getAttribute("href");
+    let otherDocsHomepage = tryUrl.replace(currentFilePath, "");
+    $.ajax({
+        type: 'HEAD',
+        url: tryUrl,
+        // if the page exists, go there
+        success: function() {
+            location.href = tryUrl;
+        }
+    }).fail(function() {
+        location.href = otherDocsHomepage;
+    });
+    // this prevents the browser from following the href of the clicked node
+    // (which is fine because this function takes care of redirecting)
+    return false;
+}
+
+// Populate the version switcher from the JSON config file
+(function () {
+    $.getJSON("https://secondmind-labs.github.io/trieste/versions.json", function(data, textStatus, jqXHR) {
+        const currentFilePath = "_modules/trieste/space.html";
+        // create links to the corresponding page in the other docs versions
+        $.each(data, function(index, entry) {
+            // if no custom name specified (e.g., "latest"), use version string
+            if (!("name" in entry)) {
+                entry.name = entry.version;
+            }
+            // create the node
+            const node = document.createElement("a");
+            node.setAttribute("class", "list-group-item list-group-item-action py-1");
+            node.textContent = `${entry.name}`;
+            node.setAttribute("href", `${entry.url}${currentFilePath}`);
+            // on click, AJAX calls will check if the linked page exists before
+            // trying to redirect, and if not, will redirect to the homepage
+            // for that version of the docs.
+            node.onclick = checkPageExistsAndRedirect;
+            // Add dataset values for the version and name in case people want
+            // to apply CSS styling based on this information.
+            node.dataset["versionName"] = entry.name;
+            node.dataset["version"] = entry.version;
+
+            $("#version_switcher_menu").append(node);
+            // replace dropdown button text with the preferred display name of
+            // this version, rather than using sphinx's  variable.
+            // also highlight the dropdown entry for the currently-viewed
+            // version's entry
+            if (entry.version == "0.12.0") {
+                node.classList.add("active");
+                let btn = document.getElementById("version_switcher_button");
+                btn.innerText = btn.dataset["activeVersionName"] = entry.name;
+                btn.dataset["activeVersion"] = entry.version;
+            }
+        });
+    });
+})();
+</script>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+        <li class="nav-item">
+          <a class="nav-link" href="https://github.com/secondmind-labs/trieste" rel="noopener" target="_blank" title="GitHub"><span><i class="fab fa-github-square"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+</div>
+    </nav>
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+            
+            <!-- Only show if we have sidebars configured, else just a small margin  -->
+            <div class="col-12 col-md-3 bd-sidebar">
+              <div class="sidebar-start-items"><form class="bd-search d-flex align-items-center" action="../../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+  <div class="bd-toc-item active">
+    
+  </div>
+</nav>
+              </div>
+              <div class="sidebar-end-items">
+              </div>
+            </div>
+            
+          
+
+          
+          <div class="d-none d-xl-block col-xl-2 bd-toc">
+            
+          </div>
+          
+
+          
+          
+            
+          
+          <main class="col-12 col-md-9 col-xl-7 py-md-5 pl-md-5 pr-md-4 bd-content" role="main">
+              
+              <div>
+                
+  <h1>Source code for trieste.space</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2020 The Trieste Contributors</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="sd">&quot;&quot;&quot; This module contains implementations of various types of search space. &quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span> <span class="nn">operator</span>
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">reduce</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">overload</span>
+
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">import</span> <span class="nn">tensorflow_probability</span> <span class="k">as</span> <span class="nn">tfp</span>
+
+<span class="kn">from</span> <span class="nn">.types</span> <span class="kn">import</span> <span class="n">TensorType</span>
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="kn">import</span> <span class="n">shapes_equal</span>
+
+<div class="viewcode-block" id="SearchSpaceType"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.SearchSpaceType">[docs]</a><span class="n">SearchSpaceType</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;SearchSpaceType&quot;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="s2">&quot;SearchSpace&quot;</span><span class="p">)</span></div>
+<span class="sd">&quot;&quot;&quot; A type variable bound to :class:`SearchSpace`. &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="DEFAULT_DTYPE"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.DEFAULT_DTYPE">[docs]</a><span class="n">DEFAULT_DTYPE</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">DType</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span></div>
+<span class="sd">&quot;&quot;&quot; Default dtype to use when none is provided. &quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="SearchSpace"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.SearchSpace">[docs]</a><span class="k">class</span> <span class="nc">SearchSpace</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A :class:`SearchSpace` represents the domain over which an objective function is optimized.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="SearchSpace.sample"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.SearchSpace.sample">[docs]</a>    <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span></div>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param num_samples: The number of points to sample from this search space.</span>
+<span class="sd">        :param seed: Random seed for reproducibility.</span>
+<span class="sd">        :return: ``num_samples`` i.i.d. random points, sampled uniformly from this search space.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="SearchSpace.__contains__"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.SearchSpace.__contains__">[docs]</a>    <span class="k">def</span> <span class="fm">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span> <span class="o">|</span> <span class="n">TensorType</span><span class="p">:</span></div>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param value: A point to check for membership of this :class:`SearchSpace`.</span>
+<span class="sd">        :return: `True` if ``value`` is a member of this search space, else `False`. May return a</span>
+<span class="sd">            scalar boolean `TensorType` instead of the `bool` itself.</span>
+<span class="sd">        :raise ValueError (or tf.errors.InvalidArgumentError): If ``value`` has a different</span>
+<span class="sd">            dimensionality from this :class:`SearchSpace`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="SearchSpace.dimension"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.SearchSpace.dimension">[docs]</a>    <span class="k">def</span> <span class="nf">dimension</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span></div>
+        <span class="sd">&quot;&quot;&quot;The number of inputs in this search space.&quot;&quot;&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="SearchSpace.lower"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.SearchSpace.lower">[docs]</a>    <span class="k">def</span> <span class="nf">lower</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span></div>
+        <span class="sd">&quot;&quot;&quot;The lowest value taken by each search space dimension.&quot;&quot;&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="SearchSpace.upper"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.SearchSpace.upper">[docs]</a>    <span class="k">def</span> <span class="nf">upper</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span></div>
+        <span class="sd">&quot;&quot;&quot;The highest value taken by each search space dimension.&quot;&quot;&quot;</span>
+
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="SearchSpace.product"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.SearchSpace.product">[docs]</a>    <span class="k">def</span> <span class="nf">product</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">SearchSpaceType</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="n">SearchSpaceType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SearchSpaceType</span><span class="p">:</span></div>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param other: A search space of the same type as this search space.</span>
+<span class="sd">        :return: The Cartesian product of this search space with the ``other``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+    <span class="nd">@overload</span>
+<div class="viewcode-block" id="SearchSpace.__mul__"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.SearchSpace.__mul__">[docs]</a>    <span class="k">def</span> <span class="fm">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">SearchSpaceType</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="n">SearchSpaceType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SearchSpaceType</span><span class="p">:</span>
+        <span class="o">...</span></div>
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span> <span class="fm">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">SearchSpaceType</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SearchSpace</span><span class="p">:</span>  <span class="c1"># type: ignore[misc]</span>
+        <span class="c1"># mypy complains that this is superfluous, but it seems to use it fine to infer</span>
+        <span class="c1"># that Box * Box = Box, while Box * Discrete = SearchSpace.</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span> <span class="fm">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SearchSpace</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param other: A search space.</span>
+<span class="sd">        :return: The Cartesian product of this search space with the ``other``.</span>
+<span class="sd">            If both spaces are of the same type then this calls the :meth:`product` method.</span>
+<span class="sd">            Otherwise, it generates a :class:`TaggedProductSearchSpace`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">product</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">TaggedProductSearchSpace</span><span class="p">((</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">))</span>
+
+<div class="viewcode-block" id="SearchSpace.__pow__"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.SearchSpace.__pow__">[docs]</a>    <span class="k">def</span> <span class="fm">__pow__</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">SearchSpaceType</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SearchSpaceType</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the Cartesian product of ``other`` instances of this search space. For example, for</span>
+<span class="sd">        an exponent of `3`, and search space `s`, this is `s ** 3`, which is equivalent to</span>
+<span class="sd">        `s * s * s`.</span>
+
+<span class="sd">        :param other: The exponent, or number of instances of this search space to multiply</span>
+<span class="sd">            together. Must be strictly positive.</span>
+<span class="sd">        :return: The Cartesian product of ``other`` instances of this search space.</span>
+<span class="sd">        :raise tf.errors.InvalidArgumentError: If the exponent ``other`` is less than 1.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="s2">&quot;Exponent must be strictly positive&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">reduce</span><span class="p">(</span><span class="n">operator</span><span class="o">.</span><span class="n">mul</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="p">]</span> <span class="o">*</span> <span class="n">other</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="SearchSpace.discretize"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.SearchSpace.discretize">[docs]</a>    <span class="k">def</span> <span class="nf">discretize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DiscreteSearchSpace</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param num_samples: The number of points in the :class:`DiscreteSearchSpace`.</span>
+<span class="sd">        :return: A discrete search space consisting of ``num_samples`` points sampled uniformly from</span>
+<span class="sd">            this search space.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">DiscreteSearchSpace</span><span class="p">(</span><span class="n">points</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">num_samples</span><span class="p">))</span></div>
+
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="SearchSpace.__eq__"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.SearchSpace.__eq__">[docs]</a>    <span class="k">def</span> <span class="fm">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span></div></div>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param other: A search space.</span>
+<span class="sd">        :return: Whether the search space is identical to this one.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="DiscreteSearchSpace"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.DiscreteSearchSpace">[docs]</a><span class="k">class</span> <span class="nc">DiscreteSearchSpace</span><span class="p">(</span><span class="n">SearchSpace</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A discrete :class:`SearchSpace` representing a finite set of :math:`D`-dimensional points in</span>
+<span class="sd">    :math:`\mathbb{R}^D`.</span>
+
+<span class="sd">    For example:</span>
+
+<span class="sd">        &gt;&gt;&gt; points = tf.constant([[-1.0, 0.4], [-1.0, 0.6], [0.0, 0.4]])</span>
+<span class="sd">        &gt;&gt;&gt; search_space = DiscreteSearchSpace(points)</span>
+<span class="sd">        &gt;&gt;&gt; assert tf.constant([0.0, 0.4]) in search_space</span>
+<span class="sd">        &gt;&gt;&gt; assert tf.constant([1.0, 0.5]) not in search_space</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param points: The points that define the discrete space, with shape (&#39;N&#39;, &#39;D&#39;).</span>
+<span class="sd">        :raise ValueError (or tf.errors.InvalidArgumentError): If ``points`` has an invalid shape.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">([(</span><span class="n">points</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;N&quot;</span><span class="p">,</span> <span class="s2">&quot;D&quot;</span><span class="p">))])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_points</span> <span class="o">=</span> <span class="n">points</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dimension</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_points</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;DiscreteSearchSpace(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_points</span><span class="si">!r}</span><span class="s2">)&quot;</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="DiscreteSearchSpace.lower"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.DiscreteSearchSpace.lower">[docs]</a>    <span class="k">def</span> <span class="nf">lower</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;The lowest value taken across all points by each search space dimension.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">)</span></div>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="DiscreteSearchSpace.upper"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.DiscreteSearchSpace.upper">[docs]</a>    <span class="k">def</span> <span class="nf">upper</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;The highest value taken across all points by each search space dimension.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">)</span></div>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="DiscreteSearchSpace.points"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.DiscreteSearchSpace.points">[docs]</a>    <span class="k">def</span> <span class="nf">points</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;All the points in this space.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_points</span></div>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="DiscreteSearchSpace.dimension"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.DiscreteSearchSpace.dimension">[docs]</a>    <span class="k">def</span> <span class="nf">dimension</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;The number of inputs in this search space.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dimension</span></div>
+
+<div class="viewcode-block" id="DiscreteSearchSpace.__contains__"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.DiscreteSearchSpace.__contains__">[docs]</a>    <span class="k">def</span> <span class="fm">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span> <span class="o">|</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">([(</span><span class="n">value</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:])])</span>
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_any</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">reduce_all</span><span class="p">(</span><span class="n">value</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_points</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="DiscreteSearchSpace.sample"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.DiscreteSearchSpace.sample">[docs]</a>    <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param num_samples: The number of points to sample from this search space.</span>
+<span class="sd">        :param seed: Random seed for reproducibility.</span>
+<span class="sd">        :return: ``num_samples`` i.i.d. random points, sampled uniformly,</span>
+<span class="sd">            from this search space.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">seed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># ensure reproducibility</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">set_seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">num_samples</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">[:</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sampled_indices</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">categorical</span><span class="p">(</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">)[</span><span class="mi">0</span><span class="p">])),</span> <span class="n">num_samples</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">,</span> <span class="n">sampled_indices</span><span class="p">)[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>  <span class="c1"># [num_samples, D]</span></div>
+
+<div class="viewcode-block" id="DiscreteSearchSpace.product"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.DiscreteSearchSpace.product">[docs]</a>    <span class="k">def</span> <span class="nf">product</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="n">DiscreteSearchSpace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DiscreteSearchSpace</span><span class="p">:</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the Cartesian product of the two :class:`DiscreteSearchSpace`\ s. For example:</span>
+
+<span class="sd">            &gt;&gt;&gt; sa = DiscreteSearchSpace(tf.constant([[0, 1], [2, 3]]))</span>
+<span class="sd">            &gt;&gt;&gt; sb = DiscreteSearchSpace(tf.constant([[4, 5, 6], [7, 8, 9]]))</span>
+<span class="sd">            &gt;&gt;&gt; (sa * sb).points.numpy()</span>
+<span class="sd">            array([[0, 1, 4, 5, 6],</span>
+<span class="sd">                   [0, 1, 7, 8, 9],</span>
+<span class="sd">                   [2, 3, 4, 5, 6],</span>
+<span class="sd">                   [2, 3, 7, 8, 9]], dtype=int32)</span>
+
+<span class="sd">        :param other: A :class:`DiscreteSearchSpace` with :attr:`points` of the same dtype as this</span>
+<span class="sd">            search space.</span>
+<span class="sd">        :return: The Cartesian product of the two :class:`DiscreteSearchSpace`\ s.</span>
+<span class="sd">        :raise TypeError: If one :class:`DiscreteSearchSpace` has :attr:`points` of a different</span>
+<span class="sd">            dtype to the other.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="o">.</span><span class="n">dtype</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">other</span><span class="o">.</span><span class="n">points</span><span class="o">.</span><span class="n">dtype</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">NotImplemented</span>
+
+        <span class="n">tile_self</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">points</span><span class="p">),</span> <span class="mi">1</span><span class="p">])</span>
+        <span class="n">tile_other</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">points</span><span class="p">[</span><span class="kc">None</span><span class="p">],</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">),</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+        <span class="n">cartesian_product</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">tile_self</span><span class="p">,</span> <span class="n">tile_other</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">product_space_dimension</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">other</span><span class="o">.</span><span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">DiscreteSearchSpace</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">cartesian_product</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">product_space_dimension</span><span class="p">]))</span></div>
+
+<div class="viewcode-block" id="DiscreteSearchSpace.__eq__"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.DiscreteSearchSpace.__eq__">[docs]</a>    <span class="k">def</span> <span class="fm">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param other: A search space.</span>
+<span class="sd">        :return: Whether the search space is identical to this one.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">DiscreteSearchSpace</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">NotImplemented</span>
+        <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">reduce_all</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">==</span> <span class="n">tf</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">points</span><span class="p">,</span> <span class="mi">0</span><span class="p">)))</span></div>
+
+    <span class="k">def</span> <span class="nf">__deepcopy__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">memo</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">object</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">DiscreteSearchSpace</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+
+<div class="viewcode-block" id="Box"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.Box">[docs]</a><span class="k">class</span> <span class="nc">Box</span><span class="p">(</span><span class="n">SearchSpace</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Continuous :class:`SearchSpace` representing a :math:`D`-dimensional box in</span>
+<span class="sd">    :math:`\mathbb{R}^D`. Mathematically it is equivalent to the Cartesian product of :math:`D`</span>
+<span class="sd">    closed bounded intervals in :math:`\mathbb{R}`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lower</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">upper</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+        <span class="o">...</span>
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lower</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">upper</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">):</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">lower</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="n">TensorType</span><span class="p">,</span>
+        <span class="n">upper</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        If ``lower`` and ``upper`` are `Sequence`\ s of floats (such as lists or tuples),</span>
+<span class="sd">        they will be converted to tensors of dtype `DEFAULT_DTYPE`.</span>
+
+<span class="sd">        :param lower: The lower (inclusive) bounds of the box. Must have shape [D] for positive D,</span>
+<span class="sd">            and if a tensor, must have float type.</span>
+<span class="sd">        :param upper: The upper (inclusive) bounds of the box. Must have shape [D] for positive D,</span>
+<span class="sd">            and if a tensor, must have float type.</span>
+<span class="sd">        :raise ValueError (or tf.errors.InvalidArgumentError): If any of the following are true:</span>
+
+<span class="sd">            - ``lower`` and ``upper`` have invalid shapes.</span>
+<span class="sd">            - ``lower`` and ``upper`` do not have the same floating point type.</span>
+<span class="sd">            - ``upper`` is not greater than ``lower`` across all dimensions.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">([(</span><span class="n">lower</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;D&quot;</span><span class="p">]),</span> <span class="p">(</span><span class="n">upper</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;D&quot;</span><span class="p">])])</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">assert_rank</span><span class="p">(</span><span class="n">lower</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">assert_rank</span><span class="p">(</span><span class="n">upper</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">lower</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_lower</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="n">lower</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">DEFAULT_DTYPE</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_upper</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="n">upper</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">DEFAULT_DTYPE</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_lower</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">convert_to_tensor</span><span class="p">(</span><span class="n">lower</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_upper</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">convert_to_tensor</span><span class="p">(</span><span class="n">upper</span><span class="p">)</span>
+
+            <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_same_float_dtype</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">_lower</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_upper</span><span class="p">])</span>
+
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_less</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_lower</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_upper</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dimension</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_upper</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Box(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_lower</span><span class="si">!r}</span><span class="s2">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_upper</span><span class="si">!r}</span><span class="s2">)&quot;</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="Box.lower"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.Box.lower">[docs]</a>    <span class="k">def</span> <span class="nf">lower</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;The lower bounds of the box.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lower</span></div>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="Box.upper"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.Box.upper">[docs]</a>    <span class="k">def</span> <span class="nf">upper</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;The upper bounds of the box.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_upper</span></div>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="Box.dimension"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.Box.dimension">[docs]</a>    <span class="k">def</span> <span class="nf">dimension</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;The number of inputs in this search space.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dimension</span></div>
+
+<div class="viewcode-block" id="Box.__contains__"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.Box.__contains__">[docs]</a>    <span class="k">def</span> <span class="fm">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span> <span class="o">|</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return `True` if ``value`` is a member of this search space, else `False`. A point is a</span>
+<span class="sd">        member if all of its coordinates lie in the closed intervals bounded by the lower and upper</span>
+<span class="sd">        bounds.</span>
+
+<span class="sd">        :param value: A point to check for membership of this :class:`SearchSpace`.</span>
+<span class="sd">        :return: `True` if ``value`` is a member of this search space, else `False`. May return a</span>
+<span class="sd">            scalar boolean `TensorType` instead of the `bool` itself.</span>
+<span class="sd">        :raise ValueError (or tf.errors.InvalidArgumentError): If ``value`` has a different</span>
+<span class="sd">            dimensionality from the search space.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_equal</span><span class="p">(</span>
+            <span class="n">shapes_equal</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lower</span><span class="p">),</span>
+            <span class="kc">True</span><span class="p">,</span>
+            <span class="n">message</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">                Dimensionality mismatch: space is </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_lower</span><span class="si">}</span><span class="s2">, value is </span><span class="si">{</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="si">}</span><span class="s2"></span>
+<span class="s2">                &quot;&quot;&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_all</span><span class="p">(</span><span class="n">value</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lower</span><span class="p">)</span> <span class="ow">and</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_all</span><span class="p">(</span><span class="n">value</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_upper</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Box.sample"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.Box.sample">[docs]</a>    <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sample randomly from the space.</span>
+
+<span class="sd">        :param num_samples: The number of points to sample from this search space.</span>
+<span class="sd">        :param seed: Random seed for reproducibility.</span>
+<span class="sd">        :return: ``num_samples`` i.i.d. random points, sampled uniformly,</span>
+<span class="sd">            from this search space with shape &#39;[num_samples, D]&#39; , where D is the search space</span>
+<span class="sd">            dimension.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_non_negative</span><span class="p">(</span><span class="n">num_samples</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">seed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># ensure reproducibility</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">set_seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+        <span class="n">dim</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_lower</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">num_samples</span><span class="p">,</span> <span class="n">dim</span><span class="p">),</span>
+            <span class="n">minval</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_lower</span><span class="p">,</span>
+            <span class="n">maxval</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_upper</span><span class="p">,</span>
+            <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_lower</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
+            <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span></div>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="Box.sample_halton"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.Box.sample_halton">[docs]</a>    <span class="k">def</span> <span class="nf">sample_halton</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sample from the space using a Halton sequence. The resulting samples are guaranteed to be</span>
+<span class="sd">        diverse and are reproducible by using the same choice of ``seed``.</span>
+
+<span class="sd">        :param num_samples: The number of points to sample from this search space.</span>
+<span class="sd">        :param seed: Random seed for the halton sequence</span>
+<span class="sd">        :return: ``num_samples`` of points, using halton sequence with shape &#39;[num_samples, D]&#39; ,</span>
+<span class="sd">            where D is the search space dimension.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_non_negative</span><span class="p">(</span><span class="n">num_samples</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">num_samples</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([])</span>
+        <span class="k">if</span> <span class="n">seed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># ensure reproducibility</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">set_seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+        <span class="n">dim</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_lower</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_upper</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lower</span><span class="p">)</span> <span class="o">*</span> <span class="n">tfp</span><span class="o">.</span><span class="n">mcmc</span><span class="o">.</span><span class="n">sample_halton_sequence</span><span class="p">(</span>
+            <span class="n">dim</span><span class="o">=</span><span class="n">dim</span><span class="p">,</span> <span class="n">num_results</span><span class="o">=</span><span class="n">num_samples</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_lower</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span>
+        <span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lower</span></div>
+
+<div class="viewcode-block" id="Box.sample_sobol"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.Box.sample_sobol">[docs]</a>    <span class="k">def</span> <span class="nf">sample_sobol</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">skip</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sample a diverse set from the space using a Sobol sequence.</span>
+<span class="sd">        If ``skip`` is specified, then the resulting samples are reproducible.</span>
+
+<span class="sd">        :param num_samples: The number of points to sample from this search space.</span>
+<span class="sd">        :param skip: The number of initial points of the Sobol sequence to skip</span>
+<span class="sd">        :return: ``num_samples`` of points, using sobol sequence with shape &#39;[num_samples, D]&#39; ,</span>
+<span class="sd">            where D is the search space dimension.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_non_negative</span><span class="p">(</span><span class="n">num_samples</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">num_samples</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([])</span>
+        <span class="k">if</span> <span class="n">skip</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># generate random skip</span>
+            <span class="n">skip</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">([</span><span class="mi">1</span><span class="p">],</span> <span class="n">maxval</span><span class="o">=</span><span class="mi">2</span> <span class="o">**</span> <span class="mi">16</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">dim</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_lower</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_upper</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lower</span><span class="p">)</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">sobol_sample</span><span class="p">(</span>
+            <span class="n">dim</span><span class="o">=</span><span class="n">dim</span><span class="p">,</span> <span class="n">num_results</span><span class="o">=</span><span class="n">num_samples</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_lower</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">skip</span><span class="o">=</span><span class="n">skip</span>
+        <span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lower</span></div>
+
+<div class="viewcode-block" id="Box.product"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.Box.product">[docs]</a>    <span class="k">def</span> <span class="nf">product</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="n">Box</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Box</span><span class="p">:</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the Cartesian product of the two :class:`Box`\ es (concatenating their respective</span>
+<span class="sd">        lower and upper bounds). For example:</span>
+
+<span class="sd">            &gt;&gt;&gt; unit_interval = Box([0.0], [1.0])</span>
+<span class="sd">            &gt;&gt;&gt; square_at_origin = Box([-2.0, -2.0], [2.0, 2.0])</span>
+<span class="sd">            &gt;&gt;&gt; new_box = unit_interval * square_at_origin</span>
+<span class="sd">            &gt;&gt;&gt; new_box.lower.numpy()</span>
+<span class="sd">            array([ 0., -2., -2.])</span>
+<span class="sd">            &gt;&gt;&gt; new_box.upper.numpy()</span>
+<span class="sd">            array([1., 2., 2.])</span>
+
+<span class="sd">        :param other: A :class:`Box` with bounds of the same type as this :class:`Box`.</span>
+<span class="sd">        :return: The Cartesian product of the two :class:`Box`\ es.</span>
+<span class="sd">        :raise TypeError: If the bounds of one :class:`Box` have different dtypes to those of</span>
+<span class="sd">            the other :class:`Box`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">lower</span><span class="o">.</span><span class="n">dtype</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">other</span><span class="o">.</span><span class="n">lower</span><span class="o">.</span><span class="n">dtype</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">NotImplemented</span>
+
+        <span class="n">product_lower_bound</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">_lower</span><span class="p">,</span> <span class="n">other</span><span class="o">.</span><span class="n">lower</span><span class="p">],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">product_upper_bound</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">_upper</span><span class="p">,</span> <span class="n">other</span><span class="o">.</span><span class="n">upper</span><span class="p">],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">Box</span><span class="p">(</span><span class="n">product_lower_bound</span><span class="p">,</span> <span class="n">product_upper_bound</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Box.__eq__"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.Box.__eq__">[docs]</a>    <span class="k">def</span> <span class="fm">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param other: A search space.</span>
+<span class="sd">        :return: Whether the search space is identical to this one.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">Box</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">NotImplemented</span>
+        <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">reduce_all</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lower</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">lower</span><span class="p">)</span> <span class="ow">and</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_all</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">upper</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">upper</span><span class="p">)</span></div>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__deepcopy__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">memo</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">object</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Box</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+
+<div class="viewcode-block" id="TaggedProductSearchSpace"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.TaggedProductSearchSpace">[docs]</a><span class="k">class</span> <span class="nc">TaggedProductSearchSpace</span><span class="p">(</span><span class="n">SearchSpace</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Product :class:`SearchSpace` consisting of a product of</span>
+<span class="sd">    multiple :class:`SearchSpace`. This class provides functionality for</span>
+<span class="sd">    accessing either the resulting combined search space or each individual space.</span>
+
+<span class="sd">    Note that this class assumes that individual points in product spaces are</span>
+<span class="sd">    represented with their inputs in the same order as specified when initializing</span>
+<span class="sd">    the space.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spaces</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">SearchSpace</span><span class="p">],</span> <span class="n">tags</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Build a :class:`TaggedProductSearchSpace` from a list ``spaces`` of other spaces. If</span>
+<span class="sd">        ``tags`` are provided then they form the identifiers of the subspaces, otherwise the</span>
+<span class="sd">        subspaces are labelled numerically.</span>
+
+<span class="sd">        :param spaces: A sequence of :class:`SearchSpace` objects representing the space&#39;s subspaces</span>
+<span class="sd">        :param tags: An optional list of tags giving the unique identifiers of</span>
+<span class="sd">            the space&#39;s subspaces.</span>
+<span class="sd">        :raise ValueError (or tf.errors.InvalidArgumentError): If ``spaces`` has a different</span>
+<span class="sd">            length to ``tags`` when ``tags`` is provided or if ``tags`` contains duplicates.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">number_of_subspaces</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">spaces</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">tags</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">tags</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">index</span><span class="p">)</span> <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">number_of_subspaces</span><span class="p">)]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">number_of_tags</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">tags</span><span class="p">)</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_equal</span><span class="p">(</span>
+                <span class="n">number_of_tags</span><span class="p">,</span>
+                <span class="n">number_of_subspaces</span><span class="p">,</span>
+                <span class="n">message</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">                    Number of tags must match number of subspaces but</span>
+<span class="s2">                    received </span><span class="si">{</span><span class="n">number_of_tags</span><span class="si">}</span><span class="s2"> tags and </span><span class="si">{</span><span class="n">number_of_subspaces</span><span class="si">}</span><span class="s2"> subspaces.</span>
+<span class="s2">                &quot;&quot;&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">number_of_unique_tags</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">tags</span><span class="p">))</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_equal</span><span class="p">(</span>
+                <span class="n">number_of_tags</span><span class="p">,</span>
+                <span class="n">number_of_unique_tags</span><span class="p">,</span>
+                <span class="n">message</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Subspace names must be unique but received </span><span class="si">{</span><span class="n">tags</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_spaces</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">tags</span><span class="p">,</span> <span class="n">spaces</span><span class="p">))</span>
+
+        <span class="n">subspace_sizes</span> <span class="o">=</span> <span class="p">[</span><span class="n">space</span><span class="o">.</span><span class="n">dimension</span> <span class="k">for</span> <span class="n">space</span> <span class="ow">in</span> <span class="n">spaces</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_subspace_sizes_by_tag</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">tag</span><span class="p">:</span> <span class="n">subspace_size</span> <span class="k">for</span> <span class="n">tag</span><span class="p">,</span> <span class="n">subspace_size</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">tags</span><span class="p">,</span> <span class="n">subspace_sizes</span><span class="p">)</span>
+        <span class="p">}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_subspace_starting_indices</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">tags</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">subspace_sizes</span><span class="p">,</span> <span class="n">exclusive</span><span class="o">=</span><span class="kc">True</span><span class="p">)))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dimension</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">(</span><span class="n">subspace_sizes</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tags</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">tags</span><span class="p">)</span>  <span class="c1"># avoid accidental modification by users</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;TaggedProductSearchSpace(spaces =</span>
+<span class="s2">                </span><span class="si">{</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">get_subspace</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span> <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">subspace_tags</span><span class="p">]</span><span class="si">}</span><span class="s2">,</span>
+<span class="s2">                tags = </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">subspace_tags</span><span class="si">}</span><span class="s2">)</span>
+<span class="s2">                &quot;&quot;&quot;</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="TaggedProductSearchSpace.lower"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.TaggedProductSearchSpace.lower">[docs]</a>    <span class="k">def</span> <span class="nf">lower</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;The lowest values taken by each space dimension, concatenated across subspaces.&quot;&quot;&quot;</span>
+        <span class="n">lower_for_each_subspace</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">get_subspace</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span> <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">subspace_tags</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">lower_for_each_subspace</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">lower_for_each_subspace</span>
+            <span class="k">else</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">DEFAULT_DTYPE</span><span class="p">)</span></div>
+        <span class="p">)</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="TaggedProductSearchSpace.upper"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.TaggedProductSearchSpace.upper">[docs]</a>    <span class="k">def</span> <span class="nf">upper</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;The highest values taken by each space dimension, concatenated across subspaces.&quot;&quot;&quot;</span>
+        <span class="n">upper_for_each_subspace</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">get_subspace</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span><span class="o">.</span><span class="n">upper</span> <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">subspace_tags</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">upper_for_each_subspace</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">upper_for_each_subspace</span>
+            <span class="k">else</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">DEFAULT_DTYPE</span><span class="p">)</span></div>
+        <span class="p">)</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="TaggedProductSearchSpace.subspace_tags"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.TaggedProductSearchSpace.subspace_tags">[docs]</a>    <span class="k">def</span> <span class="nf">subspace_tags</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;Return the names of the subspaces contained in this product space.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tags</span></div>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="TaggedProductSearchSpace.dimension"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.TaggedProductSearchSpace.dimension">[docs]</a>    <span class="k">def</span> <span class="nf">dimension</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;The number of inputs in this product search space.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dimension</span></div>
+
+<div class="viewcode-block" id="TaggedProductSearchSpace.get_subspace"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.TaggedProductSearchSpace.get_subspace">[docs]</a>    <span class="k">def</span> <span class="nf">get_subspace</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SearchSpace</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the domain of a particular subspace.</span>
+
+<span class="sd">        :param tag: The tag specifying the target subspace.</span>
+<span class="sd">        :return: Target subspace.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_equal</span><span class="p">(</span>
+            <span class="n">tag</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">subspace_tags</span><span class="p">,</span>
+            <span class="kc">True</span><span class="p">,</span>
+            <span class="n">message</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">                Attempted to access a subspace that does not exist. This space only contains</span>
+<span class="s2">                subspaces with the tags </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">subspace_tags</span><span class="si">}</span><span class="s2"> but received </span><span class="si">{</span><span class="n">tag</span><span class="si">}</span><span class="s2">.</span>
+<span class="s2">            &quot;&quot;&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_spaces</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="TaggedProductSearchSpace.fix_subspace"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.TaggedProductSearchSpace.fix_subspace">[docs]</a>    <span class="k">def</span> <span class="nf">fix_subspace</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">values</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TaggedProductSearchSpace</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a new :class:`TaggedProductSearchSpace` with the specified subspace replaced with</span>
+<span class="sd">        a :class:`DiscreteSearchSpace` containing ``values`` as its points. This is useful if you</span>
+<span class="sd">        wish to restrict subspaces to sets of representative points.</span>
+
+<span class="sd">        :param tag: The tag specifying the target subspace.</span>
+<span class="sd">        :param values: The  values used to populate the new discrete subspace.z</span>
+<span class="sd">        :return: New :class:`TaggedProductSearchSpace` with the specified subspace replaced with</span>
+<span class="sd">            a :class:`DiscreteSearchSpace` containing ``values`` as its points.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">new_spaces</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">get_subspace</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="k">if</span> <span class="n">t</span> <span class="o">!=</span> <span class="n">tag</span> <span class="k">else</span> <span class="n">DiscreteSearchSpace</span><span class="p">(</span><span class="n">points</span><span class="o">=</span><span class="n">values</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">subspace_tags</span>
+        <span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">TaggedProductSearchSpace</span><span class="p">(</span><span class="n">spaces</span><span class="o">=</span><span class="n">new_spaces</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">subspace_tags</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TaggedProductSearchSpace.get_subspace_component"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.TaggedProductSearchSpace.get_subspace_component">[docs]</a>    <span class="k">def</span> <span class="nf">get_subspace_component</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">values</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the components of ``values`` lying in a particular subspace.</span>
+
+<span class="sd">        :param tag: Subspace tag.</span>
+<span class="sd">        :param values: Points from the :class:`TaggedProductSearchSpace` of shape [N,Dprod].</span>
+<span class="sd">        :return: The sub-components of ``values`` lying in the specified subspace, of shape</span>
+<span class="sd">            [N, Dsub], where Dsub is the dimensionality of the specified subspace.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">starting_index_of_subspace</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subspace_starting_indices</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span>
+        <span class="n">ending_index_of_subspace</span> <span class="o">=</span> <span class="n">starting_index_of_subspace</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subspace_sizes_by_tag</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">values</span><span class="p">[:,</span> <span class="n">starting_index_of_subspace</span><span class="p">:</span><span class="n">ending_index_of_subspace</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="TaggedProductSearchSpace.__contains__"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.TaggedProductSearchSpace.__contains__">[docs]</a>    <span class="k">def</span> <span class="fm">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span> <span class="o">|</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return `True` if ``value`` is a member of this search space, else `False`. A point is a</span>
+<span class="sd">        member if each of its subspace components lie in each subspace.</span>
+
+<span class="sd">        Recall that individual points in product spaces are represented with their inputs in the</span>
+<span class="sd">        same order as specified when initializing the space.</span>
+
+<span class="sd">        :param value: A point to check for membership of this :class:`SearchSpace`.</span>
+<span class="sd">        :return: `True` if ``value`` is a member of this search space, else `False`. May return a</span>
+<span class="sd">            scalar boolean `TensorType` instead of the `bool` itself.</span>
+<span class="sd">        :raise ValueError (or tf.errors.InvalidArgumentError): If ``value`` has a different</span>
+<span class="sd">            dimensionality from the search space.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_equal</span><span class="p">(</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">value</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dimension</span><span class="p">,</span>
+            <span class="n">message</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">                Dimensionality mismatch: space is </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dimension</span><span class="si">}</span><span class="s2">, value is </span><span class="si">{</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="si">}</span><span class="s2"></span>
+<span class="s2">                &quot;&quot;&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+        <span class="n">in_each_subspace</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_spaces</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span><span class="o">.</span><span class="fm">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_subspace_component</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="n">value</span><span class="p">)[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:])</span>
+            <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tags</span>
+        <span class="p">]</span>
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_all</span><span class="p">(</span><span class="n">in_each_subspace</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TaggedProductSearchSpace.sample"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.TaggedProductSearchSpace.sample">[docs]</a>    <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sample randomly from the space by sampling from each subspace</span>
+<span class="sd">        and concatenating the resulting samples.</span>
+
+<span class="sd">        :param num_samples: The number of points to sample from this search space.</span>
+<span class="sd">        :param seed: Optional tf.random seed.</span>
+<span class="sd">        :return: ``num_samples`` i.i.d. random points, sampled uniformly,</span>
+<span class="sd">            from this search space with shape &#39;[num_samples, D]&#39; , where D is the search space</span>
+<span class="sd">            dimension.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_non_negative</span><span class="p">(</span><span class="n">num_samples</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">seed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># ensure reproducibility</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">set_seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+        <span class="n">subspace_samples</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_spaces</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">num_samples</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span> <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tags</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">subspace_samples</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TaggedProductSearchSpace.product"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.TaggedProductSearchSpace.product">[docs]</a>    <span class="k">def</span> <span class="nf">product</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="n">TaggedProductSearchSpace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TaggedProductSearchSpace</span><span class="p">:</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the Cartesian product of the two :class:`TaggedProductSearchSpace`\ s,</span>
+<span class="sd">        building a tree of :class:`TaggedProductSearchSpace`\ s.</span>
+
+<span class="sd">        :param other: A search space of the same type as this search space.</span>
+<span class="sd">        :return: The Cartesian product of this search space with the ``other``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">TaggedProductSearchSpace</span><span class="p">(</span><span class="n">spaces</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="TaggedProductSearchSpace.__eq__"><a class="viewcode-back" href="../../autoapi/trieste/space/index.html#trieste.space.TaggedProductSearchSpace.__eq__">[docs]</a>    <span class="k">def</span> <span class="fm">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param other: A search space.</span>
+<span class="sd">        :return: Whether the search space is identical to this one.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">TaggedProductSearchSpace</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">NotImplemented</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tags</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">_tags</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_spaces</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">_spaces</span></div>
+
+    <span class="k">def</span> <span class="nf">__deepcopy__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">memo</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">object</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">TaggedProductSearchSpace</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+</pre></div>
+
+              </div>
+              
+              
+          </main>
+          
+
+      </div>
+    </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf"></script>
+<footer class="footer mt-5 mt-md-0">
+  <div class="container">
+    
+    <div class="footer-item">
+      <p class="copyright">
+    &copy; Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.<br>
+</p>
+    </div>
+    
+    <div class="footer-item">
+      <p class="sphinx-version">
+Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.5.4.<br>
+</p>
+    </div>
+    
+  </div>
+</footer>
+  </body>
+</html>

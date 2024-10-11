@@ -1,0 +1,91 @@
+:orphan:
+
+:py:mod:`trieste.models.keras.interface`
+========================================
+
+.. py:module:: trieste.models.keras.interface
+
+
+Module Contents
+---------------
+
+.. py:class:: KerasPredictor(optimizer: Optional[trieste.models.optimizer.KerasOptimizer] = None)
+
+   Bases: :py:obj:`trieste.models.interfaces.ProbabilisticModel`, :py:obj:`abc.ABC`
+
+   This is an interface for trainable wrappers of TensorFlow and Keras neural network models.
+
+   :param optimizer: The optimizer wrapper containing the optimizer with which to train the
+       model and arguments for the wrapper and the optimizer. The optimizer must
+       be an instance of a :class:`~tf.optimizers.Optimizer`. Defaults to
+       :class:`~tf.optimizers.Adam` optimizer with default parameters.
+   :raise ValueError: If the optimizer is not an instance of :class:`~tf.optimizers.Optimizer`.
+
+   .. py:method:: model(self) -> tensorflow.keras.Model
+      :property:
+
+      The compiled Keras model.
+
+
+   .. py:method:: optimizer(self) -> trieste.models.optimizer.KerasOptimizer
+      :property:
+
+      The optimizer wrapper for training the model.
+
+
+   .. py:method:: predict(self, query_points: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Return the mean and variance of the independent marginal distributions at each point in
+      ``query_points``.
+
+      This is essentially a convenience method for :meth:`predict_joint`, where non-event
+      dimensions of ``query_points`` are all interpreted as broadcasting dimensions instead of
+      batch dimensions, and the covariance is squeezed to remove redundant nesting.
+
+      :param query_points: The points at which to make predictions, of shape [..., D].
+      :return: The mean and variance of the independent marginal distributions at each point in
+          ``query_points``. For a predictive distribution with event shape E, the mean and
+          variance will both have shape [...] + E.
+
+
+   .. py:method:: sample(self, query_points: trieste.types.TensorType, num_samples: int) -> trieste.types.TensorType
+      :abstractmethod:
+
+      Return ``num_samples`` samples from the independent marginal distributions at
+      ``query_points``.
+
+      :param query_points: The points at which to sample, with shape [..., N, D].
+      :param num_samples: The number of samples at each point.
+      :return: The samples. For a predictive distribution with event shape E, this has shape
+          [..., S, N] + E, where S is the number of samples.
+
+
+
+.. py:class:: DeepEnsembleModel
+
+   Bases: :py:obj:`trieste.models.interfaces.ProbabilisticModel`, :py:obj:`typing_extensions.Protocol`
+
+   This is an interface for deep ensemble type of model, primarily for usage by trajectory
+   samplers, to avoid circular imports. These models can act as probabilistic models
+   by deriving estimates of epistemic uncertainty from the diversity of predictions made by
+   individual models in the ensemble.
+
+   .. py:method:: ensemble_size(self) -> int
+      :property:
+
+      Returns the size of the ensemble, that is, the number of base learners or individual
+      models in the ensemble.
+
+
+   .. py:method:: ensemble_distributions(self, query_points: trieste.types.TensorType) -> tuple[tensorflow_probability.distributions.Distribution, Ellipsis]
+      :abstractmethod:
+
+      Return distributions for each member of the ensemble. Type of the output will depend on the
+      subclass, it might be a predicted value or a distribution.
+
+      :param query_points: The points at which to return outputs.
+      :return: The outputs for the observations at the specified ``query_points`` for each member
+          of the ensemble.
+
+
+

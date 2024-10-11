@@ -1,0 +1,161 @@
+:orphan:
+
+:py:mod:`trieste.models.gpflow.interface`
+=========================================
+
+.. py:module:: trieste.models.gpflow.interface
+
+
+Module Contents
+---------------
+
+.. py:class:: GPflowPredictor(optimizer: Optimizer | None = None)
+
+   Bases: :py:obj:`trieste.models.interfaces.SupportsPredictJoint`, :py:obj:`trieste.models.interfaces.SupportsGetKernel`, :py:obj:`trieste.models.interfaces.SupportsGetObservationNoise`, :py:obj:`trieste.models.interfaces.HasReparamSampler`, :py:obj:`abc.ABC`
+
+   A trainable wrapper for a GPflow Gaussian process model.
+
+   :param optimizer: The optimizer with which to train the model. Defaults to
+       :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
+
+   .. py:method:: optimizer() -> trieste.models.optimizer.Optimizer
+      :property:
+
+      The optimizer with which to train the model.
+
+
+   .. py:method:: create_posterior_cache() -> None
+
+      Create a posterior cache for fast sequential predictions.  Note that this must happen
+      at initialisation and *after* we ensure the model data is variable. Furthermore,
+      the cache must be updated whenever the underlying model is changed.
+
+
+   .. py:method:: update_posterior_cache() -> None
+
+      Update the posterior cache. This needs to be called whenever the underlying model
+      is changed.
+
+
+   .. py:method:: model() -> gpflow.models.GPModel
+      :property:
+
+      The underlying GPflow model.
+
+
+   .. py:method:: predict(query_points: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Return the mean and variance of the independent marginal distributions at each point in
+      ``query_points``.
+
+      This is essentially a convenience method for :meth:`predict_joint`, where non-event
+      dimensions of ``query_points`` are all interpreted as broadcasting dimensions instead of
+      batch dimensions, and the covariance is squeezed to remove redundant nesting.
+
+      :param query_points: The points at which to make predictions, of shape [..., D].
+      :return: The mean and variance of the independent marginal distributions at each point in
+          ``query_points``. For a predictive distribution with event shape E, the mean and
+          variance will both have shape [...] + E.
+
+
+   .. py:method:: predict_joint(query_points: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      :param query_points: The points at which to make predictions, of shape [..., B, D].
+      :return: The mean and covariance of the joint marginal distribution at each batch of points
+          in ``query_points``. For a predictive distribution with event shape E, the mean will
+          have shape [..., B] + E, and the covariance shape [...] + E + [B, B].
+
+
+   .. py:method:: sample(query_points: trieste.types.TensorType, num_samples: int) -> trieste.types.TensorType
+
+      Return ``num_samples`` samples from the independent marginal distributions at
+      ``query_points``.
+
+      :param query_points: The points at which to sample, with shape [..., N, D].
+      :param num_samples: The number of samples at each point.
+      :return: The samples. For a predictive distribution with event shape E, this has shape
+          [..., S, N] + E, where S is the number of samples.
+
+
+   .. py:method:: predict_y(query_points: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Return the mean and variance of the independent marginal distributions at each point in
+      ``query_points`` for the observations, including noise contributions.
+
+      Note that this is not supported by all models.
+
+      :param query_points: The points at which to make predictions, of shape [..., D].
+      :return: The mean and variance of the independent marginal distributions at each point in
+          ``query_points``. For a predictive distribution with event shape E, the mean and
+          variance will both have shape [...] + E.
+
+
+   .. py:method:: get_kernel() -> gpflow.kernels.Kernel
+
+      Return the kernel of the model.
+
+      :return: The kernel.
+
+
+   .. py:method:: get_mean_function() -> gpflow.mean_functions.MeanFunction
+
+      Return the mean function of the model.
+
+      :return: The mean function.
+
+
+   .. py:method:: get_observation_noise() -> trieste.types.TensorType
+
+      Return the variance of observation noise for homoscedastic likelihoods.
+
+      :return: The observation noise.
+      :raise NotImplementedError: If the model does not have a homoscedastic likelihood.
+
+
+   .. py:method:: optimize(dataset: trieste.data.Dataset) -> None
+
+      Optimize the model with the specified `dataset`.
+
+      :param dataset: The data with which to optimize the `model`.
+
+
+   .. py:method:: log(dataset: Optional[trieste.data.Dataset] = None) -> None
+
+      Log model training information at a given optimization step to the Tensorboard.
+      We log kernel and likelihood parameters. We also log several training data based metrics,
+      such as root mean square error between predictions and observations and several others.
+
+      :param dataset: Optional data that can be used to log additional data-based model summaries.
+
+
+   .. py:method:: reparam_sampler(num_samples: int) -> trieste.models.interfaces.ReparametrizationSampler[GPflowPredictor]
+
+      Return a reparametrization sampler providing `num_samples` samples.
+
+      :return: The reparametrization sampler.
+
+
+
+.. py:class:: SupportsCovarianceBetweenPoints
+
+   Bases: :py:obj:`trieste.models.interfaces.SupportsPredictJoint`, :py:obj:`typing_extensions.Protocol`
+
+   A probabilistic model that supports covariance_between_points.
+
+   .. py:method:: covariance_between_points(query_points_1: trieste.types.TensorType, query_points_2: trieste.types.TensorType) -> trieste.types.TensorType
+      :abstractmethod:
+
+      Compute the posterior covariance between sets of query points.
+
+      .. math:: \Sigma_{12} = K_{12} - K_{x1}(K_{xx} + \sigma^2 I)^{-1}K_{x2}
+
+      Note that query_points_2 must be a rank 2 tensor, but query_points_1 can
+      have leading dimensions.
+
+      :param query_points_1: Set of query points with shape [..., N, D]
+      :param query_points_2: Sets of query points with shape [M, D]
+      :return: Covariance matrix between the sets of query points with shape [..., L, N, M]
+          (L being the number of latent GPs = number of output dimensions)
+
+
+

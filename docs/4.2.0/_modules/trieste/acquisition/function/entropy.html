@@ -1,0 +1,1436 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.acquisition.function.entropy &#8212; trieste 4.2.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+<link href="../../../../_static/styles/bootstrap.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+
+  
+  <link href="../../../../_static/vendor/fontawesome/6.5.2/css/all.min.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=fd3f3429" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/css/custom.css?v=ae350598" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=3ee479438cf8b5e0d341" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=3ee479438cf8b5e0d341" />
+  <script src="../../../../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=3ee479438cf8b5e0d341"></script>
+
+    <script src="../../../../_static/documentation_options.js?v=d0ae6d56"></script>
+    <script src="../../../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/trieste/acquisition/function/entropy';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.15.3';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://secondmind-labs.github.io/trieste/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '4.2.0';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner = false;
+        </script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-primary-sidebar-checkbox"/>
+  <label class="overlay overlay-primary" for="pst-primary-sidebar-checkbox"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-secondary-sidebar-checkbox"/>
+  <label class="overlay overlay-secondary" for="pst-secondary-sidebar-checkbox"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/logo.png" class="logo__image only-light" alt="trieste 4.2.0 documentation - Home"/>
+    <script>document.write(`<img src="../../../../_static/logo.png" class="logo__image only-dark" alt="trieste 4.2.0 documentation - Home"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../index.html">
+    Trieste
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../autoapi/trieste/index.html">
+    API reference
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../bibliography.html">
+    Bibliography
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button id="pst-version-switcher-button-2"
+      type="button"
+      class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle"
+      data-bs-toggle="dropdown"
+      aria-haspopup="listbox"
+      aria-controls="pst-version-switcher-list-2"
+      aria-label="Version switcher list"
+    >
+      Choose version  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div id="pst-version-switcher-list-2"
+      class="version-switcher__menu dropdown-menu list-group-flush py-0"
+      role="listbox" aria-labelledby="pst-version-switcher-button-2">
+      <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../index.html">
+    Trieste
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../autoapi/trieste/index.html">
+    API reference
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../bibliography.html">
+    Bibliography
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button id="pst-version-switcher-button-3"
+      type="button"
+      class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle"
+      data-bs-toggle="dropdown"
+      aria-haspopup="listbox"
+      aria-controls="pst-version-switcher-list-3"
+      aria-label="Version switcher list"
+    >
+      Choose version  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div id="pst-version-switcher-list-3"
+      class="version-switcher__menu dropdown-menu list-group-flush py-0"
+      role="listbox" aria-labelledby="pst-version-switcher-button-3">
+      <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">trieste.acqu...</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for trieste.acquisition.function.entropy</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2021 The Trieste Contributors</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module contains entropy-based acquisition function builders.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">cast</span><span class="p">,</span> <span class="n">overload</span>
+
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">import</span> <span class="nn">tensorflow_probability</span> <span class="k">as</span> <span class="nn">tfp</span>
+<span class="kn">from</span> <span class="nn">typing_extensions</span> <span class="kn">import</span> <span class="n">Protocol</span><span class="p">,</span> <span class="n">runtime_checkable</span>
+
+<span class="kn">from</span> <span class="nn">...data</span> <span class="kn">import</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">add_fidelity_column</span>
+<span class="kn">from</span> <span class="nn">...models</span> <span class="kn">import</span> <span class="n">ProbabilisticModel</span>
+<span class="kn">from</span> <span class="nn">...models.gpflow.interface</span> <span class="kn">import</span> <span class="n">SupportsCovarianceBetweenPoints</span>
+<span class="kn">from</span> <span class="nn">...models.interfaces</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">HasTrajectorySampler</span><span class="p">,</span>
+    <span class="n">SupportsCovarianceWithTopFidelity</span><span class="p">,</span>
+    <span class="n">SupportsGetObservationNoise</span><span class="p">,</span>
+    <span class="n">SupportsPredictY</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">...space</span> <span class="kn">import</span> <span class="n">SearchSpace</span>
+<span class="kn">from</span> <span class="nn">...types</span> <span class="kn">import</span> <span class="n">TensorType</span>
+<span class="kn">from</span> <span class="nn">..interface</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">AcquisitionFunction</span><span class="p">,</span>
+    <span class="n">AcquisitionFunctionClass</span><span class="p">,</span>
+    <span class="n">PenalizationFunction</span><span class="p">,</span>
+    <span class="n">ProbabilisticModelType</span><span class="p">,</span>
+    <span class="n">SingleModelAcquisitionBuilder</span><span class="p">,</span>
+    <span class="n">SingleModelGreedyAcquisitionBuilder</span><span class="p">,</span>
+    <span class="n">UpdatablePenalizationFunction</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">..sampler</span> <span class="kn">import</span> <span class="n">ExactThompsonSampler</span><span class="p">,</span> <span class="n">ThompsonSampler</span>
+
+<span class="n">CLAMP_LB</span> <span class="o">=</span> <span class="mf">1e-8</span>
+
+
+<div class="viewcode-block" id="MinValueEntropySearch">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.entropy.MinValueEntropySearch">[docs]</a>
+<span class="k">class</span> <span class="nc">MinValueEntropySearch</span><span class="p">(</span><span class="n">SingleModelAcquisitionBuilder</span><span class="p">[</span><span class="n">ProbabilisticModelType</span><span class="p">]):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Builder for the max-value entropy search acquisition function modified for objective</span>
+<span class="sd">    minimisation. :class:`MinValueEntropySearch` estimates the information in the distribution</span>
+<span class="sd">    of the objective minimum that would be gained by evaluating the objective at a given point.</span>
+
+<span class="sd">    This implementation largely follows :cite:`wang2017max` and samples the objective&#39;s minimum</span>
+<span class="sd">    :math:`y^*` across a large set of sampled locations via either a Gumbel sampler, an exact</span>
+<span class="sd">    Thompson sampler or an approximate random Fourier feature-based Thompson sampler, with the</span>
+<span class="sd">    Gumbel sampler being the cheapest but least accurate. Default behavior is to use the</span>
+<span class="sd">    exact Thompson sampler.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">:</span> <span class="s2">&quot;MinValueEntropySearch[ProbabilisticModel]&quot;</span><span class="p">,</span>
+        <span class="n">search_space</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">,</span>
+        <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+        <span class="n">grid_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+        <span class="n">min_value_sampler</span><span class="p">:</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span> <span class="o">...</span>
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">:</span> <span class="s2">&quot;MinValueEntropySearch[ProbabilisticModelType]&quot;</span><span class="p">,</span>
+        <span class="n">search_space</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">,</span>
+        <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+        <span class="n">grid_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+        <span class="n">min_value_sampler</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ThompsonSampler</span><span class="p">[</span><span class="n">ProbabilisticModelType</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span> <span class="o">...</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">search_space</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">,</span>
+        <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+        <span class="n">grid_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+        <span class="n">min_value_sampler</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ThompsonSampler</span><span class="p">[</span><span class="n">ProbabilisticModelType</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param search_space: The global search space over which the optimisation is defined.</span>
+<span class="sd">        :param num_samples: Number of samples to draw from the distribution over the minimum of the</span>
+<span class="sd">            objective function.</span>
+<span class="sd">        :param grid_size: Size of the grid from which to sample the min-values. We recommend</span>
+<span class="sd">            scaling this with search space dimension.</span>
+<span class="sd">        :param min_value_sampler: Sampler which samples minimum values.</span>
+<span class="sd">        :raise tf.errors.InvalidArgumentError: If</span>
+
+<span class="sd">            - ``num_samples`` or ``grid_size`` are negative.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="n">num_samples</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="n">grid_size</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">min_value_sampler</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">min_value_sampler</span><span class="o">.</span><span class="n">sample_min_value</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<span class="w">                    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">                    Minvalue Entropy Search requires a min_value_sampler that samples minimum</span>
+<span class="sd">                    values, however the passed sampler has sample_min_value=False.</span>
+<span class="sd">                    &quot;&quot;&quot;</span>
+                <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">min_value_sampler</span> <span class="o">=</span> <span class="n">ExactThompsonSampler</span><span class="p">(</span><span class="n">sample_min_value</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_min_value_sampler</span> <span class="o">=</span> <span class="n">min_value_sampler</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_search_space</span> <span class="o">=</span> <span class="n">search_space</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_num_samples</span> <span class="o">=</span> <span class="n">num_samples</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_grid_size</span> <span class="o">=</span> <span class="n">grid_size</span>
+
+<div class="viewcode-block" id="MinValueEntropySearch.prepare_acquisition_function">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.entropy.MinValueEntropySearch.prepare_acquisition_function">[docs]</a>
+    <span class="k">def</span> <span class="nf">prepare_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">ProbabilisticModelType</span><span class="p">,</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param model: The model.</span>
+<span class="sd">        :param dataset: The data from the observer.</span>
+<span class="sd">        :return: The max-value entropy search acquisition function modified for objective</span>
+<span class="sd">            minimisation. This function will raise :exc:`ValueError` or</span>
+<span class="sd">            :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.</span>
+<span class="sd">        :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span><span class="n">dataset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([])])</span>
+        <span class="n">dataset</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">),</span> <span class="n">message</span><span class="o">=</span><span class="s2">&quot;Dataset must be populated.&quot;</span><span class="p">)</span>
+
+        <span class="n">query_points</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_search_space</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">num_samples</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_grid_size</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_same_float_dtype</span><span class="p">([</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">,</span> <span class="n">query_points</span><span class="p">])</span>
+        <span class="n">query_points</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">,</span> <span class="n">query_points</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">min_value_samples</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_min_value_sampler</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_samples</span><span class="p">,</span> <span class="n">query_points</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">min_value_entropy_search</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">min_value_samples</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MinValueEntropySearch.update_acquisition_function">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.entropy.MinValueEntropySearch.update_acquisition_function">[docs]</a>
+    <span class="k">def</span> <span class="nf">update_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">function</span><span class="p">:</span> <span class="n">AcquisitionFunction</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">ProbabilisticModelType</span><span class="p">,</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param function: The acquisition function to update.</span>
+<span class="sd">        :param model: The model.</span>
+<span class="sd">        :param dataset: The data from the observer.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span><span class="n">dataset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([])])</span>
+        <span class="n">dataset</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">),</span> <span class="n">message</span><span class="o">=</span><span class="s2">&quot;Dataset must be populated.&quot;</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">function</span><span class="p">,</span> <span class="n">min_value_entropy_search</span><span class="p">),</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([])])</span>
+
+        <span class="n">query_points</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_search_space</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">num_samples</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_grid_size</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_same_float_dtype</span><span class="p">([</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">,</span> <span class="n">query_points</span><span class="p">])</span>
+        <span class="n">query_points</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">,</span> <span class="n">query_points</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">min_value_samples</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_min_value_sampler</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_samples</span><span class="p">,</span> <span class="n">query_points</span><span class="p">)</span>
+        <span class="n">function</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">min_value_samples</span><span class="p">)</span>  <span class="c1"># type: ignore</span>
+        <span class="k">return</span> <span class="n">function</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="min_value_entropy_search">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.entropy.min_value_entropy_search">[docs]</a>
+<span class="k">class</span> <span class="nc">min_value_entropy_search</span><span class="p">(</span><span class="n">AcquisitionFunctionClass</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">ProbabilisticModel</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the max-value entropy search acquisition function (adapted from :cite:`wang2017max`),</span>
+<span class="sd">        modified for objective minimisation. This function calculates the information gain (or</span>
+<span class="sd">        change in entropy) in the distribution over the objective minimum :math:`y^*`, if we were</span>
+<span class="sd">        to evaluate the objective at a given point.</span>
+
+<span class="sd">        :param model: The model of the objective function.</span>
+<span class="sd">        :param samples: Samples from the distribution over :math:`y^*`.</span>
+<span class="sd">        :return: The max-value entropy search acquisition function modified for objective</span>
+<span class="sd">            minimisation. This function will raise :exc:`ValueError` or</span>
+<span class="sd">            :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.</span>
+<span class="sd">        :raise ValueError or tf.errors.InvalidArgumentError: If ``samples`` has rank less than two,</span>
+<span class="sd">            or is empty.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_rank</span><span class="p">(</span><span class="n">samples</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">samples</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_samples</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span>
+
+<div class="viewcode-block" id="min_value_entropy_search.update">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.entropy.min_value_entropy_search.update">[docs]</a>
+    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update the acquisition function with new samples.&quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_rank</span><span class="p">(</span><span class="n">samples</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">samples</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_samples</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span></div>
+
+
+    <span class="nd">@tf</span><span class="o">.</span><span class="n">function</span>
+<div class="viewcode-block" id="min_value_entropy_search.__call__">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.entropy.min_value_entropy_search.__call__">[docs]</a>
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">(</span>
+            <span class="p">[(</span><span class="n">x</span><span class="p">,</span> <span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">])],</span>
+            <span class="n">message</span><span class="o">=</span><span class="s2">&quot;This acquisition function only supports batch sizes of one.&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">fmean</span><span class="p">,</span> <span class="n">fvar</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">))</span>
+        <span class="n">fsd</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">fvar</span><span class="p">)</span>
+        <span class="n">fsd</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">clip_by_value</span><span class="p">(</span>
+            <span class="n">fsd</span><span class="p">,</span> <span class="n">CLAMP_LB</span><span class="p">,</span> <span class="n">fmean</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">max</span>
+        <span class="p">)</span>  <span class="c1"># clip below to improve numerical stability</span>
+
+        <span class="n">normal</span> <span class="o">=</span> <span class="n">tfp</span><span class="o">.</span><span class="n">distributions</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">fmean</span><span class="o">.</span><span class="n">dtype</span><span class="p">),</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">fmean</span><span class="o">.</span><span class="n">dtype</span><span class="p">))</span>
+        <span class="n">gamma</span> <span class="o">=</span> <span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_samples</span><span class="p">)</span> <span class="o">-</span> <span class="n">fmean</span><span class="p">)</span> <span class="o">/</span> <span class="n">fsd</span>
+
+        <span class="n">log_minus_cdf</span> <span class="o">=</span> <span class="n">normal</span><span class="o">.</span><span class="n">log_cdf</span><span class="p">(</span><span class="o">-</span><span class="n">gamma</span><span class="p">)</span>
+        <span class="n">ratio</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">normal</span><span class="o">.</span><span class="n">log_prob</span><span class="p">(</span><span class="n">gamma</span><span class="p">)</span> <span class="o">-</span> <span class="n">log_minus_cdf</span><span class="p">)</span>
+        <span class="n">f_acqu_x</span> <span class="o">=</span> <span class="o">-</span><span class="n">gamma</span> <span class="o">*</span> <span class="n">ratio</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">-</span> <span class="n">log_minus_cdf</span>
+
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span><span class="n">f_acqu_x</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="nd">@runtime_checkable</span>
+<div class="viewcode-block" id="SupportsCovarianceObservationNoise">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/entropy/index.html#trieste.acquisition.function.entropy.SupportsCovarianceObservationNoise">[docs]</a>
+<span class="k">class</span> <span class="nc">SupportsCovarianceObservationNoise</span><span class="p">(</span>
+    <span class="n">SupportsCovarianceBetweenPoints</span><span class="p">,</span> <span class="n">SupportsGetObservationNoise</span><span class="p">,</span> <span class="n">Protocol</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A model that supports both covariance_between_points and get_observation_noise.&quot;&quot;&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="SupportsCovarianceObservationNoiseTrajectory">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/entropy/index.html#trieste.acquisition.function.entropy.SupportsCovarianceObservationNoiseTrajectory">[docs]</a>
+<span class="k">class</span> <span class="nc">SupportsCovarianceObservationNoiseTrajectory</span><span class="p">(</span>
+    <span class="n">HasTrajectorySampler</span><span class="p">,</span> <span class="n">SupportsCovarianceObservationNoise</span><span class="p">,</span> <span class="n">Protocol</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A model that supports covariance_between_points and get_observation_noise, and also</span>
+<span class="sd">    has an associated trajectory sampler.&quot;&quot;&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="GIBBONModelType">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/entropy/index.html#trieste.acquisition.function.entropy.GIBBONModelType">[docs]</a>
+<span class="n">GIBBONModelType</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span>
+    <span class="s2">&quot;GIBBONModelType&quot;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="n">SupportsCovarianceObservationNoise</span><span class="p">,</span> <span class="n">contravariant</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span></div>
+
+<span class="sd">&quot;&quot;&quot; Type variable bound to :class:`~trieste.models.SupportsCovarianceObservationNoise`. &quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="GIBBON">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.entropy.GIBBON">[docs]</a>
+<span class="k">class</span> <span class="nc">GIBBON</span><span class="p">(</span><span class="n">SingleModelGreedyAcquisitionBuilder</span><span class="p">[</span><span class="n">GIBBONModelType</span><span class="p">]):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The General-purpose Information-Based Bayesian Optimisation (GIBBON) acquisition function</span>
+<span class="sd">    of :cite:`Moss:2021`. :class:`GIBBON` provides a computationally cheap approximation of the</span>
+<span class="sd">    information gained about (i.e the change in entropy of) the objective function&#39;s minimum by</span>
+<span class="sd">    evaluating a batch of candidate points. Batches are built in a greedy manner.</span>
+
+<span class="sd">    This implementation follows :cite:`Moss:2021` but is modified for function</span>
+<span class="sd">    minimisation (rather than maximisation). We sample the objective&#39;s minimum</span>
+<span class="sd">    :math:`y^*` across a large set of sampled locations via either a Gumbel sampler, an exact</span>
+<span class="sd">    Thompson sampler or an approximate random Fourier feature-based Thompson sampler, with the</span>
+<span class="sd">    Gumbel sampler being the cheapest but least accurate. Default behavior is to use the</span>
+<span class="sd">    exact Thompson sampler.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">:</span> <span class="s2">&quot;GIBBON[SupportsCovarianceObservationNoise]&quot;</span><span class="p">,</span>
+        <span class="n">search_space</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">,</span>
+        <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+        <span class="n">grid_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+        <span class="n">min_value_sampler</span><span class="p">:</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">rescaled_repulsion</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">):</span> <span class="o">...</span>
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">:</span> <span class="s2">&quot;GIBBON[GIBBONModelType]&quot;</span><span class="p">,</span>
+        <span class="n">search_space</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">,</span>
+        <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+        <span class="n">grid_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+        <span class="n">min_value_sampler</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ThompsonSampler</span><span class="p">[</span><span class="n">GIBBONModelType</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">rescaled_repulsion</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">):</span> <span class="o">...</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">search_space</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">,</span>
+        <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+        <span class="n">grid_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+        <span class="n">min_value_sampler</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ThompsonSampler</span><span class="p">[</span><span class="n">GIBBONModelType</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">rescaled_repulsion</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param search_space: The global search space over which the optimisation is defined.</span>
+<span class="sd">        :param num_samples: Number of samples to draw from the distribution over the minimum of</span>
+<span class="sd">            the objective function.</span>
+<span class="sd">        :param grid_size: Size of the grid from which to sample the min-values. We recommend</span>
+<span class="sd">            scaling this with search space dimension.</span>
+<span class="sd">        :param min_value_sampler: Sampler which samples minimum values.</span>
+<span class="sd">        :param rescaled_repulsion: If True, then downweight GIBBON&#39;s repulsion term to improve</span>
+<span class="sd">            batch optimization performance.</span>
+<span class="sd">        :raise tf.errors.InvalidArgumentError: If</span>
+
+<span class="sd">            - ``num_samples`` is not positive, or</span>
+<span class="sd">            - ``grid_size`` is not positive.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="n">num_samples</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="n">grid_size</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">min_value_sampler</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">min_value_sampler</span><span class="o">.</span><span class="n">sample_min_value</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<span class="w">                    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">                    GIBBON requires a min_value_sampler that samples minimum values,</span>
+<span class="sd">                    however the passed sampler has sample_min_value=False.</span>
+<span class="sd">                    &quot;&quot;&quot;</span>
+                <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">min_value_sampler</span> <span class="o">=</span> <span class="n">ExactThompsonSampler</span><span class="p">(</span><span class="n">sample_min_value</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_min_value_sampler</span> <span class="o">=</span> <span class="n">min_value_sampler</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_search_space</span> <span class="o">=</span> <span class="n">search_space</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_num_samples</span> <span class="o">=</span> <span class="n">num_samples</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_grid_size</span> <span class="o">=</span> <span class="n">grid_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rescaled_repulsion</span> <span class="o">=</span> <span class="n">rescaled_repulsion</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_min_value_samples</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_quality_term</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">gibbon_quality_term</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_diversity_term</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">gibbon_repulsion_term</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_gibbon_acquisition</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">AcquisitionFunction</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="GIBBON.prepare_acquisition_function">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.entropy.GIBBON.prepare_acquisition_function">[docs]</a>
+    <span class="k">def</span> <span class="nf">prepare_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">GIBBONModelType</span><span class="p">,</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">pending_points</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param model: The model.</span>
+<span class="sd">        :param dataset: The data from the observer. Must be populated.</span>
+<span class="sd">        :param pending_points: The points we penalize with respect to.</span>
+<span class="sd">        :return: The GIBBON acquisition function modified for objective minimisation.</span>
+<span class="sd">        :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">SupportsCovarianceObservationNoise</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;GIBBON only works with models that support &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;covariance_between_points and get_observation_noise; received </span><span class="si">{</span><span class="n">model</span><span class="si">!r}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span><span class="n">dataset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([])])</span>
+        <span class="n">dataset</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">),</span> <span class="n">message</span><span class="o">=</span><span class="s2">&quot;Dataset must be populated.&quot;</span><span class="p">)</span>
+
+        <span class="n">acq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_update_quality_term</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">pending_points</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">pending_points</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">acq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_update_repulsion_term</span><span class="p">(</span><span class="n">acq</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">pending_points</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">acq</span></div>
+
+
+<div class="viewcode-block" id="GIBBON.update_acquisition_function">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.entropy.GIBBON.update_acquisition_function">[docs]</a>
+    <span class="k">def</span> <span class="nf">update_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">function</span><span class="p">:</span> <span class="n">AcquisitionFunction</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">GIBBONModelType</span><span class="p">,</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">pending_points</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">new_optimization_step</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param function: The acquisition function to update.</span>
+<span class="sd">        :param model: The model.</span>
+<span class="sd">        :param dataset: The data from the observer. Must be populated.</span>
+<span class="sd">        :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),</span>
+<span class="sd">            where M is the number of pending points and D is the search space dimension.</span>
+<span class="sd">        :param new_optimization_step: Indicates whether this call to update_acquisition_function</span>
+<span class="sd">            is to start of a new optimization step, or to continue collecting batch of points</span>
+<span class="sd">            for the current step. Defaults to ``True``.</span>
+<span class="sd">        :return: The updated acquisition function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span><span class="n">dataset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([])])</span>
+        <span class="n">dataset</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">),</span> <span class="n">message</span><span class="o">=</span><span class="s2">&quot;Dataset must be populated.&quot;</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_quality_term</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([])])</span>
+
+        <span class="k">if</span> <span class="n">new_optimization_step</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_update_quality_term</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">pending_points</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># no repulsion term required if no pending_points.</span>
+            <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="n">AcquisitionFunction</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_quality_term</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_update_repulsion_term</span><span class="p">(</span><span class="n">function</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">pending_points</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_update_repulsion_term</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">function</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">AcquisitionFunction</span><span class="p">],</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">GIBBONModelType</span><span class="p">,</span>
+        <span class="n">pending_points</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_rank</span><span class="p">(</span><span class="n">pending_points</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gibbon_acquisition</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_diversity_term</span><span class="p">,</span> <span class="n">gibbon_repulsion_term</span>
+        <span class="p">):</span>
+            <span class="c1"># if possible, just update the repulsion term</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_diversity_term</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">pending_points</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gibbon_acquisition</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># otherwise construct a new repulsion term and acquisition function</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_diversity_term</span> <span class="o">=</span> <span class="n">gibbon_repulsion_term</span><span class="p">(</span>
+                <span class="n">model</span><span class="p">,</span> <span class="n">pending_points</span><span class="p">,</span> <span class="n">rescaled_repulsion</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_rescaled_repulsion</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_gibbon_acquisition</span> <span class="o">=</span> <span class="n">GibbonAcquisition</span><span class="p">(</span>
+                <span class="n">cast</span><span class="p">(</span><span class="n">AcquisitionFunction</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_quality_term</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_diversity_term</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gibbon_acquisition</span>
+
+    <span class="k">def</span> <span class="nf">_update_quality_term</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">GIBBONModelType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">),</span> <span class="n">message</span><span class="o">=</span><span class="s2">&quot;Dataset must be populated.&quot;</span><span class="p">)</span>
+
+        <span class="n">query_points</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_search_space</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">num_samples</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_grid_size</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_same_float_dtype</span><span class="p">([</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">,</span> <span class="n">query_points</span><span class="p">])</span>
+        <span class="n">query_points</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">,</span> <span class="n">query_points</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_min_value_samples</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_min_value_sampler</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span>
+            <span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_samples</span><span class="p">,</span> <span class="n">query_points</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_quality_term</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># if possible, just update the quality term</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_quality_term</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_min_value_samples</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># otherwise build quality term</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_quality_term</span> <span class="o">=</span> <span class="n">gibbon_quality_term</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_min_value_samples</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="n">AcquisitionFunction</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_quality_term</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="GibbonAcquisition">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/entropy/index.html#trieste.acquisition.function.entropy.GibbonAcquisition">[docs]</a>
+<span class="k">class</span> <span class="nc">GibbonAcquisition</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Class representing a GIBBON acquisition function.&quot;&quot;&quot;</span>
+
+    <span class="c1"># (note that this needs to be defined as a top level class make it pickleable)</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">quality_term</span><span class="p">:</span> <span class="n">AcquisitionFunction</span><span class="p">,</span> <span class="n">diversity_term</span><span class="p">:</span> <span class="n">PenalizationFunction</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param quality_term: Quality term.</span>
+<span class="sd">        :param diversity_term: Diversity term.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_quality_term</span> <span class="o">=</span> <span class="n">quality_term</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_diversity_term</span> <span class="o">=</span> <span class="n">diversity_term</span>
+
+    <span class="nd">@tf</span><span class="o">.</span><span class="n">function</span>
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_diversity_term</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_quality_term</span><span class="p">(</span><span class="n">x</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="gibbon_quality_term">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.entropy.gibbon_quality_term">[docs]</a>
+<span class="k">class</span> <span class="nc">gibbon_quality_term</span><span class="p">(</span><span class="n">AcquisitionFunctionClass</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">SupportsCovarianceObservationNoise</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        GIBBON&#39;s quality term measures the amount of information that each individual</span>
+<span class="sd">        batch element provides about the objective function&#39;s minimal value :math:`y^*` (ensuring</span>
+<span class="sd">        that evaluations are targeted in promising areas of the space).</span>
+
+<span class="sd">        :param model: The model of the objective function. GIBBON requires a model with</span>
+<span class="sd">            a :method:covariance_between_points method and so GIBBON only</span>
+<span class="sd">            supports :class:`GaussianProcessRegression` models.</span>
+<span class="sd">        :param samples: Samples from the distribution over :math:`y^*`.</span>
+<span class="sd">        :return: GIBBON&#39;s quality term. This function will raise :exc:`ValueError` or</span>
+<span class="sd">            :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.</span>
+<span class="sd">        :raise ValueError or tf.errors.InvalidArgumentError: If ``samples`` does not have rank two,</span>
+<span class="sd">            or is empty, or if ``model`` has no homoscedastic observation noise.</span>
+<span class="sd">        :raise AttributeError: If ``model`` doesn&#39;t implement covariance_between_points method.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_rank</span><span class="p">(</span><span class="n">samples</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">samples</span><span class="p">))</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">model</span><span class="o">.</span><span class="n">get_observation_noise</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">NotImplementedError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<span class="w">                </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">                GIBBON only currently supports homoscedastic gpflow models</span>
+<span class="sd">                with a likelihood.variance attribute.</span>
+<span class="sd">                &quot;&quot;&quot;</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_samples</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span>
+
+<div class="viewcode-block" id="gibbon_quality_term.update">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.entropy.gibbon_quality_term.update">[docs]</a>
+    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update the acquisition function with new samples.&quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_rank</span><span class="p">(</span><span class="n">samples</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">samples</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_samples</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span></div>
+
+
+    <span class="nd">@tf</span><span class="o">.</span><span class="n">function</span>
+<div class="viewcode-block" id="gibbon_quality_term.__call__">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.entropy.gibbon_quality_term.__call__">[docs]</a>
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>  <span class="c1"># [N, D] -&gt; [N, 1]</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">(</span>
+            <span class="p">[(</span><span class="n">x</span><span class="p">,</span> <span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">])],</span>
+            <span class="n">message</span><span class="o">=</span><span class="s2">&quot;This acquisition function only supports batch sizes of one.&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">fmean</span><span class="p">,</span> <span class="n">fvar</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">))</span>
+        <span class="n">noise_variance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">get_observation_noise</span><span class="p">()</span>
+        <span class="n">yvar</span> <span class="o">=</span> <span class="n">fvar</span> <span class="o">+</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">noise_variance</span><span class="p">,</span> <span class="n">fmean</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>  <span class="c1"># predictive variance of observations</span>
+
+        <span class="n">rho_squared</span> <span class="o">=</span> <span class="n">fvar</span> <span class="o">/</span> <span class="n">yvar</span>  <span class="c1"># squared correlation between observations and latent function</span>
+        <span class="n">fsd</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">clip_by_value</span><span class="p">(</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">fvar</span><span class="p">),</span> <span class="n">CLAMP_LB</span><span class="p">,</span> <span class="n">fmean</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">max</span>
+        <span class="p">)</span>  <span class="c1"># clip below to improve numerical stability</span>
+        <span class="n">gamma</span> <span class="o">=</span> <span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_samples</span><span class="p">)</span> <span class="o">-</span> <span class="n">fmean</span><span class="p">)</span> <span class="o">/</span> <span class="n">fsd</span>
+
+        <span class="n">normal</span> <span class="o">=</span> <span class="n">tfp</span><span class="o">.</span><span class="n">distributions</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">fmean</span><span class="o">.</span><span class="n">dtype</span><span class="p">),</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">fmean</span><span class="o">.</span><span class="n">dtype</span><span class="p">))</span>
+        <span class="n">log_minus_cdf</span> <span class="o">=</span> <span class="n">normal</span><span class="o">.</span><span class="n">log_cdf</span><span class="p">(</span><span class="o">-</span><span class="n">gamma</span><span class="p">)</span>
+        <span class="n">ratio</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">normal</span><span class="o">.</span><span class="n">log_prob</span><span class="p">(</span><span class="n">gamma</span><span class="p">)</span> <span class="o">-</span> <span class="n">log_minus_cdf</span><span class="p">)</span>
+        <span class="n">inner_log</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">rho_squared</span> <span class="o">*</span> <span class="n">ratio</span> <span class="o">*</span> <span class="p">(</span><span class="n">gamma</span> <span class="o">-</span> <span class="n">ratio</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="o">-</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">inner_log</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># [N, 1]</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="gibbon_repulsion_term">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.entropy.gibbon_repulsion_term">[docs]</a>
+<span class="k">class</span> <span class="nc">gibbon_repulsion_term</span><span class="p">(</span><span class="n">UpdatablePenalizationFunction</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">SupportsCovarianceObservationNoise</span><span class="p">,</span>
+        <span class="n">pending_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+        <span class="n">rescaled_repulsion</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        GIBBON&#39;s repulsion term encourages diversity within the batch</span>
+<span class="sd">        (achieving high values for points with low predictive correlation).</span>
+
+<span class="sd">        The repulsion term :math:`r=\log |C|` is given by the log determinant of the predictive</span>
+<span class="sd">        correlation matrix :math:`C` between the `m` pending points and the current candidate.</span>
+<span class="sd">        The predictive covariance :math:`V` can be expressed as :math:V = [[v, A], [A, B]]` for a</span>
+<span class="sd">        tensor :math:`B` with shape [`m`,`m`] and so we can efficiently calculate :math:`|V|` using</span>
+<span class="sd">        the formula for the determinant of block matrices, i.e</span>
+<span class="sd">        :math:`|V| = (v - A^T * B^{-1} * A) * |B|`.</span>
+<span class="sd">        Note that when using GIBBON for purely sequential optimization, the repulsion term is</span>
+<span class="sd">        not required.</span>
+
+<span class="sd">        As GIBBON&#39;s batches are built in a greedy manner, i.e sequentially adding points to build a</span>
+<span class="sd">        set of `m` pending points, we need only ever calculate the entropy reduction provided by</span>
+<span class="sd">        adding the current candidate point to the current pending points, not the full information</span>
+<span class="sd">        gain provided by evaluating all the pending points. This allows for a modest computational</span>
+<span class="sd">        saving.</span>
+
+<span class="sd">        When performing batch BO, GIBBON&#39;s approximation can sometimes become</span>
+<span class="sd">        less accurate as its repulsion term dominates. Therefore, we follow the</span>
+<span class="sd">        arguments of :cite:`Moss:2021` and divide GIBBON&#39;s repulsion term by :math:`B^{2}`. This</span>
+<span class="sd">        behavior can be deactivated by setting `rescaled_repulsion` to False.</span>
+
+<span class="sd">        :param model: The model of the objective function. GIBBON requires a model with</span>
+<span class="sd">            a :method:covariance_between_points method and so GIBBON only</span>
+<span class="sd">            supports :class:`GaussianProcessRegression` models.</span>
+<span class="sd">        :param pending_points: The points already chosen in the current batch.</span>
+<span class="sd">        :param rescaled_repulsion: If True, then downweight GIBBON&#39;s repulsion term to improve</span>
+<span class="sd">            batch optimization performance.</span>
+<span class="sd">        :return: GIBBON&#39;s repulsion term. This function will raise :exc:`ValueError` or</span>
+<span class="sd">            :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.</span>
+<span class="sd">        :raise ValueError or tf.errors.InvalidArgumentError: If ``pending_points`` does not have</span>
+<span class="sd">            rank two, or is empty, or if ``model`` has no homoscedastic observation noise.</span>
+<span class="sd">        :raise AttributeError: If ``model`` doesn&#39;t implement covariance_between_points method.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_rank</span><span class="p">(</span><span class="n">pending_points</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">pending_points</span><span class="p">))</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">model</span><span class="o">.</span><span class="n">get_observation_noise</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">NotImplementedError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<span class="w">                </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">                GIBBON only currently supports homoscedastic gpflow models</span>
+<span class="sd">                with a likelihood.variance attribute.</span>
+<span class="sd">                &quot;&quot;&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s2">&quot;covariance_between_points&quot;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span>
+<span class="w">                </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">                GIBBON only supports models with a covariance_between_points method.</span>
+<span class="sd">                &quot;&quot;&quot;</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pending_points</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="n">pending_points</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="n">pending_points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:]])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rescaled_repulsion</span> <span class="o">=</span> <span class="n">rescaled_repulsion</span>
+
+<div class="viewcode-block" id="gibbon_repulsion_term.update">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.entropy.gibbon_repulsion_term.update">[docs]</a>
+    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">pending_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+        <span class="n">lipschitz_constant</span><span class="p">:</span> <span class="n">TensorType</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">eta</span><span class="p">:</span> <span class="n">TensorType</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update the repulsion term with new variable values.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pending_points</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">pending_points</span><span class="p">)</span></div>
+
+
+    <span class="nd">@tf</span><span class="o">.</span><span class="n">function</span>
+<div class="viewcode-block" id="gibbon_repulsion_term.__call__">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.entropy.gibbon_repulsion_term.__call__">[docs]</a>
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">(</span>
+            <span class="p">[(</span><span class="n">x</span><span class="p">,</span> <span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">])],</span>
+            <span class="n">message</span><span class="o">=</span><span class="s2">&quot;This penalization function cannot be calculated for batches of points.&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">fmean</span><span class="p">,</span> <span class="n">fvar</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">))</span>
+        <span class="n">noise_variance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">get_observation_noise</span><span class="p">()</span>
+        <span class="n">yvar</span> <span class="o">=</span> <span class="n">fvar</span> <span class="o">+</span> <span class="n">noise_variance</span>  <span class="c1"># need predictive variance of observations</span>
+
+        <span class="n">_</span><span class="p">,</span> <span class="n">B</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">predict_joint</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pending_points</span><span class="p">)</span>  <span class="c1"># [1, m, m]</span>
+
+        <span class="n">B_shape</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">B</span><span class="p">)</span>
+        <span class="n">noise</span> <span class="o">=</span> <span class="n">noise_variance</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span>
+            <span class="n">B_shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">],</span> <span class="n">batch_shape</span><span class="o">=</span><span class="n">B_shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">B</span><span class="o">.</span><span class="n">dtype</span>
+        <span class="p">)</span>  <span class="c1"># need predictive variance of observations</span>
+
+        <span class="n">L</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">cholesky</span><span class="p">(</span><span class="n">B</span> <span class="o">+</span> <span class="n">noise</span><span class="p">)</span>
+
+        <span class="n">A</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">covariance_between_points</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pending_points</span><span class="p">),</span>
+                <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="p">)</span>  <span class="c1"># [N, m, 1]</span>
+        <span class="n">L_inv_A</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">triangular_solve</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">A</span><span class="p">)</span>
+        <span class="n">V_det</span> <span class="o">=</span> <span class="n">yvar</span> <span class="o">-</span> <span class="n">tf</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">L_inv_A</span><span class="p">,</span> <span class="n">L_inv_A</span><span class="p">,</span> <span class="n">transpose_a</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="p">)</span>  <span class="c1"># equation for determinant of block matrices</span>
+        <span class="n">repulsion</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">V_det</span><span class="p">)</span> <span class="o">-</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">yvar</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rescaled_repulsion</span><span class="p">:</span>
+            <span class="n">batch_size</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pending_points</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">fmean</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+            <span class="n">repulsion_weight</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="n">batch_size</span><span class="p">)</span> <span class="o">**</span> <span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">repulsion_weight</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+        <span class="k">return</span> <span class="n">repulsion_weight</span> <span class="o">*</span> <span class="n">repulsion</span></div>
+</div>
+
+
+
+<span class="nd">@runtime_checkable</span>
+<div class="viewcode-block" id="SupportsCovarianceWithTopFidelityPredictY">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/entropy/index.html#trieste.acquisition.function.entropy.SupportsCovarianceWithTopFidelityPredictY">[docs]</a>
+<span class="k">class</span> <span class="nc">SupportsCovarianceWithTopFidelityPredictY</span><span class="p">(</span>
+    <span class="n">SupportsCovarianceWithTopFidelity</span><span class="p">,</span> <span class="n">SupportsPredictY</span><span class="p">,</span> <span class="n">Protocol</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A model that is both multifidelity and supports predict_y.&quot;&quot;&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="MUMBOModelType">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/entropy/index.html#trieste.acquisition.function.entropy.MUMBOModelType">[docs]</a>
+<span class="n">MUMBOModelType</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span>
+    <span class="s2">&quot;MUMBOModelType&quot;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="n">SupportsCovarianceWithTopFidelityPredictY</span><span class="p">,</span> <span class="n">contravariant</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span></div>
+
+<span class="sd">&quot;&quot;&quot; Type variable bound to :class:`~trieste.models.SupportsCovarianceWithTopFidelityPredictY`. &quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="MUMBO">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/entropy/index.html#trieste.acquisition.function.entropy.MUMBO">[docs]</a>
+<span class="k">class</span> <span class="nc">MUMBO</span><span class="p">(</span><span class="n">MinValueEntropySearch</span><span class="p">[</span><span class="n">MUMBOModelType</span><span class="p">]):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Builder for the MUlti-task Max-value Bayesian Optimization MUMBO acquisition function modified</span>
+<span class="sd">    for objective minimisation. :class:`MinValueEntropySearch` estimates the information in the</span>
+<span class="sd">    distribution of the objective minimum that would be gained by evaluating the objective at a</span>
+<span class="sd">    given point on a given fidelity level.</span>
+
+<span class="sd">    This implementation largely follows :cite:`moss2021mumbo` and samples the objective&#39;s minimum</span>
+<span class="sd">    :math:`y^*` across a large set of sampled locations via either a Gumbel sampler, an exact</span>
+<span class="sd">    Thompson sampler or an approximate random Fourier feature-based Thompson sampler, with the</span>
+<span class="sd">    Gumbel sampler being the cheapest but least accurate. Default behavior is to use the</span>
+<span class="sd">    exact Thompson sampler.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">:</span> <span class="s2">&quot;MUMBO[SupportsCovarianceWithTopFidelityPredictY]&quot;</span><span class="p">,</span>
+        <span class="n">search_space</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">,</span>
+        <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+        <span class="n">grid_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+        <span class="n">min_value_sampler</span><span class="p">:</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span> <span class="o">...</span>
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">:</span> <span class="s2">&quot;MUMBO[MUMBOModelType]&quot;</span><span class="p">,</span>
+        <span class="n">search_space</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">,</span>
+        <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+        <span class="n">grid_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+        <span class="n">min_value_sampler</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ThompsonSampler</span><span class="p">[</span><span class="n">MUMBOModelType</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span> <span class="o">...</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">search_space</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">,</span>
+        <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+        <span class="n">grid_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+        <span class="n">min_value_sampler</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ThompsonSampler</span><span class="p">[</span><span class="n">MUMBOModelType</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">search_space</span><span class="p">,</span> <span class="n">num_samples</span><span class="p">,</span> <span class="n">grid_size</span><span class="p">,</span> <span class="n">min_value_sampler</span><span class="p">)</span>
+
+<div class="viewcode-block" id="MUMBO.prepare_acquisition_function">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/entropy/index.html#trieste.acquisition.function.entropy.MUMBO.prepare_acquisition_function">[docs]</a>
+    <span class="k">def</span> <span class="nf">prepare_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">MUMBOModelType</span><span class="p">,</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param model: The multifidelity model.</span>
+<span class="sd">        :param dataset: The data from the observer.</span>
+<span class="sd">        :return: The max-value entropy search acquisition function modified for objective</span>
+<span class="sd">            minimisation. This function will raise :exc:`ValueError` or</span>
+<span class="sd">            :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.</span>
+<span class="sd">        :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span><span class="n">dataset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="n">dataset</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">),</span> <span class="n">message</span><span class="o">=</span><span class="s2">&quot;Dataset must be populated.&quot;</span><span class="p">)</span>
+        <span class="n">min_value_samples</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_min_value_samples_on_top_fidelity</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">mumbo</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">min_value_samples</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MUMBO.update_acquisition_function">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/entropy/index.html#trieste.acquisition.function.entropy.MUMBO.update_acquisition_function">[docs]</a>
+    <span class="k">def</span> <span class="nf">update_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">function</span><span class="p">:</span> <span class="n">AcquisitionFunction</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">MUMBOModelType</span><span class="p">,</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param function: The acquisition function to update.</span>
+<span class="sd">        :param model: The model.</span>
+<span class="sd">        :param dataset: The data from the observer.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span><span class="n">dataset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="n">dataset</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">),</span> <span class="n">message</span><span class="o">=</span><span class="s2">&quot;Dataset must be populated.&quot;</span><span class="p">)</span>
+        <span class="n">min_value_samples</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_min_value_samples_on_top_fidelity</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span>
+        <span class="n">function</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">min_value_samples</span><span class="p">)</span>  <span class="c1"># type: ignore</span>
+        <span class="k">return</span> <span class="n">function</span></div>
+
+
+<div class="viewcode-block" id="MUMBO.get_min_value_samples_on_top_fidelity">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/entropy/index.html#trieste.acquisition.function.entropy.MUMBO.get_min_value_samples_on_top_fidelity">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_min_value_samples_on_top_fidelity</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">MUMBOModelType</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param model: The model.</span>
+<span class="sd">        :param dataset: The data from the observer.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">query_points</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_search_space</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">num_samples</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_grid_size</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_same_float_dtype</span><span class="p">([</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">,</span> <span class="n">query_points</span><span class="p">])</span>
+        <span class="n">query_points</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">,</span> <span class="n">query_points</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">query_points_on_top_fidelity</span> <span class="o">=</span> <span class="n">add_fidelity_column</span><span class="p">(</span>
+            <span class="n">query_points</span><span class="p">[:,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">model</span><span class="o">.</span><span class="n">num_fidelities</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_min_value_sampler</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span>
+            <span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_samples</span><span class="p">,</span> <span class="n">query_points_on_top_fidelity</span>
+        <span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="mumbo">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/entropy/index.html#trieste.acquisition.function.entropy.mumbo">[docs]</a>
+<span class="k">class</span> <span class="nc">mumbo</span><span class="p">(</span><span class="n">AcquisitionFunctionClass</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">MUMBOModelType</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The MUMBO acquisition function of :cite:`moss2021mumbo`, modified for objective</span>
+<span class="sd">        minimisation. This function calculates the information gain (or change in entropy) in the</span>
+<span class="sd">        distribution over the objective minimum :math:`y^*`, if we were to evaluate the objective</span>
+<span class="sd">        at a given point on a given fidelity level.</span>
+
+<span class="sd">        To speed up calculations, we use a trick from :cite:`Moss:2021` and use moment-matching to</span>
+<span class="sd">        calculate MUMBO&#39;s entropy terms rather than numerical integration.</span>
+
+<span class="sd">        :param model: The model of the objective function.</span>
+<span class="sd">        :param samples: Samples from the distribution over :math:`y^*`.</span>
+<span class="sd">        :return: The MUMBO acquisition function modified for objective</span>
+<span class="sd">            minimisation. This function will raise :exc:`ValueError` or</span>
+<span class="sd">            :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.</span>
+<span class="sd">        :raise ValueError or tf.errors.InvalidArgumentError: If ``samples`` has rank less than two,</span>
+<span class="sd">            or is empty.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_rank</span><span class="p">(</span><span class="n">samples</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">samples</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_samples</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span>
+
+<div class="viewcode-block" id="mumbo.update">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/entropy/index.html#trieste.acquisition.function.entropy.mumbo.update">[docs]</a>
+    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update the acquisition function with new samples.&quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_rank</span><span class="p">(</span><span class="n">samples</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">samples</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_samples</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span></div>
+
+
+    <span class="nd">@tf</span><span class="o">.</span><span class="n">function</span>
+<div class="viewcode-block" id="mumbo.__call__">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/entropy/index.html#trieste.acquisition.function.entropy.mumbo.__call__">[docs]</a>
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">(</span>
+            <span class="p">[(</span><span class="n">x</span><span class="p">,</span> <span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">])],</span>
+            <span class="n">message</span><span class="o">=</span><span class="s2">&quot;This acquisition function only supports batch sizes of one.&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">x_squeezed</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">x_on_top_fidelity</span> <span class="o">=</span> <span class="n">add_fidelity_column</span><span class="p">(</span><span class="n">x_squeezed</span><span class="p">[:,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">num_fidelities</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">fmean</span><span class="p">,</span> <span class="n">fvar</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">x_on_top_fidelity</span><span class="p">)</span>
+        <span class="n">fsd</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">clip_by_value</span><span class="p">(</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">fvar</span><span class="p">),</span> <span class="n">CLAMP_LB</span><span class="p">,</span> <span class="n">fmean</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">max</span>
+        <span class="p">)</span>  <span class="c1"># clip below to improve numerical stability</span>
+        <span class="n">ymean</span><span class="p">,</span> <span class="n">yvar</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">predict_y</span><span class="p">(</span><span class="n">x_squeezed</span><span class="p">)</span>
+        <span class="n">cov</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">covariance_with_top_fidelity</span><span class="p">(</span><span class="n">x_squeezed</span><span class="p">)</span>
+
+        <span class="c1"># calculate squared correlation between observations and high-fidelity latent function</span>
+        <span class="n">rho_squared</span> <span class="o">=</span> <span class="p">(</span><span class="n">cov</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">fvar</span> <span class="o">*</span> <span class="n">yvar</span><span class="p">)</span>
+        <span class="n">rho_squared</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">clip_by_value</span><span class="p">(</span><span class="n">rho_squared</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+
+        <span class="n">normal</span> <span class="o">=</span> <span class="n">tfp</span><span class="o">.</span><span class="n">distributions</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">fmean</span><span class="o">.</span><span class="n">dtype</span><span class="p">),</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">fmean</span><span class="o">.</span><span class="n">dtype</span><span class="p">))</span>
+        <span class="n">gamma</span> <span class="o">=</span> <span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_samples</span><span class="p">)</span> <span class="o">-</span> <span class="n">fmean</span><span class="p">)</span> <span class="o">/</span> <span class="n">fsd</span>
+        <span class="n">log_minus_cdf</span> <span class="o">=</span> <span class="n">normal</span><span class="o">.</span><span class="n">log_cdf</span><span class="p">(</span><span class="o">-</span><span class="n">gamma</span><span class="p">)</span>
+        <span class="n">ratio</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">normal</span><span class="o">.</span><span class="n">log_prob</span><span class="p">(</span><span class="n">gamma</span><span class="p">)</span> <span class="o">-</span> <span class="n">log_minus_cdf</span><span class="p">)</span>
+
+        <span class="n">inner_log</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">rho_squared</span> <span class="o">*</span> <span class="n">ratio</span> <span class="o">*</span> <span class="p">(</span><span class="n">gamma</span> <span class="o">-</span> <span class="n">ratio</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="o">-</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">inner_log</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># [N, 1]</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="CostWeighting">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/entropy/index.html#trieste.acquisition.function.entropy.CostWeighting">[docs]</a>
+<span class="k">class</span> <span class="nc">CostWeighting</span><span class="p">(</span><span class="n">SingleModelAcquisitionBuilder</span><span class="p">[</span><span class="n">ProbabilisticModel</span><span class="p">]):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fidelity_costs</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Builder for a cost-weighted acquisition function which returns the reciprocal of the cost</span>
+<span class="sd">        associated with the fidelity of each input.</span>
+
+<span class="sd">        Note that the fidelity level is assumed to be contained in the inputs final dimension.</span>
+
+<span class="sd">        The primary use of this acquisition function is to be used as a product with</span>
+<span class="sd">        multi-fidelity acquisition functions.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_fidelity_costs</span> <span class="o">=</span> <span class="n">fidelity_costs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_num_fidelities</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_fidelity_costs</span><span class="p">)</span>
+
+<div class="viewcode-block" id="CostWeighting.prepare_acquisition_function">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/entropy/index.html#trieste.acquisition.function.entropy.CostWeighting.prepare_acquisition_function">[docs]</a>
+    <span class="k">def</span> <span class="nf">prepare_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">ProbabilisticModel</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param model: The model.</span>
+<span class="sd">        :param dataset: The data from the observer. Not actually used here.</span>
+<span class="sd">        :return: The reciprocal of the costs corresponding to the fidelity level of each input.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="nd">@tf</span><span class="o">.</span><span class="n">function</span>
+        <span class="k">def</span> <span class="nf">acquisition</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">(</span>
+                <span class="p">[(</span><span class="n">x</span><span class="p">,</span> <span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">])],</span>
+                <span class="n">message</span><span class="o">=</span><span class="s2">&quot;This acquisition function only supports batch sizes of one.&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">fidelities</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># [..., 1]</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_greater</span><span class="p">(</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_num_fidelities</span><span class="p">,</span> <span class="n">fidelities</span><span class="o">.</span><span class="n">dtype</span><span class="p">),</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">reduce_max</span><span class="p">(</span><span class="n">fidelities</span><span class="p">),</span>
+                <span class="n">message</span><span class="o">=</span><span class="s2">&quot;You are trying to use more fidelity levels than cost levels.&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="n">costs</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_fidelity_costs</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">fidelities</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">))</span>
+
+            <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="n">costs</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>  <span class="c1"># [N, 1]</span>
+
+        <span class="k">return</span> <span class="n">acquisition</span></div>
+
+
+<div class="viewcode-block" id="CostWeighting.update_acquisition_function">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/entropy/index.html#trieste.acquisition.function.entropy.CostWeighting.update_acquisition_function">[docs]</a>
+    <span class="k">def</span> <span class="nf">update_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">function</span><span class="p">:</span> <span class="n">AcquisitionFunction</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">ProbabilisticModel</span><span class="p">,</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Nothing to do here, so just return previous cost function.</span>
+
+<span class="sd">        :param function: The acquisition function to update.</span>
+<span class="sd">        :param model: The model.</span>
+<span class="sd">        :param dataset: The data from the observer.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">function</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../_static/scripts/bootstrap.js?digest=3ee479438cf8b5e0d341"></script>
+<script src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=3ee479438cf8b5e0d341"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.15.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

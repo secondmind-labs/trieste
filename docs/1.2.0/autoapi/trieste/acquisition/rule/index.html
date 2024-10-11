@@ -1,0 +1,1258 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>trieste.acquisition.rule &#8212; trieste 1.2.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../../../../_static/styles/bootstrap.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+
+  
+  <link href="../../../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=e353d410970836974a52" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/css/custom.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
+
+    <script data-url_root="../../../../" id="documentation_options" src="../../../../_static/documentation_options.js"></script>
+    <script src="../../../../_static/doctools.js"></script>
+    <script src="../../../../_static/sphinx_highlight.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'autoapi/trieste/acquisition/rule/index';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://secondmind-labs.github.io/trieste/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.2.0';
+        </script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="next" title="trieste.acquisition.sampler" href="../sampler/index.html" />
+    <link rel="prev" title="trieste.acquisition.optimizer" href="../optimizer/index.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  <div class="navbar-header-items__start">
+    
+      <div class="navbar-item">
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/logo.png" class="logo__image only-light" alt="Logo image"/>
+    <script>document.write(`<img src="../../../../_static/logo.png" class="logo__image only-dark" alt="Logo image"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../../index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      1.2.0  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+    </div>
+  
+
+  
+    <label class="sidebar-toggle secondary-toggle" for="__secondary">
+      <span class="fa-solid fa-outdent"></span>
+    </label>
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../../index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      1.2.0  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item"><nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition</span></code></a><input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-1"><i class="fa-solid fa-chevron-down"></i></label><ul class="current">
+<li class="toctree-l2 has-children"><a class="reference internal" href="../function/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.function</span></code></a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-2"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../function/active_learning/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.function.active_learning</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../function/continuous_thompson_sampling/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.function.continuous_thompson_sampling</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../function/entropy/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.function.entropy</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../function/function/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.function.function</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../function/greedy_batch/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.function.greedy_batch</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../function/multi_objective/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.function.multi_objective</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../function/utils/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.function.utils</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../multi_objective/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.multi_objective</span></code></a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-3"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../multi_objective/dominance/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.multi_objective.dominance</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../multi_objective/pareto/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.multi_objective.pareto</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../multi_objective/partition/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.multi_objective.partition</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../interface/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.interface</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../optimizer/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.optimizer</span></code></a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.rule</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../sampler/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.sampler</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../models/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models</span></code></a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-4"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../models/gpflow/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.gpflow</span></code></a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-5"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../models/gpflow/builders/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.gpflow.builders</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../models/gpflow/inducing_point_selectors/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.gpflow.inducing_point_selectors</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../models/gpflow/optimizer/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.gpflow.optimizer</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../models/gpflow/sampler/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.gpflow.sampler</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../models/gpflux/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.gpflux</span></code></a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-6"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../models/gpflux/builders/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.gpflux.builders</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../models/keras/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.keras</span></code></a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-7"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../models/keras/architectures/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.keras.architectures</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../models/keras/builders/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.keras.builders</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../models/keras/sampler/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.keras.sampler</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../models/optimizer/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.optimizer</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../models/utils/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.utils</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../objectives/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.objectives</span></code></a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-8"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../objectives/multi_objectives/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.objectives.multi_objectives</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../objectives/multifidelity_objectives/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.objectives.multifidelity_objectives</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../objectives/single_objectives/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.objectives.single_objectives</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../objectives/utils/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.objectives.utils</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../utils/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.utils</span></code></a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../ask_tell_optimization/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.ask_tell_optimization</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../bayesian_optimizer/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.bayesian_optimizer</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../data/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.data</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../logging/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.logging</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../observer/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.observer</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../space/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.space</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../types/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.types</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../version/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.version</span></code></a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumbs">
+  <ul class="bd-breadcrumbs" role="navigation" aria-label="Breadcrumb">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste</span></code></a></li>
+    
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition</span></code></a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.rule</span></code></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <section id="module-trieste.acquisition.rule">
+<span id="trieste-acquisition-rule"></span><h1><a class="reference internal" href="#module-trieste.acquisition.rule" title="trieste.acquisition.rule"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.rule</span></code></a><a class="headerlink" href="#module-trieste.acquisition.rule" title="Permalink to this heading">#</a></h1>
+<p>This module contains acquisition rules, which choose the optimal point(s) to query on each step of
+the Bayesian optimization process.</p>
+<section id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this heading">#</a></h2>
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.ResultType">
+<span class="sig-name descname"><span class="pre">ResultType</span></span><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#ResultType"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.ResultType" title="Permalink to this definition">#</a></dt>
+<dd><p>Unbound covariant type variable.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.SearchSpaceType">
+<span class="sig-name descname"><span class="pre">SearchSpaceType</span></span><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#SearchSpaceType"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.SearchSpaceType" title="Permalink to this definition">#</a></dt>
+<dd><p>Contravariant type variable bound to <a class="reference internal" href="../../space/index.html#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">SearchSpace</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.AcquisitionRule">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">AcquisitionRule</span></span><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#AcquisitionRule"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.AcquisitionRule" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.11)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">abc.ABC</span></code></a>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">Generic</span></code>[<a class="reference internal" href="#trieste.acquisition.rule.ResultType" title="trieste.acquisition.rule.ResultType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ResultType</span></code></a>, <a class="reference internal" href="#trieste.acquisition.rule.SearchSpaceType" title="trieste.acquisition.rule.SearchSpaceType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SearchSpaceType</span></code></a>, <a class="reference internal" href="../../models/interfaces/index.html#trieste.models.interfaces.ProbabilisticModelType" title="trieste.models.interfaces.ProbabilisticModelType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.ProbabilisticModelType</span></code></a>]</p>
+<p>The central component of the acquisition API.</p>
+<p>An <a class="reference internal" href="#trieste.acquisition.rule.AcquisitionRule" title="trieste.acquisition.rule.AcquisitionRule"><code class="xref py py-class docutils literal notranslate"><span class="pre">AcquisitionRule</span></code></a> can produce any value from the search space for this step, and the
+historic data and models. This value is typically a set of query points, either on its own as
+a <cite>TensorType</cite> (see e.g. <a class="reference internal" href="#trieste.acquisition.rule.EfficientGlobalOptimization" title="trieste.acquisition.rule.EfficientGlobalOptimization"><code class="xref py py-class docutils literal notranslate"><span class="pre">EfficientGlobalOptimization</span></code></a>), or within some context
+(see e.g. <a class="reference internal" href="#trieste.acquisition.rule.TrustRegion" title="trieste.acquisition.rule.TrustRegion"><code class="xref py py-class docutils literal notranslate"><span class="pre">TrustRegion</span></code></a>). Indeed, to use an <a class="reference internal" href="#trieste.acquisition.rule.AcquisitionRule" title="trieste.acquisition.rule.AcquisitionRule"><code class="xref py py-class docutils literal notranslate"><span class="pre">AcquisitionRule</span></code></a> in the main
+<a class="reference internal" href="../../bayesian_optimizer/index.html#trieste.bayesian_optimizer.BayesianOptimizer" title="trieste.bayesian_optimizer.BayesianOptimizer"><code class="xref py py-class docutils literal notranslate"><span class="pre">BayesianOptimizer</span></code></a> Bayesian optimization loop, the rule
+must return either a <cite>TensorType</cite> or <cite>State</cite>-ful <cite>TensorType</cite>.</p>
+<p>Note that an <a class="reference internal" href="#trieste.acquisition.rule.AcquisitionRule" title="trieste.acquisition.rule.AcquisitionRule"><code class="xref py py-class docutils literal notranslate"><span class="pre">AcquisitionRule</span></code></a> might only support models with specific features (for
+example, if it uses an acquisition function that relies on those features). The type of
+models supported by a rule is indicated by the generic type variable
+class:<cite>ProbabilisticModelType</cite>.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.AcquisitionRule.acquire">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">acquire</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">search_space</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">SearchSpaceType</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">models</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping" title="(in Python v3.11)"><span class="pre">collections.abc.Mapping</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.Tag</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.models.interfaces.ProbabilisticModelType</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datasets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping" title="(in Python v3.11)"><span class="pre">collections.abc.Mapping</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.Tag</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ResultType</span></span></span><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#AcquisitionRule.acquire"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.AcquisitionRule.acquire" title="Permalink to this definition">#</a></dt>
+<dd><p>Return a value of type <cite>T_co</cite>. Typically this will be a set of query points, either on its
+own as a <cite>TensorType</cite> (see e.g. <a class="reference internal" href="#trieste.acquisition.rule.EfficientGlobalOptimization" title="trieste.acquisition.rule.EfficientGlobalOptimization"><code class="xref py py-class docutils literal notranslate"><span class="pre">EfficientGlobalOptimization</span></code></a>), or within some
+context (see e.g. <a class="reference internal" href="#trieste.acquisition.rule.TrustRegion" title="trieste.acquisition.rule.TrustRegion"><code class="xref py py-class docutils literal notranslate"><span class="pre">TrustRegion</span></code></a>). We assume that this requires at least models, but
+it may sometimes also need data.</p>
+<dl class="simple">
+<dt><strong>Type hints:</strong></dt><dd><ul class="simple">
+<li><p>The search space must be a <a class="reference internal" href="../../space/index.html#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">SearchSpace</span></code></a>. The exact type of
+<a class="reference internal" href="../../space/index.html#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">SearchSpace</span></code></a> depends on the specific <a class="reference internal" href="#trieste.acquisition.rule.AcquisitionRule" title="trieste.acquisition.rule.AcquisitionRule"><code class="xref py py-class docutils literal notranslate"><span class="pre">AcquisitionRule</span></code></a>.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>search_space</strong> – The local acquisition search space for <em>this step</em>.</p></li>
+<li><p><strong>models</strong> – The model for each tag.</p></li>
+<li><p><strong>datasets</strong> – The known observer query points and observations for each tag (optional).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A value of type <cite>T_co</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.AcquisitionRule.acquire_single">
+<span class="sig-name descname"><span class="pre">acquire_single</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">search_space</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">SearchSpaceType</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.models.interfaces.ProbabilisticModelType</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ResultType</span></span></span><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#AcquisitionRule.acquire_single"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.AcquisitionRule.acquire_single" title="Permalink to this definition">#</a></dt>
+<dd><p>A convenience wrapper for <a class="reference internal" href="#trieste.acquisition.rule.AcquisitionRule.acquire" title="trieste.acquisition.rule.AcquisitionRule.acquire"><code class="xref py py-meth docutils literal notranslate"><span class="pre">acquire()</span></code></a> that uses only one model, dataset pair.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>search_space</strong> – The global search space over which the optimization problem
+is defined.</p></li>
+<li><p><strong>model</strong> – The model to use.</p></li>
+<li><p><strong>dataset</strong> – The known observer query points and observations (optional).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A value of type <cite>T_co</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.EfficientGlobalOptimization">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">EfficientGlobalOptimization</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">builder</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.acquisition.optimizer.AcquisitionOptimizer</span><span class="p"><span class="pre">[</span></span><span class="pre">SearchSpaceType</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_query_points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_acquisition_function</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#EfficientGlobalOptimization"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.EfficientGlobalOptimization" title="Permalink to this definition">#</a></dt>
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">EfficientGlobalOptimization</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">builder</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../interface/index.html#trieste.acquisition.interface.AcquisitionFunctionBuilder" title="trieste.acquisition.interface.AcquisitionFunctionBuilder"><span class="pre">trieste.acquisition.interface.AcquisitionFunctionBuilder</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.models.interfaces.ProbabilisticModelType</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../interface/index.html#trieste.acquisition.interface.GreedyAcquisitionFunctionBuilder" title="trieste.acquisition.interface.GreedyAcquisitionFunctionBuilder"><span class="pre">trieste.acquisition.interface.GreedyAcquisitionFunctionBuilder</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.models.interfaces.ProbabilisticModelType</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../interface/index.html#trieste.acquisition.interface.SingleModelAcquisitionBuilder" title="trieste.acquisition.interface.SingleModelAcquisitionBuilder"><span class="pre">trieste.acquisition.interface.SingleModelAcquisitionBuilder</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.models.interfaces.ProbabilisticModelType</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../interface/index.html#trieste.acquisition.interface.SingleModelGreedyAcquisitionBuilder" title="trieste.acquisition.interface.SingleModelGreedyAcquisitionBuilder"><span class="pre">trieste.acquisition.interface.SingleModelGreedyAcquisitionBuilder</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.models.interfaces.ProbabilisticModelType</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.acquisition.optimizer.AcquisitionOptimizer</span><span class="p"><span class="pre">[</span></span><span class="pre">SearchSpaceType</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_query_points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_acquisition_function</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Bases: <a class="reference internal" href="#trieste.acquisition.rule.AcquisitionRule" title="trieste.acquisition.rule.AcquisitionRule"><code class="xref py py-obj docutils literal notranslate"><span class="pre">AcquisitionRule</span></code></a>[<a class="reference internal" href="../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.types.TensorType</span></code></a>, <a class="reference internal" href="#trieste.acquisition.rule.SearchSpaceType" title="trieste.acquisition.rule.SearchSpaceType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SearchSpaceType</span></code></a>, <a class="reference internal" href="../../models/interfaces/index.html#trieste.models.interfaces.ProbabilisticModelType" title="trieste.models.interfaces.ProbabilisticModelType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.ProbabilisticModelType</span></code></a>]</p>
+<p>Implements the Efficient Global Optimization, or EGO, algorithm.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>builder</strong> – The acquisition function builder to use. Defaults to
+<a class="reference internal" href="../index.html#trieste.acquisition.ExpectedImprovement" title="trieste.acquisition.ExpectedImprovement"><code class="xref py py-class docutils literal notranslate"><span class="pre">ExpectedImprovement</span></code></a>.</p></li>
+<li><p><strong>optimizer</strong> – The optimizer with which to optimize the acquisition function built by
+<code class="docutils literal notranslate"><span class="pre">builder</span></code>. This should <em>maximize</em> the acquisition function, and must be compatible
+with the global search space. Defaults to
+<a class="reference internal" href="../optimizer/index.html#trieste.acquisition.optimizer.automatic_optimizer_selector" title="trieste.acquisition.optimizer.automatic_optimizer_selector"><code class="xref py py-func docutils literal notranslate"><span class="pre">automatic_optimizer_selector()</span></code></a>.</p></li>
+<li><p><strong>num_query_points</strong> – The number of points to acquire.</p></li>
+<li><p><strong>initial_acquisition_function</strong> – The initial acquisition function to use. Defaults
+to using the builder to construct one, but passing in a previously constructed
+function can occasionally be useful (e.g. to preserve random seeds).</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.EfficientGlobalOptimization.acquisition_function">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">acquisition_function</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></em><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#EfficientGlobalOptimization.acquisition_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.EfficientGlobalOptimization.acquisition_function" title="Permalink to this definition">#</a></dt>
+<dd><p>The current acquisition function, updated last time <a class="reference internal" href="#trieste.acquisition.rule.EfficientGlobalOptimization.acquire" title="trieste.acquisition.rule.EfficientGlobalOptimization.acquire"><code class="xref py py-meth docutils literal notranslate"><span class="pre">acquire()</span></code></a> was called.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.EfficientGlobalOptimization.acquire">
+<span class="sig-name descname"><span class="pre">acquire</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">search_space</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">SearchSpaceType</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">models</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping" title="(in Python v3.11)"><span class="pre">collections.abc.Mapping</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.Tag</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.models.interfaces.ProbabilisticModelType</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datasets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping" title="(in Python v3.11)"><span class="pre">collections.abc.Mapping</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.Tag</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">trieste.types.TensorType</span></span></span><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#EfficientGlobalOptimization.acquire"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.EfficientGlobalOptimization.acquire" title="Permalink to this definition">#</a></dt>
+<dd><p>Return the query point(s) that optimizes the acquisition function produced by <code class="docutils literal notranslate"><span class="pre">builder</span></code>
+(see <code class="xref py py-meth docutils literal notranslate"><span class="pre">__init__()</span></code>).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>search_space</strong> – The local acquisition search space for <em>this step</em>.</p></li>
+<li><p><strong>models</strong> – The model for each tag.</p></li>
+<li><p><strong>datasets</strong> – The known observer query points and observations. Whether this is required
+depends on the acquisition function used.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The single (or batch of) points to query.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.AsynchronousRuleState">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">AsynchronousRuleState</span></span><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#AsynchronousRuleState"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.AsynchronousRuleState" title="Permalink to this definition">#</a></dt>
+<dd><p>Stores pending points for asynchronous rules.
+These are points which were requested but are not observed yet.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.AsynchronousRuleState.has_pending_points">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">has_pending_points</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></em><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#AsynchronousRuleState.has_pending_points"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.AsynchronousRuleState.has_pending_points" title="Permalink to this definition">#</a></dt>
+<dd><p>Returns <cite>True</cite> if there is at least one pending point, and <cite>False</cite> otherwise.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.AsynchronousRuleState.remove_points">
+<span class="sig-name descname"><span class="pre">remove_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points_to_remove</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.types.TensorType</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#trieste.acquisition.rule.AsynchronousRuleState" title="trieste.acquisition.rule.AsynchronousRuleState"><span class="pre">AsynchronousRuleState</span></a></span></span><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#AsynchronousRuleState.remove_points"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.AsynchronousRuleState.remove_points" title="Permalink to this definition">#</a></dt>
+<dd><p>Removes all rows from current <cite>pending_points</cite> that are present in <cite>points_to_remove</cite>.
+If a point to remove occurs multiple times in the list of pending points,
+only first occurrence of it will be removed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>points_to_remove</strong> – Points to remove.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>New instance of <cite>AsynchronousRuleState</cite> with updated pending points.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.AsynchronousRuleState.add_pending_points">
+<span class="sig-name descname"><span class="pre">add_pending_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">new_points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.types.TensorType</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#trieste.acquisition.rule.AsynchronousRuleState" title="trieste.acquisition.rule.AsynchronousRuleState"><span class="pre">AsynchronousRuleState</span></a></span></span><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#AsynchronousRuleState.add_pending_points"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.AsynchronousRuleState.add_pending_points" title="Permalink to this definition">#</a></dt>
+<dd><p>Adds <cite>new_points</cite> to the already known pending points.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>new_points</strong> – Points to add.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>New instance of <cite>AsynchronousRuleState</cite> with updated pending points.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.AsynchronousOptimization">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">AsynchronousOptimization</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">builder</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.acquisition.optimizer.AcquisitionOptimizer</span><span class="p"><span class="pre">[</span></span><span class="pre">SearchSpaceType</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_query_points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#AsynchronousOptimization"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.AsynchronousOptimization" title="Permalink to this definition">#</a></dt>
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">AsynchronousOptimization</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">builder</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../interface/index.html#trieste.acquisition.interface.AcquisitionFunctionBuilder" title="trieste.acquisition.interface.AcquisitionFunctionBuilder"><span class="pre">trieste.acquisition.interface.AcquisitionFunctionBuilder</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.models.interfaces.ProbabilisticModelType</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../interface/index.html#trieste.acquisition.interface.SingleModelAcquisitionBuilder" title="trieste.acquisition.interface.SingleModelAcquisitionBuilder"><span class="pre">trieste.acquisition.interface.SingleModelAcquisitionBuilder</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.models.interfaces.ProbabilisticModelType</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.acquisition.optimizer.AcquisitionOptimizer</span><span class="p"><span class="pre">[</span></span><span class="pre">SearchSpaceType</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_query_points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Bases: <a class="reference internal" href="#trieste.acquisition.rule.AcquisitionRule" title="trieste.acquisition.rule.AcquisitionRule"><code class="xref py py-obj docutils literal notranslate"><span class="pre">AcquisitionRule</span></code></a>[<a class="reference internal" href="../../types/index.html#trieste.types.State" title="trieste.types.State"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.types.State</span></code></a>[<code class="xref py py-obj docutils literal notranslate"><span class="pre">Optional</span></code>[<a class="reference internal" href="#trieste.acquisition.rule.AsynchronousRuleState" title="trieste.acquisition.rule.AsynchronousRuleState"><code class="xref py py-obj docutils literal notranslate"><span class="pre">AsynchronousRuleState</span></code></a>], <a class="reference internal" href="../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.types.TensorType</span></code></a>], <a class="reference internal" href="#trieste.acquisition.rule.SearchSpaceType" title="trieste.acquisition.rule.SearchSpaceType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SearchSpaceType</span></code></a>, <a class="reference internal" href="../../models/interfaces/index.html#trieste.models.interfaces.ProbabilisticModelType" title="trieste.models.interfaces.ProbabilisticModelType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.ProbabilisticModelType</span></code></a>]</p>
+<p>AsynchronousOptimization rule is designed for asynchronous BO scenarios.
+By asynchronous BO we understand a use case when multiple objective function
+can be launched in parallel and are expected to arrive at different times.
+Instead of waiting for the rest of observations to return, we want to immediately
+use acquisition function to launch a new observation and avoid wasting computational resources.
+See <span id="id1">[<a class="reference internal" href="../../../../bibliography.html#id20" title="Ahsan Alvi, Binxin Ru, Jan-Peter Calliess, Stephen Roberts, and Michael A Osborne. Asynchronous batch bayesian optimisation with improved local penalisation. In International Conference on Machine Learning. 2019.">ARC+19</a>]</span> or <span id="id2">[<a class="reference internal" href="../../../../bibliography.html#id29" title="Kirthevasan Kandasamy, Akshay Krishnamurthy, Jeff Schneider, and Barnabas Poczos. Parallelised bayesian optimisation via thompson sampling. In Amos Storkey and Fernando Perez-Cruz, editors, Proceedings of the Twenty-First International Conference on Artificial Intelligence and Statistics, volume 84 of Proceedings of Machine Learning Research, 133–142. PMLR, 2018. URL: https://proceedings.mlr.press/v84/kandasamy18a.html.">KKSP18</a>]</span> for more details.</p>
+<p>To make the best decision about next point to observe, acquisition function
+needs to be aware of currently running observations.
+We call such points “pending”, and consider them a part of acquisition state.
+We use <a class="reference internal" href="#trieste.acquisition.rule.AsynchronousRuleState" title="trieste.acquisition.rule.AsynchronousRuleState"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsynchronousRuleState</span></code></a> to store these points.</p>
+<p><cite>AsynchronousOptimization</cite> works with non-greedy batch acquisition functions.
+For example, it would work with
+<a class="reference internal" href="../index.html#trieste.acquisition.BatchMonteCarloExpectedImprovement" title="trieste.acquisition.BatchMonteCarloExpectedImprovement"><code class="xref py py-class docutils literal notranslate"><span class="pre">BatchMonteCarloExpectedImprovement</span></code></a>,
+but cannot be used with <a class="reference internal" href="../index.html#trieste.acquisition.ExpectedImprovement" title="trieste.acquisition.ExpectedImprovement"><code class="xref py py-class docutils literal notranslate"><span class="pre">ExpectedImprovement</span></code></a>.
+If there are P pending points and the batch of size B is requested,
+the acquisition function is used with batch size P+B.
+During optimization first P points are fixed to pending,
+and thus we optimize and return the last B points only.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>builder</strong> – Batch acquisition function builder. Defaults to
+<a class="reference internal" href="../index.html#trieste.acquisition.BatchMonteCarloExpectedImprovement" title="trieste.acquisition.BatchMonteCarloExpectedImprovement"><code class="xref py py-class docutils literal notranslate"><span class="pre">BatchMonteCarloExpectedImprovement</span></code></a> with 10 000 samples.</p></li>
+<li><p><strong>optimizer</strong> – The optimizer with which to optimize the acquisition function built by
+<code class="docutils literal notranslate"><span class="pre">builder</span></code>. This should <em>maximize</em> the acquisition function, and must be compatible
+with the global search space. Defaults to
+<a class="reference internal" href="../optimizer/index.html#trieste.acquisition.optimizer.automatic_optimizer_selector" title="trieste.acquisition.optimizer.automatic_optimizer_selector"><code class="xref py py-func docutils literal notranslate"><span class="pre">automatic_optimizer_selector()</span></code></a>.</p></li>
+<li><p><strong>num_query_points</strong> – The number of points to acquire.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.AsynchronousOptimization.acquire">
+<span class="sig-name descname"><span class="pre">acquire</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">search_space</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">SearchSpaceType</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">models</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping" title="(in Python v3.11)"><span class="pre">collections.abc.Mapping</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.Tag</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.models.interfaces.ProbabilisticModelType</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datasets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping" title="(in Python v3.11)"><span class="pre">collections.abc.Mapping</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.Tag</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">trieste.types.State</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#trieste.acquisition.rule.AsynchronousRuleState" title="trieste.acquisition.rule.AsynchronousRuleState"><span class="pre">AsynchronousRuleState</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#AsynchronousOptimization.acquire"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.AsynchronousOptimization.acquire" title="Permalink to this definition">#</a></dt>
+<dd><p>Constructs a function that, given <code class="docutils literal notranslate"><span class="pre">AsynchronousRuleState</span></code>,
+returns a new state object and points to evaluate.
+The state object contains currently known pending points,
+that is points that were requested for evaluation,
+but observation for which was not received yet.
+To keep them up to date, pending points are compared against the given dataset,
+and whatever points are in the dataset are deleted.</p>
+<p>Let’s suppose we have P pending points. To optimize the acquisition function
+we call it with batches of size P+1, where first P points are fixed to pending points.
+Optimization therefore happens over the last point only, which is returned.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>search_space</strong> – The local acquisition search space for <em>this step</em>.</p></li>
+<li><p><strong>models</strong> – The model of the known data. Uses the single key <cite>OBJECTIVE</cite>.</p></li>
+<li><p><strong>datasets</strong> – The known observer query points and observations.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A function that constructs the next acquisition state and the recommended query
+points from the previous acquisition state.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.AsynchronousGreedy">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">AsynchronousGreedy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">builder</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../interface/index.html#trieste.acquisition.interface.GreedyAcquisitionFunctionBuilder" title="trieste.acquisition.interface.GreedyAcquisitionFunctionBuilder"><span class="pre">trieste.acquisition.interface.GreedyAcquisitionFunctionBuilder</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.models.interfaces.ProbabilisticModelType</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../interface/index.html#trieste.acquisition.interface.SingleModelGreedyAcquisitionBuilder" title="trieste.acquisition.interface.SingleModelGreedyAcquisitionBuilder"><span class="pre">trieste.acquisition.interface.SingleModelGreedyAcquisitionBuilder</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.models.interfaces.ProbabilisticModelType</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.acquisition.optimizer.AcquisitionOptimizer</span><span class="p"><span class="pre">[</span></span><span class="pre">SearchSpaceType</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_query_points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#AsynchronousGreedy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.AsynchronousGreedy" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#trieste.acquisition.rule.AcquisitionRule" title="trieste.acquisition.rule.AcquisitionRule"><code class="xref py py-obj docutils literal notranslate"><span class="pre">AcquisitionRule</span></code></a>[<a class="reference internal" href="../../types/index.html#trieste.types.State" title="trieste.types.State"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.types.State</span></code></a>[<code class="xref py py-obj docutils literal notranslate"><span class="pre">Optional</span></code>[<a class="reference internal" href="#trieste.acquisition.rule.AsynchronousRuleState" title="trieste.acquisition.rule.AsynchronousRuleState"><code class="xref py py-obj docutils literal notranslate"><span class="pre">AsynchronousRuleState</span></code></a>], <a class="reference internal" href="../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.types.TensorType</span></code></a>], <a class="reference internal" href="#trieste.acquisition.rule.SearchSpaceType" title="trieste.acquisition.rule.SearchSpaceType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SearchSpaceType</span></code></a>, <a class="reference internal" href="../../models/interfaces/index.html#trieste.models.interfaces.ProbabilisticModelType" title="trieste.models.interfaces.ProbabilisticModelType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.ProbabilisticModelType</span></code></a>]</p>
+<p>AsynchronousGreedy rule, as name suggests,
+is designed for asynchronous BO scenarios. To see what we understand by
+asynchronous BO, see documentation for <code class="xref py py-class docutils literal notranslate"><span class="pre">AsynchronousOptimization</span></code>.</p>
+<p>AsynchronousGreedy rule works with greedy batch acquisition functions
+and performs B steps of a greedy batch collection process,
+where B is the requested batch size.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>builder</strong> – Acquisition function builder. Only greedy batch approaches are supported,
+because they can be told what points are pending.</p></li>
+<li><p><strong>optimizer</strong> – The optimizer with which to optimize the acquisition function built by
+<code class="docutils literal notranslate"><span class="pre">builder</span></code>. This should <em>maximize</em> the acquisition function, and must be compatible
+with the global search space. Defaults to
+<a class="reference internal" href="../optimizer/index.html#trieste.acquisition.optimizer.automatic_optimizer_selector" title="trieste.acquisition.optimizer.automatic_optimizer_selector"><code class="xref py py-func docutils literal notranslate"><span class="pre">automatic_optimizer_selector()</span></code></a>.</p></li>
+<li><p><strong>num_query_points</strong> – The number of points to acquire.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.AsynchronousGreedy.acquire">
+<span class="sig-name descname"><span class="pre">acquire</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">search_space</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">SearchSpaceType</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">models</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping" title="(in Python v3.11)"><span class="pre">collections.abc.Mapping</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.Tag</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.models.interfaces.ProbabilisticModelType</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datasets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping" title="(in Python v3.11)"><span class="pre">collections.abc.Mapping</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.Tag</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">trieste.types.State</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#trieste.acquisition.rule.AsynchronousRuleState" title="trieste.acquisition.rule.AsynchronousRuleState"><span class="pre">AsynchronousRuleState</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#AsynchronousGreedy.acquire"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.AsynchronousGreedy.acquire" title="Permalink to this definition">#</a></dt>
+<dd><p>Constructs a function that, given <code class="docutils literal notranslate"><span class="pre">AsynchronousRuleState</span></code>,
+returns a new state object and points to evaluate.
+The state object contains currently known pending points,
+that is points that were requested for evaluation,
+but observation for which was not received yet.
+To keep them up to date, pending points are compared against the given dataset,
+and whatever points are in the dataset are deleted.
+Then the current batch is generated by calling the acquisition function,
+and all points in the batch are added to the known pending points.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>search_space</strong> – The local acquisition search space for <em>this step</em>.</p></li>
+<li><p><strong>models</strong> – The model of the known data. Uses the single key <cite>OBJECTIVE</cite>.</p></li>
+<li><p><strong>datasets</strong> – The known observer query points and observations.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A function that constructs the next acquisition state and the recommended query
+points from the previous acquisition state.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.RandomSampling">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">RandomSampling</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_query_points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#RandomSampling"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.RandomSampling" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#trieste.acquisition.rule.AcquisitionRule" title="trieste.acquisition.rule.AcquisitionRule"><code class="xref py py-obj docutils literal notranslate"><span class="pre">AcquisitionRule</span></code></a>[<a class="reference internal" href="../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.types.TensorType</span></code></a>, <a class="reference internal" href="../../space/index.html#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.space.SearchSpace</span></code></a>, <a class="reference internal" href="../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.ProbabilisticModel</span></code></a>]</p>
+<p>This class performs random search for choosing optimal points. It uses <code class="docutils literal notranslate"><span class="pre">sample</span></code> method
+from <a class="reference internal" href="../../space/index.html#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">SearchSpace</span></code></a> to take random samples from the search space that
+are used as optimal points. Hence, it does not use any acquisition function. This
+acquisition rule can be useful as a baseline for other acquisition functions of interest.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>num_query_points</strong> – The number of points to acquire. By default set to 1 point.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">num_query_points</span></code> is less or equal to 0.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.RandomSampling.acquire">
+<span class="sig-name descname"><span class="pre">acquire</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">search_space</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../space/index.html#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><span class="pre">trieste.space.SearchSpace</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">models</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping" title="(in Python v3.11)"><span class="pre">collections.abc.Mapping</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.Tag</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><span class="pre">trieste.models.ProbabilisticModel</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datasets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping" title="(in Python v3.11)"><span class="pre">collections.abc.Mapping</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.Tag</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">trieste.types.TensorType</span></span></span><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#RandomSampling.acquire"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.RandomSampling.acquire" title="Permalink to this definition">#</a></dt>
+<dd><p>Sample <code class="docutils literal notranslate"><span class="pre">num_query_points</span></code> (see <code class="xref py py-meth docutils literal notranslate"><span class="pre">__init__()</span></code>) points from the
+<code class="docutils literal notranslate"><span class="pre">search_space</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>search_space</strong> – The acquisition search space.</p></li>
+<li><p><strong>models</strong> – Unused.</p></li>
+<li><p><strong>datasets</strong> – Unused.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The <code class="docutils literal notranslate"><span class="pre">num_query_points</span></code> points to query.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.DiscreteThompsonSampling">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">DiscreteThompsonSampling</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_search_space_samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_query_points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">thompson_sampler</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">select_output</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">select_nth_output</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#DiscreteThompsonSampling"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.DiscreteThompsonSampling" title="Permalink to this definition">#</a></dt>
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">DiscreteThompsonSampling</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_search_space_samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_query_points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">thompson_sampler</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../sampler/index.html#trieste.acquisition.sampler.ThompsonSampler" title="trieste.acquisition.sampler.ThompsonSampler"><span class="pre">trieste.acquisition.sampler.ThompsonSampler</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.models.interfaces.ProbabilisticModelType</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">select_output</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">select_nth_output</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Bases: <a class="reference internal" href="#trieste.acquisition.rule.AcquisitionRule" title="trieste.acquisition.rule.AcquisitionRule"><code class="xref py py-obj docutils literal notranslate"><span class="pre">AcquisitionRule</span></code></a>[<a class="reference internal" href="../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.types.TensorType</span></code></a>, <a class="reference internal" href="../../space/index.html#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.space.SearchSpace</span></code></a>, <a class="reference internal" href="../../models/interfaces/index.html#trieste.models.interfaces.ProbabilisticModelType" title="trieste.models.interfaces.ProbabilisticModelType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.ProbabilisticModelType</span></code></a>]</p>
+<p>Implements Thompson sampling for choosing optimal points.</p>
+<p>This rule returns the minimizers of functions sampled from our model and evaluated across
+a discretization of the search space (containing <cite>N</cite> candidate points).</p>
+<p>The model is sampled either exactly (with an <span class="math notranslate nohighlight">\(O(N^3)\)</span> complexity), or sampled
+approximately through a random Fourier <cite>M</cite> feature decompisition
+(with an <span class="math notranslate nohighlight">\(O(\min(n^3,M^3))\)</span> complexity for a model trained on <cite>n</cite> points). The number
+<cite>M</cite> of Fourier features is specified when building the model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>num_search_space_samples</strong> – The number of points at which to sample the posterior.</p></li>
+<li><p><strong>num_query_points</strong> – The number of points to acquire.</p></li>
+<li><p><strong>thompson_sampler</strong> – Sampler to sample maximisers from the underlying model.</p></li>
+<li><p><strong>select_output</strong> – A method that returns the desired trajectory from a trajectory
+sampler with shape […, B], where B is a batch dimension. Defaults to the
+:func:~`trieste.acquisition.utils.select_nth_output` function with output dimension 0.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.DiscreteThompsonSampling.acquire">
+<span class="sig-name descname"><span class="pre">acquire</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">search_space</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../space/index.html#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><span class="pre">trieste.space.SearchSpace</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">models</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping" title="(in Python v3.11)"><span class="pre">collections.abc.Mapping</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.Tag</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.models.interfaces.ProbabilisticModelType</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datasets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping" title="(in Python v3.11)"><span class="pre">collections.abc.Mapping</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.Tag</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">trieste.types.TensorType</span></span></span><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#DiscreteThompsonSampling.acquire"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.DiscreteThompsonSampling.acquire" title="Permalink to this definition">#</a></dt>
+<dd><p>Sample <cite>num_search_space_samples</cite> (see <code class="xref py py-meth docutils literal notranslate"><span class="pre">__init__()</span></code>) points from the
+<code class="docutils literal notranslate"><span class="pre">search_space</span></code>. Of those points, return the <cite>num_query_points</cite> points at which
+random samples yield the <strong>minima</strong> of the model posterior.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>search_space</strong> – The local acquisition search space for <em>this step</em>.</p></li>
+<li><p><strong>models</strong> – The model of the known data. Uses the single key <cite>OBJECTIVE</cite>.</p></li>
+<li><p><strong>datasets</strong> – The known observer query points and observations.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The <code class="docutils literal notranslate"><span class="pre">num_query_points</span></code> points to query.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">models</span></code> do not contain the key <cite>OBJECTIVE</cite>, or it contains any
+other key.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.TrustRegion">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">TrustRegion</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rule</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">beta</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.7</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kappa</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0001</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#TrustRegion"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.TrustRegion" title="Permalink to this definition">#</a></dt>
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">TrustRegion</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rule</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#trieste.acquisition.rule.AcquisitionRule" title="trieste.acquisition.rule.AcquisitionRule"><span class="pre">AcquisitionRule</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../../space/index.html#trieste.space.Box" title="trieste.space.Box"><span class="pre">trieste.space.Box</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.models.interfaces.ProbabilisticModelType</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">beta</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.7</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kappa</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0001</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Bases: <a class="reference internal" href="#trieste.acquisition.rule.AcquisitionRule" title="trieste.acquisition.rule.AcquisitionRule"><code class="xref py py-obj docutils literal notranslate"><span class="pre">AcquisitionRule</span></code></a>[<a class="reference internal" href="../../types/index.html#trieste.types.State" title="trieste.types.State"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.types.State</span></code></a>[<code class="xref py py-obj docutils literal notranslate"><span class="pre">Optional</span></code>[<a class="reference internal" href="#trieste.acquisition.rule.TrustRegion" title="trieste.acquisition.rule.TrustRegion"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TrustRegion</span></code></a>], <a class="reference internal" href="../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.types.TensorType</span></code></a>], <a class="reference internal" href="../../space/index.html#trieste.space.Box" title="trieste.space.Box"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.space.Box</span></code></a>, <a class="reference internal" href="../../models/interfaces/index.html#trieste.models.interfaces.ProbabilisticModelType" title="trieste.models.interfaces.ProbabilisticModelType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.ProbabilisticModelType</span></code></a>]</p>
+<p>Implements the <em>trust region</em> acquisition algorithm.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>rule</strong> – The acquisition rule that defines how to search for a new query point in a
+given search space. Defaults to <a class="reference internal" href="#trieste.acquisition.rule.EfficientGlobalOptimization" title="trieste.acquisition.rule.EfficientGlobalOptimization"><code class="xref py py-class docutils literal notranslate"><span class="pre">EfficientGlobalOptimization</span></code></a> with default
+arguments.</p></li>
+<li><p><strong>beta</strong> – The inverse of the trust region contraction factor.</p></li>
+<li><p><strong>kappa</strong> – Scales the threshold for the minimal improvement required for a step to be
+considered a success.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.TrustRegion.State">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">State</span></span><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#TrustRegion.State"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.TrustRegion.State" title="Permalink to this definition">#</a></dt>
+<dd><p>The acquisition state for the <a class="reference internal" href="#trieste.acquisition.rule.TrustRegion" title="trieste.acquisition.rule.TrustRegion"><code class="xref py py-class docutils literal notranslate"><span class="pre">TrustRegion</span></code></a> acquisition rule.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.TrustRegion.State.acquisition_space">
+<span class="sig-name descname"><span class="pre">acquisition_space</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="../../space/index.html#trieste.space.Box" title="trieste.space.Box"><span class="pre">trieste.space.Box</span></a></em><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#TrustRegion.State.acquisition_space"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.TrustRegion.State.acquisition_space" title="Permalink to this definition">#</a></dt>
+<dd><p>The search space.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.TrustRegion.State.eps">
+<span class="sig-name descname"><span class="pre">eps</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span></em><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#TrustRegion.State.eps"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.TrustRegion.State.eps" title="Permalink to this definition">#</a></dt>
+<dd><p>The (maximum) vector from the current best point to each bound of the acquisition space.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.TrustRegion.State.y_min">
+<span class="sig-name descname"><span class="pre">y_min</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span></em><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#TrustRegion.State.y_min"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.TrustRegion.State.y_min" title="Permalink to this definition">#</a></dt>
+<dd><p>The minimum observed value.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.TrustRegion.State.is_global">
+<span class="sig-name descname"><span class="pre">is_global</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span></em><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#TrustRegion.State.is_global"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.TrustRegion.State.is_global" title="Permalink to this definition">#</a></dt>
+<dd><p><cite>True</cite> if the search space was global, else <cite>False</cite> if it was local. May be a scalar boolean
+<cite>TensorType</cite> instead of a <cite>bool</cite>.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.TrustRegion.acquire">
+<span class="sig-name descname"><span class="pre">acquire</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">search_space</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../space/index.html#trieste.space.Box" title="trieste.space.Box"><span class="pre">trieste.space.Box</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">models</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping" title="(in Python v3.11)"><span class="pre">collections.abc.Mapping</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.Tag</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.models.interfaces.ProbabilisticModelType</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datasets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping" title="(in Python v3.11)"><span class="pre">collections.abc.Mapping</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.Tag</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">trieste.types.State</span><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.State</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#TrustRegion.acquire"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.TrustRegion.acquire" title="Permalink to this definition">#</a></dt>
+<dd><p>Construct a local search space from <code class="docutils literal notranslate"><span class="pre">search_space</span></code> according the trust region algorithm,
+and use that with the <code class="docutils literal notranslate"><span class="pre">rule</span></code> specified at <code class="xref py py-meth docutils literal notranslate"><span class="pre">__init__()</span></code> to find new
+query points. Return a function that constructs these points given a previous trust region
+state.</p>
+<p>If no <code class="docutils literal notranslate"><span class="pre">state</span></code> is specified (it is <cite>None</cite>), <code class="docutils literal notranslate"><span class="pre">search_space</span></code> is used as the search space
+for this step.</p>
+<p>If a <code class="docutils literal notranslate"><span class="pre">state</span></code> is specified, and the new optimum improves over the previous optimum
+by some threshold (that scales linearly with <code class="docutils literal notranslate"><span class="pre">kappa</span></code>), the previous acquisition is
+considered successful.</p>
+<p>If the previous acquisition was successful, <code class="docutils literal notranslate"><span class="pre">search_space</span></code> is used as the new
+search space. If the previous step was unsuccessful, the search space is changed to the
+trust region if it was global, and vice versa.</p>
+<p>If the previous acquisition was over the trust region, the size of the trust region is
+modified. If the previous acquisition was successful, the size is increased by a factor
+<code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">/</span> <span class="pre">beta</span></code>. Conversely, if it was unsuccessful, the size is reduced by the factor
+<code class="docutils literal notranslate"><span class="pre">beta</span></code>.</p>
+<p><strong>Note:</strong> The acquisition search space will never extend beyond the boundary of the
+<code class="docutils literal notranslate"><span class="pre">search_space</span></code>. For a local search, the actual search space will be the
+intersection of the trust region and <code class="docutils literal notranslate"><span class="pre">search_space</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>search_space</strong> – The local acquisition search space for <em>this step</em>.</p></li>
+<li><p><strong>models</strong> – The model for each tag.</p></li>
+<li><p><strong>datasets</strong> – The known observer query points and observations. Uses the data for key
+<cite>OBJECTIVE</cite> to calculate the new trust region.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A function that constructs the next acquisition state and the recommended query
+points from the previous acquisition state.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#KeyError" title="(in Python v3.11)"><strong>KeyError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">datasets</span></code> does not contain the key <cite>OBJECTIVE</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.TURBO">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">TURBO</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">search_space</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../space/index.html#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><span class="pre">trieste.space.SearchSpace</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_trust_regions</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rule</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#trieste.acquisition.rule.AcquisitionRule" title="trieste.acquisition.rule.AcquisitionRule"><span class="pre">AcquisitionRule</span></a><span class="p"><span class="pre">[</span></span><span class="pre">ResultType</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../../space/index.html#trieste.space.Box" title="trieste.space.Box"><span class="pre">trieste.space.Box</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../../models/interfaces/index.html#trieste.models.interfaces.TrainableSupportsGetKernel" title="trieste.models.interfaces.TrainableSupportsGetKernel"><span class="pre">trieste.models.interfaces.TrainableSupportsGetKernel</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">L_min</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">L_init</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">L_max</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">success_tolerance</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">failure_tolerance</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">local_models</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping" title="(in Python v3.11)"><span class="pre">collections.abc.Mapping</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.Tag</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../../models/interfaces/index.html#trieste.models.interfaces.TrainableSupportsGetKernel" title="trieste.models.interfaces.TrainableSupportsGetKernel"><span class="pre">trieste.models.interfaces.TrainableSupportsGetKernel</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#TURBO"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.TURBO" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#trieste.acquisition.rule.AcquisitionRule" title="trieste.acquisition.rule.AcquisitionRule"><code class="xref py py-obj docutils literal notranslate"><span class="pre">AcquisitionRule</span></code></a>[<a class="reference internal" href="../../types/index.html#trieste.types.State" title="trieste.types.State"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.types.State</span></code></a>[<code class="xref py py-obj docutils literal notranslate"><span class="pre">Optional</span></code>[<a class="reference internal" href="#trieste.acquisition.rule.TURBO" title="trieste.acquisition.rule.TURBO"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TURBO</span></code></a>], <a class="reference internal" href="../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.types.TensorType</span></code></a>], <a class="reference internal" href="../../space/index.html#trieste.space.Box" title="trieste.space.Box"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.space.Box</span></code></a>, <a class="reference internal" href="../../models/interfaces/index.html#trieste.models.interfaces.TrainableSupportsGetKernel" title="trieste.models.interfaces.TrainableSupportsGetKernel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.TrainableSupportsGetKernel</span></code></a>]</p>
+<p>Implements the TURBO algorithm as detailed in <span id="id3">[<a class="reference internal" href="../../../../bibliography.html#id38" title="David Eriksson, Michael Pearce, Jacob Gardner, Ryan D Turner, and Matthias Poloczek. Scalable global optimization via local Bayesian optimization. In Advances in Neural Information Processing Systems, 5496–5507. 2019. URL: http://papers.nips.cc/paper/8788-scalable-global-optimization-via-local-bayesian-optimization.pdf.">EPG+19</a>]</span>.</p>
+<p>Note that the optional parameters are set by a heuristic if not given by the user.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>search_space</strong> – The search space.</p></li>
+<li><p><strong>num_trust_regions</strong> – Number of trust regions controlled by TURBO</p></li>
+<li><p><strong>rule</strong> – rule used to select points from within the trust region, using the local model.</p></li>
+<li><p><strong>L_min</strong> – Minimum allowed length of the trust region.</p></li>
+<li><p><strong>L_init</strong> – Initial length of the trust region.</p></li>
+<li><p><strong>L_max</strong> – Maximum allowed length of the trust region.</p></li>
+<li><p><strong>success_tolerance</strong> – Number of consecutive successes before changing region size.</p></li>
+<li><p><strong>tolerance</strong> (<em>failure</em>) – Number of consecutive failures before changing region size.</p></li>
+<li><p><strong>local_models</strong> – Optional model to act as the local model. This will be refit using
+the data from each trust region. If no local_models are provided then we just
+copy the global model.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.TURBO.State">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">State</span></span><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#TURBO.State"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.TURBO.State" title="Permalink to this definition">#</a></dt>
+<dd><p>The acquisition state for the <a class="reference internal" href="#trieste.acquisition.rule.TURBO" title="trieste.acquisition.rule.TURBO"><code class="xref py py-class docutils literal notranslate"><span class="pre">TURBO</span></code></a> acquisition rule.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.TURBO.State.acquisition_space">
+<span class="sig-name descname"><span class="pre">acquisition_space</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="../../space/index.html#trieste.space.Box" title="trieste.space.Box"><span class="pre">trieste.space.Box</span></a></em><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#TURBO.State.acquisition_space"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.TURBO.State.acquisition_space" title="Permalink to this definition">#</a></dt>
+<dd><p>The search space.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.TURBO.State.L">
+<span class="sig-name descname"><span class="pre">L</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a></em><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#TURBO.State.L"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.TURBO.State.L" title="Permalink to this definition">#</a></dt>
+<dd><p>Length of the trust region (before standardizing by model lengthscales)</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.TURBO.State.failure_counter">
+<span class="sig-name descname"><span class="pre">failure_counter</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></em><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#TURBO.State.failure_counter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.TURBO.State.failure_counter" title="Permalink to this definition">#</a></dt>
+<dd><p>Number of consecutive failures (reset if we see a success).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.TURBO.State.success_counter">
+<span class="sig-name descname"><span class="pre">success_counter</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></em><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#TURBO.State.success_counter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.TURBO.State.success_counter" title="Permalink to this definition">#</a></dt>
+<dd><p>Number of consecutive successes (reset if we see a failure).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.TURBO.State.y_min">
+<span class="sig-name descname"><span class="pre">y_min</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span></em><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#TURBO.State.y_min"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.TURBO.State.y_min" title="Permalink to this definition">#</a></dt>
+<dd><p>The minimum observed value.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.TURBO.acquire">
+<span class="sig-name descname"><span class="pre">acquire</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">search_space</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../space/index.html#trieste.space.Box" title="trieste.space.Box"><span class="pre">trieste.space.Box</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">models</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping" title="(in Python v3.11)"><span class="pre">collections.abc.Mapping</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.Tag</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../../models/interfaces/index.html#trieste.models.interfaces.TrainableSupportsGetKernel" title="trieste.models.interfaces.TrainableSupportsGetKernel"><span class="pre">trieste.models.interfaces.TrainableSupportsGetKernel</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datasets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping" title="(in Python v3.11)"><span class="pre">collections.abc.Mapping</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.Tag</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">trieste.types.State</span><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.State</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#TURBO.acquire"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.TURBO.acquire" title="Permalink to this definition">#</a></dt>
+<dd><p>Construct a local search space from <code class="docutils literal notranslate"><span class="pre">search_space</span></code> according the TURBO algorithm,
+and use that with the <code class="docutils literal notranslate"><span class="pre">rule</span></code> specified at <code class="xref py py-meth docutils literal notranslate"><span class="pre">__init__()</span></code> to find new
+query points. Return a function that constructs these points given a previous trust region
+state.</p>
+<p>If no <code class="docutils literal notranslate"><span class="pre">state</span></code> is specified (it is <cite>None</cite>), then we build the initial trust region.</p>
+<p>If a <code class="docutils literal notranslate"><span class="pre">state</span></code> is specified, and the new optimum improves over the previous optimum,
+the previous acquisition is considered successful.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">success_tolerance</span></code> previous consecutive acquisitions were successful then the search
+space is made larger. If  <code class="docutils literal notranslate"><span class="pre">failure_tolerance</span></code> consecutive acquisitions were unsuccessful
+then the search space is shrunk. If neither condition is triggered then the search space
+remains the same.</p>
+<p><strong>Note:</strong> The acquisition search space will never extend beyond the boundary of the
+<code class="docutils literal notranslate"><span class="pre">search_space</span></code>. For a local search, the actual search space will be the
+intersection of the trust region and <code class="docutils literal notranslate"><span class="pre">search_space</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>search_space</strong> – The local acquisition search space for <em>this step</em>.</p></li>
+<li><p><strong>models</strong> – The model for each tag.</p></li>
+<li><p><strong>datasets</strong> – The known observer query points and observations. Uses the data for key
+<cite>OBJECTIVE</cite> to calculate the new trust region.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A function that constructs the next acquisition state and the recommended query
+points from the previous acquisition state.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#KeyError" title="(in Python v3.11)"><strong>KeyError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">datasets</span></code> does not contain the key <cite>OBJECTIVE</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.BatchHypervolumeSharpeRatioIndicator">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">BatchHypervolumeSharpeRatioIndicator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_query_points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ga_population_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">500</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ga_n_generations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">200</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noisy_observations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#BatchHypervolumeSharpeRatioIndicator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.BatchHypervolumeSharpeRatioIndicator" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#trieste.acquisition.rule.AcquisitionRule" title="trieste.acquisition.rule.AcquisitionRule"><code class="xref py py-obj docutils literal notranslate"><span class="pre">AcquisitionRule</span></code></a>[<a class="reference internal" href="../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.types.TensorType</span></code></a>, <a class="reference internal" href="../../space/index.html#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.space.SearchSpace</span></code></a>, <a class="reference internal" href="../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.ProbabilisticModel</span></code></a>]</p>
+<p>Implements the Batch Hypervolume Sharpe-ratio indicator acquisition
+rule, designed for large batches, introduced by Binois et al, 2021.
+See <span id="id4">[<a class="reference internal" href="../../../../bibliography.html#id52" title="Mickael Binois, Nicholson Collier, and Jonathan Ozik. A portfolio approach to massively parallel bayesian optimization. arXiv preprint arXiv:2110.09334, 2021.">BCO21</a>]</span> for details.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>num_query_points</strong> – The number of points in a batch. Defaults to 5.</p></li>
+<li><p><strong>ga_population_size</strong> – The population size used in the genetic algorithm
+that finds points on the Pareto front. Defaults to 500.</p></li>
+<li><p><strong>ga_n_generations</strong> – The number of genenrations to run in the genetic
+algorithm. Defaults to 200.</p></li>
+<li><p><strong>filter_threshold</strong> – The probability of improvement below which to exlude
+points from the Sharpe ratio optimisation. Defaults to 0.1.</p></li>
+<li><p><strong>noisy_observations</strong> – Whether the observations have noise. Defaults to True.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.BatchHypervolumeSharpeRatioIndicator._find_non_dominated_points">
+<span class="sig-name descname"><span class="pre">_find_non_dominated_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><span class="pre">trieste.models.ProbabilisticModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_space</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">SearchSpaceType</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.11)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#BatchHypervolumeSharpeRatioIndicator._find_non_dominated_points"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.BatchHypervolumeSharpeRatioIndicator._find_non_dominated_points" title="Permalink to this definition">#</a></dt>
+<dd><p>Uses NSGA-II to find high-quality non-dominated points</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.acquisition.rule.BatchHypervolumeSharpeRatioIndicator.acquire">
+<span class="sig-name descname"><span class="pre">acquire</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">search_space</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../space/index.html#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><span class="pre">trieste.space.SearchSpace</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">models</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping" title="(in Python v3.11)"><span class="pre">collections.abc.Mapping</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.Tag</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><span class="pre">trieste.models.ProbabilisticModel</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datasets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping" title="(in Python v3.11)"><span class="pre">collections.abc.Mapping</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.Tag</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">trieste.types.TensorType</span></span></span><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#BatchHypervolumeSharpeRatioIndicator.acquire"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule.BatchHypervolumeSharpeRatioIndicator.acquire" title="Permalink to this definition">#</a></dt>
+<dd><p>Acquire a batch of points to observe based on the batch hypervolume
+Sharpe ratio indicator method.
+This method uses NSGA-II to create a Pareto set of the mean and standard
+deviation of the posterior of the probabilistic model, and then selects
+points to observe based on maximising the Sharpe ratio.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>search_space</strong> – The local acquisition search space for <em>this step</em>.</p></li>
+<li><p><strong>models</strong> – The model for each tag.</p></li>
+<li><p><strong>datasets</strong> – The known observer query points and observations.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The batch of points to query.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.acquisition.rule._MeanStdTradeoff">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">_MeanStdTradeoff</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">probabilistic_model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><span class="pre">trieste.models.ProbabilisticModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_space</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">SearchSpaceType</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/trieste/acquisition/rule.html#_MeanStdTradeoff"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.rule._MeanStdTradeoff" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">pymoo.core.problem.Problem</span></code></p>
+<p>Inner class that formulates the mean/std optimisation problem as a
+pymoo problem</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>probabilistic_model</strong> – The probabilistic model to find optimal mean/stds from</p></li>
+<li><p><strong>search_space</strong> – The search space for the optimisation</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+  <div class="sidebar-secondary-item">
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-contents">Module Contents</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.ResultType"><code class="docutils literal notranslate"><span class="pre">ResultType</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.SearchSpaceType"><code class="docutils literal notranslate"><span class="pre">SearchSpaceType</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.AcquisitionRule"><code class="docutils literal notranslate"><span class="pre">AcquisitionRule</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.AcquisitionRule.acquire"><code class="docutils literal notranslate"><span class="pre">AcquisitionRule.acquire()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.AcquisitionRule.acquire_single"><code class="docutils literal notranslate"><span class="pre">AcquisitionRule.acquire_single()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.EfficientGlobalOptimization"><code class="docutils literal notranslate"><span class="pre">EfficientGlobalOptimization</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.EfficientGlobalOptimization.acquisition_function"><code class="docutils literal notranslate"><span class="pre">EfficientGlobalOptimization.acquisition_function</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.EfficientGlobalOptimization.acquire"><code class="docutils literal notranslate"><span class="pre">EfficientGlobalOptimization.acquire()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.AsynchronousRuleState"><code class="docutils literal notranslate"><span class="pre">AsynchronousRuleState</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.AsynchronousRuleState.has_pending_points"><code class="docutils literal notranslate"><span class="pre">AsynchronousRuleState.has_pending_points</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.AsynchronousRuleState.remove_points"><code class="docutils literal notranslate"><span class="pre">AsynchronousRuleState.remove_points()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.AsynchronousRuleState.add_pending_points"><code class="docutils literal notranslate"><span class="pre">AsynchronousRuleState.add_pending_points()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.AsynchronousOptimization"><code class="docutils literal notranslate"><span class="pre">AsynchronousOptimization</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.AsynchronousOptimization.acquire"><code class="docutils literal notranslate"><span class="pre">AsynchronousOptimization.acquire()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.AsynchronousGreedy"><code class="docutils literal notranslate"><span class="pre">AsynchronousGreedy</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.AsynchronousGreedy.acquire"><code class="docutils literal notranslate"><span class="pre">AsynchronousGreedy.acquire()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.RandomSampling"><code class="docutils literal notranslate"><span class="pre">RandomSampling</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.RandomSampling.acquire"><code class="docutils literal notranslate"><span class="pre">RandomSampling.acquire()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.DiscreteThompsonSampling"><code class="docutils literal notranslate"><span class="pre">DiscreteThompsonSampling</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.DiscreteThompsonSampling.acquire"><code class="docutils literal notranslate"><span class="pre">DiscreteThompsonSampling.acquire()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.TrustRegion"><code class="docutils literal notranslate"><span class="pre">TrustRegion</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.TrustRegion.State"><code class="docutils literal notranslate"><span class="pre">TrustRegion.State</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.TrustRegion.State.acquisition_space"><code class="docutils literal notranslate"><span class="pre">TrustRegion.State.acquisition_space</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.TrustRegion.State.eps"><code class="docutils literal notranslate"><span class="pre">TrustRegion.State.eps</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.TrustRegion.State.y_min"><code class="docutils literal notranslate"><span class="pre">TrustRegion.State.y_min</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.TrustRegion.State.is_global"><code class="docutils literal notranslate"><span class="pre">TrustRegion.State.is_global</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.TrustRegion.acquire"><code class="docutils literal notranslate"><span class="pre">TrustRegion.acquire()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.TURBO"><code class="docutils literal notranslate"><span class="pre">TURBO</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.TURBO.State"><code class="docutils literal notranslate"><span class="pre">TURBO.State</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.TURBO.State.acquisition_space"><code class="docutils literal notranslate"><span class="pre">TURBO.State.acquisition_space</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.TURBO.State.L"><code class="docutils literal notranslate"><span class="pre">TURBO.State.L</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.TURBO.State.failure_counter"><code class="docutils literal notranslate"><span class="pre">TURBO.State.failure_counter</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.TURBO.State.success_counter"><code class="docutils literal notranslate"><span class="pre">TURBO.State.success_counter</span></code></a></li>
+<li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.TURBO.State.y_min"><code class="docutils literal notranslate"><span class="pre">TURBO.State.y_min</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.TURBO.acquire"><code class="docutils literal notranslate"><span class="pre">TURBO.acquire()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.BatchHypervolumeSharpeRatioIndicator"><code class="docutils literal notranslate"><span class="pre">BatchHypervolumeSharpeRatioIndicator</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.BatchHypervolumeSharpeRatioIndicator._find_non_dominated_points"><code class="docutils literal notranslate"><span class="pre">BatchHypervolumeSharpeRatioIndicator._find_non_dominated_points()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule.BatchHypervolumeSharpeRatioIndicator.acquire"><code class="docutils literal notranslate"><span class="pre">BatchHypervolumeSharpeRatioIndicator.acquire()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.rule._MeanStdTradeoff"><code class="docutils literal notranslate"><span class="pre">_MeanStdTradeoff</span></code></a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52"></script>
+<script src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+  <p class="copyright">
+    
+      © Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.0.1.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item"><p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.13.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

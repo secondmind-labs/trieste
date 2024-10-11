@@ -1,0 +1,42 @@
+:py:mod:`trieste.models.utils`
+==============================
+
+.. py:module:: trieste.models.utils
+
+.. autoapi-nested-parse::
+
+   This module contains auxiliary objects and functions that are used by multiple model types.
+
+
+
+Module Contents
+---------------
+
+.. py:function:: write_summary_data_based_metrics(dataset: trieste.data.Dataset, model: trieste.models.interfaces.ProbabilisticModel, prefix: str = '') -> None
+
+   Logging utility for writing TensorBoard summary of various metrics for model diagnostics.
+
+   :param dataset: The dataset to use for computing the metrics. All available data in the
+       dataset will be used.
+   :param model: The model to produce metrics for.
+   :param prefix: The prefix to add to "accuracy" category of model summaries.
+
+
+.. py:function:: write_summary_kernel_parameters(kernel: gpflow.kernels.Kernel, prefix: str = '') -> None
+
+   Logging utility for writing TensorBoard summary of kernel parameters. Provides useful
+   diagnostics for models with a GPflow kernel. Only trainable parameters are logged.
+
+   :param kernel: The kernel to use for computing the metrics.
+   :param prefix: The prefix to add to "kernel" category of model summaries.
+
+
+.. py:function:: write_summary_likelihood_parameters(likelihood: gpflow.likelihoods.Likelihood, prefix: str = '') -> None
+
+   Logging utility for writing TensorBoard summary of likelihood parameters. Provides useful
+   diagnostics for models with a GPflow likelihood. Only trainable parameters are logged.
+
+   :param likelihood: The likelihood to use for computing the metrics.
+   :param prefix: The prefix to add to "likelihood" category of model summaries.
+
+

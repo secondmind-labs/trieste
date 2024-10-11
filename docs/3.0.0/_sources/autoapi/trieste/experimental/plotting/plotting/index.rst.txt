@@ -1,0 +1,209 @@
+:orphan:
+
+:py:mod:`trieste.experimental.plotting.plotting`
+================================================
+
+.. py:module:: trieste.experimental.plotting.plotting
+
+
+Module Contents
+---------------
+
+.. py:function:: create_grid(mins: trieste.types.TensorType, maxs: trieste.types.TensorType, grid_density: int = 30) -> tuple[trieste.types.TensorType, trieste.types.TensorType, trieste.types.TensorType]
+
+   Creates a regular 2D grid of size `grid_density^2` between mins and maxs.
+
+   :param mins: list of 2 lower bounds
+   :param maxs: list of 2 upper bounds
+   :param grid_density: scalar
+   :return: Xplot [grid_density**2, 2], xx, yy from meshgrid for the specific formatting of
+       contour / surface plots
+
+
+.. py:function:: plot_surface(xx: trieste.types.TensorType, yy: trieste.types.TensorType, f: trieste.types.TensorType, ax: matplotlib.axes.Axes, contour: bool = False, fill: bool = False, alpha: float = 1.0) -> matplotlib.contour.ContourSet | matplotlib.collections.Collection
+
+   Adds either a contour or a surface to a given ax.
+
+   :param xx: input 1, from meshgrid
+   :param yy: input2, from meshgrid
+   :param f: output, from meshgrid
+   :param ax: plt axes object
+   :param contour: Boolean
+   :param fill: filled contour
+   :param alpha: transparency
+   :return: generated contour or surface
+
+
+.. py:function:: plot_function_2d(obj_func: Callable[[trieste.types.TensorType], trieste.types.TensorType], mins: trieste.types.TensorType, maxs: trieste.types.TensorType, grid_density: int = 100, contour: bool = False, log: bool = False, title: Optional[Sequence[str]] = None, xlabel: Optional[str] = None, ylabel: Optional[str] = None, figsize: Optional[tuple[float, float]] = (8, 6), colorbar: bool = False, alpha: float = 1.0, fill: bool = False) -> tuple[matplotlib.figure.Figure, matplotlib.axes.Axes]
+
+   2D/3D plot of an obj_func for a grid of size grid_density**2 between mins and maxs
+
+   :param obj_func: a function that returns a n-array given a [n, d] array
+   :param mins: 2 lower bounds
+   :param maxs: 2 upper bounds
+   :param grid_density: positive integer for the grid size
+   :param contour: Boolean. If False, a 3d plot is produced
+   :param log: Boolean. If True, the log transformation (log(f - min(f) + 0.1)) is applied
+   :param title: optional titles
+   :param xlabel: optional xlabel
+   :param ylabel: optional ylabel
+   :param figsize: optional figsize
+   :param colorbar: whether to use colorbar
+   :param alpha: transparency
+   :param fill: filled contour
+   :return: figure and axes
+
+
+.. py:function:: plot_acq_function_2d(acq_func: trieste.acquisition.AcquisitionFunction, mins: trieste.types.TensorType, maxs: trieste.types.TensorType, grid_density: int = 100, contour: bool = False, log: bool = False, title: Optional[Sequence[str]] = None, xlabel: Optional[str] = None, ylabel: Optional[str] = None, figsize: Optional[tuple[float, float]] = (8, 6), colorbar: bool = False, alpha: float = 1.0, fill: bool = False) -> tuple[matplotlib.figure.Figure, matplotlib.axes.Axes]
+
+   Wrapper to produce a 2D/3D plot of an acq_func for a grid of size grid_density**2 between
+   mins and maxs.
+
+   :param acq_func: a function that returns a n-array given a [n, d] array
+   :param mins: 2 lower bounds
+   :param maxs: 2 upper bounds
+   :param grid_density: positive integer for the grid size
+   :param contour: Boolean. If False, a 3d plot is produced
+   :param log: Boolean. If True, the log transformation (log(f - min(f) + 0.1)) is applied
+   :param title: optional titles
+   :param xlabel: optional xlabel
+   :param ylabel: optional ylabel
+   :param figsize: optional figsize
+   :param colorbar: whether to use colorbar
+   :param alpha: transparency
+   :param fill: filled contour
+   :return: figure and axes
+
+
+.. py:function:: format_point_markers(num_pts: int, num_init: Optional[Union[int, trieste.types.TensorType]] = None, idx_best: Optional[trieste.types.TensorType] = None, mask_fail: Optional[trieste.types.TensorType] = None, m_init: str = 'x', m_add: str = 'o', c_pass: str = 'tab:green', c_fail: Union[str, List[str]] = 'tab:red', c_best: str = 'tab:purple') -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+   Prepares point marker styles according to some BO factors.
+
+   :param num_pts: total number of BO points
+   :param num_init: initial number of BO points; can also be a mask
+   :param idx_best: index of the best BO point(s)
+   :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)
+   :param m_init: marker for the initial BO points
+   :param m_add: marker for the other BO points
+   :param c_pass: color for the regular BO points
+   :param c_fail: color for the failed BO points
+   :param c_best: color for the best BO points
+   :return: 2 string vectors col_pts, mark_pts containing marker styles and colors
+
+
+.. py:function:: plot_bo_points(pts: trieste.types.TensorType, ax: matplotlib.axes.Axes, num_init: Optional[Union[int, trieste.types.TensorType]] = None, idx_best: Optional[int] = None, mask_fail: Optional[trieste.types.TensorType] = None, obs_values: Optional[trieste.types.TensorType] = None, m_init: str = 'x', m_add: str = 'o', c_pass: str = 'tab:green', c_fail: Union[str, List[str]] = 'tab:red', c_best: str = 'tab:purple') -> None
+
+   Adds scatter points to an existing subfigure. Markers and colors are chosen according to
+   BO factors.
+
+   :param pts: [N, 2] x inputs
+   :param ax: a plt axes object
+   :param num_init: initial number of BO points; can also be a mask
+   :param idx_best: index of the best BO point
+   :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)
+   :param obs_values: optional [N] outputs (for 3d plots)
+   :param m_init: marker for the initial BO points
+   :param m_add: marker for the other BO points
+   :param c_pass: color for the regular BO points
+   :param c_fail: color for the failed BO points
+   :param c_best: color for the best BO points
+
+
+.. py:function:: plot_mobo_points_in_obj_space(obs_values: trieste.types.TensorType, num_init: Optional[int] = None, mask_fail: Optional[trieste.types.TensorType] = None, figsize: Optional[tuple[float, float]] = (8, 6), xlabel: str = 'Obj 1', ylabel: str = 'Obj 2', zlabel: str = 'Obj 3', title: Optional[str] = None, m_init: str = 'x', m_add: str = 'o', c_pass: str = 'tab:green', c_fail: str = 'tab:red', c_pareto: str = 'tab:purple', only_plot_pareto: bool = False) -> tuple[matplotlib.figure.Figure, matplotlib.axes.Axes]
+
+   Adds scatter points in objective space, used for multi-objective optimization (2 or 3
+   objectives only). Markers and colors are chosen according to BO factors.
+
+   :param obs_values: TF Tensor or numpy array of objective values, shape (N, 2) or (N, 3).
+   :param num_init: initial number of BO points
+   :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)
+   :param figsize: Size of the figure.
+   :param xlabel: Label of the X axis.
+   :param ylabel: Label of the Y axis.
+   :param zlabel: Label of the Z axis (in 3d case).
+   :param title: Title of the plot.
+   :param m_init: Marker for initial points.
+   :param m_add: Marker for the points observed during the BO loop.
+   :param c_pass: color for the regular BO points
+   :param c_fail: color for the failed BO points
+   :param c_pareto: color for the Pareto front points
+   :param only_plot_pareto: if set to `True`, only plot the pareto points. Default is `False`.
+   :return: figure and axes
+
+
+.. py:function:: plot_mobo_history(obs_values: trieste.types.TensorType, metric_func: Callable[[trieste.types.TensorType], trieste.types.TensorType], num_init: int, mask_fail: Optional[trieste.types.TensorType] = None, figsize: Optional[tuple[float, float]] = (8, 6)) -> tuple[matplotlib.figure.Figure, matplotlib.axes.Axes]
+
+   Draw the performance measure for multi-objective optimization.
+
+   :param obs_values: TF Tensor or numpy array of objective values
+   :param metric_func: a callable function calculate metric score
+   :param num_init: initial number of BO points
+   :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)
+   :param figsize: Size of the figure.
+   :return: figure and axes
+
+
+.. py:function:: plot_regret(obs_values: trieste.types.TensorType, ax: matplotlib.axes.Axes, num_init: int, show_obs: bool = True, mask_fail: Optional[trieste.types.TensorType] = None, idx_best: Optional[int] = None, m_init: str = 'x', m_add: str = 'o', c_pass: str = 'tab:green', c_fail: str = 'tab:red', c_best: str = 'tab:purple') -> None
+
+   Draws the simple regret with same colors / markers as the other plots.
+
+   :param obs_values: TF Tensor or numpy array of objective values
+   :param ax: a plt axes object
+   :param show_obs: show observations
+   :param num_init: initial number of BO points
+   :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)
+   :param idx_best: index of the best BO point
+   :param m_init: marker for the initial BO points
+   :param m_add: marker for the other BO points
+   :param c_pass: color for the regular BO points
+   :param c_fail: color for the failed BO points
+   :param c_best: color for the best BO points
+
+
+.. py:function:: plot_gp_2d(model: gpflow.models.GPModel, mins: trieste.types.TensorType, maxs: trieste.types.TensorType, grid_density: int = 100, contour: bool = False, xlabel: Optional[str] = None, ylabel: Optional[str] = None, figsize: Optional[tuple[float, float]] = (8, 6), predict_y: bool = False) -> tuple[matplotlib.figure.Figure, matplotlib.axes.Axes]
+
+   2D/3D plot of a gp model for a grid of size grid_density**2 between mins and maxs
+
+   :param model: a gpflow model
+   :param mins: 2 lower bounds
+   :param maxs: 2 upper bounds
+   :param grid_density: positive integer for the grid size
+   :param contour: Boolean. If False, a 3d plot is produced
+   :param xlabel: optional string
+   :param ylabel: optional string
+   :param figsize: optional figsize
+   :param predict_y: predict_y or predict_f
+   :return: figure and axes
+
+
+.. py:function:: plot_trust_region_history_2d(obj_func: Callable[[trieste.types.TensorType], trieste.types.TensorType], mins: trieste.types.TensorType, maxs: trieste.types.TensorType, history: trieste.bayesian_optimizer.Record[trieste.bayesian_optimizer.StateType, trieste.models.ProbabilisticModel] | trieste.bayesian_optimizer.FrozenRecord[trieste.bayesian_optimizer.StateType, trieste.models.ProbabilisticModel], num_query_points: Optional[int] = None, num_init: Optional[int] = None) -> tuple[Optional[matplotlib.figure.Figure], Optional[matplotlib.axes.Axes]]
+
+   Plot the contour of the objective function, query points and the trust regions for a particular
+   step of the optimization process.
+
+   :param obj_func: the objective function that returns a n-array given a [n, d] array
+   :param mins: search space 2D lower bounds
+   :param maxs: search space 2D upper bounds
+   :param history: the optimization history for a particular step of the optimization process
+   :param num_query_points: total number of query points in this step
+   :param num_init: initial number of BO points
+   :return: figure and axes
+
+
+.. py:function:: convert_figure_to_frame(fig: matplotlib.pyplot.Figure) -> trieste.types.TensorType
+
+   Converts a matplotlib figure to an array of pixels.
+
+   :param fig: a matplotlib figure
+   :return: an array of pixels - a frame
+
+
+.. py:function:: convert_frames_to_gif(frames: Sequence[trieste.types.TensorType], duration: int = 5000) -> io.BytesIO
+
+   Converts a sequence of frames (arrays of pixels) to a gif.
+
+   :param frames: sequence of frames
+   :param duration: duration of each frame in milliseconds
+   :return: gif file
+
+

@@ -1,0 +1,150 @@
+:py:mod:`trieste.ask_tell_optimization`
+=======================================
+
+.. py:module:: trieste.ask_tell_optimization
+
+.. autoapi-nested-parse::
+
+   This module contains the Ask/Tell API for users of Trieste who would like to
+   perform Bayesian Optimization with external control of the optimization loop.
+
+
+
+Module Contents
+---------------
+
+.. py:data:: StateType
+
+   Unbound type variable. 
+
+
+.. py:data:: SearchSpaceType
+
+   Type variable bound to :class:`SearchSpace`. 
+
+
+.. py:data:: TrainableProbabilisticModelType
+
+   Contravariant type variable bound to :class:`TrainableProbabilisticModel`. 
+
+
+.. py:class:: AskTellOptimizer(search_space: SearchSpaceType, datasets: Mapping[trieste.types.Tag, trieste.data.Dataset], models: Mapping[trieste.types.Tag, TrainableProbabilisticModelType], *, fit_model: bool = True)
+              AskTellOptimizer(search_space: SearchSpaceType, datasets: Mapping[trieste.types.Tag, trieste.data.Dataset], models: Mapping[trieste.types.Tag, TrainableProbabilisticModelType], acquisition_rule: trieste.acquisition.rule.AcquisitionRule[trieste.types.TensorType, SearchSpaceType, TrainableProbabilisticModelType], *, fit_model: bool = True)
+              AskTellOptimizer(search_space: SearchSpaceType, datasets: Mapping[trieste.types.Tag, trieste.data.Dataset], models: Mapping[trieste.types.Tag, TrainableProbabilisticModelType], acquisition_rule: trieste.acquisition.rule.AcquisitionRule[trieste.types.State[StateType | None, trieste.types.TensorType], SearchSpaceType, TrainableProbabilisticModelType], acquisition_state: StateType | None, *, fit_model: bool = True)
+              AskTellOptimizer(search_space: SearchSpaceType, datasets: trieste.data.Dataset, models: TrainableProbabilisticModelType, *, fit_model: bool = True)
+              AskTellOptimizer(search_space: SearchSpaceType, datasets: trieste.data.Dataset, models: TrainableProbabilisticModelType, acquisition_rule: trieste.acquisition.rule.AcquisitionRule[trieste.types.TensorType, SearchSpaceType, TrainableProbabilisticModelType], *, fit_model: bool = True)
+              AskTellOptimizer(search_space: SearchSpaceType, datasets: trieste.data.Dataset, models: TrainableProbabilisticModelType, acquisition_rule: trieste.acquisition.rule.AcquisitionRule[trieste.types.State[StateType | None, trieste.types.TensorType], SearchSpaceType, TrainableProbabilisticModelType], acquisition_state: StateType | None = None, *, fit_model: bool = True)
+
+
+   Bases: :py:obj:`Generic`\ [\ :py:obj:`SearchSpaceType`\ , :py:obj:`TrainableProbabilisticModelType`\ ]
+
+   This class provides Ask/Tell optimization interface. It is designed for those use cases
+   when control of the optimization loop by Trieste is impossible or not desirable.
+   For more details about the Bayesian Optimization routine, refer to :class:`BayesianOptimizer`.
+
+   :param search_space: The space over which to search for the next query point.
+   :param datasets: Already observed input-output pairs for each tag.
+   :param models: The model to use for each :class:`~trieste.data.Dataset` in
+       ``datasets``.
+   :param acquisition_rule: The acquisition rule, which defines how to search for a new point
+       on each optimization step. Defaults to
+       :class:`~trieste.acquisition.rule.EfficientGlobalOptimization` with default
+       arguments. Note that if the default is used, this implies the tags must be
+       `OBJECTIVE` and the search space can be any :class:`~trieste.space.SearchSpace`.
+   :param acquisition_state: The optional acquisition state for stateful acquisitions.
+   :param fit_model: If `True` (default), models passed in will be optimized on the given data.
+       If `False`, the models are assumed to be optimized already.
+   :raise ValueError: If any of the following are true:
+       - the keys in ``datasets`` and ``models`` do not match
+       - ``datasets`` or ``models`` are empty
+       - default acquisition is used but incompatible with other inputs
+
+   .. py:property:: datasets
+      :type: Mapping[trieste.types.Tag, trieste.data.Dataset]
+
+      The current datasets.
+
+
+   .. py:property:: dataset
+      :type: trieste.data.Dataset
+
+      The current dataset when there is just one dataset.
+
+
+   .. py:property:: models
+      :type: Mapping[trieste.types.Tag, TrainableProbabilisticModelType]
+
+      The current models.
+
+
+   .. py:property:: model
+      :type: trieste.models.TrainableProbabilisticModel
+
+      The current model when there is just one model.
+
+
+   .. py:property:: acquisition_state
+      :type: StateType | None
+
+      The current acquisition state.
+
+
+   .. py:method:: __repr__() -> str
+
+      Print-friendly string representation
+
+
+   .. py:method:: from_record(record: trieste.bayesian_optimizer.Record[StateType] | trieste.bayesian_optimizer.FrozenRecord[StateType], search_space: SearchSpaceType, acquisition_rule: trieste.acquisition.rule.AcquisitionRule[trieste.types.TensorType | trieste.types.State[StateType | None, trieste.types.TensorType], SearchSpaceType, TrainableProbabilisticModelType] | None = None) -> AskTellOptimizer[SearchSpaceType, TrainableProbabilisticModelType]
+      :classmethod:
+
+      Creates new :class:`~AskTellOptimizer` instance from provided optimization state.
+      Model training isn't triggered upon creation of the instance.
+
+      :param record: Optimization state record.
+      :param search_space: The space over which to search for the next query point.
+      :param acquisition_rule: The acquisition rule, which defines how to search for a new point
+          on each optimization step. Defaults to
+          :class:`~trieste.acquisition.rule.EfficientGlobalOptimization` with default
+          arguments.
+      :return: New instance of :class:`~AskTellOptimizer`.
+
+
+   .. py:method:: to_record(copy: bool = True) -> trieste.bayesian_optimizer.Record[StateType]
+
+      Collects the current state of the optimization, which includes datasets,
+      models and acquisition state (if applicable).
+
+      :param copy: Whether to return a copy of the current state or the original. Copying
+          is not supported for all model types. However, continuing the optimization will
+          modify the original state.
+      :return: An optimization state record.
+
+
+   .. py:method:: to_result(copy: bool = True) -> trieste.bayesian_optimizer.OptimizationResult[StateType]
+
+      Converts current state of the optimization
+      into a :class:`~trieste.data.OptimizationResult` object.
+
+      :param copy: Whether to return a copy of the current state or the original. Copying
+          is not supported for all model types. However, continuing the optimization will
+          modify the original state.
+      :return: A :class:`~trieste.data.OptimizationResult` object.
+
+
+   .. py:method:: ask() -> trieste.types.TensorType
+
+      Suggests a point (or points in batch mode) to observe by optimizing the acquisition
+      function. If the acquisition is stateful, its state is saved.
+
+      :return: A :class:`TensorType` instance representing suggested point(s).
+
+
+   .. py:method:: tell(new_data: Mapping[trieste.types.Tag, trieste.data.Dataset] | trieste.data.Dataset) -> None
+
+      Updates optimizer state with new data.
+
+      :param new_data: New observed data.
+      :raise ValueError: If keys in ``new_data`` do not match those in already built dataset.
+
+
+

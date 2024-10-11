@@ -1,0 +1,389 @@
+:py:mod:`trieste.acquisition.function.entropy`
+==============================================
+
+.. py:module:: trieste.acquisition.function.entropy
+
+.. autoapi-nested-parse::
+
+   This module contains entropy-based acquisition function builders.
+
+
+
+Module Contents
+---------------
+
+.. py:class:: MinValueEntropySearch(search_space: trieste.space.SearchSpace, num_samples: int = 5, grid_size: int = 1000, min_value_sampler: None = None)
+              MinValueEntropySearch(search_space: trieste.space.SearchSpace, num_samples: int = 5, grid_size: int = 1000, min_value_sampler: Optional[trieste.acquisition.sampler.ThompsonSampler[trieste.acquisition.interface.ProbabilisticModelType]] = None)
+
+
+   Bases: :py:obj:`trieste.acquisition.interface.SingleModelAcquisitionBuilder`\ [\ :py:obj:`trieste.acquisition.interface.ProbabilisticModelType`\ ]
+
+   Builder for the max-value entropy search acquisition function modified for objective
+   minimisation. :class:`MinValueEntropySearch` estimates the information in the distribution
+   of the objective minimum that would be gained by evaluating the objective at a given point.
+
+   This implementation largely follows :cite:`wang2017max` and samples the objective's minimum
+   :math:`y^*` across a large set of sampled locations via either a Gumbel sampler, an exact
+   Thompson sampler or an approximate random Fourier feature-based Thompson sampler, with the
+   Gumbel sampler being the cheapest but least accurate. Default behavior is to use the
+   exact Thompson sampler.
+
+   :param search_space: The global search space over which the optimisation is defined.
+   :param num_samples: Number of samples to draw from the distribution over the minimum of the
+       objective function.
+   :param grid_size: Size of the grid from which to sample the min-values. We recommend
+       scaling this with search space dimension.
+   :param min_value_sampler: Sampler which samples minimum values.
+   :raise tf.errors.InvalidArgumentError: If
+
+       - ``num_samples`` or ``grid_size`` are negative.
+
+   .. py:method:: prepare_acquisition_function(model: trieste.acquisition.interface.ProbabilisticModelType, dataset: Optional[trieste.data.Dataset] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      :param model: The model.
+      :param dataset: The data from the observer.
+      :return: The max-value entropy search acquisition function modified for objective
+          minimisation. This function will raise :exc:`ValueError` or
+          :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
+      :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
+
+
+   .. py:method:: update_acquisition_function(function: trieste.acquisition.interface.AcquisitionFunction, model: trieste.acquisition.interface.ProbabilisticModelType, dataset: Optional[trieste.data.Dataset] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      :param function: The acquisition function to update.
+      :param model: The model.
+      :param dataset: The data from the observer.
+
+
+
+.. py:class:: min_value_entropy_search(model: trieste.models.ProbabilisticModel, samples: trieste.types.TensorType)
+
+
+   Bases: :py:obj:`trieste.acquisition.interface.AcquisitionFunctionClass`
+
+   An :class:`AcquisitionFunctionClass` is an acquisition function represented using a class
+   rather than as a standalone function. Using a class to represent an acquisition function
+   makes it easier to update it, to avoid having to retrace the function on every call.
+
+   Return the max-value entropy search acquisition function (adapted from :cite:`wang2017max`),
+   modified for objective minimisation. This function calculates the information gain (or
+   change in entropy) in the distribution over the objective minimum :math:`y^*`, if we were
+   to evaluate the objective at a given point.
+
+   :param model: The model of the objective function.
+   :param samples: Samples from the distribution over :math:`y^*`.
+   :return: The max-value entropy search acquisition function modified for objective
+       minimisation. This function will raise :exc:`ValueError` or
+       :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
+   :raise ValueError or tf.errors.InvalidArgumentError: If ``samples`` has rank less than two,
+       or is empty.
+
+   .. py:method:: update(samples: trieste.types.TensorType) -> None
+
+      Update the acquisition function with new samples.
+
+
+   .. py:method:: __call__(x: trieste.types.TensorType) -> trieste.types.TensorType
+
+      Call acquisition function.
+
+
+
+.. py:class:: SupportsCovarianceObservationNoise
+
+
+   Bases: :py:obj:`trieste.models.gpflow.interface.SupportsCovarianceBetweenPoints`, :py:obj:`trieste.models.interfaces.SupportsGetObservationNoise`, :py:obj:`typing_extensions.Protocol`
+
+   A model that supports both covariance_between_points and get_observation_noise.
+
+
+.. py:class:: SupportsCovarianceObservationNoiseTrajectory
+
+
+   Bases: :py:obj:`trieste.models.interfaces.HasTrajectorySampler`, :py:obj:`SupportsCovarianceObservationNoise`, :py:obj:`typing_extensions.Protocol`
+
+   A model that supports covariance_between_points and get_observation_noise, and also
+   has an associated trajectory sampler.
+
+
+.. py:data:: GIBBONModelType
+
+   Type variable bound to :class:`~trieste.models.SupportsCovarianceObservationNoise`. 
+
+
+.. py:class:: GIBBON(search_space: trieste.space.SearchSpace, num_samples: int = 5, grid_size: int = 1000, min_value_sampler: None = None, rescaled_repulsion: bool = True)
+              GIBBON(search_space: trieste.space.SearchSpace, num_samples: int = 5, grid_size: int = 1000, min_value_sampler: Optional[trieste.acquisition.sampler.ThompsonSampler[GIBBONModelType]] = None, rescaled_repulsion: bool = True)
+
+
+   Bases: :py:obj:`trieste.acquisition.interface.SingleModelGreedyAcquisitionBuilder`\ [\ :py:obj:`GIBBONModelType`\ ]
+
+   The General-purpose Information-Based Bayesian Optimisation (GIBBON) acquisition function
+   of :cite:`Moss:2021`. :class:`GIBBON` provides a computationally cheap approximation of the
+   information gained about (i.e the change in entropy of) the objective function's minimum by
+   evaluating a batch of candidate points. Batches are built in a greedy manner.
+
+   This implementation follows :cite:`Moss:2021` but is modified for function
+   minimisation (rather than maximisation). We sample the objective's minimum
+   :math:`y^*` across a large set of sampled locations via either a Gumbel sampler, an exact
+   Thompson sampler or an approximate random Fourier feature-based Thompson sampler, with the
+   Gumbel sampler being the cheapest but least accurate. Default behavior is to use the
+   exact Thompson sampler.
+
+   :param search_space: The global search space over which the optimisation is defined.
+   :param num_samples: Number of samples to draw from the distribution over the minimum of
+       the objective function.
+   :param grid_size: Size of the grid from which to sample the min-values. We recommend
+       scaling this with search space dimension.
+   :param min_value_sampler: Sampler which samples minimum values.
+   :param rescaled_repulsion: If True, then downweight GIBBON's repulsion term to improve
+       batch optimization performance.
+   :raise tf.errors.InvalidArgumentError: If
+
+       - ``num_samples`` is not positive, or
+       - ``grid_size`` is not positive.
+
+   .. py:method:: prepare_acquisition_function(model: GIBBONModelType, dataset: Optional[trieste.data.Dataset] = None, pending_points: Optional[trieste.types.TensorType] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      :param model: The model.
+      :param dataset: The data from the observer. Must be populated.
+      :param pending_points: The points we penalize with respect to.
+      :return: The GIBBON acquisition function modified for objective minimisation.
+      :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
+
+
+   .. py:method:: update_acquisition_function(function: trieste.acquisition.interface.AcquisitionFunction, model: GIBBONModelType, dataset: Optional[trieste.data.Dataset] = None, pending_points: Optional[trieste.types.TensorType] = None, new_optimization_step: bool = True) -> trieste.acquisition.interface.AcquisitionFunction
+
+      :param function: The acquisition function to update.
+      :param model: The model.
+      :param dataset: The data from the observer. Must be populated.
+      :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
+          where M is the number of pending points and D is the search space dimension.
+      :param new_optimization_step: Indicates whether this call to update_acquisition_function
+          is to start of a new optimization step, or to continue collecting batch of points
+          for the current step. Defaults to ``True``.
+      :return: The updated acquisition function.
+
+
+
+.. py:class:: GibbonAcquisition(quality_term: trieste.acquisition.interface.AcquisitionFunction, diversity_term: trieste.acquisition.interface.PenalizationFunction)
+
+
+   Class representing a GIBBON acquisition function.
+
+   :param quality_term: Quality term.
+   :param diversity_term: Diversity term.
+
+
+.. py:class:: gibbon_quality_term(model: SupportsCovarianceObservationNoise, samples: trieste.types.TensorType)
+
+
+   Bases: :py:obj:`trieste.acquisition.interface.AcquisitionFunctionClass`
+
+   An :class:`AcquisitionFunctionClass` is an acquisition function represented using a class
+   rather than as a standalone function. Using a class to represent an acquisition function
+   makes it easier to update it, to avoid having to retrace the function on every call.
+
+   GIBBON's quality term measures the amount of information that each individual
+   batch element provides about the objective function's minimal value :math:`y^*` (ensuring
+   that evaluations are targeted in promising areas of the space).
+
+   :param model: The model of the objective function. GIBBON requires a model with
+       a :method:covariance_between_points method and so GIBBON only
+       supports :class:`GaussianProcessRegression` models.
+   :param samples: Samples from the distribution over :math:`y^*`.
+   :return: GIBBON's quality term. This function will raise :exc:`ValueError` or
+       :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
+   :raise ValueError or tf.errors.InvalidArgumentError: If ``samples`` does not have rank two,
+       or is empty, or if ``model`` has no homoscedastic observation noise.
+   :raise AttributeError: If ``model`` doesn't implement covariance_between_points method.
+
+   .. py:method:: update(samples: trieste.types.TensorType) -> None
+
+      Update the acquisition function with new samples.
+
+
+   .. py:method:: __call__(x: trieste.types.TensorType) -> trieste.types.TensorType
+
+      Call acquisition function.
+
+
+
+.. py:class:: gibbon_repulsion_term(model: SupportsCovarianceObservationNoise, pending_points: trieste.types.TensorType, rescaled_repulsion: bool = True)
+
+
+   Bases: :py:obj:`trieste.acquisition.interface.UpdatablePenalizationFunction`
+
+   An :class:`UpdatablePenalizationFunction` builds and updates a penalization function.
+   Defining a penalization function that can be updated avoids having to retrace on every call.
+
+   GIBBON's repulsion term encourages diversity within the batch
+   (achieving high values for points with low predictive correlation).
+
+   The repulsion term :math:`r=\log |C|` is given by the log determinant of the predictive
+   correlation matrix :math:`C` between the `m` pending points and the current candidate.
+   The predictive covariance :math:`V` can be expressed as :math:V = [[v, A], [A, B]]` for a
+   tensor :math:`B` with shape [`m`,`m`] and so we can efficiently calculate :math:`|V|` using
+   the formula for the determinant of block matrices, i.e
+   :math:`|V| = (v - A^T * B^{-1} * A) * |B|`.
+   Note that when using GIBBON for purely sequential optimization, the repulsion term is
+   not required.
+
+   As GIBBON's batches are built in a greedy manner, i.e sequentially adding points to build a
+   set of `m` pending points, we need only ever calculate the entropy reduction provided by
+   adding the current candidate point to the current pending points, not the full information
+   gain provided by evaluating all the pending points. This allows for a modest computational
+   saving.
+
+   When performing batch BO, GIBBON's approximation can sometimes become
+   less accurate as its repulsion term dominates. Therefore, we follow the
+   arguments of :cite:`Moss:2021` and divide GIBBON's repulsion term by :math:`B^{2}`. This
+   behavior can be deactivated by setting `rescaled_repulsion` to False.
+
+   :param model: The model of the objective function. GIBBON requires a model with
+       a :method:covariance_between_points method and so GIBBON only
+       supports :class:`GaussianProcessRegression` models.
+   :param pending_points: The points already chosen in the current batch.
+   :param rescaled_repulsion: If True, then downweight GIBBON's repulsion term to improve
+       batch optimization performance.
+   :return: GIBBON's repulsion term. This function will raise :exc:`ValueError` or
+       :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
+   :raise ValueError or tf.errors.InvalidArgumentError: If ``pending_points`` does not have
+       rank two, or is empty, or if ``model`` has no homoscedastic observation noise.
+   :raise AttributeError: If ``model`` doesn't implement covariance_between_points method.
+
+   .. py:method:: update(pending_points: trieste.types.TensorType, lipschitz_constant: trieste.types.TensorType = None, eta: trieste.types.TensorType = None) -> None
+
+      Update the repulsion term with new variable values.
+
+
+   .. py:method:: __call__(x: trieste.types.TensorType) -> trieste.types.TensorType
+
+      Call penalization function..
+
+
+
+.. py:data:: MUMBOModelType
+
+   Type variable bound to :class:`~trieste.models.SupportsCovarianceWithTopFidelity`. 
+
+
+.. py:class:: MUMBO(search_space: trieste.space.SearchSpace, num_samples: int = 5, grid_size: int = 1000, min_value_sampler: None = None)
+              MUMBO(search_space: trieste.space.SearchSpace, num_samples: int = 5, grid_size: int = 1000, min_value_sampler: Optional[trieste.acquisition.sampler.ThompsonSampler[MUMBOModelType]] = None)
+
+
+   Bases: :py:obj:`MinValueEntropySearch`\ [\ :py:obj:`MUMBOModelType`\ ]
+
+   Builder for the MUlti-task Max-value Bayesian Optimization MUMBO acquisition function modified
+   for objective minimisation. :class:`MinValueEntropySearch` estimates the information in the
+   distribution of the objective minimum that would be gained by evaluating the objective at a
+   given point on a given fidelity level.
+
+   This implementation largely follows :cite:`moss2021mumbo` and samples the objective's minimum
+   :math:`y^*` across a large set of sampled locations via either a Gumbel sampler, an exact
+   Thompson sampler or an approximate random Fourier feature-based Thompson sampler, with the
+   Gumbel sampler being the cheapest but least accurate. Default behavior is to use the
+   exact Thompson sampler.
+
+   :param search_space: The global search space over which the optimisation is defined.
+   :param num_samples: Number of samples to draw from the distribution over the minimum of the
+       objective function.
+   :param grid_size: Size of the grid from which to sample the min-values. We recommend
+       scaling this with search space dimension.
+   :param min_value_sampler: Sampler which samples minimum values.
+   :raise tf.errors.InvalidArgumentError: If
+
+       - ``num_samples`` or ``grid_size`` are negative.
+
+   .. py:method:: prepare_acquisition_function(model: MUMBOModelType, dataset: Optional[trieste.data.Dataset] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      :param model: The multifidelity model.
+      :param dataset: The data from the observer.
+      :return: The max-value entropy search acquisition function modified for objective
+          minimisation. This function will raise :exc:`ValueError` or
+          :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
+      :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
+
+
+   .. py:method:: update_acquisition_function(function: trieste.acquisition.interface.AcquisitionFunction, model: MUMBOModelType, dataset: Optional[trieste.data.Dataset] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      :param function: The acquisition function to update.
+      :param model: The model.
+      :param dataset: The data from the observer.
+
+
+   .. py:method:: get_min_value_samples_on_top_fidelity(model: MUMBOModelType, dataset: trieste.data.Dataset) -> trieste.types.TensorType
+
+      :param model: The model.
+      :param dataset: The data from the observer.
+
+
+
+.. py:class:: mumbo(model: MUMBOModelType, samples: trieste.types.TensorType)
+
+
+   Bases: :py:obj:`trieste.acquisition.interface.AcquisitionFunctionClass`
+
+   An :class:`AcquisitionFunctionClass` is an acquisition function represented using a class
+   rather than as a standalone function. Using a class to represent an acquisition function
+   makes it easier to update it, to avoid having to retrace the function on every call.
+
+   The MUMBO acquisition function of :cite:`moss2021mumbo`, modified for objective
+   minimisation. This function calculates the information gain (or change in entropy) in the
+   distribution over the objective minimum :math:`y^*`, if we were to evaluate the objective
+   at a given point on a given fidelity level.
+
+   To speed up calculations, we use a trick from :cite:`Moss:2021` and use moment-matching to
+   calculate MUMBO's entropy terms rather than numerical integration.
+
+   :param model: The model of the objective function.
+   :param samples: Samples from the distribution over :math:`y^*`.
+   :return: The MUMBO acquisition function modified for objective
+       minimisation. This function will raise :exc:`ValueError` or
+       :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
+   :raise ValueError or tf.errors.InvalidArgumentError: If ``samples`` has rank less than two,
+       or is empty.
+
+   .. py:method:: update(samples: trieste.types.TensorType) -> None
+
+      Update the acquisition function with new samples.
+
+
+   .. py:method:: __call__(x: trieste.types.TensorType) -> trieste.types.TensorType
+
+      Call acquisition function.
+
+
+
+.. py:class:: CostWeighting(fidelity_costs: List[float])
+
+
+   Bases: :py:obj:`trieste.acquisition.interface.SingleModelAcquisitionBuilder`\ [\ :py:obj:`trieste.models.ProbabilisticModel`\ ]
+
+   Convenience acquisition function builder for an acquisition function (or component of a
+   composite acquisition function) that requires only one model, dataset pair.
+
+   Builder for a cost-weighted acquisition function which returns the reciprocal of the cost
+   associated with the fidelity of each input.
+
+   Note that the fidelity level is assumed to be contained in the inputs final dimension.
+
+   The primary use of this acquisition function is to be used as a product with
+   multi-fidelity acquisition functions.
+
+   .. py:method:: prepare_acquisition_function(model: trieste.models.ProbabilisticModel, dataset: Optional[trieste.data.Dataset] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      :param model: The model.
+      :param dataset: The data from the observer. Not actually used here.
+      :return: The reciprocal of the costs corresponding to the fidelity level of each input.
+
+
+   .. py:method:: update_acquisition_function(function: trieste.acquisition.interface.AcquisitionFunction, model: trieste.models.ProbabilisticModel, dataset: Optional[trieste.data.Dataset] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      Nothing to do here, so just return previous cost function.
+
+      :param function: The acquisition function to update.
+      :param model: The model.
+      :param dataset: The data from the observer.
+
+
+

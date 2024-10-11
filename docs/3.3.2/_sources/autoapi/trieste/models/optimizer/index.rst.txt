@@ -1,0 +1,173 @@
+:py:mod:`trieste.models.optimizer`
+==================================
+
+.. py:module:: trieste.models.optimizer
+
+.. autoapi-nested-parse::
+
+   This module contains common optimizers based on :class:`~tf.optimizers.Optimizer` that can be used
+   with models. Specific models can also sub-class these optimizers or implement their own, and should
+   register their loss functions using a :func:`create_loss_function`.
+
+
+
+Module Contents
+---------------
+
+.. py:data:: TrainingData
+
+   Type alias for a batch, or batches, of training data. 
+
+
+.. py:data:: DatasetTransformer
+
+   Type alias for a function that converts a :class:`~trieste.data.Dataset` to batches of training
+   data.
+
+
+.. py:data:: LossClosure
+
+   Type alias for a loss closure, typically used in optimization. 
+
+
+.. py:data:: OptimizeResult
+
+   Optimization result. TensorFlow optimizer doesn't return any result. For scipy optimizer that is
+   also commonly used, it is :class:`~scipy.optimize.OptimizeResult`.
+
+
+.. py:class:: Optimizer
+
+
+   Optimizer for training models with all the training data at once.
+
+   .. py:attribute:: optimizer
+      :type: Any
+
+      The underlying optimizer to use. For example, one of the subclasses of
+      :class:`~tensorflow.optimizers.Optimizer` could be used. Note that we use a flexible type `Any`
+      to allow for various optimizers that specific models might need to use.
+
+
+   .. py:attribute:: minimize_args
+      :type: dict[str, Any]
+
+      The keyword arguments to pass to the :meth:`minimize` method of the :attr:`optimizer`. 
+
+
+   .. py:attribute:: compile
+      :type: bool
+      :value: False
+
+      If `True`, the optimization process will be compiled with :func:`~tf.function`. 
+
+
+   .. py:method:: create_loss(model: tensorflow.Module, dataset: trieste.data.Dataset) -> LossClosure
+
+      Build a loss function for the specified `model` with the `dataset` using a
+      :func:`create_loss_function`.
+
+      :param model: The model to build a loss function for.
+      :param dataset: The data with which to build the loss function.
+      :return: The loss function.
+
+
+   .. py:method:: optimize(model: tensorflow.Module, dataset: trieste.data.Dataset) -> OptimizeResult
+
+      Optimize the specified `model` with the `dataset`.
+
+      :param model: The model to optimize.
+      :param dataset: The data with which to optimize the `model`.
+      :return: The return value of the optimizer's :meth:`minimize` method.
+
+
+
+.. py:class:: BatchOptimizer
+
+
+   Bases: :py:obj:`Optimizer`
+
+   Optimizer for training models with mini-batches of training data.
+
+   .. py:attribute:: max_iter
+      :type: int
+      :value: 100
+
+      The number of iterations over which to optimize the model. 
+
+
+   .. py:attribute:: batch_size
+      :type: int
+      :value: 100
+
+      The size of the mini-batches. 
+
+
+   .. py:attribute:: dataset_builder
+      :type: DatasetTransformer | None
+
+      A mapping from :class:`~trieste.observer.Observer` data to mini-batches. 
+
+
+   .. py:method:: create_loss(model: tensorflow.Module, dataset: trieste.data.Dataset) -> LossClosure
+
+      Build a loss function for the specified `model` with the `dataset`.
+
+      :param model: The model to build a loss function for.
+      :param dataset: The data with which to build the loss function.
+      :return: The loss function.
+
+
+   .. py:method:: optimize(model: tensorflow.Module, dataset: trieste.data.Dataset) -> None
+
+      Optimize the specified `model` with the `dataset`.
+
+      :param model: The model to optimize.
+      :param dataset: The data with which to optimize the `model`.
+
+
+
+.. py:class:: KerasOptimizer
+
+
+   Optimizer wrapper for training models implemented with Keras.
+
+   .. py:attribute:: optimizer
+      :type: tensorflow.keras.optimizers.Optimizer
+
+      The underlying optimizer to use for training the model. 
+
+
+   .. py:attribute:: fit_args
+      :type: dict[str, Any]
+
+      The keyword arguments to pass to the ``fit`` method of a :class:`~tf.keras.Model` instance.
+      See https://keras.io/api/models/model_training_apis/#fit-method for a list of possible
+      arguments in the dictionary.
+
+
+   .. py:attribute:: loss
+      :type: Optional[Union[tensorflow.keras.losses.Loss, Callable[[trieste.types.TensorType, tensorflow_probability.distributions.Distribution], trieste.types.TensorType]]]
+
+      Optional loss function for training the model. 
+
+
+   .. py:attribute:: metrics
+      :type: Optional[list[tensorflow.keras.metrics.Metric]]
+
+      Optional metrics for monitoring the performance of the network. 
+
+
+
+.. py:function:: create_loss_function(model: Any, dataset: TrainingData, compile: bool = False) -> LossClosure
+
+   Generic function for building a loss function for a specified `model` and `dataset`.
+   The implementations depends on the type of the model, which should use this function as a
+   decorator together with its register method to make a model-specific loss function available.
+
+   :param model: The model to build a loss function for.
+   :param dataset: The data with which to build the loss function.
+   :param compile: Whether to compile with :func:`tf.function`.
+   :return: The loss function.
+
+

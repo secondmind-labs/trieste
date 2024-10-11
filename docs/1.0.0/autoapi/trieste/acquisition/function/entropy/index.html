@@ -1,0 +1,1201 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.acquisition.function.entropy &#8212; trieste 1.0.0 documentation</title>
+    
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../../_static/styles/theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+<link href="../../../../../_static/styles/pydata-sphinx-theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+
+    
+  <link rel="stylesheet"
+    href="../../../../../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    <link rel="stylesheet" href="../../../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../../_static/styles/pydata-sphinx-theme.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/graphviz.css" />
+    
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf">
+
+    <script id="documentation_options" data-url_root="../../../../../" src="../../../../../_static/documentation_options.js"></script>
+    <script src="../../../../../_static/jquery.js"></script>
+    <script src="../../../../../_static/underscore.js"></script>
+    <script src="../../../../../_static/doctools.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "tex2jax_ignore|mathjax_ignore|document", "processClass": "tex2jax_process|mathjax_process|math|output_area"}})</script>
+    <link rel="index" title="Index" href="../../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" />
+    <link rel="next" title="trieste.acquisition.function.function" href="../function/index.html" />
+    <link rel="prev" title="trieste.acquisition.function.continuous_thompson_sampling" href="../continuous_thompson_sampling/index.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="None">
+    
+
+    <!-- Google Analytics -->
+    
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="60">
+    
+    <div class="container-fluid" id="banner"></div>
+
+    
+    <nav class="navbar navbar-light navbar-expand-lg bg-light fixed-top bd-navbar" id="navbar-main"><div class="container-xl">
+
+  <div id="navbar-start">
+    
+    
+
+<a class="navbar-brand" href="../../../../../index.html">
+  <img src="../../../../../_static/logo.png" class="logo" alt="logo">
+</a>
+
+
+    
+  </div>
+
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar-collapsible" aria-controls="navbar-collapsible" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  
+  <div id="navbar-collapsible" class="col-lg-9 collapse navbar-collapse">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <ul id="navbar-main-elements" class="navbar-nav">
+    <li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../../../index.html">
+  Trieste
+ </a>
+</li>
+
+<li class="toctree-l1 current active nav-item">
+ <a class="reference internal nav-link" href="../../../index.html">
+  API reference
+ </a>
+</li>
+
+<li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../../../tutorials.html">
+  Tutorials
+ </a>
+</li>
+
+    
+</ul>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+      <div class="navbar-end-item">
+        <div class="dropdown" id="version_switcher">
+    <button type="button" class="btn btn-primary btn-sm navbar-btn dropdown-toggle" id="version_switcher_button" data-toggle="dropdown">
+        1.0.0  <!-- this text may get changed later by javascript -->
+        <span class="caret"></span>
+    </button>
+    <div id="version_switcher_menu" class="dropdown-menu list-group-flush py-0" aria-labelledby="version_switcher_button">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+</div>
+
+<!-- NOTE: this JS must live here (not in our global JS file) because it relies
+     on being processed by Jinja before it is run (specifically for replacing
+     variables autoapi/trieste/acquisition/function/entropy/index and {'json_url': 'https://secondmind-labs.github.io/trieste/versions.json', 'version_match': '1.0.0'}.
+-->
+
+<script type="text/javascript">
+// Check if corresponding page path exists in other version of docs
+// and, if so, go there instead of the homepage of the other docs version
+function checkPageExistsAndRedirect(event) {
+    const currentFilePath = "autoapi/trieste/acquisition/function/entropy/index.html",
+          tryUrl = event.target.getAttribute("href");
+    let otherDocsHomepage = tryUrl.replace(currentFilePath, "");
+    $.ajax({
+        type: 'HEAD',
+        url: tryUrl,
+        // if the page exists, go there
+        success: function() {
+            location.href = tryUrl;
+        }
+    }).fail(function() {
+        location.href = otherDocsHomepage;
+    });
+    // this prevents the browser from following the href of the clicked node
+    // (which is fine because this function takes care of redirecting)
+    return false;
+}
+
+// Populate the version switcher from the JSON config file
+(function () {
+    $.getJSON("https://secondmind-labs.github.io/trieste/versions.json", function(data, textStatus, jqXHR) {
+        const currentFilePath = "autoapi/trieste/acquisition/function/entropy/index.html";
+        // create links to the corresponding page in the other docs versions
+        $.each(data, function(index, entry) {
+            // if no custom name specified (e.g., "latest"), use version string
+            if (!("name" in entry)) {
+                entry.name = entry.version;
+            }
+            // create the node
+            const node = document.createElement("a");
+            node.setAttribute("class", "list-group-item list-group-item-action py-1");
+            node.textContent = `${entry.name}`;
+            node.setAttribute("href", `${entry.url}${currentFilePath}`);
+            // on click, AJAX calls will check if the linked page exists before
+            // trying to redirect, and if not, will redirect to the homepage
+            // for that version of the docs.
+            node.onclick = checkPageExistsAndRedirect;
+            // Add dataset values for the version and name in case people want
+            // to apply CSS styling based on this information.
+            node.dataset["versionName"] = entry.name;
+            node.dataset["version"] = entry.version;
+
+            $("#version_switcher_menu").append(node);
+            // replace dropdown button text with the preferred display name of
+            // this version, rather than using sphinx's  variable.
+            // also highlight the dropdown entry for the currently-viewed
+            // version's entry
+            if (entry.version == "1.0.0") {
+                node.classList.add("active");
+                let btn = document.getElementById("version_switcher_button");
+                btn.innerText = btn.dataset["activeVersionName"] = entry.name;
+                btn.dataset["activeVersion"] = entry.version;
+            }
+        });
+    });
+})();
+</script>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+        <li class="nav-item">
+          <a class="nav-link" href="https://github.com/secondmind-labs/trieste" rel="noopener" target="_blank" title="GitHub"><span><i class="fab fa-github-square"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+</div>
+    </nav>
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+            
+            <!-- Only show if we have sidebars configured, else just a small margin  -->
+            <div class="col-12 col-md-3 bd-sidebar">
+              <div class="sidebar-start-items"><form class="bd-search d-flex align-items-center" action="../../../../../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+  <div class="bd-toc-item active">
+    <ul class="current nav bd-sidenav">
+ <li class="toctree-l1 current active has-children">
+  <a class="reference internal" href="../../index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.acquisition
+    </span>
+   </code>
+  </a>
+  <input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/>
+  <label for="toctree-checkbox-1">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul class="current">
+   <li class="toctree-l2 current active has-children">
+    <a class="reference internal" href="../index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.function
+      </span>
+     </code>
+    </a>
+    <input checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/>
+    <label for="toctree-checkbox-2">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul class="current">
+     <li class="toctree-l3">
+      <a class="reference internal" href="../active_learning/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.active_learning
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../continuous_thompson_sampling/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.continuous_thompson_sampling
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3 current active">
+      <a class="current reference internal" href="#">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.entropy
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../function/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.function
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../greedy_batch/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.greedy_batch
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../multi_objective/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.multi_objective
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../utils/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.utils
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../multi_objective/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.multi_objective
+      </span>
+     </code>
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/>
+    <label for="toctree-checkbox-3">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../multi_objective/dominance/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.multi_objective.dominance
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../multi_objective/pareto/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.multi_objective.pareto
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../multi_objective/partition/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.multi_objective.partition
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../interface/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.interface
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../optimizer/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.optimizer
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../rule/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.rule
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../sampler/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.sampler
+      </span>
+     </code>
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../../models/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.models
+    </span>
+   </code>
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/>
+  <label for="toctree-checkbox-4">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../../models/gpflow/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.gpflow
+      </span>
+     </code>
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/>
+    <label for="toctree-checkbox-5">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/gpflow/builders/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflow.builders
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/gpflow/inducing_point_selectors/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflow.inducing_point_selectors
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/gpflow/optimizer/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflow.optimizer
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/gpflow/sampler/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflow.sampler
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../../models/gpflux/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.gpflux
+      </span>
+     </code>
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/>
+    <label for="toctree-checkbox-6">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/gpflux/builders/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflux.builders
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../../models/keras/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.keras
+      </span>
+     </code>
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/>
+    <label for="toctree-checkbox-7">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/keras/architectures/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.keras.architectures
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/keras/builders/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.keras.builders
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/keras/sampler/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.keras.sampler
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../models/optimizer/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.optimizer
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../models/utils/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.utils
+      </span>
+     </code>
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../../objectives/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.objectives
+    </span>
+   </code>
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" type="checkbox"/>
+  <label for="toctree-checkbox-8">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../objectives/multi_objectives/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.objectives.multi_objectives
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../objectives/single_objectives/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.objectives.single_objectives
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../objectives/utils/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.objectives.utils
+      </span>
+     </code>
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../utils/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.utils
+    </span>
+   </code>
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../ask_tell_optimization/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.ask_tell_optimization
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../bayesian_optimizer/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.bayesian_optimizer
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../data/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.data
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../logging/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.logging
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../observer/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.observer
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../space/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.space
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../types/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.types
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../version/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.version
+    </span>
+   </code>
+  </a>
+ </li>
+</ul>
+
+  </div>
+</nav>
+              </div>
+              <div class="sidebar-end-items">
+              </div>
+            </div>
+            
+          
+
+          
+          <div class="d-none d-xl-block col-xl-2 bd-toc">
+            
+              
+              <div class="toc-item">
+                
+<div class="tocsection onthispage mt-5 pt-1 pb-3">
+    <i class="fas fa-list"></i> On this page
+</div>
+
+<nav id="bd-toc-nav">
+    <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#module-contents">
+   Module Contents
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.entropy.MinValueEntropySearch">
+     MinValueEntropySearch
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.entropy.MinValueEntropySearch.prepare_acquisition_function">
+       prepare_acquisition_function
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.entropy.MinValueEntropySearch.update_acquisition_function">
+       update_acquisition_function
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.entropy.min_value_entropy_search">
+     min_value_entropy_search
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.entropy.min_value_entropy_search.update">
+       update
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.entropy.min_value_entropy_search.__call__">
+       __call__
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.entropy.SupportsCovarianceObservationNoise">
+     SupportsCovarianceObservationNoise
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.entropy.SupportsCovarianceObservationNoiseTrajectory">
+     SupportsCovarianceObservationNoiseTrajectory
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.entropy.GIBBONModelType">
+     GIBBONModelType
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.entropy.GIBBON">
+     GIBBON
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.entropy.GIBBON.prepare_acquisition_function">
+       prepare_acquisition_function
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.entropy.GIBBON.update_acquisition_function">
+       update_acquisition_function
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.entropy.GibbonAcquisition">
+     GibbonAcquisition
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.entropy.gibbon_quality_term">
+     gibbon_quality_term
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.entropy.gibbon_quality_term.update">
+       update
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.entropy.gibbon_quality_term.__call__">
+       __call__
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.entropy.gibbon_repulsion_term">
+     gibbon_repulsion_term
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.entropy.gibbon_repulsion_term.update">
+       update
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.entropy.gibbon_repulsion_term.__call__">
+       __call__
+      </a>
+     </li>
+    </ul>
+   </li>
+  </ul>
+ </li>
+</ul>
+
+</nav>
+              </div>
+              
+              <div class="toc-item">
+                
+              </div>
+              
+            
+          </div>
+          
+
+          
+          
+            
+          
+          <main class="col-12 col-md-9 col-xl-7 py-md-5 pl-md-5 pr-md-4 bd-content" role="main">
+              
+              <div>
+                
+  <div class="section" id="module-trieste.acquisition.function.entropy">
+<span id="trieste-acquisition-function-entropy"></span><h1><a class="reference internal" href="#module-trieste.acquisition.function.entropy" title="trieste.acquisition.function.entropy"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.function.entropy</span></code></a><a class="headerlink" href="#module-trieste.acquisition.function.entropy" title="Permalink to this headline">#</a></h1>
+<p>This module contains entropy-based acquisition function builders.</p>
+<div class="section" id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this headline">#</a></h2>
+<dl class="py class">
+<dt id="trieste.acquisition.function.entropy.MinValueEntropySearch">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">MinValueEntropySearch</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="pre">search_space:</span> <span class="pre">trieste.space.SearchSpace</span></em>, <em class="sig-param"><span class="pre">num_samples:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">5</span></em>, <em class="sig-param"><span class="pre">grid_size:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">1000</span></em>, <em class="sig-param"><span class="pre">min_value_sampler:</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None)</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">MinValueEntropySearch(search_space:</span> <span class="pre">trieste.space.SearchSpace</span></em>, <em class="sig-param"><span class="pre">num_samples:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">5</span></em>, <em class="sig-param"><span class="pre">grid_size:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">1000</span></em>, <em class="sig-param"><span class="pre">min_value_sampler:</span> <span class="pre">Optional[trieste.acquisition.sampler.ThompsonSampler[trieste.acquisition.interface.ProbabilisticModelType]]</span> <span class="pre">=</span> <span class="pre">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/entropy.html#MinValueEntropySearch"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.entropy.MinValueEntropySearch" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.SingleModelAcquisitionBuilder" title="trieste.acquisition.interface.SingleModelAcquisitionBuilder"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.acquisition.interface.SingleModelAcquisitionBuilder</span></code></a>[<code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.acquisition.interface.ProbabilisticModelType</span></code>]</p>
+<p>Builder for the max-value entropy search acquisition function modified for objective
+minimisation. <a class="reference internal" href="#trieste.acquisition.function.entropy.MinValueEntropySearch" title="trieste.acquisition.function.entropy.MinValueEntropySearch"><code class="xref py py-class docutils literal notranslate"><span class="pre">MinValueEntropySearch</span></code></a> estimates the information in the distribution
+of the objective minimum that would be gained by evaluating the objective at a given point.</p>
+<p>This implementation largely follows <span id="id1">[<a class="reference internal" href="../../../index.html#id11" title="Zi Wang and Stefanie Jegelka. Max-value entropy search for efficient bayesian optimization. arXiv preprint arXiv:1703.01968, 2017.">WJ17</a>]</span> and samples the objective’s minimum
+<span class="math notranslate nohighlight">\(y^*\)</span> across a large set of sampled locations via either a Gumbel sampler, an exact
+Thompson sampler or an approximate random Fourier feature-based Thompson sampler, with the
+Gumbel sampler being the cheapest but least accurate. Default behavior is to use the
+exact Thompson sampler.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>search_space</strong> – The global search space over which the optimisation is defined.</p></li>
+<li><p><strong>num_samples</strong> – Number of samples to draw from the distribution over the minimum of the
+objective function.</p></li>
+<li><p><strong>grid_size</strong> – Size of the grid from which to sample the min-values. We recommend
+scaling this with search space dimension.</p></li>
+<li><p><strong>min_value_sampler</strong> – Sampler which samples minimum values.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>tf.errors.InvalidArgumentError</strong> – <p>If</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">num_samples</span></code> or <code class="docutils literal notranslate"><span class="pre">grid_size</span></code> are negative.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trieste.acquisition.function.entropy.MinValueEntropySearch.prepare_acquisition_function">
+<code class="sig-name descname"><span class="pre">prepare_acquisition_function</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">trieste.acquisition.interface.ProbabilisticModelType</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/entropy.html#MinValueEntropySearch.prepare_acquisition_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.entropy.MinValueEntropySearch.prepare_acquisition_function" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model.</p></li>
+<li><p><strong>dataset</strong> – The data from the observer.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The max-value entropy search acquisition function modified for objective
+minimisation. This function will raise <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code></a> or
+<code class="xref py py-exc docutils literal notranslate"><span class="pre">InvalidArgumentError</span></code> if used with a batch size greater than one.</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><strong>tf.errors.InvalidArgumentError</strong> – If <code class="docutils literal notranslate"><span class="pre">dataset</span></code> is empty.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.acquisition.function.entropy.MinValueEntropySearch.update_acquisition_function">
+<code class="sig-name descname"><span class="pre">update_acquisition_function</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">function</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">trieste.acquisition.interface.ProbabilisticModelType</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/entropy.html#MinValueEntropySearch.update_acquisition_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.entropy.MinValueEntropySearch.update_acquisition_function" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>function</strong> – The acquisition function to update.</p></li>
+<li><p><strong>model</strong> – The model.</p></li>
+<li><p><strong>dataset</strong> – The data from the observer.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.acquisition.function.entropy.min_value_entropy_search">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">min_value_entropy_search</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><span class="pre">trieste.models.ProbabilisticModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">samples</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/entropy.html#min_value_entropy_search"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.entropy.min_value_entropy_search" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunctionClass" title="trieste.acquisition.interface.AcquisitionFunctionClass"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.acquisition.interface.AcquisitionFunctionClass</span></code></a></p>
+<p>An <code class="xref py py-class docutils literal notranslate"><span class="pre">AcquisitionFunctionClass</span></code> is an acquisition function represented using a class
+rather than as a standalone function. Using a class to represent an acquisition function
+makes it easier to update it, to avoid having to retrace the function on every call.</p>
+<p>Return the max-value entropy search acquisition function (adapted from <span id="id2">[<a class="reference internal" href="../../../index.html#id11" title="Zi Wang and Stefanie Jegelka. Max-value entropy search for efficient bayesian optimization. arXiv preprint arXiv:1703.01968, 2017.">WJ17</a>]</span>),
+modified for objective minimisation. This function calculates the information gain (or
+change in entropy) in the distribution over the objective minimum <span class="math notranslate nohighlight">\(y^*\)</span>, if we were
+to evaluate the objective at a given point.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model of the objective function.</p></li>
+<li><p><strong>samples</strong> – Samples from the distribution over <span class="math notranslate nohighlight">\(y^*\)</span>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The max-value entropy search acquisition function modified for objective
+minimisation. This function will raise <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code></a> or
+<code class="xref py py-exc docutils literal notranslate"><span class="pre">InvalidArgumentError</span></code> if used with a batch size greater than one.</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><strong>ValueError</strong></a><strong> or </strong><strong>tf.errors.InvalidArgumentError</strong> – If <code class="docutils literal notranslate"><span class="pre">samples</span></code> has rank less than two,
+or is empty.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trieste.acquisition.function.entropy.min_value_entropy_search.update">
+<code class="sig-name descname"><span class="pre">update</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">samples</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/entropy.html#min_value_entropy_search.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.entropy.min_value_entropy_search.update" title="Permalink to this definition">#</a></dt>
+<dd><p>Update the acquisition function with new samples.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.acquisition.function.entropy.min_value_entropy_search.__call__">
+<code class="sig-name descname"><span class="pre">__call__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/entropy.html#min_value_entropy_search.__call__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.entropy.min_value_entropy_search.__call__" title="Permalink to this definition">#</a></dt>
+<dd><p>Call acquisition function.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.acquisition.function.entropy.SupportsCovarianceObservationNoise">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">SupportsCovarianceObservationNoise</span></code><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/entropy.html#SupportsCovarianceObservationNoise"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.entropy.SupportsCovarianceObservationNoise" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../../../models/gpflow/interface/index.html#trieste.models.gpflow.interface.SupportsCovarianceBetweenPoints" title="trieste.models.gpflow.interface.SupportsCovarianceBetweenPoints"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.gpflow.interface.SupportsCovarianceBetweenPoints</span></code></a>, <a class="reference internal" href="../../../models/interfaces/index.html#trieste.models.interfaces.SupportsGetObservationNoise" title="trieste.models.interfaces.SupportsGetObservationNoise"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.SupportsGetObservationNoise</span></code></a>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">typing_extensions.Protocol</span></code></p>
+<p>A model that supports both covariance_between_points and get_observation_noise.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.acquisition.function.entropy.SupportsCovarianceObservationNoiseTrajectory">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">SupportsCovarianceObservationNoiseTrajectory</span></code><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/entropy.html#SupportsCovarianceObservationNoiseTrajectory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.entropy.SupportsCovarianceObservationNoiseTrajectory" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../../../models/interfaces/index.html#trieste.models.interfaces.HasTrajectorySampler" title="trieste.models.interfaces.HasTrajectorySampler"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.HasTrajectorySampler</span></code></a>, <a class="reference internal" href="#trieste.acquisition.function.entropy.SupportsCovarianceObservationNoise" title="trieste.acquisition.function.entropy.SupportsCovarianceObservationNoise"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SupportsCovarianceObservationNoise</span></code></a>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">typing_extensions.Protocol</span></code></p>
+<p>A model that supports covariance_between_points and get_observation_noise, and also
+has an associated trajectory sampler.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt id="trieste.acquisition.function.entropy.GIBBONModelType">
+<code class="sig-name descname"><span class="pre">GIBBONModelType</span></code><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/entropy.html#GIBBONModelType"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.entropy.GIBBONModelType" title="Permalink to this definition">#</a></dt>
+<dd><p>Type variable bound to <code class="xref py py-class docutils literal notranslate"><span class="pre">SupportsCovarianceObservationNoise</span></code>.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.acquisition.function.entropy.GIBBON">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">GIBBON</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="pre">search_space:</span> <span class="pre">trieste.space.SearchSpace</span></em>, <em class="sig-param"><span class="pre">num_samples:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">5</span></em>, <em class="sig-param"><span class="pre">grid_size:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">1000</span></em>, <em class="sig-param"><span class="pre">min_value_sampler:</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></em>, <em class="sig-param"><span class="pre">rescaled_repulsion:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">True)</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">GIBBON(search_space:</span> <span class="pre">trieste.space.SearchSpace</span></em>, <em class="sig-param"><span class="pre">num_samples:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">5</span></em>, <em class="sig-param"><span class="pre">grid_size:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">1000</span></em>, <em class="sig-param"><span class="pre">min_value_sampler:</span> <span class="pre">Optional[trieste.acquisition.sampler.ThompsonSampler[GIBBONModelType]]</span> <span class="pre">=</span> <span class="pre">None</span></em>, <em class="sig-param"><span class="pre">rescaled_repulsion:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/entropy.html#GIBBON"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.entropy.GIBBON" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.SingleModelGreedyAcquisitionBuilder" title="trieste.acquisition.interface.SingleModelGreedyAcquisitionBuilder"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.acquisition.interface.SingleModelGreedyAcquisitionBuilder</span></code></a>[<a class="reference internal" href="#trieste.acquisition.function.entropy.GIBBONModelType" title="trieste.acquisition.function.entropy.GIBBONModelType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GIBBONModelType</span></code></a>]</p>
+<p>The General-purpose Information-Based Bayesian Optimisation (GIBBON) acquisition function
+of <span id="id3">[<a class="reference internal" href="../../../index.html#id36" title="Henry B Moss, David S Leslie, Javier Gonzalez, and Paul Rayson. Gibbon: general-purpose information-based bayesian optimisation. Journal of Machine Learning Research, 22:1–49, 2021.">MLGR21</a>]</span>. <a class="reference internal" href="#trieste.acquisition.function.entropy.GIBBON" title="trieste.acquisition.function.entropy.GIBBON"><code class="xref py py-class docutils literal notranslate"><span class="pre">GIBBON</span></code></a> provides a computationally cheap approximation of the
+information gained about (i.e the change in entropy of) the objective function’s minimum by
+evaluating a batch of candidate points. Batches are built in a greedy manner.</p>
+<p>This implementation follows <span id="id4">[<a class="reference internal" href="../../../index.html#id36" title="Henry B Moss, David S Leslie, Javier Gonzalez, and Paul Rayson. Gibbon: general-purpose information-based bayesian optimisation. Journal of Machine Learning Research, 22:1–49, 2021.">MLGR21</a>]</span> but is modified for function
+minimisation (rather than maximisation). We sample the objective’s minimum
+<span class="math notranslate nohighlight">\(y^*\)</span> across a large set of sampled locations via either a Gumbel sampler, an exact
+Thompson sampler or an approximate random Fourier feature-based Thompson sampler, with the
+Gumbel sampler being the cheapest but least accurate. Default behavior is to use the
+exact Thompson sampler.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>search_space</strong> – The global search space over which the optimisation is defined.</p></li>
+<li><p><strong>num_samples</strong> – Number of samples to draw from the distribution over the minimum of
+the objective function.</p></li>
+<li><p><strong>grid_size</strong> – Size of the grid from which to sample the min-values. We recommend
+scaling this with search space dimension.</p></li>
+<li><p><strong>min_value_sampler</strong> – Sampler which samples minimum values.</p></li>
+<li><p><strong>rescaled_repulsion</strong> – If True, then downweight GIBBON’s repulsion term to improve
+batch optimization performance.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>tf.errors.InvalidArgumentError</strong> – <p>If</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">num_samples</span></code> is not positive, or</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">grid_size</span></code> is not positive.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trieste.acquisition.function.entropy.GIBBON.prepare_acquisition_function">
+<code class="sig-name descname"><span class="pre">prepare_acquisition_function</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#trieste.acquisition.function.entropy.GIBBONModelType" title="trieste.acquisition.function.entropy.GIBBONModelType"><span class="pre">GIBBONModelType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pending_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/entropy.html#GIBBON.prepare_acquisition_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.entropy.GIBBON.prepare_acquisition_function" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model.</p></li>
+<li><p><strong>dataset</strong> – The data from the observer. Must be populated.</p></li>
+<li><p><strong>pending_points</strong> – The points we penalize with respect to.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The GIBBON acquisition function modified for objective minimisation.</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><strong>tf.errors.InvalidArgumentError</strong> – If <code class="docutils literal notranslate"><span class="pre">dataset</span></code> is empty.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.acquisition.function.entropy.GIBBON.update_acquisition_function">
+<code class="sig-name descname"><span class="pre">update_acquisition_function</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">function</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#trieste.acquisition.function.entropy.GIBBONModelType" title="trieste.acquisition.function.entropy.GIBBONModelType"><span class="pre">GIBBONModelType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pending_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_optimization_step</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/entropy.html#GIBBON.update_acquisition_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.entropy.GIBBON.update_acquisition_function" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>function</strong> – The acquisition function to update.</p></li>
+<li><p><strong>model</strong> – The model.</p></li>
+<li><p><strong>dataset</strong> – The data from the observer. Must be populated.</p></li>
+<li><p><strong>pending_points</strong> – Points already chosen to be in the current batch (of shape [M,D]),
+where M is the number of pending points and D is the search space dimension.</p></li>
+<li><p><strong>new_optimization_step</strong> – Indicates whether this call to update_acquisition_function
+is to start of a new optimization step, or to continue collecting batch of points
+for the current step. Defaults to <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The updated acquisition function.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.acquisition.function.entropy.GibbonAcquisition">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">GibbonAcquisition</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">quality_term</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">diversity_term</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.PenalizationFunction" title="trieste.acquisition.interface.PenalizationFunction"><span class="pre">trieste.acquisition.interface.PenalizationFunction</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/entropy.html#GibbonAcquisition"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.entropy.GibbonAcquisition" title="Permalink to this definition">#</a></dt>
+<dd><p>Class representing a GIBBON acquisition function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>quality_term</strong> – Quality term.</p></li>
+<li><p><strong>diversity_term</strong> – Diversity term.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.acquisition.function.entropy.gibbon_quality_term">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">gibbon_quality_term</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#trieste.acquisition.function.entropy.SupportsCovarianceObservationNoise" title="trieste.acquisition.function.entropy.SupportsCovarianceObservationNoise"><span class="pre">SupportsCovarianceObservationNoise</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">samples</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/entropy.html#gibbon_quality_term"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.entropy.gibbon_quality_term" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunctionClass" title="trieste.acquisition.interface.AcquisitionFunctionClass"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.acquisition.interface.AcquisitionFunctionClass</span></code></a></p>
+<p>An <code class="xref py py-class docutils literal notranslate"><span class="pre">AcquisitionFunctionClass</span></code> is an acquisition function represented using a class
+rather than as a standalone function. Using a class to represent an acquisition function
+makes it easier to update it, to avoid having to retrace the function on every call.</p>
+<p>GIBBON’s quality term measures the amount of information that each individual
+batch element provides about the objective function’s minimal value <span class="math notranslate nohighlight">\(y^*\)</span> (ensuring
+that evaluations are targeted in promising areas of the space).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model of the objective function. GIBBON requires a model with
+a :method:covariance_between_points method and so GIBBON only
+supports <code class="xref py py-class docutils literal notranslate"><span class="pre">GaussianProcessRegression</span></code> models.</p></li>
+<li><p><strong>samples</strong> – Samples from the distribution over <span class="math notranslate nohighlight">\(y^*\)</span>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>GIBBON’s quality term. This function will raise <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code></a> or
+<code class="xref py py-exc docutils literal notranslate"><span class="pre">InvalidArgumentError</span></code> if used with a batch size greater than one.</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><strong>ValueError</strong></a><strong> or </strong><strong>tf.errors.InvalidArgumentError</strong> – If <code class="docutils literal notranslate"><span class="pre">samples</span></code> does not have rank two,
+or is empty, or if <code class="docutils literal notranslate"><span class="pre">model</span></code> has no homoscedastic observation noise.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.11)"><strong>AttributeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">model</span></code> doesn’t implement covariance_between_points method.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trieste.acquisition.function.entropy.gibbon_quality_term.update">
+<code class="sig-name descname"><span class="pre">update</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">samples</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/entropy.html#gibbon_quality_term.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.entropy.gibbon_quality_term.update" title="Permalink to this definition">#</a></dt>
+<dd><p>Update the acquisition function with new samples.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.acquisition.function.entropy.gibbon_quality_term.__call__">
+<code class="sig-name descname"><span class="pre">__call__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/entropy.html#gibbon_quality_term.__call__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.entropy.gibbon_quality_term.__call__" title="Permalink to this definition">#</a></dt>
+<dd><p>Call acquisition function.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.acquisition.function.entropy.gibbon_repulsion_term">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">gibbon_repulsion_term</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#trieste.acquisition.function.entropy.SupportsCovarianceObservationNoise" title="trieste.acquisition.function.entropy.SupportsCovarianceObservationNoise"><span class="pre">SupportsCovarianceObservationNoise</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">pending_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">rescaled_repulsion</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/entropy.html#gibbon_repulsion_term"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.entropy.gibbon_repulsion_term" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.UpdatablePenalizationFunction" title="trieste.acquisition.interface.UpdatablePenalizationFunction"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.acquisition.interface.UpdatablePenalizationFunction</span></code></a></p>
+<p>An <code class="xref py py-class docutils literal notranslate"><span class="pre">UpdatablePenalizationFunction</span></code> builds and updates a penalization function.
+Defining a penalization function that can be updated avoids having to retrace on every call.</p>
+<p>GIBBON’s repulsion term encourages diversity within the batch
+(achieving high values for points with low predictive correlation).</p>
+<p>The repulsion term <span class="math notranslate nohighlight">\(r=\log |C|\)</span> is given by the log determinant of the predictive
+correlation matrix <span class="math notranslate nohighlight">\(C\)</span> between the <cite>m</cite> pending points and the current candidate.
+The predictive covariance <span class="math notranslate nohighlight">\(V\)</span> can be expressed as :math:V = [[v, A], [A, B]]` for a
+tensor <span class="math notranslate nohighlight">\(B\)</span> with shape [<cite>m</cite>,`m`] and so we can efficiently calculate <span class="math notranslate nohighlight">\(|V|\)</span> using
+the formula for the determinant of block matrices, i.e
+<span class="math notranslate nohighlight">\(|V| = (v - A^T * B^{-1} * A) * |B|\)</span>.
+Note that when using GIBBON for purely sequential optimization, the repulsion term is
+not required.</p>
+<p>As GIBBON’s batches are built in a greedy manner, i.e sequentially adding points to build a
+set of <cite>m</cite> pending points, we need only ever calculate the entropy reduction provided by
+adding the current candidate point to the current pending points, not the full information
+gain provided by evaluating all the pending points. This allows for a modest computational
+saving.</p>
+<p>When performing batch BO, GIBBON’s approximation can sometimes become
+less accurate as its repulsion term dominates. Therefore, we follow the
+arguments of <span id="id5">[<a class="reference internal" href="../../../index.html#id36" title="Henry B Moss, David S Leslie, Javier Gonzalez, and Paul Rayson. Gibbon: general-purpose information-based bayesian optimisation. Journal of Machine Learning Research, 22:1–49, 2021.">MLGR21</a>]</span> and divide GIBBON’s repulsion term by <span class="math notranslate nohighlight">\(B^{2}\)</span>. This
+behavior can be deactivated by setting <cite>rescaled_repulsion</cite> to False.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model of the objective function. GIBBON requires a model with
+a :method:covariance_between_points method and so GIBBON only
+supports <code class="xref py py-class docutils literal notranslate"><span class="pre">GaussianProcessRegression</span></code> models.</p></li>
+<li><p><strong>pending_points</strong> – The points already chosen in the current batch.</p></li>
+<li><p><strong>rescaled_repulsion</strong> – If True, then downweight GIBBON’s repulsion term to improve
+batch optimization performance.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>GIBBON’s repulsion term. This function will raise <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code></a> or
+<code class="xref py py-exc docutils literal notranslate"><span class="pre">InvalidArgumentError</span></code> if used with a batch size greater than one.</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><strong>ValueError</strong></a><strong> or </strong><strong>tf.errors.InvalidArgumentError</strong> – If <code class="docutils literal notranslate"><span class="pre">pending_points</span></code> does not have
+rank two, or is empty, or if <code class="docutils literal notranslate"><span class="pre">model</span></code> has no homoscedastic observation noise.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.11)"><strong>AttributeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">model</span></code> doesn’t implement covariance_between_points method.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trieste.acquisition.function.entropy.gibbon_repulsion_term.update">
+<code class="sig-name descname"><span class="pre">update</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pending_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">lipschitz_constant</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eta</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/entropy.html#gibbon_repulsion_term.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.entropy.gibbon_repulsion_term.update" title="Permalink to this definition">#</a></dt>
+<dd><p>Update the repulsion term with new variable values.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.acquisition.function.entropy.gibbon_repulsion_term.__call__">
+<code class="sig-name descname"><span class="pre">__call__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/entropy.html#gibbon_repulsion_term.__call__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.entropy.gibbon_repulsion_term.__call__" title="Permalink to this definition">#</a></dt>
+<dd><p>Call penalization function..</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+              </div>
+              
+              
+          </main>
+          
+
+      </div>
+    </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf"></script>
+<footer class="footer mt-5 mt-md-0">
+  <div class="container">
+    
+    <div class="footer-item">
+      <p class="copyright">
+    &copy; Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.<br>
+</p>
+    </div>
+    
+    <div class="footer-item">
+      <p class="sphinx-version">
+Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.5.4.<br>
+</p>
+    </div>
+    
+  </div>
+</footer>
+  </body>
+</html>

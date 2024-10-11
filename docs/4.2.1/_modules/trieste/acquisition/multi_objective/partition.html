@@ -1,0 +1,903 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.acquisition.multi_objective.partition &#8212; trieste 4.2.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+<link href="../../../../_static/styles/bootstrap.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+
+  
+  <link href="../../../../_static/vendor/fontawesome/6.5.2/css/all.min.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=fd3f3429" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/css/custom.css?v=ae350598" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=3ee479438cf8b5e0d341" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=3ee479438cf8b5e0d341" />
+  <script src="../../../../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=3ee479438cf8b5e0d341"></script>
+
+    <script src="../../../../_static/documentation_options.js?v=74d6e94f"></script>
+    <script src="../../../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/trieste/acquisition/multi_objective/partition';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.15.3';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://secondmind-labs.github.io/trieste/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '4.2.1';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner = false;
+        </script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-primary-sidebar-checkbox"/>
+  <label class="overlay overlay-primary" for="pst-primary-sidebar-checkbox"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-secondary-sidebar-checkbox"/>
+  <label class="overlay overlay-secondary" for="pst-secondary-sidebar-checkbox"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/logo.png" class="logo__image only-light" alt="trieste 4.2.1 documentation - Home"/>
+    <script>document.write(`<img src="../../../../_static/logo.png" class="logo__image only-dark" alt="trieste 4.2.1 documentation - Home"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../index.html">
+    Trieste
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../autoapi/trieste/index.html">
+    API reference
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../bibliography.html">
+    Bibliography
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button id="pst-version-switcher-button-2"
+      type="button"
+      class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle"
+      data-bs-toggle="dropdown"
+      aria-haspopup="listbox"
+      aria-controls="pst-version-switcher-list-2"
+      aria-label="Version switcher list"
+    >
+      Choose version  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div id="pst-version-switcher-list-2"
+      class="version-switcher__menu dropdown-menu list-group-flush py-0"
+      role="listbox" aria-labelledby="pst-version-switcher-button-2">
+      <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../index.html">
+    Trieste
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../autoapi/trieste/index.html">
+    API reference
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../bibliography.html">
+    Bibliography
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button id="pst-version-switcher-button-3"
+      type="button"
+      class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle"
+      data-bs-toggle="dropdown"
+      aria-haspopup="listbox"
+      aria-controls="pst-version-switcher-list-3"
+      aria-label="Version switcher list"
+    >
+      Choose version  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div id="pst-version-switcher-list-3"
+      class="version-switcher__menu dropdown-menu list-group-flush py-0"
+      role="listbox" aria-labelledby="pst-version-switcher-button-3">
+      <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">trieste.acqu...</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for trieste.acquisition.multi_objective.partition</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2020 The Trieste Contributors</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="sd">&quot;&quot;&quot;This module contains functions of different methods for</span>
+<span class="sd">partitioning the dominated/non-dominated region in multi-objective optimization problems.&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+
+<span class="kn">from</span> <span class="nn">...types</span> <span class="kn">import</span> <span class="n">TensorType</span>
+<span class="kn">from</span> <span class="nn">...utils.misc</span> <span class="kn">import</span> <span class="n">DEFAULTS</span>
+<span class="kn">from</span> <span class="nn">.dominance</span> <span class="kn">import</span> <span class="n">non_dominated</span>
+
+
+<div class="viewcode-block" id="prepare_default_non_dominated_partition_bounds">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/multi_objective/partition/index.html#trieste.acquisition.multi_objective.prepare_default_non_dominated_partition_bounds">[docs]</a>
+<span class="k">def</span> <span class="nf">prepare_default_non_dominated_partition_bounds</span><span class="p">(</span>
+    <span class="n">reference</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">observations</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">anti_reference</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Prepare the default non-dominated partition boundary for acquisition function usage.</span>
+<span class="sd">    This functionality will trigger different partition according to objective numbers, if</span>
+<span class="sd">    objective number is 2, an `ExactPartition2dNonDominated` will be used. If the objective</span>
+<span class="sd">    number is larger than 2, a `DividedAndConquerNonDominated` will be used.</span>
+
+<span class="sd">    :param observations: The observations for all objectives, with shape [N, D], if not specified</span>
+<span class="sd">        or is an empty Tensor, a single non-dominated partition bounds constructed by reference</span>
+<span class="sd">        and anti_reference point will be returned.</span>
+<span class="sd">    :param anti_reference: a worst point to use with shape [D].</span>
+<span class="sd">        Defines the lower bound of the hypercell. If not specified, will use a default value:</span>
+<span class="sd">        -[1e10] * D.</span>
+<span class="sd">    :param reference: a reference point to use, with shape [D].</span>
+<span class="sd">        Defines the upper bound of the hypervolume.</span>
+<span class="sd">        Should be equal to or bigger than the anti-ideal point of the Pareto set.</span>
+<span class="sd">        For comparing results across runs, the same reference point must be used.</span>
+<span class="sd">    :return: lower, upper bounds of the partitioned cell, each with shape [N, D]</span>
+<span class="sd">    :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``reference`` has an invalid</span>
+<span class="sd">        shape.</span>
+<span class="sd">    :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``anti_reference`` has an invalid</span>
+<span class="sd">        shape.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">is_empty_obs</span><span class="p">(</span><span class="n">obs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">obs</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">tf</span><span class="o">.</span><span class="n">equal</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">observations</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">specify_default_anti_reference_point</span><span class="p">(</span>
+        <span class="n">ref</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">obs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="n">anti_ref</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1e10</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">reference</span><span class="p">)),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">reference</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_greater_equal</span><span class="p">(</span>
+            <span class="n">ref</span><span class="p">,</span>
+            <span class="n">anti_ref</span><span class="p">,</span>
+            <span class="n">message</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;reference point: </span><span class="si">{</span><span class="n">ref</span><span class="si">}</span><span class="s2"> containing at least one value below default &quot;</span>
+            <span class="s2">&quot;anti-reference point ([-1e10, ..., -1e10]), try specify a lower &quot;</span>
+            <span class="s2">&quot;anti-reference point.&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_empty_obs</span><span class="p">(</span><span class="n">obs</span><span class="p">):</span>  <span class="c1"># make sure given (valid) observations are larger than -1e10</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_greater_equal</span><span class="p">(</span>
+                <span class="n">obs</span><span class="p">,</span>
+                <span class="n">anti_ref</span><span class="p">,</span>
+                <span class="n">message</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;observations: </span><span class="si">{</span><span class="n">obs</span><span class="si">}</span><span class="s2"> containing at least one value below default &quot;</span>
+                <span class="s2">&quot;anti-reference point ([-1e10, ..., -1e10]), try specify a lower &quot;</span>
+                <span class="s2">&quot;anti-reference point.&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">anti_ref</span>
+
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">([(</span><span class="n">reference</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;D&quot;</span><span class="p">])])</span>
+    <span class="k">if</span> <span class="n">anti_reference</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># if anti_reference point is not specified, use a -1e10 as default (act as -inf)</span>
+        <span class="n">anti_reference</span> <span class="o">=</span> <span class="n">specify_default_anti_reference_point</span><span class="p">(</span><span class="n">reference</span><span class="p">,</span> <span class="n">observations</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># anti_reference point is specified</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">([(</span><span class="n">anti_reference</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;D&quot;</span><span class="p">])])</span>
+
+    <span class="k">if</span> <span class="n">is_empty_obs</span><span class="p">(</span><span class="n">observations</span><span class="p">):</span>  <span class="c1"># if no valid observations</span>
+        <span class="k">assert</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_all</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">less_equal</span><span class="p">(</span><span class="n">anti_reference</span><span class="p">,</span> <span class="n">reference</span><span class="p">)),</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;anti_reference point: </span><span class="si">{</span><span class="n">anti_reference</span><span class="si">}</span><span class="s2"> contains at least one value larger &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;than reference point: </span><span class="si">{</span><span class="n">reference</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">anti_reference</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">reference</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">observations</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">DividedAndConquerNonDominated</span><span class="p">(</span><span class="n">observations</span><span class="p">)</span><span class="o">.</span><span class="n">partition_bounds</span><span class="p">(</span>
+            <span class="n">anti_reference</span><span class="p">,</span> <span class="n">reference</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ExactPartition2dNonDominated</span><span class="p">(</span><span class="n">observations</span><span class="p">)</span><span class="o">.</span><span class="n">partition_bounds</span><span class="p">(</span>
+            <span class="n">anti_reference</span><span class="p">,</span> <span class="n">reference</span>
+        <span class="p">)</span></div>
+
+
+
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">_BoundedVolumes</span><span class="p">:</span>
+    <span class="c1"># stores the index of the Pareto front to form lower and upper</span>
+    <span class="c1"># bounds of the pseudo cells decomposition.</span>
+
+    <span class="c1"># the lowerbounds index of the volumes</span>
+    <span class="n">lower_idx</span><span class="p">:</span> <span class="n">TensorType</span>
+
+    <span class="c1"># the upperbounds index of the volumes</span>
+    <span class="n">upper_idx</span><span class="p">:</span> <span class="n">TensorType</span>
+
+    <span class="k">def</span> <span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">([(</span><span class="bp">self</span><span class="o">.</span><span class="n">lower_idx</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;N&quot;</span><span class="p">,</span> <span class="s2">&quot;D&quot;</span><span class="p">]),</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">upper_idx</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;N&quot;</span><span class="p">,</span> <span class="s2">&quot;D&quot;</span><span class="p">])])</span>
+
+
+<div class="viewcode-block" id="_BoundIndexPartition">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/multi_objective/partition/index.html#trieste.acquisition.multi_objective._BoundIndexPartition">[docs]</a>
+<span class="k">class</span> <span class="nc">_BoundIndexPartition</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A collection of partition strategies that are based on storing the index of pareto fronts</span>
+<span class="sd">    &amp; other auxiliary points</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">front</span><span class="p">:</span> <span class="n">TensorType</span>
+    <span class="n">_bounds</span><span class="p">:</span> <span class="n">_BoundedVolumes</span>
+
+    <span class="k">def</span> <span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">cls</span> <span class="ow">is</span> <span class="n">_BoundIndexPartition</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;BoundIndexPartition may not be instantiated directly&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">object</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span>
+
+<div class="viewcode-block" id="_BoundIndexPartition.partition_bounds">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/multi_objective/partition/index.html#trieste.acquisition.multi_objective._BoundIndexPartition.partition_bounds">[docs]</a>
+    <span class="k">def</span> <span class="nf">partition_bounds</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">anti_reference</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">reference</span><span class="p">:</span> <span class="n">TensorType</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get the partitioned hypercell&#39;s lower and upper bounds.</span>
+
+<span class="sd">        :param anti_reference: a worst point to use with shape [D].</span>
+<span class="sd">            Defines the lower bound of the hypercell</span>
+<span class="sd">        :param reference: a reference point to use, with shape [D].</span>
+<span class="sd">            Defines the upper bound of the hypervolume.</span>
+<span class="sd">            Should be equal to or bigger than the anti-ideal point of the Pareto set.</span>
+<span class="sd">            For comparing results across runs, the same reference point must be used.</span>
+<span class="sd">        :return: lower, upper bounds of the partitioned cell, each with shape [N, D]</span>
+<span class="sd">        :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``reference`` has an invalid</span>
+<span class="sd">            shape.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_greater_equal</span><span class="p">(</span><span class="n">reference</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">front</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_greater_equal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">front</span><span class="p">,</span> <span class="n">anti_reference</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_type</span><span class="p">(</span><span class="n">anti_reference</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">front</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_type</span><span class="p">(</span><span class="n">reference</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">front</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_bounds</span><span class="o">.</span><span class="n">lower_idx</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;N&quot;</span><span class="p">,</span> <span class="s2">&quot;D&quot;</span><span class="p">]),</span>
+                <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_bounds</span><span class="o">.</span><span class="n">upper_idx</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;N&quot;</span><span class="p">,</span> <span class="s2">&quot;D&quot;</span><span class="p">]),</span>
+                <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">front</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;M&quot;</span><span class="p">,</span> <span class="s2">&quot;D&quot;</span><span class="p">]),</span>
+                <span class="p">(</span><span class="n">reference</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;D&quot;</span><span class="p">]),</span>
+                <span class="p">(</span><span class="n">anti_reference</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;D&quot;</span><span class="p">]),</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="c1"># concatenate the pseudo front to have the same corresponding of bound index</span>
+        <span class="n">pseudo_pfront</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">((</span><span class="n">anti_reference</span><span class="p">[</span><span class="kc">None</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">front</span><span class="p">,</span> <span class="n">reference</span><span class="p">[</span><span class="kc">None</span><span class="p">]),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">N</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_bounds</span><span class="o">.</span><span class="n">upper_idx</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">D</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_bounds</span><span class="o">.</span><span class="n">upper_idx</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="n">D</span><span class="p">),</span> <span class="p">(</span><span class="n">N</span><span class="p">,))</span>
+
+        <span class="n">lower_idx</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">stack</span><span class="p">((</span><span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_bounds</span><span class="o">.</span><span class="n">lower_idx</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]),</span> <span class="n">idx</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">upper_idx</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">stack</span><span class="p">((</span><span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_bounds</span><span class="o">.</span><span class="n">upper_idx</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]),</span> <span class="n">idx</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">lower</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">gather_nd</span><span class="p">(</span><span class="n">pseudo_pfront</span><span class="p">,</span> <span class="n">lower_idx</span><span class="p">),</span> <span class="p">[</span><span class="n">N</span><span class="p">,</span> <span class="n">D</span><span class="p">])</span>
+        <span class="n">upper</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">gather_nd</span><span class="p">(</span><span class="n">pseudo_pfront</span><span class="p">,</span> <span class="n">upper_idx</span><span class="p">),</span> <span class="p">[</span><span class="n">N</span><span class="p">,</span> <span class="n">D</span><span class="p">])</span>
+
+        <span class="k">return</span> <span class="n">lower</span><span class="p">,</span> <span class="n">upper</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ExactPartition2dNonDominated">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/multi_objective/partition/index.html#trieste.acquisition.multi_objective.ExactPartition2dNonDominated">[docs]</a>
+<span class="k">class</span> <span class="nc">ExactPartition2dNonDominated</span><span class="p">(</span><span class="n">_BoundIndexPartition</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Exact partition of non-dominated space, used as a default option when the</span>
+<span class="sd">    objective number equals 2.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">front</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param front: non-dominated pareto front.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_equal</span><span class="p">(</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">reduce_all</span><span class="p">(</span><span class="n">non_dominated</span><span class="p">(</span><span class="n">front</span><span class="p">)[</span><span class="mi">1</span><span class="p">]),</span>
+            <span class="kc">True</span><span class="p">,</span>
+            <span class="n">message</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">input </span><span class="si">{</span><span class="n">front</span><span class="si">}</span><span class="s2"> contains dominated points&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">front</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">gather_nd</span><span class="p">(</span><span class="n">front</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">front</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">1</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>  <span class="c1"># sort input front</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bounds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_bound_index</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_get_bound_index</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_BoundedVolumes</span><span class="p">:</span>
+        <span class="c1"># Compute the cells covering the non-dominated region for 2 dimension case</span>
+        <span class="c1"># this assumes the Pareto set has been sorted in ascending order on the first</span>
+        <span class="c1"># objective, which implies the second objective is sorted in descending order</span>
+        <span class="n">len_front</span><span class="p">,</span> <span class="n">number_of_objectives</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">front</span><span class="o">.</span><span class="n">shape</span>
+
+        <span class="n">pseudo_front_idx</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="n">number_of_objectives</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">),</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">front</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">ones</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="n">number_of_objectives</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span> <span class="o">*</span> <span class="n">len_front</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="p">],</span>
+            <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">range_</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="n">len_front</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)[:,</span> <span class="kc">None</span><span class="p">]</span>
+        <span class="n">lower_result</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">range_</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">range_</span><span class="p">)],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">upper_result</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">range_</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">pseudo_front_idx</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">:][:</span> <span class="n">pseudo_front_idx</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]]],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">_BoundedVolumes</span><span class="p">(</span><span class="n">lower_result</span><span class="p">,</span> <span class="n">upper_result</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="DividedAndConquerNonDominated">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/multi_objective/partition/index.html#trieste.acquisition.multi_objective.DividedAndConquerNonDominated">[docs]</a>
+<span class="k">class</span> <span class="nc">DividedAndConquerNonDominated</span><span class="p">(</span><span class="n">_BoundIndexPartition</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    branch and bound procedure algorithm. a divide and conquer method introduced</span>
+<span class="sd">    in :cite:`Couckuyt2012`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">front</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">threshold</span><span class="p">:</span> <span class="n">TensorType</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param front: non-dominated pareto front.</span>
+<span class="sd">        :param threshold: a threshold used to screen out cells in partition : when its volume is</span>
+<span class="sd">            below this threshold, its rejected directly in order to be more computationally</span>
+<span class="sd">            efficient, if setting above 0, this partition strategy tends to return an</span>
+<span class="sd">            approximated partition.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_equal</span><span class="p">(</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">reduce_all</span><span class="p">(</span><span class="n">non_dominated</span><span class="p">(</span><span class="n">front</span><span class="p">)[</span><span class="mi">1</span><span class="p">]),</span>
+            <span class="kc">True</span><span class="p">,</span>
+            <span class="n">message</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">input </span><span class="si">{</span><span class="n">front</span><span class="si">}</span><span class="s2"> contains dominated points&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">front</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">gather_nd</span><span class="p">(</span><span class="n">front</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">front</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">1</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>  <span class="c1"># sort</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">front</span> <span class="o">=</span> <span class="n">front</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bounds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_bound_index</span><span class="p">(</span><span class="n">threshold</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_bound_index</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">threshold</span><span class="p">:</span> <span class="n">TensorType</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_BoundedVolumes</span><span class="p">:</span>
+        <span class="n">len_front</span><span class="p">,</span> <span class="n">number_of_objectives</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">front</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">lower_result</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="n">number_of_objectives</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+        <span class="n">upper_result</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="n">number_of_objectives</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+
+        <span class="n">min_front</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">front</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="n">max_front</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">front</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="n">pseudo_front</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">min_front</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">front</span><span class="p">,</span> <span class="n">max_front</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">pseudo_front_idx</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="n">number_of_objectives</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">),</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">front</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>  <span class="c1"># +1 as index zero is reserved for the ideal point</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">ones</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="n">number_of_objectives</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span> <span class="o">*</span> <span class="n">len_front</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="p">],</span>
+            <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">divide_conquer_cells</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">number_of_objectives</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">),</span>
+                <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">pseudo_front_idx</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+                <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">number_of_objectives</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">),</span>
+            <span class="p">],</span>
+            <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="p">)[</span><span class="kc">None</span><span class="p">]</span>
+
+        <span class="n">total_size</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_prod</span><span class="p">(</span><span class="n">max_front</span> <span class="o">-</span> <span class="n">min_front</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">while_body</span><span class="p">(</span>
+            <span class="n">divide_conquer_cells</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+            <span class="n">lower_result</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+            <span class="n">upper_result</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+        <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+            <span class="n">divide_conquer_cells_unstacked</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">unstack</span><span class="p">(</span><span class="n">divide_conquer_cells</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">cell</span> <span class="o">=</span> <span class="n">divide_conquer_cells_unstacked</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">divide_conquer_cells_new</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">cond</span><span class="p">(</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">not_equal</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">divide_conquer_cells_unstacked</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]),</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="k">lambda</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">divide_conquer_cells_unstacked</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]),</span>
+                <span class="k">lambda</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">number_of_objectives</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">),</span>
+            <span class="p">)</span>
+
+            <span class="n">arr</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="n">number_of_objectives</span><span class="p">)</span>
+            <span class="n">lower_idx</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">gather_nd</span><span class="p">(</span><span class="n">pseudo_front_idx</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">stack</span><span class="p">((</span><span class="n">cell</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">arr</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+            <span class="n">upper_idx</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">gather_nd</span><span class="p">(</span><span class="n">pseudo_front_idx</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">stack</span><span class="p">((</span><span class="n">cell</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">arr</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+            <span class="n">lower</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">gather_nd</span><span class="p">(</span><span class="n">pseudo_front</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">stack</span><span class="p">((</span><span class="n">lower_idx</span><span class="p">,</span> <span class="n">arr</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+            <span class="n">upper</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">gather_nd</span><span class="p">(</span><span class="n">pseudo_front</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">stack</span><span class="p">((</span><span class="n">upper_idx</span><span class="p">,</span> <span class="n">arr</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+
+            <span class="n">test_accepted</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_test_required</span><span class="p">((</span><span class="n">upper</span> <span class="o">-</span> <span class="n">DEFAULTS</span><span class="o">.</span><span class="n">JITTER</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">front</span><span class="p">)</span>
+            <span class="n">lower_result_final</span><span class="p">,</span> <span class="n">upper_result_final</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">cond</span><span class="p">(</span>
+                <span class="n">test_accepted</span><span class="p">,</span>
+                <span class="k">lambda</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_accepted_test_body</span><span class="p">(</span><span class="n">lower_result</span><span class="p">,</span> <span class="n">upper_result</span><span class="p">,</span> <span class="n">lower_idx</span><span class="p">,</span> <span class="n">upper_idx</span><span class="p">),</span>
+                <span class="k">lambda</span><span class="p">:</span> <span class="p">(</span><span class="n">lower_result</span><span class="p">,</span> <span class="n">upper_result</span><span class="p">),</span>
+            <span class="p">)</span>
+
+            <span class="n">test_rejected</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_test_required</span><span class="p">((</span><span class="n">lower</span> <span class="o">+</span> <span class="n">DEFAULTS</span><span class="o">.</span><span class="n">JITTER</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">front</span><span class="p">)</span>
+            <span class="n">divide_conquer_cells_final</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">cond</span><span class="p">(</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">test_rejected</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">logical_not</span><span class="p">(</span><span class="n">test_accepted</span><span class="p">)),</span>
+                <span class="k">lambda</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rejected_test_body</span><span class="p">(</span>
+                    <span class="n">cell</span><span class="p">,</span> <span class="n">lower</span><span class="p">,</span> <span class="n">upper</span><span class="p">,</span> <span class="n">divide_conquer_cells_new</span><span class="p">,</span> <span class="n">total_size</span><span class="p">,</span> <span class="n">threshold</span>
+                <span class="p">),</span>
+                <span class="k">lambda</span><span class="p">:</span> <span class="n">divide_conquer_cells_new</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">divide_conquer_cells_final</span><span class="p">,</span> <span class="n">lower_result_final</span><span class="p">,</span> <span class="n">upper_result_final</span>
+
+        <span class="n">_</span><span class="p">,</span> <span class="n">lower_result_final</span><span class="p">,</span> <span class="n">upper_result_final</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">while_loop</span><span class="p">(</span>
+            <span class="k">lambda</span> <span class="n">divide_conquer_cells</span><span class="p">,</span> <span class="n">lower_result</span><span class="p">,</span> <span class="n">upper_result</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">divide_conquer_cells</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="n">while_body</span><span class="p">,</span>
+            <span class="n">loop_vars</span><span class="o">=</span><span class="p">[</span><span class="n">divide_conquer_cells</span><span class="p">,</span> <span class="n">lower_result</span><span class="p">,</span> <span class="n">upper_result</span><span class="p">],</span>
+            <span class="n">shape_invariants</span><span class="o">=</span><span class="p">[</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">TensorShape</span><span class="p">([</span><span class="kc">None</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">number_of_objectives</span><span class="p">]),</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">TensorShape</span><span class="p">([</span><span class="kc">None</span><span class="p">,</span> <span class="n">number_of_objectives</span><span class="p">]),</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">TensorShape</span><span class="p">([</span><span class="kc">None</span><span class="p">,</span> <span class="n">number_of_objectives</span><span class="p">]),</span>
+            <span class="p">],</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">_BoundedVolumes</span><span class="p">(</span><span class="n">lower_result_final</span><span class="p">,</span> <span class="n">upper_result_final</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_is_test_required</span><span class="p">(</span><span class="n">smaller</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="n">idx_dom_augm</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_any</span><span class="p">(</span><span class="n">smaller</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">is_dom_augm</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_all</span><span class="p">(</span><span class="n">idx_dom_augm</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">is_dom_augm</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_accepted_test_body</span><span class="p">(</span>
+        <span class="n">lower_result</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+        <span class="n">upper_result</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+        <span class="n">lower_idx</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+        <span class="n">upper_idx</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+        <span class="n">lower_result_accepted</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">lower_result</span><span class="p">,</span> <span class="n">lower_idx</span><span class="p">[</span><span class="kc">None</span><span class="p">]],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">upper_result_accepted</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">upper_result</span><span class="p">,</span> <span class="n">upper_idx</span><span class="p">[</span><span class="kc">None</span><span class="p">]],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">lower_result_accepted</span><span class="p">,</span> <span class="n">upper_result_accepted</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_rejected_test_body</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span>
+        <span class="n">cell</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+        <span class="n">lower</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+        <span class="n">upper</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+        <span class="n">divide_conquer_cells</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+        <span class="n">total_size</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+        <span class="n">threshold</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="n">divide_conquer_cells_dist</span> <span class="o">=</span> <span class="n">cell</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">cell</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">hc_size</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">reduce_prod</span><span class="p">(</span><span class="n">upper</span> <span class="o">-</span> <span class="n">lower</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">not_unit_cell</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_any</span><span class="p">(</span><span class="n">divide_conquer_cells_dist</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">vol_above_thresh</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_all</span><span class="p">((</span><span class="n">hc_size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">total_size</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">threshold</span><span class="p">)</span>
+        <span class="n">divide_conquer_cells_rejected</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">cond</span><span class="p">(</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">not_unit_cell</span><span class="p">,</span> <span class="n">vol_above_thresh</span><span class="p">),</span>
+            <span class="k">lambda</span><span class="p">:</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_divide_body</span><span class="p">(</span><span class="n">divide_conquer_cells</span><span class="p">,</span> <span class="n">divide_conquer_cells_dist</span><span class="p">,</span> <span class="n">cell</span><span class="p">),</span>
+            <span class="k">lambda</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">identity</span><span class="p">(</span><span class="n">divide_conquer_cells</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">divide_conquer_cells_rejected</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_divide_body</span><span class="p">(</span>
+        <span class="n">divide_conquer_cells</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+        <span class="n">divide_conquer_cells_dist</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+        <span class="n">cell</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="n">edge_size</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_max</span><span class="p">(</span><span class="n">divide_conquer_cells_dist</span><span class="p">)</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">divide_conquer_cells_dist</span><span class="p">)</span>
+        <span class="n">edge_size1</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">edge_size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">))</span>
+        <span class="n">edge_size2</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">edge_size</span> <span class="o">-</span> <span class="n">edge_size1</span><span class="p">)</span>
+
+        <span class="n">sparse_edge_size1</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">idx</span><span class="p">]),</span> <span class="n">edge_size1</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">ones</span><span class="p">([</span><span class="mi">1</span><span class="p">]),</span> <span class="n">tf</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">cell</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">-</span> <span class="n">idx</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span>
+        <span class="p">)</span>
+        <span class="n">upper</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">identity</span><span class="p">(</span><span class="n">cell</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">-</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">sparse_edge_size1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+
+        <span class="n">divide_conquer_cells_new</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">divide_conquer_cells</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">tf</span><span class="o">.</span><span class="n">identity</span><span class="p">(</span><span class="n">cell</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">upper</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)[</span><span class="kc">None</span><span class="p">]],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span>
+        <span class="p">)</span>
+
+        <span class="n">sparse_edge_size2</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">idx</span><span class="p">]),</span> <span class="n">edge_size2</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">ones</span><span class="p">([</span><span class="mi">1</span><span class="p">]),</span> <span class="n">tf</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">cell</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">-</span> <span class="n">idx</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span>
+        <span class="p">)</span>
+        <span class="n">lower</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">identity</span><span class="p">(</span><span class="n">cell</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">sparse_edge_size2</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+
+        <span class="n">divide_conquer_cells_final</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">divide_conquer_cells_new</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">lower</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">identity</span><span class="p">(</span><span class="n">cell</span><span class="p">[</span><span class="mi">1</span><span class="p">])],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)[</span><span class="kc">None</span><span class="p">]],</span>
+            <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">divide_conquer_cells_final</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../_static/scripts/bootstrap.js?digest=3ee479438cf8b5e0d341"></script>
+<script src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=3ee479438cf8b5e0d341"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.15.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

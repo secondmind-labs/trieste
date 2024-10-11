@@ -1,0 +1,1209 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.acquisition.function.multi_objective &#8212; trieste 1.2.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../../../../_static/styles/bootstrap.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+
+  
+  <link href="../../../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=e353d410970836974a52" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/css/custom.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
+
+    <script data-url_root="../../../../" id="documentation_options" src="../../../../_static/documentation_options.js"></script>
+    <script src="../../../../_static/doctools.js"></script>
+    <script src="../../../../_static/sphinx_highlight.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/trieste/acquisition/function/multi_objective';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://secondmind-labs.github.io/trieste/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.2.0';
+        </script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  <div class="navbar-header-items__start">
+    
+      <div class="navbar-item">
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/logo.png" class="logo__image only-light" alt="Logo image"/>
+    <script>document.write(`<img src="../../../../_static/logo.png" class="logo__image only-dark" alt="Logo image"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../autoapi/trieste/index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      1.2.0  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+    </div>
+  
+
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../autoapi/trieste/index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      1.2.0  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumbs">
+  <ul class="bd-breadcrumbs" role="navigation" aria-label="Breadcrumb">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">trieste.acquisition.function.multi_objective</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <h1>Source code for trieste.acquisition.function.multi_objective</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2021 The Trieste Contributors</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module contains multi-objective acquisition function builders.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">combinations</span><span class="p">,</span> <span class="n">product</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">cast</span>
+
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">import</span> <span class="nn">tensorflow_probability</span> <span class="k">as</span> <span class="nn">tfp</span>
+
+<span class="kn">from</span> <span class="nn">...data</span> <span class="kn">import</span> <span class="n">Dataset</span>
+<span class="kn">from</span> <span class="nn">...models</span> <span class="kn">import</span> <span class="n">ProbabilisticModel</span><span class="p">,</span> <span class="n">ReparametrizationSampler</span>
+<span class="kn">from</span> <span class="nn">...models.interfaces</span> <span class="kn">import</span> <span class="n">HasReparamSampler</span>
+<span class="kn">from</span> <span class="nn">...observer</span> <span class="kn">import</span> <span class="n">OBJECTIVE</span>
+<span class="kn">from</span> <span class="nn">...types</span> <span class="kn">import</span> <span class="n">Tag</span><span class="p">,</span> <span class="n">TensorType</span>
+<span class="kn">from</span> <span class="nn">...utils</span> <span class="kn">import</span> <span class="n">DEFAULTS</span>
+<span class="kn">from</span> <span class="nn">..interface</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">AcquisitionFunction</span><span class="p">,</span>
+    <span class="n">AcquisitionFunctionBuilder</span><span class="p">,</span>
+    <span class="n">AcquisitionFunctionClass</span><span class="p">,</span>
+    <span class="n">GreedyAcquisitionFunctionBuilder</span><span class="p">,</span>
+    <span class="n">PenalizationFunction</span><span class="p">,</span>
+    <span class="n">ProbabilisticModelType</span><span class="p">,</span>
+    <span class="n">SingleModelAcquisitionBuilder</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">..multi_objective.pareto</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">Pareto</span><span class="p">,</span>
+    <span class="n">get_reference_point</span><span class="p">,</span>
+    <span class="n">prepare_default_non_dominated_partition_bounds</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.function</span> <span class="kn">import</span> <span class="n">ExpectedConstrainedImprovement</span>
+
+
+<div class="viewcode-block" id="ExpectedHypervolumeImprovement"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.ExpectedHypervolumeImprovement">[docs]</a><span class="k">class</span> <span class="nc">ExpectedHypervolumeImprovement</span><span class="p">(</span><span class="n">SingleModelAcquisitionBuilder</span><span class="p">[</span><span class="n">ProbabilisticModel</span><span class="p">]):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Builder for the expected hypervolume improvement acquisition function.</span>
+<span class="sd">    The implementation of the acquisition function largely</span>
+<span class="sd">    follows :cite:`yang2019efficient`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">reference_point_spec</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+        <span class="o">|</span> <span class="n">TensorType</span>
+        <span class="o">|</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_reference_point</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param reference_point_spec: this method is used to determine how the reference point is</span>
+<span class="sd">            calculated. If a Callable function specified, it is expected to take existing</span>
+<span class="sd">            posterior mean-based observations (to screen out the observation noise) and return</span>
+<span class="sd">            a reference point with shape [D] (D represents number of objectives). If the Pareto</span>
+<span class="sd">            front location is known, this arg can be used to specify a fixed reference point</span>
+<span class="sd">            in each bo iteration. A dynamic reference point updating strategy is used by</span>
+<span class="sd">            default to set a reference point according to the datasets.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">reference_point_spec</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ref_point_spec</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="n">reference_point_spec</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ref_point_spec</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">convert_to_tensor</span><span class="p">(</span><span class="n">reference_point_spec</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ref_point</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ref_point_spec</span><span class="p">):</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;ExpectedHypervolumeImprovement(&quot;</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_ref_point_spec</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">)&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;ExpectedHypervolumeImprovement(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_ref_point_spec</span><span class="si">!r}</span><span class="s2">)&quot;</span>
+
+<div class="viewcode-block" id="ExpectedHypervolumeImprovement.prepare_acquisition_function"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.ExpectedHypervolumeImprovement.prepare_acquisition_function">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">ProbabilisticModel</span><span class="p">,</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param model: The model.</span>
+<span class="sd">        :param dataset: The data from the observer. Must be populated.</span>
+<span class="sd">        :return: The expected hypervolume improvement acquisition function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span><span class="n">dataset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([])])</span>
+        <span class="n">dataset</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">),</span> <span class="n">message</span><span class="o">=</span><span class="s2">&quot;Dataset must be populated.&quot;</span><span class="p">)</span>
+        <span class="n">mean</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ref_point_spec</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ref_point</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ref_point_spec</span><span class="p">(</span><span class="n">mean</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">mean</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ref_point</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ref_point_spec</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">mean</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+        <span class="n">_pf</span> <span class="o">=</span> <span class="n">Pareto</span><span class="p">(</span><span class="n">mean</span><span class="p">)</span>
+        <span class="n">screened_front</span> <span class="o">=</span> <span class="n">_pf</span><span class="o">.</span><span class="n">front</span><span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">reduce_all</span><span class="p">(</span><span class="n">_pf</span><span class="o">.</span><span class="n">front</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ref_point</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)]</span>
+        <span class="c1"># prepare the partitioned bounds of non-dominated region for calculating of the</span>
+        <span class="c1"># hypervolume improvement in this area</span>
+        <span class="n">_partition_bounds</span> <span class="o">=</span> <span class="n">prepare_default_non_dominated_partition_bounds</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ref_point</span><span class="p">,</span> <span class="n">screened_front</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">expected_hv_improvement</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">_partition_bounds</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ExpectedHypervolumeImprovement.update_acquisition_function"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.ExpectedHypervolumeImprovement.update_acquisition_function">[docs]</a>    <span class="k">def</span> <span class="nf">update_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">function</span><span class="p">:</span> <span class="n">AcquisitionFunction</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">ProbabilisticModel</span><span class="p">,</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param function: The acquisition function to update.</span>
+<span class="sd">        :param model: The model.</span>
+<span class="sd">        :param dataset: The data from the observer. Must be populated.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span><span class="n">dataset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([])])</span>
+        <span class="n">dataset</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">),</span> <span class="n">message</span><span class="o">=</span><span class="s2">&quot;Dataset must be populated.&quot;</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">function</span><span class="p">,</span> <span class="n">expected_hv_improvement</span><span class="p">),</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([])])</span>
+        <span class="n">mean</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ref_point_spec</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ref_point</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ref_point_spec</span><span class="p">(</span><span class="n">mean</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ref_point_spec</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span>  <span class="c1"># specified a fixed ref point</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ref_point</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ref_point_spec</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">mean</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+        <span class="n">_pf</span> <span class="o">=</span> <span class="n">Pareto</span><span class="p">(</span><span class="n">mean</span><span class="p">)</span>
+        <span class="n">screened_front</span> <span class="o">=</span> <span class="n">_pf</span><span class="o">.</span><span class="n">front</span><span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">reduce_all</span><span class="p">(</span><span class="n">_pf</span><span class="o">.</span><span class="n">front</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ref_point</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)]</span>
+        <span class="n">_partition_bounds</span> <span class="o">=</span> <span class="n">prepare_default_non_dominated_partition_bounds</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ref_point</span><span class="p">,</span> <span class="n">screened_front</span>
+        <span class="p">)</span>
+        <span class="n">function</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">_partition_bounds</span><span class="p">)</span>  <span class="c1"># type: ignore</span>
+        <span class="k">return</span> <span class="n">function</span></div></div>
+
+
+<div class="viewcode-block" id="expected_hv_improvement"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.expected_hv_improvement">[docs]</a><span class="k">class</span> <span class="nc">expected_hv_improvement</span><span class="p">(</span><span class="n">AcquisitionFunctionClass</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">ProbabilisticModel</span><span class="p">,</span> <span class="n">partition_bounds</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        expected Hyper-volume (HV) calculating using Eq. 44 of :cite:`yang2019efficient` paper.</span>
+<span class="sd">        The expected hypervolume improvement calculation in the non-dominated region</span>
+<span class="sd">        can be decomposed into sub-calculations based on each partitioned cell.</span>
+<span class="sd">        For easier calculation, this sub-calculation can be reformulated as a combination</span>
+<span class="sd">        of two generalized expected improvements, corresponding to Psi (Eq. 44) and Nu (Eq. 45)</span>
+<span class="sd">        function calculations, respectively.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">        1. Since in Trieste we do not assume the use of a certain non-dominated region partition</span>
+<span class="sd">        algorithm, we do not assume the last dimension of the partitioned cell has only one</span>
+<span class="sd">        (lower) bound (i.e., minus infinity, which is used in the :cite:`yang2019efficient` paper).</span>
+<span class="sd">        This is not as efficient as the original paper, but is applicable to different non-dominated</span>
+<span class="sd">        partition algorithm.</span>
+<span class="sd">        2. As the Psi and nu function in the original paper are defined for maximization problems,</span>
+<span class="sd">        we inverse our minimisation problem (to also be a maximisation), allowing use of the</span>
+<span class="sd">        original notation and equations.</span>
+
+<span class="sd">        :param model: The model of the objective function.</span>
+<span class="sd">        :param partition_bounds: with shape ([N, D], [N, D]), partitioned non-dominated hypercell</span>
+<span class="sd">            bounds for hypervolume improvement calculation</span>
+<span class="sd">        :return: The expected_hv_improvement acquisition function modified for objective</span>
+<span class="sd">            minimisation. This function will raise :exc:`ValueError` or</span>
+<span class="sd">            :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lb_points</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span>
+            <span class="n">partition_bounds</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">trainable</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="n">partition_bounds</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ub_points</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span>
+            <span class="n">partition_bounds</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">trainable</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="n">partition_bounds</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cross_index</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span>
+            <span class="nb">list</span><span class="p">(</span><span class="n">product</span><span class="p">(</span><span class="o">*</span><span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lb_points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
+        <span class="p">)</span>  <span class="c1"># [2^d, indices_at_dim]</span>
+
+<div class="viewcode-block" id="expected_hv_improvement.update"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.expected_hv_improvement.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">partition_bounds</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update the acquisition function with new partition bounds.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lb_points</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">partition_bounds</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ub_points</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">partition_bounds</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span></div>
+
+    <span class="nd">@tf</span><span class="o">.</span><span class="n">function</span>
+<div class="viewcode-block" id="expected_hv_improvement.__call__"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.expected_hv_improvement.__call__">[docs]</a>    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">(</span>
+            <span class="p">[(</span><span class="n">x</span><span class="p">,</span> <span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">])],</span>
+            <span class="n">message</span><span class="o">=</span><span class="s2">&quot;This acquisition function only supports batch sizes of one.&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">normal</span> <span class="o">=</span> <span class="n">tfp</span><span class="o">.</span><span class="n">distributions</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span>
+            <span class="n">loc</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">),</span> <span class="n">scale</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">Psi</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">mean</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">std</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">std</span> <span class="o">*</span> <span class="n">normal</span><span class="o">.</span><span class="n">prob</span><span class="p">((</span><span class="n">b</span> <span class="o">-</span> <span class="n">mean</span><span class="p">)</span> <span class="o">/</span> <span class="n">std</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="n">mean</span> <span class="o">-</span> <span class="n">a</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span>
+                <span class="mi">1</span> <span class="o">-</span> <span class="n">normal</span><span class="o">.</span><span class="n">cdf</span><span class="p">((</span><span class="n">b</span> <span class="o">-</span> <span class="n">mean</span><span class="p">)</span> <span class="o">/</span> <span class="n">std</span><span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">nu</span><span class="p">(</span><span class="n">lb</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">ub</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">mean</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">std</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span><span class="n">ub</span> <span class="o">-</span> <span class="n">lb</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">normal</span><span class="o">.</span><span class="n">cdf</span><span class="p">((</span><span class="n">ub</span> <span class="o">-</span> <span class="n">mean</span><span class="p">)</span> <span class="o">/</span> <span class="n">std</span><span class="p">))</span>
+
+        <span class="k">def</span> <span class="nf">ehvi_based_on_partitioned_cell</span><span class="p">(</span>
+            <span class="n">neg_pred_mean</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">pred_std</span><span class="p">:</span> <span class="n">TensorType</span>
+        <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">            </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            Calculate the ehvi based on cell i.</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+
+            <span class="n">neg_lb_points</span><span class="p">,</span> <span class="n">neg_ub_points</span> <span class="o">=</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">_ub_points</span><span class="p">,</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">_lb_points</span>
+
+            <span class="n">neg_ub_points</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">neg_ub_points</span><span class="p">,</span> <span class="mf">1e10</span><span class="p">)</span>  <span class="c1"># clip to improve numerical stability</span>
+
+            <span class="n">psi_ub</span> <span class="o">=</span> <span class="n">Psi</span><span class="p">(</span>
+                <span class="n">neg_lb_points</span><span class="p">,</span> <span class="n">neg_ub_points</span><span class="p">,</span> <span class="n">neg_pred_mean</span><span class="p">,</span> <span class="n">pred_std</span>
+            <span class="p">)</span>  <span class="c1"># [..., num_cells, out_dim]</span>
+            <span class="n">psi_lb</span> <span class="o">=</span> <span class="n">Psi</span><span class="p">(</span>
+                <span class="n">neg_lb_points</span><span class="p">,</span> <span class="n">neg_lb_points</span><span class="p">,</span> <span class="n">neg_pred_mean</span><span class="p">,</span> <span class="n">pred_std</span>
+            <span class="p">)</span>  <span class="c1"># [..., num_cells, out_dim]</span>
+
+            <span class="n">psi_lb2ub</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">psi_lb</span> <span class="o">-</span> <span class="n">psi_ub</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>  <span class="c1"># [..., num_cells, out_dim]</span>
+            <span class="n">nu_contrib</span> <span class="o">=</span> <span class="n">nu</span><span class="p">(</span><span class="n">neg_lb_points</span><span class="p">,</span> <span class="n">neg_ub_points</span><span class="p">,</span> <span class="n">neg_pred_mean</span><span class="p">,</span> <span class="n">pred_std</span><span class="p">)</span>
+
+            <span class="n">stacked_factors</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">psi_lb2ub</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">),</span> <span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">nu_contrib</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">)],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">2</span>
+            <span class="p">)</span>  <span class="c1"># Take the cross product of psi_diff and nu across all outcomes</span>
+            <span class="c1"># [..., num_cells, 2(operation_num, refer Eq. 45), num_obj]</span>
+
+            <span class="n">factor_combinations</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">diag_part</span><span class="p">(</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="n">stacked_factors</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cross_index</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">2</span><span class="p">)</span>
+            <span class="p">)</span>  <span class="c1"># [..., num_cells, 2^d, 2(operation_num), num_obj]</span>
+
+            <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">reduce_prod</span><span class="p">(</span><span class="n">factor_combinations</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">),</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">candidate_mean</span><span class="p">,</span> <span class="n">candidate_var</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">))</span>
+        <span class="n">candidate_std</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">candidate_var</span><span class="p">)</span>
+
+        <span class="n">neg_candidate_mean</span> <span class="o">=</span> <span class="o">-</span><span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">candidate_mean</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>  <span class="c1"># [..., 1, out_dim]</span>
+        <span class="n">candidate_std</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">candidate_std</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>  <span class="c1"># [..., 1, out_dim]</span>
+
+        <span class="n">ehvi_cells_based</span> <span class="o">=</span> <span class="n">ehvi_based_on_partitioned_cell</span><span class="p">(</span><span class="n">neg_candidate_mean</span><span class="p">,</span> <span class="n">candidate_std</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">(</span>
+            <span class="n">ehvi_cells_based</span><span class="p">,</span>
+            <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="BatchMonteCarloExpectedHypervolumeImprovement"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.BatchMonteCarloExpectedHypervolumeImprovement">[docs]</a><span class="k">class</span> <span class="nc">BatchMonteCarloExpectedHypervolumeImprovement</span><span class="p">(</span>
+    <span class="n">SingleModelAcquisitionBuilder</span><span class="p">[</span><span class="n">HasReparamSampler</span><span class="p">]</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Builder for the batch expected hypervolume improvement acquisition function.</span>
+<span class="sd">    The implementation of the acquisition function largely</span>
+<span class="sd">    follows :cite:`daulton2020differentiable`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">sample_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">reference_point_spec</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+        <span class="o">|</span> <span class="n">TensorType</span>
+        <span class="o">|</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_reference_point</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">jitter</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULTS</span><span class="o">.</span><span class="n">JITTER</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param sample_size: The number of samples from model predicted distribution for</span>
+<span class="sd">            each batch of points.</span>
+<span class="sd">        :param reference_point_spec: this method is used to determine how the reference point is</span>
+<span class="sd">            calculated. If a Callable function specified, it is expected to take existing</span>
+<span class="sd">            posterior mean-based observations (to screen out the observation noise) and return</span>
+<span class="sd">            a reference point with shape [D] (D represents number of objectives). If the Pareto</span>
+<span class="sd">            front location is known, this arg can be used to specify a fixed reference point</span>
+<span class="sd">            in each bo iteration. A dynamic reference point updating strategy is used by</span>
+<span class="sd">            default to set a reference point according to the datasets.</span>
+<span class="sd">        :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of</span>
+<span class="sd">            the covariance matrix.</span>
+<span class="sd">        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive, or</span>
+<span class="sd">            ``jitter`` is negative.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="n">sample_size</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_greater_equal</span><span class="p">(</span><span class="n">jitter</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sample_size</span> <span class="o">=</span> <span class="n">sample_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_jitter</span> <span class="o">=</span> <span class="n">jitter</span>
+        <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">reference_point_spec</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ref_point_spec</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="n">reference_point_spec</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ref_point_spec</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">convert_to_tensor</span><span class="p">(</span><span class="n">reference_point_spec</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ref_point</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ref_point_spec</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;BatchMonteCarloExpectedHypervolumeImprovement(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_sample_size</span><span class="si">!r}</span><span class="s2">,&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_ref_point_spec</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">,&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot; jitter=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_jitter</span><span class="si">!r}</span><span class="s2">)&quot;</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;BatchMonteCarloExpectedHypervolumeImprovement(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_sample_size</span><span class="si">!r}</span><span class="s2">,&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_ref_point_spec</span><span class="si">!r}</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot; jitter=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_jitter</span><span class="si">!r}</span><span class="s2">)&quot;</span>
+            <span class="p">)</span>
+
+<div class="viewcode-block" id="BatchMonteCarloExpectedHypervolumeImprovement.prepare_acquisition_function"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.BatchMonteCarloExpectedHypervolumeImprovement.prepare_acquisition_function">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">HasReparamSampler</span><span class="p">,</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param model: The model. Must have event shape [1].</span>
+<span class="sd">        :param dataset: The data from the observer. Must be populated.</span>
+<span class="sd">        :return: The batch expected hypervolume improvement acquisition function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span><span class="n">dataset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([])])</span>
+        <span class="n">dataset</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">),</span> <span class="n">message</span><span class="o">=</span><span class="s2">&quot;Dataset must be populated.&quot;</span><span class="p">)</span>
+        <span class="n">mean</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ref_point_spec</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ref_point</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ref_point_spec</span><span class="p">(</span><span class="n">mean</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">mean</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ref_point</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ref_point_spec</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">mean</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+        <span class="n">_pf</span> <span class="o">=</span> <span class="n">Pareto</span><span class="p">(</span><span class="n">mean</span><span class="p">)</span>
+        <span class="n">screened_front</span> <span class="o">=</span> <span class="n">_pf</span><span class="o">.</span><span class="n">front</span><span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">reduce_all</span><span class="p">(</span><span class="n">_pf</span><span class="o">.</span><span class="n">front</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ref_point</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)]</span>
+        <span class="c1"># prepare the partitioned bounds of non-dominated region for calculating of the</span>
+        <span class="c1"># hypervolume improvement in this area</span>
+        <span class="n">_partition_bounds</span> <span class="o">=</span> <span class="n">prepare_default_non_dominated_partition_bounds</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ref_point</span><span class="p">,</span> <span class="n">screened_front</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">HasReparamSampler</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;The batch Monte-Carlo expected hyper-volume improvement function only supports &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;models that implement a reparam_sampler method; received </span><span class="si">{</span><span class="n">model</span><span class="o">.</span><span class="fm">__repr__</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">sampler</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">reparam_sampler</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_sample_size</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">batch_ehvi</span><span class="p">(</span><span class="n">sampler</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_jitter</span><span class="p">,</span> <span class="n">_partition_bounds</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="batch_ehvi"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.batch_ehvi">[docs]</a><span class="k">def</span> <span class="nf">batch_ehvi</span><span class="p">(</span>
+    <span class="n">sampler</span><span class="p">:</span> <span class="n">ReparametrizationSampler</span><span class="p">[</span><span class="n">HasReparamSampler</span><span class="p">],</span>
+    <span class="n">sampler_jitter</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">partition_bounds</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    :param sampler: The posterior sampler, which given query points `at`, is able to sample</span>
+<span class="sd">        the possible observations at &#39;at&#39;.</span>
+<span class="sd">    :param sampler_jitter: The size of the jitter to use in sampler when stabilising the Cholesky</span>
+<span class="sd">        decomposition of the covariance matrix.</span>
+<span class="sd">    :param partition_bounds: with shape ([N, D], [N, D]), partitioned non-dominated hypercell</span>
+<span class="sd">        bounds for hypervolume improvement calculation</span>
+<span class="sd">    :return: The batch expected hypervolume improvement acquisition</span>
+<span class="sd">        function for objective minimisation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">acquisition</span><span class="p">(</span><span class="n">at</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="n">_batch_size</span> <span class="o">=</span> <span class="n">at</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>  <span class="c1"># B</span>
+
+        <span class="k">def</span> <span class="nf">gen_q_subset_indices</span><span class="p">(</span><span class="n">q</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">tf</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="p">:</span>
+            <span class="c1"># generate all subsets of [1, ..., q] as indices</span>
+            <span class="n">indices</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">q</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">ragged</span><span class="o">.</span><span class="n">constant</span><span class="p">([</span><span class="nb">list</span><span class="p">(</span><span class="n">combinations</span><span class="p">(</span><span class="n">indices</span><span class="p">,</span> <span class="n">i</span><span class="p">))</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">q</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)])</span>
+
+        <span class="n">samples</span> <span class="o">=</span> <span class="n">sampler</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">at</span><span class="p">,</span> <span class="n">jitter</span><span class="o">=</span><span class="n">sampler_jitter</span><span class="p">)</span>  <span class="c1"># [..., S, B, num_obj]</span>
+
+        <span class="n">q_subset_indices</span> <span class="o">=</span> <span class="n">gen_q_subset_indices</span><span class="p">(</span><span class="n">_batch_size</span><span class="p">)</span>
+
+        <span class="n">hv_contrib</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">samples</span><span class="p">)[:</span><span class="o">-</span><span class="mi">2</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">samples</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">lb_points</span><span class="p">,</span> <span class="n">ub_points</span> <span class="o">=</span> <span class="n">partition_bounds</span>
+
+        <span class="k">def</span> <span class="nf">hv_contrib_on_samples</span><span class="p">(</span>
+            <span class="n">obj_samples</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+        <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>  <span class="c1"># calculate samples overlapped area&#39;s hvi for obj_samples</span>
+            <span class="c1"># [..., S, Cq_j, j, num_obj] -&gt; [..., S, Cq_j, num_obj]</span>
+            <span class="n">overlap_vertices</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_max</span><span class="p">(</span><span class="n">obj_samples</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">2</span><span class="p">)</span>
+
+            <span class="n">overlap_vertices</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span>  <span class="c1"># compare overlap vertices and lower bound of each cell:</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">overlap_vertices</span><span class="p">,</span> <span class="o">-</span><span class="mi">3</span><span class="p">),</span>  <span class="c1"># expand a cell dimension</span>
+                <span class="n">lb_points</span><span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:,</span> <span class="n">tf</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:],</span>
+            <span class="p">)</span>  <span class="c1"># [..., S, K, Cq_j, num_obj]</span>
+
+            <span class="n">lengths_j</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span>  <span class="c1"># get hvi length per obj within each cell</span>
+                <span class="p">(</span><span class="n">ub_points</span><span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:,</span> <span class="n">tf</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span> <span class="o">-</span> <span class="n">overlap_vertices</span><span class="p">),</span> <span class="mf">0.0</span>
+            <span class="p">)</span>  <span class="c1"># [..., S, K, Cq_j, num_obj]</span>
+
+            <span class="n">areas_j</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">(</span>  <span class="c1"># sum over all subsets Cq_j -&gt; [..., S, K]</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">reduce_prod</span><span class="p">(</span><span class="n">lengths_j</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">),</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span>  <span class="c1"># calc hvi within each K</span>
+            <span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">(</span><span class="n">areas_j</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># sum over cells -&gt; [..., S]</span>
+
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">tf</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">_batch_size</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>  <span class="c1"># Inclusion-Exclusion loop</span>
+            <span class="n">q_choose_j</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="n">q_subset_indices</span><span class="p">,</span> <span class="n">j</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">to_tensor</span><span class="p">()</span>
+            <span class="c1"># gather all combinations having j points from q batch points (Cq_j)</span>
+            <span class="n">j_sub_samples</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="n">samples</span><span class="p">,</span> <span class="n">q_choose_j</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">2</span><span class="p">)</span>  <span class="c1"># [..., S, Cq_j, j, num_obj]</span>
+            <span class="n">hv_contrib</span> <span class="o">+=</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">((</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">**</span> <span class="p">(</span><span class="n">j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">samples</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span> <span class="o">*</span> <span class="n">hv_contrib_on_samples</span><span class="p">(</span>
+                <span class="n">j_sub_samples</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span><span class="n">hv_contrib</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># average through MC</span>
+
+    <span class="k">return</span> <span class="n">acquisition</span></div>
+
+
+<div class="viewcode-block" id="ExpectedConstrainedHypervolumeImprovement"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.ExpectedConstrainedHypervolumeImprovement">[docs]</a><span class="k">class</span> <span class="nc">ExpectedConstrainedHypervolumeImprovement</span><span class="p">(</span>
+    <span class="n">ExpectedConstrainedImprovement</span><span class="p">[</span><span class="n">ProbabilisticModelType</span><span class="p">]</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Builder for the constrained expected hypervolume improvement acquisition function.</span>
+<span class="sd">    This function essentially combines ExpectedConstrainedImprovement and</span>
+<span class="sd">    ExpectedHypervolumeImprovement.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">objective_tag</span><span class="p">:</span> <span class="n">Tag</span><span class="p">,</span>
+        <span class="n">constraint_builder</span><span class="p">:</span> <span class="n">AcquisitionFunctionBuilder</span><span class="p">[</span><span class="n">ProbabilisticModelType</span><span class="p">],</span>
+        <span class="n">min_feasibility_probability</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">TensorType</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span>
+        <span class="n">reference_point_spec</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+        <span class="o">|</span> <span class="n">TensorType</span>
+        <span class="o">|</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_reference_point</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param objective_tag: The tag for the objective data and model.</span>
+<span class="sd">        :param constraint_builder: The builder for the constraint function.</span>
+<span class="sd">        :param min_feasibility_probability: The minimum probability of feasibility for a</span>
+<span class="sd">            &quot;best point&quot; to be considered feasible.</span>
+<span class="sd">        :param reference_point_spec: this method is used to determine how the reference point is</span>
+<span class="sd">            calculated. If a Callable function specified, it is expected to take existing posterior</span>
+<span class="sd">            mean-based feasible observations (to screen out the observation noise) and return a</span>
+<span class="sd">            reference point with shape [D] (D represents number of objectives). If the feasible</span>
+<span class="sd">            Pareto front location is known, this arg can be used to specify a fixed reference</span>
+<span class="sd">            point in each bo iteration. A dynamic reference point updating strategy is used by</span>
+<span class="sd">            default to set a reference point according to the datasets.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">objective_tag</span><span class="p">,</span> <span class="n">constraint_builder</span><span class="p">,</span> <span class="n">min_feasibility_probability</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">reference_point_spec</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ref_point_spec</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="n">reference_point_spec</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ref_point_spec</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">convert_to_tensor</span><span class="p">(</span><span class="n">reference_point_spec</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ref_point</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ref_point_spec</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;ExpectedConstrainedHypervolumeImprovement(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_objective_tag</span><span class="si">!r}</span><span class="s2">,&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_constraint_builder</span><span class="si">!r}</span><span class="s2">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_min_feasibility_probability</span><span class="si">!r}</span><span class="s2">,&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_ref_point_spec</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;ExpectedConstrainedHypervolumeImprovement(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_objective_tag</span><span class="si">!r}</span><span class="s2">, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_constraint_builder</span><span class="si">!r}</span><span class="s2">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_min_feasibility_probability</span><span class="si">!r}</span><span class="s2">,&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot; ref_point_specification=</span><span class="si">{</span><span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ref_point_spec</span><span class="p">)</span><span class="si">!r}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+<div class="viewcode-block" id="ExpectedConstrainedHypervolumeImprovement._update_expected_improvement_fn"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.ExpectedConstrainedHypervolumeImprovement._update_expected_improvement_fn">[docs]</a>    <span class="k">def</span> <span class="nf">_update_expected_improvement_fn</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">objective_model</span><span class="p">:</span> <span class="n">ProbabilisticModelType</span><span class="p">,</span> <span class="n">feasible_mean</span><span class="p">:</span> <span class="n">TensorType</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Set or update the unconstrained expected improvement function.</span>
+
+<span class="sd">        :param objective_model: The objective model.</span>
+<span class="sd">        :param feasible_mean: The mean of the feasible query points.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ref_point_spec</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ref_point</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_ref_point_spec</span><span class="p">(</span><span class="n">feasible_mean</span><span class="p">),</span>
+                <span class="n">dtype</span><span class="o">=</span><span class="n">feasible_mean</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ref_point</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ref_point_spec</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">feasible_mean</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+        <span class="n">_pf</span> <span class="o">=</span> <span class="n">Pareto</span><span class="p">(</span><span class="n">feasible_mean</span><span class="p">)</span>
+        <span class="n">screened_front</span> <span class="o">=</span> <span class="n">_pf</span><span class="o">.</span><span class="n">front</span><span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">reduce_all</span><span class="p">(</span><span class="n">_pf</span><span class="o">.</span><span class="n">front</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ref_point</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)]</span>
+        <span class="c1"># prepare the partitioned bounds of non-dominated region for calculating of the</span>
+        <span class="c1"># hypervolume improvement in this area</span>
+        <span class="n">_partition_bounds</span> <span class="o">=</span> <span class="n">prepare_default_non_dominated_partition_bounds</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ref_point</span><span class="p">,</span>
+            <span class="n">screened_front</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_expected_improvement_fn</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">AcquisitionFunction</span><span class="p">]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_expected_improvement_fn</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_expected_improvement_fn</span> <span class="o">=</span> <span class="n">expected_hv_improvement</span><span class="p">(</span>
+                <span class="n">objective_model</span><span class="p">,</span> <span class="n">_partition_bounds</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span>
+                <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_expected_improvement_fn</span><span class="p">,</span> <span class="n">expected_hv_improvement</span><span class="p">),</span> <span class="p">[]</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_expected_improvement_fn</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">_partition_bounds</span><span class="p">)</span>  <span class="c1"># type: ignore</span></div></div>
+
+
+<div class="viewcode-block" id="HIPPO"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.HIPPO">[docs]</a><span class="k">class</span> <span class="nc">HIPPO</span><span class="p">(</span><span class="n">GreedyAcquisitionFunctionBuilder</span><span class="p">[</span><span class="n">ProbabilisticModelType</span><span class="p">]):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    HIPPO: HIghly Parallelizable Pareto Optimization</span>
+
+<span class="sd">    Builder of the acquisition function for greedily collecting batches by HIPPO</span>
+<span class="sd">    penalization in multi-objective optimization by penalizing batch points</span>
+<span class="sd">    by their distance in the objective space. The resulting acquistion function</span>
+<span class="sd">    takes in a set of pending points and returns a base multi-objective acquisition function</span>
+<span class="sd">    penalized around those points.</span>
+
+<span class="sd">    Penalization is applied to the acquisition function multiplicatively. However, to</span>
+<span class="sd">    improve numerical stability, we perform additive penalization in a log space.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">objective_tag</span><span class="p">:</span> <span class="n">Tag</span> <span class="o">=</span> <span class="n">OBJECTIVE</span><span class="p">,</span>
+        <span class="n">base_acquisition_function_builder</span><span class="p">:</span> <span class="n">AcquisitionFunctionBuilder</span><span class="p">[</span><span class="n">ProbabilisticModelType</span><span class="p">]</span>
+        <span class="o">|</span> <span class="n">SingleModelAcquisitionBuilder</span><span class="p">[</span><span class="n">ProbabilisticModelType</span><span class="p">]</span>
+        <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initializes the HIPPO acquisition function builder.</span>
+
+<span class="sd">        :param objective_tag: The tag for the objective data and model.</span>
+<span class="sd">        :param base_acquisition_function_builder: Base acquisition function to be</span>
+<span class="sd">            penalized. Defaults to Expected Hypervolume Improvement, also supports</span>
+<span class="sd">            its constrained version.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_objective_tag</span> <span class="o">=</span> <span class="n">objective_tag</span>
+        <span class="k">if</span> <span class="n">base_acquisition_function_builder</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_base_builder</span><span class="p">:</span> <span class="n">AcquisitionFunctionBuilder</span><span class="p">[</span>
+                <span class="n">ProbabilisticModelType</span>
+            <span class="p">]</span> <span class="o">=</span> <span class="n">ExpectedHypervolumeImprovement</span><span class="p">()</span><span class="o">.</span><span class="n">using</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_objective_tag</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">base_acquisition_function_builder</span><span class="p">,</span> <span class="n">SingleModelAcquisitionBuilder</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_base_builder</span> <span class="o">=</span> <span class="n">base_acquisition_function_builder</span><span class="o">.</span><span class="n">using</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_objective_tag</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_base_builder</span> <span class="o">=</span> <span class="n">base_acquisition_function_builder</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_base_acquisition_function</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">AcquisitionFunction</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_penalization</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">PenalizationFunction</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_penalized_acquisition</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">AcquisitionFunction</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="HIPPO.prepare_acquisition_function"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.HIPPO.prepare_acquisition_function">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">models</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">],</span>
+        <span class="n">datasets</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Mapping</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">pending_points</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates a new instance of the acquisition function.</span>
+
+<span class="sd">        :param models: The models.</span>
+<span class="sd">        :param datasets: The data from the observer. Must be populated.</span>
+<span class="sd">        :param pending_points: The points we penalize with respect to.</span>
+<span class="sd">        :return: The HIPPO acquisition function.</span>
+<span class="sd">        :raise tf.errors.InvalidArgumentError: If the ``dataset`` is empty.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span><span class="n">datasets</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([])])</span>
+        <span class="n">datasets</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Mapping</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">],</span> <span class="n">datasets</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span><span class="n">datasets</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_objective_tag</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([])])</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span>
+            <span class="nb">len</span><span class="p">(</span><span class="n">datasets</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_objective_tag</span><span class="p">]),</span>
+            <span class="n">message</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_objective_tag</span><span class="si">}</span><span class="s2"> dataset must be populated.&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">acq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_update_base_acquisition_function</span><span class="p">(</span><span class="n">models</span><span class="p">,</span> <span class="n">datasets</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">pending_points</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">pending_points</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">acq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_update_penalization</span><span class="p">(</span><span class="n">acq</span><span class="p">,</span> <span class="n">models</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_objective_tag</span><span class="p">],</span> <span class="n">pending_points</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">acq</span></div>
+
+<div class="viewcode-block" id="HIPPO.update_acquisition_function"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.HIPPO.update_acquisition_function">[docs]</a>    <span class="k">def</span> <span class="nf">update_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">function</span><span class="p">:</span> <span class="n">AcquisitionFunction</span><span class="p">,</span>
+        <span class="n">models</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">],</span>
+        <span class="n">datasets</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Mapping</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">pending_points</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">new_optimization_step</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Updates the acquisition function.</span>
+
+<span class="sd">        :param function: The acquisition function to update.</span>
+<span class="sd">        :param models: The models.</span>
+<span class="sd">        :param datasets: The data from the observer. Must be populated.</span>
+<span class="sd">        :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),</span>
+<span class="sd">            where M is the number of pending points and D is the search space dimension.</span>
+<span class="sd">        :param new_optimization_step: Indicates whether this call to update_acquisition_function</span>
+<span class="sd">            is to start of a new optimization step, of to continue collecting batch of points</span>
+<span class="sd">            for the current step. Defaults to ``True``.</span>
+<span class="sd">        :return: The updated acquisition function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span><span class="n">datasets</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([])])</span>
+        <span class="n">datasets</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Mapping</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">],</span> <span class="n">datasets</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span><span class="n">datasets</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_objective_tag</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([])])</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span>
+            <span class="nb">len</span><span class="p">(</span><span class="n">datasets</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_objective_tag</span><span class="p">]),</span>
+            <span class="n">message</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_objective_tag</span><span class="si">}</span><span class="s2"> dataset must be populated.&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_base_acquisition_function</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([])])</span>
+
+        <span class="k">if</span> <span class="n">new_optimization_step</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_update_base_acquisition_function</span><span class="p">(</span><span class="n">models</span><span class="p">,</span> <span class="n">datasets</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">pending_points</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">pending_points</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># no penalization required if no pending_points</span>
+            <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="n">AcquisitionFunction</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base_acquisition_function</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_update_penalization</span><span class="p">(</span><span class="n">function</span><span class="p">,</span> <span class="n">models</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_objective_tag</span><span class="p">],</span> <span class="n">pending_points</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_update_penalization</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">function</span><span class="p">:</span> <span class="n">AcquisitionFunction</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">ProbabilisticModel</span><span class="p">,</span>
+        <span class="n">pending_points</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_rank</span><span class="p">(</span><span class="n">pending_points</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_penalized_acquisition</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_penalization</span><span class="p">,</span> <span class="n">hippo_penalizer</span>
+        <span class="p">):</span>
+            <span class="c1"># if possible, just update the penalization function variables</span>
+            <span class="c1"># (the type ignore is due to mypy getting confused by tf.function)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_penalization</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">pending_points</span><span class="p">)</span>  <span class="c1"># type: ignore[unreachable]</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_penalized_acquisition</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># otherwise construct a new penalized acquisition function</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_penalization</span> <span class="o">=</span> <span class="n">hippo_penalizer</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">pending_points</span><span class="p">)</span>
+
+        <span class="nd">@tf</span><span class="o">.</span><span class="n">function</span>
+        <span class="k">def</span> <span class="nf">penalized_acquisition</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+            <span class="n">log_acq</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span>
+                <span class="n">cast</span><span class="p">(</span><span class="n">AcquisitionFunction</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base_acquisition_function</span><span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+            <span class="p">)</span> <span class="o">+</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">cast</span><span class="p">(</span><span class="n">PenalizationFunction</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_penalization</span><span class="p">)(</span><span class="n">x</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">log_acq</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_penalized_acquisition</span> <span class="o">=</span> <span class="n">penalized_acquisition</span>
+        <span class="k">return</span> <span class="n">penalized_acquisition</span>
+
+    <span class="k">def</span> <span class="nf">_update_base_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">models</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">],</span>
+        <span class="n">datasets</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Mapping</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base_acquisition_function</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_base_acquisition_function</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base_builder</span><span class="o">.</span><span class="n">prepare_acquisition_function</span><span class="p">(</span>
+                <span class="n">models</span><span class="p">,</span> <span class="n">datasets</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_base_acquisition_function</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base_builder</span><span class="o">.</span><span class="n">update_acquisition_function</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_base_acquisition_function</span><span class="p">,</span> <span class="n">models</span><span class="p">,</span> <span class="n">datasets</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base_acquisition_function</span></div>
+
+
+<div class="viewcode-block" id="hippo_penalizer"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/multi_objective/index.html#trieste.acquisition.function.hippo_penalizer">[docs]</a><span class="k">class</span> <span class="nc">hippo_penalizer</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns the penalization function used for multi-objective greedy batch Bayesian</span>
+<span class="sd">    optimization.</span>
+
+<span class="sd">    A candidate point :math:`x` is penalized based on the Mahalanobis distance to a</span>
+<span class="sd">    given pending point :math:`p_i`. Since we assume objectives to be independent,</span>
+<span class="sd">    the Mahalanobis distance between these points becomes a Eucledian distance</span>
+<span class="sd">    normalized by standard deviation. Penalties for multiple pending points are multiplied,</span>
+<span class="sd">    and the resulting quantity is warped with the arctan function to :math:`[0, 1]` interval.</span>
+
+<span class="sd">    :param model: The model over the specified ``dataset``.</span>
+<span class="sd">    :param pending_points: The points we penalize with respect to.</span>
+<span class="sd">    :return: The penalization function. This function will raise</span>
+<span class="sd">        :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size</span>
+<span class="sd">        greater than one.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">ProbabilisticModel</span><span class="p">,</span> <span class="n">pending_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the MO penalizer.</span>
+
+<span class="sd">        :param model: The model.</span>
+<span class="sd">        :param pending_points: The points we penalize with respect to.</span>
+<span class="sd">        :raise ValueError: If pending points are empty or None.</span>
+<span class="sd">        :return: The penalization function. This function will raise</span>
+<span class="sd">            :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size</span>
+<span class="sd">            greater than one.&quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span>
+            <span class="n">pending_points</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">pending_points</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">,</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([])]</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pending_points</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="n">pending_points</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="n">pending_points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:]])</span>
+        <span class="n">pending_means</span><span class="p">,</span> <span class="n">pending_vars</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pending_points</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pending_means</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="n">pending_means</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="n">pending_means</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:]])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pending_vars</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="n">pending_vars</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="n">pending_vars</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:]])</span>
+
+<div class="viewcode-block" id="hippo_penalizer.update"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/multi_objective/index.html#trieste.acquisition.function.hippo_penalizer.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pending_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update the penalizer with new pending points.&quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span>
+            <span class="n">pending_points</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">pending_points</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">,</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([])]</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pending_points</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">pending_points</span><span class="p">)</span>
+        <span class="n">pending_means</span><span class="p">,</span> <span class="n">pending_vars</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pending_points</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pending_means</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">pending_means</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pending_vars</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">pending_vars</span><span class="p">)</span></div>
+
+    <span class="nd">@tf</span><span class="o">.</span><span class="n">function</span>
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">(</span>
+            <span class="p">[(</span><span class="n">x</span><span class="p">,</span> <span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">])],</span>
+            <span class="n">message</span><span class="o">=</span><span class="s2">&quot;This penalization function cannot be calculated for batches of points.&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># x is [N, 1, D]</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># x is now [N, D]</span>
+
+        <span class="n">x_means</span><span class="p">,</span> <span class="n">x_vars</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="c1"># x_means is [N, K], x_vars is [N, K]</span>
+        <span class="c1"># where K is the number of models/objectives</span>
+
+        <span class="c1"># self._pending_points is [B, D] where B is the size of the batch collected so far</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;N&quot;</span><span class="p">,</span> <span class="s2">&quot;D&quot;</span><span class="p">]),</span>
+                <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pending_points</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;B&quot;</span><span class="p">,</span> <span class="s2">&quot;D&quot;</span><span class="p">]),</span>
+                <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pending_means</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;B&quot;</span><span class="p">,</span> <span class="s2">&quot;K&quot;</span><span class="p">]),</span>
+                <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pending_vars</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;B&quot;</span><span class="p">,</span> <span class="s2">&quot;K&quot;</span><span class="p">]),</span>
+                <span class="p">(</span><span class="n">x_means</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;N&quot;</span><span class="p">,</span> <span class="s2">&quot;K&quot;</span><span class="p">]),</span>
+                <span class="p">(</span><span class="n">x_vars</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;N&quot;</span><span class="p">,</span> <span class="s2">&quot;K&quot;</span><span class="p">]),</span>
+            <span class="p">],</span>
+            <span class="n">message</span><span class="o">=</span><span class="s2">&quot;&quot;&quot;Encountered unexpected shapes while calculating mean and variance</span>
+<span class="s2">                       of given point x and pending points&quot;&quot;&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">x_means_expanded</span> <span class="o">=</span> <span class="n">x_means</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="n">pending_means_expanded</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pending_means</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
+        <span class="n">pending_vars_expanded</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pending_vars</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
+        <span class="n">pending_stddevs_expanded</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">pending_vars_expanded</span><span class="p">)</span>
+
+        <span class="c1"># this computes Mahalanobis distance between x and pending points</span>
+        <span class="c1"># since we assume objectives to be independent</span>
+        <span class="c1"># it reduces to regular Eucledian distance normalized by standard deviation</span>
+        <span class="n">standardize_mean_diff</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">x_means_expanded</span> <span class="o">-</span> <span class="n">pending_means_expanded</span><span class="p">)</span> <span class="o">/</span> <span class="n">pending_stddevs_expanded</span>
+        <span class="p">)</span>  <span class="c1"># [N, B, K]</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">standardize_mean_diff</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># [N, B]</span>
+
+        <span class="c1"># warp the distance so that resulting value is from 0 to (nearly) 1</span>
+        <span class="n">warped_d</span> <span class="o">=</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">/</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">atan</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+        <span class="n">penalty</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_prod</span><span class="p">(</span><span class="n">warped_d</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># [N,]</span>
+
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">penalty</span><span class="p">,</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span></div>
+</pre></div>
+
+                </article>
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52"></script>
+<script src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+  <p class="copyright">
+    
+      © Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.0.1.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item"><p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.13.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

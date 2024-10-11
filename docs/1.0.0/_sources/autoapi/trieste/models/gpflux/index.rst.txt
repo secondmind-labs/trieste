@@ -1,0 +1,396 @@
+:py:mod:`trieste.models.gpflux`
+===============================
+
+.. py:module:: trieste.models.gpflux
+
+.. autoapi-nested-parse::
+
+   This package contains the primary interface for deep Gaussian process models. It also contains a
+   number of :class:`TrainableProbabilisticModel` wrappers for GPflux-based models.
+
+
+
+Submodules
+----------
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+
+   builders/index.rst
+
+
+Package Contents
+----------------
+
+.. py:function:: build_vanilla_deep_gp(data: trieste.data.Dataset, search_space: trieste.space.SearchSpace, num_layers: int = NUM_LAYERS, num_inducing_points: Optional[int] = None, inner_layer_sqrt_factor: float = INNER_LAYER_SQRT_FACTOR, likelihood_variance: float = LIKELIHOOD_VARIANCE, trainable_likelihood: bool = True) -> gpflux.models.DeepGP
+
+   Build a :class:`~gpflux.models.DeepGP` model with sensible initial parameters. We found the
+   default configuration used here to work well in most situation, but it should not be taken as a
+   universally good solution.
+
+   Note that although we set all the relevant parameters to sensible values, we rely on
+   ``build_constant_input_dim_deep_gp`` from :mod:`~gpflux.architectures` to build the model.
+
+   :param data: Dataset from the initial design, used to estimate the variance of observations
+       and to provide query points which are used to determine inducing point locations with
+       k-means.
+   :param search_space: Search space for performing Bayesian optimization. Used for initialization
+       of inducing locations if ``num_inducing_points`` is larger than the amount of data.
+   :param num_layers: Number of layers in deep GP. By default set to ``NUM_LAYERS``.
+   :param num_inducing_points: Number of inducing points to use in each layer. If left unspecified
+       (default), this number is set to either ``NUM_INDUCING_POINTS_PER_DIM``*dimensionality of
+       the search space or value given by ``MAX_NUM_INDUCING_POINTS``, whichever is smaller.
+   :param inner_layer_sqrt_factor: A multiplicative factor used to rescale hidden layers, see
+       :class:`~gpflux.architectures.Config` for details. By default set to
+       ``INNER_LAYER_SQRT_FACTOR``.
+   :param likelihood_variance: Initial noise variance in the likelihood function, see
+       :class:`~gpflux.architectures.Config` for details. By default set to
+       ``LIKELIHOOD_VARIANCE``.
+   :param trainable_likelihood: Trainable likelihood variance.
+   :return: A :class:`~gpflux.models.DeepGP` model with sensible default settings.
+   :raise: If non-positive ``num_layers``, ``inner_layer_sqrt_factor``, ``likelihood_variance``
+       or ``num_inducing_points`` is provided.
+
+
+.. py:class:: GPfluxPredictor(optimizer: KerasOptimizer | None = None)
+
+   Bases: :py:obj:`trieste.models.interfaces.SupportsGetObservationNoise`, :py:obj:`abc.ABC`
+
+   A trainable wrapper for a GPflux deep Gaussian process model. The code assumes subclasses
+   will use the Keras `fit` method for training, and so they should provide access to both a
+   `model_keras` and `model_gpflux`.
+
+   :param optimizer: The optimizer wrapper containing the optimizer with which to train the
+       model and arguments for the wrapper and the optimizer. The optimizer must
+       be an instance of a :class:`~tf.optimizers.Optimizer`. Defaults to
+       :class:`~tf.optimizers.Adam` optimizer with 0.01 learning rate.
+
+   .. py:method:: model_gpflux() -> gpflow.base.Module
+      :property:
+
+      The underlying GPflux model.
+
+
+   .. py:method:: model_keras() -> tensorflow.keras.Model
+      :property:
+
+      Returns the compiled Keras model for training.
+
+
+   .. py:method:: optimizer() -> trieste.models.optimizer.KerasOptimizer
+      :property:
+
+      The optimizer wrapper for training the model.
+
+
+   .. py:method:: predict(query_points: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Note: unless otherwise noted, this returns the mean and variance of the last layer
+      conditioned on one sample from the previous layers.
+
+
+   .. py:method:: sample(query_points: trieste.types.TensorType, num_samples: int) -> trieste.types.TensorType
+      :abstractmethod:
+
+      Return ``num_samples`` samples from the independent marginal distributions at
+      ``query_points``.
+
+      :param query_points: The points at which to sample, with shape [..., N, D].
+      :param num_samples: The number of samples at each point.
+      :return: The samples. For a predictive distribution with event shape E, this has shape
+          [..., S, N] + E, where S is the number of samples.
+
+
+   .. py:method:: predict_y(query_points: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Note: unless otherwise noted, this will return the prediction conditioned on one sample
+      from the lower layers.
+
+
+   .. py:method:: get_observation_noise() -> trieste.types.TensorType
+
+      Return the variance of observation noise for homoscedastic likelihoods.
+
+      :return: The observation noise.
+      :raise NotImplementedError: If the model does not have a homoscedastic likelihood.
+
+
+
+.. py:class:: DeepGaussianProcess(model: DeepGP | Callable[[], DeepGP], optimizer: KerasOptimizer | None = None, num_rff_features: int = 1000, continuous_optimisation: bool = True)
+
+   Bases: :py:obj:`trieste.models.gpflux.interface.GPfluxPredictor`, :py:obj:`trieste.models.interfaces.TrainableProbabilisticModel`, :py:obj:`trieste.models.interfaces.HasReparamSampler`, :py:obj:`trieste.models.interfaces.HasTrajectorySampler`
+
+   A :class:`TrainableProbabilisticModel` wrapper for a GPflux :class:`~gpflux.models.DeepGP` with
+   :class:`GPLayer` or :class:`LatentVariableLayer`: this class does not support e.g. keras layers.
+   We provide simple architectures that can be used with this class in the `architectures.py` file.
+
+   :param model: The underlying GPflux deep Gaussian process model. Passing in a named closure
+       rather than a model can help when copying or serialising.
+   :param optimizer: The optimizer wrapper with necessary specifications for compiling and
+       training the model. Defaults to :class:`~trieste.models.optimizer.KerasOptimizer` with
+       :class:`~tf.optimizers.Adam` optimizer, mean squared error metric and a dictionary of
+       default arguments for the Keras `fit` method: 400 epochs, batch size of 1000, and
+       verbose 0. A custom callback that reduces the optimizer learning rate is used as well.
+       See https://keras.io/api/models/model_training_apis/#fit-method for a list of possible
+       arguments.
+   :param num_rff_features: The number of random Fourier features used to approximate the
+       kernel when calling :meth:`trajectory_sampler`. We use a default of 1000 as it typically
+       performs well for a wide range of kernels. Note that very smooth kernels (e.g. RBF) can
+       be well-approximated with fewer features.
+   :param continuous_optimisation: if True (default), the optimizer will keep track of the
+       number of epochs across BO iterations and use this number as initial_epoch. This is
+       essential to allow monitoring of model training across BO iterations.
+   :raise ValueError: If ``model`` has unsupported layers, ``num_rff_features`` is less than 0,
+       or if the ``optimizer`` is not of a supported type.
+
+   .. py:method:: model_gpflux() -> gpflux.models.DeepGP
+      :property:
+
+      The underlying GPflux model.
+
+
+   .. py:method:: model_keras() -> tensorflow.keras.Model
+      :property:
+
+      Returns the compiled Keras model for training.
+
+
+   .. py:method:: sample(query_points: trieste.types.TensorType, num_samples: int) -> trieste.types.TensorType
+
+      Return ``num_samples`` samples from the independent marginal distributions at
+      ``query_points``.
+
+      :param query_points: The points at which to sample, with shape [..., N, D].
+      :param num_samples: The number of samples at each point.
+      :return: The samples. For a predictive distribution with event shape E, this has shape
+          [..., S, N] + E, where S is the number of samples.
+
+
+   .. py:method:: reparam_sampler(num_samples: int) -> trieste.models.interfaces.ReparametrizationSampler[trieste.models.gpflux.interface.GPfluxPredictor]
+
+      Return a reparametrization sampler for a :class:`DeepGaussianProcess` model.
+
+      :param num_samples: The number of samples to obtain.
+      :return: The reparametrization sampler.
+
+
+   .. py:method:: trajectory_sampler() -> trieste.models.interfaces.TrajectorySampler[trieste.models.gpflux.interface.GPfluxPredictor]
+
+      Return a trajectory sampler. For :class:`DeepGaussianProcess`, we build
+      trajectories using the GPflux default sampler.
+
+      :return: The trajectory sampler.
+
+
+   .. py:method:: update(dataset: trieste.data.Dataset) -> None
+
+      Update the model given the specified ``dataset``. Does not train the model.
+
+      :param dataset: The data with which to update the model.
+
+
+   .. py:method:: optimize(dataset: trieste.data.Dataset) -> None
+
+      Optimize the model with the specified `dataset`.
+      :param dataset: The data with which to optimize the `model`.
+
+
+   .. py:method:: log(dataset: Optional[trieste.data.Dataset] = None) -> None
+
+      Log model training information at a given optimization step to the Tensorboard.
+      We log a few summary statistics of losses, layer KL divergences and metrics (as provided in
+      ``optimizer``): ``final`` value at the end of the training, ``diff`` value as a difference
+      between inital and final epoch. We also log epoch statistics, but as histograms, rather
+      than time series. We also log several training data based metrics, such as root mean square
+      error between predictions and observations and several others.
+
+      For custom logs user will need to subclass the model and overwrite this method.
+
+      :param dataset: Optional data that can be used to log additional data-based model summaries.
+
+
+
+.. py:class:: DeepGaussianProcessDecoupledLayer(model: trieste.models.gpflux.interface.GPfluxPredictor, layer_number: int, num_features: int = 1000)
+
+   Bases: :py:obj:`abc.ABC`
+
+   Layer that samples an approximate decoupled trajectory for a GPflux
+   :class:`~gpflux.layers.GPLayer` using Matheron's rule (:cite:`wilson2020efficiently`). Note
+   that the only multi-output kernel that is supported is a
+   :class:`~gpflow.kernels.SharedIndependent` kernel.
+
+   :param model: The model to sample from.
+   :param layer_number: The index of the layer that we wish to sample from.
+   :param num_features: The number of features to use in the random feature approximation.
+   :raise ValueError (or InvalidArgumentError): If the layer is not a
+       :class:`~gpflux.layers.GPLayer`, the layer's kernel is not supported, or if
+       ``num_features`` is not positive.
+
+   .. py:method:: __call__(x: trieste.types.TensorType) -> trieste.types.TensorType
+
+      Evaluate trajectory function for layer at input.
+
+      :param x: Input location with shape `[N, B, D]`, where `N` is the number of points, `B` is
+          the batch dimension, and `D` is the input dimensionality.
+      :return: Trajectory for the layer evaluated at the input, with shape `[N, B, P]`, where `P`
+          is the number of latent GPs in the layer.
+      :raise InvalidArgumentError: If the provided batch size does not match with the layer's
+          batch size.
+
+
+   .. py:method:: resample() -> None
+
+      Efficiently resample in-place without retracing.
+
+
+   .. py:method:: update() -> None
+
+      Efficiently update the trajectory with a new weight distribution and resample its weights.
+
+
+   .. py:method:: _prepare_weight_sampler() -> Callable[[int], trieste.types.TensorType]
+
+      Prepare the sampler function that provides samples of the feature weights for both the
+      RFF and canonical feature functions, i.e. we return a function that takes in a batch size
+      `B` and returns `B` samples for the weights of each of the `L` RFF features and `M`
+      canonical features for `P` outputs.
+
+
+
+.. py:class:: DeepGaussianProcessDecoupledTrajectorySampler(model: trieste.models.gpflux.interface.GPfluxPredictor, num_features: int = 1000)
+
+   Bases: :py:obj:`trieste.models.interfaces.TrajectorySampler`\ [\ :py:obj:`trieste.models.gpflux.interface.GPfluxPredictor`\ ]
+
+   This sampler employs decoupled sampling (see :cite:`wilson2020efficiently`) to build functions
+   that approximate a trajectory sampled from an underlying deep Gaussian process model. In
+   particular, this sampler provides trajectory functions for :class:`GPfluxPredictor`\s with
+   underlying :class:`~gpflux.models.DeepGP` models by using a feature decomposition using both
+   random Fourier features and canonical features centered at inducing point locations. This allows
+   for cheap approximate trajectory samples, as opposed to exact trajectory sampling, which scales
+   cubically in the number of query points.
+
+   :param model: The model to sample from.
+   :param num_features: The number of random Fourier features to use.
+   :raise ValueError (or InvalidArgumentError): If the model is not a :class:`GPfluxPredictor`,
+       or its underlying ``model_gpflux`` is not a :class:`~gpflux.models.DeepGP`, or
+       ``num_features`` is not positive.
+
+   .. py:method:: get_trajectory() -> trieste.models.interfaces.TrajectoryFunction
+
+      Generate an approximate function draw (trajectory) from the deep GP model.
+
+      :return: A trajectory function representing an approximate trajectory from the deep GP,
+          taking an input of shape `[N, B, D]` and returning shape `[N, B, L]`.
+
+
+   .. py:method:: update_trajectory(trajectory: trieste.models.interfaces.TrajectoryFunction) -> trieste.models.interfaces.TrajectoryFunction
+
+      Efficiently update a :const:`TrajectoryFunction` to reflect an update in its underlying
+      :class:`ProbabilisticModel` and resample accordingly.
+
+      :param trajectory: The trajectory function to be updated and resampled.
+      :return: The updated and resampled trajectory function.
+      :raise InvalidArgumentError: If ``trajectory`` is not a
+          :class:`dgp_feature_decomposition_trajectory`
+
+
+   .. py:method:: resample_trajectory(trajectory: trieste.models.interfaces.TrajectoryFunction) -> trieste.models.interfaces.TrajectoryFunction
+
+      Efficiently resample a :const:`TrajectoryFunction` in-place to avoid function retracing
+      with every new sample.
+
+      :param trajectory: The trajectory function to be resampled.
+      :return: The new resampled trajectory function.
+      :raise InvalidArgumentError: If ``trajectory`` is not a
+          :class:`dgp_feature_decomposition_trajectory`
+
+
+
+.. py:class:: DeepGaussianProcessReparamSampler(sample_size: int, model: trieste.models.gpflux.interface.GPfluxPredictor)
+
+   Bases: :py:obj:`trieste.models.interfaces.ReparametrizationSampler`\ [\ :py:obj:`trieste.models.gpflux.interface.GPfluxPredictor`\ ]
+
+   This sampler employs the *reparameterization trick* to approximate samples from a
+   :class:`GPfluxPredictor`\ 's predictive distribution, when the :class:`GPfluxPredictor` has
+   an underlying :class:`~gpflux.models.DeepGP`.
+
+   :param sample_size: The number of samples for each batch of points. Must be positive.
+   :param model: The model to sample from.
+   :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive, if the
+       model is not a :class:`GPfluxPredictor`, of if its underlying ``model_gpflux`` is not a
+       :class:`~gpflux.models.DeepGP`.
+
+   .. py:method:: sample(at: trieste.types.TensorType, *, jitter: float = DEFAULTS.JITTER) -> trieste.types.TensorType
+
+      Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
+      :meth:`sample`, for any given :class:`DeepGaussianProcessReparamSampler` and ``at``, will
+      produce the exact same samples. Calls to :meth:`sample` on *different*
+      :class:`DeepGaussianProcessReparamSampler` instances will produce different samples.
+
+      :param at: Where to sample the predictive distribution, with shape `[..., 1, D]`, for points
+          of dimension `D`.
+      :param jitter: The size of the jitter to use when stabilizing the Cholesky
+          decomposition of the covariance matrix.
+      :return: The samples, of shape `[..., S, 1, L]`, where `S` is the `sample_size` and `L` is
+          the number of latent model dimensions.
+      :raise ValueError (or InvalidArgumentError): If ``at`` has an invalid shape or ``jitter``
+          is negative.
+
+
+
+.. py:class:: ResampleableDecoupledDeepGaussianProcessFeatureFunctions(layer: gpflux.layers.GPLayer, n_components: int)
+
+   Bases: :py:obj:`gpflux.layers.basis_functions.fourier_features.RandomFourierFeaturesCosine`
+
+   A wrapper around GPflux's random Fourier feature function that allows for efficient in-place
+   updating when generating new decompositions. In addition to providing Fourier features,
+   this class concatenates a layer's Fourier feature expansion with evaluations of the canonical
+   basis functions.
+
+   :param layer: The layer that will be approximated by the feature functions.
+   :param n_components: The number of features.
+   :raise ValueError: If the layer is not a :class:`~gpflux.layers.GPLayer`.
+
+   .. py:method:: resample() -> None
+
+      Resample weights and biases.
+
+
+   .. py:method:: __call__(x: trieste.types.TensorType) -> trieste.types.TensorType
+
+      Evaluate and combine prior basis functions and canonical basic functions at the input.
+
+
+
+.. py:class:: dgp_feature_decomposition_trajectory(model: trieste.models.gpflux.interface.GPfluxPredictor, num_features: int)
+
+   Bases: :py:obj:`trieste.models.interfaces.TrajectoryFunctionClass`
+
+   An approximate sample from a deep Gaussian process's posterior, where the samples are
+   represented as a finite weighted sum of features. This class essentially takes a list of
+   :class:`DeepGaussianProcessDecoupledLayer`\s and iterates through them to sample, update and
+   resample.
+
+   :param model: The model to sample from.
+   :param num_features: The number of random Fourier features to use.
+
+   .. py:method:: __call__(x: trieste.types.TensorType) -> trieste.types.TensorType
+
+      Call trajectory function by looping through layers.
+
+      :param x: Input location with shape `[N, B, D]`, where `N` is the number of points, `B` is
+          the batch dimension, and `D` is the input dimensionality.
+      :return: Trajectory samples with shape `[N, B, L]`, where `L` is the number of outputs.
+
+
+   .. py:method:: update() -> None
+
+      Update the layers with new features and weights.
+
+
+   .. py:method:: resample() -> None
+
+      Resample the layer weights.
+
+
+

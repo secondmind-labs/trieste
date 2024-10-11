@@ -1,0 +1,75 @@
+:py:mod:`trieste.acquisition.function.utils`
+============================================
+
+.. py:module:: trieste.acquisition.function.utils
+
+.. autoapi-nested-parse::
+
+   This module contains utility functions for acquisition functions.
+
+
+
+Module Contents
+---------------
+
+.. py:class:: MultivariateNormalCDF(sample_size: int, dim: int, dtype: tensorflow.DType, num_sobol_skip: int = 0)
+
+   
+   Builds the cumulative density function of the multivariate Gaussian
+   using the Genz approximation detailed in :cite:`genz2016numerical`.
+
+   This is a Monte Carlo approximation which is more accurate than a naive
+   Monte Carlo estimate of the expected improvent. In order to use
+   reparametrised samples, the helper accepts a tensor of samples, and the
+   callable uses these fixed samples whenever it is called.
+
+   :param samples_size: int, number of samples to use.
+   :param dim: int, dimension of the multivariate Gaussian.
+   :param dtype: tf.DType, data type to use for calculations.
+   :param num_sobol_skip: int, number of sobol samples to skip.
+
+   .. py:method:: _standard_normal_cdf_and_inverse_cdf(dtype: tensorflow.DType) -> Tuple[Callable[[trieste.types.TensorType], trieste.types.TensorType], Callable[[trieste.types.TensorType], trieste.types.TensorType]]
+
+      Returns two callables *Phi* and *iPhi*, which compute the cumulative
+      density function and inverse cumulative density function of a standard
+      univariate Gaussian.
+
+      :param dtype: The data type to use, either tf.float32 or tf.float64.
+      :returns Phi, iPhi: Cumulative and inverse cumulative density functions.
+
+
+   .. py:method:: _get_update_indices(B: int, S: int, Q: int, q: int) -> trieste.types.TensorType
+
+      Returns indices for updating a tensor using tf.tensor_scatter_nd_add,
+      for use within the _mvn_cdf function, for computing the cumulative density
+      function of a multivariate Gaussian. The indices *idx* returned are such
+      that the following operation
+
+          idx = get_update_indices(B, S, Q, q)
+          tensor = tf.tensor_scatter_nd_add(tensor, idx, update)
+
+      is equivalent to the numpy operation
+
+          tensor = tensor[:, :, q] + update
+
+      where *tensor* is a tensor of shape (B, S, Q).
+
+      :param B: First dim. of tensor for which the indices are generated.
+      :param S: Second dim. of tensor for which the indices are generated.
+      :param Q: Third dim. of tensor for which the indices are generated.
+      :param q: Index of tensor along fourth dim. to which the update is applied.
+
+
+   .. py:method:: __call__(x: trieste.types.TensorType, mean: trieste.types.TensorType, cov: trieste.types.TensorType, jitter: float = 1e-06) -> trieste.types.TensorType
+
+      Computes the cumulative density function of the multivariate
+      Gaussian using the Genz approximation.
+
+      :param x: Tensor of shape (B, Q), batch of points to evaluate CDF at.
+      :param mean: Tensor of shape (B, Q), batch of means.
+      :param covariance: Tensor of shape (B, Q, Q), batch of covariances.
+      :param jitter: float, jitter to use in the Cholesky factorisation.
+      :returns mvn_cdf: Tensor of shape (B,), CDF values.
+
+
+

@@ -1,0 +1,8 @@
+html {
+    --pst-font-size-base: 15px;
+}
+
+code.literal {
+ background-color:var(--pst-color-background);
+ border:0px;
+}

@@ -1,0 +1,137 @@
+trieste.acquisition.function.continuous_thompson_sampling
+=========================================================
+
+.. py:module:: trieste.acquisition.function.continuous_thompson_sampling
+
+.. autoapi-nested-parse::
+
+   This module contains acquisition function builders for continuous Thompson sampling.
+
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: GreedyContinuousThompsonSampling(select_output: Callable[[trieste.types.TensorType], trieste.types.TensorType] = select_nth_output)
+
+   Bases: :py:obj:`trieste.acquisition.interface.SingleModelGreedyAcquisitionBuilder`\ [\ :py:obj:`trieste.models.interfaces.HasTrajectorySampler`\ ]
+
+
+   Acquisition function builder for performing greedy continuous Thompson sampling. This builder
+   return acquisition functions that are the negatives of approximate samples from the
+   given :class:`ProbabilisticModel`, as provided by the model's :meth:`get_trajectory`
+   method. A set of such samples are to be maximized in a sequential greedy manner to provide
+   the next recommended query points. Note that we actually return
+   the negative of the trajectory, so that our acquisition optimizers (which are
+   all maximizers) can be used to extract the minimisers of trajectories.
+
+
+   For more details about trajectory-based Thompson sampling see :cite:`hernandez2017parallel` and
+   :cite:`wilson2020efficiently`.
+
+   :param select_output: A method that returns the desired trajectory from a trajectory
+       sampler with shape [..., B], where B is a batch dimension. Defaults to the
+       :func:~`trieste.acquisition.utils.select_nth_output` function with output dimension 0.
+
+
+   .. py:method:: __repr__() -> str
+
+      Return repr(self).
+
+
+
+   .. py:method:: prepare_acquisition_function(model: trieste.models.interfaces.HasTrajectorySampler, dataset: Optional[trieste.data.Dataset] = None, pending_points: Optional[trieste.types.TensorType] = None) -> trieste.models.interfaces.TrajectoryFunction
+
+      :param model: The model.
+      :param dataset: The data from the observer (not used).
+      :param pending_points: The points already in the current batch (not used).
+      :return: A negated trajectory sampled from the model.
+
+
+
+   .. py:method:: update_acquisition_function(function: trieste.models.interfaces.TrajectoryFunction, model: trieste.models.interfaces.HasTrajectorySampler, dataset: Optional[trieste.data.Dataset] = None, pending_points: Optional[trieste.types.TensorType] = None, new_optimization_step: bool = True) -> trieste.models.interfaces.TrajectoryFunction
+
+      :param function: The trajectory function to update.
+      :param model: The model.
+      :param dataset: The data from the observer (not used).
+      :param pending_points: The points already in the current batch (not used).
+      :param new_optimization_step: Indicates whether this call to update_acquisition_function
+          is to start of a new optimization step, of to continue collecting batch of points
+          for the current step. Defaults to ``True``.
+      :return: A new trajectory sampled from the model.
+
+
+
+.. py:class:: ParallelContinuousThompsonSampling(select_output: Callable[[trieste.types.TensorType], trieste.types.TensorType] = select_nth_output)
+
+   Bases: :py:obj:`trieste.acquisition.interface.SingleModelVectorizedAcquisitionBuilder`\ [\ :py:obj:`trieste.models.interfaces.HasTrajectorySampler`\ ]
+
+
+   Acquisition function builder for performing parallel continuous Thompson sampling.
+
+   This builder provides broadly the same behavior as our :class:`GreedyContinuousThompsonSampler`
+   however optimizes trajectory samples in parallel rather than sequentially.
+   Consequently, :class:`ParallelContinuousThompsonSampling` can choose query points faster
+   than  :class:`GreedyContinuousThompsonSampler` however it has much larger memory usage.
+
+   For a convenient way to control the total memory usage of this acquisition function, see
+   our :const:`split_acquisition_function_calls` wrapper.
+
+   :param select_output: A method that returns the desired trajectory from a trajectory
+       sampler with shape [..., B], where B is a batch dimension. Defaults to the
+       :func:~`trieste.acquisition.utils.select_nth_output` function with output dimension 0.
+
+
+   .. py:method:: __repr__() -> str
+
+      Return repr(self).
+
+
+
+   .. py:method:: prepare_acquisition_function(model: trieste.models.interfaces.HasTrajectorySampler, dataset: Optional[trieste.data.Dataset] = None) -> trieste.models.interfaces.TrajectoryFunction
+
+      :param model: The model.
+      :param dataset: The data from the observer (not used).
+      :return: A negated trajectory sampled from the model.
+
+
+
+   .. py:method:: update_acquisition_function(function: trieste.models.interfaces.TrajectoryFunction, model: trieste.models.interfaces.HasTrajectorySampler, dataset: Optional[trieste.data.Dataset] = None) -> trieste.models.interfaces.TrajectoryFunction
+
+      :param function: The trajectory function to update.
+      :param model: The model.
+      :param dataset: The data from the observer (not used).
+      :return: A new trajectory sampled from the model.
+
+
+
+.. py:class:: _DummyTrajectoryFunctionClass
+
+   Bases: :py:obj:`trieste.models.interfaces.TrajectoryFunctionClass`
+
+
+   An :class:`TrajectoryFunctionClass` is a trajectory function represented using a class
+   rather than as a standalone function. Using a class to represent a trajectory function
+   makes it easier to update and resample without having to retrace the function.
+
+
+   .. py:method:: __call__(x: trieste.types.TensorType) -> trieste.types.TensorType
+
+      Call trajectory function.
+
+
+
+.. py:function:: negate_trajectory_function(function: trieste.models.interfaces.TrajectoryFunction, select_output: Optional[Callable[[trieste.types.TensorType], trieste.types.TensorType]] = None, function_type: Optional[Type[trieste.models.interfaces.TrajectoryFunction]] = None) -> trieste.models.interfaces.TrajectoryFunction
+
+   Return the negative of trajectories and select the output to form the acquisition function, so
+   that our acquisition optimizers (which are all maximizers) can be used to extract the minimizers
+   of trajectories.
+
+   We negate the trajectory function object's call method, as it may have e.g. update and resample
+   methods, and select the output we wish to use.
+
+

@@ -1,0 +1,1069 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>trieste.models.gpflow.sampler &#8212; trieste 1.2.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../../_static/styles/theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../../../../../_static/styles/bootstrap.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../../../../../_static/styles/pydata-sphinx-theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+
+  
+  <link href="../../../../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=e353d410970836974a52" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/css/custom.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
+<link rel="preload" as="script" href="../../../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
+
+    <script data-url_root="../../../../../" id="documentation_options" src="../../../../../_static/documentation_options.js"></script>
+    <script src="../../../../../_static/doctools.js"></script>
+    <script src="../../../../../_static/sphinx_highlight.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'autoapi/trieste/models/gpflow/sampler/index';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://secondmind-labs.github.io/trieste/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.2.0';
+        </script>
+    <link rel="index" title="Index" href="../../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" />
+    <link rel="next" title="trieste.models.gpflux" href="../../gpflux/index.html" />
+    <link rel="prev" title="trieste.models.gpflow.optimizer" href="../optimizer/index.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  <div class="navbar-header-items__start">
+    
+      <div class="navbar-item">
+  
+
+<a class="navbar-brand logo" href="../../../../../index.html">
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../../_static/logo.png" class="logo__image only-light" alt="Logo image"/>
+    <script>document.write(`<img src="../../../../../_static/logo.png" class="logo__image only-dark" alt="Logo image"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../../../index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      1.2.0  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+    </div>
+  
+
+  
+    <label class="sidebar-toggle secondary-toggle" for="__secondary">
+      <span class="fa-solid fa-outdent"></span>
+    </label>
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../../../index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      1.2.0  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item"><nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../acquisition/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition</span></code></a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-1"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../acquisition/function/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.function</span></code></a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-2"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../acquisition/function/active_learning/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.function.active_learning</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../acquisition/function/continuous_thompson_sampling/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.function.continuous_thompson_sampling</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../acquisition/function/entropy/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.function.entropy</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../acquisition/function/function/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.function.function</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../acquisition/function/greedy_batch/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.function.greedy_batch</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../acquisition/function/multi_objective/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.function.multi_objective</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../acquisition/function/utils/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.function.utils</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../acquisition/multi_objective/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.multi_objective</span></code></a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-3"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../acquisition/multi_objective/dominance/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.multi_objective.dominance</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../acquisition/multi_objective/pareto/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.multi_objective.pareto</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../acquisition/multi_objective/partition/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.multi_objective.partition</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../acquisition/interface/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.interface</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../acquisition/optimizer/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.optimizer</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../acquisition/rule/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.rule</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../acquisition/sampler/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.sampler</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="../../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models</span></code></a><input checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-4"><i class="fa-solid fa-chevron-down"></i></label><ul class="current">
+<li class="toctree-l2 current active has-children"><a class="reference internal" href="../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.gpflow</span></code></a><input checked="" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-5"><i class="fa-solid fa-chevron-down"></i></label><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../builders/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.gpflow.builders</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../inducing_point_selectors/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.gpflow.inducing_point_selectors</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../optimizer/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.gpflow.optimizer</span></code></a></li>
+<li class="toctree-l3 current active"><a class="current reference internal" href="#"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.gpflow.sampler</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../gpflux/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.gpflux</span></code></a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-6"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../gpflux/builders/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.gpflux.builders</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../keras/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.keras</span></code></a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-7"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../keras/architectures/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.keras.architectures</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../keras/builders/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.keras.builders</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../keras/sampler/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.keras.sampler</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../optimizer/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.optimizer</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../utils/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.utils</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../objectives/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.objectives</span></code></a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-8"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../objectives/multi_objectives/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.objectives.multi_objectives</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../objectives/multifidelity_objectives/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.objectives.multifidelity_objectives</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../objectives/single_objectives/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.objectives.single_objectives</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../objectives/utils/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.objectives.utils</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../utils/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.utils</span></code></a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../ask_tell_optimization/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.ask_tell_optimization</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../bayesian_optimizer/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.bayesian_optimizer</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../data/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.data</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../logging/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.logging</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../observer/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.observer</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../space/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.space</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../types/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.types</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../version/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.version</span></code></a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+
+
+<nav aria-label="Breadcrumbs">
+  <ul class="bd-breadcrumbs" role="navigation" aria-label="Breadcrumb">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste</span></code></a></li>
+    
+    
+    <li class="breadcrumb-item"><i class="fa-solid fa-ellipsis"></i></li>
+    
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.gpflow</span></code></a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.gpflow.sampler</span></code></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <section id="module-trieste.models.gpflow.sampler">
+<span id="trieste-models-gpflow-sampler"></span><h1><a class="reference internal" href="#module-trieste.models.gpflow.sampler" title="trieste.models.gpflow.sampler"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.gpflow.sampler</span></code></a><a class="headerlink" href="#module-trieste.models.gpflow.sampler" title="Permalink to this heading">#</a></h1>
+<p>This module is the home of the sampling functionality required by Trieste’s
+GPflow wrappers.</p>
+<section id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this heading">#</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="trieste.models.gpflow.sampler.qmc_normal_samples">
+<span class="sig-name descname"><span class="pre">qmc_normal_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_IntTensorType</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_sample_dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_IntTensorType</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_IntTensorType</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tensorflow.Tensor</span></span></span><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/sampler.html#qmc_normal_samples"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.sampler.qmc_normal_samples" title="Permalink to this definition">#</a></dt>
+<dd><p>Generates <cite>num_samples</cite> sobol samples, skipping the first <cite>skip</cite>, where each
+sample has dimension <cite>n_sample_dim</cite>.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.models.gpflow.sampler.IndependentReparametrizationSampler">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">IndependentReparametrizationSampler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sample_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../interfaces/index.html#trieste.models.interfaces.ProbabilisticModel" title="trieste.models.interfaces.ProbabilisticModel"><span class="pre">trieste.models.interfaces.ProbabilisticModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">qmc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qmc_skip</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/sampler.html#IndependentReparametrizationSampler"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.sampler.IndependentReparametrizationSampler" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../../interfaces/index.html#trieste.models.interfaces.ReparametrizationSampler" title="trieste.models.interfaces.ReparametrizationSampler"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.ReparametrizationSampler</span></code></a>[<a class="reference internal" href="../../interfaces/index.html#trieste.models.interfaces.ProbabilisticModel" title="trieste.models.interfaces.ProbabilisticModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.ProbabilisticModel</span></code></a>]</p>
+<p>This sampler employs the <em>reparameterization trick</em> to approximate samples from a
+<code class="xref py py-class docutils literal notranslate"><span class="pre">ProbabilisticModel</span></code>‘s predictive distribution as</p>
+<div class="math notranslate nohighlight">
+\[x \mapsto \mu(x) + \epsilon \sigma(x)\]</div>
+<p>where <span class="math notranslate nohighlight">\(\epsilon \sim \mathcal N (0, 1)\)</span> is constant for a given sampler, thus ensuring
+samples form a continuous curve.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>sample_size</strong> – The number of samples to take at each point. Must be positive.</p></li>
+<li><p><strong>model</strong> – The model to sample from.</p></li>
+<li><p><strong>qmc</strong> – Whether to use QMC sobol sampling instead of random normal sampling. QMC
+sampling more accurately approximates a normal distribution than truly random samples.</p></li>
+<li><p><strong>qmc_skip</strong> – Whether to use the skip parameter to ensure the QMC sampler gives different
+samples whenever it is reset. This is not supported with XLA.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><strong>ValueError</strong></a><strong> (or </strong><strong>InvalidArgumentError</strong><strong>)</strong> – If <code class="docutils literal notranslate"><span class="pre">sample_size</span></code> is not positive.</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="trieste.models.gpflow.sampler.IndependentReparametrizationSampler.skip">
+<span class="sig-name descname"><span class="pre">skip</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span></em><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/sampler.html#IndependentReparametrizationSampler.skip"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.sampler.IndependentReparametrizationSampler.skip" title="Permalink to this definition">#</a></dt>
+<dd><p>Number of sobol sequence points to skip. This is incremented for each sampler.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.gpflow.sampler.IndependentReparametrizationSampler.sample">
+<span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">at</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.types.TensorType</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jitter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">DEFAULTS.JITTER</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">trieste.types.TensorType</span></span></span><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/sampler.html#IndependentReparametrizationSampler.sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.sampler.IndependentReparametrizationSampler.sample" title="Permalink to this definition">#</a></dt>
+<dd><p>Return approximate samples from the <cite>model</cite> specified at <code class="xref py py-meth docutils literal notranslate"><span class="pre">__init__()</span></code>. Multiple calls to
+<a class="reference internal" href="#trieste.models.gpflow.sampler.IndependentReparametrizationSampler.sample" title="trieste.models.gpflow.sampler.IndependentReparametrizationSampler.sample"><code class="xref py py-meth docutils literal notranslate"><span class="pre">sample()</span></code></a>, for any given <a class="reference internal" href="#trieste.models.gpflow.sampler.IndependentReparametrizationSampler" title="trieste.models.gpflow.sampler.IndependentReparametrizationSampler"><code class="xref py py-class docutils literal notranslate"><span class="pre">IndependentReparametrizationSampler</span></code></a> and <code class="docutils literal notranslate"><span class="pre">at</span></code>, will
+produce the exact same samples. Calls to <a class="reference internal" href="#trieste.models.gpflow.sampler.IndependentReparametrizationSampler.sample" title="trieste.models.gpflow.sampler.IndependentReparametrizationSampler.sample"><code class="xref py py-meth docutils literal notranslate"><span class="pre">sample()</span></code></a> on <em>different</em>
+<a class="reference internal" href="#trieste.models.gpflow.sampler.IndependentReparametrizationSampler" title="trieste.models.gpflow.sampler.IndependentReparametrizationSampler"><code class="xref py py-class docutils literal notranslate"><span class="pre">IndependentReparametrizationSampler</span></code></a> instances will produce different samples.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>at</strong> – Where to sample the predictive distribution, with shape <cite>[…, 1, D]</cite>, for points
+of dimension <cite>D</cite>.</p></li>
+<li><p><strong>jitter</strong> – The size of the jitter to use when stabilising the Cholesky decomposition of
+the covariance matrix.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The samples, of shape <cite>[…, S, 1, L]</cite>, where <cite>S</cite> is the <cite>sample_size</cite> and <cite>L</cite> is
+the number of latent model dimensions.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><strong>ValueError</strong></a><strong> (or </strong><strong>InvalidArgumentError</strong><strong>)</strong> – If <code class="docutils literal notranslate"><span class="pre">at</span></code> has an invalid shape or <code class="docutils literal notranslate"><span class="pre">jitter</span></code>
+is negative.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.models.gpflow.sampler.BatchReparametrizationSampler">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">BatchReparametrizationSampler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sample_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../interfaces/index.html#trieste.models.interfaces.SupportsPredictJoint" title="trieste.models.interfaces.SupportsPredictJoint"><span class="pre">trieste.models.interfaces.SupportsPredictJoint</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">qmc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qmc_skip</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/sampler.html#BatchReparametrizationSampler"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.sampler.BatchReparametrizationSampler" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../../interfaces/index.html#trieste.models.interfaces.ReparametrizationSampler" title="trieste.models.interfaces.ReparametrizationSampler"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.ReparametrizationSampler</span></code></a>[<a class="reference internal" href="../../interfaces/index.html#trieste.models.interfaces.SupportsPredictJoint" title="trieste.models.interfaces.SupportsPredictJoint"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.SupportsPredictJoint</span></code></a>]</p>
+<p>This sampler employs the <em>reparameterization trick</em> to approximate batches of samples from a
+<code class="xref py py-class docutils literal notranslate"><span class="pre">ProbabilisticModel</span></code>‘s predictive joint distribution as</p>
+<div class="math notranslate nohighlight">
+\[x \mapsto \mu(x) + \epsilon L(x)\]</div>
+<p>where <span class="math notranslate nohighlight">\(L\)</span> is the Cholesky factor s.t. <span class="math notranslate nohighlight">\(LL^T\)</span> is the covariance, and
+<span class="math notranslate nohighlight">\(\epsilon \sim \mathcal N (0, 1)\)</span> is constant for a given sampler, thus ensuring samples
+form a continuous curve.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>sample_size</strong> – The number of samples for each batch of points. Must be positive.</p></li>
+<li><p><strong>model</strong> – The model to sample from.</p></li>
+<li><p><strong>qmc</strong> – Whether to use QMC sobol sampling instead of random normal sampling. QMC
+sampling more accurately approximates a normal distribution than truly random samples.</p></li>
+<li><p><strong>qmc_skip</strong> – Whether to use the skip parameter to ensure the QMC sampler gives different
+samples whenever it is reset. This is not supported with XLA.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><strong>ValueError</strong></a><strong> (or </strong><strong>InvalidArgumentError</strong><strong>)</strong> – If <code class="docutils literal notranslate"><span class="pre">sample_size</span></code> is not positive.</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="trieste.models.gpflow.sampler.BatchReparametrizationSampler.skip">
+<span class="sig-name descname"><span class="pre">skip</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span></em><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/sampler.html#BatchReparametrizationSampler.skip"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.sampler.BatchReparametrizationSampler.skip" title="Permalink to this definition">#</a></dt>
+<dd><p>Number of sobol sequence points to skip. This is incremented for each sampler.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.gpflow.sampler.BatchReparametrizationSampler.sample">
+<span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">at</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.types.TensorType</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jitter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">DEFAULTS.JITTER</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">trieste.types.TensorType</span></span></span><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/sampler.html#BatchReparametrizationSampler.sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.sampler.BatchReparametrizationSampler.sample" title="Permalink to this definition">#</a></dt>
+<dd><p>Return approximate samples from the <cite>model</cite> specified at <code class="xref py py-meth docutils literal notranslate"><span class="pre">__init__()</span></code>. Multiple calls to
+<a class="reference internal" href="#trieste.models.gpflow.sampler.BatchReparametrizationSampler.sample" title="trieste.models.gpflow.sampler.BatchReparametrizationSampler.sample"><code class="xref py py-meth docutils literal notranslate"><span class="pre">sample()</span></code></a>, for any given <a class="reference internal" href="#trieste.models.gpflow.sampler.BatchReparametrizationSampler" title="trieste.models.gpflow.sampler.BatchReparametrizationSampler"><code class="xref py py-class docutils literal notranslate"><span class="pre">BatchReparametrizationSampler</span></code></a> and <code class="docutils literal notranslate"><span class="pre">at</span></code>, will
+produce the exact same samples. Calls to <a class="reference internal" href="#trieste.models.gpflow.sampler.BatchReparametrizationSampler.sample" title="trieste.models.gpflow.sampler.BatchReparametrizationSampler.sample"><code class="xref py py-meth docutils literal notranslate"><span class="pre">sample()</span></code></a> on <em>different</em>
+<a class="reference internal" href="#trieste.models.gpflow.sampler.BatchReparametrizationSampler" title="trieste.models.gpflow.sampler.BatchReparametrizationSampler"><code class="xref py py-class docutils literal notranslate"><span class="pre">BatchReparametrizationSampler</span></code></a> instances will produce different samples.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>at</strong> – Batches of query points at which to sample the predictive distribution, with
+shape <cite>[…, B, D]</cite>, for batches of size <cite>B</cite> of points of dimension <cite>D</cite>. Must have a
+consistent batch size across all calls to <a class="reference internal" href="#trieste.models.gpflow.sampler.BatchReparametrizationSampler.sample" title="trieste.models.gpflow.sampler.BatchReparametrizationSampler.sample"><code class="xref py py-meth docutils literal notranslate"><span class="pre">sample()</span></code></a> for any given
+<a class="reference internal" href="#trieste.models.gpflow.sampler.BatchReparametrizationSampler" title="trieste.models.gpflow.sampler.BatchReparametrizationSampler"><code class="xref py py-class docutils literal notranslate"><span class="pre">BatchReparametrizationSampler</span></code></a>.</p></li>
+<li><p><strong>jitter</strong> – The size of the jitter to use when stabilising the Cholesky decomposition of
+the covariance matrix.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The samples, of shape <cite>[…, S, B, L]</cite>, where <cite>S</cite> is the <cite>sample_size</cite>, <cite>B</cite> the
+number of points per batch, and <cite>L</cite> the dimension of the model’s predictive
+distribution.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><strong>ValueError</strong></a><strong> (or </strong><strong>InvalidArgumentError</strong><strong>)</strong> – If any of the following are true:
+- <code class="docutils literal notranslate"><span class="pre">at</span></code> is a scalar.
+- The batch size <cite>B</cite> of <code class="docutils literal notranslate"><span class="pre">at</span></code> is not positive.
+- The batch size <cite>B</cite> of <code class="docutils literal notranslate"><span class="pre">at</span></code> differs from that of previous calls.
+- <code class="docutils literal notranslate"><span class="pre">jitter</span></code> is negative.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.models.gpflow.sampler.FeatureDecompositionInternalDataModel">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">FeatureDecompositionInternalDataModel</span></span><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/sampler.html#FeatureDecompositionInternalDataModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.sampler.FeatureDecompositionInternalDataModel" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../../interfaces/index.html#trieste.models.interfaces.SupportsGetKernel" title="trieste.models.interfaces.SupportsGetKernel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.SupportsGetKernel</span></code></a>, <a class="reference internal" href="../../interfaces/index.html#trieste.models.interfaces.SupportsGetMeanFunction" title="trieste.models.interfaces.SupportsGetMeanFunction"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.SupportsGetMeanFunction</span></code></a>, <a class="reference internal" href="../../interfaces/index.html#trieste.models.interfaces.SupportsGetObservationNoise" title="trieste.models.interfaces.SupportsGetObservationNoise"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.SupportsGetObservationNoise</span></code></a>, <a class="reference internal" href="../../interfaces/index.html#trieste.models.interfaces.SupportsGetInternalData" title="trieste.models.interfaces.SupportsGetInternalData"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.SupportsGetInternalData</span></code></a>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">typing_extensions.Protocol</span></code></p>
+<p>A probabilistic model that supports get_kernel, get_mean_function, get_observation_noise
+and get_internal_data methods.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.models.gpflow.sampler.FeatureDecompositionInducingPointModel">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">FeatureDecompositionInducingPointModel</span></span><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/sampler.html#FeatureDecompositionInducingPointModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.sampler.FeatureDecompositionInducingPointModel" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../../interfaces/index.html#trieste.models.interfaces.SupportsGetKernel" title="trieste.models.interfaces.SupportsGetKernel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.SupportsGetKernel</span></code></a>, <a class="reference internal" href="../../interfaces/index.html#trieste.models.interfaces.SupportsGetMeanFunction" title="trieste.models.interfaces.SupportsGetMeanFunction"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.SupportsGetMeanFunction</span></code></a>, <a class="reference internal" href="../../interfaces/index.html#trieste.models.interfaces.SupportsGetInducingVariables" title="trieste.models.interfaces.SupportsGetInducingVariables"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.SupportsGetInducingVariables</span></code></a>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">typing_extensions.Protocol</span></code></p>
+<p>A probabilistic model that supports get_kernel, get_mean_function
+and get_inducing_point methods.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.models.gpflow.sampler.FeatureDecompositionTrajectorySampler">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">FeatureDecompositionTrajectorySampler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">FeatureDecompositionTrajectorySamplerModelType</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">feature_functions</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#trieste.models.gpflow.sampler.ResampleableRandomFourierFeatureFunctions" title="trieste.models.gpflow.sampler.ResampleableRandomFourierFeatureFunctions"><span class="pre">ResampleableRandomFourierFeatureFunctions</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/sampler.html#FeatureDecompositionTrajectorySampler"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.sampler.FeatureDecompositionTrajectorySampler" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../../interfaces/index.html#trieste.models.interfaces.TrajectorySampler" title="trieste.models.interfaces.TrajectorySampler"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.TrajectorySampler</span></code></a>[<code class="xref py py-obj docutils literal notranslate"><span class="pre">FeatureDecompositionTrajectorySamplerModelType</span></code>], <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.11)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">abc.ABC</span></code></a></p>
+<p>This is a general class to build functions that approximate a trajectory sampled from an
+underlying Gaussian process model.</p>
+<p>In particular, we approximate the Gaussian processes’ posterior samples as the finite feature
+approximation</p>
+<div class="math notranslate nohighlight">
+\[\hat{f}(x) = \sum_{i=1}^m \phi_i(x)\theta_i\]</div>
+<p>where <span class="math notranslate nohighlight">\(\phi_i\)</span> are m features and <span class="math notranslate nohighlight">\(\theta_i\)</span> are feature weights sampled from a
+given distribution</p>
+<p>Achieving consistency (ensuring that the same sample draw for all evalutions of a particular
+trajectory function) for exact sample draws from a GP is prohibitively costly because it scales
+cubically with the number of query points. However, finite feature representations can be
+evaluated with constant cost regardless of the required number of queries.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>model</strong> – The model to sample from.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">dataset</span></code> is empty.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.gpflow.sampler.FeatureDecompositionTrajectorySampler.get_trajectory">
+<span class="sig-name descname"><span class="pre">get_trajectory</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">trieste.models.interfaces.TrajectoryFunction</span></span></span><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/sampler.html#FeatureDecompositionTrajectorySampler.get_trajectory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.sampler.FeatureDecompositionTrajectorySampler.get_trajectory" title="Permalink to this definition">#</a></dt>
+<dd><p>Generate an approximate function draw (trajectory) by sampling weights
+and evaluating the feature functions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A trajectory function representing an approximate trajectory from the Gaussian
+process, taking an input of shape <cite>[N, B, D]</cite> and returning shape <cite>[N, B, L]</cite>
+where <cite>L</cite> is the number of outputs of the model.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.gpflow.sampler.FeatureDecompositionTrajectorySampler.update_trajectory">
+<span class="sig-name descname"><span class="pre">update_trajectory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trajectory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.models.interfaces.TrajectoryFunction</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">trieste.models.interfaces.TrajectoryFunction</span></span></span><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/sampler.html#FeatureDecompositionTrajectorySampler.update_trajectory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.sampler.FeatureDecompositionTrajectorySampler.update_trajectory" title="Permalink to this definition">#</a></dt>
+<dd><p>Efficiently update a <code class="xref py py-const docutils literal notranslate"><span class="pre">TrajectoryFunction</span></code> to reflect an update in its
+underlying <code class="xref py py-class docutils literal notranslate"><span class="pre">ProbabilisticModel</span></code> and resample accordingly.</p>
+<p>For a <a class="reference internal" href="#trieste.models.gpflow.sampler.FeatureDecompositionTrajectorySampler" title="trieste.models.gpflow.sampler.FeatureDecompositionTrajectorySampler"><code class="xref py py-class docutils literal notranslate"><span class="pre">FeatureDecompositionTrajectorySampler</span></code></a>, updating the sampler
+corresponds to resampling the feature functions (taking into account any
+changed kernel parameters) and recalculating the weight distribution.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>trajectory</strong> – The trajectory function to be resampled.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The new resampled trajectory function.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.gpflow.sampler.FeatureDecompositionTrajectorySampler.resample_trajectory">
+<span class="sig-name descname"><span class="pre">resample_trajectory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trajectory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.models.interfaces.TrajectoryFunction</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">trieste.models.interfaces.TrajectoryFunction</span></span></span><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/sampler.html#FeatureDecompositionTrajectorySampler.resample_trajectory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.sampler.FeatureDecompositionTrajectorySampler.resample_trajectory" title="Permalink to this definition">#</a></dt>
+<dd><p>Efficiently resample a <code class="xref py py-const docutils literal notranslate"><span class="pre">TrajectoryFunction</span></code> in-place to avoid function retracing
+with every new sample.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>trajectory</strong> – The trajectory function to be resampled.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The new resampled trajectory function.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.gpflow.sampler.FeatureDecompositionTrajectorySampler._prepare_weight_sampler">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">_prepare_weight_sampler</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/sampler.html#FeatureDecompositionTrajectorySampler._prepare_weight_sampler"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.sampler.FeatureDecompositionTrajectorySampler._prepare_weight_sampler" title="Permalink to this definition">#</a></dt>
+<dd><p>Calculate the posterior of the feature weights for the specified feature functions,
+returning a function that takes in a batch size <cite>B</cite> and returns <cite>B</cite> samples for
+the weights of each of the <cite>F</cite> features for <cite>L</cite> outputs.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.models.gpflow.sampler.RandomFourierFeatureTrajectorySampler">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">RandomFourierFeatureTrajectorySampler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#trieste.models.gpflow.sampler.FeatureDecompositionInternalDataModel" title="trieste.models.gpflow.sampler.FeatureDecompositionInternalDataModel"><span class="pre">FeatureDecompositionInternalDataModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_features</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1000</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/sampler.html#RandomFourierFeatureTrajectorySampler"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.sampler.RandomFourierFeatureTrajectorySampler" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#trieste.models.gpflow.sampler.FeatureDecompositionTrajectorySampler" title="trieste.models.gpflow.sampler.FeatureDecompositionTrajectorySampler"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FeatureDecompositionTrajectorySampler</span></code></a>[<a class="reference internal" href="#trieste.models.gpflow.sampler.FeatureDecompositionInternalDataModel" title="trieste.models.gpflow.sampler.FeatureDecompositionInternalDataModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FeatureDecompositionInternalDataModel</span></code></a>]</p>
+<p>This class builds functions that approximate a trajectory sampled from an underlying Gaussian
+process model. For tractibility, the Gaussian process is approximated with a Bayesian
+Linear model across a set of features sampled from the Fourier feature decomposition of
+the model’s kernel. See <span id="id1">[<a class="reference internal" href="../../../../../bibliography.html#id22" title="JM Hernández-Lobato, MW Hoffman, and Z Ghahramani. Predictive entropy search for efficient global optimization of black-box functions. Advances in Neural Information Processing Systems, 2014.">HernandezLHG14</a>]</span> for details. Currently we do not
+support models with multiple latent Gaussian processes.</p>
+<p>In particular, we approximate the Gaussian processes’ posterior samples as the finite feature
+approximation</p>
+<div class="math notranslate nohighlight">
+\[\hat{f}(x) = \sum_{i=1}^m \phi_i(x)\theta_i\]</div>
+<p>where <span class="math notranslate nohighlight">\(\phi_i\)</span> are m Fourier features and <span class="math notranslate nohighlight">\(\theta_i\)</span> are
+feature weights sampled from a posterior distribution that depends on the feature values at the
+model’s datapoints.</p>
+<p>Our implementation follows <span id="id2">[<a class="reference internal" href="../../../../../bibliography.html#id22" title="JM Hernández-Lobato, MW Hoffman, and Z Ghahramani. Predictive entropy search for efficient global optimization of black-box functions. Advances in Neural Information Processing Systems, 2014.">HernandezLHG14</a>]</span>, with our calculations
+differing slightly depending on properties of the problem. In particular,  we used different
+calculation strategies depending on the number of considered features m and the number
+of data points n.</p>
+<p>If <span class="math notranslate nohighlight">\(m&lt;n\)</span> then we follow Appendix A of <span id="id3">[<a class="reference internal" href="../../../../../bibliography.html#id22" title="JM Hernández-Lobato, MW Hoffman, and Z Ghahramani. Predictive entropy search for efficient global optimization of black-box functions. Advances in Neural Information Processing Systems, 2014.">HernandezLHG14</a>]</span> and calculate the
+posterior distribution for <span class="math notranslate nohighlight">\(\theta\)</span> following their Bayesian linear regression motivation,
+i.e. the computation revolves around an O(m^3)  inversion of a design matrix.</p>
+<p>If <span class="math notranslate nohighlight">\(n&lt;m\)</span> then we use the kernel trick to recast computation to revolve around an O(n^3)
+inversion of a gram matrix. As well as being more efficient in early BO
+steps (where <span class="math notranslate nohighlight">\(n&lt;m\)</span>), this second computation method allows much larger choices
+of m (as required to approximate very flexible kernels).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model to sample from.</p></li>
+<li><p><strong>num_features</strong> – The number of features used to approximate the kernel. We use a default
+of 1000 as it typically perfoms well for a wide range of kernels. Note that very smooth
+kernels (e.g. RBF) can be well-approximated with fewer features.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">dataset</span></code> is empty.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.gpflow.sampler.RandomFourierFeatureTrajectorySampler._prepare_weight_sampler">
+<span class="sig-name descname"><span class="pre">_prepare_weight_sampler</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/sampler.html#RandomFourierFeatureTrajectorySampler._prepare_weight_sampler"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.sampler.RandomFourierFeatureTrajectorySampler._prepare_weight_sampler" title="Permalink to this definition">#</a></dt>
+<dd><p>Calculate the posterior of theta (the feature weights) for the RFFs, returning
+a function that takes in a batch size <cite>B</cite> and returns <cite>B</cite> samples for
+the weights of each of the RFF <cite>F</cite> features for one output.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.gpflow.sampler.RandomFourierFeatureTrajectorySampler._prepare_theta_posterior_in_design_space">
+<span class="sig-name descname"><span class="pre">_prepare_theta_posterior_in_design_space</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tensorflow_probability.distributions.MultivariateNormalTriL</span></span></span><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/sampler.html#RandomFourierFeatureTrajectorySampler._prepare_theta_posterior_in_design_space"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.sampler.RandomFourierFeatureTrajectorySampler._prepare_theta_posterior_in_design_space" title="Permalink to this definition">#</a></dt>
+<dd><p>Calculate the posterior of theta (the feature weights) in the design space. This
+distribution is a Gaussian</p>
+<div class="math notranslate nohighlight">
+\[\theta \sim N(D^{-1}\Phi^Ty,D^{-1}\sigma^2)\]</div>
+<p>where the [m,m] design matrix <span class="math notranslate nohighlight">\(D=(\Phi^T\Phi + \sigma^2I_m)\)</span> is defined for
+the [n,m] matrix of feature evaluations across the training data <span class="math notranslate nohighlight">\(\Phi\)</span>
+and observation noise variance <span class="math notranslate nohighlight">\(\sigma^2\)</span>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.gpflow.sampler.RandomFourierFeatureTrajectorySampler._prepare_theta_posterior_in_gram_space">
+<span class="sig-name descname"><span class="pre">_prepare_theta_posterior_in_gram_space</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tensorflow_probability.distributions.MultivariateNormalTriL</span></span></span><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/sampler.html#RandomFourierFeatureTrajectorySampler._prepare_theta_posterior_in_gram_space"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.sampler.RandomFourierFeatureTrajectorySampler._prepare_theta_posterior_in_gram_space" title="Permalink to this definition">#</a></dt>
+<dd><p>Calculate the posterior of theta (the feature weights) in the gram space.</p>
+<blockquote>
+<div><div class="math notranslate nohighlight">
+\[\theta \sim N(\Phi^TG^{-1}y,I_m - \Phi^TG^{-1}\Phi)\]</div>
+</div></blockquote>
+<p>where the [n,n] gram matrix <span class="math notranslate nohighlight">\(G=(\Phi\Phi^T + \sigma^2I_n)\)</span> is defined for the [n,m]
+matrix of feature evaluations across the training data <span class="math notranslate nohighlight">\(\Phi\)</span> and
+observation noise variance <span class="math notranslate nohighlight">\(\sigma^2\)</span>.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.models.gpflow.sampler.DecoupledTrajectorySampler">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">DecoupledTrajectorySampler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#trieste.models.gpflow.sampler.FeatureDecompositionInducingPointModel" title="trieste.models.gpflow.sampler.FeatureDecompositionInducingPointModel"><span class="pre">FeatureDecompositionInducingPointModel</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#trieste.models.gpflow.sampler.FeatureDecompositionInternalDataModel" title="trieste.models.gpflow.sampler.FeatureDecompositionInternalDataModel"><span class="pre">FeatureDecompositionInternalDataModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_features</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1000</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/sampler.html#DecoupledTrajectorySampler"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.sampler.DecoupledTrajectorySampler" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#trieste.models.gpflow.sampler.FeatureDecompositionTrajectorySampler" title="trieste.models.gpflow.sampler.FeatureDecompositionTrajectorySampler"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FeatureDecompositionTrajectorySampler</span></code></a>[<code class="xref py py-obj docutils literal notranslate"><span class="pre">Union</span></code>[<a class="reference internal" href="#trieste.models.gpflow.sampler.FeatureDecompositionInducingPointModel" title="trieste.models.gpflow.sampler.FeatureDecompositionInducingPointModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FeatureDecompositionInducingPointModel</span></code></a>, <a class="reference internal" href="#trieste.models.gpflow.sampler.FeatureDecompositionInternalDataModel" title="trieste.models.gpflow.sampler.FeatureDecompositionInternalDataModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FeatureDecompositionInternalDataModel</span></code></a>]]</p>
+<p>This class builds functions that approximate a trajectory sampled from an underlying Gaussian
+process model using decoupled sampling. See <span id="id4">[<a class="reference internal" href="../../../../../bibliography.html#id49" title="James Wilson, Viacheslav Borovitskiy, Alexander Terenin, Peter Mostowsky, and Marc Deisenroth. Efficiently sampling functions from gaussian process posteriors. In International Conference on Machine Learning. 2020.">WBT+20</a>]</span> for an introduction
+to decoupled sampling.</p>
+<p>Unlike our <a class="reference internal" href="#trieste.models.gpflow.sampler.RandomFourierFeatureTrajectorySampler" title="trieste.models.gpflow.sampler.RandomFourierFeatureTrajectorySampler"><code class="xref py py-class docutils literal notranslate"><span class="pre">RandomFourierFeatureTrajectorySampler</span></code></a> which uses a RFF decomposition to
+aprroximate the Gaussian process posterior, a <a class="reference internal" href="#trieste.models.gpflow.sampler.DecoupledTrajectorySampler" title="trieste.models.gpflow.sampler.DecoupledTrajectorySampler"><code class="xref py py-class docutils literal notranslate"><span class="pre">DecoupledTrajectorySampler</span></code></a> only
+uses an RFF decomposition to approximate the Gausian process prior and instead using
+a canonical decomposition to discretize the effect of updating the prior on the given data.</p>
+<p>In particular, we approximate the Gaussian processes’ posterior samples as the finite feature
+approximation</p>
+<div class="math notranslate nohighlight">
+\[\hat{f}(.) = \sum_{i=1}^L w_i\phi_i(.) + \sum_{j=1}^m v_jk(.,z_j)\]</div>
+<p>where <span class="math notranslate nohighlight">\(\phi_i(.)\)</span> and <span class="math notranslate nohighlight">\(w_i\)</span> are the Fourier features and their weights that
+discretize the prior. In contrast, <cite>k(.,z_j)</cite> and <span class="math notranslate nohighlight">\(v_i\)</span> are the canonical features and
+their weights that discretize the data update.</p>
+<p>The expression for <span class="math notranslate nohighlight">\(v_i\)</span> depends on if we are using an exact Gaussian process or a sparse
+approximations. See  eq. (13) in <span id="id5">[<a class="reference internal" href="../../../../../bibliography.html#id49" title="James Wilson, Viacheslav Borovitskiy, Alexander Terenin, Peter Mostowsky, and Marc Deisenroth. Efficiently sampling functions from gaussian process posteriors. In International Conference on Machine Learning. 2020.">WBT+20</a>]</span> for details.</p>
+<p>Note that if a model is both of <a class="reference internal" href="#trieste.models.gpflow.sampler.FeatureDecompositionInducingPointModel" title="trieste.models.gpflow.sampler.FeatureDecompositionInducingPointModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">FeatureDecompositionInducingPointModel</span></code></a> type and
+<a class="reference internal" href="#trieste.models.gpflow.sampler.FeatureDecompositionInternalDataModel" title="trieste.models.gpflow.sampler.FeatureDecompositionInternalDataModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">FeatureDecompositionInternalDataModel</span></code></a> type,
+<a class="reference internal" href="#trieste.models.gpflow.sampler.FeatureDecompositionInducingPointModel" title="trieste.models.gpflow.sampler.FeatureDecompositionInducingPointModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">FeatureDecompositionInducingPointModel</span></code></a> will take a priority and inducing points
+will be used for computations rather than data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model to sample from.</p></li>
+<li><p><strong>num_features</strong> – The number of features used to approximate the kernel. We use a default
+of 1000 as it typically perfoms well for a wide range of kernels. Note that very smooth
+kernels (e.g. RBF) can be well-approximated with fewer features.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.11)"><strong>NotImplementedError</strong></a> – If the model is not of valid type.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.gpflow.sampler.DecoupledTrajectorySampler._prepare_weight_sampler">
+<span class="sig-name descname"><span class="pre">_prepare_weight_sampler</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/sampler.html#DecoupledTrajectorySampler._prepare_weight_sampler"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.sampler.DecoupledTrajectorySampler._prepare_weight_sampler" title="Permalink to this definition">#</a></dt>
+<dd><p>Prepare the sampler function that provides samples of the feature weights
+for both the RFF and canonical feature functions, i.e. we return a function
+that takes in a batch size <cite>B</cite> and returns <cite>B</cite> samples for the weights of each of
+the <cite>F</cite>  RFF features and <cite>M</cite> canonical features for <cite>L</cite> outputs.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.models.gpflow.sampler.ResampleableRandomFourierFeatureFunctions">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ResampleableRandomFourierFeatureFunctions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#trieste.models.gpflow.sampler.FeatureDecompositionInducingPointModel" title="trieste.models.gpflow.sampler.FeatureDecompositionInducingPointModel"><span class="pre">FeatureDecompositionInducingPointModel</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#trieste.models.gpflow.sampler.FeatureDecompositionInternalDataModel" title="trieste.models.gpflow.sampler.FeatureDecompositionInternalDataModel"><span class="pre">FeatureDecompositionInternalDataModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_components</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/sampler.html#ResampleableRandomFourierFeatureFunctions"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.sampler.ResampleableRandomFourierFeatureFunctions" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">gpflux.layers.basis_functions.fourier_features.RandomFourierFeaturesCosine</span></code></p>
+<p>A wrapper around GPFlux’s random Fourier feature function that allows for
+efficient in-place updating when generating new decompositions.</p>
+<p>In particular, the bias and weights are stored as variables, which can then be
+updated by calling <a class="reference internal" href="#trieste.models.gpflow.sampler.ResampleableRandomFourierFeatureFunctions.resample" title="trieste.models.gpflow.sampler.ResampleableRandomFourierFeatureFunctions.resample"><code class="xref py py-meth docutils literal notranslate"><span class="pre">resample()</span></code></a> without triggering expensive graph retracing.</p>
+<p>Note that if a model is both of <a class="reference internal" href="#trieste.models.gpflow.sampler.FeatureDecompositionInducingPointModel" title="trieste.models.gpflow.sampler.FeatureDecompositionInducingPointModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">FeatureDecompositionInducingPointModel</span></code></a> type and
+<a class="reference internal" href="#trieste.models.gpflow.sampler.FeatureDecompositionInternalDataModel" title="trieste.models.gpflow.sampler.FeatureDecompositionInternalDataModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">FeatureDecompositionInternalDataModel</span></code></a> type,
+<a class="reference internal" href="#trieste.models.gpflow.sampler.FeatureDecompositionInducingPointModel" title="trieste.models.gpflow.sampler.FeatureDecompositionInducingPointModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">FeatureDecompositionInducingPointModel</span></code></a> will take a priority and inducing points
+will be used for computations rather than data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model that will be approximed by these feature functions.</p></li>
+<li><p><strong>n_components</strong> – The desired number of features.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.11)"><strong>NotImplementedError</strong></a> – If the model is not of valid type.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.gpflow.sampler.ResampleableRandomFourierFeatureFunctions.resample">
+<span class="sig-name descname"><span class="pre">resample</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/sampler.html#ResampleableRandomFourierFeatureFunctions.resample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.sampler.ResampleableRandomFourierFeatureFunctions.resample" title="Permalink to this definition">#</a></dt>
+<dd><p>Resample weights and biases</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.models.gpflow.sampler.ResampleableDecoupledFeatureFunctions">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ResampleableDecoupledFeatureFunctions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#trieste.models.gpflow.sampler.FeatureDecompositionInducingPointModel" title="trieste.models.gpflow.sampler.FeatureDecompositionInducingPointModel"><span class="pre">FeatureDecompositionInducingPointModel</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#trieste.models.gpflow.sampler.FeatureDecompositionInternalDataModel" title="trieste.models.gpflow.sampler.FeatureDecompositionInternalDataModel"><span class="pre">FeatureDecompositionInternalDataModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_components</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/sampler.html#ResampleableDecoupledFeatureFunctions"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.sampler.ResampleableDecoupledFeatureFunctions" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#trieste.models.gpflow.sampler.ResampleableRandomFourierFeatureFunctions" title="trieste.models.gpflow.sampler.ResampleableRandomFourierFeatureFunctions"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ResampleableRandomFourierFeatureFunctions</span></code></a></p>
+<p>A wrapper around our <a class="reference internal" href="#trieste.models.gpflow.sampler.ResampleableRandomFourierFeatureFunctions" title="trieste.models.gpflow.sampler.ResampleableRandomFourierFeatureFunctions"><code class="xref py py-class docutils literal notranslate"><span class="pre">ResampleableRandomFourierFeatureFunctions</span></code></a> which rather
+than evaluates just <cite>F</cite> RFF functions instead evaluates the concatenation of
+<cite>F</cite> RFF functions with evaluations of the canonical basis functions.</p>
+<p>Note that if a model is both of <a class="reference internal" href="#trieste.models.gpflow.sampler.FeatureDecompositionInducingPointModel" title="trieste.models.gpflow.sampler.FeatureDecompositionInducingPointModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">FeatureDecompositionInducingPointModel</span></code></a> type and
+<a class="reference internal" href="#trieste.models.gpflow.sampler.FeatureDecompositionInternalDataModel" title="trieste.models.gpflow.sampler.FeatureDecompositionInternalDataModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">FeatureDecompositionInternalDataModel</span></code></a> type,
+<a class="reference internal" href="#trieste.models.gpflow.sampler.FeatureDecompositionInducingPointModel" title="trieste.models.gpflow.sampler.FeatureDecompositionInducingPointModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">FeatureDecompositionInducingPointModel</span></code></a> will take a priority and inducing points
+will be used for computations rather than data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model that will be approximed by these feature functions.</p></li>
+<li><p><strong>n_components</strong> – The desired number of features.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.gpflow.sampler.ResampleableDecoupledFeatureFunctions.call">
+<span class="sig-name descname"><span class="pre">call</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.types.TensorType</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">trieste.types.TensorType</span></span></span><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/sampler.html#ResampleableDecoupledFeatureFunctions.call"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.sampler.ResampleableDecoupledFeatureFunctions.call" title="Permalink to this definition">#</a></dt>
+<dd><p>combine prior basis functions with canonical basis functions</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.models.gpflow.sampler.feature_decomposition_trajectory">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">feature_decomposition_trajectory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">feature_functions</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weight_sampler</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mean_function</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/sampler.html#feature_decomposition_trajectory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.sampler.feature_decomposition_trajectory" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../../interfaces/index.html#trieste.models.interfaces.TrajectoryFunctionClass" title="trieste.models.interfaces.TrajectoryFunctionClass"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.TrajectoryFunctionClass</span></code></a></p>
+<p>An approximate sample from a Gaussian processes’ posterior samples represented as a
+finite weighted sum of features.</p>
+<p>A trajectory is given by</p>
+<div class="math notranslate nohighlight">
+\[\hat{f}(x) = \sum_{i=1}^m \phi_i(x)\theta_i\]</div>
+<p>where <span class="math notranslate nohighlight">\(\phi_i\)</span> are m feature functions and <span class="math notranslate nohighlight">\(\theta_i\)</span> are
+feature weights sampled from a posterior distribution.</p>
+<p>The number of trajectories (i.e. batch size) is determined from the first call of the
+trajectory. In order to change the batch size, a new <code class="xref py py-class docutils literal notranslate"><span class="pre">TrajectoryFunction</span></code> must be built.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>feature_functions</strong> – Set of feature function.</p></li>
+<li><p><strong>weight_sampler</strong> – New sampler that generates feature weight samples.</p></li>
+<li><p><strong>mean_function</strong> – The underlying model’s mean function.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.gpflow.sampler.feature_decomposition_trajectory.__call__">
+<span class="sig-name descname"><span class="pre">__call__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.types.TensorType</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">trieste.types.TensorType</span></span></span><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/sampler.html#feature_decomposition_trajectory.__call__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.sampler.feature_decomposition_trajectory.__call__" title="Permalink to this definition">#</a></dt>
+<dd><p>Call trajectory function.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.gpflow.sampler.feature_decomposition_trajectory.resample">
+<span class="sig-name descname"><span class="pre">resample</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/sampler.html#feature_decomposition_trajectory.resample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.sampler.feature_decomposition_trajectory.resample" title="Permalink to this definition">#</a></dt>
+<dd><p>Efficiently resample in-place without retracing.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.gpflow.sampler.feature_decomposition_trajectory.update">
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">weight_sampler</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../../../../_modules/trieste/models/gpflow/sampler.html#feature_decomposition_trajectory.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.gpflow.sampler.feature_decomposition_trajectory.update" title="Permalink to this definition">#</a></dt>
+<dd><p>Efficiently update the trajectory with a new weight distribution and resample its weights.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>weight_sampler</strong> – New sampler that generates feature weight samples.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+  <div class="sidebar-secondary-item">
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-contents">Module Contents</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.gpflow.sampler.qmc_normal_samples"><code class="docutils literal notranslate"><span class="pre">qmc_normal_samples()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.gpflow.sampler.IndependentReparametrizationSampler"><code class="docutils literal notranslate"><span class="pre">IndependentReparametrizationSampler</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.gpflow.sampler.IndependentReparametrizationSampler.skip"><code class="docutils literal notranslate"><span class="pre">IndependentReparametrizationSampler.skip</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.gpflow.sampler.IndependentReparametrizationSampler.sample"><code class="docutils literal notranslate"><span class="pre">IndependentReparametrizationSampler.sample()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.gpflow.sampler.BatchReparametrizationSampler"><code class="docutils literal notranslate"><span class="pre">BatchReparametrizationSampler</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.gpflow.sampler.BatchReparametrizationSampler.skip"><code class="docutils literal notranslate"><span class="pre">BatchReparametrizationSampler.skip</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.gpflow.sampler.BatchReparametrizationSampler.sample"><code class="docutils literal notranslate"><span class="pre">BatchReparametrizationSampler.sample()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.gpflow.sampler.FeatureDecompositionInternalDataModel"><code class="docutils literal notranslate"><span class="pre">FeatureDecompositionInternalDataModel</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.gpflow.sampler.FeatureDecompositionInducingPointModel"><code class="docutils literal notranslate"><span class="pre">FeatureDecompositionInducingPointModel</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.gpflow.sampler.FeatureDecompositionTrajectorySampler"><code class="docutils literal notranslate"><span class="pre">FeatureDecompositionTrajectorySampler</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.gpflow.sampler.FeatureDecompositionTrajectorySampler.get_trajectory"><code class="docutils literal notranslate"><span class="pre">FeatureDecompositionTrajectorySampler.get_trajectory()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.gpflow.sampler.FeatureDecompositionTrajectorySampler.update_trajectory"><code class="docutils literal notranslate"><span class="pre">FeatureDecompositionTrajectorySampler.update_trajectory()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.gpflow.sampler.FeatureDecompositionTrajectorySampler.resample_trajectory"><code class="docutils literal notranslate"><span class="pre">FeatureDecompositionTrajectorySampler.resample_trajectory()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.gpflow.sampler.FeatureDecompositionTrajectorySampler._prepare_weight_sampler"><code class="docutils literal notranslate"><span class="pre">FeatureDecompositionTrajectorySampler._prepare_weight_sampler()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.gpflow.sampler.RandomFourierFeatureTrajectorySampler"><code class="docutils literal notranslate"><span class="pre">RandomFourierFeatureTrajectorySampler</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.gpflow.sampler.RandomFourierFeatureTrajectorySampler._prepare_weight_sampler"><code class="docutils literal notranslate"><span class="pre">RandomFourierFeatureTrajectorySampler._prepare_weight_sampler()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.gpflow.sampler.RandomFourierFeatureTrajectorySampler._prepare_theta_posterior_in_design_space"><code class="docutils literal notranslate"><span class="pre">RandomFourierFeatureTrajectorySampler._prepare_theta_posterior_in_design_space()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.gpflow.sampler.RandomFourierFeatureTrajectorySampler._prepare_theta_posterior_in_gram_space"><code class="docutils literal notranslate"><span class="pre">RandomFourierFeatureTrajectorySampler._prepare_theta_posterior_in_gram_space()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.gpflow.sampler.DecoupledTrajectorySampler"><code class="docutils literal notranslate"><span class="pre">DecoupledTrajectorySampler</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.gpflow.sampler.DecoupledTrajectorySampler._prepare_weight_sampler"><code class="docutils literal notranslate"><span class="pre">DecoupledTrajectorySampler._prepare_weight_sampler()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.gpflow.sampler.ResampleableRandomFourierFeatureFunctions"><code class="docutils literal notranslate"><span class="pre">ResampleableRandomFourierFeatureFunctions</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.gpflow.sampler.ResampleableRandomFourierFeatureFunctions.resample"><code class="docutils literal notranslate"><span class="pre">ResampleableRandomFourierFeatureFunctions.resample()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.gpflow.sampler.ResampleableDecoupledFeatureFunctions"><code class="docutils literal notranslate"><span class="pre">ResampleableDecoupledFeatureFunctions</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.gpflow.sampler.ResampleableDecoupledFeatureFunctions.call"><code class="docutils literal notranslate"><span class="pre">ResampleableDecoupledFeatureFunctions.call()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.gpflow.sampler.feature_decomposition_trajectory"><code class="docutils literal notranslate"><span class="pre">feature_decomposition_trajectory</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.gpflow.sampler.feature_decomposition_trajectory.__call__"><code class="docutils literal notranslate"><span class="pre">feature_decomposition_trajectory.__call__()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.gpflow.sampler.feature_decomposition_trajectory.resample"><code class="docutils literal notranslate"><span class="pre">feature_decomposition_trajectory.resample()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.gpflow.sampler.feature_decomposition_trajectory.update"><code class="docutils literal notranslate"><span class="pre">feature_decomposition_trajectory.update()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52"></script>
+<script src="../../../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+  <p class="copyright">
+    
+      © Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.0.1.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item"><p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.13.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

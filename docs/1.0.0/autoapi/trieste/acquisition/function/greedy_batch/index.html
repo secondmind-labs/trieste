@@ -1,0 +1,1429 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.acquisition.function.greedy_batch &#8212; trieste 1.0.0 documentation</title>
+    
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../../_static/styles/theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+<link href="../../../../../_static/styles/pydata-sphinx-theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+
+    
+  <link rel="stylesheet"
+    href="../../../../../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    <link rel="stylesheet" href="../../../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../../_static/styles/pydata-sphinx-theme.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/graphviz.css" />
+    
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf">
+
+    <script id="documentation_options" data-url_root="../../../../../" src="../../../../../_static/documentation_options.js"></script>
+    <script src="../../../../../_static/jquery.js"></script>
+    <script src="../../../../../_static/underscore.js"></script>
+    <script src="../../../../../_static/doctools.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "tex2jax_ignore|mathjax_ignore|document", "processClass": "tex2jax_process|mathjax_process|math|output_area"}})</script>
+    <link rel="index" title="Index" href="../../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" />
+    <link rel="next" title="trieste.acquisition.function.multi_objective" href="../multi_objective/index.html" />
+    <link rel="prev" title="trieste.acquisition.function.function" href="../function/index.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="None">
+    
+
+    <!-- Google Analytics -->
+    
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="60">
+    
+    <div class="container-fluid" id="banner"></div>
+
+    
+    <nav class="navbar navbar-light navbar-expand-lg bg-light fixed-top bd-navbar" id="navbar-main"><div class="container-xl">
+
+  <div id="navbar-start">
+    
+    
+
+<a class="navbar-brand" href="../../../../../index.html">
+  <img src="../../../../../_static/logo.png" class="logo" alt="logo">
+</a>
+
+
+    
+  </div>
+
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar-collapsible" aria-controls="navbar-collapsible" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  
+  <div id="navbar-collapsible" class="col-lg-9 collapse navbar-collapse">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <ul id="navbar-main-elements" class="navbar-nav">
+    <li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../../../index.html">
+  Trieste
+ </a>
+</li>
+
+<li class="toctree-l1 current active nav-item">
+ <a class="reference internal nav-link" href="../../../index.html">
+  API reference
+ </a>
+</li>
+
+<li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../../../tutorials.html">
+  Tutorials
+ </a>
+</li>
+
+    
+</ul>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+      <div class="navbar-end-item">
+        <div class="dropdown" id="version_switcher">
+    <button type="button" class="btn btn-primary btn-sm navbar-btn dropdown-toggle" id="version_switcher_button" data-toggle="dropdown">
+        1.0.0  <!-- this text may get changed later by javascript -->
+        <span class="caret"></span>
+    </button>
+    <div id="version_switcher_menu" class="dropdown-menu list-group-flush py-0" aria-labelledby="version_switcher_button">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+</div>
+
+<!-- NOTE: this JS must live here (not in our global JS file) because it relies
+     on being processed by Jinja before it is run (specifically for replacing
+     variables autoapi/trieste/acquisition/function/greedy_batch/index and {'json_url': 'https://secondmind-labs.github.io/trieste/versions.json', 'version_match': '1.0.0'}.
+-->
+
+<script type="text/javascript">
+// Check if corresponding page path exists in other version of docs
+// and, if so, go there instead of the homepage of the other docs version
+function checkPageExistsAndRedirect(event) {
+    const currentFilePath = "autoapi/trieste/acquisition/function/greedy_batch/index.html",
+          tryUrl = event.target.getAttribute("href");
+    let otherDocsHomepage = tryUrl.replace(currentFilePath, "");
+    $.ajax({
+        type: 'HEAD',
+        url: tryUrl,
+        // if the page exists, go there
+        success: function() {
+            location.href = tryUrl;
+        }
+    }).fail(function() {
+        location.href = otherDocsHomepage;
+    });
+    // this prevents the browser from following the href of the clicked node
+    // (which is fine because this function takes care of redirecting)
+    return false;
+}
+
+// Populate the version switcher from the JSON config file
+(function () {
+    $.getJSON("https://secondmind-labs.github.io/trieste/versions.json", function(data, textStatus, jqXHR) {
+        const currentFilePath = "autoapi/trieste/acquisition/function/greedy_batch/index.html";
+        // create links to the corresponding page in the other docs versions
+        $.each(data, function(index, entry) {
+            // if no custom name specified (e.g., "latest"), use version string
+            if (!("name" in entry)) {
+                entry.name = entry.version;
+            }
+            // create the node
+            const node = document.createElement("a");
+            node.setAttribute("class", "list-group-item list-group-item-action py-1");
+            node.textContent = `${entry.name}`;
+            node.setAttribute("href", `${entry.url}${currentFilePath}`);
+            // on click, AJAX calls will check if the linked page exists before
+            // trying to redirect, and if not, will redirect to the homepage
+            // for that version of the docs.
+            node.onclick = checkPageExistsAndRedirect;
+            // Add dataset values for the version and name in case people want
+            // to apply CSS styling based on this information.
+            node.dataset["versionName"] = entry.name;
+            node.dataset["version"] = entry.version;
+
+            $("#version_switcher_menu").append(node);
+            // replace dropdown button text with the preferred display name of
+            // this version, rather than using sphinx's  variable.
+            // also highlight the dropdown entry for the currently-viewed
+            // version's entry
+            if (entry.version == "1.0.0") {
+                node.classList.add("active");
+                let btn = document.getElementById("version_switcher_button");
+                btn.innerText = btn.dataset["activeVersionName"] = entry.name;
+                btn.dataset["activeVersion"] = entry.version;
+            }
+        });
+    });
+})();
+</script>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+        <li class="nav-item">
+          <a class="nav-link" href="https://github.com/secondmind-labs/trieste" rel="noopener" target="_blank" title="GitHub"><span><i class="fab fa-github-square"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+</div>
+    </nav>
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+            
+            <!-- Only show if we have sidebars configured, else just a small margin  -->
+            <div class="col-12 col-md-3 bd-sidebar">
+              <div class="sidebar-start-items"><form class="bd-search d-flex align-items-center" action="../../../../../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+  <div class="bd-toc-item active">
+    <ul class="current nav bd-sidenav">
+ <li class="toctree-l1 current active has-children">
+  <a class="reference internal" href="../../index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.acquisition
+    </span>
+   </code>
+  </a>
+  <input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/>
+  <label for="toctree-checkbox-1">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul class="current">
+   <li class="toctree-l2 current active has-children">
+    <a class="reference internal" href="../index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.function
+      </span>
+     </code>
+    </a>
+    <input checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/>
+    <label for="toctree-checkbox-2">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul class="current">
+     <li class="toctree-l3">
+      <a class="reference internal" href="../active_learning/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.active_learning
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../continuous_thompson_sampling/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.continuous_thompson_sampling
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../entropy/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.entropy
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../function/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.function
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3 current active">
+      <a class="current reference internal" href="#">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.greedy_batch
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../multi_objective/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.multi_objective
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../utils/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.utils
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../multi_objective/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.multi_objective
+      </span>
+     </code>
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/>
+    <label for="toctree-checkbox-3">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../multi_objective/dominance/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.multi_objective.dominance
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../multi_objective/pareto/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.multi_objective.pareto
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../multi_objective/partition/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.multi_objective.partition
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../interface/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.interface
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../optimizer/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.optimizer
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../rule/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.rule
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../sampler/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.sampler
+      </span>
+     </code>
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../../models/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.models
+    </span>
+   </code>
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/>
+  <label for="toctree-checkbox-4">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../../models/gpflow/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.gpflow
+      </span>
+     </code>
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/>
+    <label for="toctree-checkbox-5">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/gpflow/builders/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflow.builders
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/gpflow/inducing_point_selectors/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflow.inducing_point_selectors
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/gpflow/optimizer/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflow.optimizer
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/gpflow/sampler/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflow.sampler
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../../models/gpflux/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.gpflux
+      </span>
+     </code>
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/>
+    <label for="toctree-checkbox-6">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/gpflux/builders/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflux.builders
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../../models/keras/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.keras
+      </span>
+     </code>
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/>
+    <label for="toctree-checkbox-7">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/keras/architectures/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.keras.architectures
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/keras/builders/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.keras.builders
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/keras/sampler/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.keras.sampler
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../models/optimizer/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.optimizer
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../models/utils/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.utils
+      </span>
+     </code>
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../../objectives/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.objectives
+    </span>
+   </code>
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" type="checkbox"/>
+  <label for="toctree-checkbox-8">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../objectives/multi_objectives/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.objectives.multi_objectives
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../objectives/single_objectives/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.objectives.single_objectives
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../objectives/utils/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.objectives.utils
+      </span>
+     </code>
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../utils/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.utils
+    </span>
+   </code>
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../ask_tell_optimization/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.ask_tell_optimization
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../bayesian_optimizer/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.bayesian_optimizer
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../data/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.data
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../logging/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.logging
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../observer/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.observer
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../space/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.space
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../types/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.types
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../version/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.version
+    </span>
+   </code>
+  </a>
+ </li>
+</ul>
+
+  </div>
+</nav>
+              </div>
+              <div class="sidebar-end-items">
+              </div>
+            </div>
+            
+          
+
+          
+          <div class="d-none d-xl-block col-xl-2 bd-toc">
+            
+              
+              <div class="toc-item">
+                
+<div class="tocsection onthispage mt-5 pt-1 pb-3">
+    <i class="fas fa-list"></i> On this page
+</div>
+
+<nav id="bd-toc-nav">
+    <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#module-contents">
+   Module Contents
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.greedy_batch.LocalPenalization">
+     LocalPenalization
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.greedy_batch.LocalPenalization.prepare_acquisition_function">
+       prepare_acquisition_function
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.greedy_batch.LocalPenalization.update_acquisition_function">
+       update_acquisition_function
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.greedy_batch.PenalizedAcquisition">
+     PenalizedAcquisition
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.greedy_batch.local_penalizer">
+     local_penalizer
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.greedy_batch.local_penalizer.update">
+       update
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.greedy_batch.soft_local_penalizer">
+     soft_local_penalizer
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.greedy_batch.soft_local_penalizer.__call__">
+       __call__
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.greedy_batch.hard_local_penalizer">
+     hard_local_penalizer
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.greedy_batch.hard_local_penalizer.__call__">
+       __call__
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.greedy_batch.FantasizerModelType">
+     FantasizerModelType
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.greedy_batch.FantasizerModelStack">
+     FantasizerModelStack
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.greedy_batch.Fantasizer">
+     Fantasizer
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.greedy_batch.Fantasizer.prepare_acquisition_function">
+       prepare_acquisition_function
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.greedy_batch.Fantasizer.update_acquisition_function">
+       update_acquisition_function
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.greedy_batch._generate_fantasized_data">
+     _generate_fantasized_data
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.greedy_batch._fantasized_model">
+     _fantasized_model
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.greedy_batch._fantasized_model.update_fantasized_data">
+       update_fantasized_data
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.greedy_batch._fantasized_model.predict">
+       predict
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.greedy_batch._fantasized_model.predict_joint">
+       predict_joint
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.greedy_batch._fantasized_model.sample">
+       sample
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.greedy_batch._fantasized_model.predict_y">
+       predict_y
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.greedy_batch._fantasized_model.get_observation_noise">
+       get_observation_noise
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.greedy_batch._fantasized_model.get_kernel">
+       get_kernel
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.greedy_batch._fantasized_model.log">
+       log
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.greedy_batch._broadcast_predict">
+     _broadcast_predict
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.greedy_batch._get_leading_dim_and_flatten">
+     _get_leading_dim_and_flatten
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.greedy_batch._restore_leading_dim">
+     _restore_leading_dim
+    </a>
+   </li>
+  </ul>
+ </li>
+</ul>
+
+</nav>
+              </div>
+              
+              <div class="toc-item">
+                
+              </div>
+              
+            
+          </div>
+          
+
+          
+          
+            
+          
+          <main class="col-12 col-md-9 col-xl-7 py-md-5 pl-md-5 pr-md-4 bd-content" role="main">
+              
+              <div>
+                
+  <div class="section" id="module-trieste.acquisition.function.greedy_batch">
+<span id="trieste-acquisition-function-greedy-batch"></span><h1><a class="reference internal" href="#module-trieste.acquisition.function.greedy_batch" title="trieste.acquisition.function.greedy_batch"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.function.greedy_batch</span></code></a><a class="headerlink" href="#module-trieste.acquisition.function.greedy_batch" title="Permalink to this headline">#</a></h1>
+<p>This module contains local penalization-based acquisition function builders.</p>
+<div class="section" id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this headline">#</a></h2>
+<dl class="py class">
+<dt id="trieste.acquisition.function.greedy_batch.LocalPenalization">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">LocalPenalization</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">search_space</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../space/index.html#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><span class="pre">trieste.space.SearchSpace</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_samples</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">500</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">penalizer</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><span class="pre">trieste.models.ProbabilisticModel</span></a><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span> </span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.PenalizationFunction" title="trieste.acquisition.interface.PenalizationFunction"><span class="pre">trieste.acquisition.interface.PenalizationFunction</span></a><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.UpdatablePenalizationFunction" title="trieste.acquisition.interface.UpdatablePenalizationFunction"><span class="pre">trieste.acquisition.interface.UpdatablePenalizationFunction</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">base_acquisition_function_builder</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">ExpectedImprovement</span> <span class="p"><span class="pre">|</span></span> <span class="pre">MinValueEntropySearch</span><span class="p"><span class="pre">[</span></span><span class="pre">ProbabilisticModel</span><span class="p"><span class="pre">]</span></span> <span class="p"><span class="pre">|</span></span> <span class="pre">MakePositive</span><span class="p"><span class="pre">[</span></span><span class="pre">ProbabilisticModel</span><span class="p"><span class="pre">]</span></span> <span class="p"><span class="pre">|</span></span> <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/greedy_batch.html#LocalPenalization"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.greedy_batch.LocalPenalization" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.SingleModelGreedyAcquisitionBuilder" title="trieste.acquisition.interface.SingleModelGreedyAcquisitionBuilder"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.acquisition.interface.SingleModelGreedyAcquisitionBuilder</span></code></a>[<a class="reference internal" href="../../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.ProbabilisticModel</span></code></a>]</p>
+<p>Builder of the acquisition function maker for greedily collecting batches by local
+penalization.  The resulting <code class="xref py py-const docutils literal notranslate"><span class="pre">AcquisitionFunctionMaker</span></code> takes in a set of pending
+points and returns a base acquisition function penalized around those points.
+An estimate of the objective function’s Lipschitz constant is used to control the size
+of penalization.</p>
+<p>Local penalization allows us to perform batch Bayesian optimization with a standard (non-batch)
+acquisition function. All that we require is that the acquisition function takes strictly
+positive values. By iteratively building a batch of points though sequentially maximizing
+this acquisition function but down-weighted around locations close to the already
+chosen (pending) points, local penalization provides diverse batches of candidate points.</p>
+<p>Local penalization is applied to the acquisition function multiplicatively. However, to
+improve numerical stability, we perform additive penalization in a log space.</p>
+<p>The Lipschitz constant and additional penalization parameters are estimated once
+when first preparing the acquisition function with no pending points. These estimates
+are reused for all subsequent function calls.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>search_space</strong> – The global search space over which the optimisation is defined.</p></li>
+<li><p><strong>num_samples</strong> – Size of the random sample over which the Lipschitz constant
+is estimated. We recommend scaling this with search space dimension.</p></li>
+<li><p><strong>penalizer</strong> – The chosen penalization method (defaults to soft penalization). This
+should be a function that accepts a model, pending points, lipschitz constant and eta
+and returns a PenalizationFunction.</p></li>
+<li><p><strong>base_acquisition_function_builder</strong> – Base acquisition function to be
+penalized (defaults to expected improvement). Local penalization only supports
+strictly positive acquisition functions.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>tf.errors.InvalidArgumentError</strong> – If <code class="docutils literal notranslate"><span class="pre">num_samples</span></code> is not positive.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trieste.acquisition.function.greedy_batch.LocalPenalization.prepare_acquisition_function">
+<code class="sig-name descname"><span class="pre">prepare_acquisition_function</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><span class="pre">trieste.models.ProbabilisticModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pending_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/greedy_batch.html#LocalPenalization.prepare_acquisition_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.greedy_batch.LocalPenalization.prepare_acquisition_function" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model.</p></li>
+<li><p><strong>dataset</strong> – The data from the observer. Must be populated.</p></li>
+<li><p><strong>pending_points</strong> – The points we penalize with respect to.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The (log) expected improvement penalized with respect to the pending points.</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><strong>tf.errors.InvalidArgumentError</strong> – If the <code class="docutils literal notranslate"><span class="pre">dataset</span></code> is empty.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.acquisition.function.greedy_batch.LocalPenalization.update_acquisition_function">
+<code class="sig-name descname"><span class="pre">update_acquisition_function</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">function</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><span class="pre">trieste.models.ProbabilisticModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pending_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_optimization_step</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/greedy_batch.html#LocalPenalization.update_acquisition_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.greedy_batch.LocalPenalization.update_acquisition_function" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>function</strong> – The acquisition function to update.</p></li>
+<li><p><strong>model</strong> – The model.</p></li>
+<li><p><strong>dataset</strong> – The data from the observer. Must be populated.</p></li>
+<li><p><strong>pending_points</strong> – Points already chosen to be in the current batch (of shape [M,D]),
+where M is the number of pending points and D is the search space dimension.</p></li>
+<li><p><strong>new_optimization_step</strong> – Indicates whether this call to update_acquisition_function
+is to start of a new optimization step, of to continue collecting batch of points
+for the current step. Defaults to <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The updated acquisition function.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.acquisition.function.greedy_batch.PenalizedAcquisition">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">PenalizedAcquisition</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">base_acquisition_function</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">penalization</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.PenalizationFunction" title="trieste.acquisition.interface.PenalizationFunction"><span class="pre">trieste.acquisition.interface.PenalizationFunction</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/greedy_batch.html#PenalizedAcquisition"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.greedy_batch.PenalizedAcquisition" title="Permalink to this definition">#</a></dt>
+<dd><p>Class representing a penalized acquisition function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>base_acquisition_function</strong> – Base (unpenalized) acquisition function.</p></li>
+<li><p><strong>penalization</strong> – Penalization function.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.acquisition.function.greedy_batch.local_penalizer">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">local_penalizer</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><span class="pre">trieste.models.ProbabilisticModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">pending_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">lipschitz_constant</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">eta</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/greedy_batch.html#local_penalizer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.greedy_batch.local_penalizer" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.UpdatablePenalizationFunction" title="trieste.acquisition.interface.UpdatablePenalizationFunction"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.acquisition.interface.UpdatablePenalizationFunction</span></code></a></p>
+<p>An <code class="xref py py-class docutils literal notranslate"><span class="pre">UpdatablePenalizationFunction</span></code> builds and updates a penalization function.
+Defining a penalization function that can be updated avoids having to retrace on every call.</p>
+<p>Initialize the local penalizer.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model over the specified <code class="docutils literal notranslate"><span class="pre">dataset</span></code>.</p></li>
+<li><p><strong>pending_points</strong> – The points we penalize with respect to.</p></li>
+<li><p><strong>lipschitz_constant</strong> – The estimated Lipschitz constant of the objective function.</p></li>
+<li><p><strong>eta</strong> – The estimated global minima.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The local penalization function. This function will raise
+<a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code></a> or <code class="xref py py-exc docutils literal notranslate"><span class="pre">InvalidArgumentError</span></code> if used with a batch size
+greater than one.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trieste.acquisition.function.greedy_batch.local_penalizer.update">
+<code class="sig-name descname"><span class="pre">update</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pending_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">lipschitz_constant</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">eta</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/greedy_batch.html#local_penalizer.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.greedy_batch.local_penalizer.update" title="Permalink to this definition">#</a></dt>
+<dd><p>Update the local penalizer with new variable values.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.acquisition.function.greedy_batch.soft_local_penalizer">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">soft_local_penalizer</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><span class="pre">trieste.models.ProbabilisticModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">pending_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">lipschitz_constant</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">eta</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/greedy_batch.html#soft_local_penalizer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.greedy_batch.soft_local_penalizer" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#trieste.acquisition.function.greedy_batch.local_penalizer" title="trieste.acquisition.function.greedy_batch.local_penalizer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">local_penalizer</span></code></a></p>
+<p>Return the soft local penalization function used for single-objective greedy batch Bayesian
+optimization in <span id="id1">[<a class="reference internal" href="../../../index.html#id18" title="Javier González, Zhenwen Dai, Philipp Hennig, and Neil Lawrence. Batch bayesian optimization via local penalization. In Artificial intelligence and statistics. 2016.">GonzalezDHL16</a>]</span>.</p>
+<p>Soft penalization returns the probability that a candidate point does not belong
+in the exclusion zones of the pending points. For model posterior mean <span class="math notranslate nohighlight">\(\mu\)</span>, model
+posterior variance <span class="math notranslate nohighlight">\(\sigma^2\)</span>, current “best” function value <span class="math notranslate nohighlight">\(\eta\)</span>, and an
+estimated Lipschitz constant <span class="math notranslate nohighlight">\(L\)</span>,the penalization from a set of pending point
+<span class="math notranslate nohighlight">\(x'\)</span> on a candidate point <span class="math notranslate nohighlight">\(x\)</span> is given by
+.. math:: phi(x, x’) = frac{1}{2}textrm{erfc}(-z)
+where <span class="math notranslate nohighlight">\(z = \frac{1}{\sqrt{2\sigma^2(x')}}(L||x'-x|| + \eta - \mu(x'))\)</span>.</p>
+<p>The penalization from a set of pending points is just product of the individual
+penalizations. See <span id="id2">[<a class="reference internal" href="../../../index.html#id18" title="Javier González, Zhenwen Dai, Philipp Hennig, and Neil Lawrence. Batch bayesian optimization via local penalization. In Artificial intelligence and statistics. 2016.">GonzalezDHL16</a>]</span> for a full derivation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model over the specified <code class="docutils literal notranslate"><span class="pre">dataset</span></code>.</p></li>
+<li><p><strong>pending_points</strong> – The points we penalize with respect to.</p></li>
+<li><p><strong>lipschitz_constant</strong> – The estimated Lipschitz constant of the objective function.</p></li>
+<li><p><strong>eta</strong> – The estimated global minima.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The local penalization function. This function will raise
+<a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code></a> or <code class="xref py py-exc docutils literal notranslate"><span class="pre">InvalidArgumentError</span></code> if used with a batch size
+greater than one.</p>
+</dd>
+</dl>
+<p>Initialize the local penalizer.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model over the specified <code class="docutils literal notranslate"><span class="pre">dataset</span></code>.</p></li>
+<li><p><strong>pending_points</strong> – The points we penalize with respect to.</p></li>
+<li><p><strong>lipschitz_constant</strong> – The estimated Lipschitz constant of the objective function.</p></li>
+<li><p><strong>eta</strong> – The estimated global minima.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The local penalization function. This function will raise
+<a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code></a> or <code class="xref py py-exc docutils literal notranslate"><span class="pre">InvalidArgumentError</span></code> if used with a batch size
+greater than one.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trieste.acquisition.function.greedy_batch.soft_local_penalizer.__call__">
+<code class="sig-name descname"><span class="pre">__call__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/greedy_batch.html#soft_local_penalizer.__call__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.greedy_batch.soft_local_penalizer.__call__" title="Permalink to this definition">#</a></dt>
+<dd><p>Call penalization function..</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.acquisition.function.greedy_batch.hard_local_penalizer">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">hard_local_penalizer</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><span class="pre">trieste.models.ProbabilisticModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">pending_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">lipschitz_constant</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">eta</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/greedy_batch.html#hard_local_penalizer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.greedy_batch.hard_local_penalizer" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#trieste.acquisition.function.greedy_batch.local_penalizer" title="trieste.acquisition.function.greedy_batch.local_penalizer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">local_penalizer</span></code></a></p>
+<p>Return the hard local penalization function used for single-objective greedy batch Bayesian
+optimization in <span id="id3">[<a class="reference internal" href="../../../index.html#id20" title="Ahsan Alvi, Binxin Ru, Jan-Peter Calliess, Stephen Roberts, and Michael A Osborne. Asynchronous batch bayesian optimisation with improved local penalisation. In International Conference on Machine Learning. 2019.">ARC+19</a>]</span>.</p>
+<p>Hard penalization is a stronger penalizer than soft penalization and is sometimes more effective
+See <span id="id4">[<a class="reference internal" href="../../../index.html#id20" title="Ahsan Alvi, Binxin Ru, Jan-Peter Calliess, Stephen Roberts, and Michael A Osborne. Asynchronous batch bayesian optimisation with improved local penalisation. In International Conference on Machine Learning. 2019.">ARC+19</a>]</span> for details. Our implementation follows theirs, with the penalization from
+a set of pending points being the product of the individual penalizations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model over the specified <code class="docutils literal notranslate"><span class="pre">dataset</span></code>.</p></li>
+<li><p><strong>pending_points</strong> – The points we penalize with respect to.</p></li>
+<li><p><strong>lipschitz_constant</strong> – The estimated Lipschitz constant of the objective function.</p></li>
+<li><p><strong>eta</strong> – The estimated global minima.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The local penalization function. This function will raise
+<a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code></a> or <code class="xref py py-exc docutils literal notranslate"><span class="pre">InvalidArgumentError</span></code> if used with a batch size
+greater than one.</p>
+</dd>
+</dl>
+<p>Initialize the local penalizer.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model over the specified <code class="docutils literal notranslate"><span class="pre">dataset</span></code>.</p></li>
+<li><p><strong>pending_points</strong> – The points we penalize with respect to.</p></li>
+<li><p><strong>lipschitz_constant</strong> – The estimated Lipschitz constant of the objective function.</p></li>
+<li><p><strong>eta</strong> – The estimated global minima.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The local penalization function. This function will raise
+<a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code></a> or <code class="xref py py-exc docutils literal notranslate"><span class="pre">InvalidArgumentError</span></code> if used with a batch size
+greater than one.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trieste.acquisition.function.greedy_batch.hard_local_penalizer.__call__">
+<code class="sig-name descname"><span class="pre">__call__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/greedy_batch.html#hard_local_penalizer.__call__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.greedy_batch.hard_local_penalizer.__call__" title="Permalink to this definition">#</a></dt>
+<dd><p>Call penalization function..</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.acquisition.function.greedy_batch.FantasizerModelType">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">FantasizerModelType</span></code><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/greedy_batch.html#FantasizerModelType"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.greedy_batch.FantasizerModelType" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../../../models/index.html#trieste.models.FastUpdateModel" title="trieste.models.FastUpdateModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.FastUpdateModel</span></code></a>, <a class="reference internal" href="../../../models/interfaces/index.html#trieste.models.interfaces.SupportsPredictJoint" title="trieste.models.interfaces.SupportsPredictJoint"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.SupportsPredictJoint</span></code></a>, <a class="reference internal" href="../../../models/interfaces/index.html#trieste.models.interfaces.SupportsGetKernel" title="trieste.models.interfaces.SupportsGetKernel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.SupportsGetKernel</span></code></a>, <a class="reference internal" href="../../../models/interfaces/index.html#trieste.models.interfaces.SupportsGetObservationNoise" title="trieste.models.interfaces.SupportsGetObservationNoise"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.SupportsGetObservationNoise</span></code></a>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">typing_extensions.Protocol</span></code></p>
+<p>The model requirements for the Fantasizer acquisition function.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.acquisition.function.greedy_batch.FantasizerModelStack">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">FantasizerModelStack</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">origin</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">special</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/greedy_batch.html#FantasizerModelStack"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.greedy_batch.FantasizerModelStack" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../../../models/interfaces/index.html#trieste.models.interfaces.PredictJointModelStack" title="trieste.models.interfaces.PredictJointModelStack"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.PredictJointModelStack</span></code></a>, <a class="reference internal" href="../../../models/index.html#trieste.models.ModelStack" title="trieste.models.ModelStack"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.ModelStack</span></code></a>[<a class="reference internal" href="#trieste.acquisition.function.greedy_batch.FantasizerModelType" title="trieste.acquisition.function.greedy_batch.FantasizerModelType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FantasizerModelType</span></code></a>]</p>
+<p>A stack of models <a class="reference internal" href="#trieste.acquisition.function.greedy_batch.FantasizerModelType" title="trieste.acquisition.function.greedy_batch.FantasizerModelType"><code class="xref py py-class docutils literal notranslate"><span class="pre">FantasizerModelType</span></code></a> models. Note that this delegates predict_joint
+but none of the other methods.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.acquisition.function.greedy_batch.Fantasizer">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">Fantasizer</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">base_acquisition_function_builder</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">AcquisitionFunctionBuilder</span><span class="p"><span class="pre">[</span></span><span class="pre">SupportsPredictJoint</span><span class="p"><span class="pre">]</span></span> <span class="p"><span class="pre">|</span></span> <span class="pre">SingleModelAcquisitionBuilder</span><span class="p"><span class="pre">[</span></span><span class="pre">SupportsPredictJoint</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fantasize_method</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'KB'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/greedy_batch.html#Fantasizer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.greedy_batch.Fantasizer" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.GreedyAcquisitionFunctionBuilder" title="trieste.acquisition.interface.GreedyAcquisitionFunctionBuilder"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.acquisition.interface.GreedyAcquisitionFunctionBuilder</span></code></a>[<code class="xref py py-obj docutils literal notranslate"><span class="pre">FantasizerModelOrStack</span></code>]</p>
+<p>Builder of the acquisition function maker for greedily collecting batches.
+Fantasizer allows us to perform batch Bayesian optimization with any
+standard (non-batch) acquisition function.</p>
+<p>Here, every time a query point is chosen by maximising an acquisition function,
+its corresponding observation is “fantasized”, and the models are conditioned further
+on this new artificial data.</p>
+<p>This implies that the models need to predict what their updated predictions would be given
+new data, see <code class="xref py py-class docutils literal notranslate"><span class="pre">FastUpdateModel</span></code>. These equations are for instance in closed form
+for the GPR model, see <span id="id5">[<a class="reference internal" href="../../../index.html#id34" title="Clément Chevalier, David Ginsbourger, and Xavier Emery. Corrected kriging update formulae for batch-sequential data assimilation. In Mathematics of Planet Earth, pages 119–122. Springer, 2014.">CGE14</a>]</span> (eqs. 8-10) for details.</p>
+<p>There are several ways to “fantasize” data: the “kriging believer” heuristic (KB, see
+<span id="id6">[<a class="reference internal" href="../../../index.html#id35" title="David Ginsbourger, Rodolphe Le Riche, and Laurent Carraro. Kriging is well-suited to parallelize optimization. In Computational intelligence in expensive optimization problems, pages 131–162. Springer, 2010.">GLRC10b</a>]</span>) uses the mean of the model as observations.
+“sample” uses samples from the model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>base_acquisition_function_builder</strong> – The acquisition function builder to use.
+Defaults to <a class="reference internal" href="../../index.html#trieste.acquisition.ExpectedImprovement" title="trieste.acquisition.ExpectedImprovement"><code class="xref py py-class docutils literal notranslate"><span class="pre">ExpectedImprovement</span></code></a>.</p></li>
+<li><p><strong>fantasize_method</strong> – The following options are available: “KB” and “sample”.
+See class docs for more details.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>tf.errors.InvalidArgumentError</strong> – If <code class="docutils literal notranslate"><span class="pre">fantasize_method</span></code> is not “KB” or “sample”.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trieste.acquisition.function.greedy_batch.Fantasizer.prepare_acquisition_function">
+<code class="sig-name descname"><span class="pre">prepare_acquisition_function</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">models</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../types/index.html#trieste.types.Tag" title="trieste.types.Tag"><span class="pre">trieste.types.Tag</span></a><span class="p"><span class="pre">,</span> </span><span class="pre">FantasizerModelOrStack</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datasets</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../types/index.html#trieste.types.Tag" title="trieste.types.Tag"><span class="pre">trieste.types.Tag</span></a><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="../../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pending_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/greedy_batch.html#Fantasizer.prepare_acquisition_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.greedy_batch.Fantasizer.prepare_acquisition_function" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>models</strong> – The models over each tag.</p></li>
+<li><p><strong>datasets</strong> – The data from the observer (optional).</p></li>
+<li><p><strong>pending_points</strong> – Points already chosen to be in the current batch (of shape [M,D]),
+where M is the number of pending points and D is the search space dimension.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>An acquisition function.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.acquisition.function.greedy_batch.Fantasizer.update_acquisition_function">
+<code class="sig-name descname"><span class="pre">update_acquisition_function</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">function</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">models</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../types/index.html#trieste.types.Tag" title="trieste.types.Tag"><span class="pre">trieste.types.Tag</span></a><span class="p"><span class="pre">,</span> </span><span class="pre">FantasizerModelOrStack</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datasets</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../types/index.html#trieste.types.Tag" title="trieste.types.Tag"><span class="pre">trieste.types.Tag</span></a><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="../../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pending_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_optimization_step</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/greedy_batch.html#Fantasizer.update_acquisition_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.greedy_batch.Fantasizer.update_acquisition_function" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>function</strong> – The acquisition function to update.</p></li>
+<li><p><strong>models</strong> – The models over each tag.</p></li>
+<li><p><strong>datasets</strong> – The data from the observer (optional).</p></li>
+<li><p><strong>pending_points</strong> – Points already chosen to be in the current batch (of shape [M,D]),
+where M is the number of pending points and D is the search space dimension.</p></li>
+<li><p><strong>new_optimization_step</strong> – Indicates whether this call to update_acquisition_function
+is to start of a new optimization step, of to continue collecting batch of points
+for the current step. Defaults to <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The updated acquisition function.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="trieste.acquisition.function.greedy_batch._generate_fantasized_data">
+<code class="sig-name descname"><span class="pre">_generate_fantasized_data</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fantasize_method</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">FantasizerModelOrStack</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pending_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/greedy_batch.html#_generate_fantasized_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.greedy_batch._generate_fantasized_data" title="Permalink to this definition">#</a></dt>
+<dd><p>Generates “fantasized” data at pending_points depending on the chosen heuristic:
+- KB (kriging believer) uses the mean prediction of the models
+- sample uses samples from the GP posterior.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fantasize_method</strong> – the following options are available: “KB” and “sample”.</p></li>
+<li><p><strong>model</strong> – a model with predict method</p></li>
+<li><p><strong>dataset</strong> – past data</p></li>
+<li><p><strong>pending_points</strong> – points at which to fantasize data</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>a fantasized dataset</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.acquisition.function.greedy_batch._fantasized_model">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">_fantasized_model</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#trieste.acquisition.function.greedy_batch.FantasizerModelType" title="trieste.acquisition.function.greedy_batch.FantasizerModelType"><span class="pre">FantasizerModelType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">fantasized_data</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/greedy_batch.html#_fantasized_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.greedy_batch._fantasized_model" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../../../models/interfaces/index.html#trieste.models.interfaces.SupportsPredictJoint" title="trieste.models.interfaces.SupportsPredictJoint"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.SupportsPredictJoint</span></code></a>, <a class="reference internal" href="../../../models/interfaces/index.html#trieste.models.interfaces.SupportsGetKernel" title="trieste.models.interfaces.SupportsGetKernel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.SupportsGetKernel</span></code></a>, <a class="reference internal" href="../../../models/interfaces/index.html#trieste.models.interfaces.SupportsGetObservationNoise" title="trieste.models.interfaces.SupportsGetObservationNoise"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.SupportsGetObservationNoise</span></code></a></p>
+<p>Creates a new model from an existing one and additional data.
+This new model posterior is conditioned on both current model data and the additional one.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – a model, must be of class <cite>FastUpdateModel</cite></p></li>
+<li><p><strong>fantasized_data</strong> – additional dataset to condition on</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.11)"><strong>NotImplementedError</strong></a> – If model is not of class <cite>FastUpdateModel</cite>.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trieste.acquisition.function.greedy_batch._fantasized_model.update_fantasized_data">
+<code class="sig-name descname"><span class="pre">update_fantasized_data</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fantasized_data</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/greedy_batch.html#_fantasized_model.update_fantasized_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.greedy_batch._fantasized_model.update_fantasized_data" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>fantasized_data</strong> – new additional dataset to condition on</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.acquisition.function.greedy_batch._fantasized_model.predict">
+<code class="sig-name descname"><span class="pre">predict</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.11)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">]</span></span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/greedy_batch.html#_fantasized_model.predict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.greedy_batch._fantasized_model.predict" title="Permalink to this definition">#</a></dt>
+<dd><p>This function wraps conditional_predict_f. It cannot directly call
+conditional_predict_f, since it does not accept query_points with rank &gt; 2.
+We use map_fn to allow leading dimensions for query_points.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>query_points</strong> – shape […*, N, d]</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>mean, shape […*, …, N, L] and cov, shape […*, …, L, N],
+where … are the leading dimensions of fantasized_data</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.acquisition.function.greedy_batch._fantasized_model.predict_joint">
+<code class="sig-name descname"><span class="pre">predict_joint</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.11)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">]</span></span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/greedy_batch.html#_fantasized_model.predict_joint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.greedy_batch._fantasized_model.predict_joint" title="Permalink to this definition">#</a></dt>
+<dd><p>This function wraps conditional_predict_joint. It cannot directly call
+conditional_predict_joint, since it does not accept query_points with rank &gt; 2.
+We use map_fn to allow leading dimensions for query_points.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>query_points</strong> – shape […*, N, D]</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>mean, shape […*, …, N, L] and cov, shape […*, …, L, N, N],
+where … are the leading dimensions of fantasized_data</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.acquisition.function.greedy_batch._fantasized_model.sample">
+<code class="sig-name descname"><span class="pre">sample</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_samples</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/greedy_batch.html#_fantasized_model.sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.greedy_batch._fantasized_model.sample" title="Permalink to this definition">#</a></dt>
+<dd><p>This function wraps conditional_predict_f_sample. It cannot directly call
+conditional_predict_joint, since it does not accept query_points with rank &gt; 2.
+We use map_fn to allow leading dimensions for query_points.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>query_points</strong> – shape […*, N, D]</p></li>
+<li><p><strong>num_samples</strong> – number of samples.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>samples of shape […*, …, S, N, L], where … are the leading
+dimensions of fantasized_data</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.acquisition.function.greedy_batch._fantasized_model.predict_y">
+<code class="sig-name descname"><span class="pre">predict_y</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.11)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">]</span></span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/greedy_batch.html#_fantasized_model.predict_y"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.greedy_batch._fantasized_model.predict_y" title="Permalink to this definition">#</a></dt>
+<dd><p>This function wraps conditional_predict_y. It cannot directly call
+conditional_predict_joint, since it does not accept query_points with rank &gt; 2.
+We use tf.map_fn to allow leading dimensions for query_points.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>query_points</strong> – shape […*, N, D]</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>mean, shape […*, …, N, L] and var, shape […*, …, L, N],
+where … are the leading dimensions of fantasized_data</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.acquisition.function.greedy_batch._fantasized_model.get_observation_noise">
+<code class="sig-name descname"><span class="pre">get_observation_noise</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/greedy_batch.html#_fantasized_model.get_observation_noise"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.greedy_batch._fantasized_model.get_observation_noise" title="Permalink to this definition">#</a></dt>
+<dd><p>Return the variance of observation noise.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The observation noise.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.acquisition.function.greedy_batch._fantasized_model.get_kernel">
+<code class="sig-name descname"><span class="pre">get_kernel</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; <span class="pre">gpflow.kernels.Kernel</span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/greedy_batch.html#_fantasized_model.get_kernel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.greedy_batch._fantasized_model.get_kernel" title="Permalink to this definition">#</a></dt>
+<dd><p>Return the kernel of the model.
+:return: The kernel.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.acquisition.function.greedy_batch._fantasized_model.log">
+<code class="sig-name descname"><span class="pre">log</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/greedy_batch.html#_fantasized_model.log"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.greedy_batch._fantasized_model.log" title="Permalink to this definition">#</a></dt>
+<dd><p>Log model-specific information at a given optimization step.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>dataset</strong> – Optional data that can be used to log additional data-based model summaries.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="trieste.acquisition.function.greedy_batch._broadcast_predict">
+<code class="sig-name descname"><span class="pre">_broadcast_predict</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">fun</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.11)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.11)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">]</span></span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/greedy_batch.html#_broadcast_predict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.greedy_batch._broadcast_predict" title="Permalink to this definition">#</a></dt>
+<dd><p>Utility function that allows leading dimensions for query_points when
+fun only accepts rank 2 tensors. It works by flattening query_points into
+a rank 3 tensor, evaluate fun(query_points) through tf.map_fn, then
+restoring the leading dimensions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>query_points</strong> – shape […*, N, D]</p></li>
+<li><p><strong>fun</strong> – callable that returns two tensors (e.g. a predict function)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>two tensors (e.g. mean and variance) with shape […*, …]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="trieste.acquisition.function.greedy_batch._get_leading_dim_and_flatten">
+<code class="sig-name descname"><span class="pre">_get_leading_dim_and_flatten</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.11)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">]</span></span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/greedy_batch.html#_get_leading_dim_and_flatten"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.greedy_batch._get_leading_dim_and_flatten" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>query_points</strong> – shape […*, N, D]</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>leading_dim = ….*, query_points_flatten, shape [B, N, D]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="trieste.acquisition.function.greedy_batch._restore_leading_dim">
+<code class="sig-name descname"><span class="pre">_restore_leading_dim</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">leading_dim</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/greedy_batch.html#_restore_leading_dim"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.greedy_batch._restore_leading_dim" title="Permalink to this definition">#</a></dt>
+<dd><p>“Un-flatten” the first dimension of x to leading_dim</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> – shape [B, …]</p></li>
+<li><p><strong>leading_dim</strong> – […*]</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>shape […*, …]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+</div>
+
+
+              </div>
+              
+              
+          </main>
+          
+
+      </div>
+    </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf"></script>
+<footer class="footer mt-5 mt-md-0">
+  <div class="container">
+    
+    <div class="footer-item">
+      <p class="copyright">
+    &copy; Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.<br>
+</p>
+    </div>
+    
+    <div class="footer-item">
+      <p class="sphinx-version">
+Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.5.4.<br>
+</p>
+    </div>
+    
+  </div>
+</footer>
+  </body>
+</html>

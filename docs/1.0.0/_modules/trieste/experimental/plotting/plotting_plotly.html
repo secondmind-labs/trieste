@@ -1,0 +1,528 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.experimental.plotting.plotting_plotly &#8212; trieste 1.0.0 documentation</title>
+    
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+
+    
+  <link rel="stylesheet"
+    href="../../../../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/styles/pydata-sphinx-theme.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css" />
+    
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf">
+
+    <script id="documentation_options" data-url_root="../../../../" src="../../../../_static/documentation_options.js"></script>
+    <script src="../../../../_static/jquery.js"></script>
+    <script src="../../../../_static/underscore.js"></script>
+    <script src="../../../../_static/doctools.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="None">
+    
+
+    <!-- Google Analytics -->
+    
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="60">
+    
+    <div class="container-fluid" id="banner"></div>
+
+    
+    <nav class="navbar navbar-light navbar-expand-lg bg-light fixed-top bd-navbar" id="navbar-main"><div class="container-xl">
+
+  <div id="navbar-start">
+    
+    
+
+<a class="navbar-brand" href="../../../../index.html">
+  <img src="../../../../_static/logo.png" class="logo" alt="logo">
+</a>
+
+
+    
+  </div>
+
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar-collapsible" aria-controls="navbar-collapsible" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  
+  <div id="navbar-collapsible" class="col-lg-9 collapse navbar-collapse">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <ul id="navbar-main-elements" class="navbar-nav">
+    <li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../../index.html">
+  Trieste
+ </a>
+</li>
+
+<li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../../autoapi/trieste/index.html">
+  API reference
+ </a>
+</li>
+
+<li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../../tutorials.html">
+  Tutorials
+ </a>
+</li>
+
+    
+</ul>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+      <div class="navbar-end-item">
+        <div class="dropdown" id="version_switcher">
+    <button type="button" class="btn btn-primary btn-sm navbar-btn dropdown-toggle" id="version_switcher_button" data-toggle="dropdown">
+        1.0.0  <!-- this text may get changed later by javascript -->
+        <span class="caret"></span>
+    </button>
+    <div id="version_switcher_menu" class="dropdown-menu list-group-flush py-0" aria-labelledby="version_switcher_button">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+</div>
+
+<!-- NOTE: this JS must live here (not in our global JS file) because it relies
+     on being processed by Jinja before it is run (specifically for replacing
+     variables _modules/trieste/experimental/plotting/plotting_plotly and {'json_url': 'https://secondmind-labs.github.io/trieste/versions.json', 'version_match': '1.0.0'}.
+-->
+
+<script type="text/javascript">
+// Check if corresponding page path exists in other version of docs
+// and, if so, go there instead of the homepage of the other docs version
+function checkPageExistsAndRedirect(event) {
+    const currentFilePath = "_modules/trieste/experimental/plotting/plotting_plotly.html",
+          tryUrl = event.target.getAttribute("href");
+    let otherDocsHomepage = tryUrl.replace(currentFilePath, "");
+    $.ajax({
+        type: 'HEAD',
+        url: tryUrl,
+        // if the page exists, go there
+        success: function() {
+            location.href = tryUrl;
+        }
+    }).fail(function() {
+        location.href = otherDocsHomepage;
+    });
+    // this prevents the browser from following the href of the clicked node
+    // (which is fine because this function takes care of redirecting)
+    return false;
+}
+
+// Populate the version switcher from the JSON config file
+(function () {
+    $.getJSON("https://secondmind-labs.github.io/trieste/versions.json", function(data, textStatus, jqXHR) {
+        const currentFilePath = "_modules/trieste/experimental/plotting/plotting_plotly.html";
+        // create links to the corresponding page in the other docs versions
+        $.each(data, function(index, entry) {
+            // if no custom name specified (e.g., "latest"), use version string
+            if (!("name" in entry)) {
+                entry.name = entry.version;
+            }
+            // create the node
+            const node = document.createElement("a");
+            node.setAttribute("class", "list-group-item list-group-item-action py-1");
+            node.textContent = `${entry.name}`;
+            node.setAttribute("href", `${entry.url}${currentFilePath}`);
+            // on click, AJAX calls will check if the linked page exists before
+            // trying to redirect, and if not, will redirect to the homepage
+            // for that version of the docs.
+            node.onclick = checkPageExistsAndRedirect;
+            // Add dataset values for the version and name in case people want
+            // to apply CSS styling based on this information.
+            node.dataset["versionName"] = entry.name;
+            node.dataset["version"] = entry.version;
+
+            $("#version_switcher_menu").append(node);
+            // replace dropdown button text with the preferred display name of
+            // this version, rather than using sphinx's  variable.
+            // also highlight the dropdown entry for the currently-viewed
+            // version's entry
+            if (entry.version == "1.0.0") {
+                node.classList.add("active");
+                let btn = document.getElementById("version_switcher_button");
+                btn.innerText = btn.dataset["activeVersionName"] = entry.name;
+                btn.dataset["activeVersion"] = entry.version;
+            }
+        });
+    });
+})();
+</script>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+        <li class="nav-item">
+          <a class="nav-link" href="https://github.com/secondmind-labs/trieste" rel="noopener" target="_blank" title="GitHub"><span><i class="fab fa-github-square"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+</div>
+    </nav>
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+            
+            <!-- Only show if we have sidebars configured, else just a small margin  -->
+            <div class="col-12 col-md-3 bd-sidebar">
+              <div class="sidebar-start-items"><form class="bd-search d-flex align-items-center" action="../../../../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+  <div class="bd-toc-item active">
+    
+  </div>
+</nav>
+              </div>
+              <div class="sidebar-end-items">
+              </div>
+            </div>
+            
+          
+
+          
+          <div class="d-none d-xl-block col-xl-2 bd-toc">
+            
+          </div>
+          
+
+          
+          
+            
+          
+          <main class="col-12 col-md-9 col-xl-7 py-md-5 pl-md-5 pr-md-4 bd-content" role="main">
+              
+              <div>
+                
+  <h1>Source code for trieste.experimental.plotting.plotting_plotly</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2020 The Trieste Contributors</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">plotly.graph_objects</span> <span class="k">as</span> <span class="nn">go</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">from</span> <span class="nn">plotly.subplots</span> <span class="kn">import</span> <span class="n">make_subplots</span>
+
+<span class="kn">from</span> <span class="nn">trieste.models.interfaces</span> <span class="kn">import</span> <span class="n">ProbabilisticModel</span>
+<span class="kn">from</span> <span class="nn">trieste.types</span> <span class="kn">import</span> <span class="n">TensorType</span>
+<span class="kn">from</span> <span class="nn">trieste.utils</span> <span class="kn">import</span> <span class="n">to_numpy</span>
+
+<span class="kn">from</span> <span class="nn">.plotting</span> <span class="kn">import</span> <span class="n">create_grid</span>
+
+
+<div class="viewcode-block" id="format_point_markers"><a class="viewcode-back" href="../../../../autoapi/trieste/experimental/plotting/plotting_plotly/index.html#trieste.experimental.plotting.plotting_plotly.format_point_markers">[docs]</a><span class="k">def</span> <span class="nf">format_point_markers</span><span class="p">(</span>
+    <span class="n">num_pts</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">num_init</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">idx_best</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">mask_fail</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">m_init</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;x&quot;</span><span class="p">,</span>
+    <span class="n">m_add</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;circle&quot;</span><span class="p">,</span>
+    <span class="n">c_pass</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;green&quot;</span><span class="p">,</span>
+    <span class="n">c_fail</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;red&quot;</span><span class="p">,</span>
+    <span class="n">c_best</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;darkmagenta&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Prepares point marker styles according to some BO factors</span>
+
+<span class="sd">    :param num_pts: total number of BO points</span>
+<span class="sd">    :param num_init: initial number of BO points</span>
+<span class="sd">    :param idx_best: index of the best BO point</span>
+<span class="sd">    :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)</span>
+<span class="sd">    :param m_init: marker for the initial BO points</span>
+<span class="sd">    :param m_add: marker for the other BO points</span>
+<span class="sd">    :param c_pass: color for the regular BO points</span>
+<span class="sd">    :param c_fail: color for the failed BO points</span>
+<span class="sd">    :param c_best: color for the best BO points</span>
+<span class="sd">    :return: 2 string vectors col_pts, mark_pts containing marker styles and colors</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">col_pts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">c_pass</span><span class="p">,</span> <span class="n">num_pts</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;&lt;U15&quot;</span><span class="p">)</span>
+    <span class="n">mark_pts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">m_init</span><span class="p">,</span> <span class="n">num_pts</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;&lt;U15&quot;</span><span class="p">)</span>
+    <span class="n">mark_pts</span><span class="p">[</span><span class="n">num_init</span><span class="p">:]</span> <span class="o">=</span> <span class="n">m_add</span>
+    <span class="k">if</span> <span class="n">mask_fail</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">col_pts</span><span class="p">[</span><span class="n">mask_fail</span><span class="p">]</span> <span class="o">=</span> <span class="n">c_fail</span>
+    <span class="k">if</span> <span class="n">idx_best</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">col_pts</span><span class="p">[</span><span class="n">idx_best</span><span class="p">]</span> <span class="o">=</span> <span class="n">c_best</span>
+
+    <span class="k">return</span> <span class="n">col_pts</span><span class="p">,</span> <span class="n">mark_pts</span></div>
+
+
+<div class="viewcode-block" id="add_surface_plotly"><a class="viewcode-back" href="../../../../autoapi/trieste/experimental/plotting/plotting_plotly/index.html#trieste.experimental.plotting.plotting_plotly.add_surface_plotly">[docs]</a><span class="k">def</span> <span class="nf">add_surface_plotly</span><span class="p">(</span>
+    <span class="n">xx</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">yy</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">f</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">fig</span><span class="p">:</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span>
+    <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">figrow</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">figcol</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Adds a surface to an existing plotly subfigure</span>
+
+<span class="sd">    :param xx: [n, n] array (input)</span>
+<span class="sd">    :param yy: [n, n] array (input)</span>
+<span class="sd">    :param f: [n, n] array (output)</span>
+<span class="sd">    :param fig: the current plotly figure</span>
+<span class="sd">    :param alpha: transparency</span>
+<span class="sd">    :param figrow: row index of the subfigure</span>
+<span class="sd">    :param figcol: column index of the subfigure</span>
+<span class="sd">    :return: updated plotly figure</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">d</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">reshape</span><span class="p">([</span><span class="n">xx</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">yy</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]]),</span> <span class="n">index</span><span class="o">=</span><span class="n">xx</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">yy</span><span class="p">)</span>
+
+    <span class="n">fig</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
+        <span class="n">go</span><span class="o">.</span><span class="n">Surface</span><span class="p">(</span><span class="n">z</span><span class="o">=</span><span class="n">d</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="n">xx</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">yy</span><span class="p">,</span> <span class="n">showscale</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">opacity</span><span class="o">=</span><span class="n">alpha</span><span class="p">,</span> <span class="n">colorscale</span><span class="o">=</span><span class="s2">&quot;viridis&quot;</span><span class="p">),</span>
+        <span class="n">row</span><span class="o">=</span><span class="n">figrow</span><span class="p">,</span>
+        <span class="n">col</span><span class="o">=</span><span class="n">figcol</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">fig</span></div>
+
+
+<div class="viewcode-block" id="add_bo_points_plotly"><a class="viewcode-back" href="../../../../autoapi/trieste/experimental/plotting/plotting_plotly/index.html#trieste.experimental.plotting.plotting_plotly.add_bo_points_plotly">[docs]</a><span class="k">def</span> <span class="nf">add_bo_points_plotly</span><span class="p">(</span>
+    <span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">y</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">z</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">fig</span><span class="p">:</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span>
+    <span class="n">num_init</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">idx_best</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">mask_fail</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">figrow</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">figcol</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Adds scatter points to an existing subfigure. Markers and colors are chosen according to</span>
+<span class="sd">    BO factors.</span>
+<span class="sd">    :param x: [N] x inputs</span>
+<span class="sd">    :param y: [N] y inputs</span>
+<span class="sd">    :param z: [N] z outputs</span>
+<span class="sd">    :param fig: the current plotly figure</span>
+<span class="sd">    :param num_init: initial number of BO points</span>
+<span class="sd">    :param idx_best: index of the best BO point</span>
+<span class="sd">    :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)</span>
+<span class="sd">    :param figrow: row index of the subfigure</span>
+<span class="sd">    :param figcol: column index of the subfigure</span>
+<span class="sd">    :return: a plotly figure</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">num_pts</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="n">col_pts</span><span class="p">,</span> <span class="n">mark_pts</span> <span class="o">=</span> <span class="n">format_point_markers</span><span class="p">(</span><span class="n">num_pts</span><span class="p">,</span> <span class="n">num_init</span><span class="p">,</span> <span class="n">idx_best</span><span class="p">,</span> <span class="n">mask_fail</span><span class="p">)</span>
+
+    <span class="n">fig</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
+        <span class="n">go</span><span class="o">.</span><span class="n">Scatter3d</span><span class="p">(</span>
+            <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span>
+            <span class="n">y</span><span class="o">=</span><span class="n">y</span><span class="p">,</span>
+            <span class="n">z</span><span class="o">=</span><span class="n">z</span><span class="p">,</span>
+            <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;markers&quot;</span><span class="p">,</span>
+            <span class="n">marker</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">col_pts</span><span class="p">,</span> <span class="n">symbol</span><span class="o">=</span><span class="n">mark_pts</span><span class="p">,</span> <span class="n">opacity</span><span class="o">=</span><span class="mf">0.8</span><span class="p">),</span>
+        <span class="p">),</span>
+        <span class="n">row</span><span class="o">=</span><span class="n">figrow</span><span class="p">,</span>
+        <span class="n">col</span><span class="o">=</span><span class="n">figcol</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">fig</span></div>
+
+
+<div class="viewcode-block" id="plot_model_predictions_plotly"><a class="viewcode-back" href="../../../../autoapi/trieste/experimental/plotting/plotting_plotly/index.html#trieste.experimental.plotting.plotting_plotly.plot_model_predictions_plotly">[docs]</a><span class="k">def</span> <span class="nf">plot_model_predictions_plotly</span><span class="p">(</span>
+    <span class="n">model</span><span class="p">:</span> <span class="n">ProbabilisticModel</span><span class="p">,</span>
+    <span class="n">mins</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">maxs</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">grid_density</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+    <span class="n">num_samples</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.85</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Plots 2-dimensional plot of model&#39;s predictions. We first create a regular grid of points</span>
+<span class="sd">    and evaluate the model on these points. We then plot the mean and 2 standard deviations to</span>
+<span class="sd">    show epistemic uncertainty.</span>
+
+<span class="sd">    For ``DeepGaussianProcess`` models ``num_samples`` should be used</span>
+<span class="sd">    and set to some positive number. This is needed as predictions from deep GP&#39;s are stochastic</span>
+<span class="sd">    and we need to take more than one sample to estimate the mean and variance.</span>
+
+<span class="sd">    :param model: A probabilistic model</span>
+<span class="sd">    :param mins: List of 2 lower bounds for creating a grid of points for model predictions.</span>
+<span class="sd">    :param maxs: List of 2 upper bounds for creating a grid of points for model predictions.</span>
+<span class="sd">    :param grid_density: Number of points per dimension. This will result in a grid size of</span>
+<span class="sd">        grid_density^2.</span>
+<span class="sd">    :param num_samples: Number of samples to use with deep GPs.</span>
+<span class="sd">    :param alpha: Transparency.</span>
+<span class="sd">    :return: A plotly figure.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mins</span> <span class="o">=</span> <span class="n">to_numpy</span><span class="p">(</span><span class="n">mins</span><span class="p">)</span>
+    <span class="n">maxs</span> <span class="o">=</span> <span class="n">to_numpy</span><span class="p">(</span><span class="n">maxs</span><span class="p">)</span>
+
+    <span class="c1"># Create a regular grid on the parameter space</span>
+    <span class="n">Xplot</span><span class="p">,</span> <span class="n">xx</span><span class="p">,</span> <span class="n">yy</span> <span class="o">=</span> <span class="n">create_grid</span><span class="p">(</span><span class="n">mins</span><span class="o">=</span><span class="n">mins</span><span class="p">,</span> <span class="n">maxs</span><span class="o">=</span><span class="n">maxs</span><span class="p">,</span> <span class="n">grid_density</span><span class="o">=</span><span class="n">grid_density</span><span class="p">)</span>
+
+    <span class="c1"># Evaluate objective function, ``num_samples`` is currently used</span>
+    <span class="k">if</span> <span class="n">num_samples</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">Fmean</span><span class="p">,</span> <span class="n">Fvar</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">Xplot</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">means</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="nb">vars</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_samples</span><span class="p">):</span>
+            <span class="n">Fmean_sample</span><span class="p">,</span> <span class="n">Fvar_sample</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">Xplot</span><span class="p">)</span>
+            <span class="n">means</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Fmean_sample</span><span class="p">)</span>
+            <span class="nb">vars</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Fvar_sample</span><span class="p">)</span>
+        <span class="n">Fmean</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">means</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">Fvar</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="nb">vars</span><span class="p">)</span> <span class="o">+</span> <span class="n">tf</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">means</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="n">Fmean</span> <span class="o">**</span> <span class="mi">2</span>
+
+    <span class="n">n_output</span> <span class="o">=</span> <span class="n">Fmean</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="n">fig</span> <span class="o">=</span> <span class="n">make_subplots</span><span class="p">(</span><span class="n">rows</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">cols</span><span class="o">=</span><span class="n">n_output</span><span class="p">,</span> <span class="n">specs</span><span class="o">=</span><span class="p">[[{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;surface&quot;</span><span class="p">}]</span> <span class="o">*</span> <span class="n">n_output</span><span class="p">])</span>
+
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_output</span><span class="p">):</span>
+        <span class="n">fmean</span> <span class="o">=</span> <span class="n">Fmean</span><span class="p">[:,</span> <span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+        <span class="n">fvar</span> <span class="o">=</span> <span class="n">Fvar</span><span class="p">[:,</span> <span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+
+        <span class="n">lcb</span> <span class="o">=</span> <span class="n">fmean</span> <span class="o">-</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">fvar</span><span class="p">)</span>
+        <span class="n">ucb</span> <span class="o">=</span> <span class="n">fmean</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">fvar</span><span class="p">)</span>
+
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">add_surface_plotly</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">yy</span><span class="p">,</span> <span class="n">fmean</span><span class="p">,</span> <span class="n">fig</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">,</span> <span class="n">figrow</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">figcol</span><span class="o">=</span><span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">add_surface_plotly</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">yy</span><span class="p">,</span> <span class="n">lcb</span><span class="p">,</span> <span class="n">fig</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span> <span class="o">-</span> <span class="mf">0.35</span><span class="p">,</span> <span class="n">figrow</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">figcol</span><span class="o">=</span><span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">add_surface_plotly</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">yy</span><span class="p">,</span> <span class="n">ucb</span><span class="p">,</span> <span class="n">fig</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span> <span class="o">-</span> <span class="mf">0.35</span><span class="p">,</span> <span class="n">figrow</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">figcol</span><span class="o">=</span><span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">fig</span></div>
+
+
+<div class="viewcode-block" id="plot_function_plotly"><a class="viewcode-back" href="../../../../autoapi/trieste/experimental/plotting/plotting_plotly/index.html#trieste.experimental.plotting.plotting_plotly.plot_function_plotly">[docs]</a><span class="k">def</span> <span class="nf">plot_function_plotly</span><span class="p">(</span>
+    <span class="n">obj_func</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">TensorType</span><span class="p">],</span> <span class="n">TensorType</span><span class="p">],</span>
+    <span class="n">mins</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">maxs</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">grid_density</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+    <span class="n">title</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">xlabel</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">ylabel</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Plots 2-dimensional plot of an objective function. To illustrate the function we create a</span>
+<span class="sd">    regular grid of points and evaluate the function on these points.</span>
+
+<span class="sd">    :param obj_func: The vectorized objective function.</span>
+<span class="sd">    :param mins: List of 2 lower bounds for creating a grid of points for model predictions.</span>
+<span class="sd">    :param maxs: List of 2 upper bounds for creating a grid of points for model predictions.</span>
+<span class="sd">    :param grid_density: Number of points per dimension. This will result in a grid size of</span>
+<span class="sd">        grid_density^2.</span>
+<span class="sd">    :param title: optional titles</span>
+<span class="sd">    :param xlabel: optional xlabel</span>
+<span class="sd">    :param ylabel: optional ylabel</span>
+<span class="sd">    :param alpha: transparency</span>
+<span class="sd">    :return: A plotly figure.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Create a regular grid on the parameter space</span>
+    <span class="n">Xplot</span><span class="p">,</span> <span class="n">xx</span><span class="p">,</span> <span class="n">yy</span> <span class="o">=</span> <span class="n">create_grid</span><span class="p">(</span><span class="n">mins</span><span class="o">=</span><span class="n">mins</span><span class="p">,</span> <span class="n">maxs</span><span class="o">=</span><span class="n">maxs</span><span class="p">,</span> <span class="n">grid_density</span><span class="o">=</span><span class="n">grid_density</span><span class="p">)</span>
+
+    <span class="c1"># Evaluate objective function</span>
+    <span class="n">F</span> <span class="o">=</span> <span class="n">to_numpy</span><span class="p">(</span><span class="n">obj_func</span><span class="p">(</span><span class="n">Xplot</span><span class="p">))</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">F</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">F</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">n_output</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="n">fig</span> <span class="o">=</span> <span class="n">make_subplots</span><span class="p">(</span>
+        <span class="n">rows</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">cols</span><span class="o">=</span><span class="n">n_output</span><span class="p">,</span>
+        <span class="n">specs</span><span class="o">=</span><span class="p">[[{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;surface&quot;</span><span class="p">}]</span> <span class="o">*</span> <span class="n">n_output</span><span class="p">],</span>
+        <span class="n">subplot_titles</span><span class="o">=</span><span class="n">title</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_output</span><span class="p">):</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">F</span><span class="p">[:,</span> <span class="n">k</span><span class="p">]</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">add_surface_plotly</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">yy</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">fig</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">,</span> <span class="n">figrow</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">figcol</span><span class="o">=</span><span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">update_xaxes</span><span class="p">(</span><span class="n">title_text</span><span class="o">=</span><span class="n">xlabel</span><span class="p">,</span> <span class="n">row</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">update_yaxes</span><span class="p">(</span><span class="n">title_text</span><span class="o">=</span><span class="n">ylabel</span><span class="p">,</span> <span class="n">row</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">fig</span></div>
+</pre></div>
+
+              </div>
+              
+              
+          </main>
+          
+
+      </div>
+    </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf"></script>
+<footer class="footer mt-5 mt-md-0">
+  <div class="container">
+    
+    <div class="footer-item">
+      <p class="copyright">
+    &copy; Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.<br>
+</p>
+    </div>
+    
+    <div class="footer-item">
+      <p class="sphinx-version">
+Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.5.4.<br>
+</p>
+    </div>
+    
+  </div>
+</footer>
+  </body>
+</html>

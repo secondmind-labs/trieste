@@ -1,0 +1,950 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>trieste.objectives &#8212; trieste develop documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+<link href="../../../_static/styles/bootstrap.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+
+  
+  <link href="../../../_static/vendor/fontawesome/6.5.2/css/all.min.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=fd3f3429" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=ae350598" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=3ee479438cf8b5e0d341" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=3ee479438cf8b5e0d341" />
+  <script src="../../../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=3ee479438cf8b5e0d341"></script>
+
+    <script src="../../../_static/documentation_options.js?v=16816911"></script>
+    <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'autoapi/trieste/objectives/index';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.15.3';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://secondmind-labs.github.io/trieste/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'develop';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner = false;
+        </script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="trieste.objectives.multi_objectives" href="multi_objectives/index.html" />
+    <link rel="prev" title="trieste.models.utils" href="../models/utils/index.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-primary-sidebar-checkbox"/>
+  <label class="overlay overlay-primary" for="pst-primary-sidebar-checkbox"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-secondary-sidebar-checkbox"/>
+  <label class="overlay overlay-secondary" for="pst-secondary-sidebar-checkbox"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/logo.png" class="logo__image only-light" alt="trieste develop documentation - Home"/>
+    <script>document.write(`<img src="../../../_static/logo.png" class="logo__image only-dark" alt="trieste develop documentation - Home"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../index.html">
+    Trieste
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item current active">
+  <a class="nav-link nav-internal" href="../index.html">
+    API reference
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../bibliography.html">
+    Bibliography
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button id="pst-version-switcher-button-2"
+      type="button"
+      class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle"
+      data-bs-toggle="dropdown"
+      aria-haspopup="listbox"
+      aria-controls="pst-version-switcher-list-2"
+      aria-label="Version switcher list"
+    >
+      Choose version  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div id="pst-version-switcher-list-2"
+      class="version-switcher__menu dropdown-menu list-group-flush py-0"
+      role="listbox" aria-labelledby="pst-version-switcher-button-2">
+      <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+    <button class="sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../index.html">
+    Trieste
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item current active">
+  <a class="nav-link nav-internal" href="../index.html">
+    API reference
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../bibliography.html">
+    Bibliography
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button id="pst-version-switcher-button-3"
+      type="button"
+      class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle"
+      data-bs-toggle="dropdown"
+      aria-haspopup="listbox"
+      aria-controls="pst-version-switcher-list-3"
+      aria-label="Version switcher list"
+    >
+      Choose version  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div id="pst-version-switcher-list-3"
+      class="version-switcher__menu dropdown-menu list-group-flush py-0"
+      role="listbox" aria-labelledby="pst-version-switcher-button-3">
+      <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../acquisition/index.html">trieste.acquisition</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../acquisition/function/index.html">trieste.acquisition.function</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../acquisition/function/active_learning/index.html">trieste.acquisition.function.active_learning</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../acquisition/function/continuous_thompson_sampling/index.html">trieste.acquisition.function.continuous_thompson_sampling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../acquisition/function/entropy/index.html">trieste.acquisition.function.entropy</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../acquisition/function/function/index.html">trieste.acquisition.function.function</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../acquisition/function/greedy_batch/index.html">trieste.acquisition.function.greedy_batch</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../acquisition/function/multi_objective/index.html">trieste.acquisition.function.multi_objective</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../acquisition/function/utils/index.html">trieste.acquisition.function.utils</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../acquisition/multi_objective/index.html">trieste.acquisition.multi_objective</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../acquisition/multi_objective/dominance/index.html">trieste.acquisition.multi_objective.dominance</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../acquisition/multi_objective/pareto/index.html">trieste.acquisition.multi_objective.pareto</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../acquisition/multi_objective/partition/index.html">trieste.acquisition.multi_objective.partition</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="../acquisition/interface/index.html">trieste.acquisition.interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../acquisition/optimizer/index.html">trieste.acquisition.optimizer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../acquisition/rule/index.html">trieste.acquisition.rule</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../acquisition/sampler/index.html">trieste.acquisition.sampler</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../models/index.html">trieste.models</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../models/gpflow/index.html">trieste.models.gpflow</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../models/gpflow/builders/index.html">trieste.models.gpflow.builders</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../models/gpflow/inducing_point_selectors/index.html">trieste.models.gpflow.inducing_point_selectors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../models/gpflow/optimizer/index.html">trieste.models.gpflow.optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../models/gpflow/sampler/index.html">trieste.models.gpflow.sampler</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../models/gpflux/index.html">trieste.models.gpflux</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../models/gpflux/builders/index.html">trieste.models.gpflux.builders</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../models/keras/index.html">trieste.models.keras</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../models/keras/architectures/index.html">trieste.models.keras.architectures</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../models/keras/builders/index.html">trieste.models.keras.builders</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../models/keras/sampler/index.html">trieste.models.keras.sampler</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="../models/optimizer/index.html">trieste.models.optimizer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../models/utils/index.html">trieste.models.utils</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 current active has-children"><a class="current reference internal" href="#">trieste.objectives</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="multi_objectives/index.html">trieste.objectives.multi_objectives</a></li>
+<li class="toctree-l2"><a class="reference internal" href="multifidelity_objectives/index.html">trieste.objectives.multifidelity_objectives</a></li>
+<li class="toctree-l2"><a class="reference internal" href="single_objectives/index.html">trieste.objectives.single_objectives</a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils/index.html">trieste.objectives.utils</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1"><a class="reference internal" href="../utils/index.html">trieste.utils</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../ask_tell_optimization/index.html">trieste.ask_tell_optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../bayesian_optimizer/index.html">trieste.bayesian_optimizer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../data/index.html">trieste.data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../logging/index.html">trieste.logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../observer/index.html">trieste.observer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../space/index.html">trieste.space</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../types/index.html">trieste.types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../version/index.html">trieste.version</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">trieste</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">trieste.objectives</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="module-trieste.objectives">
+<span id="trieste-objectives"></span><h1>trieste.objectives<a class="headerlink" href="#module-trieste.objectives" title="Link to this heading">#</a></h1>
+<p>This package contains examples of popular objective functions used in (Bayesian) optimization.</p>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading">#</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="multi_objectives/index.html">trieste.objectives.multi_objectives</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multifidelity_objectives/index.html">trieste.objectives.multifidelity_objectives</a></li>
+<li class="toctree-l1"><a class="reference internal" href="single_objectives/index.html">trieste.objectives.single_objectives</a></li>
+<li class="toctree-l1"><a class="reference internal" href="utils/index.html">trieste.objectives.utils</a></li>
+</ul>
+</div>
+</section>
+<section id="package-contents">
+<h2>Package Contents<a class="headerlink" href="#package-contents" title="Link to this heading">#</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="trieste.objectives.DTLZ1">
+<span class="sig-name descname"><span class="pre">DTLZ1</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_objective</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#trieste.objectives.MultiObjectiveTestProblem" title="trieste.objectives.MultiObjectiveTestProblem"><span class="pre">MultiObjectiveTestProblem</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../space/index.html#trieste.space.Box" title="trieste.space.Box"><span class="pre">trieste.space.Box</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../_modules/trieste/objectives/multi_objectives.html#DTLZ1"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.objectives.DTLZ1" title="Link to this definition">#</a></dt>
+<dd><p>The DTLZ1 problem, the idea pareto fronts lie on a linear hyper-plane.
+See <span id="id1">[<a class="reference internal" href="../../../bibliography.html#id14" title="Kalyanmoy Deb, Lothar Thiele, Marco Laumanns, and Eckart Zitzler. Scalable multi-objective optimization test problems. In Proceedings of the 2002 Congress on Evolutionary Computation. CEC'02 (Cat. No. 02TH8600), volume 1, 825–830. IEEE, 2002.">DTLZ02</a>]</span> for details.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>input_dim</strong> – The input dimensionality of the synthetic function.</p></li>
+<li><p><strong>num_objective</strong> – The number of objectives.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The problem specification.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="trieste.objectives.DTLZ2">
+<span class="sig-name descname"><span class="pre">DTLZ2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_objective</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#trieste.objectives.MultiObjectiveTestProblem" title="trieste.objectives.MultiObjectiveTestProblem"><span class="pre">MultiObjectiveTestProblem</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../space/index.html#trieste.space.Box" title="trieste.space.Box"><span class="pre">trieste.space.Box</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../_modules/trieste/objectives/multi_objectives.html#DTLZ2"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.objectives.DTLZ2" title="Link to this definition">#</a></dt>
+<dd><p>The DTLZ2 problem, the idea pareto fronts lie on (part of) a unit hyper sphere.
+See <span id="id2">[<a class="reference internal" href="../../../bibliography.html#id14" title="Kalyanmoy Deb, Lothar Thiele, Marco Laumanns, and Eckart Zitzler. Scalable multi-objective optimization test problems. In Proceedings of the 2002 Congress on Evolutionary Computation. CEC'02 (Cat. No. 02TH8600), volume 1, 825–830. IEEE, 2002.">DTLZ02</a>]</span> for details.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>input_dim</strong> – The input dimensionality of the synthetic function.</p></li>
+<li><p><strong>num_objective</strong> – The number of objectives.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The problem specification.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="trieste.objectives.VLMOP2">
+<span class="sig-name descname"><span class="pre">VLMOP2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#trieste.objectives.MultiObjectiveTestProblem" title="trieste.objectives.MultiObjectiveTestProblem"><span class="pre">MultiObjectiveTestProblem</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../space/index.html#trieste.space.Box" title="trieste.space.Box"><span class="pre">trieste.space.Box</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../_modules/trieste/objectives/multi_objectives.html#VLMOP2"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.objectives.VLMOP2" title="Link to this definition">#</a></dt>
+<dd><p>The VLMOP2 problem, typically evaluated over <span class="math notranslate nohighlight">\([-2, 2]^d\)</span>.
+The idea pareto fronts lies on -1/sqrt(d) - 1/sqrt(d) and x1=…=xdim.</p>
+<p>See <span id="id3">[<a class="reference internal" href="../../../bibliography.html#id13" title="David A Van Veldhuizen and Gary B Lamont. Multiobjective evolutionary algorithm test suites. In Proceedings of the 1999 ACM symposium on Applied computing, 351–357. 1999.">VVL99</a>]</span> and <span id="id4">[<a class="reference internal" href="../../../bibliography.html#id16" title="C.M. Fonseca and P.J. Fleming. Multiobjective genetic algorithms made easy: selection sharing and mating restriction. In First International Conference on Genetic Algorithms in Engineering Systems: Innovations and Applications, volume, 45–52. 1995. doi:10.1049/cp:19951023.">FF95</a>]</span>
+(the latter for discussion of pareto front property) for details.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>input_dim</strong> – The input dimensionality of the synthetic function.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The problem specification.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.objectives.MultiObjectiveTestProblem">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">MultiObjectiveTestProblem</span></span><a class="reference internal" href="../../../_modules/trieste/objectives/multi_objectives.html#MultiObjectiveTestProblem"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.objectives.MultiObjectiveTestProblem" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="single_objectives/index.html#trieste.objectives.single_objectives.ObjectiveTestProblem" title="trieste.objectives.single_objectives.ObjectiveTestProblem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.objectives.single_objectives.ObjectiveTestProblem</span></code></a>[<a class="reference internal" href="../space/index.html#trieste.space.SearchSpaceType" title="trieste.space.SearchSpaceType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.space.SearchSpaceType</span></code></a>]</p>
+<p>Convenience container class for synthetic multi-objective test functions, containing
+a generator for the pareto optimal points, which can be used as a reference of performance
+measure of certain multi-objective optimization algorithms.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="trieste.objectives.MultiObjectiveTestProblem.gen_pareto_optimal_points">
+<span class="sig-name descname"><span class="pre">gen_pareto_optimal_points</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="multi_objectives/index.html#trieste.objectives.multi_objectives.GenParetoOptimalPoints" title="trieste.objectives.multi_objectives.GenParetoOptimalPoints"><span class="pre">GenParetoOptimalPoints</span></a></em><a class="headerlink" href="#trieste.objectives.MultiObjectiveTestProblem.gen_pareto_optimal_points" title="Link to this definition">#</a></dt>
+<dd><p>Function to generate Pareto optimal points, given the number of points and an optional
+random number seed.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.objectives.SingleObjectiveMultifidelityTestProblem">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">SingleObjectiveMultifidelityTestProblem</span></span><a class="reference internal" href="../../../_modules/trieste/objectives/multifidelity_objectives.html#SingleObjectiveMultifidelityTestProblem"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.objectives.SingleObjectiveMultifidelityTestProblem" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="single_objectives/index.html#trieste.objectives.single_objectives.SingleObjectiveTestProblem" title="trieste.objectives.single_objectives.SingleObjectiveTestProblem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.objectives.single_objectives.SingleObjectiveTestProblem</span></code></a>[<a class="reference internal" href="../space/index.html#trieste.space.SearchSpaceType" title="trieste.space.SearchSpaceType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.space.SearchSpaceType</span></code></a>]</p>
+<p>Convenience container class for synthetic single-objective test functions,
+including the global minimizers and minimum.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="trieste.objectives.SingleObjectiveMultifidelityTestProblem.num_fidelities">
+<span class="sig-name descname"><span class="pre">num_fidelities</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></em><a class="headerlink" href="#trieste.objectives.SingleObjectiveMultifidelityTestProblem.num_fidelities" title="Link to this definition">#</a></dt>
+<dd><p>The number of fidelities of test function</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="trieste.objectives.SingleObjectiveMultifidelityTestProblem.fidelity_search_space">
+<span class="sig-name descname"><span class="pre">fidelity_search_space</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="../space/index.html#trieste.space.TaggedProductSearchSpace" title="trieste.space.TaggedProductSearchSpace"><span class="pre">trieste.space.TaggedProductSearchSpace</span></a></em><a class="headerlink" href="#trieste.objectives.SingleObjectiveMultifidelityTestProblem.fidelity_search_space" title="Link to this definition">#</a></dt>
+<dd><p>The search space including fidelities</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.objectives.Ackley5">
+<span class="sig-name descname"><span class="pre">Ackley5</span></span><a class="reference internal" href="../../../_modules/trieste/objectives/single_objectives.html#Ackley5"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.objectives.Ackley5" title="Link to this definition">#</a></dt>
+<dd><p>The Ackley test function over <span class="math notranslate nohighlight">\([0, 1]^5\)</span>. This function has
+many local minima and a global minima. See <a class="reference external" href="https://www.sfu.ca/~ssurjano/ackley.html">https://www.sfu.ca/~ssurjano/ackley.html</a>
+for details.
+Note that we rescale the original problem, which is typically defined
+over <cite>[-32.768, 32.768]</cite>.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.objectives.Branin">
+<span class="sig-name descname"><span class="pre">Branin</span></span><a class="reference internal" href="../../../_modules/trieste/objectives/single_objectives.html#Branin"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.objectives.Branin" title="Link to this definition">#</a></dt>
+<dd><p>The Branin-Hoo function over <span class="math notranslate nohighlight">\([0, 1]^2\)</span>. See <span id="id5">[<a class="reference internal" href="../../../bibliography.html#id10" title="Victor Picheny, Tobias Wagner, and David Ginsbourger. A benchmark of kriging-based infill criteria for noisy optimization. Structural and Multidisciplinary Optimization, 48:, 09 2013. doi:10.1007/s00158-013-0919-4.">PWG13</a>]</span> for details.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.objectives.ConstrainedScaledBranin">
+<span class="sig-name descname"><span class="pre">ConstrainedScaledBranin</span></span><a class="reference internal" href="../../../_modules/trieste/objectives/single_objectives.html#ConstrainedScaledBranin"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.objectives.ConstrainedScaledBranin" title="Link to this definition">#</a></dt>
+<dd><p>The rescaled Branin-Hoo function with a combination of linear and nonlinear constraints on the
+search space.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.objectives.GramacyLee">
+<span class="sig-name descname"><span class="pre">GramacyLee</span></span><a class="reference internal" href="../../../_modules/trieste/objectives/single_objectives.html#GramacyLee"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.objectives.GramacyLee" title="Link to this definition">#</a></dt>
+<dd><p>The Gramacy &amp; Lee function, typically evaluated over <span class="math notranslate nohighlight">\([0.5, 2.5]\)</span>. See
+<span id="id6">[<a class="reference internal" href="../../../bibliography.html#id19" title="Robert B Gramacy and Herbert KH Lee. Cases for the nugget in modeling computer experiments. Statistics and Computing, 22(3):713–722, 2012.">GL12</a>]</span> for details.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.objectives.Hartmann3">
+<span class="sig-name descname"><span class="pre">Hartmann3</span></span><a class="reference internal" href="../../../_modules/trieste/objectives/single_objectives.html#Hartmann3"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.objectives.Hartmann3" title="Link to this definition">#</a></dt>
+<dd><p>The Hartmann 3 test function over <span class="math notranslate nohighlight">\([0, 1]^3\)</span>. This function has 3 local
+and one global minima. See <a class="reference external" href="https://www.sfu.ca/~ssurjano/hart3.html">https://www.sfu.ca/~ssurjano/hart3.html</a> for details.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.objectives.Hartmann6">
+<span class="sig-name descname"><span class="pre">Hartmann6</span></span><a class="reference internal" href="../../../_modules/trieste/objectives/single_objectives.html#Hartmann6"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.objectives.Hartmann6" title="Link to this definition">#</a></dt>
+<dd><p>The Hartmann 6 test function over <span class="math notranslate nohighlight">\([0, 1]^6\)</span>. This function has
+6 local and one global minima. See <a class="reference external" href="https://www.sfu.ca/~ssurjano/hart6.html">https://www.sfu.ca/~ssurjano/hart6.html</a>
+for details.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.objectives.Levy8">
+<span class="sig-name descname"><span class="pre">Levy8</span></span><a class="reference internal" href="../../../_modules/trieste/objectives/single_objectives.html#Levy8"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.objectives.Levy8" title="Link to this definition">#</a></dt>
+<dd><p>Convenience function for the 8-dimensional <code class="xref py py-func docutils literal notranslate"><span class="pre">levy()</span></code> function.
+Taken from <a class="reference external" href="https://www.sfu.ca/~ssurjano/levy.html">https://www.sfu.ca/~ssurjano/levy.html</a></p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.objectives.LogarithmicGoldsteinPrice">
+<span class="sig-name descname"><span class="pre">LogarithmicGoldsteinPrice</span></span><a class="reference internal" href="../../../_modules/trieste/objectives/single_objectives.html#LogarithmicGoldsteinPrice"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.objectives.LogarithmicGoldsteinPrice" title="Link to this definition">#</a></dt>
+<dd><p>A logarithmic form of the Goldstein-Price function, with zero mean and unit variance over
+<span class="math notranslate nohighlight">\([0, 1]^2\)</span>. See <span id="id7">[<a class="reference internal" href="../../../bibliography.html#id10" title="Victor Picheny, Tobias Wagner, and David Ginsbourger. A benchmark of kriging-based infill criteria for noisy optimization. Structural and Multidisciplinary Optimization, 48:, 09 2013. doi:10.1007/s00158-013-0919-4.">PWG13</a>]</span> for details.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.objectives.Michalewicz2">
+<span class="sig-name descname"><span class="pre">Michalewicz2</span></span><a class="reference internal" href="../../../_modules/trieste/objectives/single_objectives.html#Michalewicz2"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.objectives.Michalewicz2" title="Link to this definition">#</a></dt>
+<dd><p>Convenience function for the 2-dimensional <code class="xref py py-func docutils literal notranslate"><span class="pre">michalewicz()</span></code> function with steepness 10.
+Taken from <a class="reference external" href="https://arxiv.org/abs/2003.09867">https://arxiv.org/abs/2003.09867</a></p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.objectives.Michalewicz5">
+<span class="sig-name descname"><span class="pre">Michalewicz5</span></span><a class="reference internal" href="../../../_modules/trieste/objectives/single_objectives.html#Michalewicz5"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.objectives.Michalewicz5" title="Link to this definition">#</a></dt>
+<dd><p>Convenience function for the 5-dimensional <code class="xref py py-func docutils literal notranslate"><span class="pre">michalewicz()</span></code> function with steepness 10.
+Taken from <a class="reference external" href="https://arxiv.org/abs/2003.09867">https://arxiv.org/abs/2003.09867</a></p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.objectives.Michalewicz10">
+<span class="sig-name descname"><span class="pre">Michalewicz10</span></span><a class="reference internal" href="../../../_modules/trieste/objectives/single_objectives.html#Michalewicz10"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.objectives.Michalewicz10" title="Link to this definition">#</a></dt>
+<dd><p>Convenience function for the 10-dimensional <code class="xref py py-func docutils literal notranslate"><span class="pre">michalewicz()</span></code> function with steepness 10.
+Taken from <a class="reference external" href="https://arxiv.org/abs/2003.09867">https://arxiv.org/abs/2003.09867</a></p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.objectives.ObjectiveTestProblem">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ObjectiveTestProblem</span></span><a class="reference internal" href="../../../_modules/trieste/objectives/single_objectives.html#ObjectiveTestProblem"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.objectives.ObjectiveTestProblem" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">Generic</span></code>[<a class="reference internal" href="../space/index.html#trieste.space.SearchSpaceType" title="trieste.space.SearchSpaceType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.space.SearchSpaceType</span></code></a>]</p>
+<p>Convenience container class for synthetic objective test functions.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="trieste.objectives.ObjectiveTestProblem.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></em><a class="headerlink" href="#trieste.objectives.ObjectiveTestProblem.name" title="Link to this definition">#</a></dt>
+<dd><p>The test function name</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="trieste.objectives.ObjectiveTestProblem.objective">
+<span class="sig-name descname"><span class="pre">objective</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ObjectiveTestFunction</span></em><a class="headerlink" href="#trieste.objectives.ObjectiveTestProblem.objective" title="Link to this definition">#</a></dt>
+<dd><p>The synthetic test function</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="trieste.objectives.ObjectiveTestProblem.search_space">
+<span class="sig-name descname"><span class="pre">search_space</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">trieste.space.SearchSpaceType</span></em><a class="headerlink" href="#trieste.objectives.ObjectiveTestProblem.search_space" title="Link to this definition">#</a></dt>
+<dd><p>The (continuous) search space of the test function</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="trieste.objectives.ObjectiveTestProblem.dim">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dim</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></em><a class="headerlink" href="#trieste.objectives.ObjectiveTestProblem.dim" title="Link to this definition">#</a></dt>
+<dd><p>The input dimensionality of the test function</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="trieste.objectives.ObjectiveTestProblem.bounds">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">bounds</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#trieste.objectives.ObjectiveTestProblem.bounds" title="Link to this definition">#</a></dt>
+<dd><p>The input space bounds of the test function</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.objectives.Rosenbrock4">
+<span class="sig-name descname"><span class="pre">Rosenbrock4</span></span><a class="reference internal" href="../../../_modules/trieste/objectives/single_objectives.html#Rosenbrock4"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.objectives.Rosenbrock4" title="Link to this definition">#</a></dt>
+<dd><p>The Rosenbrock function, rescaled to have zero mean and unit variance over <span class="math notranslate nohighlight">\([0, 1]^4. See
+:cite:`Picheny2013\)</span> for details.
+This function (also known as the Banana function) is unimodal, however the minima
+lies in a narrow valley.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.objectives.ScaledBranin">
+<span class="sig-name descname"><span class="pre">ScaledBranin</span></span><a class="reference internal" href="../../../_modules/trieste/objectives/single_objectives.html#ScaledBranin"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.objectives.ScaledBranin" title="Link to this definition">#</a></dt>
+<dd><p>The Branin-Hoo function, rescaled to have zero mean and unit variance over <span class="math notranslate nohighlight">\([0, 1]^2\)</span>. See
+<span id="id8">[<a class="reference internal" href="../../../bibliography.html#id10" title="Victor Picheny, Tobias Wagner, and David Ginsbourger. A benchmark of kriging-based infill criteria for noisy optimization. Structural and Multidisciplinary Optimization, 48:, 09 2013. doi:10.1007/s00158-013-0919-4.">PWG13</a>]</span> for details.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.objectives.Shekel4">
+<span class="sig-name descname"><span class="pre">Shekel4</span></span><a class="reference internal" href="../../../_modules/trieste/objectives/single_objectives.html#Shekel4"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.objectives.Shekel4" title="Link to this definition">#</a></dt>
+<dd><p>The Shekel test function over <span class="math notranslate nohighlight">\([0, 1]^4\)</span>. This function has ten local
+minima and a single global minimum. See <a class="reference external" href="https://www.sfu.ca/~ssurjano/shekel.html">https://www.sfu.ca/~ssurjano/shekel.html</a> for details.
+Note that we rescale the original problem, which is typically defined
+over <cite>[0, 10]^4</cite>.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.objectives.SimpleQuadratic">
+<span class="sig-name descname"><span class="pre">SimpleQuadratic</span></span><a class="reference internal" href="../../../_modules/trieste/objectives/single_objectives.html#SimpleQuadratic"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.objectives.SimpleQuadratic" title="Link to this definition">#</a></dt>
+<dd><p>A trivial quadratic function over <span class="math notranslate nohighlight">\([0, 1]^2\)</span>. Useful for quick testing.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.objectives.SingleObjectiveTestProblem">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">SingleObjectiveTestProblem</span></span><a class="reference internal" href="../../../_modules/trieste/objectives/single_objectives.html#SingleObjectiveTestProblem"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.objectives.SingleObjectiveTestProblem" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#trieste.objectives.ObjectiveTestProblem" title="trieste.objectives.ObjectiveTestProblem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ObjectiveTestProblem</span></code></a>[<a class="reference internal" href="../space/index.html#trieste.space.SearchSpaceType" title="trieste.space.SearchSpaceType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.space.SearchSpaceType</span></code></a>]</p>
+<p>Convenience container class for synthetic single-objective test functions,
+including the global minimizers and minimum.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="trieste.objectives.SingleObjectiveTestProblem.minimizers">
+<span class="sig-name descname"><span class="pre">minimizers</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span></em><a class="headerlink" href="#trieste.objectives.SingleObjectiveTestProblem.minimizers" title="Link to this definition">#</a></dt>
+<dd><p>The global minimizers of the test function.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="trieste.objectives.SingleObjectiveTestProblem.minimum">
+<span class="sig-name descname"><span class="pre">minimum</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span></em><a class="headerlink" href="#trieste.objectives.SingleObjectiveTestProblem.minimum" title="Link to this definition">#</a></dt>
+<dd><p>The global minimum of the test function.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.objectives.Trid10">
+<span class="sig-name descname"><span class="pre">Trid10</span></span><a class="reference internal" href="../../../_modules/trieste/objectives/single_objectives.html#Trid10"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.objectives.Trid10" title="Link to this definition">#</a></dt>
+<dd><p>The Trid function with dimension 10.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="trieste.objectives.mk_multi_observer">
+<span class="sig-name descname"><span class="pre">mk_multi_observer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable" title="(in Python v3.13)"><span class="pre">collections.abc.Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">trieste.observer.MultiObserver</span></span></span><a class="reference internal" href="../../../_modules/trieste/objectives/utils.html#mk_multi_observer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.objectives.mk_multi_observer" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>kwargs</strong> – Observation functions.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>An multi-observer returning the data from <code class="docutils literal notranslate"><span class="pre">kwargs</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="trieste.objectives.mk_observer">
+<span class="sig-name descname"><span class="pre">mk_observer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">objective</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable" title="(in Python v3.13)"><span class="pre">collections.abc.Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">trieste.observer.SingleObserver</span></span></span><a class="reference internal" href="../../../_modules/trieste/objectives/utils.html#mk_observer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.objectives.mk_observer" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">mk_observer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">objective</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable" title="(in Python v3.13)"><span class="pre">collections.abc.Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.types.Tag</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">trieste.observer.MultiObserver</span></span></span></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>objective</strong> – An objective function designed to be used with a single data set and model.</p></li>
+<li><p><strong>key</strong> – An optional key to use to access the data from the observer result.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>An observer returning the data from <code class="docutils literal notranslate"><span class="pre">objective</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#submodules">Submodules</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#package-contents">Package Contents</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.DTLZ1"><code class="docutils literal notranslate"><span class="pre">DTLZ1()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.DTLZ2"><code class="docutils literal notranslate"><span class="pre">DTLZ2()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.VLMOP2"><code class="docutils literal notranslate"><span class="pre">VLMOP2()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.MultiObjectiveTestProblem"><code class="docutils literal notranslate"><span class="pre">MultiObjectiveTestProblem</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.MultiObjectiveTestProblem.gen_pareto_optimal_points"><code class="docutils literal notranslate"><span class="pre">MultiObjectiveTestProblem.gen_pareto_optimal_points</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.SingleObjectiveMultifidelityTestProblem"><code class="docutils literal notranslate"><span class="pre">SingleObjectiveMultifidelityTestProblem</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.SingleObjectiveMultifidelityTestProblem.num_fidelities"><code class="docutils literal notranslate"><span class="pre">SingleObjectiveMultifidelityTestProblem.num_fidelities</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.SingleObjectiveMultifidelityTestProblem.fidelity_search_space"><code class="docutils literal notranslate"><span class="pre">SingleObjectiveMultifidelityTestProblem.fidelity_search_space</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.Ackley5"><code class="docutils literal notranslate"><span class="pre">Ackley5</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.Branin"><code class="docutils literal notranslate"><span class="pre">Branin</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.ConstrainedScaledBranin"><code class="docutils literal notranslate"><span class="pre">ConstrainedScaledBranin</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.GramacyLee"><code class="docutils literal notranslate"><span class="pre">GramacyLee</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.Hartmann3"><code class="docutils literal notranslate"><span class="pre">Hartmann3</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.Hartmann6"><code class="docutils literal notranslate"><span class="pre">Hartmann6</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.Levy8"><code class="docutils literal notranslate"><span class="pre">Levy8</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.LogarithmicGoldsteinPrice"><code class="docutils literal notranslate"><span class="pre">LogarithmicGoldsteinPrice</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.Michalewicz2"><code class="docutils literal notranslate"><span class="pre">Michalewicz2</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.Michalewicz5"><code class="docutils literal notranslate"><span class="pre">Michalewicz5</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.Michalewicz10"><code class="docutils literal notranslate"><span class="pre">Michalewicz10</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.ObjectiveTestProblem"><code class="docutils literal notranslate"><span class="pre">ObjectiveTestProblem</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.ObjectiveTestProblem.name"><code class="docutils literal notranslate"><span class="pre">ObjectiveTestProblem.name</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.ObjectiveTestProblem.objective"><code class="docutils literal notranslate"><span class="pre">ObjectiveTestProblem.objective</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.ObjectiveTestProblem.search_space"><code class="docutils literal notranslate"><span class="pre">ObjectiveTestProblem.search_space</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.ObjectiveTestProblem.dim"><code class="docutils literal notranslate"><span class="pre">ObjectiveTestProblem.dim</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.ObjectiveTestProblem.bounds"><code class="docutils literal notranslate"><span class="pre">ObjectiveTestProblem.bounds</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.Rosenbrock4"><code class="docutils literal notranslate"><span class="pre">Rosenbrock4</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.ScaledBranin"><code class="docutils literal notranslate"><span class="pre">ScaledBranin</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.Shekel4"><code class="docutils literal notranslate"><span class="pre">Shekel4</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.SimpleQuadratic"><code class="docutils literal notranslate"><span class="pre">SimpleQuadratic</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.SingleObjectiveTestProblem"><code class="docutils literal notranslate"><span class="pre">SingleObjectiveTestProblem</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.SingleObjectiveTestProblem.minimizers"><code class="docutils literal notranslate"><span class="pre">SingleObjectiveTestProblem.minimizers</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.SingleObjectiveTestProblem.minimum"><code class="docutils literal notranslate"><span class="pre">SingleObjectiveTestProblem.minimum</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.Trid10"><code class="docutils literal notranslate"><span class="pre">Trid10</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.mk_multi_observer"><code class="docutils literal notranslate"><span class="pre">mk_multi_observer()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.objectives.mk_observer"><code class="docutils literal notranslate"><span class="pre">mk_observer()</span></code></a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../_static/scripts/bootstrap.js?digest=3ee479438cf8b5e0d341"></script>
+<script src="../../../_static/scripts/pydata-sphinx-theme.js?digest=3ee479438cf8b5e0d341"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.15.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

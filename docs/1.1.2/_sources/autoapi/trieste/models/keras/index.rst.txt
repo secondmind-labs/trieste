@@ -1,0 +1,596 @@
+:py:mod:`trieste.models.keras`
+==============================
+
+.. py:module:: trieste.models.keras
+
+.. autoapi-nested-parse::
+
+   This package contains the primary interface for deep neural network models. It also contains a
+   number of :class:`TrainableProbabilisticModel` wrappers for neural network models. Note that
+   currently copying/saving models is not supported, so when
+   :class:`~trieste.bayesian_optimizer.BayesianOptimizer` is used ``track_state`` should be set
+   to `False`.
+
+
+
+Submodules
+----------
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+
+   architectures/index.rst
+   builders/index.rst
+   sampler/index.rst
+
+
+Package Contents
+----------------
+
+.. py:class:: GaussianNetwork(input_tensor_spec: tensorflow.TensorSpec, output_tensor_spec: tensorflow.TensorSpec, hidden_layer_args: Sequence[dict[str, Any]] = ({'units': 50, 'activation': 'relu'}, {'units': 50, 'activation': 'relu'}), independent: bool = False)
+
+   Bases: :py:obj:`KerasEnsembleNetwork`
+
+   This class defines layers of a probabilistic neural network using Keras. The network
+   architecture is a multilayer fully-connected feed-forward network, with Gaussian
+   distribution as an output. The layers are meant to be built as an ensemble model by
+   :class:`KerasEnsemble`. Note that this is not a Bayesian neural network.
+
+   :param input_tensor_spec: Tensor specification for the input to the network.
+   :param output_tensor_spec: Tensor specification for the output of the network.
+   :param hidden_layer_args: Specification for building dense hidden layers. Each element in
+       the sequence should be a dictionary containing arguments (keys) and their values for a
+       :class:`~tf.keras.layers.Dense` hidden layer. Please check Keras Dense layer API for
+       available arguments. Objects in the sequence will sequentially be used to add
+       :class:`~tf.keras.layers.Dense` layers. Length of this sequence determines the number of
+       hidden layers in the network. Default value is two hidden layers, 50 nodes each, with
+       ReLu activation functions. Empty sequence needs to be passed to have no hidden layers.
+   :param independent: In case multiple outputs are modeled, if set to `True` then
+       :class:`~tfp.layers.IndependentNormal` layer
+       is used as the output layer. This models outputs as independent, only the diagonal
+       elements of the covariance matrix are parametrized. If left as the default `False`,
+       then :class:`~tfp.layers.MultivariateNormalTriL` layer is used where correlations
+       between outputs are learned as well.
+   :raise ValueError: If objects in ``hidden_layer_args`` are not dictionaries.
+
+   .. py:method:: connect_layers() -> tuple[tensorflow.Tensor, tensorflow.Tensor]
+
+      Connect all layers in the network. We start by generating an input tensor based on input
+      tensor specification. Next we generate a sequence of hidden dense layers based on
+      hidden layer arguments. Finally, we generate a dense layer whose nodes act as parameters of
+      a Gaussian distribution in the final probabilistic layer.
+
+      :return: Input and output tensor of the sequence of layers.
+
+
+
+.. py:class:: KerasEnsemble(networks: Sequence[KerasEnsembleNetwork])
+
+   This class builds an ensemble of neural networks, using Keras. Individual networks must
+   be instance of :class:`~trieste.models.keras_networks.KerasEnsembleNetwork`. This class
+   is meant to be used with :class:`~trieste.models.keras_networks.DeepEnsemble` model wrapper,
+   which compiles the model.
+
+   :param networks: A list of neural network specifications, one for each member of the
+       ensemble. The ensemble will be built using these specifications.
+   :raise ValueError: If there are no objects in ``networks`` or we try to create
+       a model with networks whose input or output shapes are not the same.
+
+   .. py:method:: model() -> tensorflow.keras.Model
+      :property:
+
+      Returns built but uncompiled Keras ensemble model.
+
+
+   .. py:method:: ensemble_size() -> int
+      :property:
+
+      Returns the size of the ensemble, that is, the number of base learners or individual neural
+      network models in the ensemble.
+
+
+   .. py:method:: _build_ensemble() -> tensorflow.keras.Model
+
+      Builds the ensemble model by combining all the individual networks in a single Keras model.
+      This method relies on ``connect_layers`` method of :class:`KerasEnsembleNetwork` objects
+      to construct individual networks.
+
+      :return: The Keras model.
+
+
+
+.. py:class:: KerasEnsembleNetwork(input_tensor_spec: tensorflow.TensorSpec, output_tensor_spec: tensorflow.TensorSpec, network_name: str = '')
+
+   This class is an interface that defines necessary attributes and methods for neural networks
+   that are meant to be used for building ensembles by
+   :class:`~trieste.models.keras_networks.KerasEnsemble`. Subclasses are not meant to
+   build and compile Keras models, instead they are providing specification that
+   :class:`~trieste.models.keras_networks.KerasEnsemble` will use to build the Keras model.
+
+   :param input_tensor_spec: Tensor specification for the input to the network.
+   :param output_tensor_spec: Tensor specification for the output of the network.
+   :param network_name: The name to be used when building the network.
+
+   .. py:method:: connect_layers() -> tuple[tensorflow.Tensor, tensorflow.Tensor]
+      :abstractmethod:
+
+      Connects the layers of the neural network. Architecture, layers and layer specifications
+      need to be defined by the subclasses.
+
+      :return: Input and output tensor of the network, required by :class:`tf.keras.Model` to
+          build a model.
+
+
+
+.. py:function:: build_keras_ensemble(data: trieste.data.Dataset, ensemble_size: int = 5, num_hidden_layers: int = 2, units: int = 25, activation: Union[str, tensorflow.keras.layers.Activation] = 'relu', independent_normal: bool = False) -> trieste.models.keras.architectures.KerasEnsemble
+
+   Builds a simple ensemble of neural networks in Keras where each network has the same
+   architecture: number of hidden layers, nodes in hidden layers and activation function.
+
+   Default ensemble size and activation function seem to work well in practice, in regression type
+   of problems at least. Number of hidden layers and units per layer should be modified according
+   to the dataset size and complexity of the function - the default values seem to work well
+   for small datasets common in Bayesian optimization. Using the independent normal is relevant
+   only if one is modelling multiple output variables, as it simplifies the distribution by
+   ignoring correlations between outputs.
+
+   :param data: Data for training, used for extracting input and output tensor specifications.
+   :param ensemble_size: The size of the ensemble, that is, the number of base learners or
+       individual neural networks in the ensemble.
+   :param num_hidden_layers: The number of hidden layers in each network.
+   :param units: The number of nodes in each hidden layer.
+   :param activation: The activation function in each hidden layer.
+   :param independent_normal: If set to `True` then :class:`~tfp.layers.IndependentNormal` layer
+       is used as the output layer. This models outputs as independent, only the diagonal
+       elements of the covariance matrix are parametrized. If left as the default `False`,
+       then :class:`~tfp.layers.MultivariateNormalTriL` layer is used where correlations
+       between outputs are learned as well. Note that this is only relevant for multi-output
+       models.
+   :return: Keras ensemble model.
+
+
+.. py:class:: DeepEnsembleModel
+
+   Bases: :py:obj:`trieste.models.interfaces.ProbabilisticModel`, :py:obj:`typing_extensions.Protocol`
+
+   This is an interface for deep ensemble type of model, primarily for usage by trajectory
+   samplers, to avoid circular imports. These models can act as probabilistic models
+   by deriving estimates of epistemic uncertainty from the diversity of predictions made by
+   individual models in the ensemble.
+
+   .. py:method:: ensemble_size() -> int
+      :property:
+
+      Returns the size of the ensemble, that is, the number of base learners or individual
+      models in the ensemble.
+
+
+   .. py:method:: num_outputs() -> int
+      :property:
+
+      Returns the number of outputs trained on by each member network.
+
+
+   .. py:method:: ensemble_distributions(query_points: trieste.types.TensorType) -> tuple[tensorflow_probability.distributions.Distribution, Ellipsis]
+      :abstractmethod:
+
+      Return distributions for each member of the ensemble. Type of the output will depend on the
+      subclass, it might be a predicted value or a distribution.
+
+      :param query_points: The points at which to return outputs.
+      :return: The outputs for the observations at the specified ``query_points`` for each member
+          of the ensemble.
+
+
+
+.. py:class:: KerasPredictor(optimizer: Optional[trieste.models.optimizer.KerasOptimizer] = None)
+
+   Bases: :py:obj:`trieste.models.interfaces.ProbabilisticModel`, :py:obj:`abc.ABC`
+
+   This is an interface for trainable wrappers of TensorFlow and Keras neural network models.
+
+   :param optimizer: The optimizer wrapper containing the optimizer with which to train the
+       model and arguments for the wrapper and the optimizer. The optimizer must
+       be an instance of a :class:`~tf.optimizers.Optimizer`. Defaults to
+       :class:`~tf.optimizers.Adam` optimizer with default parameters.
+   :raise ValueError: If the optimizer is not an instance of :class:`~tf.optimizers.Optimizer`.
+
+   .. py:method:: model() -> tensorflow.keras.Model
+      :property:
+
+      The compiled Keras model.
+
+
+   .. py:method:: optimizer() -> trieste.models.optimizer.KerasOptimizer
+      :property:
+
+      The optimizer wrapper for training the model.
+
+
+   .. py:method:: predict(query_points: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Return the mean and variance of the independent marginal distributions at each point in
+      ``query_points``.
+
+      This is essentially a convenience method for :meth:`predict_joint`, where non-event
+      dimensions of ``query_points`` are all interpreted as broadcasting dimensions instead of
+      batch dimensions, and the covariance is squeezed to remove redundant nesting.
+
+      :param query_points: The points at which to make predictions, of shape [..., D].
+      :return: The mean and variance of the independent marginal distributions at each point in
+          ``query_points``. For a predictive distribution with event shape E, the mean and
+          variance will both have shape [...] + E.
+
+
+   .. py:method:: sample(query_points: trieste.types.TensorType, num_samples: int) -> trieste.types.TensorType
+      :abstractmethod:
+
+      Return ``num_samples`` samples from the independent marginal distributions at
+      ``query_points``.
+
+      :param query_points: The points at which to sample, with shape [..., N, D].
+      :param num_samples: The number of samples at each point.
+      :return: The samples. For a predictive distribution with event shape E, this has shape
+          [..., S, N] + E, where S is the number of samples.
+
+
+
+.. py:class:: DeepEnsemble(model: trieste.models.keras.architectures.KerasEnsemble, optimizer: Optional[trieste.models.optimizer.KerasOptimizer] = None, bootstrap: bool = False, diversify: bool = False, continuous_optimisation: bool = True)
+
+   Bases: :py:obj:`trieste.models.keras.interface.KerasPredictor`, :py:obj:`trieste.models.interfaces.TrainableProbabilisticModel`, :py:obj:`trieste.models.keras.interface.DeepEnsembleModel`, :py:obj:`trieste.models.interfaces.HasTrajectorySampler`
+
+   A :class:`~trieste.model.TrainableProbabilisticModel` wrapper for deep ensembles built using
+   Keras.
+
+   Deep ensembles are ensembles of deep neural networks that have been found to have good
+   representation of uncertainty in practice (<cite data-cite="lakshminarayanan2017simple"/>).
+   This makes them a potentially attractive model for Bayesian optimization for use-cases with
+   large number of observations, non-stationary objective functions and need for fast predictions,
+   in which standard Gaussian process models are likely to struggle. The model consists of simple
+   fully connected multilayer probabilistic networks as base learners, with Gaussian distribution
+   as a final layer, using the negative log-likelihood loss for training the networks. The
+   model relies on differences in random initialization of weights for generating diversity among
+   base learners.
+
+   The original formulation of the model does not include boostrapping of the data. The authors
+   found that it does not improve performance the model. We include bootstrapping as an option
+   as later work that more precisely measured uncertainty quantification found that boostrapping
+   does help with uncertainty representation (see <cite data-cite="osband2021epistemic"/>).
+
+   We provide classes for constructing ensembles using Keras
+   (:class:`~trieste.models.keras.KerasEnsemble`) in the `architectures` package that should be
+   used with the :class:`~trieste.models.keras.DeepEnsemble` wrapper. There we also provide a
+   :class:`~trieste.models.keras.GaussianNetwork` base learner following the original
+   formulation in <cite data-cite="lakshminarayanan2017simple"/>, but any user-specified network
+   can be supplied, as long as it has a Gaussian distribution as a final layer and follows the
+   :class:`~trieste.models.keras.KerasEnsembleNetwork` interface.
+
+   A word of caution in case a learning rate scheduler is used in ``fit_args`` to
+   :class:`KerasOptimizer` optimizer instance. Typically one would not want to continue with the
+   reduced learning rate in the subsequent Bayesian optimization step. Hence, we reset the
+   learning rate to the original one after calling the ``fit`` method. In case this is not the
+   behaviour you would like, you will need to subclass the model and overwrite the
+   :meth:`optimize` method.
+
+   Currently we do not support setting up the model with dictionary config.
+
+   :param model: A Keras ensemble model with probabilistic networks as ensemble members. The
+       model has to be built but not compiled.
+   :param optimizer: The optimizer wrapper with necessary specifications for compiling and
+       training the model. Defaults to :class:`~trieste.models.optimizer.KerasOptimizer` with
+       :class:`~tf.optimizers.Adam` optimizer, negative log likelihood loss, mean squared
+       error metric and a dictionary of default arguments for Keras `fit` method: 3000 epochs,
+       batch size 16, early stopping callback with patience of 50, and verbose 0.
+       See https://keras.io/api/models/model_training_apis/#fit-method for a list of possible
+       arguments.
+   :param bootstrap: Sample with replacement data for training each network in the ensemble.
+       By default set to `False`.
+   :param diversify: Whether to use quantiles from the approximate Gaussian distribution of
+       the ensemble as trajectories instead of mean predictions when calling
+       :meth:`trajectory_sampler`. This mode can be used to increase the diversity
+       in case of optimizing very large batches of trajectories. By
+       default set to `False`.
+   :param continuous_optimisation: If True (default), the optimizer will keep track of the
+       number of epochs across BO iterations and use this number as initial_epoch. This is
+       essential to allow monitoring of model training across BO iterations.
+   :raise ValueError: If ``model`` is not an instance of
+       :class:`~trieste.models.keras.KerasEnsemble` or ensemble has less than two base
+       learners (networks).
+
+   .. py:method:: model() -> tensorflow.keras.Model
+      :property:
+
+      " Returns compiled Keras ensemble model.
+
+
+   .. py:method:: ensemble_size() -> int
+      :property:
+
+      Returns the size of the ensemble, that is, the number of base learners or individual neural
+      network models in the ensemble.
+
+
+   .. py:method:: num_outputs() -> int
+      :property:
+
+      Returns the number of outputs trained on by each member network.
+
+
+   .. py:method:: prepare_dataset(dataset: trieste.data.Dataset) -> tuple[Dict[str, trieste.types.TensorType], Dict[str, trieste.types.TensorType]]
+
+      Transform ``dataset`` into inputs and outputs with correct names that can be used for
+      training the :class:`KerasEnsemble` model.
+
+      If ``bootstrap`` argument in the :class:`~trieste.models.keras.DeepEnsemble` is set to
+      `True`, data will be additionally sampled with replacement, independently for
+      each network in the ensemble.
+
+      :param dataset: A dataset with ``query_points`` and ``observations`` tensors.
+      :return: A dictionary with input data and a dictionary with output data.
+
+
+   .. py:method:: prepare_query_points(query_points: trieste.types.TensorType) -> Dict[str, trieste.types.TensorType]
+
+      Transform ``query_points`` into inputs with correct names that can be used for
+      predicting with the model.
+
+      :param query_points: A tensor with ``query_points``.
+      :return: A dictionary with query_points prepared for predictions.
+
+
+   .. py:method:: ensemble_distributions(query_points: trieste.types.TensorType) -> tuple[tensorflow_probability.python.distributions.Distribution, Ellipsis]
+
+      Return distributions for each member of the ensemble.
+
+      :param query_points: The points at which to return distributions.
+      :return: The distributions for the observations at the specified
+          ``query_points`` for each member of the ensemble.
+
+
+   .. py:method:: predict(query_points: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Returns mean and variance at ``query_points`` for the whole ensemble.
+
+      Following <cite data-cite="lakshminarayanan2017simple"/> we treat the ensemble as a
+      uniformly-weighted Gaussian mixture model and combine the predictions as
+
+      .. math:: p(y|\mathbf{x}) = M^{-1} \Sum_{m=1}^M \mathcal{N}
+          (\mu_{\theta_m}(\mathbf{x}),\,\sigma_{\theta_m}^{2}(\mathbf{x}))
+
+      We further approximate the ensemble prediction as a Gaussian whose mean and variance
+      are respectively the mean and variance of the mixture, given by
+
+      .. math:: \mu_{*}(\mathbf{x}) = M^{-1} \Sum_{m=1}^M \mu_{\theta_m}(\mathbf{x})
+
+      .. math:: \sigma^2_{*}(\mathbf{x}) = M^{-1} \Sum_{m=1}^M (\sigma_{\theta_m}^{2}(\mathbf{x})
+          + \mu^2_{\theta_m}(\mathbf{x})) - \mu^2_{*}(\mathbf{x})
+
+      This method assumes that the final layer in each member of the ensemble is
+      probabilistic, an instance of :class:`~tfp.distributions.Distribution`. In particular, given
+      the nature of the approximations stated above the final layer should be a Gaussian
+      distribution with `mean` and `variance` methods.
+
+      :param query_points: The points at which to make predictions.
+      :return: The predicted mean and variance of the observations at the specified
+          ``query_points``.
+
+
+   .. py:method:: predict_ensemble(query_points: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Returns mean and variance at ``query_points`` for each member of the ensemble. First tensor
+      is the mean and second is the variance, where each has shape [..., M, N, 1], where M is
+      the ``ensemble_size``.
+
+      This method assumes that the final layer in each member of the ensemble is
+      probabilistic, an instance of :class:`¬tfp.distributions.Distribution`, in particular
+      `mean` and `variance` methods should be available.
+
+      :param query_points: The points at which to make predictions.
+      :return: The predicted mean and variance of the observations at the specified
+          ``query_points`` for each member of the ensemble.
+
+
+   .. py:method:: sample(query_points: trieste.types.TensorType, num_samples: int) -> trieste.types.TensorType
+
+      Return ``num_samples`` samples at ``query_points``. We use the mixture approximation in
+      :meth:`predict` for ``query_points`` and sample ``num_samples`` times from a Gaussian
+      distribution given by the predicted mean and variance.
+
+      :param query_points: The points at which to sample, with shape [..., N, D].
+      :param num_samples: The number of samples at each point.
+      :return: The samples. For a predictive distribution with event shape E, this has shape
+          [..., S, N] + E, where S is the number of samples.
+
+
+   .. py:method:: sample_ensemble(query_points: trieste.types.TensorType, num_samples: int) -> trieste.types.TensorType
+
+      Return ``num_samples`` samples at ``query_points``. Each sample is taken from a Gaussian
+      distribution given by the predicted mean and variance of a randomly chosen network in the
+      ensemble. This avoids using the Gaussian mixture approximation and samples directly from
+      individual Gaussian distributions given by each network in the ensemble.
+
+      :param query_points: The points at which to sample, with shape [..., N, D].
+      :param num_samples: The number of samples at each point.
+      :return: The samples. For a predictive distribution with event shape E, this has shape
+          [..., S, N] + E, where S is the number of samples.
+
+
+   .. py:method:: trajectory_sampler() -> trieste.models.interfaces.TrajectorySampler[DeepEnsemble]
+
+      Return a trajectory sampler. For :class:`DeepEnsemble`, we use an ensemble
+      sampler that randomly picks a network from the ensemble and uses its predicted means
+      for generating a trajectory, or optionally randomly sampled quantiles rather than means.
+
+      :return: The trajectory sampler.
+
+
+   .. py:method:: update(dataset: trieste.data.Dataset) -> None
+
+      Neural networks are parametric models and do not need to update data.
+      `TrainableProbabilisticModel` interface, however, requires an update method, so
+      here we simply pass the execution.
+
+
+   .. py:method:: optimize(dataset: trieste.data.Dataset) -> None
+
+      Optimize the underlying Keras ensemble model with the specified ``dataset``.
+
+      Optimization is performed by using the Keras `fit` method, rather than applying the
+      optimizer and using the batches supplied with the optimizer wrapper. User can pass
+      arguments to the `fit` method through ``minimize_args`` argument in the optimizer wrapper.
+      These default to using 100 epochs, batch size 100, and verbose 0. See
+      https://keras.io/api/models/model_training_apis/#fit-method for a list of possible
+      arguments.
+
+      Note that optimization does not return the result, instead optimization results are
+      stored in a history attribute of the model object.
+
+      :param dataset: The data with which to optimize the model.
+
+
+   .. py:method:: log(dataset: Optional[trieste.data.Dataset] = None) -> None
+
+      Log model training information at a given optimization step to the Tensorboard.
+      We log several summary statistics of losses and metrics given in ``fit_args`` to
+      ``optimizer`` (final, difference between inital and final loss, min and max). We also log
+      epoch statistics, but as histograms, rather than time series. We also log several training
+      data based metrics, such as root mean square error between predictions and observations,
+      and several others.
+
+      We do not log statistics of individual models in the ensemble unless specifically switched
+      on with ``trieste.logging.set_summary_filter(lambda name: True)``.
+
+      For custom logs user will need to subclass the model and overwrite this method.
+
+      :param dataset: Optional data that can be used to log additional data-based model summaries.
+
+
+
+.. py:class:: DeepEnsembleTrajectorySampler(model: trieste.models.keras.interface.DeepEnsembleModel, diversify: bool = False, seed: Optional[int] = None)
+
+   Bases: :py:obj:`trieste.models.interfaces.TrajectorySampler`\ [\ :py:obj:`trieste.models.keras.interface.DeepEnsembleModel`\ ]
+
+   This class builds functions that approximate a trajectory by randomly choosing a network from
+   the ensemble and using its predicted means as a trajectory.
+
+   Option `diversify` can be used to increase the diversity in case of optimizing very large
+   batches of trajectories. We use quantiles from the approximate Gaussian distribution of
+   the ensemble as trajectories, with randomly chosen quantiles approximating a trajectory and
+   using a reparametrisation trick to speed up computation. Note that quantiles are not true
+   trajectories, so this will likely have some performance costs.
+
+   :param model: The ensemble model to sample from.
+   :param diversify: Whether to use quantiles from the approximate Gaussian distribution of
+       the ensemble as trajectories (`False` by default). See class docstring for details.
+   :param seed: Random number seed to use for trajectory sampling.
+   :raise NotImplementedError: If we try to use the model that is not instance of
+       :class:`DeepEnsembleModel`.
+
+   .. py:method:: get_trajectory() -> trieste.models.interfaces.TrajectoryFunction
+
+      Generate an approximate function draw (trajectory) from the ensemble.
+
+      :return: A trajectory function representing an approximate trajectory
+          from the model, taking an input of shape `[N, B, D]` and returning shape `[N, B, L]`.
+
+
+   .. py:method:: update_trajectory(trajectory: trieste.models.interfaces.TrajectoryFunction) -> trieste.models.interfaces.TrajectoryFunction
+
+      Update a :const:`TrajectoryFunction` to reflect an update in its
+      underlying :class:`DeepEnsembleModel` and resample accordingly.
+
+      Here we rely on the underlying models being updated and we only resample the trajectory.
+
+      :param trajectory: The trajectory function to be resampled.
+      :return: The new trajectory function updated for a new model
+
+
+   .. py:method:: resample_trajectory(trajectory: trieste.models.interfaces.TrajectoryFunction) -> trieste.models.interfaces.TrajectoryFunction
+
+      Efficiently resample a :const:`TrajectoryFunction` in-place to avoid function retracing
+      with every new sample.
+
+      :param trajectory: The trajectory function to be resampled.
+      :return: The new resampled trajectory function.
+
+
+
+.. py:class:: deep_ensemble_trajectory(model: trieste.models.keras.interface.DeepEnsembleModel, diversify: bool, seed: Optional[int] = None)
+
+   Bases: :py:obj:`trieste.models.interfaces.TrajectoryFunctionClass`
+
+   Generate an approximate function draw (trajectory) by randomly choosing a batch B of
+   networks from the ensemble and using their predicted means as trajectories.
+
+   Option `diversify` can be used to increase the diversity in case of optimizing very large
+   batches of trajectories. We use quantiles from the approximate Gaussian distribution of
+   the ensemble as trajectories, with randomly chosen quantiles approximating a trajectory and
+   using a reparametrisation trick to speed up computation. Note that quantiles are not true
+   trajectories, so this will likely have some performance costs.
+
+   :param model: The model of the objective function.
+   :param diversify: Whether to use samples from final probabilistic layer as trajectories
+       or mean predictions.
+   :param seed: Optional RNG seed.
+
+   .. py:method:: __call__(x: trieste.types.TensorType) -> trieste.types.TensorType
+
+      Call trajectory function. Note that we are flattening the batch dimension and
+      doing a forward pass with each network in the ensemble with the whole batch. This is
+      somewhat wasteful, but is necessary given the underlying ``KerasEnsemble`` network
+      model.
+
+
+   .. py:method:: resample() -> None
+
+      Efficiently resample network indices in-place, without retracing.
+
+
+   .. py:method:: get_state() -> Dict[str, trieste.types.TensorType]
+
+      Return internal state variables.
+
+
+
+.. py:function:: get_tensor_spec_from_data(dataset: trieste.data.Dataset) -> tuple[tensorflow.TensorSpec, tensorflow.TensorSpec]
+
+   Extract tensor specifications for inputs and outputs of neural network models, based on the
+   dataset. This utility faciliates constructing neural networks, providing the required
+   dimensions for the input and the output of the network. For example
+
+   >>> data = Dataset(
+   ...     tf.constant([[0.1, 0.2], [0.3, 0.4]]),
+   ...     tf.constant([[0.5], [0.7]])
+   ... )
+   >>> input_spec, output_spec = get_tensor_spec_from_data(data)
+   >>> input_spec
+   TensorSpec(shape=(2,), dtype=tf.float32, name='query_points')
+   >>> output_spec
+   TensorSpec(shape=(1,), dtype=tf.float32, name='observations')
+
+   :param dataset: A dataset with ``query_points`` and ``observations`` tensors.
+   :return: Tensor specification objects for the ``query_points`` and ``observations`` tensors.
+   :raise ValueError: If the dataset is not an instance of :class:`~trieste.data.Dataset`.
+
+
+.. py:function:: negative_log_likelihood(y_true: trieste.types.TensorType, y_pred: tensorflow_probability.distributions.Distribution) -> trieste.types.TensorType
+
+   Maximum likelihood objective function for training neural networks.
+
+   :param y_true: The output variable values.
+   :param y_pred: The output layer of the model. It has to be a probabilistic neural network
+       with a distribution as a final layer.
+   :return: Negative log likelihood values.
+
+
+.. py:function:: sample_with_replacement(dataset: trieste.data.Dataset) -> trieste.data.Dataset
+
+   Create a new ``dataset`` with data sampled with replacement. This
+   function is useful for creating bootstrap samples of data for training ensembles.
+
+   :param dataset: The data that should be sampled.
+   :return: A (new) ``dataset`` with sampled data.
+   :raise ValueError (or InvalidArgumentError): If the dataset is not an instance of
+       :class:`~trieste.data.Dataset` or it is empty.
+
+

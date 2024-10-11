@@ -1,0 +1,972 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.models.keras.models &#8212; trieste 1.2.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../../../../_static/styles/bootstrap.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+
+  
+  <link href="../../../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=e353d410970836974a52" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/css/custom.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
+
+    <script data-url_root="../../../../" id="documentation_options" src="../../../../_static/documentation_options.js"></script>
+    <script src="../../../../_static/doctools.js"></script>
+    <script src="../../../../_static/sphinx_highlight.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/trieste/models/keras/models';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://secondmind-labs.github.io/trieste/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.2.0';
+        </script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  <div class="navbar-header-items__start">
+    
+      <div class="navbar-item">
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/logo.png" class="logo__image only-light" alt="Logo image"/>
+    <script>document.write(`<img src="../../../../_static/logo.png" class="logo__image only-dark" alt="Logo image"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../autoapi/trieste/index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      1.2.0  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+    </div>
+  
+
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../autoapi/trieste/index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      1.2.0  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumbs">
+  <ul class="bd-breadcrumbs" role="navigation" aria-label="Breadcrumb">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">trieste.models.keras.models</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <h1>Source code for trieste.models.keras.models</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2021 The Trieste Contributors</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">import</span> <span class="nn">dill</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">import</span> <span class="nn">tensorflow_probability</span> <span class="k">as</span> <span class="nn">tfp</span>
+<span class="kn">import</span> <span class="nn">tensorflow_probability.python.distributions</span> <span class="k">as</span> <span class="nn">tfd</span>
+<span class="kn">from</span> <span class="nn">tensorflow.python.keras.callbacks</span> <span class="kn">import</span> <span class="n">Callback</span>
+
+<span class="kn">from</span> <span class="nn">...</span> <span class="kn">import</span> <span class="n">logging</span>
+<span class="kn">from</span> <span class="nn">...data</span> <span class="kn">import</span> <span class="n">Dataset</span>
+<span class="kn">from</span> <span class="nn">...types</span> <span class="kn">import</span> <span class="n">TensorType</span>
+<span class="kn">from</span> <span class="nn">...utils</span> <span class="kn">import</span> <span class="n">flatten_leading_dims</span>
+<span class="kn">from</span> <span class="nn">..interfaces</span> <span class="kn">import</span> <span class="n">HasTrajectorySampler</span><span class="p">,</span> <span class="n">TrainableProbabilisticModel</span><span class="p">,</span> <span class="n">TrajectorySampler</span>
+<span class="kn">from</span> <span class="nn">..optimizer</span> <span class="kn">import</span> <span class="n">KerasOptimizer</span>
+<span class="kn">from</span> <span class="nn">..utils</span> <span class="kn">import</span> <span class="n">write_summary_data_based_metrics</span>
+<span class="kn">from</span> <span class="nn">.architectures</span> <span class="kn">import</span> <span class="n">KerasEnsemble</span><span class="p">,</span> <span class="n">MultivariateNormalTriL</span>
+<span class="kn">from</span> <span class="nn">.interface</span> <span class="kn">import</span> <span class="n">DeepEnsembleModel</span><span class="p">,</span> <span class="n">KerasPredictor</span>
+<span class="kn">from</span> <span class="nn">.sampler</span> <span class="kn">import</span> <span class="n">DeepEnsembleTrajectorySampler</span>
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="kn">import</span> <span class="n">negative_log_likelihood</span><span class="p">,</span> <span class="n">sample_model_index</span><span class="p">,</span> <span class="n">sample_with_replacement</span>
+
+
+<div class="viewcode-block" id="DeepEnsemble"><a class="viewcode-back" href="../../../../autoapi/trieste/models/keras/models/index.html#trieste.models.keras.DeepEnsemble">[docs]</a><span class="k">class</span> <span class="nc">DeepEnsemble</span><span class="p">(</span>
+    <span class="n">KerasPredictor</span><span class="p">,</span> <span class="n">TrainableProbabilisticModel</span><span class="p">,</span> <span class="n">DeepEnsembleModel</span><span class="p">,</span> <span class="n">HasTrajectorySampler</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A :class:`~trieste.model.TrainableProbabilisticModel` wrapper for deep ensembles built using</span>
+<span class="sd">    Keras.</span>
+
+<span class="sd">    Deep ensembles are ensembles of deep neural networks that have been found to have good</span>
+<span class="sd">    representation of uncertainty in practice (&lt;cite data-cite=&quot;lakshminarayanan2017simple&quot;/&gt;).</span>
+<span class="sd">    This makes them a potentially attractive model for Bayesian optimization for use-cases with</span>
+<span class="sd">    large number of observations, non-stationary objective functions and need for fast predictions,</span>
+<span class="sd">    in which standard Gaussian process models are likely to struggle. The model consists of simple</span>
+<span class="sd">    fully connected multilayer probabilistic networks as base learners, with Gaussian distribution</span>
+<span class="sd">    as a final layer, using the negative log-likelihood loss for training the networks. The</span>
+<span class="sd">    model relies on differences in random initialization of weights for generating diversity among</span>
+<span class="sd">    base learners.</span>
+
+<span class="sd">    The original formulation of the model does not include boostrapping of the data. The authors</span>
+<span class="sd">    found that it does not improve performance the model. We include bootstrapping as an option</span>
+<span class="sd">    as later work that more precisely measured uncertainty quantification found that boostrapping</span>
+<span class="sd">    does help with uncertainty representation (see &lt;cite data-cite=&quot;osband2021epistemic&quot;/&gt;).</span>
+
+<span class="sd">    We provide classes for constructing ensembles using Keras</span>
+<span class="sd">    (:class:`~trieste.models.keras.KerasEnsemble`) in the `architectures` package that should be</span>
+<span class="sd">    used with the :class:`~trieste.models.keras.DeepEnsemble` wrapper. There we also provide a</span>
+<span class="sd">    :class:`~trieste.models.keras.GaussianNetwork` base learner following the original</span>
+<span class="sd">    formulation in &lt;cite data-cite=&quot;lakshminarayanan2017simple&quot;/&gt;, but any user-specified network</span>
+<span class="sd">    can be supplied, as long as it has a Gaussian distribution as a final layer and follows the</span>
+<span class="sd">    :class:`~trieste.models.keras.KerasEnsembleNetwork` interface.</span>
+
+<span class="sd">    A word of caution in case a learning rate scheduler is used in ``fit_args`` to</span>
+<span class="sd">    :class:`KerasOptimizer` optimizer instance. Typically one would not want to continue with the</span>
+<span class="sd">    reduced learning rate in the subsequent Bayesian optimization step. Hence, we reset the</span>
+<span class="sd">    learning rate to the original one after calling the ``fit`` method. In case this is not the</span>
+<span class="sd">    behaviour you would like, you will need to subclass the model and overwrite the</span>
+<span class="sd">    :meth:`optimize` method.</span>
+
+<span class="sd">    Currently we do not support setting up the model with dictionary config.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">KerasEnsemble</span><span class="p">,</span>
+        <span class="n">optimizer</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">KerasOptimizer</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">bootstrap</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">diversify</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">continuous_optimisation</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param model: A Keras ensemble model with probabilistic networks as ensemble members. The</span>
+<span class="sd">            model has to be built but not compiled.</span>
+<span class="sd">        :param optimizer: The optimizer wrapper with necessary specifications for compiling and</span>
+<span class="sd">            training the model. Defaults to :class:`~trieste.models.optimizer.KerasOptimizer` with</span>
+<span class="sd">            :class:`~tf.optimizers.Adam` optimizer, negative log likelihood loss, mean squared</span>
+<span class="sd">            error metric and a dictionary of default arguments for Keras `fit` method: 3000 epochs,</span>
+<span class="sd">            batch size 16, early stopping callback with patience of 50, and verbose 0.</span>
+<span class="sd">            See https://keras.io/api/models/model_training_apis/#fit-method for a list of possible</span>
+<span class="sd">            arguments.</span>
+<span class="sd">        :param bootstrap: Sample with replacement data for training each network in the ensemble.</span>
+<span class="sd">            By default set to `False`.</span>
+<span class="sd">        :param diversify: Whether to use quantiles from the approximate Gaussian distribution of</span>
+<span class="sd">            the ensemble as trajectories instead of mean predictions when calling</span>
+<span class="sd">            :meth:`trajectory_sampler`. This mode can be used to increase the diversity</span>
+<span class="sd">            in case of optimizing very large batches of trajectories. By</span>
+<span class="sd">            default set to `False`.</span>
+<span class="sd">        :param continuous_optimisation: If True (default), the optimizer will keep track of the</span>
+<span class="sd">            number of epochs across BO iterations and use this number as initial_epoch. This is</span>
+<span class="sd">            essential to allow monitoring of model training across BO iterations.</span>
+<span class="sd">        :raise ValueError: If ``model`` is not an instance of</span>
+<span class="sd">            :class:`~trieste.models.keras.KerasEnsemble` or ensemble has less than two base</span>
+<span class="sd">            learners (networks).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">model</span><span class="o">.</span><span class="n">ensemble_size</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Ensemble size must be greater than 1 but got </span><span class="si">{</span><span class="n">model</span><span class="o">.</span><span class="n">ensemble_size</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">optimizer</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">fit_args</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">fit_args</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;verbose&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;epochs&quot;</span><span class="p">:</span> <span class="mi">3000</span><span class="p">,</span>
+                <span class="s2">&quot;batch_size&quot;</span><span class="p">:</span> <span class="mi">16</span><span class="p">,</span>
+                <span class="s2">&quot;callbacks&quot;</span><span class="p">:</span> <span class="p">[</span>
+                    <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">EarlyStopping</span><span class="p">(</span>
+                        <span class="n">monitor</span><span class="o">=</span><span class="s2">&quot;loss&quot;</span><span class="p">,</span> <span class="n">patience</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">restore_best_weights</span><span class="o">=</span><span class="kc">True</span>
+                    <span class="p">)</span>
+                <span class="p">],</span>
+            <span class="p">}</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">loss</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="n">negative_log_likelihood</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">metrics</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">metrics</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;mse&quot;</span><span class="p">]</span>
+
+        <span class="n">model</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">optimizer</span><span class="p">,</span>
+            <span class="n">loss</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">loss</span><span class="p">]</span> <span class="o">*</span> <span class="n">model</span><span class="o">.</span><span class="n">ensemble_size</span><span class="p">,</span>
+            <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">metrics</span><span class="p">]</span> <span class="o">*</span> <span class="n">model</span><span class="o">.</span><span class="n">ensemble_size</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">lr</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">schedules</span><span class="o">.</span><span class="n">LearningRateSchedule</span>
+        <span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">original_lr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">lr</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_absolute_epochs</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_continuous_optimisation</span> <span class="o">=</span> <span class="n">continuous_optimisation</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bootstrap</span> <span class="o">=</span> <span class="n">bootstrap</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_diversify</span> <span class="o">=</span> <span class="n">diversify</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;DeepEnsemble(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="si">!r}</span><span class="s2">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="si">!r}</span><span class="s2">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_bootstrap</span><span class="si">!r}</span><span class="s2">, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_diversify</span><span class="si">!r}</span><span class="s2">)&quot;</span>
+        <span class="p">)</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="DeepEnsemble.model"><a class="viewcode-back" href="../../../../autoapi/trieste/models/keras/models/index.html#trieste.models.keras.DeepEnsemble.model">[docs]</a>    <span class="k">def</span> <span class="nf">model</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Model</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; &quot; Returns compiled Keras ensemble model.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">model</span></div>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="DeepEnsemble.ensemble_size"><a class="viewcode-back" href="../../../../autoapi/trieste/models/keras/models/index.html#trieste.models.keras.DeepEnsemble.ensemble_size">[docs]</a>    <span class="k">def</span> <span class="nf">ensemble_size</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the size of the ensemble, that is, the number of base learners or individual neural</span>
+<span class="sd">        network models in the ensemble.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">ensemble_size</span></div>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="DeepEnsemble.num_outputs"><a class="viewcode-back" href="../../../../autoapi/trieste/models/keras/models/index.html#trieste.models.keras.DeepEnsemble.num_outputs">[docs]</a>    <span class="k">def</span> <span class="nf">num_outputs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the number of outputs trained on by each member network.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">num_outputs</span></div>
+
+<div class="viewcode-block" id="DeepEnsemble.prepare_dataset"><a class="viewcode-back" href="../../../../autoapi/trieste/models/keras/models/index.html#trieste.models.keras.DeepEnsemble.prepare_dataset">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_dataset</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">],</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Transform ``dataset`` into inputs and outputs with correct names that can be used for</span>
+<span class="sd">        training the :class:`KerasEnsemble` model.</span>
+
+<span class="sd">        If ``bootstrap`` argument in the :class:`~trieste.models.keras.DeepEnsemble` is set to</span>
+<span class="sd">        `True`, data will be additionally sampled with replacement, independently for</span>
+<span class="sd">        each network in the ensemble.</span>
+
+<span class="sd">        :param dataset: A dataset with ``query_points`` and ``observations`` tensors.</span>
+<span class="sd">        :return: A dictionary with input data and a dictionary with output data.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">inputs</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">outputs</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ensemble_size</span><span class="p">):</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bootstrap</span><span class="p">:</span>
+                <span class="n">resampled_data</span> <span class="o">=</span> <span class="n">sample_with_replacement</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">resampled_data</span> <span class="o">=</span> <span class="n">dataset</span>
+            <span class="n">input_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">input_names</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+            <span class="n">output_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">output_names</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+            <span class="n">inputs</span><span class="p">[</span><span class="n">input_name</span><span class="p">],</span> <span class="n">outputs</span><span class="p">[</span><span class="n">output_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">resampled_data</span><span class="o">.</span><span class="n">astuple</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">outputs</span></div>
+
+<div class="viewcode-block" id="DeepEnsemble.prepare_query_points"><a class="viewcode-back" href="../../../../autoapi/trieste/models/keras/models/index.html#trieste.models.keras.DeepEnsemble.prepare_query_points">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_query_points</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Transform ``query_points`` into inputs with correct names that can be used for</span>
+<span class="sd">        predicting with the model.</span>
+
+<span class="sd">        :param query_points: A tensor with ``query_points``.</span>
+<span class="sd">        :return: A dictionary with query_points prepared for predictions.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">inputs</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ensemble_size</span><span class="p">):</span>
+            <span class="n">inputs</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">input_names</span><span class="p">[</span><span class="n">index</span><span class="p">]]</span> <span class="o">=</span> <span class="n">query_points</span>
+
+        <span class="k">return</span> <span class="n">inputs</span></div>
+
+<div class="viewcode-block" id="DeepEnsemble.ensemble_distributions"><a class="viewcode-back" href="../../../../autoapi/trieste/models/keras/models/index.html#trieste.models.keras.DeepEnsemble.ensemble_distributions">[docs]</a>    <span class="k">def</span> <span class="nf">ensemble_distributions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">tfd</span><span class="o">.</span><span class="n">Distribution</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return distributions for each member of the ensemble.</span>
+
+<span class="sd">        :param query_points: The points at which to return distributions.</span>
+<span class="sd">        :return: The distributions for the observations at the specified</span>
+<span class="sd">            ``query_points`` for each member of the ensemble.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x_transformed</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prepare_query_points</span><span class="p">(</span><span class="n">query_points</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="n">x_transformed</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="DeepEnsemble.predict"><a class="viewcode-back" href="../../../../autoapi/trieste/models/keras/models/index.html#trieste.models.keras.DeepEnsemble.predict">[docs]</a>    <span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns mean and variance at ``query_points`` for the whole ensemble.</span>
+
+<span class="sd">        Following &lt;cite data-cite=&quot;lakshminarayanan2017simple&quot;/&gt; we treat the ensemble as a</span>
+<span class="sd">        uniformly-weighted Gaussian mixture model and combine the predictions as</span>
+
+<span class="sd">        .. math:: p(y|\mathbf{x}) = M^{-1} \Sum_{m=1}^M \mathcal{N}</span>
+<span class="sd">            (\mu_{\theta_m}(\mathbf{x}),\,\sigma_{\theta_m}^{2}(\mathbf{x}))</span>
+
+<span class="sd">        We further approximate the ensemble prediction as a Gaussian whose mean and variance</span>
+<span class="sd">        are respectively the mean and variance of the mixture, given by</span>
+
+<span class="sd">        .. math:: \mu_{*}(\mathbf{x}) = M^{-1} \Sum_{m=1}^M \mu_{\theta_m}(\mathbf{x})</span>
+
+<span class="sd">        .. math:: \sigma^2_{*}(\mathbf{x}) = M^{-1} \Sum_{m=1}^M (\sigma_{\theta_m}^{2}(\mathbf{x})</span>
+<span class="sd">            + \mu^2_{\theta_m}(\mathbf{x})) - \mu^2_{*}(\mathbf{x})</span>
+
+<span class="sd">        This method assumes that the final layer in each member of the ensemble is</span>
+<span class="sd">        probabilistic, an instance of :class:`~tfp.distributions.Distribution`. In particular, given</span>
+<span class="sd">        the nature of the approximations stated above the final layer should be a Gaussian</span>
+<span class="sd">        distribution with `mean` and `variance` methods.</span>
+
+<span class="sd">        :param query_points: The points at which to make predictions.</span>
+<span class="sd">        :return: The predicted mean and variance of the observations at the specified</span>
+<span class="sd">            ``query_points``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># handle leading batch dimensions, while still allowing `Functional` to</span>
+        <span class="c1"># &quot;allow (None,) and (None, 1) Tensors to be passed interchangeably&quot;</span>
+        <span class="n">input_dims</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">query_points</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">input_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+        <span class="n">flat_x</span><span class="p">,</span> <span class="n">unflatten</span> <span class="o">=</span> <span class="n">flatten_leading_dims</span><span class="p">(</span><span class="n">query_points</span><span class="p">,</span> <span class="n">output_dims</span><span class="o">=</span><span class="n">input_dims</span><span class="p">)</span>
+        <span class="n">ensemble_distributions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ensemble_distributions</span><span class="p">(</span><span class="n">flat_x</span><span class="p">)</span>
+        <span class="n">predicted_means</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">dist</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="k">for</span> <span class="n">dist</span> <span class="ow">in</span> <span class="n">ensemble_distributions</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span>
+        <span class="p">)</span>
+        <span class="n">predicted_vars</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">dist</span><span class="o">.</span><span class="n">variance</span><span class="p">()</span> <span class="o">+</span> <span class="n">dist</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">**</span> <span class="mi">2</span> <span class="k">for</span> <span class="n">dist</span> <span class="ow">in</span> <span class="n">ensemble_distributions</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span>
+            <span class="p">)</span>
+            <span class="o">-</span> <span class="n">predicted_means</span><span class="o">**</span><span class="mi">2</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">unflatten</span><span class="p">(</span><span class="n">predicted_means</span><span class="p">),</span> <span class="n">unflatten</span><span class="p">(</span><span class="n">predicted_vars</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="DeepEnsemble.predict_ensemble"><a class="viewcode-back" href="../../../../autoapi/trieste/models/keras/models/index.html#trieste.models.keras.DeepEnsemble.predict_ensemble">[docs]</a>    <span class="k">def</span> <span class="nf">predict_ensemble</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns mean and variance at ``query_points`` for each member of the ensemble. First tensor</span>
+<span class="sd">        is the mean and second is the variance, where each has shape [..., M, N, 1], where M is</span>
+<span class="sd">        the ``ensemble_size``.</span>
+
+<span class="sd">        This method assumes that the final layer in each member of the ensemble is</span>
+<span class="sd">        probabilistic, an instance of :class:`¬tfp.distributions.Distribution`, in particular</span>
+<span class="sd">        `mean` and `variance` methods should be available.</span>
+
+<span class="sd">        :param query_points: The points at which to make predictions.</span>
+<span class="sd">        :return: The predicted mean and variance of the observations at the specified</span>
+<span class="sd">            ``query_points`` for each member of the ensemble.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ensemble_distributions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ensemble_distributions</span><span class="p">(</span><span class="n">query_points</span><span class="p">)</span>
+        <span class="n">predicted_means</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">convert_to_tensor</span><span class="p">([</span><span class="n">dist</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="k">for</span> <span class="n">dist</span> <span class="ow">in</span> <span class="n">ensemble_distributions</span><span class="p">])</span>
+        <span class="n">predicted_vars</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">convert_to_tensor</span><span class="p">([</span><span class="n">dist</span><span class="o">.</span><span class="n">variance</span><span class="p">()</span> <span class="k">for</span> <span class="n">dist</span> <span class="ow">in</span> <span class="n">ensemble_distributions</span><span class="p">])</span>
+
+        <span class="k">return</span> <span class="n">predicted_means</span><span class="p">,</span> <span class="n">predicted_vars</span></div>
+
+<div class="viewcode-block" id="DeepEnsemble.sample"><a class="viewcode-back" href="../../../../autoapi/trieste/models/keras/models/index.html#trieste.models.keras.DeepEnsemble.sample">[docs]</a>    <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return ``num_samples`` samples at ``query_points``. We use the mixture approximation in</span>
+<span class="sd">        :meth:`predict` for ``query_points`` and sample ``num_samples`` times from a Gaussian</span>
+<span class="sd">        distribution given by the predicted mean and variance.</span>
+
+<span class="sd">        :param query_points: The points at which to sample, with shape [..., N, D].</span>
+<span class="sd">        :param num_samples: The number of samples at each point.</span>
+<span class="sd">        :return: The samples. For a predictive distribution with event shape E, this has shape</span>
+<span class="sd">            [..., S, N] + E, where S is the number of samples.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">predicted_means</span><span class="p">,</span> <span class="n">predicted_vars</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">query_points</span><span class="p">)</span>
+        <span class="n">normal</span> <span class="o">=</span> <span class="n">tfp</span><span class="o">.</span><span class="n">distributions</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="n">predicted_means</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">predicted_vars</span><span class="p">))</span>
+        <span class="n">samples</span> <span class="o">=</span> <span class="n">normal</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">num_samples</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">samples</span>  <span class="c1"># [num_samples, len(query_points), 1]</span></div>
+
+<div class="viewcode-block" id="DeepEnsemble.sample_ensemble"><a class="viewcode-back" href="../../../../autoapi/trieste/models/keras/models/index.html#trieste.models.keras.DeepEnsemble.sample_ensemble">[docs]</a>    <span class="k">def</span> <span class="nf">sample_ensemble</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return ``num_samples`` samples at ``query_points``. Each sample is taken from a Gaussian</span>
+<span class="sd">        distribution given by the predicted mean and variance of a randomly chosen network in the</span>
+<span class="sd">        ensemble. This avoids using the Gaussian mixture approximation and samples directly from</span>
+<span class="sd">        individual Gaussian distributions given by each network in the ensemble.</span>
+
+<span class="sd">        :param query_points: The points at which to sample, with shape [..., N, D].</span>
+<span class="sd">        :param num_samples: The number of samples at each point.</span>
+<span class="sd">        :return: The samples. For a predictive distribution with event shape E, this has shape</span>
+<span class="sd">            [..., S, N] + E, where S is the number of samples.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ensemble_distributions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ensemble_distributions</span><span class="p">(</span><span class="n">query_points</span><span class="p">)</span>
+        <span class="n">network_indices</span> <span class="o">=</span> <span class="n">sample_model_index</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ensemble_size</span><span class="p">,</span> <span class="n">num_samples</span><span class="p">)</span>
+
+        <span class="n">stacked_samples</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_samples</span><span class="p">):</span>
+            <span class="n">stacked_samples</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ensemble_distributions</span><span class="p">[</span><span class="n">network_indices</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span><span class="o">.</span><span class="n">sample</span><span class="p">())</span>
+        <span class="n">samples</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">stacked_samples</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">samples</span>  <span class="c1"># [num_samples, len(query_points), 1]</span></div>
+
+<div class="viewcode-block" id="DeepEnsemble.trajectory_sampler"><a class="viewcode-back" href="../../../../autoapi/trieste/models/keras/models/index.html#trieste.models.keras.DeepEnsemble.trajectory_sampler">[docs]</a>    <span class="k">def</span> <span class="nf">trajectory_sampler</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TrajectorySampler</span><span class="p">[</span><span class="n">DeepEnsemble</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a trajectory sampler. For :class:`DeepEnsemble`, we use an ensemble</span>
+<span class="sd">        sampler that randomly picks a network from the ensemble and uses its predicted means</span>
+<span class="sd">        for generating a trajectory, or optionally randomly sampled quantiles rather than means.</span>
+
+<span class="sd">        :return: The trajectory sampler.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">DeepEnsembleTrajectorySampler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_diversify</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="DeepEnsemble.update"><a class="viewcode-back" href="../../../../autoapi/trieste/models/keras/models/index.html#trieste.models.keras.DeepEnsemble.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Neural networks are parametric models and do not need to update data.</span>
+<span class="sd">        `TrainableProbabilisticModel` interface, however, requires an update method, so</span>
+<span class="sd">        here we simply pass the execution.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span></div>
+
+<div class="viewcode-block" id="DeepEnsemble.optimize"><a class="viewcode-back" href="../../../../autoapi/trieste/models/keras/models/index.html#trieste.models.keras.DeepEnsemble.optimize">[docs]</a>    <span class="k">def</span> <span class="nf">optimize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Optimize the underlying Keras ensemble model with the specified ``dataset``.</span>
+
+<span class="sd">        Optimization is performed by using the Keras `fit` method, rather than applying the</span>
+<span class="sd">        optimizer and using the batches supplied with the optimizer wrapper. User can pass</span>
+<span class="sd">        arguments to the `fit` method through ``minimize_args`` argument in the optimizer wrapper.</span>
+<span class="sd">        These default to using 100 epochs, batch size 100, and verbose 0. See</span>
+<span class="sd">        https://keras.io/api/models/model_training_apis/#fit-method for a list of possible</span>
+<span class="sd">        arguments.</span>
+
+<span class="sd">        Note that optimization does not return the result, instead optimization results are</span>
+<span class="sd">        stored in a history attribute of the model object.</span>
+
+<span class="sd">        :param dataset: The data with which to optimize the model.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">fit_args</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">fit_args</span><span class="p">)</span>
+
+        <span class="c1"># Tell optimizer how many epochs have been used before: the optimizer will &quot;continue&quot;</span>
+        <span class="c1"># optimization across multiple BO iterations rather than start fresh at each iteration.</span>
+        <span class="c1"># This allows us to monitor training across iterations.</span>
+
+        <span class="k">if</span> <span class="s2">&quot;epochs&quot;</span> <span class="ow">in</span> <span class="n">fit_args</span><span class="p">:</span>
+            <span class="n">fit_args</span><span class="p">[</span><span class="s2">&quot;epochs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fit_args</span><span class="p">[</span><span class="s2">&quot;epochs&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_absolute_epochs</span>
+
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prepare_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+        <span class="n">history</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
+            <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span>
+            <span class="n">y</span><span class="o">=</span><span class="n">y</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">fit_args</span><span class="p">,</span>
+            <span class="n">initial_epoch</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_absolute_epochs</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_continuous_optimisation</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_absolute_epochs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_absolute_epochs</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">history</span><span class="o">.</span><span class="n">history</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">])</span>
+
+        <span class="c1"># Reset lr in case there was an lr schedule: a schedule will have changed the learning</span>
+        <span class="c1"># rate, so that the next time we call `optimize` the starting learning rate would be</span>
+        <span class="c1"># different. Therefore, we make sure the learning rate is set back to its initial value.</span>
+        <span class="c1"># However, this is not needed for `LearningRateSchedule` instances.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">lr</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">schedules</span><span class="o">.</span><span class="n">LearningRateSchedule</span>
+        <span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">lr</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">original_lr</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="DeepEnsemble.log"><a class="viewcode-back" href="../../../../autoapi/trieste/models/keras/models/index.html#trieste.models.keras.DeepEnsemble.log">[docs]</a>    <span class="k">def</span> <span class="nf">log</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Log model training information at a given optimization step to the Tensorboard.</span>
+<span class="sd">        We log several summary statistics of losses and metrics given in ``fit_args`` to</span>
+<span class="sd">        ``optimizer`` (final, difference between inital and final loss, min and max). We also log</span>
+<span class="sd">        epoch statistics, but as histograms, rather than time series. We also log several training</span>
+<span class="sd">        data based metrics, such as root mean square error between predictions and observations,</span>
+<span class="sd">        and several others.</span>
+
+<span class="sd">        We do not log statistics of individual models in the ensemble unless specifically switched</span>
+<span class="sd">        on with ``trieste.logging.set_summary_filter(lambda name: True)``.</span>
+
+<span class="sd">        For custom logs user will need to subclass the model and overwrite this method.</span>
+
+<span class="sd">        :param dataset: Optional data that can be used to log additional data-based model summaries.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">summary_writer</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">get_tensorboard_writer</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">summary_writer</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">summary_writer</span><span class="o">.</span><span class="n">as_default</span><span class="p">(</span><span class="n">step</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">get_step_number</span><span class="p">()):</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s2">&quot;epochs/num_epochs&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">epoch</span><span class="p">))</span>
+                <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="n">KEY_SPLITTER</span> <span class="o">=</span> <span class="p">{</span>
+                        <span class="c1"># map history keys to prefix and suffix</span>
+                        <span class="s2">&quot;loss&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;loss&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+                        <span class="sa">r</span><span class="s2">&quot;(?P&lt;model&gt;model_\d+)_output_loss&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;loss&quot;</span><span class="p">,</span> <span class="sa">r</span><span class="s2">&quot;_\g&lt;model&gt;&quot;</span><span class="p">),</span>
+                        <span class="sa">r</span><span class="s2">&quot;(?P&lt;model&gt;model_\d+)_output_(?P&lt;metric&gt;.+)&quot;</span><span class="p">:</span> <span class="p">(</span>
+                            <span class="sa">r</span><span class="s2">&quot;\g&lt;metric&gt;&quot;</span><span class="p">,</span>
+                            <span class="sa">r</span><span class="s2">&quot;_\g&lt;model&gt;&quot;</span><span class="p">,</span>
+                        <span class="p">),</span>
+                    <span class="p">}</span>
+                    <span class="k">for</span> <span class="n">pattern</span><span class="p">,</span> <span class="p">(</span><span class="n">pre_sub</span><span class="p">,</span> <span class="n">post_sub</span><span class="p">)</span> <span class="ow">in</span> <span class="n">KEY_SPLITTER</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                        <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+                            <span class="n">pre</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">pre_sub</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
+                            <span class="n">post</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">post_sub</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
+                            <span class="k">break</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="c1"># unrecognised history key; ignore</span>
+                        <span class="k">continue</span>
+                    <span class="k">if</span> <span class="s2">&quot;model&quot;</span> <span class="ow">in</span> <span class="n">post</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">logging</span><span class="o">.</span><span class="n">include_summary</span><span class="p">(</span><span class="s2">&quot;_ensemble&quot;</span><span class="p">):</span>
+                        <span class="k">break</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="s2">&quot;model&quot;</span> <span class="ow">in</span> <span class="n">post</span><span class="p">:</span>
+                            <span class="n">pre</span> <span class="o">=</span> <span class="n">pre</span> <span class="o">+</span> <span class="s2">&quot;/_ensemble&quot;</span>
+                        <span class="n">logging</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">pre</span><span class="si">}</span><span class="s2">/epoch</span><span class="si">{</span><span class="n">post</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">v</span><span class="p">)</span>
+                        <span class="n">logging</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">pre</span><span class="si">}</span><span class="s2">/final</span><span class="si">{</span><span class="n">post</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">v</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+                        <span class="n">logging</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">pre</span><span class="si">}</span><span class="s2">/diff</span><span class="si">{</span><span class="n">post</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">v</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">v</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+                        <span class="n">logging</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">pre</span><span class="si">}</span><span class="s2">/min</span><span class="si">{</span><span class="n">post</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_min</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
+                        <span class="n">logging</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">pre</span><span class="si">}</span><span class="s2">/max</span><span class="si">{</span><span class="n">post</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_max</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">dataset</span><span class="p">:</span>
+                    <span class="n">write_summary_data_based_metrics</span><span class="p">(</span>
+                        <span class="n">dataset</span><span class="o">=</span><span class="n">dataset</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;training_&quot;</span>
+                    <span class="p">)</span>
+                    <span class="k">if</span> <span class="n">logging</span><span class="o">.</span><span class="n">include_summary</span><span class="p">(</span><span class="s2">&quot;_ensemble&quot;</span><span class="p">):</span>
+                        <span class="n">predict_ensemble_variance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">predict_ensemble</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+                        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">predict_ensemble_variance</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+                            <span class="n">logging</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span>
+                                <span class="sa">f</span><span class="s2">&quot;variance/_ensemble/predict_variance_model_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                                <span class="n">predict_ensemble_variance</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+                            <span class="p">)</span>
+                            <span class="n">logging</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span>
+                                <span class="sa">f</span><span class="s2">&quot;variance/_ensemble/predict_variance_mean_model_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                                <span class="n">tf</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span><span class="n">predict_ensemble_variance</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="o">...</span><span class="p">]),</span>
+                            <span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">__getstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+        <span class="c1"># use to_json and get_weights to save any optimizer fit_arg callback models</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer</span><span class="p">:</span>
+            <span class="n">callbacks</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Callback</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer</span><span class="o">.</span><span class="n">fit_args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;callbacks&quot;</span><span class="p">,</span> <span class="p">[])</span>
+            <span class="n">saved_models</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">KerasOptimizer</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">tensorboard_writers</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="n">callbacks</span><span class="p">:</span>
+                    <span class="c1"># serialize the callback models before pickling the optimizer</span>
+                    <span class="n">saved_models</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">callback</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">callback</span><span class="o">.</span><span class="n">model</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">:</span>
+                        <span class="c1"># no need to serialize the main model, just use a special value instead</span>
+                        <span class="n">callback</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="o">...</span>
+                    <span class="k">elif</span> <span class="n">callback</span><span class="o">.</span><span class="n">model</span><span class="p">:</span>
+                        <span class="n">callback</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="p">(</span><span class="n">callback</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">to_json</span><span class="p">(),</span> <span class="n">callback</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">get_weights</span><span class="p">())</span>
+                    <span class="c1"># don&#39;t pickle tensorboard writers either; they&#39;ll be recreated when needed</span>
+                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">callback</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">TensorBoard</span><span class="p">):</span>
+                        <span class="n">tensorboard_writers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">callback</span><span class="o">.</span><span class="n">_writers</span><span class="p">)</span>
+                        <span class="n">callback</span><span class="o">.</span><span class="n">_writers</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="n">state</span><span class="p">[</span><span class="s2">&quot;_optimizer&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dill</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s2">&quot;_optimizer&quot;</span><span class="p">])</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+                    <span class="s2">&quot;Failed to copy DeepEnsemble optimizer due to unsupported callbacks.&quot;</span>
+                <span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+            <span class="k">finally</span><span class="p">:</span>
+                <span class="c1"># revert original state, even if the pickling failed</span>
+                <span class="k">for</span> <span class="n">callback</span><span class="p">,</span> <span class="n">model</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">callbacks</span><span class="p">,</span> <span class="n">saved_models</span><span class="p">):</span>
+                    <span class="n">callback</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
+                <span class="k">for</span> <span class="n">callback</span><span class="p">,</span> <span class="n">writers</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+                    <span class="p">(</span><span class="n">cb</span> <span class="k">for</span> <span class="n">cb</span> <span class="ow">in</span> <span class="n">callbacks</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cb</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">TensorBoard</span><span class="p">)),</span>
+                    <span class="n">tensorboard_writers</span><span class="p">,</span>
+                <span class="p">):</span>
+                    <span class="n">callback</span><span class="o">.</span><span class="n">_writers</span> <span class="o">=</span> <span class="n">writers</span>
+        <span class="k">return</span> <span class="n">state</span>
+
+    <span class="k">def</span> <span class="nf">__setstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Restore optimizer and callback models after depickling, and recompile.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+
+        <span class="c1"># Unpickle the optimizer, and restore all the callback models</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer</span> <span class="o">=</span> <span class="n">dill</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_optimizer</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer</span><span class="o">.</span><span class="n">fit_args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;callbacks&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+            <span class="k">if</span> <span class="n">callback</span><span class="o">.</span><span class="n">model</span> <span class="ow">is</span> <span class="o">...</span><span class="p">:</span>
+                <span class="n">callback</span><span class="o">.</span><span class="n">set_model</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">callback</span><span class="o">.</span><span class="n">model</span><span class="p">:</span>
+                <span class="n">model_json</span><span class="p">,</span> <span class="n">weights</span> <span class="o">=</span> <span class="n">callback</span><span class="o">.</span><span class="n">model</span>
+                <span class="n">model</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">model_from_json</span><span class="p">(</span>
+                    <span class="n">model_json</span><span class="p">,</span>
+                    <span class="n">custom_objects</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;MultivariateNormalTriL&quot;</span><span class="p">:</span> <span class="n">MultivariateNormalTriL</span><span class="p">},</span>
+                <span class="p">)</span>
+                <span class="n">model</span><span class="o">.</span><span class="n">set_weights</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span>
+                <span class="n">callback</span><span class="o">.</span><span class="n">set_model</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+        <span class="c1"># Recompile the model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">optimizer</span><span class="p">,</span>
+            <span class="n">loss</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">loss</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">ensemble_size</span><span class="p">,</span>
+            <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">metrics</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">ensemble_size</span><span class="p">,</span>
+        <span class="p">)</span></div>
+</pre></div>
+
+                </article>
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52"></script>
+<script src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+  <p class="copyright">
+    
+      © Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.0.1.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item"><p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.13.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

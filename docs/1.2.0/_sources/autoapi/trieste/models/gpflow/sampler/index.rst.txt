@@ -1,0 +1,407 @@
+:py:mod:`trieste.models.gpflow.sampler`
+=======================================
+
+.. py:module:: trieste.models.gpflow.sampler
+
+.. autoapi-nested-parse::
+
+   This module is the home of the sampling functionality required by Trieste's
+   GPflow wrappers.
+
+
+
+Module Contents
+---------------
+
+.. py:function:: qmc_normal_samples(num_samples: _IntTensorType, n_sample_dim: _IntTensorType, skip: _IntTensorType = 0) -> tensorflow.Tensor
+
+   Generates `num_samples` sobol samples, skipping the first `skip`, where each
+   sample has dimension `n_sample_dim`.
+
+
+.. py:class:: IndependentReparametrizationSampler(sample_size: int, model: trieste.models.interfaces.ProbabilisticModel, qmc: bool = False, qmc_skip: bool = True)
+
+
+   Bases: :py:obj:`trieste.models.interfaces.ReparametrizationSampler`\ [\ :py:obj:`trieste.models.interfaces.ProbabilisticModel`\ ]
+
+   This sampler employs the *reparameterization trick* to approximate samples from a
+   :class:`ProbabilisticModel`\ 's predictive distribution as
+
+   .. math:: x \mapsto \mu(x) + \epsilon \sigma(x)
+
+   where :math:`\epsilon \sim \mathcal N (0, 1)` is constant for a given sampler, thus ensuring
+   samples form a continuous curve.
+
+   :param sample_size: The number of samples to take at each point. Must be positive.
+   :param model: The model to sample from.
+   :param qmc: Whether to use QMC sobol sampling instead of random normal sampling. QMC
+       sampling more accurately approximates a normal distribution than truly random samples.
+   :param qmc_skip: Whether to use the skip parameter to ensure the QMC sampler gives different
+       samples whenever it is reset. This is not supported with XLA.
+   :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
+
+   .. py:attribute:: skip
+      :type: trieste.types.TensorType
+
+      Number of sobol sequence points to skip. This is incremented for each sampler.
+
+
+   .. py:method:: sample(at: trieste.types.TensorType, *, jitter: float = DEFAULTS.JITTER) -> trieste.types.TensorType
+
+      Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
+      :meth:`sample`, for any given :class:`IndependentReparametrizationSampler` and ``at``, will
+      produce the exact same samples. Calls to :meth:`sample` on *different*
+      :class:`IndependentReparametrizationSampler` instances will produce different samples.
+
+      :param at: Where to sample the predictive distribution, with shape `[..., 1, D]`, for points
+          of dimension `D`.
+      :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
+          the covariance matrix.
+      :return: The samples, of shape `[..., S, 1, L]`, where `S` is the `sample_size` and `L` is
+          the number of latent model dimensions.
+      :raise ValueError (or InvalidArgumentError): If ``at`` has an invalid shape or ``jitter``
+          is negative.
+
+
+
+.. py:class:: BatchReparametrizationSampler(sample_size: int, model: trieste.models.interfaces.SupportsPredictJoint, qmc: bool = False, qmc_skip: bool = True)
+
+
+   Bases: :py:obj:`trieste.models.interfaces.ReparametrizationSampler`\ [\ :py:obj:`trieste.models.interfaces.SupportsPredictJoint`\ ]
+
+   This sampler employs the *reparameterization trick* to approximate batches of samples from a
+   :class:`ProbabilisticModel`\ 's predictive joint distribution as
+
+   .. math:: x \mapsto \mu(x) + \epsilon L(x)
+
+   where :math:`L` is the Cholesky factor s.t. :math:`LL^T` is the covariance, and
+   :math:`\epsilon \sim \mathcal N (0, 1)` is constant for a given sampler, thus ensuring samples
+   form a continuous curve.
+
+   :param sample_size: The number of samples for each batch of points. Must be positive.
+   :param model: The model to sample from.
+   :param qmc: Whether to use QMC sobol sampling instead of random normal sampling. QMC
+       sampling more accurately approximates a normal distribution than truly random samples.
+   :param qmc_skip: Whether to use the skip parameter to ensure the QMC sampler gives different
+       samples whenever it is reset. This is not supported with XLA.
+   :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
+
+   .. py:attribute:: skip
+      :type: trieste.types.TensorType
+
+      Number of sobol sequence points to skip. This is incremented for each sampler.
+
+
+   .. py:method:: sample(at: trieste.types.TensorType, *, jitter: float = DEFAULTS.JITTER) -> trieste.types.TensorType
+
+      Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
+      :meth:`sample`, for any given :class:`BatchReparametrizationSampler` and ``at``, will
+      produce the exact same samples. Calls to :meth:`sample` on *different*
+      :class:`BatchReparametrizationSampler` instances will produce different samples.
+
+      :param at: Batches of query points at which to sample the predictive distribution, with
+          shape `[..., B, D]`, for batches of size `B` of points of dimension `D`. Must have a
+          consistent batch size across all calls to :meth:`sample` for any given
+          :class:`BatchReparametrizationSampler`.
+      :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
+          the covariance matrix.
+      :return: The samples, of shape `[..., S, B, L]`, where `S` is the `sample_size`, `B` the
+          number of points per batch, and `L` the dimension of the model's predictive
+          distribution.
+      :raise ValueError (or InvalidArgumentError): If any of the following are true:
+          - ``at`` is a scalar.
+          - The batch size `B` of ``at`` is not positive.
+          - The batch size `B` of ``at`` differs from that of previous calls.
+          - ``jitter`` is negative.
+
+
+
+.. py:class:: FeatureDecompositionInternalDataModel
+
+
+   Bases: :py:obj:`trieste.models.interfaces.SupportsGetKernel`, :py:obj:`trieste.models.interfaces.SupportsGetMeanFunction`, :py:obj:`trieste.models.interfaces.SupportsGetObservationNoise`, :py:obj:`trieste.models.interfaces.SupportsGetInternalData`, :py:obj:`typing_extensions.Protocol`
+
+   A probabilistic model that supports get_kernel, get_mean_function, get_observation_noise
+   and get_internal_data methods.
+
+
+.. py:class:: FeatureDecompositionInducingPointModel
+
+
+   Bases: :py:obj:`trieste.models.interfaces.SupportsGetKernel`, :py:obj:`trieste.models.interfaces.SupportsGetMeanFunction`, :py:obj:`trieste.models.interfaces.SupportsGetInducingVariables`, :py:obj:`typing_extensions.Protocol`
+
+   A probabilistic model that supports get_kernel, get_mean_function
+   and get_inducing_point methods.
+
+
+.. py:class:: FeatureDecompositionTrajectorySampler(model: FeatureDecompositionTrajectorySamplerModelType, feature_functions: ResampleableRandomFourierFeatureFunctions)
+
+
+   Bases: :py:obj:`trieste.models.interfaces.TrajectorySampler`\ [\ :py:obj:`FeatureDecompositionTrajectorySamplerModelType`\ ], :py:obj:`abc.ABC`
+
+   This is a general class to build functions that approximate a trajectory sampled from an
+   underlying Gaussian process model.
+
+   In particular, we approximate the Gaussian processes' posterior samples as the finite feature
+   approximation
+
+   .. math:: \hat{f}(x) = \sum_{i=1}^m \phi_i(x)\theta_i
+
+   where :math:`\phi_i` are m features and :math:`\theta_i` are feature weights sampled from a
+   given distribution
+
+   Achieving consistency (ensuring that the same sample draw for all evalutions of a particular
+   trajectory function) for exact sample draws from a GP is prohibitively costly because it scales
+   cubically with the number of query points. However, finite feature representations can be
+   evaluated with constant cost regardless of the required number of queries.
+
+   :param model: The model to sample from.
+   :raise ValueError: If ``dataset`` is empty.
+
+   .. py:method:: get_trajectory() -> trieste.models.interfaces.TrajectoryFunction
+
+      Generate an approximate function draw (trajectory) by sampling weights
+      and evaluating the feature functions.
+
+      :return: A trajectory function representing an approximate trajectory from the Gaussian
+          process, taking an input of shape `[N, B, D]` and returning shape `[N, B, L]`
+          where `L` is the number of outputs of the model.
+
+
+   .. py:method:: update_trajectory(trajectory: trieste.models.interfaces.TrajectoryFunction) -> trieste.models.interfaces.TrajectoryFunction
+
+      Efficiently update a :const:`TrajectoryFunction` to reflect an update in its
+      underlying :class:`ProbabilisticModel` and resample accordingly.
+
+      For a :class:`FeatureDecompositionTrajectorySampler`, updating the sampler
+      corresponds to resampling the feature functions (taking into account any
+      changed kernel parameters) and recalculating the weight distribution.
+
+      :param trajectory: The trajectory function to be resampled.
+      :return: The new resampled trajectory function.
+
+
+   .. py:method:: resample_trajectory(trajectory: trieste.models.interfaces.TrajectoryFunction) -> trieste.models.interfaces.TrajectoryFunction
+
+      Efficiently resample a :const:`TrajectoryFunction` in-place to avoid function retracing
+      with every new sample.
+
+      :param trajectory: The trajectory function to be resampled.
+      :return: The new resampled trajectory function.
+
+
+   .. py:method:: _prepare_weight_sampler() -> Callable[[int], trieste.types.TensorType]
+      :abstractmethod:
+
+      Calculate the posterior of the feature weights for the specified feature functions,
+      returning a function that takes in a batch size `B` and returns `B` samples for
+      the weights of each of the `F` features for `L` outputs.
+
+
+
+.. py:class:: RandomFourierFeatureTrajectorySampler(model: FeatureDecompositionInternalDataModel, num_features: int = 1000)
+
+
+   Bases: :py:obj:`FeatureDecompositionTrajectorySampler`\ [\ :py:obj:`FeatureDecompositionInternalDataModel`\ ]
+
+   This class builds functions that approximate a trajectory sampled from an underlying Gaussian
+   process model. For tractibility, the Gaussian process is approximated with a Bayesian
+   Linear model across a set of features sampled from the Fourier feature decomposition of
+   the model's kernel. See :cite:`hernandez2014predictive` for details. Currently we do not
+   support models with multiple latent Gaussian processes.
+
+   In particular, we approximate the Gaussian processes' posterior samples as the finite feature
+   approximation
+
+   .. math:: \hat{f}(x) = \sum_{i=1}^m \phi_i(x)\theta_i
+
+   where :math:`\phi_i` are m Fourier features and :math:`\theta_i` are
+   feature weights sampled from a posterior distribution that depends on the feature values at the
+   model's datapoints.
+
+   Our implementation follows :cite:`hernandez2014predictive`, with our calculations
+   differing slightly depending on properties of the problem. In particular,  we used different
+   calculation strategies depending on the number of considered features m and the number
+   of data points n.
+
+   If :math:`m<n` then we follow Appendix A of :cite:`hernandez2014predictive` and calculate the
+   posterior distribution for :math:`\theta` following their Bayesian linear regression motivation,
+   i.e. the computation revolves around an O(m^3)  inversion of a design matrix.
+
+   If :math:`n<m` then we use the kernel trick to recast computation to revolve around an O(n^3)
+   inversion of a gram matrix. As well as being more efficient in early BO
+   steps (where :math:`n<m`), this second computation method allows much larger choices
+   of m (as required to approximate very flexible kernels).
+
+   :param model: The model to sample from.
+   :param num_features: The number of features used to approximate the kernel. We use a default
+       of 1000 as it typically perfoms well for a wide range of kernels. Note that very smooth
+       kernels (e.g. RBF) can be well-approximated with fewer features.
+   :raise ValueError: If ``dataset`` is empty.
+
+   .. py:method:: _prepare_weight_sampler() -> Callable[[int], trieste.types.TensorType]
+
+      Calculate the posterior of theta (the feature weights) for the RFFs, returning
+      a function that takes in a batch size `B` and returns `B` samples for
+      the weights of each of the RFF `F` features for one output.
+
+
+   .. py:method:: _prepare_theta_posterior_in_design_space() -> tensorflow_probability.distributions.MultivariateNormalTriL
+
+      Calculate the posterior of theta (the feature weights) in the design space. This
+      distribution is a Gaussian
+
+      .. math:: \theta \sim N(D^{-1}\Phi^Ty,D^{-1}\sigma^2)
+
+      where the [m,m] design matrix :math:`D=(\Phi^T\Phi + \sigma^2I_m)` is defined for
+      the [n,m] matrix of feature evaluations across the training data :math:`\Phi`
+      and observation noise variance :math:`\sigma^2`.
+
+
+   .. py:method:: _prepare_theta_posterior_in_gram_space() -> tensorflow_probability.distributions.MultivariateNormalTriL
+
+      Calculate the posterior of theta (the feature weights) in the gram space.
+
+       .. math:: \theta \sim N(\Phi^TG^{-1}y,I_m - \Phi^TG^{-1}\Phi)
+
+      where the [n,n] gram matrix :math:`G=(\Phi\Phi^T + \sigma^2I_n)` is defined for the [n,m]
+      matrix of feature evaluations across the training data :math:`\Phi` and
+      observation noise variance :math:`\sigma^2`.
+
+
+
+.. py:class:: DecoupledTrajectorySampler(model: Union[FeatureDecompositionInducingPointModel, FeatureDecompositionInternalDataModel], num_features: int = 1000)
+
+
+   Bases: :py:obj:`FeatureDecompositionTrajectorySampler`\ [\ :py:obj:`Union`\ [\ :py:obj:`FeatureDecompositionInducingPointModel`\ , :py:obj:`FeatureDecompositionInternalDataModel`\ ]\ ]
+
+   This class builds functions that approximate a trajectory sampled from an underlying Gaussian
+   process model using decoupled sampling. See :cite:`wilson2020efficiently` for an introduction
+   to decoupled sampling.
+
+   Unlike our :class:`RandomFourierFeatureTrajectorySampler` which uses a RFF decomposition to
+   aprroximate the Gaussian process posterior, a :class:`DecoupledTrajectorySampler` only
+   uses an RFF decomposition to approximate the Gausian process prior and instead using
+   a canonical decomposition to discretize the effect of updating the prior on the given data.
+
+   In particular, we approximate the Gaussian processes' posterior samples as the finite feature
+   approximation
+
+   .. math:: \hat{f}(.) = \sum_{i=1}^L w_i\phi_i(.) + \sum_{j=1}^m v_jk(.,z_j)
+
+   where :math:`\phi_i(.)` and :math:`w_i` are the Fourier features and their weights that
+   discretize the prior. In contrast, `k(.,z_j)` and :math:`v_i` are the canonical features and
+   their weights that discretize the data update.
+
+   The expression for :math:`v_i` depends on if we are using an exact Gaussian process or a sparse
+   approximations. See  eq. (13) in :cite:`wilson2020efficiently` for details.
+
+   Note that if a model is both of :class:`FeatureDecompositionInducingPointModel` type and
+   :class:`FeatureDecompositionInternalDataModel` type,
+   :class:`FeatureDecompositionInducingPointModel` will take a priority and inducing points
+   will be used for computations rather than data.
+
+   :param model: The model to sample from.
+   :param num_features: The number of features used to approximate the kernel. We use a default
+       of 1000 as it typically perfoms well for a wide range of kernels. Note that very smooth
+       kernels (e.g. RBF) can be well-approximated with fewer features.
+   :raise NotImplementedError: If the model is not of valid type.
+
+   .. py:method:: _prepare_weight_sampler() -> Callable[[int], trieste.types.TensorType]
+
+      Prepare the sampler function that provides samples of the feature weights
+      for both the RFF and canonical feature functions, i.e. we return a function
+      that takes in a batch size `B` and returns `B` samples for the weights of each of
+      the `F`  RFF features and `M` canonical features for `L` outputs.
+
+
+
+.. py:class:: ResampleableRandomFourierFeatureFunctions(model: Union[FeatureDecompositionInducingPointModel, FeatureDecompositionInternalDataModel], n_components: int)
+
+
+   Bases: :py:obj:`gpflux.layers.basis_functions.fourier_features.RandomFourierFeaturesCosine`
+
+   A wrapper around GPFlux's random Fourier feature function that allows for
+   efficient in-place updating when generating new decompositions.
+
+   In particular, the bias and weights are stored as variables, which can then be
+   updated by calling :meth:`resample` without triggering expensive graph retracing.
+
+   Note that if a model is both of :class:`FeatureDecompositionInducingPointModel` type and
+   :class:`FeatureDecompositionInternalDataModel` type,
+   :class:`FeatureDecompositionInducingPointModel` will take a priority and inducing points
+   will be used for computations rather than data.
+
+   :param model: The model that will be approximed by these feature functions.
+   :param n_components: The desired number of features.
+   :raise NotImplementedError: If the model is not of valid type.
+
+   .. py:method:: resample() -> None
+
+      Resample weights and biases
+
+
+
+.. py:class:: ResampleableDecoupledFeatureFunctions(model: Union[FeatureDecompositionInducingPointModel, FeatureDecompositionInternalDataModel], n_components: int)
+
+
+   Bases: :py:obj:`ResampleableRandomFourierFeatureFunctions`
+
+   A wrapper around our :class:`ResampleableRandomFourierFeatureFunctions` which rather
+   than evaluates just `F` RFF functions instead evaluates the concatenation of
+   `F` RFF functions with evaluations of the canonical basis functions.
+
+   Note that if a model is both of :class:`FeatureDecompositionInducingPointModel` type and
+   :class:`FeatureDecompositionInternalDataModel` type,
+   :class:`FeatureDecompositionInducingPointModel` will take a priority and inducing points
+   will be used for computations rather than data.
+
+   :param model: The model that will be approximed by these feature functions.
+   :param n_components: The desired number of features.
+
+   .. py:method:: call(x: trieste.types.TensorType) -> trieste.types.TensorType
+
+      combine prior basis functions with canonical basis functions
+
+
+
+.. py:class:: feature_decomposition_trajectory(feature_functions: Callable[[trieste.types.TensorType], trieste.types.TensorType], weight_sampler: Callable[[int], trieste.types.TensorType], mean_function: Callable[[trieste.types.TensorType], trieste.types.TensorType])
+
+
+   Bases: :py:obj:`trieste.models.interfaces.TrajectoryFunctionClass`
+
+   An approximate sample from a Gaussian processes' posterior samples represented as a
+   finite weighted sum of features.
+
+   A trajectory is given by
+
+   .. math:: \hat{f}(x) = \sum_{i=1}^m \phi_i(x)\theta_i
+
+   where :math:`\phi_i` are m feature functions and :math:`\theta_i` are
+   feature weights sampled from a posterior distribution.
+
+   The number of trajectories (i.e. batch size) is determined from the first call of the
+   trajectory. In order to change the batch size, a new :class:`TrajectoryFunction` must be built.
+
+   :param feature_functions: Set of feature function.
+   :param weight_sampler: New sampler that generates feature weight samples.
+   :param mean_function: The underlying model's mean function.
+
+   .. py:method:: __call__(x: trieste.types.TensorType) -> trieste.types.TensorType
+
+      Call trajectory function.
+
+
+   .. py:method:: resample() -> None
+
+      Efficiently resample in-place without retracing.
+
+
+   .. py:method:: update(weight_sampler: Callable[[int], trieste.types.TensorType]) -> None
+
+      Efficiently update the trajectory with a new weight distribution and resample its weights.
+
+      :param weight_sampler: New sampler that generates feature weight samples.
+
+
+

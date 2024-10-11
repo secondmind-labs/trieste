@@ -1,0 +1,807 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Recovering from errors &#8212; trieste 3.2.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=e353d410970836974a52" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
+
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/sphinx_highlight.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'notebooks/recovering_from_errors';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://secondmind-labs.github.io/trieste/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '3.2.0';
+        </script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Asynchronous Bayesian Optimization" href="asynchronous_greedy_multiprocessing.html" />
+    <link rel="prev" title="Data transformation" href="data_transformation.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  <div class="navbar-header-items__start">
+    
+      <div class="navbar-item">
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/logo.png" class="logo__image only-light" alt="Logo image"/>
+    <script>document.write(`<img src="../_static/logo.png" class="logo__image only-dark" alt="Logo image"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../autoapi/trieste/index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      3.2.0  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+    </div>
+  
+
+  
+    <label class="sidebar-toggle secondary-toggle" for="__secondary">
+      <span class="fa-solid fa-outdent"></span>
+    </label>
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../autoapi/trieste/index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      3.2.0  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item"><nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="expected_improvement.html">Introduction to Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="batch_optimization.html">Batch Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="thompson_sampling.html">Thompson sampling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="inequality_constraints.html">Inequality constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="explicit_constraints.html">Explicit constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="failure_ego.html">Failure regions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multi_objective_ehvi.html">Multi-objective optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deep_gaussian_processes.html">Deep Gaussian processes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deep_ensembles.html">Deep ensembles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="active_learning.html">Active learning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="active_learning_for_binary_classification.html">Active learning for binary classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="feasible_sets.html">Active learning of feasibility regions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="openai_gym_lunar_lander.html">OpenAI Gym</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scalable_thompson_sampling_using_sparse_gaussian_processes.html">Scalable Thompson sampling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="qhsri-tutorial.html">Batching with Sharpe Ratio</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multifidelity_modelling.html">Multifidelity modelling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rembo.html">High-dimensional Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="trust_region.html">Trust region Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mixed_search_spaces.html">Mixed search spaces</a></li>
+</ul>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="ask_tell_optimization.html">Ask-Tell optimization interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data_transformation.html">Data transformation</a></li>
+
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Recovering from errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="asynchronous_greedy_multiprocessing.html">Asynchronous Bayesian Optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="asynchronous_nongreedy_batch_ray.html">Asynchronous batch Bayesian Optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="visualizing_with_tensorboard.html">Visualizing with Tensorboard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code_overview.html">An overview of Trieste types</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumbs">
+  <ul class="bd-breadcrumbs" role="navigation" aria-label="Breadcrumb">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../tutorials.html" class="nav-link">Tutorials</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">Recovering from errors</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <section id="Recovering-from-errors">
+<h1>Recovering from errors<a class="headerlink" href="#Recovering-from-errors" title="Permalink to this heading">#</a></h1>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">random</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+
+<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">1793</span><span class="p">)</span>
+<span class="n">tf</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">set_seed</span><span class="p">(</span><span class="mi">1793</span><span class="p">)</span>
+<span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Sometimes the Bayesian optimization process encounters an error from which we can recover, without the need to restart the run from the beginning. In this tutorial, we’ll simulate such an error and show how to recover from it.</p>
+<p>We’ll use a similar setup to the <a class="reference internal" href="expected_improvement.html"><span class="doc">EI notebook</span></a>, but use an observer that intermittently breaks when evaluated, and needs manual attention to get running again. We can simulate fixing the observer with its <code class="docutils literal notranslate"><span class="pre">manual_fix</span></code> method.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">trieste</span>
+<span class="kn">from</span> <span class="nn">trieste.objectives</span> <span class="kn">import</span> <span class="n">Branin</span>
+
+
+<span class="k">class</span> <span class="nc">FaultyBranin</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_is_broken</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="nf">manual_fix</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_is_broken</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mf">0.05</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_is_broken</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_broken</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Observer is broken&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">trieste</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">Branin</span><span class="o">.</span><span class="n">objective</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+
+
+<span class="n">observer</span> <span class="o">=</span> <span class="n">FaultyBranin</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<section id="Set-up-the-problem">
+<h2>Set up the problem<a class="headerlink" href="#Set-up-the-problem" title="Permalink to this heading">#</a></h2>
+<p>We’ll use the same set up as before, except for the acquisition rule, where we’ll use <code class="docutils literal notranslate"><span class="pre">BatchTrustRegionBox</span></code>. <code class="docutils literal notranslate"><span class="pre">BatchTrustRegionBox</span></code> is stateful, and we’ll need to account for its state to recover, so using this rule gives the reader a more comprehensive overview of how to recover.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">trieste.models.gpflow</span> <span class="kn">import</span> <span class="n">GaussianProcessRegression</span><span class="p">,</span> <span class="n">build_gpr</span>
+
+<span class="n">search_space</span> <span class="o">=</span> <span class="n">trieste</span><span class="o">.</span><span class="n">space</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="n">initial_data</span> <span class="o">=</span> <span class="n">observer</span><span class="p">(</span><span class="n">search_space</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span>
+
+<span class="n">gpr</span> <span class="o">=</span> <span class="n">build_gpr</span><span class="p">(</span><span class="n">initial_data</span><span class="p">,</span> <span class="n">search_space</span><span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">GaussianProcessRegression</span><span class="p">(</span><span class="n">gpr</span><span class="p">)</span>
+
+<span class="n">acquisition_rule</span> <span class="o">=</span> <span class="n">trieste</span><span class="o">.</span><span class="n">acquisition</span><span class="o">.</span><span class="n">rule</span><span class="o">.</span><span class="n">BatchTrustRegionBox</span><span class="p">(</span>  <span class="c1"># type: ignore[var-annotated]</span>
+    <span class="n">trieste</span><span class="o">.</span><span class="n">acquisition</span><span class="o">.</span><span class="n">rule</span><span class="o">.</span><span class="n">TREGOBox</span><span class="p">(</span><span class="n">search_space</span><span class="p">)</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Run-the-optimization-loop">
+<h2>Run the optimization loop<a class="headerlink" href="#Run-the-optimization-loop" title="Permalink to this heading">#</a></h2>
+<p>In this tutorial we’ll try to complete fifteen optimization loops, which, with the broken observer, may take more than one attempt. The optimizer returns an <code class="docutils literal notranslate"><span class="pre">OptimizationResult</span></code>, which is simply a container for both:</p>
+<ul class="simple">
+<li><p>the <code class="docutils literal notranslate"><span class="pre">final_result</span></code>, which uses a <code class="docutils literal notranslate"><span class="pre">Result</span></code> type (not to be confused with <code class="docutils literal notranslate"><span class="pre">OptimizationResult</span></code>) to safely encapsulate the final data, models and acquisition state if the process completed successfully, or an error if one occurred</p></li>
+<li><p>the <code class="docutils literal notranslate"><span class="pre">history</span></code> of the successful optimization steps.</p></li>
+</ul>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bo</span> <span class="o">=</span> <span class="n">trieste</span><span class="o">.</span><span class="n">bayesian_optimizer</span><span class="o">.</span><span class="n">BayesianOptimizer</span><span class="p">(</span><span class="n">observer</span><span class="p">,</span> <span class="n">search_space</span><span class="p">)</span>
+
+<span class="n">num_steps</span> <span class="o">=</span> <span class="mi">15</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">bo</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span><span class="n">num_steps</span><span class="p">,</span> <span class="n">initial_data</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">acquisition_rule</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+Optimization failed at step 6, encountered error with traceback:
+Traceback (most recent call last):
+  File &#34;/opt/hostedtoolcache/Python/3.10.14/x64/lib/python3.10/site-packages/trieste/bayesian_optimizer.py&#34;, line 799, in optimize
+    observer_output = observer(query_points)
+  File &#34;/opt/hostedtoolcache/Python/3.10.14/x64/lib/python3.10/site-packages/check_shapes/decorator.py&#34;, line 185, in wrapped_function
+    result = func(*args, **kwargs)
+  File &#34;/opt/hostedtoolcache/Python/3.10.14/x64/lib/python3.10/site-packages/trieste/objectives/utils.py&#34;, line 86, in _observer
+    obs_or_dataset = objective_or_observer(flat_qps)
+  File &#34;/tmp/ipykernel_8915/3852074970.py&#34;, line 17, in __call__
+    raise Exception(&#34;Observer is broken&#34;)
+Exception: Observer is broken
+
+Terminating optimization and returning the optimization history. You may be able to use the history to restart the process from a previous successful optimization step.
+
+</pre></div></div>
+</div>
+<p>We can see from the logs that the optimization loop failed, and this can be sufficient to know what to do next if we’re working in a notebook. However, sometimes our setup means we don’t have access to the logs. We’ll pretend from here that’s the case.</p>
+</section>
+<section id="Handling-success">
+<h2>Handling success<a class="headerlink" href="#Handling-success" title="Permalink to this heading">#</a></h2>
+<p>We don’t know if the optimization completed successfully or not, so we’ll only try to access and plot the data if it was successful. We can find out if this was the case with <code class="docutils literal notranslate"><span class="pre">result</span></code>’s <code class="docutils literal notranslate"><span class="pre">is_ok</span></code> attribute. If it was successful, we know there is data in the <code class="docutils literal notranslate"><span class="pre">result</span></code>, which we can get using <code class="docutils literal notranslate"><span class="pre">try_get_final_dataset</span></code> and view.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">is_ok</span><span class="p">:</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">try_get_final_dataset</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;best observation: &quot;</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_min</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">observations</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Handling-failure">
+<h2>Handling failure<a class="headerlink" href="#Handling-failure" title="Permalink to this heading">#</a></h2>
+<p>If on the other hand, the optimization didn’t complete successfully, we can fix our observer, and try again. We can try again by calling the <code class="docutils literal notranslate"><span class="pre">continue_optimization</span></code> method: this is just like <code class="docutils literal notranslate"><span class="pre">optimize</span></code> except it is passed the <code class="docutils literal notranslate"><span class="pre">OptimizationResult</span></code> of a previous run, from which it extracts the last successful data, model and acquisition state. It also automatically calculates the number of remaining optimization steps.</p>
+<p>Note that we can view the <code class="docutils literal notranslate"><span class="pre">final_result</span></code> by printing it. We’ll do that here to see what exception was caught.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">is_err</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;result: &quot;</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">final_result</span><span class="p">)</span>
+
+    <span class="n">observer</span><span class="o">.</span><span class="n">manual_fix</span><span class="p">()</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="n">bo</span><span class="o">.</span><span class="n">continue_optimization</span><span class="p">(</span><span class="n">num_steps</span><span class="p">,</span> <span class="n">result</span><span class="p">,</span> <span class="n">acquisition_rule</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+result:  Err(Exception(&#39;Observer is broken&#39;))
+Optimization completed without errors
+</pre></div></div>
+</div>
+<p>We can repeat this until we’ve spent our optimization budget, using a loop if appropriate. But here, we’ll just plot the data if it exists, safely by using <code class="docutils literal notranslate"><span class="pre">result</span></code>’s <code class="docutils literal notranslate"><span class="pre">is_ok</span></code> attribute.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">trieste.experimental.plotting</span> <span class="kn">import</span> <span class="n">plot_bo_points</span><span class="p">,</span> <span class="n">plot_function_2d</span>
+
+<span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">is_ok</span><span class="p">:</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">try_get_final_dataset</span><span class="p">()</span>
+    <span class="n">arg_min_idx</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">observations</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+    <span class="n">_</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plot_function_2d</span><span class="p">(</span>
+        <span class="n">Branin</span><span class="o">.</span><span class="n">objective</span><span class="p">,</span>
+        <span class="n">search_space</span><span class="o">.</span><span class="n">lower</span><span class="p">,</span>
+        <span class="n">search_space</span><span class="o">.</span><span class="n">upper</span><span class="p">,</span>
+        <span class="mi">30</span><span class="p">,</span>
+        <span class="n">contour</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">plot_bo_points</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">query_points</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="mi">5</span><span class="p">,</span> <span class="n">arg_min_idx</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_recovering_from_errors_14_0.png" src="../_images/notebooks_recovering_from_errors_14_0.png" />
+</div>
+</div>
+</section>
+<section id="Saving-results-to-disk">
+<h2>Saving results to disk<a class="headerlink" href="#Saving-results-to-disk" title="Permalink to this heading">#</a></h2>
+<p>For convenience, tracked state is stored in memory by default. However, this can potentially result in Out of Memory errors and also makes it difficult to recover from intentional or unintentional Python process shutdowns. You can instead store the result on disk by passing in a <code class="docutils literal notranslate"><span class="pre">track_path</span></code> argument to <code class="docutils literal notranslate"><span class="pre">optimize</span></code>.</p>
+<p><strong>Note that trieste currently saves models using pickling, which is not portable and not secure. You should only try to load optimization results that you generated yourself on the same system (or a system with the same version libraries).</strong></p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">result</span> <span class="o">=</span> <span class="n">bo</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span>
+    <span class="n">num_steps</span><span class="p">,</span> <span class="n">initial_data</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">acquisition_rule</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">track_path</span><span class="o">=</span><span class="s2">&quot;history&quot;</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+Optimization failed at step 9, encountered error with traceback:
+Traceback (most recent call last):
+  File &#34;/opt/hostedtoolcache/Python/3.10.14/x64/lib/python3.10/site-packages/trieste/bayesian_optimizer.py&#34;, line 799, in optimize
+    observer_output = observer(query_points)
+  File &#34;/opt/hostedtoolcache/Python/3.10.14/x64/lib/python3.10/site-packages/check_shapes/decorator.py&#34;, line 185, in wrapped_function
+    result = func(*args, **kwargs)
+  File &#34;/opt/hostedtoolcache/Python/3.10.14/x64/lib/python3.10/site-packages/trieste/objectives/utils.py&#34;, line 86, in _observer
+    obs_or_dataset = objective_or_observer(flat_qps)
+  File &#34;/tmp/ipykernel_8915/3852074970.py&#34;, line 17, in __call__
+    raise Exception(&#34;Observer is broken&#34;)
+Exception: Observer is broken
+
+Terminating optimization and returning the optimization history. You may be able to use the history to restart the process from a previous successful optimization step.
+
+</pre></div></div>
+</div>
+<p>The returned <code class="docutils literal notranslate"><span class="pre">history</span></code> records are now stored in files rather than in memory. Their constituents can be accessed just as before, which loads the content into memory only when required. The <code class="docutils literal notranslate"><span class="pre">result</span></code> is automatically loaded into memory, but is also saved to disk with the rest of the history.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">history</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">history</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+FrozenRecord(path=PosixPath(&#39;history/step.09.pickle&#39;))
+GaussianProcessRegression(&lt;gpflow.models.gpr.GPR object at 0x7f5ee803c610&gt;, Optimizer(optimizer=&lt;gpflow.optimizers.scipy.Scipy object at 0x7f5ef034d1b0&gt;, minimize_args={}, compile=True),10, 1000,True)
+</pre></div></div>
+</div>
+<p>It is also possible to reload the <code class="docutils literal notranslate"><span class="pre">OptimizationResult</span></code> in a new Python process:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">trieste</span><span class="o">.</span><span class="n">bayesian_optimizer</span><span class="o">.</span><span class="n">OptimizationResult</span><span class="o">.</span><span class="n">from_path</span><span class="p">(</span><span class="s2">&quot;history&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+OptimizationResult(final_result=Err(Exception(&#39;Observer is broken&#39;)), history=[FrozenRecord(path=PosixPath(&#39;history/step.01.pickle&#39;)), FrozenRecord(path=PosixPath(&#39;history/step.02.pickle&#39;)), FrozenRecord(path=PosixPath(&#39;history/step.03.pickle&#39;)), FrozenRecord(path=PosixPath(&#39;history/step.04.pickle&#39;)), FrozenRecord(path=PosixPath(&#39;history/step.05.pickle&#39;)), FrozenRecord(path=PosixPath(&#39;history/step.06.pickle&#39;)), FrozenRecord(path=PosixPath(&#39;history/step.07.pickle&#39;)), FrozenRecord(path=PosixPath(&#39;history/step.08.pickle&#39;)), FrozenRecord(path=PosixPath(&#39;history/step.09.pickle&#39;))])
+</pre></div></div>
+</div>
+</section>
+<section id="Out-of-memory-errors">
+<h2>Out of memory errors<a class="headerlink" href="#Out-of-memory-errors" title="Permalink to this heading">#</a></h2>
+<p>Since Out Of Memory errors normally result in the Python process shutting down, saving tracked state to disk as described above is an important tool in recovering from them. One possible cause of memory errors is trying to evaluate an acquisition function over a large dataset, e.g. when initializing our gradient-based optimizers. To work around this, you can specify that evaluations of the acquisition function be split up: this splits them (on the first dimension) into batches of a given size,
+then stitches them back together. To do this, you need to provide an explicit split optimizer and specify a desired batch size.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">trieste.acquisition.optimizer</span> <span class="kn">import</span> <span class="n">automatic_optimizer_selector</span>
+<span class="kn">from</span> <span class="nn">trieste.acquisition.rule</span> <span class="kn">import</span> <span class="n">EfficientGlobalOptimization</span>
+<span class="kn">from</span> <span class="nn">trieste.acquisition.utils</span> <span class="kn">import</span> <span class="n">split_acquisition_function_calls</span>
+
+<span class="n">optimizer</span> <span class="o">=</span> <span class="n">split_acquisition_function_calls</span><span class="p">(</span>
+    <span class="n">automatic_optimizer_selector</span><span class="p">,</span> <span class="n">split_size</span><span class="o">=</span><span class="mi">10_000</span>
+<span class="p">)</span>
+<span class="n">query_rule</span> <span class="o">=</span> <span class="n">EfficientGlobalOptimization</span><span class="p">(</span><span class="n">optimizer</span><span class="o">=</span><span class="n">optimizer</span><span class="p">)</span>
+<span class="n">acquisition_rule</span> <span class="o">=</span> <span class="n">trieste</span><span class="o">.</span><span class="n">acquisition</span><span class="o">.</span><span class="n">rule</span><span class="o">.</span><span class="n">BatchTrustRegionBox</span><span class="p">(</span>
+    <span class="n">trieste</span><span class="o">.</span><span class="n">acquisition</span><span class="o">.</span><span class="n">rule</span><span class="o">.</span><span class="n">TREGOBox</span><span class="p">(</span><span class="n">search_space</span><span class="p">),</span>
+    <span class="n">rule</span><span class="o">=</span><span class="n">query_rule</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="LICENSE">
+<h2>LICENSE<a class="headerlink" href="#LICENSE" title="Permalink to this heading">#</a></h2>
+<p><a class="reference external" href="https://github.com/secondmind-labs/trieste/blob/develop/LICENSE">Apache License 2.0</a></p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+  <div class="sidebar-secondary-item">
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Set-up-the-problem">Set up the problem</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Run-the-optimization-loop">Run the optimization loop</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Handling-success">Handling success</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Handling-failure">Handling failure</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Saving-results-to-disk">Saving results to disk</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Out-of-memory-errors">Out of memory errors</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#LICENSE">LICENSE</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=e353d410970836974a52"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+  <p class="copyright">
+    
+      © Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.0.1.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item"><p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.13.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

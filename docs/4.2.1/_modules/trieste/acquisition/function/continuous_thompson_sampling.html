@@ -1,0 +1,773 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.acquisition.function.continuous_thompson_sampling &#8212; trieste 4.2.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+<link href="../../../../_static/styles/bootstrap.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+
+  
+  <link href="../../../../_static/vendor/fontawesome/6.5.2/css/all.min.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=fd3f3429" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/css/custom.css?v=ae350598" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=3ee479438cf8b5e0d341" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=3ee479438cf8b5e0d341" />
+  <script src="../../../../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=3ee479438cf8b5e0d341"></script>
+
+    <script src="../../../../_static/documentation_options.js?v=74d6e94f"></script>
+    <script src="../../../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/trieste/acquisition/function/continuous_thompson_sampling';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.15.3';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://secondmind-labs.github.io/trieste/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '4.2.1';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner = false;
+        </script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-primary-sidebar-checkbox"/>
+  <label class="overlay overlay-primary" for="pst-primary-sidebar-checkbox"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-secondary-sidebar-checkbox"/>
+  <label class="overlay overlay-secondary" for="pst-secondary-sidebar-checkbox"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/logo.png" class="logo__image only-light" alt="trieste 4.2.1 documentation - Home"/>
+    <script>document.write(`<img src="../../../../_static/logo.png" class="logo__image only-dark" alt="trieste 4.2.1 documentation - Home"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../index.html">
+    Trieste
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../autoapi/trieste/index.html">
+    API reference
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../bibliography.html">
+    Bibliography
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button id="pst-version-switcher-button-2"
+      type="button"
+      class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle"
+      data-bs-toggle="dropdown"
+      aria-haspopup="listbox"
+      aria-controls="pst-version-switcher-list-2"
+      aria-label="Version switcher list"
+    >
+      Choose version  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div id="pst-version-switcher-list-2"
+      class="version-switcher__menu dropdown-menu list-group-flush py-0"
+      role="listbox" aria-labelledby="pst-version-switcher-button-2">
+      <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../index.html">
+    Trieste
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../autoapi/trieste/index.html">
+    API reference
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../bibliography.html">
+    Bibliography
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button id="pst-version-switcher-button-3"
+      type="button"
+      class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle"
+      data-bs-toggle="dropdown"
+      aria-haspopup="listbox"
+      aria-controls="pst-version-switcher-list-3"
+      aria-label="Version switcher list"
+    >
+      Choose version  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div id="pst-version-switcher-list-3"
+      class="version-switcher__menu dropdown-menu list-group-flush py-0"
+      role="listbox" aria-labelledby="pst-version-switcher-button-3">
+      <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">trieste.acqu...</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for trieste.acquisition.function.continuous_thompson_sampling</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2021 The Trieste Contributors</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module contains acquisition function builders for continuous Thompson sampling.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Type</span>
+
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+
+<span class="kn">from</span> <span class="nn">...data</span> <span class="kn">import</span> <span class="n">Dataset</span>
+<span class="kn">from</span> <span class="nn">...models.interfaces</span> <span class="kn">import</span> <span class="n">HasTrajectorySampler</span><span class="p">,</span> <span class="n">TrajectoryFunction</span><span class="p">,</span> <span class="n">TrajectoryFunctionClass</span>
+<span class="kn">from</span> <span class="nn">...types</span> <span class="kn">import</span> <span class="n">TensorType</span>
+<span class="kn">from</span> <span class="nn">..interface</span> <span class="kn">import</span> <span class="n">SingleModelGreedyAcquisitionBuilder</span><span class="p">,</span> <span class="n">SingleModelVectorizedAcquisitionBuilder</span>
+<span class="kn">from</span> <span class="nn">..utils</span> <span class="kn">import</span> <span class="n">select_nth_output</span>
+
+
+<div class="viewcode-block" id="GreedyContinuousThompsonSampling">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.continuous_thompson_sampling.GreedyContinuousThompsonSampling">[docs]</a>
+<span class="k">class</span> <span class="nc">GreedyContinuousThompsonSampling</span><span class="p">(</span><span class="n">SingleModelGreedyAcquisitionBuilder</span><span class="p">[</span><span class="n">HasTrajectorySampler</span><span class="p">]):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">    Acquisition function builder for performing greedy continuous Thompson sampling. This builder</span>
+<span class="sd">    return acquisition functions that are the negatives of approximate samples from the</span>
+<span class="sd">    given :class:`ProbabilisticModel`, as provided by the model&#39;s :meth:`get_trajectory`</span>
+<span class="sd">    method. A set of such samples are to be maximized in a sequential greedy manner to provide</span>
+<span class="sd">    the next recommended query points. Note that we actually return</span>
+<span class="sd">    the negative of the trajectory, so that our acquisition optimizers (which are</span>
+<span class="sd">    all maximizers) can be used to extract the minimisers of trajectories.</span>
+
+
+<span class="sd">    For more details about trajectory-based Thompson sampling see :cite:`hernandez2017parallel` and</span>
+<span class="sd">    :cite:`wilson2020efficiently`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">select_output</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">TensorType</span><span class="p">],</span> <span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="n">select_nth_output</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param select_output: A method that returns the desired trajectory from a trajectory</span>
+<span class="sd">            sampler with shape [..., B], where B is a batch dimension. Defaults to the</span>
+<span class="sd">            :func:~`trieste.acquisition.utils.select_nth_output` function with output dimension 0.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_select_output</span> <span class="o">=</span> <span class="n">select_output</span>
+
+<div class="viewcode-block" id="GreedyContinuousThompsonSampling.__repr__">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.continuous_thompson_sampling.GreedyContinuousThompsonSampling.__repr__">[docs]</a>
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;GreedyContinuousThompsonSampling(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_select_output</span><span class="si">!r}</span><span class="s2">)&quot;</span></div>
+
+
+<div class="viewcode-block" id="GreedyContinuousThompsonSampling.prepare_acquisition_function">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.continuous_thompson_sampling.GreedyContinuousThompsonSampling.prepare_acquisition_function">[docs]</a>
+    <span class="k">def</span> <span class="nf">prepare_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">HasTrajectorySampler</span><span class="p">,</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">pending_points</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TrajectoryFunction</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param model: The model.</span>
+<span class="sd">        :param dataset: The data from the observer (not used).</span>
+<span class="sd">        :param pending_points: The points already in the current batch (not used).</span>
+<span class="sd">        :return: A negated trajectory sampled from the model.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">HasTrajectorySampler</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Thompson sampling from trajectory only supports models with a trajectory_sampler &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;method; received </span><span class="si">{</span><span class="n">model</span><span class="si">!r}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_trajectory_sampler</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">trajectory_sampler</span><span class="p">()</span>
+        <span class="n">function</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trajectory_sampler</span><span class="o">.</span><span class="n">get_trajectory</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">negate_trajectory_function</span><span class="p">(</span><span class="n">function</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_select_output</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GreedyContinuousThompsonSampling.update_acquisition_function">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.continuous_thompson_sampling.GreedyContinuousThompsonSampling.update_acquisition_function">[docs]</a>
+    <span class="k">def</span> <span class="nf">update_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">function</span><span class="p">:</span> <span class="n">TrajectoryFunction</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">HasTrajectorySampler</span><span class="p">,</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">pending_points</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">new_optimization_step</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TrajectoryFunction</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param function: The trajectory function to update.</span>
+<span class="sd">        :param model: The model.</span>
+<span class="sd">        :param dataset: The data from the observer (not used).</span>
+<span class="sd">        :param pending_points: The points already in the current batch (not used).</span>
+<span class="sd">        :param new_optimization_step: Indicates whether this call to update_acquisition_function</span>
+<span class="sd">            is to start of a new optimization step, of to continue collecting batch of points</span>
+<span class="sd">            for the current step. Defaults to ``True``.</span>
+<span class="sd">        :return: A new trajectory sampled from the model.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">new_optimization_step</span><span class="p">:</span>  <span class="c1"># update sampler and resample trajectory</span>
+            <span class="n">new_function</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trajectory_sampler</span><span class="o">.</span><span class="n">update_trajectory</span><span class="p">(</span><span class="n">function</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># just resample trajectory but without updating sampler</span>
+            <span class="n">new_function</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trajectory_sampler</span><span class="o">.</span><span class="n">resample_trajectory</span><span class="p">(</span><span class="n">function</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">new_function</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">function</span><span class="p">:</span>
+            <span class="n">function</span> <span class="o">=</span> <span class="n">negate_trajectory_function</span><span class="p">(</span><span class="n">new_function</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_select_output</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">function</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ParallelContinuousThompsonSampling">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.continuous_thompson_sampling.ParallelContinuousThompsonSampling">[docs]</a>
+<span class="k">class</span> <span class="nc">ParallelContinuousThompsonSampling</span><span class="p">(</span>
+    <span class="n">SingleModelVectorizedAcquisitionBuilder</span><span class="p">[</span><span class="n">HasTrajectorySampler</span><span class="p">]</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Acquisition function builder for performing parallel continuous Thompson sampling.</span>
+
+<span class="sd">    This builder provides broadly the same behavior as our :class:`GreedyContinuousThompsonSampler`</span>
+<span class="sd">    however optimizes trajectory samples in parallel rather than sequentially.</span>
+<span class="sd">    Consequently, :class:`ParallelContinuousThompsonSampling` can choose query points faster</span>
+<span class="sd">    than  :class:`GreedyContinuousThompsonSampler` however it has much larger memory usage.</span>
+
+<span class="sd">    For a convenient way to control the total memory usage of this acquisition function, see</span>
+<span class="sd">    our :const:`split_acquisition_function_calls` wrapper.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">select_output</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">TensorType</span><span class="p">],</span> <span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="n">select_nth_output</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param select_output: A method that returns the desired trajectory from a trajectory</span>
+<span class="sd">            sampler with shape [..., B], where B is a batch dimension. Defaults to the</span>
+<span class="sd">            :func:~`trieste.acquisition.utils.select_nth_output` function with output dimension 0.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_select_output</span> <span class="o">=</span> <span class="n">select_output</span>
+
+<div class="viewcode-block" id="ParallelContinuousThompsonSampling.__repr__">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.continuous_thompson_sampling.ParallelContinuousThompsonSampling.__repr__">[docs]</a>
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;ParallelContinuousThompsonSampling(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_select_output</span><span class="si">!r}</span><span class="s2">)&quot;</span></div>
+
+
+<div class="viewcode-block" id="ParallelContinuousThompsonSampling.prepare_acquisition_function">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.continuous_thompson_sampling.ParallelContinuousThompsonSampling.prepare_acquisition_function">[docs]</a>
+    <span class="k">def</span> <span class="nf">prepare_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">HasTrajectorySampler</span><span class="p">,</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TrajectoryFunction</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param model: The model.</span>
+<span class="sd">        :param dataset: The data from the observer (not used).</span>
+<span class="sd">        :return: A negated trajectory sampled from the model.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">HasTrajectorySampler</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Thompson sampling from trajectory only supports models with a trajectory_sampler &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;method; received </span><span class="si">{</span><span class="n">model</span><span class="si">!r}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_trajectory_sampler</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">trajectory_sampler</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_trajectory</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trajectory_sampler</span><span class="o">.</span><span class="n">get_trajectory</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_negated_trajectory</span> <span class="o">=</span> <span class="n">negate_trajectory_function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_trajectory</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_select_output</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_negated_trajectory</span></div>
+
+
+<div class="viewcode-block" id="ParallelContinuousThompsonSampling.update_acquisition_function">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/index.html#trieste.acquisition.function.continuous_thompson_sampling.ParallelContinuousThompsonSampling.update_acquisition_function">[docs]</a>
+    <span class="k">def</span> <span class="nf">update_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">function</span><span class="p">:</span> <span class="n">TrajectoryFunction</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">HasTrajectorySampler</span><span class="p">,</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TrajectoryFunction</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param function: The trajectory function to update.</span>
+<span class="sd">        :param model: The model.</span>
+<span class="sd">        :param dataset: The data from the observer (not used).</span>
+<span class="sd">        :return: A new trajectory sampled from the model.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">function</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_negated_trajectory</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Wrong trajectory function passed into update_acquisition_function&quot;</span><span class="p">)</span>
+
+        <span class="n">new_function</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trajectory_sampler</span><span class="o">.</span><span class="n">update_trajectory</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_trajectory</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">new_function</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trajectory</span><span class="p">:</span>  <span class="c1"># need to negate again if not modified in place</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_trajectory</span> <span class="o">=</span> <span class="n">new_function</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_negated_trajectory</span> <span class="o">=</span> <span class="n">negate_trajectory_function</span><span class="p">(</span><span class="n">new_function</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_select_output</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_negated_trajectory</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="_DummyTrajectoryFunctionClass">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/continuous_thompson_sampling/index.html#trieste.acquisition.function.continuous_thompson_sampling._DummyTrajectoryFunctionClass">[docs]</a>
+<span class="k">class</span> <span class="nc">_DummyTrajectoryFunctionClass</span><span class="p">(</span><span class="n">TrajectoryFunctionClass</span><span class="p">):</span>
+    <span class="c1"># dummy trajectory function class used while pickling NegatedTrajectory</span>
+<div class="viewcode-block" id="_DummyTrajectoryFunctionClass.__call__">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/continuous_thompson_sampling/index.html#trieste.acquisition.function.continuous_thompson_sampling._DummyTrajectoryFunctionClass.__call__">[docs]</a>
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">x</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="negate_trajectory_function">
+<a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/continuous_thompson_sampling/index.html#trieste.acquisition.function.continuous_thompson_sampling.negate_trajectory_function">[docs]</a>
+<span class="k">def</span> <span class="nf">negate_trajectory_function</span><span class="p">(</span>
+    <span class="n">function</span><span class="p">:</span> <span class="n">TrajectoryFunction</span><span class="p">,</span>
+    <span class="n">select_output</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="n">TensorType</span><span class="p">],</span> <span class="n">TensorType</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">function_type</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Type</span><span class="p">[</span><span class="n">TrajectoryFunction</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TrajectoryFunction</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the negative of trajectories and select the output to form the acquisition function, so</span>
+<span class="sd">    that our acquisition optimizers (which are all maximizers) can be used to extract the minimizers</span>
+<span class="sd">    of trajectories.</span>
+
+<span class="sd">    We negate the trajectory function object&#39;s call method, as it may have e.g. update and resample</span>
+<span class="sd">    methods, and select the output we wish to use.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">function</span><span class="p">,</span> <span class="n">TrajectoryFunctionClass</span><span class="p">):</span>
+
+        <span class="k">class</span> <span class="nc">NegatedTrajectory</span><span class="p">(</span><span class="n">function_type</span> <span class="ow">or</span> <span class="nb">type</span><span class="p">(</span><span class="n">function</span><span class="p">)):</span>  <span class="c1"># type: ignore[misc]</span>
+            <span class="nd">@tf</span><span class="o">.</span><span class="n">function</span>
+            <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">select_output</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="o">-</span><span class="mf">1.0</span> <span class="o">*</span> <span class="n">select_output</span><span class="p">(</span><span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="o">-</span><span class="mf">1.0</span> <span class="o">*</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+            <span class="k">def</span> <span class="nf">__reduce__</span><span class="p">(</span>
+                <span class="bp">self</span><span class="p">,</span>
+            <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span>
+                <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">TrajectoryFunction</span><span class="p">],</span>
+                <span class="nb">tuple</span><span class="p">[</span>
+                    <span class="n">TrajectoryFunction</span><span class="p">,</span>
+                    <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="n">TensorType</span><span class="p">],</span> <span class="n">TensorType</span><span class="p">]],</span>
+                    <span class="n">Optional</span><span class="p">[</span><span class="n">Type</span><span class="p">[</span><span class="n">TrajectoryFunction</span><span class="p">]],</span>
+                <span class="p">],</span>
+                <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+            <span class="p">]:</span>
+                <span class="c1"># make this pickleable</span>
+                <span class="n">state</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">__getstate__</span><span class="p">()</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;__getstate__&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+                <span class="p">)</span>
+                <span class="k">return</span> <span class="p">(</span>
+                    <span class="n">negate_trajectory_function</span><span class="p">,</span>
+                    <span class="p">(</span><span class="n">_DummyTrajectoryFunctionClass</span><span class="p">(),</span> <span class="n">select_output</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="n">__base__</span><span class="p">),</span>
+                    <span class="n">state</span><span class="p">,</span>
+                <span class="p">)</span>
+
+        <span class="n">function</span><span class="o">.</span><span class="vm">__class__</span> <span class="o">=</span> <span class="n">NegatedTrajectory</span>
+
+        <span class="k">return</span> <span class="n">function</span>
+
+    <span class="k">else</span><span class="p">:</span>
+
+        <span class="nd">@tf</span><span class="o">.</span><span class="n">function</span>
+        <span class="k">def</span> <span class="nf">negated_trajectory</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">select_output</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="o">-</span><span class="mf">1.0</span> <span class="o">*</span> <span class="n">select_output</span><span class="p">(</span><span class="n">function</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="o">-</span><span class="mf">1.0</span> <span class="o">*</span> <span class="n">function</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">negated_trajectory</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../_static/scripts/bootstrap.js?digest=3ee479438cf8b5e0d341"></script>
+<script src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=3ee479438cf8b5e0d341"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.15.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

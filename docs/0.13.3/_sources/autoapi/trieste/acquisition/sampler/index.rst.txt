@@ -1,0 +1,136 @@
+:py:mod:`trieste.acquisition.sampler`
+=====================================
+
+.. py:module:: trieste.acquisition.sampler
+
+.. autoapi-nested-parse::
+
+   This module is the home of the sampling functionality required by Trieste's
+   acquisition functions.
+
+
+
+Module Contents
+---------------
+
+.. py:class:: ThompsonSampler(sample_min_value: bool = False)
+
+   Bases: :py:obj:`abc.ABC`, :py:obj:`Generic`\ [\ :py:obj:`trieste.models.interfaces.ProbabilisticModelType`\ ]
+
+   A :class:`ThompsonSampler` samples either the minimum values or minimisers of a function
+   modeled by an underlying :class:`ProbabilisticModel` across a  discrete set of points.
+
+   :sample_min_value: If True then sample from the minimum value of the function,
+       else sample the function's minimiser.
+
+   .. py:method:: sample(model: trieste.models.interfaces.ProbabilisticModelType, sample_size: int, at: trieste.types.TensorType, select_output: Callable[[trieste.types.TensorType], trieste.types.TensorType] = select_nth_output) -> trieste.types.TensorType
+      :abstractmethod:
+
+      :param model: The model to sample from.
+      :param sample_size: The desired number of samples.
+      :param at: Input points that define the sampler.
+      :param select_output: A method that returns the desired output from the model sampler, with
+          shape `[S, N]` where `S` is the number of samples and `N` is the number of locations.
+          Defaults to the :func:~`trieste.acquisition.utils.select_nth_output` function with
+          output dimension 0.
+      :return: Samples.
+
+
+
+.. py:class:: ExactThompsonSampler(sample_min_value: bool = False)
+
+   Bases: :py:obj:`ThompsonSampler`\ [\ :py:obj:`trieste.models.ProbabilisticModel`\ ]
+
+   This sampler provides exact Thompson samples of the objective function's
+   minimiser :math:`x^*` over a discrete set of input locations.
+   Although exact Thompson sampling is costly (incuring with an :math:`O(N^3)` complexity to
+   sample over a set of `N` locations), this method can be used for any probabilistic model
+   with a sampling method.
+
+   :sample_min_value: If True then sample from the minimum value of the function,
+       else sample the function's minimiser.
+
+   .. py:method:: sample(model: trieste.models.ProbabilisticModel, sample_size: int, at: trieste.types.TensorType, select_output: Callable[[trieste.types.TensorType], trieste.types.TensorType] = select_nth_output) -> trieste.types.TensorType
+
+      Return exact samples from either the objective function's minimiser or its minimal value
+      over the candidate set `at`.
+
+      :param model: The model to sample from.
+      :param sample_size: The desired number of samples.
+      :param at: Where to sample the predictive distribution, with shape `[N, D]`, for points
+          of dimension `D`.
+      :param select_output: A method that returns the desired output from the model sampler, with
+          shape `[S, N]` where `S` is the number of samples and `N` is the number of locations.
+          Defaults to the :func:~`trieste.acquisition.utils.select_nth_output` function with
+          output dimension 0.
+      :return: The samples, of shape `[S, D]` (where `S` is the `sample_size`) if sampling
+          the function's minimiser or shape `[S, 1]` if sampling the function's mimimal value.
+      :raise ValueError: If ``at`` has an invalid shape or if ``sample_size`` is not positive.
+
+
+
+.. py:class:: GumbelSampler(sample_min_value: bool = False)
+
+   Bases: :py:obj:`ThompsonSampler`\ [\ :py:obj:`trieste.models.ProbabilisticModel`\ ]
+
+   This sampler follows :cite:`wang2017max` and yields approximate samples of the objective
+   minimum value :math:`y^*` via the empirical cdf :math:`\operatorname{Pr}(y^*<y)`. The cdf
+   is approximated by a Gumbel distribution
+   .. math:: \mathcal G(y; a, b) = 1 - e^{-e^\frac{y - a}{b}}
+   where :math:`a, b \in \mathbb R` are chosen such that the quartiles of the Gumbel and cdf match.
+   Samples are obtained via the Gumbel distribution by sampling :math:`r` uniformly from
+   :math:`[0, 1]` and applying the inverse probability integral transform
+   :math:`y = \mathcal G^{-1}(r; a, b)`.
+   Note that the :class:`GumbelSampler` can only sample a function's minimal value and not
+   its minimiser.
+
+   :sample_min_value: If True then sample from the minimum value of the function,
+       else sample the function's minimiser.
+
+   .. py:method:: sample(model: trieste.models.ProbabilisticModel, sample_size: int, at: trieste.types.TensorType, select_output: Callable[[trieste.types.TensorType], trieste.types.TensorType] = select_nth_output) -> trieste.types.TensorType
+
+      Return approximate samples from of the objective function's minimum value.
+
+      :param model: The model to sample from.
+      :param sample_size: The desired number of samples.
+      :param at: Points at where to fit the Gumbel distribution, with shape `[N, D]`, for points
+          of dimension `D`. We recommend scaling `N` with search space dimension.
+      :param select_output: A method that returns the desired output from the model sampler, with
+          shape `[S, N]` where `S` is the number of samples and `N` is the number of locations.
+          Currently unused.
+      :return: The samples, of shape `[S, 1]`, where `S` is the `sample_size`.
+      :raise ValueError: If ``at`` has an invalid shape or if ``sample_size`` is not positive.
+
+
+
+.. py:class:: ThompsonSamplerFromTrajectory(sample_min_value: bool = False)
+
+   Bases: :py:obj:`ThompsonSampler`\ [\ :py:obj:`trieste.models.interfaces.HasTrajectorySampler`\ ]
+
+   This sampler provides approximate Thompson samples of the objective function's
+   minimiser :math:`x^*` by minimizing approximate trajectories sampled from the
+   underlying probabilistic model. This sampling method can be used for any
+   probabilistic model with a :meth:`trajectory_sampler` method.
+
+   :sample_min_value: If True then sample from the minimum value of the function,
+       else sample the function's minimiser.
+
+   .. py:method:: sample(model: trieste.models.ProbabilisticModel, sample_size: int, at: trieste.types.TensorType, select_output: Callable[[trieste.types.TensorType], trieste.types.TensorType] = select_nth_output) -> trieste.types.TensorType
+
+      Return approximate samples from either the objective function's minimser or its minimal
+      value over the candidate set `at`.
+
+      :param model: The model to sample from.
+      :param sample_size: The desired number of samples.
+      :param at: Where to sample the predictive distribution, with shape `[N, D]`, for points
+          of dimension `D`.
+      :param select_output: A method that returns the desired output from the model sampler, with
+          shape `[S, N]` where `S` is the number of samples and `N` is the number of locations.
+          Defaults to the :func:~`trieste.acquisition.utils.select_nth_output` function with
+          output dimension 0.
+      :return: The samples, of shape `[S, D]` (where `S` is the `sample_size`) if sampling
+          the function's minimser or shape `[S, 1]` if sampling the function's mimimal value.
+      :raise ValueError: If ``at`` has an invalid shape or if ``sample_size`` is not positive.
+
+
+

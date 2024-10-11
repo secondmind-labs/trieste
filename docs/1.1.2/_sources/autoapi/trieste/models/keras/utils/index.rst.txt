@@ -1,0 +1,69 @@
+:orphan:
+
+:py:mod:`trieste.models.keras.utils`
+====================================
+
+.. py:module:: trieste.models.keras.utils
+
+
+Module Contents
+---------------
+
+.. py:function:: get_tensor_spec_from_data(dataset: trieste.data.Dataset) -> tuple[tensorflow.TensorSpec, tensorflow.TensorSpec]
+
+   Extract tensor specifications for inputs and outputs of neural network models, based on the
+   dataset. This utility faciliates constructing neural networks, providing the required
+   dimensions for the input and the output of the network. For example
+
+   >>> data = Dataset(
+   ...     tf.constant([[0.1, 0.2], [0.3, 0.4]]),
+   ...     tf.constant([[0.5], [0.7]])
+   ... )
+   >>> input_spec, output_spec = get_tensor_spec_from_data(data)
+   >>> input_spec
+   TensorSpec(shape=(2,), dtype=tf.float32, name='query_points')
+   >>> output_spec
+   TensorSpec(shape=(1,), dtype=tf.float32, name='observations')
+
+   :param dataset: A dataset with ``query_points`` and ``observations`` tensors.
+   :return: Tensor specification objects for the ``query_points`` and ``observations`` tensors.
+   :raise ValueError: If the dataset is not an instance of :class:`~trieste.data.Dataset`.
+
+
+.. py:function:: sample_with_replacement(dataset: trieste.data.Dataset) -> trieste.data.Dataset
+
+   Create a new ``dataset`` with data sampled with replacement. This
+   function is useful for creating bootstrap samples of data for training ensembles.
+
+   :param dataset: The data that should be sampled.
+   :return: A (new) ``dataset`` with sampled data.
+   :raise ValueError (or InvalidArgumentError): If the dataset is not an instance of
+       :class:`~trieste.data.Dataset` or it is empty.
+
+
+.. py:function:: sample_model_index(size: trieste.types.TensorType, num_samples: trieste.types.TensorType, seed: Optional[int] = None) -> trieste.types.TensorType
+
+   Returns samples of indices of individual models in the ensemble.
+
+   If ``num_samples`` is smaller or equal to ``size`` (i.e. the ensemble size) indices are sampled
+   without replacement. When ``num_samples`` is larger than ``size`` then until ``size`` is reached
+   we sample without replacement, while after that we sample with replacement. The rationale of
+   this mixed scheme is that typically one wants to exhaust all networks and then resample them
+   only if required.
+
+   :param size: The maximum index, effectively the number of models in the ensemble.
+   :param num_samples: The number of samples to take.
+   :param seed: Optional RNG seed.
+   :return: A tensor with indices.
+
+
+.. py:function:: negative_log_likelihood(y_true: trieste.types.TensorType, y_pred: tensorflow_probability.distributions.Distribution) -> trieste.types.TensorType
+
+   Maximum likelihood objective function for training neural networks.
+
+   :param y_true: The output variable values.
+   :param y_pred: The output layer of the model. It has to be a probabilistic neural network
+       with a distribution as a final layer.
+   :return: Negative log likelihood values.
+
+

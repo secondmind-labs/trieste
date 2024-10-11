@@ -1,0 +1,45 @@
+trieste.models.keras.builders
+=============================
+
+.. py:module:: trieste.models.keras.builders
+
+.. autoapi-nested-parse::
+
+   This file contains builders for Keras models supported in Trieste. We found the default
+   configurations used here to work well in most situation, but they should not be taken as
+   universally good solutions.
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:function:: build_keras_ensemble(data: trieste.data.Dataset, ensemble_size: int = 5, num_hidden_layers: int = 2, units: int = 25, activation: Union[str, gpflow.keras.tf_keras.layers.Activation] = 'relu', independent_normal: bool = False) -> trieste.models.keras.architectures.KerasEnsemble
+
+   Builds a simple ensemble of neural networks in Keras where each network has the same
+   architecture: number of hidden layers, nodes in hidden layers and activation function.
+
+   Default ensemble size and activation function seem to work well in practice, in regression type
+   of problems at least. Number of hidden layers and units per layer should be modified according
+   to the dataset size and complexity of the function - the default values seem to work well
+   for small datasets common in Bayesian optimization. Using the independent normal is relevant
+   only if one is modelling multiple output variables, as it simplifies the distribution by
+   ignoring correlations between outputs.
+
+   :param data: Data for training, used for extracting input and output tensor specifications.
+   :param ensemble_size: The size of the ensemble, that is, the number of base learners or
+       individual neural networks in the ensemble.
+   :param num_hidden_layers: The number of hidden layers in each network.
+   :param units: The number of nodes in each hidden layer.
+   :param activation: The activation function in each hidden layer.
+   :param independent_normal: If set to `True` then :class:`~tfp.layers.IndependentNormal` layer
+       is used as the output layer. This models outputs as independent, only the diagonal
+       elements of the covariance matrix are parametrized. If left as the default `False`,
+       then :class:`~tfp.layers.MultivariateNormalTriL` layer is used where correlations
+       between outputs are learned as well. Note that this is only relevant for multi-output
+       models.
+   :return: Keras ensemble model.
+
+

@@ -1,0 +1,1205 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.ask_tell_optimization &#8212; trieste 3.4.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../../_static/styles/bootstrap.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+
+  
+  <link href="../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=e353d410970836974a52" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
+
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/sphinx_highlight.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/trieste/ask_tell_optimization';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://secondmind-labs.github.io/trieste/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '3.4.0';
+        </script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  <div class="navbar-header-items__start">
+    
+      <div class="navbar-item">
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/logo.png" class="logo__image only-light" alt="Logo image"/>
+    <script>document.write(`<img src="../../_static/logo.png" class="logo__image only-dark" alt="Logo image"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../autoapi/trieste/index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      3.4.0  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+    </div>
+  
+
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../autoapi/trieste/index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      3.4.0  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumbs">
+  <ul class="bd-breadcrumbs" role="navigation" aria-label="Breadcrumb">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">trieste.ask_tell_optimization</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <h1>Source code for trieste.ask_tell_optimization</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2021 The Trieste Contributors</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module contains the Ask/Tell API for users of Trieste who would like to</span>
+<span class="sd">perform Bayesian Optimization with external control of the optimization loop.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">deepcopy</span>
+<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Generic</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Type</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">cast</span><span class="p">,</span> <span class="n">overload</span>
+
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+
+<span class="kn">from</span> <span class="nn">.models.utils</span> <span class="kn">import</span> <span class="n">optimize_model_and_save_result</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="k">except</span> <span class="ne">ModuleNotFoundError</span><span class="p">:</span>
+    <span class="n">pd</span> <span class="o">=</span> <span class="kc">None</span>
+
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">logging</span>
+<span class="kn">from</span> <span class="nn">.acquisition.rule</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">AcquisitionRule</span><span class="p">,</span>
+    <span class="n">EfficientGlobalOptimization</span><span class="p">,</span>
+    <span class="n">LocalDatasetsAcquisitionRule</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.acquisition.utils</span> <span class="kn">import</span> <span class="n">with_local_datasets</span>
+<span class="kn">from</span> <span class="nn">.bayesian_optimizer</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">FrozenRecord</span><span class="p">,</span>
+    <span class="n">OptimizationResult</span><span class="p">,</span>
+    <span class="n">Record</span><span class="p">,</span>
+    <span class="n">observation_plot_init</span><span class="p">,</span>
+    <span class="n">write_summary_initial_model_fit</span><span class="p">,</span>
+    <span class="n">write_summary_observations</span><span class="p">,</span>
+    <span class="n">write_summary_query_points</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.data</span> <span class="kn">import</span> <span class="n">Dataset</span>
+<span class="kn">from</span> <span class="nn">.models</span> <span class="kn">import</span> <span class="n">ProbabilisticModel</span><span class="p">,</span> <span class="n">TrainableProbabilisticModel</span>
+<span class="kn">from</span> <span class="nn">.observer</span> <span class="kn">import</span> <span class="n">OBJECTIVE</span>
+<span class="kn">from</span> <span class="nn">.space</span> <span class="kn">import</span> <span class="n">SearchSpace</span>
+<span class="kn">from</span> <span class="nn">.types</span> <span class="kn">import</span> <span class="n">State</span><span class="p">,</span> <span class="n">Tag</span><span class="p">,</span> <span class="n">TensorType</span>
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="kn">import</span> <span class="n">Ok</span><span class="p">,</span> <span class="n">Timer</span>
+<span class="kn">from</span> <span class="nn">.utils.misc</span> <span class="kn">import</span> <span class="n">LocalizedTag</span><span class="p">,</span> <span class="n">get_value_for_tag</span><span class="p">,</span> <span class="n">ignoring_local_tags</span>
+
+<div class="viewcode-block" id="StateType"><a class="viewcode-back" href="../../autoapi/trieste/ask_tell_optimization/index.html#trieste.ask_tell_optimization.StateType">[docs]</a><span class="n">StateType</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;StateType&quot;</span><span class="p">)</span></div>
+<span class="sd">&quot;&quot;&quot; Unbound type variable. &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="SearchSpaceType"><a class="viewcode-back" href="../../autoapi/trieste/ask_tell_optimization/index.html#trieste.ask_tell_optimization.SearchSpaceType">[docs]</a><span class="n">SearchSpaceType</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;SearchSpaceType&quot;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="n">SearchSpace</span><span class="p">)</span></div>
+<span class="sd">&quot;&quot;&quot; Type variable bound to :class:`SearchSpace`. &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ProbabilisticModelType"><a class="viewcode-back" href="../../autoapi/trieste/ask_tell_optimization/index.html#trieste.ask_tell_optimization.ProbabilisticModelType">[docs]</a><span class="n">ProbabilisticModelType</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span>
+    <span class="s2">&quot;ProbabilisticModelType&quot;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="n">ProbabilisticModel</span><span class="p">,</span> <span class="n">contravariant</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span></div>
+<span class="sd">&quot;&quot;&quot; Contravariant type variable bound to :class:`ProbabilisticModel`. &quot;&quot;&quot;</span>
+
+<span class="n">AskTellOptimizerType</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;AskTellOptimizerType&quot;</span><span class="p">)</span>
+
+
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="viewcode-block" id="AskTellOptimizerState"><a class="viewcode-back" href="../../autoapi/trieste/ask_tell_optimization/index.html#trieste.ask_tell_optimization.AskTellOptimizerState">[docs]</a><span class="k">class</span> <span class="nc">AskTellOptimizerState</span><span class="p">(</span><span class="n">Generic</span><span class="p">[</span><span class="n">StateType</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">]):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Internal state for an Ask/Tell optimizer. This can be obtained using the optimizer&#39;s</span>
+<span class="sd">    `to_state` method, and can be used to initialise a new instance of the optimizer.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="AskTellOptimizerState.record"><a class="viewcode-back" href="../../autoapi/trieste/ask_tell_optimization/index.html#trieste.ask_tell_optimization.AskTellOptimizerState.record">[docs]</a>    <span class="n">record</span><span class="p">:</span> <span class="n">Record</span><span class="p">[</span><span class="n">StateType</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">]</span></div>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; A record of the current state of the optimization. &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="AskTellOptimizerState.local_data_ixs"><a class="viewcode-back" href="../../autoapi/trieste/ask_tell_optimization/index.html#trieste.ask_tell_optimization.AskTellOptimizerState.local_data_ixs">[docs]</a>    <span class="n">local_data_ixs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]]</span></div>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Indices to the local data, for LocalDatasetsAcquisitionRule rules</span>
+<span class="sd">    when `track_data` is `False`. &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="AskTellOptimizerState.local_data_len"><a class="viewcode-back" href="../../autoapi/trieste/ask_tell_optimization/index.html#trieste.ask_tell_optimization.AskTellOptimizerState.local_data_len">[docs]</a>    <span class="n">local_data_len</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span></div>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Length of the datasets, for LocalDatasetsAcquisitionRule rules</span>
+<span class="sd">    when `track_data` is `False`. &quot;&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="AskTellOptimizerABC"><a class="viewcode-back" href="../../autoapi/trieste/ask_tell_optimization/index.html#trieste.ask_tell_optimization.AskTellOptimizerABC">[docs]</a><span class="k">class</span> <span class="nc">AskTellOptimizerABC</span><span class="p">(</span><span class="n">ABC</span><span class="p">,</span> <span class="n">Generic</span><span class="p">[</span><span class="n">SearchSpaceType</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">]):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This class provides Ask/Tell optimization interface. It is designed for those use cases</span>
+<span class="sd">    when control of the optimization loop by Trieste is impossible or not desirable.</span>
+<span class="sd">    For the default use case with model training, refer to :class:`AskTellOptimizer`.</span>
+<span class="sd">    For more details about the Bayesian Optimization routine, refer to :class:`BayesianOptimizer`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">search_space</span><span class="p">:</span> <span class="n">SearchSpaceType</span><span class="p">,</span>
+        <span class="n">datasets</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">],</span>
+        <span class="n">models</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">],</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">fit_model</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">track_data</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">local_data_ixs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">local_data_len</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="o">...</span>
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">search_space</span><span class="p">:</span> <span class="n">SearchSpaceType</span><span class="p">,</span>
+        <span class="n">datasets</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">],</span>
+        <span class="n">models</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">],</span>
+        <span class="n">acquisition_rule</span><span class="p">:</span> <span class="n">AcquisitionRule</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">SearchSpaceType</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">],</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">fit_model</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">track_data</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">local_data_ixs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">local_data_len</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="o">...</span>
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">search_space</span><span class="p">:</span> <span class="n">SearchSpaceType</span><span class="p">,</span>
+        <span class="n">datasets</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">],</span>
+        <span class="n">models</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">],</span>
+        <span class="n">acquisition_rule</span><span class="p">:</span> <span class="n">AcquisitionRule</span><span class="p">[</span>
+            <span class="n">State</span><span class="p">[</span><span class="n">StateType</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">],</span> <span class="n">SearchSpaceType</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span>
+        <span class="p">],</span>
+        <span class="n">acquisition_state</span><span class="p">:</span> <span class="n">StateType</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">fit_model</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">track_data</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">local_data_ixs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">local_data_len</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="o">...</span>
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">search_space</span><span class="p">:</span> <span class="n">SearchSpaceType</span><span class="p">,</span>
+        <span class="n">datasets</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span>
+        <span class="n">models</span><span class="p">:</span> <span class="n">ProbabilisticModelType</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">fit_model</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">track_data</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">local_data_ixs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">local_data_len</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="o">...</span>
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">search_space</span><span class="p">:</span> <span class="n">SearchSpaceType</span><span class="p">,</span>
+        <span class="n">datasets</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span>
+        <span class="n">models</span><span class="p">:</span> <span class="n">ProbabilisticModelType</span><span class="p">,</span>
+        <span class="n">acquisition_rule</span><span class="p">:</span> <span class="n">AcquisitionRule</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">SearchSpaceType</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">],</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">fit_model</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">track_data</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">local_data_ixs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">local_data_len</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="o">...</span>
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">search_space</span><span class="p">:</span> <span class="n">SearchSpaceType</span><span class="p">,</span>
+        <span class="n">datasets</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span>
+        <span class="n">models</span><span class="p">:</span> <span class="n">ProbabilisticModelType</span><span class="p">,</span>
+        <span class="n">acquisition_rule</span><span class="p">:</span> <span class="n">AcquisitionRule</span><span class="p">[</span>
+            <span class="n">State</span><span class="p">[</span><span class="n">StateType</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">],</span> <span class="n">SearchSpaceType</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span>
+        <span class="p">],</span>
+        <span class="n">acquisition_state</span><span class="p">:</span> <span class="n">StateType</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">fit_model</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">track_data</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">local_data_ixs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">local_data_len</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">search_space</span><span class="p">:</span> <span class="n">SearchSpaceType</span><span class="p">,</span>
+        <span class="n">datasets</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">]</span> <span class="o">|</span> <span class="n">Dataset</span><span class="p">,</span>
+        <span class="n">models</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">]</span> <span class="o">|</span> <span class="n">ProbabilisticModelType</span><span class="p">,</span>
+        <span class="n">acquisition_rule</span><span class="p">:</span> <span class="n">AcquisitionRule</span><span class="p">[</span>
+            <span class="n">TensorType</span> <span class="o">|</span> <span class="n">State</span><span class="p">[</span><span class="n">StateType</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">],</span>
+            <span class="n">SearchSpaceType</span><span class="p">,</span>
+            <span class="n">ProbabilisticModelType</span><span class="p">,</span>
+        <span class="p">]</span>
+        <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">acquisition_state</span><span class="p">:</span> <span class="n">StateType</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">fit_model</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">track_data</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">local_data_ixs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">local_data_len</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param search_space: The space over which to search for the next query point.</span>
+<span class="sd">        :param datasets: Already observed input-output pairs for each tag.</span>
+<span class="sd">        :param models: The model to use for each :class:`~trieste.data.Dataset` in</span>
+<span class="sd">            ``datasets``.</span>
+<span class="sd">        :param acquisition_rule: The acquisition rule, which defines how to search for a new point</span>
+<span class="sd">            on each optimization step. Defaults to</span>
+<span class="sd">            :class:`~trieste.acquisition.rule.EfficientGlobalOptimization` with default</span>
+<span class="sd">            arguments. Note that if the default is used, this implies the tags must be</span>
+<span class="sd">            `OBJECTIVE` and the search space can be any :class:`~trieste.space.SearchSpace`.</span>
+<span class="sd">        :param acquisition_state: The optional acquisition state for stateful acquisitions.</span>
+<span class="sd">        :param fit_model: If `True` (default), models passed in will be optimized on the given data.</span>
+<span class="sd">            If `False`, the models are assumed to be optimized already.</span>
+<span class="sd">        :param track_data: If `True` (default), the optimizer will track the changing</span>
+<span class="sd">            datasets via a local copy. If `False`, it will infer new datasets from</span>
+<span class="sd">            updates to the global datasets (optionally using `local_data_ixs` and indices passed</span>
+<span class="sd">            in to `tell`).</span>
+<span class="sd">        :param local_data_ixs: Indices to the local data in the initial datasets. If unspecified,</span>
+<span class="sd">            assumes that the initial datasets are global.</span>
+<span class="sd">        :param local_data_len: Optional length of the data when the passed in `local_data_ixs`</span>
+<span class="sd">            were measured. If the data has increased since then, the indices are extended.</span>
+<span class="sd">        :raise ValueError: If any of the following are true:</span>
+<span class="sd">            - the keys in ``datasets`` and ``models`` do not match</span>
+<span class="sd">            - ``datasets`` or ``models`` are empty</span>
+<span class="sd">            - default acquisition is used but incompatible with other inputs</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_search_space</span> <span class="o">=</span> <span class="n">search_space</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_acquisition_record</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_acquisition_state</span> <span class="o">=</span> <span class="n">acquisition_state</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">datasets</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">models</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;dicts of datasets and models must be populated.&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">datasets</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">):</span>
+            <span class="n">datasets</span> <span class="o">=</span> <span class="p">{</span><span class="n">OBJECTIVE</span><span class="p">:</span> <span class="n">datasets</span><span class="p">}</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">models</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">):</span>
+            <span class="n">models</span> <span class="o">=</span> <span class="p">{</span><span class="n">OBJECTIVE</span><span class="p">:</span> <span class="n">models</span><span class="p">}</span>
+
+        <span class="c1"># reassure the type checker that everything is tagged</span>
+        <span class="n">datasets</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Dict</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">],</span> <span class="n">datasets</span><span class="p">)</span>
+        <span class="n">models</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Dict</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">],</span> <span class="n">models</span><span class="p">)</span>
+
+        <span class="c1"># Get set of dataset and model keys, ignoring any local tag index. That is, only the</span>
+        <span class="c1"># global tag part is considered.</span>
+        <span class="n">datasets_keys</span> <span class="o">=</span> <span class="p">{</span><span class="n">LocalizedTag</span><span class="o">.</span><span class="n">from_tag</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span><span class="o">.</span><span class="n">global_tag</span> <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">datasets</span><span class="o">.</span><span class="n">keys</span><span class="p">()}</span>
+        <span class="n">models_keys</span> <span class="o">=</span> <span class="p">{</span><span class="n">LocalizedTag</span><span class="o">.</span><span class="n">from_tag</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span><span class="o">.</span><span class="n">global_tag</span> <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">models</span><span class="o">.</span><span class="n">keys</span><span class="p">()}</span>
+        <span class="k">if</span> <span class="n">datasets_keys</span> <span class="o">!=</span> <span class="n">models_keys</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;datasets and models should contain the same keys. Got </span><span class="si">{</span><span class="n">datasets_keys</span><span class="si">}</span><span class="s2"> and&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="n">models_keys</span><span class="si">}</span><span class="s2"> respectively.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_datasets</span> <span class="o">=</span> <span class="n">datasets</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_models</span> <span class="o">=</span> <span class="n">models</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">track_data</span> <span class="o">=</span> <span class="n">track_data</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_query_plot_dfs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_observation_plot_dfs</span> <span class="o">=</span> <span class="n">observation_plot_init</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_datasets</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">acquisition_rule</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_datasets</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="o">!=</span> <span class="p">{</span><span class="n">OBJECTIVE</span><span class="p">}:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Default acquisition rule EfficientGlobalOptimization requires tag&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="n">OBJECTIVE</span><span class="si">!r}</span><span class="s2">, got keys </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_datasets</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_acquisition_rule</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
+                <span class="n">AcquisitionRule</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">SearchSpaceType</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">],</span>
+                <span class="n">EfficientGlobalOptimization</span><span class="p">(),</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_acquisition_rule</span> <span class="o">=</span> <span class="n">acquisition_rule</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_acquisition_rule</span><span class="p">,</span> <span class="n">LocalDatasetsAcquisitionRule</span><span class="p">):</span>
+            <span class="c1"># In order to support local datasets, account for the case where there may be an initial</span>
+            <span class="c1"># dataset that is not tagged per region. In this case, only the global dataset will</span>
+            <span class="c1"># exist in datasets. We want to copy this initial dataset to all the regions.</span>
+            <span class="n">num_local_datasets</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_acquisition_rule</span><span class="o">.</span><span class="n">num_local_datasets</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">track_data</span><span class="p">:</span>
+                <span class="n">datasets</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_datasets</span> <span class="o">=</span> <span class="n">with_local_datasets</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_datasets</span><span class="p">,</span> <span class="n">num_local_datasets</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_len</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_datasets</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">local_data_ixs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_ixs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">local_data_ixs</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">local_data_len</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="c1"># infer new dataset indices from change in dataset sizes</span>
+                        <span class="n">num_new_points</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_len</span> <span class="o">-</span> <span class="n">local_data_len</span>
+                        <span class="k">if</span> <span class="n">num_new_points</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="p">(</span>
+                            <span class="n">num_local_datasets</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">num_new_points</span> <span class="o">%</span> <span class="n">num_local_datasets</span> <span class="o">!=</span> <span class="mi">0</span>
+                        <span class="p">):</span>
+                            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                                <span class="s2">&quot;Cannot infer new data points as datasets haven&#39;t increased by &quot;</span>
+                                <span class="sa">f</span><span class="s2">&quot;a multiple of </span><span class="si">{</span><span class="n">num_local_datasets</span><span class="si">}</span><span class="s2">&quot;</span>
+                            <span class="p">)</span>
+                        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_local_datasets</span><span class="p">):</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_ixs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+                                <span class="p">[</span>
+                                    <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_ixs</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                                    <span class="n">tf</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">num_new_points</span><span class="p">,</span> <span class="n">num_local_datasets</span><span class="p">)</span>
+                                    <span class="o">+</span> <span class="n">local_data_len</span>
+                                    <span class="o">+</span> <span class="n">i</span><span class="p">,</span>
+                                <span class="p">],</span>
+                                <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+                            <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_ixs</span> <span class="o">=</span> <span class="p">[</span>
+                        <span class="n">tf</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dataset_len</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_local_datasets</span><span class="p">)</span>
+                    <span class="p">]</span>
+
+                <span class="n">datasets</span> <span class="o">=</span> <span class="n">with_local_datasets</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_datasets</span><span class="p">,</span> <span class="n">num_local_datasets</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_ixs</span>
+                <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_acquisition_rule</span><span class="o">.</span><span class="n">initialize_subspaces</span><span class="p">(</span><span class="n">search_space</span><span class="p">)</span>
+
+        <span class="n">filtered_datasets</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">]</span> <span class="o">|</span> <span class="n">State</span><span class="p">[</span>
+            <span class="n">StateType</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">]</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_acquisition_rule</span><span class="o">.</span><span class="n">filter_datasets</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_models</span><span class="p">,</span> <span class="n">datasets</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">filtered_datasets</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_acquisition_state</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filtered_datasets</span> <span class="o">=</span> <span class="n">filtered_datasets</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_acquisition_state</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_filtered_datasets</span> <span class="o">=</span> <span class="n">filtered_datasets</span>
+
+        <span class="k">if</span> <span class="n">fit_model</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">Timer</span><span class="p">()</span> <span class="k">as</span> <span class="n">initial_model_fitting_timer</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">tag</span><span class="p">,</span> <span class="n">model</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_models</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="c1"># Prefer local dataset if available.</span>
+                    <span class="n">tags</span> <span class="o">=</span> <span class="p">[</span><span class="n">tag</span><span class="p">,</span> <span class="n">LocalizedTag</span><span class="o">.</span><span class="n">from_tag</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span><span class="o">.</span><span class="n">global_tag</span><span class="p">]</span>
+                    <span class="n">_</span><span class="p">,</span> <span class="n">dataset</span> <span class="o">=</span> <span class="n">get_value_for_tag</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_filtered_datasets</span><span class="p">,</span> <span class="o">*</span><span class="n">tags</span><span class="p">)</span>
+                    <span class="k">assert</span> <span class="n">dataset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">update_model</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span>
+
+            <span class="n">summary_writer</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">get_tensorboard_writer</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">summary_writer</span><span class="p">:</span>
+                <span class="k">with</span> <span class="n">summary_writer</span><span class="o">.</span><span class="n">as_default</span><span class="p">(</span><span class="n">step</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">get_step_number</span><span class="p">()):</span>
+                    <span class="n">write_summary_initial_model_fit</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_datasets</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_models</span><span class="p">,</span> <span class="n">initial_model_fitting_timer</span>
+                    <span class="p">)</span>
+
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="AskTellOptimizerABC.update_model"><a class="viewcode-back" href="../../autoapi/trieste/ask_tell_optimization/index.html#trieste.ask_tell_optimization.AskTellOptimizerABC.update_model">[docs]</a>    <span class="k">def</span> <span class="nf">update_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">ProbabilisticModelType</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update the model on the specified dataset, for example by training.</span>
+<span class="sd">        Called during the Tell stage and optionally at initial fitting.</span>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+
+<div class="viewcode-block" id="AskTellOptimizerABC.__repr__"><a class="viewcode-back" href="../../autoapi/trieste/ask_tell_optimization/index.html#trieste.ask_tell_optimization.AskTellOptimizerABC.__repr__">[docs]</a>    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Print-friendly string representation&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;AskTellOptimizer(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_search_space</span><span class="si">!r}</span><span class="s2">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_datasets</span><span class="si">!r}</span><span class="s2">,</span>
+<span class="s2">               </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_models</span><span class="si">!r}</span><span class="s2">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_acquisition_rule</span><span class="si">!r}</span><span class="s2">), &quot;</span>
+<span class="s2">               </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_acquisition_state</span><span class="si">!r}</span><span class="s2">&quot;&quot;&quot;</span></div>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="AskTellOptimizerABC.datasets"><a class="viewcode-back" href="../../autoapi/trieste/ask_tell_optimization/index.html#trieste.ask_tell_optimization.AskTellOptimizerABC.datasets">[docs]</a>    <span class="k">def</span> <span class="nf">datasets</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Mapping</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The current datasets.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_datasets</span></div>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="AskTellOptimizerABC.dataset"><a class="viewcode-back" href="../../autoapi/trieste/ask_tell_optimization/index.html#trieste.ask_tell_optimization.AskTellOptimizerABC.dataset">[docs]</a>    <span class="k">def</span> <span class="nf">dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dataset</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The current dataset when there is just one dataset.&quot;&quot;&quot;</span>
+        <span class="c1"># Ignore local datasets.</span>
+        <span class="n">datasets</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="n">ignoring_local_tags</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">datasets</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">datasets</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">datasets</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Expected a single dataset, found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">datasets</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="AskTellOptimizerABC.local_data_ixs"><a class="viewcode-back" href="../../autoapi/trieste/ask_tell_optimization/index.html#trieste.ask_tell_optimization.AskTellOptimizerABC.local_data_ixs">[docs]</a>    <span class="k">def</span> <span class="nf">local_data_ixs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Indices to the local data. Only stored for LocalDatasetsAcquisitionRule rules</span>
+<span class="sd">        when `track_data` is `False`.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_acquisition_rule</span><span class="p">,</span> <span class="n">LocalDatasetsAcquisitionRule</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">track_data</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_ixs</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="AskTellOptimizerABC.local_data_len"><a class="viewcode-back" href="../../autoapi/trieste/ask_tell_optimization/index.html#trieste.ask_tell_optimization.AskTellOptimizerABC.local_data_len">[docs]</a>    <span class="k">def</span> <span class="nf">local_data_len</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Data length. Only stored for LocalDatasetsAcquisitionRule rules</span>
+<span class="sd">        when `track_data` is `False`.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_acquisition_rule</span><span class="p">,</span> <span class="n">LocalDatasetsAcquisitionRule</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">track_data</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_len</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="AskTellOptimizerABC.models"><a class="viewcode-back" href="../../autoapi/trieste/ask_tell_optimization/index.html#trieste.ask_tell_optimization.AskTellOptimizerABC.models">[docs]</a>    <span class="k">def</span> <span class="nf">models</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Mapping</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The current models.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_models</span></div>
+
+    <span class="nd">@models</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">models</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">models</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update the current models.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">models</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;New models contain incorrect keys. Expected </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span><span class="si">}</span><span class="s2">, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;received </span><span class="si">{</span><span class="n">models</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span><span class="si">}</span><span class="s2">.&quot;</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_models</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">models</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="AskTellOptimizerABC.model"><a class="viewcode-back" href="../../autoapi/trieste/ask_tell_optimization/index.html#trieste.ask_tell_optimization.AskTellOptimizerABC.model">[docs]</a>    <span class="k">def</span> <span class="nf">model</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ProbabilisticModel</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The current model when there is just one model.&quot;&quot;&quot;</span>
+        <span class="c1"># Ignore local models.</span>
+        <span class="n">models</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">ProbabilisticModel</span><span class="p">]</span> <span class="o">=</span> <span class="n">ignoring_local_tags</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">models</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">models</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">models</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Expected a single model, found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">models</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+    <span class="nd">@model</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">ProbabilisticModelType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update the current model, using the OBJECTIVE tag.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">models</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Expected a single model, found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">models</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="o">!=</span> <span class="p">{</span><span class="n">OBJECTIVE</span><span class="p">}:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Expected a single model tagged OBJECTIVE, found </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span><span class="si">}</span><span class="s2">. &quot;</span>
+                <span class="s2">&quot;To update this, pass in a dictionary to the models property instead.&quot;</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_models</span> <span class="o">=</span> <span class="p">{</span><span class="n">OBJECTIVE</span><span class="p">:</span> <span class="n">model</span><span class="p">}</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="AskTellOptimizerABC.acquisition_state"><a class="viewcode-back" href="../../autoapi/trieste/ask_tell_optimization/index.html#trieste.ask_tell_optimization.AskTellOptimizerABC.acquisition_state">[docs]</a>    <span class="k">def</span> <span class="nf">acquisition_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StateType</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The current acquisition state.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_acquisition_state</span></div>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="AskTellOptimizerABC.dataset_len"><a class="viewcode-back" href="../../autoapi/trieste/ask_tell_optimization/index.html#trieste.ask_tell_optimization.AskTellOptimizerABC.dataset_len">[docs]</a>    <span class="k">def</span> <span class="nf">dataset_len</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">datasets</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Helper method for inferring the global dataset size.&quot;&quot;&quot;</span>
+        <span class="n">dataset_lens</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">tag</span><span class="p">,</span> <span class="n">dataset</span> <span class="ow">in</span> <span class="n">datasets</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">LocalizedTag</span><span class="o">.</span><span class="n">from_tag</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span><span class="o">.</span><span class="n">is_local</span>
+        <span class="p">]</span>
+        <span class="n">unique_lens</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">dataset_lens</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">unique_lens</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">unique_lens</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Expected unique global dataset size, got </span><span class="si">{</span><span class="n">unique_lens</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="AskTellOptimizerABC.from_record"><a class="viewcode-back" href="../../autoapi/trieste/ask_tell_optimization/index.html#trieste.ask_tell_optimization.AskTellOptimizerABC.from_record">[docs]</a>    <span class="k">def</span> <span class="nf">from_record</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">:</span> <span class="n">Type</span><span class="p">[</span><span class="n">AskTellOptimizerType</span><span class="p">],</span>
+        <span class="n">record</span><span class="p">:</span> <span class="n">Record</span><span class="p">[</span><span class="n">StateType</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">]</span>
+        <span class="o">|</span> <span class="n">FrozenRecord</span><span class="p">[</span><span class="n">StateType</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">],</span>
+        <span class="n">search_space</span><span class="p">:</span> <span class="n">SearchSpaceType</span><span class="p">,</span>
+        <span class="n">acquisition_rule</span><span class="p">:</span> <span class="n">AcquisitionRule</span><span class="p">[</span>
+            <span class="n">TensorType</span> <span class="o">|</span> <span class="n">State</span><span class="p">[</span><span class="n">StateType</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">],</span>
+            <span class="n">SearchSpaceType</span><span class="p">,</span>
+            <span class="n">ProbabilisticModelType</span><span class="p">,</span>
+        <span class="p">]</span>
+        <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">track_data</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">local_data_ixs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">local_data_len</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AskTellOptimizerType</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Creates new :class:`~AskTellOptimizer` instance from provided optimization state.</span>
+<span class="sd">        Model training isn&#39;t triggered upon creation of the instance.</span>
+
+<span class="sd">        :param record: Optimization state record.</span>
+<span class="sd">        :param search_space: The space over which to search for the next query point.</span>
+<span class="sd">        :param acquisition_rule: The acquisition rule, which defines how to search for a new point</span>
+<span class="sd">            on each optimization step. Defaults to</span>
+<span class="sd">            :class:`~trieste.acquisition.rule.EfficientGlobalOptimization` with default</span>
+<span class="sd">            arguments.</span>
+<span class="sd">        :param track_data: Whether the optimizer tracks the changing datasets via a local copy.</span>
+<span class="sd">        :param local_data_ixs: Indices to local data for local rules with `track_data` False.</span>
+<span class="sd">        :param local_data_len: Original data length for local rules with `track_data` False.</span>
+<span class="sd">        :return: New instance of :class:`~AskTellOptimizer`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># we are recovering previously saved optimization state</span>
+        <span class="c1"># so the model was already trained</span>
+        <span class="c1"># thus there is no need to train it again</span>
+
+        <span class="c1"># type ignore below is because this relies on subclasses not overriding __init__</span>
+        <span class="c1"># ones that do may also need to override this to get it to work</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>  <span class="c1"># type: ignore</span>
+            <span class="n">search_space</span><span class="p">,</span>
+            <span class="n">record</span><span class="o">.</span><span class="n">datasets</span><span class="p">,</span>
+            <span class="n">record</span><span class="o">.</span><span class="n">models</span><span class="p">,</span>
+            <span class="n">acquisition_rule</span><span class="o">=</span><span class="n">acquisition_rule</span><span class="p">,</span>
+            <span class="n">acquisition_state</span><span class="o">=</span><span class="n">record</span><span class="o">.</span><span class="n">acquisition_state</span><span class="p">,</span>
+            <span class="n">fit_model</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">track_data</span><span class="o">=</span><span class="n">track_data</span><span class="p">,</span>
+            <span class="n">local_data_ixs</span><span class="o">=</span><span class="n">local_data_ixs</span><span class="p">,</span>
+            <span class="n">local_data_len</span><span class="o">=</span><span class="n">local_data_len</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="AskTellOptimizerABC.to_record"><a class="viewcode-back" href="../../autoapi/trieste/ask_tell_optimization/index.html#trieste.ask_tell_optimization.AskTellOptimizerABC.to_record">[docs]</a>    <span class="k">def</span> <span class="nf">to_record</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">copy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Record</span><span class="p">[</span><span class="n">StateType</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Collects the current state of the optimization, which includes datasets,</span>
+<span class="sd">        models and acquisition state (if applicable).</span>
+
+<span class="sd">        :param copy: Whether to return a copy of the current state or the original. Copying</span>
+<span class="sd">            is not supported for all model types. However, continuing the optimization will</span>
+<span class="sd">            modify the original state.</span>
+<span class="sd">        :return: An optimization state record.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">datasets_copy</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_datasets</span><span class="p">)</span> <span class="k">if</span> <span class="n">copy</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_datasets</span>
+            <span class="n">models_copy</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_models</span><span class="p">)</span> <span class="k">if</span> <span class="n">copy</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_models</span>
+            <span class="c1"># use the state as it was at acquisition time, not the one modified in</span>
+            <span class="c1"># filter_datasets in preparation for the next acquisition, so we can reinitialise</span>
+            <span class="c1"># the AskTellOptimizer using the record</span>
+            <span class="n">state_copy</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_acquisition_record</span><span class="p">)</span> <span class="k">if</span> <span class="n">copy</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_acquisition_record</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+                <span class="s2">&quot;Failed to copy the optimization state. Some models do not support &quot;</span>
+                <span class="s2">&quot;deecopying (this is particularly common for deep neural network models). &quot;</span>
+                <span class="s2">&quot;For these models, the `copy` argument of the `to_record` or `to_result` &quot;</span>
+                <span class="s2">&quot;methods should be set to `False`. This means that the returned state may be &quot;</span>
+                <span class="s2">&quot;modified by subsequent optimization.&quot;</span>
+            <span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+
+        <span class="k">return</span> <span class="n">Record</span><span class="p">(</span><span class="n">datasets</span><span class="o">=</span><span class="n">datasets_copy</span><span class="p">,</span> <span class="n">models</span><span class="o">=</span><span class="n">models_copy</span><span class="p">,</span> <span class="n">acquisition_state</span><span class="o">=</span><span class="n">state_copy</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="AskTellOptimizerABC.to_result"><a class="viewcode-back" href="../../autoapi/trieste/ask_tell_optimization/index.html#trieste.ask_tell_optimization.AskTellOptimizerABC.to_result">[docs]</a>    <span class="k">def</span> <span class="nf">to_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">copy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">OptimizationResult</span><span class="p">[</span><span class="n">StateType</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Converts current state of the optimization</span>
+<span class="sd">        into a :class:`~trieste.data.OptimizationResult` object.</span>
+
+<span class="sd">        :param copy: Whether to return a copy of the current state or the original. Copying</span>
+<span class="sd">            is not supported for all model types. However, continuing the optimization will</span>
+<span class="sd">            modify the original state.</span>
+<span class="sd">        :return: A :class:`~trieste.data.OptimizationResult` object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">record</span><span class="p">:</span> <span class="n">Record</span><span class="p">[</span><span class="n">StateType</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_record</span><span class="p">(</span><span class="n">copy</span><span class="o">=</span><span class="n">copy</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">OptimizationResult</span><span class="p">(</span><span class="n">Ok</span><span class="p">(</span><span class="n">record</span><span class="p">),</span> <span class="p">[])</span></div>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="AskTellOptimizerABC.from_state"><a class="viewcode-back" href="../../autoapi/trieste/ask_tell_optimization/index.html#trieste.ask_tell_optimization.AskTellOptimizerABC.from_state">[docs]</a>    <span class="k">def</span> <span class="nf">from_state</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">:</span> <span class="n">Type</span><span class="p">[</span><span class="n">AskTellOptimizerType</span><span class="p">],</span>
+        <span class="n">state</span><span class="p">:</span> <span class="n">AskTellOptimizerState</span><span class="p">[</span><span class="n">StateType</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">],</span>
+        <span class="n">search_space</span><span class="p">:</span> <span class="n">SearchSpaceType</span><span class="p">,</span>
+        <span class="n">acquisition_rule</span><span class="p">:</span> <span class="n">AcquisitionRule</span><span class="p">[</span>
+            <span class="n">TensorType</span> <span class="o">|</span> <span class="n">State</span><span class="p">[</span><span class="n">StateType</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">],</span>
+            <span class="n">SearchSpaceType</span><span class="p">,</span>
+            <span class="n">ProbabilisticModelType</span><span class="p">,</span>
+        <span class="p">]</span>
+        <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">track_data</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AskTellOptimizerType</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Creates new :class:`~AskTellOptimizer` instance from provided AskTellOptimizer state.</span>
+<span class="sd">        Model training isn&#39;t triggered upon creation of the instance.</span>
+
+<span class="sd">        :param state: AskTellOptimizer state.</span>
+<span class="sd">        :param search_space: The space over which to search for the next query point.</span>
+<span class="sd">        :param acquisition_rule: The acquisition rule, which defines how to search for a new point</span>
+<span class="sd">            on each optimization step. Defaults to</span>
+<span class="sd">            :class:`~trieste.acquisition.rule.EfficientGlobalOptimization` with default</span>
+<span class="sd">            arguments.</span>
+<span class="sd">        :param track_data: Whether the optimizer tracks the changing datasets via a local copy.</span>
+<span class="sd">        :return: New instance of :class:`~AskTellOptimizer`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">from_record</span><span class="p">(</span>  <span class="c1"># type: ignore</span>
+            <span class="n">state</span><span class="o">.</span><span class="n">record</span><span class="p">,</span>
+            <span class="n">search_space</span><span class="p">,</span>
+            <span class="n">acquisition_rule</span><span class="p">,</span>
+            <span class="n">track_data</span><span class="o">=</span><span class="n">track_data</span><span class="p">,</span>
+            <span class="n">local_data_ixs</span><span class="o">=</span><span class="n">state</span><span class="o">.</span><span class="n">local_data_ixs</span><span class="p">,</span>
+            <span class="n">local_data_len</span><span class="o">=</span><span class="n">state</span><span class="o">.</span><span class="n">local_data_len</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="AskTellOptimizerABC.to_state"><a class="viewcode-back" href="../../autoapi/trieste/ask_tell_optimization/index.html#trieste.ask_tell_optimization.AskTellOptimizerABC.to_state">[docs]</a>    <span class="k">def</span> <span class="nf">to_state</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">copy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AskTellOptimizerState</span><span class="p">[</span><span class="n">StateType</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the AskTellOptimizer state, comprising the current optimization state</span>
+<span class="sd">        alongside any internal AskTellOptimizer state.</span>
+
+<span class="sd">        :param copy: Whether to return a copy of the current state or the original. Copying</span>
+<span class="sd">            is not supported for all model types. However, continuing the optimization will</span>
+<span class="sd">            modify the original state.</span>
+<span class="sd">        :return: An :class:`AskTellOptimizerState` object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">AskTellOptimizerState</span><span class="p">(</span>
+            <span class="n">record</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">to_record</span><span class="p">(</span><span class="n">copy</span><span class="o">=</span><span class="n">copy</span><span class="p">),</span>
+            <span class="n">local_data_ixs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">local_data_ixs</span><span class="p">,</span>
+            <span class="n">local_data_len</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">local_data_len</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="AskTellOptimizerABC.ask"><a class="viewcode-back" href="../../autoapi/trieste/ask_tell_optimization/index.html#trieste.ask_tell_optimization.AskTellOptimizerABC.ask">[docs]</a>    <span class="k">def</span> <span class="nf">ask</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Suggests a point (or points in batch mode) to observe by optimizing the acquisition</span>
+<span class="sd">        function. If the acquisition is stateful, its state is saved.</span>
+
+<span class="sd">        :return: A :class:`TensorType` instance representing suggested point(s).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># This trick deserves a comment to explain what&#39;s going on</span>
+        <span class="c1"># acquisition_rule.acquire can return different things:</span>
+        <span class="c1"># - when acquisition has no state attached, it returns just points</span>
+        <span class="c1"># - when acquisition has state, it returns a Callable</span>
+        <span class="c1">#   which, when called, returns state and points</span>
+        <span class="c1"># so code below is needed to cater for both cases</span>
+
+        <span class="k">with</span> <span class="n">Timer</span><span class="p">()</span> <span class="k">as</span> <span class="n">query_point_generation_timer</span><span class="p">:</span>
+            <span class="n">points_or_stateful</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_acquisition_rule</span><span class="o">.</span><span class="n">acquire</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_search_space</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_models</span><span class="p">,</span> <span class="n">datasets</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_filtered_datasets</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">points_or_stateful</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_acquisition_state</span><span class="p">,</span> <span class="n">query_points</span> <span class="o">=</span> <span class="n">points_or_stateful</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_acquisition_state</span><span class="p">)</span>
+            <span class="c1"># also keep a copy of the state to return in to_record</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_acquisition_record</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_acquisition_state</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">query_points</span> <span class="o">=</span> <span class="n">points_or_stateful</span>
+
+        <span class="n">summary_writer</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">get_tensorboard_writer</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">summary_writer</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">summary_writer</span><span class="o">.</span><span class="n">as_default</span><span class="p">(</span><span class="n">step</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">get_step_number</span><span class="p">()):</span>
+                <span class="n">write_summary_query_points</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_datasets</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_models</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_search_space</span><span class="p">,</span>
+                    <span class="n">query_points</span><span class="p">,</span>
+                    <span class="n">query_point_generation_timer</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_query_plot_dfs</span><span class="p">,</span>
+                <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">query_points</span></div>
+
+<div class="viewcode-block" id="AskTellOptimizerABC.tell"><a class="viewcode-back" href="../../autoapi/trieste/ask_tell_optimization/index.html#trieste.ask_tell_optimization.AskTellOptimizerABC.tell">[docs]</a>    <span class="k">def</span> <span class="nf">tell</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">new_data</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">]</span> <span class="o">|</span> <span class="n">Dataset</span><span class="p">,</span>
+        <span class="n">new_data_ixs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Updates optimizer state with new data.</span>
+
+<span class="sd">        :param new_data: New observed data. If `track_data` is `False`, this refers to all</span>
+<span class="sd">            the data.</span>
+<span class="sd">        :param new_data_ixs: Indices to the new observed local data, if `track_data` is `False`.</span>
+<span class="sd">            If unspecified, inferred from the change in dataset sizes.</span>
+<span class="sd">        :raise ValueError: If keys in ``new_data`` do not match those in already built dataset.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">new_data</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">):</span>
+            <span class="n">new_data</span> <span class="o">=</span> <span class="p">{</span><span class="n">OBJECTIVE</span><span class="p">:</span> <span class="n">new_data</span><span class="p">}</span>
+
+        <span class="c1"># The datasets must have the same keys as the existing datasets. Only exception is if</span>
+        <span class="c1"># the existing datasets are all global and the new data contains local datasets too.</span>
+        <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="n">LocalizedTag</span><span class="o">.</span><span class="n">from_tag</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span><span class="o">.</span><span class="n">local_index</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_datasets</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+            <span class="n">global_old</span> <span class="o">=</span> <span class="p">{</span><span class="n">LocalizedTag</span><span class="o">.</span><span class="n">from_tag</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span><span class="o">.</span><span class="n">global_tag</span> <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_datasets</span><span class="o">.</span><span class="n">keys</span><span class="p">()}</span>
+            <span class="n">global_new</span> <span class="o">=</span> <span class="p">{</span><span class="n">LocalizedTag</span><span class="o">.</span><span class="n">from_tag</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span><span class="o">.</span><span class="n">global_tag</span> <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">new_data</span><span class="o">.</span><span class="n">keys</span><span class="p">()}</span>
+            <span class="k">if</span> <span class="n">global_new</span> <span class="o">!=</span> <span class="n">global_old</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;new_data global keys </span><span class="si">{</span><span class="n">global_new</span><span class="si">}</span><span class="s2"> doesn&#39;t &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;match dataset global keys </span><span class="si">{</span><span class="n">global_old</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_datasets</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="o">!=</span> <span class="n">new_data</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;new_data keys </span><span class="si">{</span><span class="n">new_data</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span><span class="si">}</span><span class="s2"> doesn&#39;t &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;match dataset keys </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_datasets</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">track_data</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">tag</span><span class="p">,</span> <span class="n">new_dataset</span> <span class="ow">in</span> <span class="n">new_data</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_datasets</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span> <span class="o">+=</span> <span class="n">new_dataset</span>
+            <span class="n">datasets</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_datasets</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_acquisition_rule</span><span class="p">,</span> <span class="n">LocalDatasetsAcquisitionRule</span><span class="p">):</span>
+            <span class="n">datasets</span> <span class="o">=</span> <span class="n">new_data</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">num_local_datasets</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dataset_ixs</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">new_data_ixs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># infer dataset indices from change in dataset sizes</span>
+                <span class="n">new_dataset_len</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_len</span><span class="p">(</span><span class="n">new_data</span><span class="p">)</span>
+                <span class="n">num_new_points</span> <span class="o">=</span> <span class="n">new_dataset_len</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_len</span>
+                <span class="k">if</span> <span class="n">num_new_points</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="p">(</span>
+                    <span class="n">num_local_datasets</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">num_new_points</span> <span class="o">%</span> <span class="n">num_local_datasets</span> <span class="o">!=</span> <span class="mi">0</span>
+                <span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="s2">&quot;Cannot infer new data points as datasets haven&#39;t increased by &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;a multiple of </span><span class="si">{</span><span class="n">num_local_datasets</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_local_datasets</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_ixs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+                        <span class="p">[</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_ixs</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                            <span class="n">tf</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">num_new_points</span><span class="p">,</span> <span class="n">num_local_datasets</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_len</span> <span class="o">+</span> <span class="n">i</span><span class="p">,</span>
+                        <span class="p">],</span>
+                        <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+                    <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># use explicit indices</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">new_data_ixs</span><span class="p">)</span> <span class="o">!=</span> <span class="n">num_local_datasets</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;new_data_ixs has </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">new_data_ixs</span><span class="p">)</span><span class="si">}</span><span class="s2"> entries, &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;expected </span><span class="si">{</span><span class="n">num_local_datasets</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_local_datasets</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_ixs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">_dataset_ixs</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">new_data_ixs</span><span class="p">[</span><span class="n">i</span><span class="p">]],</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">datasets</span> <span class="o">=</span> <span class="n">with_local_datasets</span><span class="p">(</span><span class="n">new_data</span><span class="p">,</span> <span class="n">num_local_datasets</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_ixs</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_len</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_len</span><span class="p">(</span><span class="n">datasets</span><span class="p">)</span>
+
+        <span class="n">filtered_datasets</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_acquisition_rule</span><span class="o">.</span><span class="n">filter_datasets</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_models</span><span class="p">,</span> <span class="n">datasets</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">filtered_datasets</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_acquisition_state</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filtered_datasets</span> <span class="o">=</span> <span class="n">filtered_datasets</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_acquisition_state</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_filtered_datasets</span> <span class="o">=</span> <span class="n">filtered_datasets</span>
+
+        <span class="k">with</span> <span class="n">Timer</span><span class="p">()</span> <span class="k">as</span> <span class="n">model_fitting_timer</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">tag</span><span class="p">,</span> <span class="n">model</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_models</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="c1"># Always use the matching dataset to the model. If the model is</span>
+                <span class="c1"># local, then the dataset should be too by this stage.</span>
+                <span class="n">dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filtered_datasets</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">update_model</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span>
+
+        <span class="n">summary_writer</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">get_tensorboard_writer</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">summary_writer</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">summary_writer</span><span class="o">.</span><span class="n">as_default</span><span class="p">(</span><span class="n">step</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">get_step_number</span><span class="p">()):</span>
+                <span class="n">write_summary_observations</span><span class="p">(</span>
+                    <span class="n">datasets</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_models</span><span class="p">,</span>
+                    <span class="n">new_data</span><span class="p">,</span>
+                    <span class="n">model_fitting_timer</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_observation_plot_dfs</span><span class="p">,</span>
+                <span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="TrainableProbabilisticModelType"><a class="viewcode-back" href="../../autoapi/trieste/ask_tell_optimization/index.html#trieste.ask_tell_optimization.TrainableProbabilisticModelType">[docs]</a><span class="n">TrainableProbabilisticModelType</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span>
+    <span class="s2">&quot;TrainableProbabilisticModelType&quot;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="n">TrainableProbabilisticModel</span><span class="p">,</span> <span class="n">contravariant</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span></div>
+<span class="sd">&quot;&quot;&quot; Contravariant type variable bound to :class:`TrainableProbabilisticModel`. &quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="AskTellOptimizer"><a class="viewcode-back" href="../../autoapi/trieste/ask_tell_optimization/index.html#trieste.ask_tell_optimization.AskTellOptimizer">[docs]</a><span class="k">class</span> <span class="nc">AskTellOptimizer</span><span class="p">(</span><span class="n">AskTellOptimizerABC</span><span class="p">[</span><span class="n">SearchSpaceType</span><span class="p">,</span> <span class="n">TrainableProbabilisticModelType</span><span class="p">]):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This class provides Ask/Tell optimization interface with the default model training</span>
+<span class="sd">    using the TrainableProbabilisticModel interface.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="AskTellOptimizer.update_model"><a class="viewcode-back" href="../../autoapi/trieste/ask_tell_optimization/index.html#trieste.ask_tell_optimization.AskTellOptimizer.update_model">[docs]</a>    <span class="k">def</span> <span class="nf">update_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">TrainableProbabilisticModelType</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+        <span class="n">optimize_model_and_save_result</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="AskTellOptimizerNoTraining"><a class="viewcode-back" href="../../autoapi/trieste/ask_tell_optimization/index.html#trieste.ask_tell_optimization.AskTellOptimizerNoTraining">[docs]</a><span class="k">class</span> <span class="nc">AskTellOptimizerNoTraining</span><span class="p">(</span><span class="n">AskTellOptimizerABC</span><span class="p">[</span><span class="n">SearchSpaceType</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">]):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This class provides Ask/Tell optimization interface with no model training performed</span>
+<span class="sd">    during the Tell stage or at initialization.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="AskTellOptimizerNoTraining.update_model"><a class="viewcode-back" href="../../autoapi/trieste/ask_tell_optimization/index.html#trieste.ask_tell_optimization.AskTellOptimizerNoTraining.update_model">[docs]</a>    <span class="k">def</span> <span class="nf">update_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">ProbabilisticModelType</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">pass</span></div></div>
+</pre></div>
+
+                </article>
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../_static/scripts/bootstrap.js?digest=e353d410970836974a52"></script>
+<script src="../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+  <p class="copyright">
+    
+      © Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.0.1.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item"><p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.13.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

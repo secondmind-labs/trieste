@@ -1,0 +1,77 @@
+:orphan:
+
+:py:mod:`trieste.models.gpflux.interface`
+=========================================
+
+.. py:module:: trieste.models.gpflux.interface
+
+
+Module Contents
+---------------
+
+.. py:class:: GPfluxPredictor(optimizer: KerasOptimizer | None = None)
+
+   Bases: :py:obj:`trieste.models.interfaces.SupportsGetObservationNoise`, :py:obj:`abc.ABC`
+
+   A trainable wrapper for a GPflux deep Gaussian process model. The code assumes subclasses
+   will use the Keras `fit` method for training, and so they should provide access to both a
+   `model_keras` and `model_gpflux`. Note: due to Keras integration, the user should remember to
+   use `tf.keras.backend.set_floatx()` with the desired value (consistent with GPflow) to avoid
+   dtype errors.
+
+   :param optimizer: The optimizer wrapper containing the optimizer with which to train the
+       model and arguments for the wrapper and the optimizer. The optimizer must
+       be an instance of a :class:`~tf.optimizers.Optimizer`. Defaults to
+       :class:`~tf.optimizers.Adam` optimizer with 0.01 learning rate.
+
+   .. py:method:: model_gpflux(self) -> gpflow.base.Module
+      :property:
+
+      The underlying GPflux model.
+
+
+   .. py:method:: model_keras(self) -> tensorflow.keras.Model
+      :property:
+
+      Returns the compiled Keras model for training.
+
+
+   .. py:method:: optimizer(self) -> trieste.models.optimizer.KerasOptimizer
+      :property:
+
+      The optimizer wrapper for training the model.
+
+
+   .. py:method:: predict(self, query_points: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Note: unless otherwise noted, this returns the mean and variance of the last layer
+      conditioned on one sample from the previous layers.
+
+
+   .. py:method:: sample(self, query_points: trieste.types.TensorType, num_samples: int) -> trieste.types.TensorType
+      :abstractmethod:
+
+      Return ``num_samples`` samples from the independent marginal distributions at
+      ``query_points``.
+
+      :param query_points: The points at which to sample, with shape [..., N, D].
+      :param num_samples: The number of samples at each point.
+      :return: The samples. For a predictive distribution with event shape E, this has shape
+          [..., S, N] + E, where S is the number of samples.
+
+
+   .. py:method:: predict_y(self, query_points: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Note: unless otherwise noted, this will return the prediction conditioned on one sample
+      from the lower layers.
+
+
+   .. py:method:: get_observation_noise(self) -> trieste.types.TensorType
+
+      Return the variance of observation noise for homoscedastic likelihoods.
+
+      :return: The observation noise.
+      :raise NotImplementedError: If the model does not have a homoscedastic likelihood.
+
+
+

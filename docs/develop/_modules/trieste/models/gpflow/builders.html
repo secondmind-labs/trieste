@@ -1,0 +1,1172 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.models.gpflow.builders &#8212; trieste develop documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+<link href="../../../../_static/styles/bootstrap.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+
+  
+  <link href="../../../../_static/vendor/fontawesome/6.5.2/css/all.min.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=fd3f3429" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/css/custom.css?v=ae350598" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=3ee479438cf8b5e0d341" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=3ee479438cf8b5e0d341" />
+  <script src="../../../../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=3ee479438cf8b5e0d341"></script>
+
+    <script src="../../../../_static/documentation_options.js?v=16816911"></script>
+    <script src="../../../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/trieste/models/gpflow/builders';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.15.3';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://secondmind-labs.github.io/trieste/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'develop';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner = false;
+        </script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-primary-sidebar-checkbox"/>
+  <label class="overlay overlay-primary" for="pst-primary-sidebar-checkbox"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-secondary-sidebar-checkbox"/>
+  <label class="overlay overlay-secondary" for="pst-secondary-sidebar-checkbox"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/logo.png" class="logo__image only-light" alt="trieste develop documentation - Home"/>
+    <script>document.write(`<img src="../../../../_static/logo.png" class="logo__image only-dark" alt="trieste develop documentation - Home"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../index.html">
+    Trieste
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../autoapi/trieste/index.html">
+    API reference
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../bibliography.html">
+    Bibliography
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button id="pst-version-switcher-button-2"
+      type="button"
+      class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle"
+      data-bs-toggle="dropdown"
+      aria-haspopup="listbox"
+      aria-controls="pst-version-switcher-list-2"
+      aria-label="Version switcher list"
+    >
+      Choose version  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div id="pst-version-switcher-list-2"
+      class="version-switcher__menu dropdown-menu list-group-flush py-0"
+      role="listbox" aria-labelledby="pst-version-switcher-button-2">
+      <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../index.html">
+    Trieste
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../autoapi/trieste/index.html">
+    API reference
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../bibliography.html">
+    Bibliography
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button id="pst-version-switcher-button-3"
+      type="button"
+      class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle"
+      data-bs-toggle="dropdown"
+      aria-haspopup="listbox"
+      aria-controls="pst-version-switcher-list-3"
+      aria-label="Version switcher list"
+    >
+      Choose version  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div id="pst-version-switcher-list-3"
+      class="version-switcher__menu dropdown-menu list-group-flush py-0"
+      role="listbox" aria-labelledby="pst-version-switcher-button-3">
+      <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">trieste.mode...</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for trieste.models.gpflow.builders</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2021 The Trieste Contributors</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module contains builders for GPflow models supported in Trieste. We found the default</span>
+<span class="sd">configurations used here to work well in most situation, but they should not be taken as</span>
+<span class="sd">universally good solutions.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Type</span>
+
+<span class="kn">import</span> <span class="nn">gpflow</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">import</span> <span class="nn">tensorflow_probability</span> <span class="k">as</span> <span class="nn">tfp</span>
+<span class="kn">from</span> <span class="nn">gpflow.kernels</span> <span class="kn">import</span> <span class="n">Stationary</span>
+<span class="kn">from</span> <span class="nn">gpflow.models</span> <span class="kn">import</span> <span class="n">GPR</span><span class="p">,</span> <span class="n">SGPR</span><span class="p">,</span> <span class="n">SVGP</span><span class="p">,</span> <span class="n">VGP</span><span class="p">,</span> <span class="n">GPModel</span>
+
+<span class="kn">from</span> <span class="nn">...data</span> <span class="kn">import</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">split_dataset_by_fidelity</span>
+<span class="kn">from</span> <span class="nn">...space</span> <span class="kn">import</span> <span class="n">Box</span><span class="p">,</span> <span class="n">EncoderFunction</span><span class="p">,</span> <span class="n">SearchSpace</span><span class="p">,</span> <span class="n">one_hot_encoded_space</span><span class="p">,</span> <span class="n">one_hot_encoder</span>
+<span class="kn">from</span> <span class="nn">...types</span> <span class="kn">import</span> <span class="n">TensorType</span>
+<span class="kn">from</span> <span class="nn">..gpflow.models</span> <span class="kn">import</span> <span class="n">GaussianProcessRegression</span>
+<span class="kn">from</span> <span class="nn">..interfaces</span> <span class="kn">import</span> <span class="n">encode_dataset</span>
+
+<span class="c1"># NOTE: As a static non-Tensor, this should really be a tf.constant (like the other constants).</span>
+<span class="c1"># However, changing it breaks serialisation during the expected_improvement.pct.py notebook.</span>
+<span class="c1"># See https://github.com/secondmind-labs/trieste/issues/833 for details.</span>
+<div class="viewcode-block" id="KERNEL_LENGTHSCALE">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/builders/index.html#trieste.models.gpflow.builders.KERNEL_LENGTHSCALE">[docs]</a>
+<span class="n">KERNEL_LENGTHSCALE</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">gpflow</span><span class="o">.</span><span class="n">default_float</span><span class="p">())</span></div>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Default value of the kernel lengthscale parameter.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="KERNEL_PRIOR_SCALE">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/builders/index.html#trieste.models.gpflow.builders.KERNEL_PRIOR_SCALE">[docs]</a>
+<span class="n">KERNEL_PRIOR_SCALE</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">gpflow</span><span class="o">.</span><span class="n">default_float</span><span class="p">())</span></div>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Default value of the scaling factor for the kernel lengthscale and variance parameters.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="CLASSIFICATION_KERNEL_VARIANCE_NOISE_FREE">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/builders/index.html#trieste.models.gpflow.builders.CLASSIFICATION_KERNEL_VARIANCE_NOISE_FREE">[docs]</a>
+<span class="n">CLASSIFICATION_KERNEL_VARIANCE_NOISE_FREE</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mf">100.0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">gpflow</span><span class="o">.</span><span class="n">default_float</span><span class="p">())</span></div>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Default value of the kernel variance parameter for classification models in the noise free case.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="CLASSIFICATION_KERNEL_VARIANCE">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/builders/index.html#trieste.models.gpflow.builders.CLASSIFICATION_KERNEL_VARIANCE">[docs]</a>
+<span class="n">CLASSIFICATION_KERNEL_VARIANCE</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">gpflow</span><span class="o">.</span><span class="n">default_float</span><span class="p">())</span></div>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Default value of the kernel variance parameter for classification models.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="MAX_NUM_INDUCING_POINTS">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/builders/index.html#trieste.models.gpflow.builders.MAX_NUM_INDUCING_POINTS">[docs]</a>
+<span class="n">MAX_NUM_INDUCING_POINTS</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span></div>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Default maximum number of inducing points.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="NUM_INDUCING_POINTS_PER_DIM">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/builders/index.html#trieste.models.gpflow.builders.NUM_INDUCING_POINTS_PER_DIM">[docs]</a>
+<span class="n">NUM_INDUCING_POINTS_PER_DIM</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">25</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span></div>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Default number of inducing points per dimension of the search space.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="SIGNAL_NOISE_RATIO_LIKELIHOOD">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/builders/index.html#trieste.models.gpflow.builders.SIGNAL_NOISE_RATIO_LIKELIHOOD">[docs]</a>
+<span class="n">SIGNAL_NOISE_RATIO_LIKELIHOOD</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">gpflow</span><span class="o">.</span><span class="n">default_float</span><span class="p">())</span></div>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Default value used for initializing (noise) variance parameter of the likelihood function.</span>
+<span class="sd">If user does not specify it, the noise variance is set to maintain the signal to noise ratio</span>
+<span class="sd">determined by this default value. Signal variance in the kernel is set to the empirical variance.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="build_gpr">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/index.html#trieste.models.gpflow.builders.build_gpr">[docs]</a>
+<span class="k">def</span> <span class="nf">build_gpr</span><span class="p">(</span>
+    <span class="n">data</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span>
+    <span class="n">search_space</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">SearchSpace</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">kernel_priors</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">likelihood_variance</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">trainable_likelihood</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">kernel</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">gpflow</span><span class="o">.</span><span class="n">kernels</span><span class="o">.</span><span class="n">Kernel</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">encoder</span><span class="p">:</span> <span class="n">EncoderFunction</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">space_encoder</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">SearchSpace</span><span class="p">],</span> <span class="n">SearchSpace</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GPR</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Build a :class:`~gpflow.models.GPR` model with sensible initial parameters and</span>
+<span class="sd">    priors. By default, we use :class:`~gpflow.kernels.Matern52` kernel and</span>
+<span class="sd">    :class:`~gpflow.mean_functions.Constant` mean function in the model. We found the default</span>
+<span class="sd">    configuration used here to work well in most situations, but it should not be taken as a</span>
+<span class="sd">    universally good solution.</span>
+
+<span class="sd">    We set priors for kernel hyperparameters by default in order to stabilize model fitting. We</span>
+<span class="sd">    found the priors below to be highly effective for objective functions defined over the unit</span>
+<span class="sd">    hypercube. They do seem to work for other search space sizes, but we advise caution when using</span>
+<span class="sd">    them in such search spaces. Using priors allows for using maximum a posteriori estimate of</span>
+<span class="sd">    these kernel parameters during model fitting.</span>
+
+<span class="sd">    Note that although we scale parameters as a function of the size of the search space, ideally</span>
+<span class="sd">    inputs should be normalised to the unit hypercube before building a model.</span>
+
+<span class="sd">    :param data: Dataset from the initial design, used for estimating the variance of observations.</span>
+<span class="sd">    :param search_space: Search space for performing Bayesian optimization, used for scaling the</span>
+<span class="sd">        parameters. Required unless a kernel is passed.</span>
+<span class="sd">    :param kernel_priors: If set to `True` (default) priors are set for kernel parameters (variance</span>
+<span class="sd">        and lengthscale).</span>
+<span class="sd">    :param likelihood_variance: Likelihood (noise) variance parameter can be optionally set to a</span>
+<span class="sd">        certain value. If left unspecified (default), the noise variance is set to maintain the</span>
+<span class="sd">        signal to noise ratio of value given by ``SIGNAL_NOISE_RATIO_LIKELIHOOD``, where signal</span>
+<span class="sd">        variance in the kernel is set to the empirical variance.</span>
+<span class="sd">    :param trainable_likelihood: If set to `True` Gaussian likelihood parameter is set to</span>
+<span class="sd">        non-trainable. By default set to `False`.</span>
+<span class="sd">    :param kernel: The kernel to use in the model, defaults to letting the function set up a</span>
+<span class="sd">        :class:`~gpflow.kernels.Matern52` kernel.</span>
+<span class="sd">    :param encoder: Encoder with which to transform the dataset before training. Defaults to</span>
+<span class="sd">        one_hot_encoder if the search_space is specified.</span>
+<span class="sd">    :param space_encoder: Encoder with which to transform search_space before generating a kernel.</span>
+<span class="sd">        Defaults to one_hot_encoded_space.</span>
+<span class="sd">    :return: A :class:`~gpflow.models.GPR` model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">search_space</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">encoder</span> <span class="o">=</span> <span class="n">one_hot_encoder</span><span class="p">(</span><span class="n">search_space</span><span class="p">)</span> <span class="k">if</span> <span class="n">encoder</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">encoder</span>
+        <span class="n">space_encoder</span> <span class="o">=</span> <span class="n">one_hot_encoded_space</span> <span class="k">if</span> <span class="n">space_encoder</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">space_encoder</span>
+        <span class="n">search_space</span> <span class="o">=</span> <span class="n">space_encoder</span><span class="p">(</span><span class="n">search_space</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">encoder</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">encode_dataset</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">encoder</span><span class="p">)</span>
+
+    <span class="n">empirical_mean</span><span class="p">,</span> <span class="n">empirical_variance</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_get_data_stats</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">kernel</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">search_space</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;&#39;build_gpr&#39; function requires one of &#39;search_space&#39; or &#39;kernel&#39; arguments,&quot;</span>
+                <span class="s2">&quot; but got neither&quot;</span>
+            <span class="p">)</span>
+        <span class="n">kernel</span> <span class="o">=</span> <span class="n">_get_kernel</span><span class="p">(</span><span class="n">empirical_variance</span><span class="p">,</span> <span class="n">search_space</span><span class="p">,</span> <span class="n">kernel_priors</span><span class="p">,</span> <span class="n">kernel_priors</span><span class="p">)</span>
+    <span class="n">mean</span> <span class="o">=</span> <span class="n">_get_mean_function</span><span class="p">(</span><span class="n">empirical_mean</span><span class="p">)</span>
+
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">kernels</span><span class="o">.</span><span class="n">Kernel</span><span class="p">)</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">GPR</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">astuple</span><span class="p">(),</span> <span class="n">kernel</span><span class="p">,</span> <span class="n">mean</span><span class="p">)</span>
+
+    <span class="n">_set_gaussian_likelihood_variance</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">empirical_variance</span><span class="p">,</span> <span class="n">likelihood_variance</span><span class="p">)</span>
+    <span class="n">gpflow</span><span class="o">.</span><span class="n">set_trainable</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">likelihood</span><span class="p">,</span> <span class="n">trainable_likelihood</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">model</span></div>
+
+
+
+<div class="viewcode-block" id="build_sgpr">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/index.html#trieste.models.gpflow.builders.build_sgpr">[docs]</a>
+<span class="k">def</span> <span class="nf">build_sgpr</span><span class="p">(</span>
+    <span class="n">data</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span>
+    <span class="n">search_space</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">,</span>
+    <span class="n">kernel_priors</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">likelihood_variance</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">trainable_likelihood</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">num_inducing_points</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">trainable_inducing_points</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SGPR</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Build a :class:`~gpflow.models.SGPR` model with sensible initial parameters and</span>
+<span class="sd">    priors. We use :class:`~gpflow.kernels.Matern52` kernel and</span>
+<span class="sd">    :class:`~gpflow.mean_functions.Constant` mean function in the model. We found the default</span>
+<span class="sd">    configuration used here to work well in most situation, but it should not be taken as a</span>
+<span class="sd">    universally good solution.</span>
+
+<span class="sd">    We set priors for kernel hyperparameters by default in order to stabilize model fitting. We</span>
+<span class="sd">    found the priors below to be highly effective for objective functions defined over the unit</span>
+<span class="sd">    hypercube. They do seem to work for other search space sizes, but we advise caution when using</span>
+<span class="sd">    them in such search spaces. Using priors allows for using maximum a posteriori estimate of</span>
+<span class="sd">    these kernel parameters during model fitting.</span>
+
+<span class="sd">    For performance reasons number of inducing points should not be changed during Bayesian</span>
+<span class="sd">    optimization. Hence, even if the initial dataset is smaller, we advise setting this to a higher</span>
+<span class="sd">    number. By default inducing points are set to Sobol samples for the continuous search space,</span>
+<span class="sd">    and simple random samples for discrete or mixed search spaces. This carries</span>
+<span class="sd">    the risk that optimization gets stuck if they are not trainable, which calls for adaptive</span>
+<span class="sd">    inducing point selection during the optimization. This functionality will be added to Trieste</span>
+<span class="sd">    in future.</span>
+
+<span class="sd">    Note that although we scale parameters as a function of the size of the search space, ideally</span>
+<span class="sd">    inputs should be normalised to the unit hypercube before building a model.</span>
+
+<span class="sd">    :param data: Dataset from the initial design, used for estimating the variance of observations.</span>
+<span class="sd">    :param search_space: Search space for performing Bayesian optimization, used for scaling the</span>
+<span class="sd">        parameters.</span>
+<span class="sd">    :param kernel_priors: If set to `True` (default) priors are set for kernel parameters (variance</span>
+<span class="sd">        and lengthscale).</span>
+<span class="sd">    :param likelihood_variance: Likelihood (noise) variance parameter can be optionally set to a</span>
+<span class="sd">        certain value. If left unspecified (default), the noise variance is set to maintain the</span>
+<span class="sd">        signal to noise ratio of value given by ``SIGNAL_NOISE_RATIO_LIKELIHOOD``, where signal</span>
+<span class="sd">        variance in the kernel is set to the empirical variance.</span>
+<span class="sd">    :param trainable_likelihood: If set to `True` Gaussian likelihood parameter is set to</span>
+<span class="sd">        be trainable. By default set to `False`.</span>
+<span class="sd">    :param num_inducing_points: The number of inducing points can be optionally set to a</span>
+<span class="sd">        certain value. If left unspecified (default), this number is set to either</span>
+<span class="sd">        ``NUM_INDUCING_POINTS_PER_DIM``*dimensionality of the search space or value given by</span>
+<span class="sd">        ``MAX_NUM_INDUCING_POINTS``, whichever is smaller.</span>
+<span class="sd">    :param trainable_inducing_points: If set to `True` inducing points will be set to</span>
+<span class="sd">        be trainable. This option should be used with caution. By default set to `False`.</span>
+<span class="sd">    :return: An :class:`~gpflow.models.SGPR` model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">empirical_mean</span><span class="p">,</span> <span class="n">empirical_variance</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_get_data_stats</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+    <span class="n">kernel</span> <span class="o">=</span> <span class="n">_get_kernel</span><span class="p">(</span><span class="n">empirical_variance</span><span class="p">,</span> <span class="n">search_space</span><span class="p">,</span> <span class="n">kernel_priors</span><span class="p">,</span> <span class="n">kernel_priors</span><span class="p">)</span>
+    <span class="n">mean</span> <span class="o">=</span> <span class="n">_get_mean_function</span><span class="p">(</span><span class="n">empirical_mean</span><span class="p">)</span>
+
+    <span class="n">inducing_points</span> <span class="o">=</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">inducing_variables</span><span class="o">.</span><span class="n">InducingPoints</span><span class="p">(</span>
+        <span class="n">_get_inducing_points</span><span class="p">(</span><span class="n">search_space</span><span class="p">,</span> <span class="n">num_inducing_points</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="n">model</span> <span class="o">=</span> <span class="n">SGPR</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">astuple</span><span class="p">(),</span> <span class="n">kernel</span><span class="p">,</span> <span class="n">inducing_points</span><span class="p">,</span> <span class="n">mean_function</span><span class="o">=</span><span class="n">mean</span><span class="p">)</span>
+
+    <span class="n">_set_gaussian_likelihood_variance</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">empirical_variance</span><span class="p">,</span> <span class="n">likelihood_variance</span><span class="p">)</span>
+    <span class="n">gpflow</span><span class="o">.</span><span class="n">set_trainable</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">likelihood</span><span class="p">,</span> <span class="n">trainable_likelihood</span><span class="p">)</span>
+
+    <span class="n">gpflow</span><span class="o">.</span><span class="n">set_trainable</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">inducing_variable</span><span class="p">,</span> <span class="n">trainable_inducing_points</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">model</span></div>
+
+
+
+<div class="viewcode-block" id="build_vgp_classifier">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/index.html#trieste.models.gpflow.builders.build_vgp_classifier">[docs]</a>
+<span class="k">def</span> <span class="nf">build_vgp_classifier</span><span class="p">(</span>
+    <span class="n">data</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span>
+    <span class="n">search_space</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">,</span>
+    <span class="n">kernel_priors</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">noise_free</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">kernel_variance</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">VGP</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Build a :class:`~gpflow.models.VGP` binary classification model with sensible initial</span>
+<span class="sd">    parameters and priors. We use :class:`~gpflow.kernels.Matern52` kernel and</span>
+<span class="sd">    :class:`~gpflow.mean_functions.Constant` mean function in the model. We found the default</span>
+<span class="sd">    configuration used here to work well in most situation, but it should not be taken as a</span>
+<span class="sd">    universally good solution.</span>
+
+<span class="sd">    We set priors for kernel hyperparameters by default in order to stabilize model fitting. We</span>
+<span class="sd">    found the priors below to be highly effective for objective functions defined over the unit</span>
+<span class="sd">    hypercube. They do seem to work for other search space sizes, but we advise caution when using</span>
+<span class="sd">    them in such search spaces. Using priors allows for using maximum a posteriori estimate of</span>
+<span class="sd">    these kernel parameters during model fitting. In the ``noise_free`` case we do not use prior</span>
+<span class="sd">    for the kernel variance parameters.</span>
+
+<span class="sd">    Note that although we scale parameters as a function of the size of the search space, ideally</span>
+<span class="sd">    inputs should be normalised to the unit hypercube before building a model.</span>
+
+<span class="sd">    :param data: Dataset from the initial design, used for estimating the variance of observations.</span>
+<span class="sd">    :param search_space: Search space for performing Bayesian optimization, used for scaling the</span>
+<span class="sd">        parameters.</span>
+<span class="sd">    :param kernel_priors: If set to `True` (default) priors are set for kernel parameters (variance</span>
+<span class="sd">        and lengthscale). In the ``noise_free`` case kernel variance prior is not set.</span>
+<span class="sd">    :param noise_free: If  there is a prior information that the classification problem is a</span>
+<span class="sd">        deterministic one, this should be set to `True` and kernel variance will be fixed to a</span>
+<span class="sd">        higher default value ``CLASSIFICATION_KERNEL_VARIANCE_NOISE_FREE`` leading to sharper</span>
+<span class="sd">        classification boundary. In this case prior for the kernel variance parameter is also not</span>
+<span class="sd">        set. By default set to `False`.</span>
+<span class="sd">    :param kernel_variance: Kernel variance parameter can be optionally set to a</span>
+<span class="sd">        certain value. If left unspecified (default), the kernel variance is set to</span>
+<span class="sd">        ``CLASSIFICATION_KERNEL_VARIANCE_NOISE_FREE`` in the ``noise_free`` case and to</span>
+<span class="sd">        ``CLASSIFICATION_KERNEL_VARIANCE`` otherwise.</span>
+<span class="sd">    :return: A :class:`~gpflow.models.VGP` model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">kernel_variance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="n">kernel_variance</span><span class="p">)</span>
+        <span class="n">variance</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">kernel_variance</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">gpflow</span><span class="o">.</span><span class="n">default_float</span><span class="p">())</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">noise_free</span><span class="p">:</span>
+            <span class="n">variance</span> <span class="o">=</span> <span class="n">CLASSIFICATION_KERNEL_VARIANCE_NOISE_FREE</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">variance</span> <span class="o">=</span> <span class="n">CLASSIFICATION_KERNEL_VARIANCE</span>
+
+    <span class="k">if</span> <span class="n">noise_free</span><span class="p">:</span>
+        <span class="n">add_prior_to_variance</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">add_prior_to_variance</span> <span class="o">=</span> <span class="n">kernel_priors</span>
+
+    <span class="n">model_likelihood</span> <span class="o">=</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">likelihoods</span><span class="o">.</span><span class="n">Bernoulli</span><span class="p">()</span>
+    <span class="n">kernel</span> <span class="o">=</span> <span class="n">_get_kernel</span><span class="p">(</span><span class="n">variance</span><span class="p">,</span> <span class="n">search_space</span><span class="p">,</span> <span class="n">kernel_priors</span><span class="p">,</span> <span class="n">add_prior_to_variance</span><span class="p">)</span>
+    <span class="n">mean</span> <span class="o">=</span> <span class="n">_get_mean_function</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">gpflow</span><span class="o">.</span><span class="n">default_float</span><span class="p">()))</span>
+
+    <span class="n">model</span> <span class="o">=</span> <span class="n">VGP</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">astuple</span><span class="p">(),</span> <span class="n">kernel</span><span class="p">,</span> <span class="n">model_likelihood</span><span class="p">,</span> <span class="n">mean_function</span><span class="o">=</span><span class="n">mean</span><span class="p">)</span>
+
+    <span class="n">gpflow</span><span class="o">.</span><span class="n">set_trainable</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">variance</span><span class="p">,</span> <span class="p">(</span><span class="ow">not</span> <span class="n">noise_free</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">model</span></div>
+
+
+
+<div class="viewcode-block" id="build_svgp">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/index.html#trieste.models.gpflow.builders.build_svgp">[docs]</a>
+<span class="k">def</span> <span class="nf">build_svgp</span><span class="p">(</span>
+    <span class="n">data</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span>
+    <span class="n">search_space</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">,</span>
+    <span class="n">classification</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">kernel_priors</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">likelihood_variance</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">trainable_likelihood</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">num_inducing_points</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">trainable_inducing_points</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SVGP</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Build a :class:`~gpflow.models.SVGP` model with sensible initial parameters and</span>
+<span class="sd">    priors. Both regression and binary classification models are</span>
+<span class="sd">    available. We use :class:`~gpflow.kernels.Matern52` kernel and</span>
+<span class="sd">    :class:`~gpflow.mean_functions.Constant` mean function in the model. We found the default</span>
+<span class="sd">    configuration used here to work well in most situation, but it should not be taken as a</span>
+<span class="sd">    universally good solution.</span>
+
+<span class="sd">    We set priors for kernel hyperparameters by default in order to stabilize model fitting. We</span>
+<span class="sd">    found the priors below to be highly effective for objective functions defined over the unit</span>
+<span class="sd">    hypercube. They do seem to work for other search space sizes, but we advise caution when using</span>
+<span class="sd">    them in such search spaces. Using priors allows for using maximum a posteriori estimate of</span>
+<span class="sd">    these kernel parameters during model fitting.</span>
+
+<span class="sd">    For performance reasons number of inducing points should not be changed during Bayesian</span>
+<span class="sd">    optimization. Hence, even if the initial dataset is smaller, we advise setting this to a higher</span>
+<span class="sd">    number. By default inducing points are set to Sobol samples for the continuous search space,</span>
+<span class="sd">    and simple random samples for discrete or mixed search spaces. This carries</span>
+<span class="sd">    the risk that optimization gets stuck if they are not trainable, which calls for adaptive</span>
+<span class="sd">    inducing point selection during the optimization. This functionality will be added to Trieste</span>
+<span class="sd">    in future.</span>
+
+<span class="sd">    Note that although we scale parameters as a function of the size of the search space, ideally</span>
+<span class="sd">    inputs should be normalised to the unit hypercube before building a model.</span>
+
+<span class="sd">    :param data: Dataset from the initial design, used for estimating the variance of observations.</span>
+<span class="sd">    :param search_space: Search space for performing Bayesian optimization, used for scaling the</span>
+<span class="sd">        parameters.</span>
+<span class="sd">    :param classification: If a classification model is needed, this should be set to `True`, in</span>
+<span class="sd">        which case a Bernoulli likelihood will be used. If a regression model is required, this</span>
+<span class="sd">        should be set to `False` (default), in which case a Gaussian likelihood is used.</span>
+<span class="sd">    :param kernel_priors: If set to `True` (default) priors are set for kernel parameters (variance</span>
+<span class="sd">        and lengthscale).</span>
+<span class="sd">    :param likelihood_variance: Likelihood (noise) variance parameter can be optionally set to a</span>
+<span class="sd">        certain value. If left unspecified (default), the noise variance is set to maintain the</span>
+<span class="sd">        signal to noise ratio of value given by ``SIGNAL_NOISE_RATIO_LIKELIHOOD``, where signal</span>
+<span class="sd">        variance in the kernel is set to the empirical variance. This argument is ignored in the</span>
+<span class="sd">        classification case.</span>
+<span class="sd">    :param trainable_likelihood: If set to `True` likelihood parameter is set to</span>
+<span class="sd">        be trainable. By default set to `False`. This argument is ignored in the classification</span>
+<span class="sd">        case.</span>
+<span class="sd">    :param num_inducing_points: The number of inducing points can be optionally set to a</span>
+<span class="sd">        certain value. If left unspecified (default), this number is set to either</span>
+<span class="sd">        ``NUM_INDUCING_POINTS_PER_DIM``*dimensionality of the search space or value given by</span>
+<span class="sd">        ``MAX_NUM_INDUCING_POINTS``, whichever is smaller.</span>
+<span class="sd">    :param trainable_inducing_points: If set to `True` inducing points will be set to</span>
+<span class="sd">        be trainable. This option should be used with caution. By default set to `False`.</span>
+<span class="sd">    :return: An :class:`~gpflow.models.SVGP` model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">empirical_mean</span><span class="p">,</span> <span class="n">empirical_variance</span><span class="p">,</span> <span class="n">num_data_points</span> <span class="o">=</span> <span class="n">_get_data_stats</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">classification</span><span class="p">:</span>
+        <span class="n">empirical_variance</span> <span class="o">=</span> <span class="n">CLASSIFICATION_KERNEL_VARIANCE</span>
+        <span class="n">empirical_mean</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">gpflow</span><span class="o">.</span><span class="n">default_float</span><span class="p">())</span>
+        <span class="n">model_likelihood</span> <span class="o">=</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">likelihoods</span><span class="o">.</span><span class="n">Bernoulli</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">model_likelihood</span> <span class="o">=</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">likelihoods</span><span class="o">.</span><span class="n">Gaussian</span><span class="p">()</span>
+
+    <span class="n">kernel</span> <span class="o">=</span> <span class="n">_get_kernel</span><span class="p">(</span><span class="n">empirical_variance</span><span class="p">,</span> <span class="n">search_space</span><span class="p">,</span> <span class="n">kernel_priors</span><span class="p">,</span> <span class="n">kernel_priors</span><span class="p">)</span>
+    <span class="n">mean</span> <span class="o">=</span> <span class="n">_get_mean_function</span><span class="p">(</span><span class="n">empirical_mean</span><span class="p">)</span>
+
+    <span class="n">inducing_points</span> <span class="o">=</span> <span class="n">_get_inducing_points</span><span class="p">(</span><span class="n">search_space</span><span class="p">,</span> <span class="n">num_inducing_points</span><span class="p">)</span>
+
+    <span class="n">model</span> <span class="o">=</span> <span class="n">SVGP</span><span class="p">(</span>
+        <span class="n">kernel</span><span class="p">,</span>
+        <span class="n">model_likelihood</span><span class="p">,</span>
+        <span class="n">inducing_points</span><span class="p">,</span>
+        <span class="n">mean_function</span><span class="o">=</span><span class="n">mean</span><span class="p">,</span>
+        <span class="n">num_data</span><span class="o">=</span><span class="n">num_data_points</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">classification</span><span class="p">:</span>
+        <span class="n">_set_gaussian_likelihood_variance</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">empirical_variance</span><span class="p">,</span> <span class="n">likelihood_variance</span><span class="p">)</span>
+        <span class="n">gpflow</span><span class="o">.</span><span class="n">set_trainable</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">likelihood</span><span class="p">,</span> <span class="n">trainable_likelihood</span><span class="p">)</span>
+    <span class="n">gpflow</span><span class="o">.</span><span class="n">set_trainable</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">inducing_variable</span><span class="p">,</span> <span class="n">trainable_inducing_points</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">model</span></div>
+
+
+
+<span class="k">def</span> <span class="nf">_get_data_stats</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+    <span class="n">empirical_variance</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">reduce_variance</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">observations</span><span class="p">)</span>
+    <span class="n">empirical_mean</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">observations</span><span class="p">)</span>
+    <span class="n">num_data_points</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">observations</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">empirical_mean</span><span class="p">,</span> <span class="n">empirical_variance</span><span class="p">,</span> <span class="n">num_data_points</span>
+
+
+<span class="k">def</span> <span class="nf">_get_kernel</span><span class="p">(</span>
+    <span class="n">variance</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">search_space</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">,</span>
+    <span class="n">add_prior_to_lengthscale</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">add_prior_to_variance</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">kernels</span><span class="o">.</span><span class="n">Kernel</span><span class="p">:</span>
+    <span class="n">lengthscales</span> <span class="o">=</span> <span class="n">_get_lengthscales</span><span class="p">(</span><span class="n">search_space</span><span class="p">)</span>
+
+    <span class="n">kernel</span> <span class="o">=</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">kernels</span><span class="o">.</span><span class="n">Matern52</span><span class="p">(</span><span class="n">variance</span><span class="o">=</span><span class="n">variance</span><span class="p">,</span> <span class="n">lengthscales</span><span class="o">=</span><span class="n">lengthscales</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">add_prior_to_lengthscale</span><span class="p">:</span>
+        <span class="n">kernel</span><span class="o">.</span><span class="n">lengthscales</span><span class="o">.</span><span class="n">prior</span> <span class="o">=</span> <span class="n">tfp</span><span class="o">.</span><span class="n">distributions</span><span class="o">.</span><span class="n">LogNormal</span><span class="p">(</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">lengthscales</span><span class="p">),</span> <span class="n">KERNEL_PRIOR_SCALE</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">add_prior_to_variance</span><span class="p">:</span>
+        <span class="n">kernel</span><span class="o">.</span><span class="n">variance</span><span class="o">.</span><span class="n">prior</span> <span class="o">=</span> <span class="n">tfp</span><span class="o">.</span><span class="n">distributions</span><span class="o">.</span><span class="n">LogNormal</span><span class="p">(</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">variance</span><span class="p">),</span> <span class="n">KERNEL_PRIOR_SCALE</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">kernel</span>
+
+
+<span class="k">def</span> <span class="nf">_get_lengthscales</span><span class="p">(</span><span class="n">search_space</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+    <span class="n">lengthscales</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">KERNEL_LENGTHSCALE</span>
+        <span class="o">*</span> <span class="p">(</span><span class="n">search_space</span><span class="o">.</span><span class="n">upper</span> <span class="o">-</span> <span class="n">search_space</span><span class="o">.</span><span class="n">lower</span><span class="p">)</span>
+        <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">search_space</span><span class="o">.</span><span class="n">dimension</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">search_space_collapsed</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">equal</span><span class="p">(</span><span class="n">search_space</span><span class="o">.</span><span class="n">upper</span><span class="p">,</span> <span class="n">search_space</span><span class="o">.</span><span class="n">lower</span><span class="p">)</span>
+    <span class="n">lengthscales</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+        <span class="n">search_space_collapsed</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">gpflow</span><span class="o">.</span><span class="n">default_float</span><span class="p">()),</span> <span class="n">lengthscales</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">lengthscales</span>
+
+
+<span class="k">def</span> <span class="nf">_get_mean_function</span><span class="p">(</span><span class="n">mean</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">mean_functions</span><span class="o">.</span><span class="n">MeanFunction</span><span class="p">:</span>
+    <span class="n">mean_function</span> <span class="o">=</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">mean_functions</span><span class="o">.</span><span class="n">Constant</span><span class="p">(</span><span class="n">mean</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">mean_function</span>
+
+
+<span class="k">def</span> <span class="nf">_set_gaussian_likelihood_variance</span><span class="p">(</span>
+    <span class="n">model</span><span class="p">:</span> <span class="n">GPModel</span><span class="p">,</span> <span class="n">variance</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">likelihood_variance</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">likelihood_variance</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">noise_variance</span> <span class="o">=</span> <span class="n">variance</span> <span class="o">/</span> <span class="n">SIGNAL_NOISE_RATIO_LIKELIHOOD</span><span class="o">**</span><span class="mi">2</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="n">likelihood_variance</span><span class="p">)</span>
+        <span class="n">noise_variance</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">likelihood_variance</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">gpflow</span><span class="o">.</span><span class="n">default_float</span><span class="p">())</span>
+
+    <span class="n">model</span><span class="o">.</span><span class="n">likelihood</span><span class="o">.</span><span class="n">variance</span> <span class="o">=</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+        <span class="n">noise_variance</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">gpflow</span><span class="o">.</span><span class="n">utilities</span><span class="o">.</span><span class="n">positive</span><span class="p">(</span><span class="n">lower</span><span class="o">=</span><span class="mf">1e-12</span><span class="p">)</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_get_inducing_points</span><span class="p">(</span>
+    <span class="n">search_space</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">,</span> <span class="n">num_inducing_points</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">num_inducing_points</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="n">num_inducing_points</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">num_inducing_points</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span>
+            <span class="n">MAX_NUM_INDUCING_POINTS</span><span class="p">,</span> <span class="n">NUM_INDUCING_POINTS_PER_DIM</span> <span class="o">*</span> <span class="n">search_space</span><span class="o">.</span><span class="n">dimension</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">search_space</span><span class="p">,</span> <span class="n">Box</span><span class="p">):</span>
+        <span class="n">inducing_points</span> <span class="o">=</span> <span class="n">search_space</span><span class="o">.</span><span class="n">sample_sobol</span><span class="p">(</span><span class="n">num_inducing_points</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">inducing_points</span> <span class="o">=</span> <span class="n">search_space</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">num_inducing_points</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">inducing_points</span>
+
+
+<div class="viewcode-block" id="build_multifidelity_autoregressive_models">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/index.html#trieste.models.gpflow.builders.build_multifidelity_autoregressive_models">[docs]</a>
+<span class="k">def</span> <span class="nf">build_multifidelity_autoregressive_models</span><span class="p">(</span>
+    <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span>
+    <span class="n">num_fidelities</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">input_search_space</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">,</span>
+    <span class="n">likelihood_variance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-6</span><span class="p">,</span>
+    <span class="n">kernel_priors</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">trainable_likelihood</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">GaussianProcessRegression</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Build the individual GPR models required for constructing an MultifidelityAutoregressive model</span>
+<span class="sd">    with `num_fidelities` fidelities.</span>
+
+<span class="sd">    :param dataset: Dataset of points with which to initialise the individual models,</span>
+<span class="sd">        where the final column of the final dimension of the query points contains the fidelity</span>
+<span class="sd">    :param num_fidelities: Number of fidelities desired for the MultifidelityAutoregressive model</span>
+<span class="sd">    :param input_search_space: The input search space of the models</span>
+<span class="sd">    :return: List of initialised GPR models</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Split data into fidelities</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">split_dataset_by_fidelity</span><span class="p">(</span><span class="n">dataset</span><span class="o">=</span><span class="n">dataset</span><span class="p">,</span> <span class="n">num_fidelities</span><span class="o">=</span><span class="n">num_fidelities</span><span class="p">)</span>
+
+    <span class="n">_validate_multifidelity_data_modellable</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">num_fidelities</span><span class="p">)</span>
+
+    <span class="n">gprs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">GaussianProcessRegression</span><span class="p">(</span>
+            <span class="n">build_gpr</span><span class="p">(</span>
+                <span class="n">data</span><span class="p">[</span><span class="n">fidelity</span><span class="p">],</span>
+                <span class="n">input_search_space</span><span class="p">,</span>
+                <span class="n">likelihood_variance</span><span class="o">=</span><span class="n">likelihood_variance</span><span class="p">,</span>
+                <span class="n">kernel_priors</span><span class="o">=</span><span class="n">kernel_priors</span><span class="p">,</span>
+                <span class="n">trainable_likelihood</span><span class="o">=</span><span class="n">trainable_likelihood</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">fidelity</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_fidelities</span><span class="p">)</span>
+    <span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">gprs</span></div>
+
+
+
+<div class="viewcode-block" id="build_multifidelity_nonlinear_autoregressive_models">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/index.html#trieste.models.gpflow.builders.build_multifidelity_nonlinear_autoregressive_models">[docs]</a>
+<span class="k">def</span> <span class="nf">build_multifidelity_nonlinear_autoregressive_models</span><span class="p">(</span>
+    <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span>
+    <span class="n">num_fidelities</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">input_search_space</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">,</span>
+    <span class="n">kernel_base_class</span><span class="p">:</span> <span class="n">Type</span><span class="p">[</span><span class="n">Stationary</span><span class="p">]</span> <span class="o">=</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">kernels</span><span class="o">.</span><span class="n">Matern32</span><span class="p">,</span>
+    <span class="n">kernel_priors</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">trainable_likelihood</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">GaussianProcessRegression</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Build models for training the trieste.models.gpflow.MultifidelityNonlinearAutoregressive` model</span>
+
+<span class="sd">    Builds a basic Matern32 kernel for the lowest fidelity, and the custom kernel described in</span>
+<span class="sd">    :cite:`perdikaris2017nonlinear` for the higher fidelities, which also have an extra input</span>
+<span class="sd">    dimension. Note that the initial data that the models with fidelity greater than 0 are</span>
+<span class="sd">    initialised with contain dummy data in this extra dimension, and so an `update` of the</span>
+<span class="sd">    `MultifidelityNonlinearAutoregressive` is required to propagate real data through to these</span>
+<span class="sd">    models.</span>
+
+<span class="sd">    :param dataset: The dataset to use to initialise the models</span>
+<span class="sd">    :param num_fidelities: The number of fidelities to model</span>
+<span class="sd">    :param input_search_space: the search space, used to initialise the kernel parameters</span>
+<span class="sd">    :param kernel_base_class: a stationary kernel type</span>
+<span class="sd">    :param kernel_priors: If set to `True` (default) priors are set for kernel parameters (variance</span>
+<span class="sd">        and lengthscale).</span>
+<span class="sd">    :return: gprs: A list containing gprs that can be used for the multifidelity model</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Split data into fidelities</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">split_dataset_by_fidelity</span><span class="p">(</span><span class="n">dataset</span><span class="o">=</span><span class="n">dataset</span><span class="p">,</span> <span class="n">num_fidelities</span><span class="o">=</span><span class="n">num_fidelities</span><span class="p">)</span>
+
+    <span class="n">_validate_multifidelity_data_modellable</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">num_fidelities</span><span class="p">)</span>
+
+    <span class="c1"># Input dim requires excluding fidelity row</span>
+    <span class="n">input_dim</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span>
+
+    <span class="c1"># Create kernels</span>
+    <span class="n">kernels</span> <span class="o">=</span> <span class="n">_create_multifidelity_nonlinear_autoregressive_kernels</span><span class="p">(</span>
+        <span class="n">kernel_base_class</span><span class="p">,</span>
+        <span class="n">num_fidelities</span><span class="p">,</span>
+        <span class="n">input_dim</span><span class="p">,</span>
+        <span class="n">input_search_space</span><span class="p">,</span>
+        <span class="n">kernel_priors</span><span class="p">,</span>
+        <span class="n">kernel_priors</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Initialise low fidelity GP</span>
+    <span class="n">gprs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">GaussianProcessRegression</span><span class="p">(</span>
+            <span class="n">build_gpr</span><span class="p">(</span>
+                <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                <span class="n">search_space</span><span class="o">=</span><span class="n">input_search_space</span><span class="p">,</span>  <span class="c1"># This isn&#39;t actually used when we pass a kernel</span>
+                <span class="n">kernel</span><span class="o">=</span><span class="n">kernels</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                <span class="n">likelihood_variance</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">,</span>
+                <span class="n">trainable_likelihood</span><span class="o">=</span><span class="n">trainable_likelihood</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+    <span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">fidelity</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">num_fidelities</span><span class="p">):</span>
+        <span class="c1"># Get query points for this fidelity</span>
+        <span class="n">qps</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">fidelity</span><span class="p">]</span><span class="o">.</span><span class="n">query_points</span>
+        <span class="n">samples_column</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">([</span><span class="n">qps</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">1</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+        <span class="n">augmented_qps</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">qps</span><span class="p">,</span> <span class="n">samples_column</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">augmented_dataset</span> <span class="o">=</span> <span class="n">Dataset</span><span class="p">(</span><span class="n">augmented_qps</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="n">fidelity</span><span class="p">]</span><span class="o">.</span><span class="n">observations</span><span class="p">)</span>
+        <span class="n">gprs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">GaussianProcessRegression</span><span class="p">(</span>
+                <span class="n">build_gpr</span><span class="p">(</span>
+                    <span class="n">augmented_dataset</span><span class="p">,</span>
+                    <span class="n">input_search_space</span><span class="p">,</span>  <span class="c1"># This isn&#39;t actually used when we pass a kernel</span>
+                    <span class="n">kernel</span><span class="o">=</span><span class="n">kernels</span><span class="p">[</span><span class="n">fidelity</span><span class="p">],</span>
+                    <span class="n">likelihood_variance</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">gprs</span></div>
+
+
+
+<span class="k">def</span> <span class="nf">_validate_multifidelity_data_modellable</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Dataset</span><span class="p">],</span> <span class="n">num_fidelities</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">num_fidelities</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;Invalid number of fidelities to build Multifidelity model for,&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot; need at least 2 fidelities, got </span><span class="si">{</span><span class="n">num_fidelities</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">fidelity_data</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">fidelity_data</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Not enough data to create model for fidelity </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">,&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot; need at least 2 datapoints, got </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">fidelity_data</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_create_multifidelity_nonlinear_autoregressive_kernels</span><span class="p">(</span>
+    <span class="n">kernel_base_class</span><span class="p">:</span> <span class="n">Type</span><span class="p">[</span><span class="n">Stationary</span><span class="p">],</span>
+    <span class="n">n_fidelities</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">n_input_dims</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">search_space</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">,</span>
+    <span class="n">add_prior_to_lengthscale</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">add_prior_to_variance</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Stationary</span><span class="p">]:</span>
+    <span class="n">dims</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">n_input_dims</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+    <span class="n">lengthscales</span> <span class="o">=</span> <span class="n">_get_lengthscales</span><span class="p">(</span><span class="n">search_space</span><span class="p">)</span>
+
+    <span class="n">scale_lengthscale</span> <span class="o">=</span> <span class="mf">1.0</span>
+    <span class="n">kernels</span> <span class="o">=</span> <span class="p">[</span><span class="n">kernel_base_class</span><span class="p">(</span><span class="n">lengthscales</span><span class="o">=</span><span class="n">lengthscales</span><span class="p">)]</span>
+
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_fidelities</span><span class="p">):</span>
+        <span class="n">interaction_kernel</span> <span class="o">=</span> <span class="n">kernel_base_class</span><span class="p">(</span><span class="n">lengthscales</span><span class="o">=</span><span class="n">lengthscales</span><span class="p">,</span> <span class="n">active_dims</span><span class="o">=</span><span class="n">dims</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">scale_kernel</span> <span class="o">=</span> <span class="n">kernel_base_class</span><span class="p">(</span><span class="n">lengthscales</span><span class="o">=</span><span class="n">scale_lengthscale</span><span class="p">,</span> <span class="n">active_dims</span><span class="o">=</span><span class="p">[</span><span class="n">dims</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
+        <span class="n">bias_kernel</span> <span class="o">=</span> <span class="n">kernel_base_class</span><span class="p">(</span><span class="n">lengthscales</span><span class="o">=</span><span class="n">lengthscales</span><span class="p">,</span> <span class="n">active_dims</span><span class="o">=</span><span class="n">dims</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">gpflow</span><span class="o">.</span><span class="n">set_trainable</span><span class="p">(</span><span class="n">scale_kernel</span><span class="o">.</span><span class="n">variance</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">add_prior_to_lengthscale</span><span class="p">:</span>
+            <span class="n">interaction_kernel</span><span class="o">.</span><span class="n">lengthscales</span><span class="o">.</span><span class="n">prior</span> <span class="o">=</span> <span class="n">tfp</span><span class="o">.</span><span class="n">distributions</span><span class="o">.</span><span class="n">LogNormal</span><span class="p">(</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">lengthscales</span><span class="p">),</span> <span class="n">KERNEL_PRIOR_SCALE</span>
+            <span class="p">)</span>
+            <span class="n">bias_kernel</span><span class="o">.</span><span class="n">lengthscales</span><span class="o">.</span><span class="n">prior</span> <span class="o">=</span> <span class="n">tfp</span><span class="o">.</span><span class="n">distributions</span><span class="o">.</span><span class="n">LogNormal</span><span class="p">(</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">lengthscales</span><span class="p">),</span> <span class="n">KERNEL_PRIOR_SCALE</span>
+            <span class="p">)</span>
+            <span class="n">scale_kernel</span><span class="o">.</span><span class="n">lengthscales</span><span class="o">.</span><span class="n">prior</span> <span class="o">=</span> <span class="n">tfp</span><span class="o">.</span><span class="n">distributions</span><span class="o">.</span><span class="n">LogNormal</span><span class="p">(</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">scale_lengthscale</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">gpflow</span><span class="o">.</span><span class="n">default_float</span><span class="p">())),</span>
+                <span class="n">KERNEL_PRIOR_SCALE</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">add_prior_to_variance</span><span class="p">:</span>
+            <span class="n">interaction_kernel</span><span class="o">.</span><span class="n">variance</span><span class="o">.</span><span class="n">prior</span> <span class="o">=</span> <span class="n">tfp</span><span class="o">.</span><span class="n">distributions</span><span class="o">.</span><span class="n">LogNormal</span><span class="p">(</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">gpflow</span><span class="o">.</span><span class="n">default_float</span><span class="p">()),</span> <span class="n">KERNEL_PRIOR_SCALE</span>
+            <span class="p">)</span>
+            <span class="n">bias_kernel</span><span class="o">.</span><span class="n">variance</span><span class="o">.</span><span class="n">prior</span> <span class="o">=</span> <span class="n">tfp</span><span class="o">.</span><span class="n">distributions</span><span class="o">.</span><span class="n">LogNormal</span><span class="p">(</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">gpflow</span><span class="o">.</span><span class="n">default_float</span><span class="p">()),</span> <span class="n">KERNEL_PRIOR_SCALE</span>
+            <span class="p">)</span>
+
+        <span class="n">kernels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">interaction_kernel</span> <span class="o">*</span> <span class="n">scale_kernel</span> <span class="o">+</span> <span class="n">bias_kernel</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">kernels</span>
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../_static/scripts/bootstrap.js?digest=3ee479438cf8b5e0d341"></script>
+<script src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=3ee479438cf8b5e0d341"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.15.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

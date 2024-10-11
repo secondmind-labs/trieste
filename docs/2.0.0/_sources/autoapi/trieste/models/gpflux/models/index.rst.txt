@@ -1,0 +1,106 @@
+:orphan:
+
+:py:mod:`trieste.models.gpflux.models`
+======================================
+
+.. py:module:: trieste.models.gpflux.models
+
+
+Module Contents
+---------------
+
+.. py:class:: DeepGaussianProcess(model: gpflux.models.DeepGP | Callable[[], gpflux.models.DeepGP], optimizer: trieste.models.optimizer.KerasOptimizer | None = None, num_rff_features: int = 1000, continuous_optimisation: bool = True)
+
+
+   Bases: :py:obj:`trieste.models.gpflux.interface.GPfluxPredictor`, :py:obj:`trieste.models.interfaces.TrainableProbabilisticModel`, :py:obj:`trieste.models.interfaces.HasReparamSampler`, :py:obj:`trieste.models.interfaces.HasTrajectorySampler`
+
+   A :class:`TrainableProbabilisticModel` wrapper for a GPflux :class:`~gpflux.models.DeepGP` with
+   :class:`GPLayer` or :class:`LatentVariableLayer`: this class does not support e.g. keras layers.
+   We provide simple architectures that can be used with this class in the `architectures.py` file.
+
+   :param model: The underlying GPflux deep Gaussian process model. Passing in a named closure
+       rather than a model can help when copying or serialising.
+   :param optimizer: The optimizer wrapper with necessary specifications for compiling and
+       training the model. Defaults to :class:`~trieste.models.optimizer.KerasOptimizer` with
+       :class:`~tf.optimizers.Adam` optimizer, mean squared error metric and a dictionary of
+       default arguments for the Keras `fit` method: 400 epochs, batch size of 1000, and
+       verbose 0. A custom callback that reduces the optimizer learning rate is used as well.
+       See https://keras.io/api/models/model_training_apis/#fit-method for a list of possible
+       arguments.
+   :param num_rff_features: The number of random Fourier features used to approximate the
+       kernel when calling :meth:`trajectory_sampler`. We use a default of 1000 as it typically
+       performs well for a wide range of kernels. Note that very smooth kernels (e.g. RBF) can
+       be well-approximated with fewer features.
+   :param continuous_optimisation: if True (default), the optimizer will keep track of the
+       number of epochs across BO iterations and use this number as initial_epoch. This is
+       essential to allow monitoring of model training across BO iterations.
+   :raise ValueError: If ``model`` has unsupported layers, ``num_rff_features`` is less than 0,
+       or if the ``optimizer`` is not of a supported type.
+
+   .. py:property:: model_gpflux
+      :type: gpflux.models.DeepGP
+
+      The underlying GPflux model.
+
+
+   .. py:property:: model_keras
+      :type: tensorflow.keras.Model
+
+      Returns the compiled Keras model for training.
+
+
+   .. py:method:: sample(query_points: trieste.types.TensorType, num_samples: int) -> trieste.types.TensorType
+
+      Return ``num_samples`` samples from the independent marginal distributions at
+      ``query_points``.
+
+      :param query_points: The points at which to sample, with shape [..., N, D].
+      :param num_samples: The number of samples at each point.
+      :return: The samples. For a predictive distribution with event shape E, this has shape
+          [..., S, N] + E, where S is the number of samples.
+
+
+   .. py:method:: reparam_sampler(num_samples: int) -> trieste.models.interfaces.ReparametrizationSampler[trieste.models.gpflux.interface.GPfluxPredictor]
+
+      Return a reparametrization sampler for a :class:`DeepGaussianProcess` model.
+
+      :param num_samples: The number of samples to obtain.
+      :return: The reparametrization sampler.
+
+
+   .. py:method:: trajectory_sampler() -> trieste.models.interfaces.TrajectorySampler[trieste.models.gpflux.interface.GPfluxPredictor]
+
+      Return a trajectory sampler. For :class:`DeepGaussianProcess`, we build
+      trajectories using the GPflux default sampler.
+
+      :return: The trajectory sampler.
+
+
+   .. py:method:: update(dataset: trieste.data.Dataset) -> None
+
+      Update the model given the specified ``dataset``. Does not train the model.
+
+      :param dataset: The data with which to update the model.
+
+
+   .. py:method:: optimize(dataset: trieste.data.Dataset) -> keras.callbacks.History
+
+      Optimize the model with the specified `dataset`.
+      :param dataset: The data with which to optimize the `model`.
+
+
+   .. py:method:: log(dataset: Optional[trieste.data.Dataset] = None) -> None
+
+      Log model training information at a given optimization step to the Tensorboard.
+      We log a few summary statistics of losses, layer KL divergences and metrics (as provided in
+      ``optimizer``): ``final`` value at the end of the training, ``diff`` value as a difference
+      between inital and final epoch. We also log epoch statistics, but as histograms, rather
+      than time series. We also log several training data based metrics, such as root mean square
+      error between predictions and observations and several others.
+
+      For custom logs user will need to subclass the model and overwrite this method.
+
+      :param dataset: Optional data that can be used to log additional data-based model summaries.
+
+
+

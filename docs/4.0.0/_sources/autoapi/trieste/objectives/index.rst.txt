@@ -1,0 +1,270 @@
+:py:mod:`trieste.objectives`
+============================
+
+.. py:module:: trieste.objectives
+
+.. autoapi-nested-parse::
+
+   This package contains examples of popular objective functions used in (Bayesian) optimization.
+
+
+
+Submodules
+----------
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+
+   multi_objectives/index.rst
+   multifidelity_objectives/index.rst
+   single_objectives/index.rst
+   utils/index.rst
+
+
+Package Contents
+----------------
+
+.. py:function:: DTLZ1(input_dim: int, num_objective: int) -> MultiObjectiveTestProblem[trieste.space.Box]
+
+   The DTLZ1 problem, the idea pareto fronts lie on a linear hyper-plane.
+   See :cite:`deb2002scalable` for details.
+
+   :param input_dim: The input dimensionality of the synthetic function.
+   :param num_objective: The number of objectives.
+   :return: The problem specification.
+
+
+.. py:function:: DTLZ2(input_dim: int, num_objective: int) -> MultiObjectiveTestProblem[trieste.space.Box]
+
+   The DTLZ2 problem, the idea pareto fronts lie on (part of) a unit hyper sphere.
+   See :cite:`deb2002scalable` for details.
+
+   :param input_dim: The input dimensionality of the synthetic function.
+   :param num_objective: The number of objectives.
+   :return: The problem specification.
+
+
+.. py:function:: VLMOP2(input_dim: int) -> MultiObjectiveTestProblem[trieste.space.Box]
+
+   The VLMOP2 problem, typically evaluated over :math:`[-2, 2]^d`.
+   The idea pareto fronts lies on -1/sqrt(d) - 1/sqrt(d) and x1=...=xdim.
+
+   See :cite:`van1999multiobjective` and :cite:`fonseca1995multiobjective`
+   (the latter for discussion of pareto front property) for details.
+
+   :param input_dim: The input dimensionality of the synthetic function.
+   :return: The problem specification.
+
+
+.. py:class:: MultiObjectiveTestProblem
+
+
+   Bases: :py:obj:`trieste.objectives.single_objectives.ObjectiveTestProblem`\ [\ :py:obj:`trieste.space.SearchSpaceType`\ ]
+
+   Convenience container class for synthetic multi-objective test functions, containing
+   a generator for the pareto optimal points, which can be used as a reference of performance
+   measure of certain multi-objective optimization algorithms.
+
+   .. py:attribute:: gen_pareto_optimal_points
+      :type: GenParetoOptimalPoints
+
+      Function to generate Pareto optimal points, given the number of points and an optional
+      random number seed.
+
+
+
+.. py:class:: SingleObjectiveMultifidelityTestProblem
+
+
+   Bases: :py:obj:`trieste.objectives.single_objectives.SingleObjectiveTestProblem`\ [\ :py:obj:`trieste.space.SearchSpaceType`\ ]
+
+   Convenience container class for synthetic single-objective test functions,
+   including the global minimizers and minimum.
+
+   .. py:attribute:: num_fidelities
+      :type: int
+
+      The number of fidelities of test function
+
+
+   .. py:attribute:: fidelity_search_space
+      :type: trieste.space.TaggedProductSearchSpace
+
+      The search space including fidelities
+
+
+
+.. py:data:: Ackley5
+
+   The Ackley test function over :math:`[0, 1]^5`. This function has
+   many local minima and a global minima. See https://www.sfu.ca/~ssurjano/ackley.html
+   for details.
+   Note that we rescale the original problem, which is typically defined
+   over `[-32.768, 32.768]`.
+
+
+.. py:data:: Branin
+
+   The Branin-Hoo function over :math:`[0, 1]^2`. See :cite:`Picheny2013` for details.
+
+
+.. py:data:: ConstrainedScaledBranin
+
+   The rescaled Branin-Hoo function with a combination of linear and nonlinear constraints on the
+   search space.
+
+
+.. py:data:: GramacyLee
+
+   The Gramacy & Lee function, typically evaluated over :math:`[0.5, 2.5]`. See
+   :cite:`gramacy2012cases` for details.
+
+
+.. py:data:: Hartmann3
+
+   The Hartmann 3 test function over :math:`[0, 1]^3`. This function has 3 local
+   and one global minima. See https://www.sfu.ca/~ssurjano/hart3.html for details.
+
+
+.. py:data:: Hartmann6
+
+   The Hartmann 6 test function over :math:`[0, 1]^6`. This function has
+   6 local and one global minima. See https://www.sfu.ca/~ssurjano/hart6.html
+   for details.
+
+
+.. py:data:: Levy8
+
+   Convenience function for the 8-dimensional :func:`levy` function.
+   Taken from https://www.sfu.ca/~ssurjano/levy.html
+
+
+.. py:data:: LogarithmicGoldsteinPrice
+
+   A logarithmic form of the Goldstein-Price function, with zero mean and unit variance over
+   :math:`[0, 1]^2`. See :cite:`Picheny2013` for details.
+
+
+.. py:data:: Michalewicz2
+
+   Convenience function for the 2-dimensional :func:`michalewicz` function with steepness 10.
+   Taken from https://arxiv.org/abs/2003.09867
+
+
+.. py:data:: Michalewicz5
+
+   Convenience function for the 5-dimensional :func:`michalewicz` function with steepness 10.
+   Taken from https://arxiv.org/abs/2003.09867
+
+
+.. py:data:: Michalewicz10
+
+   Convenience function for the 10-dimensional :func:`michalewicz` function with steepness 10.
+   Taken from https://arxiv.org/abs/2003.09867
+
+
+.. py:class:: ObjectiveTestProblem
+
+
+   Bases: :py:obj:`Generic`\ [\ :py:obj:`trieste.space.SearchSpaceType`\ ]
+
+   Convenience container class for synthetic objective test functions.
+
+   .. py:property:: dim
+      :type: int
+
+      The input dimensionality of the test function
+
+
+   .. py:property:: bounds
+      :type: list[list[float]]
+
+      The input space bounds of the test function
+
+
+   .. py:attribute:: name
+      :type: str
+
+      The test function name
+
+
+   .. py:attribute:: objective
+      :type: ObjectiveTestFunction
+
+      The synthetic test function
+
+
+   .. py:attribute:: search_space
+      :type: trieste.space.SearchSpaceType
+
+      The (continuous) search space of the test function
+
+
+
+.. py:data:: Rosenbrock4
+
+   The Rosenbrock function, rescaled to have zero mean and unit variance over :math:`[0, 1]^4. See
+   :cite:`Picheny2013` for details.
+   This function (also known as the Banana function) is unimodal, however the minima
+   lies in a narrow valley.
+
+
+.. py:data:: ScaledBranin
+
+   The Branin-Hoo function, rescaled to have zero mean and unit variance over :math:`[0, 1]^2`. See
+   :cite:`Picheny2013` for details.
+
+
+.. py:data:: Shekel4
+
+   The Shekel test function over :math:`[0, 1]^4`. This function has ten local
+   minima and a single global minimum. See https://www.sfu.ca/~ssurjano/shekel.html for details.
+   Note that we rescale the original problem, which is typically defined
+   over `[0, 10]^4`.
+
+
+.. py:data:: SimpleQuadratic
+
+   A trivial quadratic function over :math:`[0, 1]^2`. Useful for quick testing.
+
+
+.. py:class:: SingleObjectiveTestProblem
+
+
+   Bases: :py:obj:`ObjectiveTestProblem`\ [\ :py:obj:`trieste.space.SearchSpaceType`\ ]
+
+   Convenience container class for synthetic single-objective test functions,
+   including the global minimizers and minimum.
+
+   .. py:attribute:: minimizers
+      :type: trieste.types.TensorType
+
+      The global minimizers of the test function.
+
+
+   .. py:attribute:: minimum
+      :type: trieste.types.TensorType
+
+      The global minimum of the test function.
+
+
+
+.. py:data:: Trid10
+
+   The Trid function with dimension 10.
+
+
+.. py:function:: mk_multi_observer(**kwargs: collections.abc.Callable[[trieste.types.TensorType], trieste.types.TensorType]) -> trieste.observer.MultiObserver
+
+   :param kwargs: Observation functions.
+   :return: An multi-observer returning the data from ``kwargs``.
+
+
+.. py:function:: mk_observer(objective: collections.abc.Callable[[trieste.types.TensorType], trieste.types.TensorType]) -> trieste.observer.SingleObserver
+                 mk_observer(objective: collections.abc.Callable[[trieste.types.TensorType], trieste.types.TensorType], key: trieste.types.Tag) -> trieste.observer.MultiObserver
+
+   :param objective: An objective function designed to be used with a single data set and model.
+   :param key: An optional key to use to access the data from the observer result.
+   :return: An observer returning the data from ``objective``.
+
+

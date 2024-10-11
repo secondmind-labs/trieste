@@ -1,0 +1,440 @@
+:py:mod:`trieste.objectives.single_objectives`
+==============================================
+
+.. py:module:: trieste.objectives.single_objectives
+
+.. autoapi-nested-parse::
+
+   This module contains toy objective functions, useful for experimentation. A number of them have been
+   taken from `this Virtual Library of Simulation Experiments
+   <https://web.archive.org/web/20211015101644/https://www.sfu.ca/~ssurjano/> (:cite:`ssurjano2021`)`_.
+
+
+
+Module Contents
+---------------
+
+.. py:function:: branin(x: trieste.types.TensorType) -> trieste.types.TensorType
+
+   The Branin-Hoo function over :math:`[0, 1]^2`. See
+   :cite:`Picheny2013` for details.
+
+   :param x: The points at which to evaluate the function, with shape [..., 2].
+   :return: The function values at ``x``, with shape [..., 1].
+   :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+
+
+.. py:function:: scaled_branin(x: trieste.types.TensorType) -> trieste.types.TensorType
+
+   The Branin-Hoo function, rescaled to have zero mean and unit variance over :math:`[0, 1]^2`. See
+   :cite:`Picheny2013` for details.
+
+   :param x: The points at which to evaluate the function, with shape [..., 2].
+   :return: The function values at ``x``, with shape [..., 1].
+   :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+
+
+.. py:data:: BRANIN_MINIMIZERS
+   
+
+   The three global minimizers of the :func:`branin` function over :math:`[0, 1]^2`, with shape [3, 2]
+   and dtype float64.
+
+
+.. py:data:: BRANIN_MINIMUM
+   
+
+   The global minimum of the :func:`branin` function, with shape [1] and dtype float64. 
+
+
+.. py:data:: SCALED_BRANIN_MINIMUM
+   
+
+   The global minimum of the :func:`branin` function, with shape [1] and dtype float64. 
+
+
+.. py:data:: BRANIN_SEARCH_SPACE
+   
+
+   The search space for the :func:`branin` function. 
+
+
+.. py:function:: simple_quadratic(x: trieste.types.TensorType) -> trieste.types.TensorType
+
+   A trivial quadratic function over :math:`[0, 1]^2`. Useful for quick testing.
+
+   :param x: The points at which to evaluate the function, with shape [..., 2].
+   :return: The function values at ``x``, with shape [..., 1].
+   :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+
+
+.. py:data:: SIMPLE_QUADRATIC_MINIMIZER
+   
+
+   The global minimizer of the :func:`simple_quadratic` function over :math:`[0, 1]^2`,
+   with shape [1, 2] and dtype float64.
+
+
+.. py:data:: SIMPLE_QUADRATIC_MINIMUM
+   
+
+   The global minimum of the :func:`simple_quadratic` function over :math:`[0, 1]^2`, with shape [1]
+   and dtype float64.
+
+
+.. py:data:: SIMPLE_QUADRATIC_SEARCH_SPACE
+   
+
+   The search space for the :func:`simple_quadratic` function. 
+
+
+.. py:function:: gramacy_lee(x: trieste.types.TensorType) -> trieste.types.TensorType
+
+   The Gramacy & Lee function, typically evaluated over :math:`[0.5, 2.5]`. See
+   :cite:`gramacy2012cases` for details.
+
+   :param x: Where to evaluate the function, with shape [..., 1].
+   :return: The function values, with shape [..., 1].
+   :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+
+
+.. py:data:: GRAMACY_LEE_MINIMIZER
+   
+
+   The global minimizer of the :func:`gramacy_lee` function over :math:`[0.5, 2.5]`, with shape [1, 1]
+   and dtype float64.
+
+
+.. py:data:: GRAMACY_LEE_MINIMUM
+   
+
+   The global minimum of the :func:`gramacy_lee` function over :math:`[0.5, 2.5]`, with shape [1] and
+   dtype float64.
+
+
+.. py:data:: GRAMACY_LEE_SEARCH_SPACE
+   
+
+   The search space for the :func:`gramacy_lee` function. 
+
+
+.. py:function:: logarithmic_goldstein_price(x: trieste.types.TensorType) -> trieste.types.TensorType
+
+   A logarithmic form of the Goldstein-Price function, with zero mean and unit variance over
+   :math:`[0, 1]^2`. See :cite:`Picheny2013` for details.
+
+   :param x: The points at which to evaluate the function, with shape [..., 2].
+   :return: The function values at ``x``, with shape [..., 1].
+   :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+
+
+.. py:data:: LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZER
+   
+
+   The global minimizer for the :func:`logarithmic_goldstein_price` function, with shape [1, 2] and
+   dtype float64.
+
+
+.. py:data:: LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM
+   
+
+   The global minimum for the :func:`logarithmic_goldstein_price` function, with shape [1] and dtype
+   float64.
+
+
+.. py:data:: LOGARITHMIC_GOLDSTEIN_PRICE_SEARCH_SPACE
+   
+
+   The search space for the :func:`logarithmic_goldstein_price` function. 
+
+
+.. py:function:: hartmann_3(x: trieste.types.TensorType) -> trieste.types.TensorType
+
+   The Hartmann 3 test function over :math:`[0, 1]^3`. This function has 3 local
+   and one global minima. See https://www.sfu.ca/~ssurjano/hart3.html for details.
+
+   :param x: The points at which to evaluate the function, with shape [..., 3].
+   :return: The function values at ``x``, with shape [..., 1].
+   :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+
+
+.. py:data:: HARTMANN_3_MINIMIZER
+   
+
+   The global minimizer for the :func:`hartmann_3` function, with shape [1, 3] and
+   dtype float64.
+
+
+.. py:data:: HARTMANN_3_MINIMUM
+   
+
+   The global minimum for the :func:`hartmann_3` function, with shape [1] and dtype
+   float64.
+
+
+.. py:data:: HARTMANN_3_SEARCH_SPACE
+   
+
+   The search space for the :func:`hartmann_3` function. 
+
+
+.. py:function:: shekel_4(x: trieste.types.TensorType) -> trieste.types.TensorType
+
+   The Shekel test function over :math:`[0, 1]^4`. This function has ten local
+   minima and a single global minimum. See https://www.sfu.ca/~ssurjano/shekel.html for details.
+   Note that we rescale the original problem, which is typically defined
+   over `[0, 10]^4`.
+
+   :param x: The points at which to evaluate the function, with shape [..., 4].
+   :return: The function values at ``x``, with shape [..., 1].
+   :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+
+
+.. py:data:: SHEKEL_4_MINIMIZER
+   
+
+   The global minimizer for the :func:`shekel_4` function, with shape [1, 4] and
+   dtype float64.
+
+
+.. py:data:: SHEKEL_4_MINIMUM
+   
+
+   The global minimum for the :func:`shekel_4` function, with shape [1] and dtype
+   float64.
+
+
+.. py:data:: SHEKEL_4_SEARCH_SPACE
+   
+
+   The search space for the :func:`shekel_4` function. 
+
+
+.. py:function:: rosenbrock_4(x: trieste.types.TensorType) -> trieste.types.TensorType
+
+   The Rosenbrock function, rescaled to have zero mean and unit variance over :math:`[0, 1]^4. See
+   :cite:`Picheny2013` for details.
+   This function (also known as the Banana function) is unimodal, however the minima
+   lies in a narrow valley.
+
+   :param x: The points at which to evaluate the function, with shape [..., 4].
+   :return: The function values at ``x``, with shape [..., 1].
+   :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+
+
+.. py:data:: ROSENBROCK_4_MINIMIZER
+   
+
+   The global minimizer for the :func:`rosenbrock_4` function, with shape [1, 4] and
+   dtype float64.
+
+
+.. py:data:: ROSENBROCK_4_MINIMUM
+   
+
+   The global minimum for the :func:`rosenbrock_4` function, with shape [1] and dtype
+   float64.
+
+
+.. py:data:: ROSENBROCK_4_SEARCH_SPACE
+   
+
+   The search space for the :func:`rosenbrock_4` function. 
+
+
+.. py:function:: ackley_5(x: trieste.types.TensorType) -> trieste.types.TensorType
+
+   The Ackley test function over :math:`[0, 1]^5`. This function has
+   many local minima and a global minima. See https://www.sfu.ca/~ssurjano/ackley.html
+   for details.
+   Note that we rescale the original problem, which is typically defined
+   over `[-32.768, 32.768]`.
+
+   :param x: The points at which to evaluate the function, with shape [..., 5].
+   :return: The function values at ``x``, with shape [..., 1].
+   :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+
+
+.. py:data:: ACKLEY_5_MINIMIZER
+   
+
+   The global minimizer for the :func:`ackley_5` function, with shape [1, 5] and
+   dtype float64.
+
+
+.. py:data:: ACKLEY_5_MINIMUM
+   
+
+   The global minimum for the :func:`ackley_5` function, with shape [1] and dtype
+   float64.
+
+
+.. py:data:: ACKLEY_5_SEARCH_SPACE
+   
+
+   The search space for the :func:`ackley_5` function. 
+
+
+.. py:function:: hartmann_6(x: trieste.types.TensorType) -> trieste.types.TensorType
+
+   The Hartmann 6 test function over :math:`[0, 1]^6`. This function has
+   6 local and one global minima. See https://www.sfu.ca/~ssurjano/hart6.html
+   for details.
+
+   :param x: The points at which to evaluate the function, with shape [..., 6].
+   :return: The function values at ``x``, with shape [..., 1].
+   :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+
+
+.. py:data:: HARTMANN_6_MINIMIZER
+   
+
+   The global minimizer for the :func:`hartmann_6` function, with shape [1, 6] and
+   dtype float64.
+
+
+.. py:data:: HARTMANN_6_MINIMUM
+   
+
+   The global minimum for the :func:`hartmann_6` function, with shape [1] and dtype
+   float64.
+
+
+.. py:data:: HARTMANN_6_SEARCH_SPACE
+   
+
+   The search space for the :func:`hartmann_6` function. 
+
+
+.. py:function:: michalewicz(x: trieste.types.TensorType, d: int = 2, m: int = 10) -> trieste.types.TensorType
+
+   The Michalewicz function over :math:`[0, \pi]` for all i=1,...,d. Dimensionality is determined
+   by the parameter ``d`` and it features steep ridges and drops. It has :math:`d!` local minima,
+   and it is multimodal. The parameter ``m`` defines the steepness of they valleys and ridges; a
+   larger ``m`` leads to a more difficult search. The recommended value of ``m`` is 10. See
+   https://www.sfu.ca/~ssurjano/egg.html for details.
+   :param x: The points at which to evaluate the function, with shape [..., d].
+   :param d: The dimension of the function.
+   :param m: The steepness of the valleys/ridges.
+   :return: The function values at ``x``, with shape [..., 1].
+   :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+
+
+.. py:function:: michalewicz_2(x: trieste.types.TensorType) -> trieste.types.TensorType
+
+   Convenience function for the 2-dimensional :func:`michalewicz` function with steepness 10.
+   :param x: The points at which to evaluate the function, with shape [..., 2].
+   :return: The function values at ``x``, with shape [..., 1].
+
+
+.. py:function:: michalewicz_5(x: trieste.types.TensorType) -> trieste.types.TensorType
+
+   Convenience function for the 5-dimensional :func:`michalewicz` function with steepness 10.
+   :param x: The points at which to evaluate the function, with shape [..., 5].
+   :return: The function values at ``x``, with shape [..., 1].
+
+
+.. py:function:: michalewicz_10(x: trieste.types.TensorType) -> trieste.types.TensorType
+
+   Convenience function for the 10-dimensional :func:`michalewicz` function with steepness 10.
+   :param x: The points at which to evaluate the function, with shape [..., 10].
+   :return: The function values at ``x``, with shape [..., 1].
+
+
+.. py:data:: MICHALEWICZ_2_MINIMIZER
+   
+
+   The global minimizer of the :func:`michalewicz` function over :math:`[0, \pi]^2`,
+   with shape [1, 2] and dtype float64. Taken from https://arxiv.org/abs/2003.09867
+
+
+.. py:data:: MICHALEWICZ_5_MINIMIZER
+   
+
+   The global minimizer of the :func:`michalewicz` function over :math:`[0, \pi]^5`,
+   with shape [1, 5] and dtype float64. Taken from https://arxiv.org/abs/2003.09867
+
+
+.. py:data:: MICHALEWICZ_10_MINIMIZER
+   
+
+   The global minimizer of the :func:`michalewicz` function over :math:`[0, \pi]^10`,
+   with shape [1, 10] and dtype float64. Taken from https://arxiv.org/abs/2003.09867
+
+
+.. py:data:: MICHALEWICZ_2_MINIMUM
+   
+
+   The global minimum of the 2-dimensional :func:`michalewicz` function, with shape [1] and dtype
+   float64. Taken from https://arxiv.org/abs/2003.09867
+
+
+.. py:data:: MICHALEWICZ_5_MINIMUM
+   
+
+   The global minimum of the 5-dimensional :func:`michalewicz` function, with shape [1] and dtype
+   float64. Taken from https://arxiv.org/abs/2003.09867
+
+
+.. py:data:: MICHALEWICZ_10_MINIMUM
+   
+
+   The global minimum of the 10-dimensional :func:`michalewicz` function, with shape [1] and dtype
+   float64. Taken from https://arxiv.org/abs/2003.09867
+
+
+.. py:data:: MICHALEWICZ_2_SEARCH_SPACE
+   
+
+   The search space for the 2-dimensional :func:`michalewicz` function.
+
+
+.. py:data:: MICHALEWICZ_5_SEARCH_SPACE
+   
+
+   The search space for the 5-dimensional :func:`michalewicz` function.
+
+
+.. py:data:: MICHALEWICZ_10_SEARCH_SPACE
+   
+
+   The search space for the 10-dimensional :func:`michalewicz` function.
+
+
+.. py:function:: trid(x: trieste.types.TensorType, d: int = 10) -> trieste.types.TensorType
+
+   The Trid function over :math:`[-d^2, d^2]` for all i=1,...,d. Dimensionality is determined
+   by the parameter ``d`` and it has a global minimum. This function has large variation in
+   output which makes it challenging for Bayesian optimisation with vanilla Gaussian processes
+   with non-stationary kernels. Models that can deal with non-stationarities, such as deep
+   Gaussian processes, can be useful for modelling these functions. See :cite:`hebbal2019bayesian`
+   and https://www.sfu.ca/~ssurjano/trid.html for details.
+
+   :param x: The points at which to evaluate the function, with shape [..., d].
+   :return: The function values at ``x``, with shape [..., 1].
+   :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+
+
+.. py:data:: TRID_10_MINIMIZER
+   
+
+   The global minimizer of :func:`trid` function is defined as :math:`x_i=i(d+1-i)` for all i=1,...,d.
+   Here, we define it specifically for the 10-dimensional variant, with shape [1, 10] and dtype
+   float64.
+
+
+.. py:data:: TRID_10_MINIMUM
+   
+
+   The global minimum of :func:`trid` function is defined as :math:`d(d+4)(d-1)/6` for dimensionality
+   `d`. Here, we define it specifically for the 10-dimensional variant, with shape [1] and dtype
+   float64.
+
+
+.. py:data:: TRID_10_SEARCH_SPACE
+   
+
+   The search space for :func:`trid` function is defined over :math:`[-d^2, d^2]` for all i=1,...,d.
+   Here, we define it specifically for the 10-dimensional variant.
+
+
