@@ -656,17 +656,12 @@ class CategoricalSearchSpace(GeneralDiscreteSearchSpace, HasOneHotEncoder):
 
         def binary_encoder(x: TensorType) -> TensorType:
             # no need to one-hot encode binary categories (but we should still validate)
-            if tf.reduce_any((x != 0) & (x != 1)):
-                raise ValueError(f"Invalid values {tf.boolean_mask(x, ((x != 0) & (x != 1)))}")
+            tf.debugging.Assert(tf.reduce_all((x == 0) | (x == 1)), [tf.constant([])])
             return x
 
         def encoder(x: TensorType) -> TensorType:
             flat_x, unflatten = flatten_leading_dims(x)
-            if flat_x.shape[-1] != len(self.tags):
-                raise ValueError(
-                    "Invalid input for one-hot encoding: "
-                    f"expected {len(self.tags)} tags, got {flat_x.shape[-1]}"
-                )
+            tf.debugging.assert_equal(flat_x.shape[-1], len(self.tags))
             columns = tf.split(flat_x, flat_x.shape[-1], axis=1)
             encoders = [
                 (
