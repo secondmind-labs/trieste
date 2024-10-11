@@ -128,7 +128,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder[ProbabilisticModelType
             :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
         :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
         """
-        tf.debugging.Assert(dataset is not None, [tf.constant([])])
+        tf.debugging.Assert(dataset is not None, [])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
@@ -150,10 +150,10 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder[ProbabilisticModelType
         :param model: The model.
         :param dataset: The data from the observer.
         """
-        tf.debugging.Assert(dataset is not None, [tf.constant([])])
+        tf.debugging.Assert(dataset is not None, [])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
-        tf.debugging.Assert(isinstance(function, min_value_entropy_search), [tf.constant([])])
+        tf.debugging.Assert(isinstance(function, min_value_entropy_search), [])
 
         query_points = self._search_space.sample(num_samples=self._grid_size)
         tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
@@ -334,7 +334,7 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[GIBBONModelType]):
                 f"covariance_between_points and get_observation_noise; received {model!r}"
             )
 
-        tf.debugging.Assert(dataset is not None, [tf.constant([])])
+        tf.debugging.Assert(dataset is not None, [])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
 
@@ -363,10 +363,10 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[GIBBONModelType]):
             for the current step. Defaults to ``True``.
         :return: The updated acquisition function.
         """
-        tf.debugging.Assert(dataset is not None, [tf.constant([])])
+        tf.debugging.Assert(dataset is not None, [])
         dataset = cast(Dataset, dataset)
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
-        tf.debugging.Assert(self._quality_term is not None, [tf.constant([])])
+        tf.debugging.Assert(self._quality_term is not None, [])
 
         if new_optimization_step:
             self._update_quality_term(dataset, model)

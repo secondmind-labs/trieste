@@ -187,9 +187,7 @@ class DeepGaussianProcessDecoupledTrajectorySampler(TrajectorySampler[GPfluxPred
             :class:`dgp_feature_decomposition_trajectory`
         """
 
-        tf.debugging.Assert(
-            isinstance(trajectory, dgp_feature_decomposition_trajectory), [tf.constant([])]
-        )
+        tf.debugging.Assert(isinstance(trajectory, dgp_feature_decomposition_trajectory), [])
 
         cast(dgp_feature_decomposition_trajectory, trajectory).update()
         return trajectory
@@ -204,9 +202,7 @@ class DeepGaussianProcessDecoupledTrajectorySampler(TrajectorySampler[GPfluxPred
         :raise InvalidArgumentError: If ``trajectory`` is not a
             :class:`dgp_feature_decomposition_trajectory`
         """
-        tf.debugging.Assert(
-            isinstance(trajectory, dgp_feature_decomposition_trajectory), [tf.constant([])]
-        )
+        tf.debugging.Assert(isinstance(trajectory, dgp_feature_decomposition_trajectory), [])
         cast(dgp_feature_decomposition_trajectory, trajectory).resample()
         return trajectory
 
