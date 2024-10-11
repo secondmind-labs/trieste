@@ -1830,7 +1830,7 @@ def test_categorical_search_space_one_hot_encoding(
         pytest.param(
             CategoricalSearchSpace(["Y", "N"]),
             tf.constant([[0], [2], [1]]),
-            ValueError,
+            InvalidArgumentError,
             id="Out of range binary input value",
         ),
         pytest.param(
@@ -1842,7 +1842,7 @@ def test_categorical_search_space_one_hot_encoding(
         pytest.param(
             CategoricalSearchSpace([["R", "G", "B"], ["Y", "N"]]),
             tf.constant([[0], [1], [1]]),
-            ValueError,
+            InvalidArgumentError,
             id="Wrong input shape",
         ),
     ],
