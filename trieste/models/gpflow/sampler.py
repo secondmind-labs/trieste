@@ -504,8 +504,11 @@ class RandomFourierFeatureTrajectorySampler(
             )
 
         tf.debugging.assert_positive(num_features)
-        self._num_features = num_features
-        feature_functions = ResampleableRandomFourierFeatureFunctions(model, self._num_features)
+        feature_functions = ResampleableRandomFourierFeatureFunctions(model, num_features)
+
+        dataset = model.get_internal_data()
+        self._num_features = feature_functions.compute_output_dim(tf.shape(dataset.query_points))
+
         super().__init__(model, feature_functions)
 
     def _prepare_weight_sampler(self) -> Callable[[int], TensorType]:  # [B] -> [B, F, 1]
@@ -653,8 +656,13 @@ class DecoupledTrajectorySampler(
             )
 
         tf.debugging.assert_positive(num_features)
-        self._num_features = num_features
-        feature_functions = ResampleableDecoupledFeatureFunctions(model, self._num_features)
+        feature_functions = ResampleableDecoupledFeatureFunctions(model, num_features)
+
+        if isinstance(model, FeatureDecompositionInducingPointModel):
+            points, _, _, _ = model.get_inducing_variables()
+        else:
+            points = model.get_internal_data().query_points
+        self._num_features = feature_functions.compute_output_dim(tf.shape(points))
 
         super().__init__(model, feature_functions)
 
