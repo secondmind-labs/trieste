@@ -760,7 +760,7 @@ def get_bounds_of_box_relaxation_around_point(
     :param current_point: The point at which to make the continuous relaxation.
     :return: Bounds for the Scipy optimizer.
     """
-    tf.debugging.Assert(isinstance(space, TaggedProductSearchSpace), [])
+    tf.debugging.Assert(isinstance(space, TaggedProductSearchSpace), [tf.constant([])])
 
     space_with_fixed_discrete = space
     for tag in space.subspace_tags:

@@ -636,7 +636,7 @@ class AsynchronousOptimization(
         def state_func(
             state: AsynchronousRuleState | None,
         ) -> tuple[AsynchronousRuleState | None, TensorType]:
-            tf.debugging.Assert(self._acquisition_function is not None, [])
+            tf.debugging.Assert(self._acquisition_function is not None, [tf.constant([])])
 
             if state is None:
                 state = AsynchronousRuleState(None)

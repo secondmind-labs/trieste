@@ -89,7 +89,7 @@ class DeepEnsembleTrajectorySampler(TrajectorySampler[DeepEnsembleModel]):
         :param trajectory: The trajectory function to be resampled.
         :return: The new trajectory function updated for a new model
         """
-        tf.debugging.Assert(isinstance(trajectory, deep_ensemble_trajectory), [])
+        tf.debugging.Assert(isinstance(trajectory, deep_ensemble_trajectory), [tf.constant([])])
         trajectory.resample()  # type: ignore
         return trajectory
 
@@ -101,7 +101,7 @@ class DeepEnsembleTrajectorySampler(TrajectorySampler[DeepEnsembleModel]):
         :param trajectory: The trajectory function to be resampled.
         :return: The new resampled trajectory function.
         """
-        tf.debugging.Assert(isinstance(trajectory, deep_ensemble_trajectory), [])
+        tf.debugging.Assert(isinstance(trajectory, deep_ensemble_trajectory), [tf.constant([])])
         trajectory.resample()  # type: ignore
         return trajectory
 
