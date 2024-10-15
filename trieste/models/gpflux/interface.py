@@ -16,33 +16,46 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-import tensorflow as tf
-from check_shapes import inherit_check_shapes
 from gpflow.base import Module
+from gpflow.keras import tf_keras
 
+from ...space import EncoderFunction
 from ...types import TensorType
-from ..interfaces import SupportsGetObservationNoise, SupportsPredictY
+from ..interfaces import EncodedSupportsPredictY, SupportsGetObservationNoise
 from ..optimizer import KerasOptimizer
 
 
-class GPfluxPredictor(SupportsGetObservationNoise, SupportsPredictY, ABC):
+class GPfluxPredictor(SupportsGetObservationNoise, EncodedSupportsPredictY, ABC):
     """
     A trainable wrapper for a GPflux deep Gaussian process model. The code assumes subclasses
     will use the Keras `fit` method for training, and so they should provide access to both a
     `model_keras` and `model_gpflux`.
     """
 
-    def __init__(self, optimizer: KerasOptimizer | None = None):
+    def __init__(
+        self, optimizer: KerasOptimizer | None = None, encoder: EncoderFunction | None = None
+    ):
         """
         :param optimizer: The optimizer wrapper containing the optimizer with which to train the
             model and arguments for the wrapper and the optimizer. The optimizer must
             be an instance of a :class:`~tf.optimizers.Optimizer`. Defaults to
             :class:`~tf.optimizers.Adam` optimizer with 0.01 learning rate.
+        :param encoder: Optional encoder with which to transform query points before
+            generating predictions.
         """
         if optimizer is None:
-            optimizer = KerasOptimizer(tf.optimizers.Adam(0.01))
+            optimizer = KerasOptimizer(tf_keras.optimizers.Adam(0.01))
 
         self._optimizer = optimizer
+        self._encoder = encoder
+
+    @property
+    def encoder(self) -> EncoderFunction | None:
+        return self._encoder
+
+    @encoder.setter
+    def encoder(self, encoder: EncoderFunction | None) -> None:
+        self._encoder = encoder
 
     @property
     @abstractmethod
@@ -51,7 +64,7 @@ class GPfluxPredictor(SupportsGetObservationNoise, SupportsPredictY, ABC):
 
     @property
     @abstractmethod
-    def model_keras(self) -> tf.keras.Model:
+    def model_keras(self) -> tf_keras.Model:
         """Returns the compiled Keras model for training."""
 
     @property
@@ -59,18 +72,16 @@ class GPfluxPredictor(SupportsGetObservationNoise, SupportsPredictY, ABC):
         """The optimizer wrapper for training the model."""
         return self._optimizer
 
-    @inherit_check_shapes
-    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+    def predict_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """Note: unless otherwise noted, this returns the mean and variance of the last layer
         conditioned on one sample from the previous layers."""
         return self.model_gpflux.predict_f(query_points)
 
     @abstractmethod
-    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
+    def sample_encoded(self, query_points: TensorType, num_samples: int) -> TensorType:
         raise NotImplementedError
 
-    @inherit_check_shapes
-    def predict_y(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+    def predict_y_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """Note: unless otherwise noted, this will return the prediction conditioned on one sample
         from the lower layers."""
         f_mean, f_var = self.model_gpflux.predict_f(query_points)

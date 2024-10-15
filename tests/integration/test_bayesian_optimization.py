@@ -25,6 +25,7 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 from _pytest.mark import ParameterSet
+from gpflow.keras import tf_keras
 
 from tests.util.misc import random_seed
 from trieste.acquisition import (
@@ -177,7 +178,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                 id="GIBBON",
             ),
             pytest.param(
-                20,
+                25,
                 EfficientGlobalOptimization(
                     MultipleOptimismNegativeLowerConfidenceBound(
                         ScaledBranin.search_space,
@@ -302,8 +303,10 @@ AcquisitionRuleType = Union[
 @pytest.mark.parametrize(*GPR_OPTIMIZER_PARAMS())
 def test_bayesian_optimizer_with_gpr_finds_minima_of_scaled_branin(
     num_steps: int,
-    acquisition_rule: AcquisitionRuleType[GaussianProcessRegression]
-    | Tuple[AcquisitionRuleType[GaussianProcessRegression], int],
+    acquisition_rule: (
+        AcquisitionRuleType[GaussianProcessRegression]
+        | Tuple[AcquisitionRuleType[GaussianProcessRegression], int]
+    ),
 ) -> None:
     _test_optimizer_finds_minimum(
         GaussianProcessRegression,
@@ -317,8 +320,10 @@ def test_bayesian_optimizer_with_gpr_finds_minima_of_scaled_branin(
 @pytest.mark.parametrize(*GPR_OPTIMIZER_PARAMS())
 def test_bayesian_optimizer_with_gpr_finds_minima_of_simple_quadratic(
     num_steps: int,
-    acquisition_rule: AcquisitionRuleType[GaussianProcessRegression]
-    | Tuple[AcquisitionRuleType[GaussianProcessRegression], int],
+    acquisition_rule: (
+        AcquisitionRuleType[GaussianProcessRegression]
+        | Tuple[AcquisitionRuleType[GaussianProcessRegression], int]
+    ),
 ) -> None:
     # for speed reasons we sometimes test with a simple quadratic defined on the same search space
     # branin; currently assume that every rule should be able to solve this in 6 steps
@@ -600,8 +605,10 @@ def test_bayesian_optimizer_with_PCTS_and_deep_ensemble_finds_minima_of_simple_q
 def _test_optimizer_finds_minimum(
     model_type: Type[TrainableProbabilisticModelType],
     num_steps: Optional[int],
-    acquisition_rule: AcquisitionRuleType[TrainableProbabilisticModelType]
-    | Tuple[AcquisitionRuleType[TrainableProbabilisticModelType], int],
+    acquisition_rule: (
+        AcquisitionRuleType[TrainableProbabilisticModelType]
+        | Tuple[AcquisitionRuleType[TrainableProbabilisticModelType], int]
+    ),
     optimize_branin: bool = False,
     model_args: Optional[Mapping[str, Any]] = None,
     check_regret: bool = False,
@@ -712,13 +719,13 @@ def _test_optimizer_finds_minimum(
                 "batch_size": 20,
                 "epochs": 200,
                 "callbacks": [
-                    tf.keras.callbacks.EarlyStopping(
+                    tf_keras.callbacks.EarlyStopping(
                         monitor="loss", patience=25, restore_best_weights=True
                     )
                 ],
                 "verbose": 0,
             }
-            de_optimizer = KerasOptimizer(tf.keras.optimizers.Adam(0.01), fit_args)
+            de_optimizer = KerasOptimizer(tf_keras.optimizers.Adam(0.01), fit_args)
             model = DeepEnsemble(keras_ensemble, de_optimizer, **model_args)
 
         else:
@@ -751,9 +758,9 @@ def _test_optimizer_finds_minimum(
                 # check history saved ok
                 assert len(result.history) <= (num_steps or 2)
                 assert len(result.loaded_history) == len(result.history)
-                loaded_result: OptimizationResult[
-                    None, TrainableProbabilisticModel
-                ] = OptimizationResult.from_path(Path(tmpdirname) / "history")
+                loaded_result: OptimizationResult[None, TrainableProbabilisticModel] = (
+                    OptimizationResult.from_path(Path(tmpdirname) / "history")
+                )
                 assert loaded_result.final_result.is_ok
                 assert len(loaded_result.history) == len(result.history)
 

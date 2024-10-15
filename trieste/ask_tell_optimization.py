@@ -110,8 +110,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         track_data: bool = True,
         local_data_ixs: Optional[Sequence[TensorType]] = None,
         local_data_len: Optional[int] = None,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
@@ -125,8 +124,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         track_data: bool = True,
         local_data_ixs: Optional[Sequence[TensorType]] = None,
         local_data_len: Optional[int] = None,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
@@ -143,8 +141,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         track_data: bool = True,
         local_data_ixs: Optional[Sequence[TensorType]] = None,
         local_data_len: Optional[int] = None,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
@@ -157,8 +154,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         track_data: bool = True,
         local_data_ixs: Optional[Sequence[TensorType]] = None,
         local_data_len: Optional[int] = None,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
@@ -172,8 +168,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         track_data: bool = True,
         local_data_ixs: Optional[Sequence[TensorType]] = None,
         local_data_len: Optional[int] = None,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
@@ -190,20 +185,21 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         track_data: bool = True,
         local_data_ixs: Optional[Sequence[TensorType]] = None,
         local_data_len: Optional[int] = None,
-    ):
-        ...
+    ): ...
 
     def __init__(
         self,
         search_space: SearchSpaceType,
         datasets: Mapping[Tag, Dataset] | Dataset,
         models: Mapping[Tag, ProbabilisticModelType] | ProbabilisticModelType,
-        acquisition_rule: AcquisitionRule[
-            TensorType | State[StateType | None, TensorType],
-            SearchSpaceType,
-            ProbabilisticModelType,
-        ]
-        | None = None,
+        acquisition_rule: (
+            AcquisitionRule[
+                TensorType | State[StateType | None, TensorType],
+                SearchSpaceType,
+                ProbabilisticModelType,
+            ]
+            | None
+        ) = None,
         acquisition_state: StateType | None = None,
         *,
         fit_model: bool = True,
@@ -297,7 +293,9 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
                     if local_data_len is not None:
                         # infer new dataset indices from change in dataset sizes
                         num_new_points = self._dataset_len - local_data_len
-                        if num_new_points < 0 or num_new_points % num_local_datasets != 0:
+                        if num_new_points < 0 or (
+                            num_local_datasets > 0 and num_new_points % num_local_datasets != 0
+                        ):
                             raise ValueError(
                                 "Cannot infer new data points as datasets haven't increased by "
                                 f"a multiple of {num_local_datasets}"
@@ -322,9 +320,9 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
                 )
             self._acquisition_rule.initialize_subspaces(search_space)
 
-        filtered_datasets: Mapping[Tag, Dataset] | State[
-            StateType | None, Mapping[Tag, Dataset]
-        ] = self._acquisition_rule.filter_datasets(self._models, datasets)
+        filtered_datasets: (
+            Mapping[Tag, Dataset] | State[StateType | None, Mapping[Tag, Dataset]]
+        ) = self._acquisition_rule.filter_datasets(self._models, datasets)
         if callable(filtered_datasets):
             self._acquisition_state, self._filtered_datasets = filtered_datasets(
                 self._acquisition_state
@@ -437,29 +435,35 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
     @classmethod
     def dataset_len(cls, datasets: Mapping[Tag, Dataset]) -> int:
         """Helper method for inferring the global dataset size."""
-        dataset_lens = [
-            tf.shape(dataset.query_points)[0]
+        dataset_lens = {
+            tag: int(tf.shape(dataset.query_points)[0])
             for tag, dataset in datasets.items()
             if not LocalizedTag.from_tag(tag).is_local
-        ]
-        unique_lens, _ = tf.unique(dataset_lens)
+        }
+        unique_lens, _ = tf.unique(list(dataset_lens.values()))
         if len(unique_lens) == 1:
             return int(unique_lens[0])
         else:
-            raise ValueError(f"Expected unique global dataset size, got {unique_lens}")
+            raise ValueError(
+                f"Expected unique global dataset size, got {unique_lens}: {dataset_lens}"
+            )
 
     @classmethod
     def from_record(
         cls: Type[AskTellOptimizerType],
-        record: Record[StateType, ProbabilisticModelType]
-        | FrozenRecord[StateType, ProbabilisticModelType],
+        record: (
+            Record[StateType, ProbabilisticModelType]
+            | FrozenRecord[StateType, ProbabilisticModelType]
+        ),
         search_space: SearchSpaceType,
-        acquisition_rule: AcquisitionRule[
-            TensorType | State[StateType | None, TensorType],
-            SearchSpaceType,
-            ProbabilisticModelType,
-        ]
-        | None = None,
+        acquisition_rule: (
+            AcquisitionRule[
+                TensorType | State[StateType | None, TensorType],
+                SearchSpaceType,
+                ProbabilisticModelType,
+            ]
+            | None
+        ) = None,
         track_data: bool = True,
         local_data_ixs: Optional[Sequence[TensorType]] = None,
         local_data_len: Optional[int] = None,
@@ -540,12 +544,14 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
         cls: Type[AskTellOptimizerType],
         state: AskTellOptimizerState[StateType, ProbabilisticModelType],
         search_space: SearchSpaceType,
-        acquisition_rule: AcquisitionRule[
-            TensorType | State[StateType | None, TensorType],
-            SearchSpaceType,
-            ProbabilisticModelType,
-        ]
-        | None = None,
+        acquisition_rule: (
+            AcquisitionRule[
+                TensorType | State[StateType | None, TensorType],
+                SearchSpaceType,
+                ProbabilisticModelType,
+            ]
+            | None
+        ) = None,
         track_data: bool = True,
     ) -> AskTellOptimizerType:
         """Creates new :class:`~AskTellOptimizer` instance from provided AskTellOptimizer state.
@@ -669,7 +675,9 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
                 # infer dataset indices from change in dataset sizes
                 new_dataset_len = self.dataset_len(new_data)
                 num_new_points = new_dataset_len - self._dataset_len
-                if num_new_points < 0 or num_new_points % num_local_datasets != 0:
+                if num_new_points < 0 or (
+                    num_local_datasets > 0 and num_new_points % num_local_datasets != 0
+                ):
                     raise ValueError(
                         "Cannot infer new data points as datasets haven't increased by "
                         f"a multiple of {num_local_datasets}"

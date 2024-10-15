@@ -19,6 +19,7 @@ from typing import Tuple, Union
 import gpflow
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflow.keras import tf_keras
 
 from ...data import Dataset
 from ...types import TensorType
@@ -148,7 +149,7 @@ def check_optimizer(optimizer: Union[BatchOptimizer, Optimizer]) -> None:
                 """
             )
 
-    if isinstance(optimizer.optimizer, tf.optimizers.Optimizer):
+    if isinstance(optimizer.optimizer, tf_keras.optimizers.Optimizer):
         if not isinstance(optimizer, BatchOptimizer):
             raise ValueError(
                 f"""

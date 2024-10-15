@@ -83,10 +83,12 @@ class LocalPenalization(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel])
                 Union[PenalizationFunction, UpdatablePenalizationFunction],
             ]
         ] = None,
-        base_acquisition_function_builder: ExpectedImprovement
-        | MinValueEntropySearch[ProbabilisticModel]
-        | MakePositive[ProbabilisticModel]
-        | None = None,
+        base_acquisition_function_builder: (
+            ExpectedImprovement
+            | MinValueEntropySearch[ProbabilisticModel]
+            | MakePositive[ProbabilisticModel]
+            | None
+        ) = None,
     ):
         """
         :param search_space: The global search space over which the optimisation is defined.
@@ -108,9 +110,9 @@ class LocalPenalization(SingleModelGreedyAcquisitionBuilder[ProbabilisticModel])
         self._lipschitz_penalizer = soft_local_penalizer if penalizer is None else penalizer
 
         if base_acquisition_function_builder is None:
-            self._base_builder: SingleModelAcquisitionBuilder[
-                ProbabilisticModel
-            ] = ExpectedImprovement()
+            self._base_builder: SingleModelAcquisitionBuilder[ProbabilisticModel] = (
+                ExpectedImprovement()
+            )
         else:
             self._base_builder = base_acquisition_function_builder
 

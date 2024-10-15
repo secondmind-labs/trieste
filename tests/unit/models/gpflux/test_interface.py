@@ -20,8 +20,8 @@ import gpflow
 import numpy.testing as npt
 import pytest
 import tensorflow as tf
-from check_shapes import inherit_check_shapes
 from gpflow.conditionals.util import sample_mvn
+from gpflow.keras import tf_keras
 from gpflux.helpers import construct_basic_inducing_variables, construct_basic_kernel
 from gpflux.layers import GPLayer
 from gpflux.models import DeepGP
@@ -29,19 +29,21 @@ from gpflux.models import DeepGP
 from tests.util.misc import random_seed
 from trieste.data import Dataset
 from trieste.models.gpflux import GPfluxPredictor
+from trieste.space import CategoricalSearchSpace, EncoderFunction, one_hot_encoder
 from trieste.types import TensorType
 
 
 class _QuadraticPredictor(GPfluxPredictor):
     def __init__(
         self,
-        optimizer: tf.optimizers.Optimizer | None = None,
+        optimizer: tf_keras.optimizers.Optimizer | None = None,
         likelihood: gpflow.likelihoods.Likelihood = gpflow.likelihoods.Gaussian(0.01),
+        encoder: EncoderFunction | None = None,
     ):
-        super().__init__(optimizer=optimizer)
+        super().__init__(optimizer=optimizer, encoder=encoder)
 
         if optimizer is None:
-            self._optimizer = tf.optimizers.Adam()
+            self._optimizer = tf_keras.optimizers.Adam()
         else:
             self._optimizer = optimizer
         self._model_gpflux = _QuadraticGPModel(likelihood=likelihood)
@@ -53,15 +55,14 @@ class _QuadraticPredictor(GPfluxPredictor):
         return self._model_gpflux
 
     @property
-    def model_keras(self) -> tf.keras.Model:
+    def model_keras(self) -> tf_keras.Model:
         return self._model_keras
 
     @property
-    def optimizer(self) -> tf.keras.optimizers.Optimizer:
+    def optimizer(self) -> tf_keras.optimizers.Optimizer:
         return self._optimizer
 
-    @inherit_check_shapes
-    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
+    def sample_encoded(self, query_points: TensorType, num_samples: int) -> TensorType:
         # Taken from GPflow implementation of `GPModel.predict_f_samples` in gpflow.models.model
         mean, cov = self._model_gpflux.predict_f(query_points, full_cov=True)
         mean_for_sample = tf.linalg.adjoint(mean)
@@ -151,3 +152,14 @@ def test_gpflux_predictor_get_observation_noise_raises_for_non_gaussian_likeliho
 
     with pytest.raises(NotImplementedError):
         model.get_observation_noise()
+
+
+def test_gpflux_categorical_predict() -> None:
+    search_space = CategoricalSearchSpace(["Red", "Green", "Blue"])
+    query_points = search_space.sample(10)
+    model = _QuadraticPredictor(encoder=one_hot_encoder(search_space))
+    mean, variance = model.predict(query_points)
+    assert mean.shape == [10, 1]
+    assert variance.shape == [10, 1]
+    npt.assert_allclose(mean, [[1.0]] * 10, rtol=0.01)
+    npt.assert_allclose(variance, [[1.0]] * 10, rtol=0.01)

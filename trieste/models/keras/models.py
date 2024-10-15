@@ -18,18 +18,18 @@ import re
 from typing import Any, Dict, Mapping, Optional
 
 import dill
-import keras.callbacks
 import tensorflow as tf
 import tensorflow_probability as tfp
 import tensorflow_probability.python.distributions as tfd
-from check_shapes import inherit_check_shapes
+from gpflow.keras import tf_keras
 from tensorflow.python.keras.callbacks import Callback
 
 from ... import logging
 from ...data import Dataset
+from ...space import EncoderFunction
 from ...types import TensorType
 from ...utils import flatten_leading_dims
-from ..interfaces import HasTrajectorySampler, TrainableProbabilisticModel, TrajectorySampler
+from ..interfaces import EncodedTrainableProbabilisticModel, HasTrajectorySampler, TrajectorySampler
 from ..optimizer import KerasOptimizer
 from ..utils import write_summary_data_based_metrics
 from .architectures import KerasEnsemble, MultivariateNormalTriL
@@ -39,7 +39,10 @@ from .utils import negative_log_likelihood, sample_model_index, sample_with_repl
 
 
 class DeepEnsemble(
-    KerasPredictor, TrainableProbabilisticModel, DeepEnsembleModel, HasTrajectorySampler
+    KerasPredictor,
+    EncodedTrainableProbabilisticModel,
+    DeepEnsembleModel,
+    HasTrajectorySampler,
 ):
     """
     A :class:`~trieste.model.TrainableProbabilisticModel` wrapper for deep ensembles built using
@@ -75,7 +78,7 @@ class DeepEnsemble(
     behaviour you would like, you will need to subclass the model and overwrite the
     :meth:`optimize` method.
 
-    Currently we do not support setting up the model with dictionary config.
+    Currently, we do not support setting up the model with dictionary config.
     """
 
     def __init__(
@@ -86,6 +89,7 @@ class DeepEnsemble(
         diversify: bool = False,
         continuous_optimisation: bool = True,
         compile_args: Optional[Mapping[str, Any]] = None,
+        encoder: EncoderFunction | None = None,
     ) -> None:
         """
         :param model: A Keras ensemble model with probabilistic networks as ensemble members. The
@@ -98,12 +102,12 @@ class DeepEnsemble(
             See https://keras.io/api/models/model_training_apis/#fit-method for a list of possible
             arguments.
         :param bootstrap: Sample with replacement data for training each network in the ensemble.
-            By default set to `False`.
+            By default, set to `False`.
         :param diversify: Whether to use quantiles from the approximate Gaussian distribution of
             the ensemble as trajectories instead of mean predictions when calling
             :meth:`trajectory_sampler`. This mode can be used to increase the diversity
             in case of optimizing very large batches of trajectories. By
-            default set to `False`.
+            default, set to `False`.
         :param continuous_optimisation: If True (default), the optimizer will keep track of the
             number of epochs across BO iterations and use this number as initial_epoch. This is
             essential to allow monitoring of model training across BO iterations.
@@ -112,6 +116,8 @@ class DeepEnsemble(
             See https://keras.io/api/models/model_training_apis/#compile-method for a
             list of possible arguments. The ``optimizer``, ``loss`` and ``metrics`` arguments
             must not be included.
+        :param encoder: Optional encoder with which to transform query points before
+            generating predictions.
         :raise ValueError: If ``model`` is not an instance of
             :class:`~trieste.models.keras.KerasEnsemble`, or ensemble has less than two base
             learners (networks), or `compile_args` contains disallowed arguments.
@@ -119,7 +125,7 @@ class DeepEnsemble(
         if model.ensemble_size < 2:
             raise ValueError(f"Ensemble size must be greater than 1 but got {model.ensemble_size}.")
 
-        super().__init__(optimizer)
+        super().__init__(optimizer, encoder)
 
         if compile_args is None:
             compile_args = {}
@@ -135,7 +141,7 @@ class DeepEnsemble(
                 "epochs": 3000,
                 "batch_size": 16,
                 "callbacks": [
-                    tf.keras.callbacks.EarlyStopping(
+                    tf_keras.callbacks.EarlyStopping(
                         monitor="loss", patience=50, restore_best_weights=True
                     )
                 ],
@@ -155,7 +161,7 @@ class DeepEnsemble(
         )
 
         if not isinstance(
-            self.optimizer.optimizer.lr, tf.keras.optimizers.schedules.LearningRateSchedule
+            self.optimizer.optimizer.lr, tf_keras.optimizers.schedules.LearningRateSchedule
         ):
             self.original_lr = self.optimizer.optimizer.lr.numpy()
         self._absolute_epochs = 0
@@ -173,7 +179,7 @@ class DeepEnsemble(
         )
 
     @property
-    def model(self) -> tf.keras.Model:
+    def model(self) -> tf_keras.Model:
         """Returns compiled Keras ensemble model."""
         return self._model.model
 
@@ -244,8 +250,7 @@ class DeepEnsemble(
         x_transformed: dict[str, TensorType] = self.prepare_query_points(query_points)
         return self._model.model(x_transformed)
 
-    @inherit_check_shapes
-    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+    def predict_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         r"""
         Returns mean and variance at ``query_points`` for the whole ensemble.
 
@@ -308,14 +313,13 @@ class DeepEnsemble(
         :return: The predicted mean and variance of the observations at the specified
             ``query_points`` for each member of the ensemble.
         """
-        ensemble_distributions = self.ensemble_distributions(query_points)
+        ensemble_distributions = self.ensemble_distributions(self.encode(query_points))
         predicted_means = tf.convert_to_tensor([dist.mean() for dist in ensemble_distributions])
         predicted_vars = tf.convert_to_tensor([dist.variance() for dist in ensemble_distributions])
 
         return predicted_means, predicted_vars
 
-    @inherit_check_shapes
-    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
+    def sample_encoded(self, query_points: TensorType, num_samples: int) -> TensorType:
         """
         Return ``num_samples`` samples at ``query_points``. We use the mixture approximation in
         :meth:`predict` for ``query_points`` and sample ``num_samples`` times from a Gaussian
@@ -327,7 +331,7 @@ class DeepEnsemble(
             [..., S, N] + E, where S is the number of samples.
         """
 
-        predicted_means, predicted_vars = self.predict(query_points)
+        predicted_means, predicted_vars = self.predict_encoded(query_points)
         normal = tfp.distributions.Normal(predicted_means, tf.sqrt(predicted_vars))
         samples = normal.sample(num_samples)
 
@@ -345,7 +349,7 @@ class DeepEnsemble(
         :return: The samples. For a predictive distribution with event shape E, this has shape
             [..., S, N] + E, where S is the number of samples.
         """
-        ensemble_distributions = self.ensemble_distributions(query_points)
+        ensemble_distributions = self.ensemble_distributions(self.encode(query_points))
         network_indices = sample_model_index(self.ensemble_size, num_samples)
 
         stacked_samples = []
@@ -365,7 +369,7 @@ class DeepEnsemble(
         """
         return DeepEnsembleTrajectorySampler(self, self._diversify)
 
-    def update(self, dataset: Dataset) -> None:
+    def update_encoded(self, dataset: Dataset) -> None:
         """
         Neural networks are parametric models and do not need to update data.
         `TrainableProbabilisticModel` interface, however, requires an update method, so
@@ -373,7 +377,7 @@ class DeepEnsemble(
         """
         return
 
-    def optimize(self, dataset: Dataset) -> keras.callbacks.History:
+    def optimize_encoded(self, dataset: Dataset) -> tf_keras.callbacks.History:
         """
         Optimize the underlying Keras ensemble model with the specified ``dataset``.
 
@@ -413,7 +417,7 @@ class DeepEnsemble(
         # different. Therefore, we make sure the learning rate is set back to its initial value.
         # However, this is not needed for `LearningRateSchedule` instances.
         if not isinstance(
-            self.optimizer.optimizer.lr, tf.keras.optimizers.schedules.LearningRateSchedule
+            self.optimizer.optimizer.lr, tf_keras.optimizers.schedules.LearningRateSchedule
         ):
             self.optimizer.optimizer.lr.assign(self.original_lr)
 
@@ -499,7 +503,7 @@ class DeepEnsemble(
                     elif callback.model:
                         callback.model = (callback.model.to_json(), callback.model.get_weights())
                     # don't pickle tensorboard writers either; they'll be recreated when needed
-                    if isinstance(callback, tf.keras.callbacks.TensorBoard):
+                    if isinstance(callback, tf_keras.callbacks.TensorBoard):
                         tensorboard_writers.append(callback._writers)
                         callback._writers = {}
                 state["_optimizer"] = dill.dumps(state["_optimizer"])
@@ -512,13 +516,13 @@ class DeepEnsemble(
                 for callback, model in zip(callbacks, saved_models):
                     callback.model = model
                 for callback, writers in zip(
-                    (cb for cb in callbacks if isinstance(cb, tf.keras.callbacks.TensorBoard)),
+                    (cb for cb in callbacks if isinstance(cb, tf_keras.callbacks.TensorBoard)),
                     tensorboard_writers,
                 ):
                     callback._writers = writers
 
         # don't serialize any history optimization result
-        if isinstance(state.get("_last_optimization_result"), keras.callbacks.History):
+        if isinstance(state.get("_last_optimization_result"), tf_keras.callbacks.History):
             state["_last_optimization_result"] = ...
 
         return state
@@ -534,7 +538,7 @@ class DeepEnsemble(
                 callback.set_model(self.model)
             elif callback.model:
                 model_json, weights = callback.model
-                model = tf.keras.models.model_from_json(
+                model = tf_keras.models.model_from_json(
                     model_json,
                     custom_objects={"MultivariateNormalTriL": MultivariateNormalTriL},
                 )

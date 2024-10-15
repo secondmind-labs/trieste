@@ -64,6 +64,8 @@ from ..observer import OBJECTIVE
 from ..space import (
     Box,
     DiscreteSearchSpace,
+    GeneralDiscreteSearchSpace,
+    HasOneHotEncoder,
     SearchSpace,
     TaggedMultiSearchSpace,
     TaggedProductSearchSpace,
@@ -216,8 +218,7 @@ class EfficientGlobalOptimization(
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
         initial_acquisition_function: Optional[AcquisitionFunction] = None,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
@@ -231,8 +232,7 @@ class EfficientGlobalOptimization(
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
         initial_acquisition_function: Optional[AcquisitionFunction] = None,
-    ):
-        ...
+    ): ...
 
     def __init__(
         self,
@@ -524,8 +524,7 @@ class AsynchronousOptimization(
         builder: None = None,
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
@@ -536,8 +535,7 @@ class AsynchronousOptimization(
         ),
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
-    ):
-        ...
+    ): ...
 
     def __init__(
         self,
@@ -697,8 +695,10 @@ class AsynchronousGreedy(
 
     def __init__(
         self,
-        builder: GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]
-        | SingleModelGreedyAcquisitionBuilder[ProbabilisticModelType],
+        builder: (
+            GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]
+            | SingleModelGreedyAcquisitionBuilder[ProbabilisticModelType]
+        ),
         optimizer: AcquisitionOptimizer[SearchSpaceType] | None = None,
         num_query_points: int = 1,
     ):
@@ -897,8 +897,7 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
         num_query_points: int,
         thompson_sampler: None = None,
         select_output: Callable[[TensorType], TensorType] = select_nth_output,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
@@ -907,8 +906,7 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
         num_query_points: int,
         thompson_sampler: Optional[ThompsonSampler[ProbabilisticModelType]] = None,
         select_output: Callable[[TensorType], TensorType] = select_nth_output,
-    ):
-        ...
+    ): ...
 
     def __init__(
         self,
@@ -1116,16 +1114,13 @@ class UpdatableTrustRegion(UpdatableSearchSpace):
         return local_gtags, global_tags
 
     @overload
-    def with_input_active_dims(self, value: TensorType) -> TensorType:
-        ...
+    def with_input_active_dims(self, value: TensorType) -> TensorType: ...
 
     @overload
-    def with_input_active_dims(self, value: Dataset) -> Dataset:
-        ...
+    def with_input_active_dims(self, value: Dataset) -> Dataset: ...
 
     @overload
-    def with_input_active_dims(self, value: ProbabilisticModel) -> ProbabilisticModel:
-        ...
+    def with_input_active_dims(self, value: ProbabilisticModel) -> ProbabilisticModel: ...
 
     def with_input_active_dims(
         self, value: Union[TensorType, Dataset, ProbabilisticModel]
@@ -1166,22 +1161,18 @@ class UpdatableTrustRegion(UpdatableSearchSpace):
             return selected_input
 
     @overload
-    def select_in_region(self, mapping: None) -> None:
-        ...
+    def select_in_region(self, mapping: None) -> None: ...
 
     @overload
-    def select_in_region(self, mapping: Mapping[Tag, TensorType]) -> Mapping[Tag, TensorType]:
-        ...
+    def select_in_region(self, mapping: Mapping[Tag, TensorType]) -> Mapping[Tag, TensorType]: ...
 
     @overload
-    def select_in_region(self, mapping: Mapping[Tag, Dataset]) -> Mapping[Tag, Dataset]:
-        ...
+    def select_in_region(self, mapping: Mapping[Tag, Dataset]) -> Mapping[Tag, Dataset]: ...
 
     @overload
     def select_in_region(
         self, mapping: Mapping[Tag, ProbabilisticModel]
-    ) -> Mapping[Tag, ProbabilisticModel]:
-        ...
+    ) -> Mapping[Tag, ProbabilisticModel]: ...
 
     def select_in_region(
         self, mapping: Optional[Mapping[Tag, Union[TensorType, Dataset, ProbabilisticModel]]]
@@ -1624,7 +1615,13 @@ class HypercubeTrustRegion(UpdatableTrustRegion):
         self._y_min = tf.constant(np.inf, dtype=self.location.dtype)
 
     def _init_eps(self) -> None:
-        self.eps = self._zeta * (self.global_search_space.upper - self.global_search_space.lower)
+        if not isinstance(self.global_search_space, HasOneHotEncoder):
+            self.eps = self._zeta * (
+                self.global_search_space.upper - self.global_search_space.lower
+            )
+        else:
+            # categorical space distance is hardcoded to a (Hamming) distance of 1
+            self.eps = 1
 
     @abstractmethod
     def _update_domain(self) -> None:
@@ -1691,9 +1688,12 @@ class HypercubeTrustRegion(UpdatableTrustRegion):
         datasets = self.select_in_region(datasets)  # See `select_in_region` comment above.
         x_min, y_min = self.get_dataset_min(datasets)
 
-        tr_volume = tf.reduce_prod(self.upper - self.lower)
-        self._step_is_success = y_min < self._y_min - self._kappa * tr_volume
-        self.eps = self.eps / self._beta if self._step_is_success else self.eps * self._beta
+        if isinstance(self.global_search_space, HasOneHotEncoder):
+            self._step_is_success = y_min < self._y_min
+        else:
+            tr_volume = tf.reduce_prod(self.upper - self.lower)
+            self._step_is_success = y_min < self._y_min - self._kappa * tr_volume
+            self.eps = self.eps / self._beta if self._step_is_success else self.eps * self._beta
 
         # Only update the location if the step was successful.
         if self._step_is_success:
@@ -2225,7 +2225,7 @@ class UpdatableTrustRegionDiscrete(DiscreteSearchSpace, UpdatableTrustRegion):
 
     def __init__(
         self,
-        global_search_space: DiscreteSearchSpace,
+        global_search_space: GeneralDiscreteSearchSpace,
         region_index: Optional[int] = None,
         input_active_dims: Optional[Union[slice, Sequence[int]]] = None,
     ):
@@ -2256,27 +2256,36 @@ class UpdatableTrustRegionDiscrete(DiscreteSearchSpace, UpdatableTrustRegion):
         self._location_ix = tf.squeeze(location_ix, axis=-1)
 
     @property
-    def global_search_space(self) -> DiscreteSearchSpace:
+    def global_search_space(self) -> GeneralDiscreteSearchSpace:
         return self._global_search_space
 
     def _compute_global_distances(self) -> TensorType:
         # Helper method to compute and return pairwise distances along each axis in the
         # global search space.
+
         points = self.global_search_space.points
-        return tf.abs(
-            tf.expand_dims(points, -2) - tf.expand_dims(points, -3)
-        )  # [num_points, num_points, D]
+        if isinstance(self.global_search_space, HasOneHotEncoder):
+            # use Hamming distance for categorical spaces
+            return tf.math.reduce_sum(
+                tf.where(tf.expand_dims(points, -2) == tf.expand_dims(points, -3), 0, 1),
+                axis=-1,
+                keepdims=True,  # (keep last dim for reduce_all distance calculation below)
+            )  # [num_points, num_points, 1]
+        else:
+            return tf.abs(
+                tf.expand_dims(points, -2) - tf.expand_dims(points, -3)
+            )  # [num_points, num_points, D]
 
     def _get_points_within_distance(
-        self, global_distances: TensorType, eps: TensorType
+        self, global_distances: TensorType, distance: TensorType
     ) -> TensorType:
-        # Helper method to return subset of global points within a given `eps` distance of the
+        # Helper method to return subset of global points within a given distance of the
         # region location. Takes the precomputed pairwise distances tensor and the trust region
-        # size `eps`.
+        # size `eps` (or a hard-coded value of 1 in the case of categorical spaces).
 
         # Indices of the neighbors within the trust region.
         neighbors_mask = tf.reduce_all(
-            tf.gather(global_distances, self._location_ix) <= eps, axis=-1
+            tf.gather(global_distances, self._location_ix) <= distance, axis=-1
         )
         neighbors_mask = tf.reshape(neighbors_mask, (-1,))
         neighbor_ixs = tf.where(neighbors_mask)
@@ -2294,7 +2303,7 @@ class FixedPointTrustRegionDiscrete(UpdatableTrustRegionDiscrete):
 
     def __init__(
         self,
-        global_search_space: DiscreteSearchSpace,
+        global_search_space: GeneralDiscreteSearchSpace,
         region_index: Optional[int] = None,
         input_active_dims: Optional[Union[slice, Sequence[int]]] = None,
     ):
@@ -2339,7 +2348,7 @@ class SingleObjectiveTrustRegionDiscrete(UpdatableTrustRegionDiscrete, Hypercube
 
     def __init__(
         self,
-        global_search_space: DiscreteSearchSpace,
+        global_search_space: GeneralDiscreteSearchSpace,
         beta: float = 0.7,
         kappa: float = 1e-4,
         zeta: float = 0.5,

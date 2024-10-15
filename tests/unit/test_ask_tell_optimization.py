@@ -957,3 +957,26 @@ def test_ask_tell_optimizer_dataset_len_raises_on_inconsistently_sized_datasets(
         )
     with pytest.raises(ValueError):
         AskTellOptimizer.dataset_len({})
+
+
+@pytest.mark.parametrize("optimizer", OPTIMIZERS)
+def test_ask_tell_optimizer_doesnt_blow_up_with_no_local_datasets(
+    search_space: Box,
+    init_dataset: Dataset,
+    model: TrainableProbabilisticModel,
+    optimizer: OptimizerType,
+) -> None:
+    pseudo_local_acquisition_rule = FixedLocalAcquisitionRule([[0.0]], 0)
+    ask_tell = optimizer(
+        search_space, init_dataset, model, pseudo_local_acquisition_rule, track_data=False
+    )
+    ask_tell._datasets[OBJECTIVE] += mk_dataset(
+        [[x / 100] for x in range(75, 75 + 5)], [[x / 100] for x in range(75, 75 + 5)]
+    )
+    ask_tell.tell(ask_tell.dataset)
+    optimizer.from_state(
+        ask_tell.to_state(),
+        search_space,
+        pseudo_local_acquisition_rule,
+        track_data=False,
+    )

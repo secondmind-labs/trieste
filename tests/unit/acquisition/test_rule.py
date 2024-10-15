@@ -77,6 +77,7 @@ from trieste.objectives.utils import mk_batch_observer
 from trieste.observer import OBJECTIVE
 from trieste.space import (
     Box,
+    CategoricalSearchSpace,
     DiscreteSearchSpace,
     SearchSpace,
     TaggedMultiSearchSpace,
@@ -359,9 +360,10 @@ def test_joint_batch_acquisition_rule_acquire(
     search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
     num_query_points = 4
     acq = _JointBatchModelMinusMeanMaximumSingleBuilder()
-    acq_rule: AcquisitionRule[TensorType, Box, ProbabilisticModel] | AcquisitionRule[
-        State[TensorType, AsynchronousRuleState], Box, ProbabilisticModel
-    ] = rule_fn(acq, num_query_points)
+    acq_rule: (
+        AcquisitionRule[TensorType, Box, ProbabilisticModel]
+        | AcquisitionRule[State[TensorType, AsynchronousRuleState], Box, ProbabilisticModel]
+    ) = rule_fn(acq, num_query_points)
 
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
     points_or_stateful = acq_rule.acquire_single(
@@ -431,9 +433,10 @@ def test_greedy_batch_acquisition_rule_acquire(
     num_query_points = 4
     acq = _GreedyBatchModelMinusMeanMaximumSingleBuilder()
     assert acq._update_count == 0
-    acq_rule: AcquisitionRule[TensorType, Box, ProbabilisticModel] | AcquisitionRule[
-        State[TensorType, AsynchronousRuleState], Box, ProbabilisticModel
-    ] = rule_fn(acq, num_query_points)
+    acq_rule: (
+        AcquisitionRule[TensorType, Box, ProbabilisticModel]
+        | AcquisitionRule[State[TensorType, AsynchronousRuleState], Box, ProbabilisticModel]
+    ) = rule_fn(acq, num_query_points)
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
     points_or_stateful = acq_rule.acquire_single(
         search_space, QuadraticMeanAndRBFKernel(), dataset=dataset
@@ -1691,8 +1694,7 @@ class TestTrustRegionBox(SingleObjectiveTrustRegionBox):
         return self._location
 
     @location.setter
-    def location(self, location: TensorType) -> None:
-        ...
+    def location(self, location: TensorType) -> None: ...
 
     def _init_eps(self) -> None:
         self.eps = tf.constant(self._init_eps_val, dtype=tf.float64)
@@ -2058,28 +2060,40 @@ def discrete_search_space() -> DiscreteSearchSpace:
 
 
 @pytest.fixture
+def categorical_search_space() -> CategoricalSearchSpace:
+    return CategoricalSearchSpace([10, 3])
+
+
+@pytest.fixture
 def continuous_search_space() -> Box:
     return Box([0.0], [1.0])
 
 
+@pytest.mark.parametrize("space_fixture", ["discrete_search_space", "categorical_search_space"])
 @pytest.mark.parametrize("with_initialize", [True, False])
 def test_fixed_trust_region_discrete_initialize(
-    discrete_search_space: DiscreteSearchSpace, with_initialize: bool
+    space_fixture: str,
+    with_initialize: bool,
+    request: Any,
 ) -> None:
     """Check that FixedTrustRegionDiscrete inits correctly by picking a single point from the global
     search space."""
-    tr = FixedPointTrustRegionDiscrete(discrete_search_space)
+    search_space = request.getfixturevalue(space_fixture)
+    tr = FixedPointTrustRegionDiscrete(search_space)
     if with_initialize:
         tr.initialize()
     assert tr.location.shape == (2,)
-    assert tr.location in discrete_search_space
+    assert tr.location in search_space
 
 
+@pytest.mark.parametrize("space_fixture", ["discrete_search_space", "categorical_search_space"])
 def test_fixed_trust_region_discrete_update(
-    discrete_search_space: DiscreteSearchSpace,
+    space_fixture: str,
+    request: Any,
 ) -> None:
     """Update call should not change the location of the region."""
-    tr = FixedPointTrustRegionDiscrete(discrete_search_space)
+    search_space = request.getfixturevalue(space_fixture)
+    tr = FixedPointTrustRegionDiscrete(search_space)
     tr.initialize()
     orig_location = tr.location.numpy()
     assert not tr.requires_initialization
@@ -2103,13 +2117,16 @@ def test_trust_region_discrete_get_dataset_min_raises_if_dataset_is_faulty(
         tr.get_dataset_min(datasets)
 
 
+@pytest.mark.parametrize("space_fixture", ["discrete_search_space", "categorical_search_space"])
 def test_trust_region_discrete_raises_on_location_not_found(
-    discrete_search_space: DiscreteSearchSpace,
+    space_fixture: str,
+    request: Any,
 ) -> None:
     """Check that an error is raised if the location is not found in the global search space."""
-    tr = SingleObjectiveTrustRegionDiscrete(discrete_search_space)
+    search_space = request.getfixturevalue(space_fixture)
+    tr = SingleObjectiveTrustRegionDiscrete(search_space)
     with pytest.raises(ValueError, match="location .* not found in the global search space"):
-        tr.location = tf.constant([0.0, 0.0], dtype=tf.float64)
+        tr.location = tf.constant([0.1, 0.0], dtype=tf.float64)
 
 
 def test_trust_region_discrete_get_dataset_min(discrete_search_space: DiscreteSearchSpace) -> None:
@@ -2172,6 +2189,24 @@ def test_trust_region_discrete_initialize(
     npt.assert_array_equal(tr._y_min, tf.constant([np.inf], dtype=tf.float64))
 
 
+def test_trust_region_categorical_initialize(
+    categorical_search_space: CategoricalSearchSpace,
+) -> None:
+    """Check initialize sets the region to a random location, and sets the eps and y_min values."""
+    datasets = {
+        OBJECTIVE: Dataset(  # Points outside the search space should be ignored.
+            tf.constant([[0, 1, 2, 0], [4, -4, -5, 3]], dtype=tf.float64),
+            tf.constant([[0.7], [0.9]], dtype=tf.float64),
+        )
+    }
+    tr = SingleObjectiveTrustRegionDiscrete(categorical_search_space, input_active_dims=[1, 2])
+    tr.initialize(datasets=datasets)
+
+    npt.assert_array_equal(tr.eps, 1)
+    assert tr.location in categorical_search_space
+    npt.assert_array_equal(tr._y_min, tf.constant([np.inf], dtype=tf.float64))
+
+
 def test_trust_region_discrete_requires_initialization(
     discrete_search_space: DiscreteSearchSpace,
 ) -> None:
@@ -2223,12 +2258,20 @@ def test_trust_region_discrete_update_no_initialize(
 
 @pytest.mark.parametrize("dtype", [tf.float32, tf.float64])
 @pytest.mark.parametrize("success", [True, False])
+@pytest.mark.parametrize("space_fixture", ["discrete_search_space", "categorical_search_space"])
 def test_trust_region_discrete_update_size(
-    dtype: tf.DType, success: bool, discrete_search_space: DiscreteSearchSpace
+    dtype: tf.DType, success: bool, space_fixture: str, request: Any
 ) -> None:
-    discrete_search_space = DiscreteSearchSpace(  # Convert to the correct dtype.
-        tf.cast(discrete_search_space.points, dtype=dtype)
-    )
+    search_space = request.getfixturevalue(space_fixture)
+    categorical = isinstance(search_space, CategoricalSearchSpace)
+
+    # Convert to the correct dtype.
+    if isinstance(search_space, DiscreteSearchSpace):
+        search_space = DiscreteSearchSpace(tf.cast(search_space.points, dtype=dtype))
+    else:
+        assert isinstance(search_space, CategoricalSearchSpace)
+        search_space = CategoricalSearchSpace(search_space.tags, dtype=dtype)
+
     """Check that update shrinks/expands region on successful/unsuccessful step."""
     datasets = {
         OBJECTIVE: Dataset(
@@ -2236,7 +2279,7 @@ def test_trust_region_discrete_update_size(
             tf.constant([[0.5], [0.3], [1.0]], dtype=dtype),
         )
     }
-    tr = SingleObjectiveTrustRegionDiscrete(discrete_search_space, min_eps=0.1)
+    tr = SingleObjectiveTrustRegionDiscrete(search_space, min_eps=0.1)
     tr.initialize(datasets=datasets)
 
     # Ensure there is at least one point captured in the region.
@@ -2252,11 +2295,17 @@ def test_trust_region_discrete_update_size(
     eps = tr.eps
 
     if success:
-        # Sample a point from the region.
-        new_point = tr.sample(1)
+        # Sample a point from the region. For categorical spaces ensure that
+        # it's a different point to tr.location (this must exist)
+        for _ in range(10):
+            new_point = tr.sample(1)
+            if not (categorical and tf.reduce_all(new_point[0] == tr.location)):
+                break
+        else:
+            assert False, "TR contains just one point"
     else:
         # Pick point outside the region.
-        new_point = tf.constant([[1, 2]], dtype=dtype)
+        new_point = tf.constant([[10, 1]], dtype=dtype)
 
     # Add a new min point to the dataset.
     assert not tr.requires_initialization
@@ -2269,7 +2318,7 @@ def test_trust_region_discrete_update_size(
     tr.update(datasets=datasets)
 
     assert tr.location.dtype == dtype
-    assert tr.eps.dtype == dtype
+    assert tr.eps == 1 if categorical else tr.eps.dtype == dtype
     assert tr.points.dtype == dtype
 
     if success:
@@ -2277,20 +2326,25 @@ def test_trust_region_discrete_update_size(
         new_point = np.squeeze(new_point)
         npt.assert_array_equal(new_point, tr.location)
         npt.assert_allclose(new_min, tr._y_min)
-        # Check that the region is larger by beta.
-        npt.assert_allclose(eps / tr._beta, tr.eps)
+        # Check that the region is larger by beta (except for categorical)
+        npt.assert_allclose(1 if categorical else eps / tr._beta, tr.eps)
     else:
         # Check that the location is the old min point.
         orig_point = np.squeeze(orig_point)
         npt.assert_array_equal(orig_point, tr.location)
         npt.assert_allclose(orig_min, tr._y_min)
-        # Check that the region is smaller by beta.
-        npt.assert_allclose(eps * tr._beta, tr.eps)
+        # Check that the region is smaller by beta (except for categorical)
+        npt.assert_allclose(1 if categorical else eps * tr._beta, tr.eps)
 
     # Check the new set of neighbors.
-    neighbors_mask = tf.abs(discrete_search_space.points - tr.location) <= tr.eps
-    neighbors_mask = tf.reduce_all(neighbors_mask, axis=-1)
-    neighbors = tf.boolean_mask(discrete_search_space.points, neighbors_mask)
+    if categorical:
+        # Hamming distance
+        neighbors_mask = tf.where(search_space.points != tr.location, 1, 0)
+        neighbors_mask = tf.reduce_sum(neighbors_mask, axis=-1) <= tr.eps
+    else:
+        neighbors_mask = tf.abs(search_space.points - tr.location) <= tr.eps
+        neighbors_mask = tf.reduce_all(neighbors_mask, axis=-1)
+    neighbors = tf.boolean_mask(search_space.points, neighbors_mask)
     npt.assert_array_equal(tr.points, neighbors)
 
 

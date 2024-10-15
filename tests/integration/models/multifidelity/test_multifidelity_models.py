@@ -2,7 +2,7 @@ import gpflow
 import numpy as np
 import numpy.testing as npt
 import tensorflow as tf
-from tensorflow.keras.metrics import mean_squared_error
+from gpflow.keras import tf_keras
 
 import trieste
 from tests.util.misc import random_seed
@@ -140,7 +140,7 @@ def test_multifidelity_nonlinear_autoregressive_results_better_than_linear() -> 
 
         predictions = model.predict(test_xs_w_fid)[0]
         gt_obs = observer(test_xs_w_fid).observations
-        mses.append(tf.reduce_sum(mean_squared_error(gt_obs, predictions)))
+        mses.append(tf.reduce_sum(tf_keras.metrics.mean_squared_error(gt_obs, predictions)))
 
     assert mses[0] < mses[1]
 

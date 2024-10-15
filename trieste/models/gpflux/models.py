@@ -18,22 +18,22 @@ from typing import Any, Callable, Mapping, Optional
 
 import dill
 import gpflow
-import keras.callbacks
 import tensorflow as tf
-from check_shapes import inherit_check_shapes
 from gpflow.inducing_variables import InducingPoints
+from gpflow.keras import tf_keras
 from gpflux.layers import GPLayer, LatentVariableLayer
 from gpflux.models import DeepGP
 from tensorflow.python.keras.callbacks import Callback
 
 from ... import logging
 from ...data import Dataset
+from ...space import EncoderFunction
 from ...types import TensorType
 from ..interfaces import (
+    EncodedTrainableProbabilisticModel,
     HasReparamSampler,
     HasTrajectorySampler,
     ReparametrizationSampler,
-    TrainableProbabilisticModel,
     TrajectorySampler,
 )
 from ..optimizer import KerasOptimizer
@@ -50,7 +50,7 @@ from .sampler import (
 
 
 class DeepGaussianProcess(
-    GPfluxPredictor, TrainableProbabilisticModel, HasReparamSampler, HasTrajectorySampler
+    GPfluxPredictor, EncodedTrainableProbabilisticModel, HasReparamSampler, HasTrajectorySampler
 ):
     """
     A :class:`TrainableProbabilisticModel` wrapper for a GPflux :class:`~gpflux.models.DeepGP` with
@@ -65,6 +65,7 @@ class DeepGaussianProcess(
         num_rff_features: int = 1000,
         continuous_optimisation: bool = True,
         compile_args: Optional[Mapping[str, Any]] = None,
+        encoder: EncoderFunction | None = None,
     ):
         """
         :param model: The underlying GPflux deep Gaussian process model. Passing in a named closure
@@ -88,6 +89,8 @@ class DeepGaussianProcess(
             See https://keras.io/api/models/model_training_apis/#compile-method for a
             list of possible arguments. The ``optimizer`` and ``metrics`` arguments
             must not be included.
+        :param encoder: Optional encoder with which to transform query points before
+            generating predictions.
         :raise ValueError: If ``model`` has unsupported layers, ``num_rff_features`` is less than 0,
             if the ``optimizer`` is not of a supported type, or `compile_args` contains
             disallowed arguments.
@@ -113,7 +116,7 @@ class DeepGaussianProcess(
                     f"`LatentVariableLayer`, received {type(layer)} instead."
                 )
 
-        super().__init__(optimizer)
+        super().__init__(optimizer, encoder)
 
         if num_rff_features <= 0:
             raise ValueError(
@@ -121,7 +124,7 @@ class DeepGaussianProcess(
             )
         self._num_rff_features = num_rff_features
 
-        if not isinstance(self.optimizer.optimizer, tf.optimizers.Optimizer):
+        if not isinstance(self.optimizer.optimizer, tf_keras.optimizers.Optimizer):
             raise ValueError(
                 f"Optimizer for `DeepGaussianProcess` must be an instance of a "
                 f"`tf.optimizers.Optimizer` or `tf.keras.optimizers.Optimizer`, "
@@ -129,7 +132,7 @@ class DeepGaussianProcess(
             )
 
         if not isinstance(
-            self.optimizer.optimizer.lr, tf.keras.optimizers.schedules.LearningRateSchedule
+            self.optimizer.optimizer.lr, tf_keras.optimizers.schedules.LearningRateSchedule
         ):
             self.original_lr = self.optimizer.optimizer.lr.numpy()
 
@@ -146,7 +149,7 @@ class DeepGaussianProcess(
                 "verbose": 0,
                 "epochs": epochs,
                 "batch_size": 1000,
-                "callbacks": [tf.keras.callbacks.LearningRateScheduler(scheduler)],
+                "callbacks": [tf_keras.callbacks.LearningRateScheduler(scheduler)],
             }
 
         if self.optimizer.metrics is None:
@@ -156,12 +159,12 @@ class DeepGaussianProcess(
         # inputs and targets need to be redone with a float64 dtype to avoid setting the keras
         # backend to float64, this is likely to be fixed in GPflux, see issue:
         # https://github.com/secondmind-labs/GPflux/issues/76
-        self._model_gpflux.inputs = tf.keras.Input(
+        self._model_gpflux.inputs = tf_keras.Input(
             tuple(self._model_gpflux.inputs.shape[:-1]),
             name=self._model_gpflux.inputs.name,
             dtype=tf.float64,
         )
-        self._model_gpflux.targets = tf.keras.Input(
+        self._model_gpflux.targets = tf_keras.Input(
             tuple(self._model_gpflux.targets.shape[:-1]),
             name=self._model_gpflux.targets.name,
             dtype=tf.float64,
@@ -196,7 +199,7 @@ class DeepGaussianProcess(
                 elif callback.model:
                     callback.model = (callback.model.to_json(), callback.model.get_weights())
                 # don't pickle tensorboard writers either; they'll be recreated when needed
-                if isinstance(callback, tf.keras.callbacks.TensorBoard):
+                if isinstance(callback, tf_keras.callbacks.TensorBoard):
                     tensorboard_writers.append(callback._writers)
                     callback._writers = {}
             state["_optimizer"] = dill.dumps(state["_optimizer"])
@@ -209,7 +212,7 @@ class DeepGaussianProcess(
             for callback, model in zip(self._optimizer.fit_args.get("callbacks", []), saved_models):
                 callback.model = model
             for callback, writers in zip(
-                (cb for cb in callbacks if isinstance(cb, tf.keras.callbacks.TensorBoard)),
+                (cb for cb in callbacks if isinstance(cb, tf_keras.callbacks.TensorBoard)),
                 tensorboard_writers,
             ):
                 callback._writers = writers
@@ -231,7 +234,7 @@ class DeepGaussianProcess(
                 self._model_keras.history.model = history_model
 
         # don't try to serialize any other copies of the history callback
-        if isinstance(state.get("_last_optimization_result"), keras.callbacks.History):
+        if isinstance(state.get("_last_optimization_result"), tf_keras.callbacks.History):
             state["_last_optimization_result"] = ...
 
         return state
@@ -246,12 +249,12 @@ class DeepGaussianProcess(
             # inputs and targets need to be redone with a float64 dtype to avoid setting the keras
             # backend to float64, this is likely to be fixed in GPflux, see issue:
             # https://github.com/secondmind-labs/GPflux/issues/76
-            self._model_gpflux.inputs = tf.keras.Input(
+            self._model_gpflux.inputs = tf_keras.Input(
                 tuple(self._model_gpflux.inputs.shape[:-1]),
                 name=self._model_gpflux.inputs.name,
                 dtype=tf.float64,
             )
-            self._model_gpflux.targets = tf.keras.Input(
+            self._model_gpflux.targets = tf_keras.Input(
                 tuple(self._model_gpflux.targets.shape[:-1]),
                 name=self._model_gpflux.targets.name,
                 dtype=tf.float64,
@@ -265,7 +268,7 @@ class DeepGaussianProcess(
                 callback.set_model(self._model_keras)
             elif callback.model:
                 model_json, weights = callback.model
-                model = tf.keras.models.model_from_json(model_json)
+                model = tf_keras.models.model_from_json(model_json)
                 model.set_weights(weights)
                 callback.set_model(model)
 
@@ -284,7 +287,7 @@ class DeepGaussianProcess(
                 self._model_keras.history.set_model(self._model_keras)
             elif self._model_keras.history.model:
                 model_json, weights = self._model_keras.history.model
-                model = tf.keras.models.model_from_json(model_json)
+                model = tf_keras.models.model_from_json(model_json)
                 model.set_weights(weights)
                 self._model_keras.history.set_model(model)
 
@@ -301,11 +304,10 @@ class DeepGaussianProcess(
         return self._model_gpflux
 
     @property
-    def model_keras(self) -> tf.keras.Model:
+    def model_keras(self) -> tf_keras.Model:
         return self._model_keras
 
-    @inherit_check_shapes
-    def sample(self, query_points: TensorType, num_samples: int) -> TensorType:
+    def sample_encoded(self, query_points: TensorType, num_samples: int) -> TensorType:
         trajectory = self.trajectory_sampler().get_trajectory()
         expanded_query_points = tf.expand_dims(query_points, -2)  # [N, 1, D]
         tiled_query_points = tf.tile(expanded_query_points, [1, num_samples, 1])  # [N, S, D]
@@ -329,7 +331,7 @@ class DeepGaussianProcess(
         """
         return DeepGaussianProcessDecoupledTrajectorySampler(self, self._num_rff_features)
 
-    def update(self, dataset: Dataset) -> None:
+    def update_encoded(self, dataset: Dataset) -> None:
         inputs = dataset.query_points
         new_num_data = inputs.shape[0]
         self.model_gpflux.num_data = new_num_data
@@ -366,7 +368,7 @@ class DeepGaussianProcess(
 
             inputs = layer(inputs)
 
-    def optimize(self, dataset: Dataset) -> keras.callbacks.History:
+    def optimize_encoded(self, dataset: Dataset) -> tf_keras.callbacks.History:
         """
         Optimize the model with the specified `dataset`.
         :param dataset: The data with which to optimize the `model`.
@@ -394,7 +396,7 @@ class DeepGaussianProcess(
         # different. Therefore, we make sure the learning rate is set back to its initial value.
         # However, this is not needed for `LearningRateSchedule` instances.
         if not isinstance(
-            self.optimizer.optimizer.lr, tf.keras.optimizers.schedules.LearningRateSchedule
+            self.optimizer.optimizer.lr, tf_keras.optimizers.schedules.LearningRateSchedule
         ):
             self.optimizer.optimizer.lr.assign(self.original_lr)
 

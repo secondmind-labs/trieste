@@ -55,13 +55,11 @@ C = TypeVar("C", bound=Callable[..., object])
 
 
 @overload
-def random_seed(f_py: C, seed: int = 0) -> C:
-    ...
+def random_seed(f_py: C, seed: int = 0) -> C: ...
 
 
 @overload
-def random_seed(f_py: None = None, seed: int = 0) -> Callable[[C], C]:
-    ...
+def random_seed(f_py: None = None, seed: int = 0) -> Callable[[C], C]: ...
 
 
 def random_seed(f_py: Optional[C] = None, seed: int = 0) -> Callable[[C], C] | C:

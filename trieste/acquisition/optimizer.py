@@ -34,7 +34,7 @@ from ..space import (
     Box,
     CollectionSearchSpace,
     Constraint,
-    DiscreteSearchSpace,
+    GeneralDiscreteSearchSpace,
     SearchSpace,
     SearchSpaceType,
     TaggedMultiSearchSpace,
@@ -101,7 +101,7 @@ def automatic_optimizer_selector(
     :return: The batch of points in ``space`` that maximises ``target_func``, with shape [1, D].
     """
 
-    if isinstance(space, DiscreteSearchSpace):
+    if isinstance(space, GeneralDiscreteSearchSpace):
         return optimize_discrete(space, target_func)
 
     elif isinstance(space, (Box, CollectionSearchSpace)):
@@ -151,11 +151,11 @@ def _get_max_discrete_points(
 
 
 def optimize_discrete(
-    space: DiscreteSearchSpace,
+    space: GeneralDiscreteSearchSpace,
     target_func: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]],
 ) -> TensorType:
     """
-    An :const:`AcquisitionOptimizer` for :class:'DiscreteSearchSpace' spaces.
+    An :const:`AcquisitionOptimizer` for :class:'GeneralDiscreteSearchSpace' spaces.
 
     When this functions receives an acquisition-integer tuple as its `target_func`,it evaluates
     all the points in the search space for each of the individual V functions making
@@ -193,10 +193,18 @@ to conserve memory:
 """
 
 
-def sample_from_space(num_samples: int, batch_size: Optional[int] = None) -> InitialPointSampler:
+def sample_from_space(
+    num_samples: int,
+    batch_size: Optional[int] = None,
+    vectorization: int = 1,
+) -> InitialPointSampler:
     """
-    An initial point sampler that returns `num_samples` points. If `batch_size` is specified,
-    then these are returned in batches of that size, to preserve memory usage.
+    An initial point sampler that just samples from the search pace.
+
+    :param num_samples: Number of samples to return.
+    :param batch_size: If specified, points are return in batches of this size,
+        to preserve memory usage.
+    :param vectorization: Vectorization of the target function.
     """
     if num_samples <= 0:
         raise ValueError(f"num_samples must be positive, got {num_samples}")
@@ -204,11 +212,34 @@ def sample_from_space(num_samples: int, batch_size: Optional[int] = None) -> Ini
     if isinstance(batch_size, int) and batch_size <= 0:
         raise ValueError(f"batch_size must be positive, got {batch_size}")
 
+    if vectorization <= 0:
+        raise ValueError(f"vectorization must be positive, got {vectorization}")
+
     batch_size_int = batch_size or num_samples
 
     def sampler(space: SearchSpace) -> Iterable[TensorType]:
+
+        # generate additional points for each vectorization (rather than just replicating them)
+        if isinstance(space, TaggedMultiSearchSpace):
+            remainder = vectorization % len(space.subspace_tags)
+            tf.debugging.assert_equal(
+                remainder,
+                0,
+                message=(
+                    f"The vectorization of the target function {vectorization} must be a"
+                    f"multiple of the batch shape of initial samples "
+                    f"{len(space.subspace_tags)}."
+                ),
+            )
+            multiple = vectorization // len(space.subspace_tags)
+        else:
+            multiple = vectorization
+
         for offset in range(0, num_samples, batch_size_int):
-            yield space.sample(min(num_samples - offset, batch_size_int))
+            num_batch_samples = min(num_samples - offset, batch_size_int)
+            candidates = space.sample(num_batch_samples * multiple)
+            candidates = tf.reshape(candidates, [num_batch_samples, vectorization, -1])
+            yield candidates
 
     return sampler
 
@@ -363,12 +394,6 @@ def generate_continuous_optimizer(
     if num_recovery_runs < 0:
         raise ValueError(f"num_recovery_runs must be zero or greater, got {num_recovery_runs}")
 
-    initial_sampler = (
-        sample_from_space(num_initial_samples)
-        if not callable(num_initial_samples)
-        else num_initial_samples
-    )
-
     def optimize_continuous(
         space: Box | CollectionSearchSpace,
         target_func: Union[AcquisitionFunction, Tuple[AcquisitionFunction, int]],
@@ -399,6 +424,12 @@ def generate_continuous_optimizer(
 
         if V <= 0:
             raise ValueError(f"vectorization must be positive, got {V}")
+
+        initial_sampler = (
+            sample_from_space(num_initial_samples, vectorization=V)
+            if not callable(num_initial_samples)
+            else num_initial_samples
+        )
 
         initial_points = generate_initial_points(
             num_optimization_runs, initial_sampler, space, target_func, V
@@ -734,7 +765,7 @@ def get_bounds_of_box_relaxation_around_point(
     space_with_fixed_discrete = space
     for tag in space.subspace_tags:
         if isinstance(
-            space.get_subspace(tag), DiscreteSearchSpace
+            space.get_subspace(tag), GeneralDiscreteSearchSpace
         ):  # convert discrete subspaces to box spaces.
             subspace_value = space.get_subspace_component(tag, current_point)
             space_with_fixed_discrete = space_with_fixed_discrete.fix_subspace(tag, subspace_value)
@@ -847,9 +878,11 @@ def get_bounds_of_optimization(space: SearchSpace, starting_points: TensorType) 
         # Otherwise, we use the original bounds.
         bounds = [
             [
-                get_bounds_of_box_relaxation_around_point(ss, starting_points[i : i + 1, j])
-                if isinstance(ss, TaggedProductSearchSpace)
-                else spo.Bounds(ss.lower, ss.upper)
+                (
+                    get_bounds_of_box_relaxation_around_point(ss, starting_points[i : i + 1, j])
+                    if isinstance(ss, TaggedProductSearchSpace)
+                    else spo.Bounds(ss.lower, ss.upper)
+                )
                 for j, ss in enumerate(subspaces)
             ]
             for i in tf.range(num_optimization_runs_per_function)
