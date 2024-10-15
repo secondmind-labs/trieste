@@ -19,6 +19,7 @@ GPflow wrappers.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from itertools import cycle
 from typing import Callable, Optional, Tuple, TypeVar, Union, cast
 
 import tensorflow as tf
@@ -793,7 +794,6 @@ class ResampleableRandomFourierFeatureFunctions(RandomFourierFeaturesCosine):
             dummy_X = model.get_inducing_variables()[0][0:1, :]
         else:
             dummy_X = model.get_internal_data().query_points[0:1, :]
-        dummy_X = self.kernel.slice(dummy_X, None)[0]  # Keep only the active dims from the kernel.
 
         # Always build the weights and biases. This is important for saving the trajectory (using
         # tf.saved_model.save) before it has been used.
@@ -803,15 +803,19 @@ class ResampleableRandomFourierFeatureFunctions(RandomFourierFeaturesCosine):
         """
         Resample weights and biases
         """
-        self.b.assign(self._bias_init(tf.shape(self.b), dtype=self._dtype))
-        self.W.assign(self._weights_init(tf.shape(self.W), dtype=self._dtype))
+        if isinstance(self.b, tf.Variable):
+            self.b.assign(self._bias_init(tf.shape(self.b), dtype=self._dtype))
+        else:
+            tf.debugging.Assert(isinstance(self.b, list), [])
+            for b in self.b:
+                b.assign(self._bias_init(tf.shape(b), dtype=self._dtype))
 
-    def call(self, inputs: TensorType) -> TensorType:  # [N, D] -> [N, F] or [L, N, F]
-        """
-        Evaluate the basis functions at ``inputs``
-        """
-        inputs = self.kernel.slice(inputs, None)[0]  # Keep only active dims from the kernel
-        return super().call(inputs)  # [N, F] or [L, N, F]
+        if isinstance(self.W, tf.Variable):
+            self.W.assign(self._weights_init(self.kernel)(tf.shape(self.W), dtype=self._dtype))
+        else:
+            tf.debugging.Assert(isinstance(self.W, list), [])
+            for W, k in zip(self.W, cycle(self.sub_kernels)):
+                W.assign(self._weights_init(k)(tf.shape(W), dtype=self._dtype))
 
 
 class ResampleableDecoupledFeatureFunctions(ResampleableRandomFourierFeatureFunctions):
