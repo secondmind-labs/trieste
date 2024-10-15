@@ -1062,3 +1062,48 @@ def test_qmc_samples_shapes__invalid_values(
 ) -> None:
     with pytest.raises(expected_error_type):
         qmc_normal_samples(num_samples=num_samples, n_sample_dim=n_sample_dim, skip=skip)
+
+
+@pytest.mark.parametrize(
+    "sampler_type", [RandomFourierFeatureTrajectorySampler, DecoupledTrajectorySampler]
+)
+@random_seed
+def test_trajectory_sampler_respects_active_dims_for_additive_kernels(
+    sampler_type: Type[RandomFourierFeatureTrajectorySampler],
+) -> None:
+    # Test that the trajectory sampler respects the active_dims settings for an additive kernel.
+    num_points = 10
+    query_points = tf.random.uniform((num_points, 2), dtype=tf.float64)
+    dataset = Dataset(query_points, quadratic(query_points))
+
+    model = GaussianProcessRegression(gpr_model(dataset.query_points, dataset.observations))
+    model.model.kernel = gpflow.kernels.Sum(
+        [
+            # one subkernel varies a lot, the other's almost constant
+            gpflow.kernels.Matern52(variance=10000, active_dims=[0]),
+            gpflow.kernels.Matern52(lengthscales=10000, active_dims=[1]),
+        ]
+    )
+
+    trajectory_sampler = sampler_type(model)
+    trajectory = trajectory_sampler.get_trajectory()
+
+    batch_size = 2
+
+    def with_batching(x_test: tf.Tensor) -> tf.Tensor:
+        x_test_with_batching = tf.expand_dims(x_test, -2)
+        return tf.tile(x_test_with_batching, [1, batch_size, 1])  # [N, B, D]
+
+    # The output should be constant when we only vary the second dimension
+    x_rnd = tf.random.uniform((num_points, 2), dtype=tf.float64)
+    x_fix = tf.constant(0.5, shape=(num_points, 2), dtype=tf.float64)
+    x_test = tf.where([False, True], x_rnd, x_fix)
+    model_eval = trajectory(with_batching(x_test))
+    assert model_eval.shape == (num_points, batch_size, 1)
+    assert tf.math.reduce_max(tf.math.reduce_std(model_eval, axis=0)) < 2e-4
+
+    # But not so when we only vary the first
+    x_test = tf.where([True, False], x_rnd, x_fix)
+    model_eval = trajectory(with_batching(x_test))
+    assert model_eval.shape == (num_points, batch_size, 1)
+    assert tf.math.reduce_max(tf.math.reduce_std(model_eval, axis=0)) > 1
