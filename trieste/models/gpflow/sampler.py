@@ -811,11 +811,11 @@ class ResampleableRandomFourierFeatureFunctions(RandomFourierFeaturesCosine):
                 b.assign(self._bias_init(tf.shape(b), dtype=self._dtype))
 
         if isinstance(self.W, tf.Variable):
-            self.W.assign(self._weights_init(self.kernel)(tf.shape(self.W), dtype=self._dtype))
+            self.W.assign(self._weights_init(self.kernel)(tf.shape(self.W), self._dtype))
         else:
             tf.debugging.Assert(isinstance(self.W, list), [])
             for W, k in zip(self.W, cycle(self.sub_kernels)):
-                W.assign(self._weights_init(k)(tf.shape(W), dtype=self._dtype))
+                W.assign(self._weights_init(k)(tf.shape(W), self._dtype))
 
 
 class ResampleableDecoupledFeatureFunctions(ResampleableRandomFourierFeatureFunctions):
