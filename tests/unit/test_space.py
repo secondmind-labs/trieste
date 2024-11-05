@@ -973,6 +973,18 @@ def test_collection_space_sampling_raises_for_invalid_sample_size(
         collection_space.sample(num_samples)
 
 
+@pytest.mark.parametrize("search_space_type", [TaggedMultiSearchSpace, TaggedProductSearchSpace])
+def test_collection_space_sampling_uses_different_seeds_for_subspaces(
+    search_space_type: Type[CollectionSearchSpace],
+) -> None:
+    box = Box([0], [1])
+    collection_space = search_space_type(spaces=[box, box])
+    samples = collection_space.sample(5, seed=42)
+    # check that all the points are unique despite the seed
+    flattened = samples.numpy().flatten()
+    assert len(flattened) == len(set(flattened))
+
+
 @pytest.mark.parametrize(
     "search_space_type, space_A",
     [

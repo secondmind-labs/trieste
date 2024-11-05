@@ -1229,7 +1229,11 @@ class CollectionSearchSpace(SearchSpace):
         tf.debugging.assert_non_negative(num_samples)
         if seed is not None:  # ensure reproducibility
             tf.random.set_seed(seed)
-        return [self._spaces[tag].sample(num_samples, seed=seed) for tag in self._tags]
+        return [
+            # ensure subspaces (which may be identical) don't all use the same seed
+            self._spaces[tag].sample(num_samples, seed=None if seed is None else seed + i)
+            for i, tag in enumerate(self._tags)
+        ]
 
     def __eq__(self, other: object) -> bool:
         """
