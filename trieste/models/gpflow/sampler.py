@@ -32,6 +32,7 @@ from typing_extensions import Protocol, TypeGuard, runtime_checkable
 from ...space import EncoderFunction
 from ...types import TensorType
 from ...utils import DEFAULTS, flatten_leading_dims
+from ...utils.misc import ensure_positive
 from ..interfaces import (
     ProbabilisticModel,
     ReparametrizationSampler,
@@ -114,7 +115,7 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
         "at: [N..., 1, D] # IndependentReparametrizationSampler only supports batch sizes of one",
         "return: [N..., S, 1, L]",
     )
-    def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
+    def sample(self, at: TensorType, *, jitter: float = 0) -> TensorType:
         """
         Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
         :meth:`sample`, for any given :class:`IndependentReparametrizationSampler` and ``at``, will
@@ -124,7 +125,7 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
         :param at: Where to sample the predictive distribution, with shape `[..., 1, D]`, for points
             of dimension `D`.
         :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
-            the covariance matrix (capped by the covariance size).
+            the covariance matrix.
         :return: The samples, of shape `[..., S, 1, L]`, where `S` is the `sample_size` and `L` is
             the number of latent model dimensions.
         :raise ValueError (or InvalidArgumentError): If ``at`` has an invalid shape or ``jitter``
@@ -133,7 +134,7 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
         tf.debugging.assert_greater_equal(jitter, 0.0)
 
         mean, var = self._model.predict(at[..., None, :, :])  # [..., 1, 1, L], [..., 1, 1, L]
-        var = var + tf.math.minimum(var, jitter)
+        var = ensure_positive(var + jitter)
 
         def sample_eps() -> tf.Tensor:
             self._initialized.assign(True)
@@ -205,7 +206,7 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
         self._qmc = qmc
         self._qmc_skip = qmc_skip
 
-    def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
+    def sample(self, at: TensorType, *, jitter: float = 0) -> TensorType:
         """
         Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
         :meth:`sample`, for any given :class:`BatchReparametrizationSampler` and ``at``, will
@@ -217,7 +218,7 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
             consistent batch size across all calls to :meth:`sample` for any given
             :class:`BatchReparametrizationSampler`.
         :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
-            the covariance matrix (capped by the covariance size).
+            the covariance matrix.
         :return: The samples, of shape `[..., S, B, L]`, where `S` is the `sample_size`, `B` the
             number of points per batch, and `L` the dimension of the model's predictive
             distribution.
@@ -276,7 +277,7 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
             )
 
         identity = tf.eye(batch_size, dtype=cov.dtype)  # [B, B]
-        cov = cov + tf.math.minimum(cov, jitter) * identity
+        cov = ensure_positive(cov + jitter * identity)
         cov_cholesky = tf.linalg.cholesky(cov)  # [..., L, B, B]
 
         variance_contribution = cov_cholesky @ self._eps  # [..., L, B, S]

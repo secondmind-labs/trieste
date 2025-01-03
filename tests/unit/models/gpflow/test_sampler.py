@@ -129,21 +129,6 @@ def test_independent_reparametrization_sampler_sample_raises_for_negative_jitter
 
 
 @pytest.mark.parametrize("qmc", [True, False])
-@pytest.mark.parametrize("var", [0.0, 0.1, 1.0])
-def test_independent_reparametrization_sampler_sample_caps_jitter(qmc: bool, var: float) -> None:
-    sampler = IndependentReparametrizationSampler(
-        100, QuadraticMeanAndRBFKernel(kernel_amplitude=var), qmc=qmc
-    )
-
-    def sample_var(var: float) -> float:
-        return tf.math.reduce_variance(sampler.sample(tf.constant([[1.0]]), jitter=float(var)))
-
-    npt.assert_allclose(sample_var(var), sample_var(0) * 2, rtol=1e-5)
-    assert sample_var(0) <= sample_var(var / 2) <= sample_var(var)
-    npt.assert_allclose(sample_var(var), sample_var(var + 1), rtol=1e-5)  # capped
-
-
-@pytest.mark.parametrize("qmc", [True, False])
 @pytest.mark.parametrize("sample_size", [0, -2])
 def test_independent_reparametrization_sampler_raises_for_invalid_sample_size(
     sample_size: int,
@@ -439,21 +424,6 @@ def test_batch_reparametrization_sampler_sample_raises_for_negative_jitter(qmc: 
 
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         sampler.sample(tf.constant([[0.0]]), jitter=-1e-6)
-
-
-@pytest.mark.parametrize("qmc", [True, False])
-@pytest.mark.parametrize("var", [0.1, 1.0])
-def test_batch_reparametrization_sampler_sample_caps_jitter(qmc: bool, var: float) -> None:
-    sampler = BatchReparametrizationSampler(
-        100, QuadraticMeanAndRBFKernel(kernel_amplitude=var), qmc=qmc
-    )
-
-    def sample_var(var: float) -> float:
-        return tf.math.reduce_variance(sampler.sample(tf.constant([[1.0]]), jitter=float(var)))
-
-    npt.assert_allclose(sample_var(var), sample_var(0) * 2, rtol=1e-5)
-    assert sample_var(0) <= sample_var(var / 2) <= sample_var(var)
-    npt.assert_allclose(sample_var(var), sample_var(var + 1), rtol=1e-5)  # capped
 
 
 @pytest.mark.parametrize("qmc", [True, False])

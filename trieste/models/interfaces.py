@@ -25,7 +25,6 @@ from typing_extensions import Protocol, final, runtime_checkable
 from ..data import Dataset
 from ..space import EncoderFunction
 from ..types import TensorType
-from ..utils import DEFAULTS
 
 ProbabilisticModelType = TypeVar(
     "ProbabilisticModelType", bound="ProbabilisticModel", contravariant=True
@@ -592,12 +591,12 @@ class ReparametrizationSampler(ABC, Generic[ProbabilisticModelType]):
         return f"{self.__class__.__name__}({self._sample_size!r}, {self._model!r})"
 
     @abstractmethod
-    def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
+    def sample(self, at: TensorType, *, jitter: float = 0) -> TensorType:
         """
         :param at: Where to sample the predictive distribution, with shape `[..., 1, D]`, for points
             of dimension `D`.
         :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
-            the covariance matrix (capped by the covariance size).
+            the covariance matrix.
         :return: The samples, of shape `[..., S, B, L]`, where `S` is the `sample_size`, `B` is
             the number of points per batch, and `L` is the number of latent model dimensions.
         """
