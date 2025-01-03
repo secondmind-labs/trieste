@@ -145,6 +145,19 @@ def test_dgp_reparam_sampler_sample_is_continuous(
     npt.assert_array_less(tf.abs(sampler.sample(xs + 1e-20) - sampler.sample(xs)), 1e-20)
 
 
+@random_seed
+def test_dgp_reparam_sampler_sample_caps_jitter() -> None:
+    _, model = _build_dataset_and_train_deep_gp(simple_two_layer_dgp_model)
+
+    sampler = DeepGaussianProcessReparamSampler(100, model)
+    xs = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)[:, None, :]
+    sample_var_0 = tf.math.reduce_variance(sampler.sample(xs, jitter=0.0))
+    sample_var_10 = tf.math.reduce_variance(sampler.sample(xs, jitter=10.0))
+    sample_var_1000 = tf.math.reduce_variance(sampler.sample(xs, jitter=1000.0))
+    assert sample_var_0 < sample_var_10
+    npt.assert_allclose(sample_var_10, sample_var_1000)
+
+
 def test_dgp_reparam_sampler_sample_is_repeatable(
     two_layer_model: Callable[[TensorType], DeepGP]
 ) -> None:
