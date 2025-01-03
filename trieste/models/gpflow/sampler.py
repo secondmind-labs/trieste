@@ -133,7 +133,7 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
         tf.debugging.assert_greater_equal(jitter, 0.0)
 
         mean, var = self._model.predict(at[..., None, :, :])  # [..., 1, 1, L], [..., 1, 1, L]
-        var = var + tf.math.maximum(var, jitter)
+        var = var + tf.math.minimum(var, jitter)
 
         def sample_eps() -> tf.Tensor:
             self._initialized.assign(True)
@@ -276,7 +276,7 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
             )
 
         identity = tf.eye(batch_size, dtype=cov.dtype)  # [B, B]
-        cov = cov + tf.math.maximum(cov, jitter) * identity
+        cov = cov + tf.math.minimum(cov, jitter) * identity
         cov_cholesky = tf.linalg.cholesky(cov)  # [..., L, B, B]
 
         variance_contribution = cov_cholesky @ self._eps  # [..., L, B, S]

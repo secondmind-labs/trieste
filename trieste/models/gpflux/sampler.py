@@ -108,7 +108,7 @@ class DeepGaussianProcessReparamSampler(ReparametrizationSampler[GPfluxPredictor
                 continue
 
             mean, var = layer.predict(samples, full_cov=False, full_output_cov=False)
-            var = var + tf.math.maximum(var, jitter)
+            var = var + tf.math.minimum(var, jitter)
 
             if not self._initialized:
                 self._eps_list[i].assign(
