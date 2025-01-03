@@ -31,7 +31,7 @@ class PseudoBatchReparametrizationSampler(BatchReparametrizationSampler):
         """
         :param at: Batches of query points at which to sample the predictive distribution, with
             shape `[..., B, D]`, for batches of size `B` of points of dimension `D`.
-        :param jitter: placeholder
+        :param jitter: unused
         :return: The samples, of shape `[..., S, B, L]`, where `S` is the `sample_size`, `B` the
             number of points per batch, and `L` the dimension of the model's predictive
             distribution.

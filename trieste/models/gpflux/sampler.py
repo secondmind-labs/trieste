@@ -88,7 +88,7 @@ class DeepGaussianProcessReparamSampler(ReparametrizationSampler[GPfluxPredictor
         :param at: Where to sample the predictive distribution, with shape `[..., 1, D]`, for points
             of dimension `D`.
         :param jitter: The size of the jitter to use when stabilizing the Cholesky
-            decomposition of the covariance matrix.
+            decomposition of the covariance matrix (capped by the covariance size).
         :return: The samples, of shape `[..., S, 1, L]`, where `S` is the `sample_size` and `L` is
             the number of latent model dimensions.
         :raise ValueError (or InvalidArgumentError): If ``at`` has an invalid shape or ``jitter``
@@ -108,7 +108,7 @@ class DeepGaussianProcessReparamSampler(ReparametrizationSampler[GPfluxPredictor
                 continue
 
             mean, var = layer.predict(samples, full_cov=False, full_output_cov=False)
-            var = var + jitter
+            var = var + tf.math.maximum(var, jitter)
 
             if not self._initialized:
                 self._eps_list[i].assign(

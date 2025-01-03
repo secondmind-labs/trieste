@@ -124,7 +124,7 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
         :param at: Where to sample the predictive distribution, with shape `[..., 1, D]`, for points
             of dimension `D`.
         :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
-            the covariance matrix.
+            the covariance matrix (capped by the covariance size).
         :return: The samples, of shape `[..., S, 1, L]`, where `S` is the `sample_size` and `L` is
             the number of latent model dimensions.
         :raise ValueError (or InvalidArgumentError): If ``at`` has an invalid shape or ``jitter``
@@ -133,7 +133,7 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
         tf.debugging.assert_greater_equal(jitter, 0.0)
 
         mean, var = self._model.predict(at[..., None, :, :])  # [..., 1, 1, L], [..., 1, 1, L]
-        var = var + jitter
+        var = var + tf.math.maximum(var, jitter)
 
         def sample_eps() -> tf.Tensor:
             self._initialized.assign(True)
@@ -217,7 +217,7 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
             consistent batch size across all calls to :meth:`sample` for any given
             :class:`BatchReparametrizationSampler`.
         :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
-            the covariance matrix.
+            the covariance matrix (capped by the covariance size).
         :return: The samples, of shape `[..., S, B, L]`, where `S` is the `sample_size`, `B` the
             number of points per batch, and `L` the dimension of the model's predictive
             distribution.
@@ -276,7 +276,8 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
             )
 
         identity = tf.eye(batch_size, dtype=cov.dtype)  # [B, B]
-        cov_cholesky = tf.linalg.cholesky(cov + jitter * identity)  # [..., L, B, B]
+        cov = cov + tf.math.maximum(cov, jitter) * identity
+        cov_cholesky = tf.linalg.cholesky(cov)  # [..., L, B, B]
 
         variance_contribution = cov_cholesky @ self._eps  # [..., L, B, S]
 

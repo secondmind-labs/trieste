@@ -597,7 +597,7 @@ class ReparametrizationSampler(ABC, Generic[ProbabilisticModelType]):
         :param at: Where to sample the predictive distribution, with shape `[..., 1, D]`, for points
             of dimension `D`.
         :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
-            the covariance matrix.
+            the covariance matrix (capped by the covariance size).
         :return: The samples, of shape `[..., S, B, L]`, where `S` is the `sample_size`, `B` is
             the number of points per batch, and `L` is the number of latent model dimensions.
         """
