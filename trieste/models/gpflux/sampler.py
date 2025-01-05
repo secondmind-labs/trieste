@@ -79,7 +79,7 @@ class DeepGaussianProcessReparamSampler(ReparametrizationSampler[GPfluxPredictor
     def _model_gpflux(self) -> tf.Module:
         return self._model.model_gpflux
 
-    def sample(self, at: TensorType, *, jitter: float = 0) -> TensorType:
+    def sample(self, at: TensorType, *, jitter: float = 0.0) -> TensorType:
         """
         Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
         :meth:`sample`, for any given :class:`DeepGaussianProcessReparamSampler` and ``at``, will

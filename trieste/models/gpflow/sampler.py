@@ -115,7 +115,7 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
         "at: [N..., 1, D] # IndependentReparametrizationSampler only supports batch sizes of one",
         "return: [N..., S, 1, L]",
     )
-    def sample(self, at: TensorType, *, jitter: float = 0) -> TensorType:
+    def sample(self, at: TensorType, *, jitter: float = 0.0) -> TensorType:
         """
         Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
         :meth:`sample`, for any given :class:`IndependentReparametrizationSampler` and ``at``, will
@@ -206,7 +206,7 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
         self._qmc = qmc
         self._qmc_skip = qmc_skip
 
-    def sample(self, at: TensorType, *, jitter: float = 0) -> TensorType:
+    def sample(self, at: TensorType, *, jitter: float = 0.0) -> TensorType:
         """
         Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
         :meth:`sample`, for any given :class:`BatchReparametrizationSampler` and ``at``, will

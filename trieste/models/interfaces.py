@@ -591,7 +591,7 @@ class ReparametrizationSampler(ABC, Generic[ProbabilisticModelType]):
         return f"{self.__class__.__name__}({self._sample_size!r}, {self._model!r})"
 
     @abstractmethod
-    def sample(self, at: TensorType, *, jitter: float = 0) -> TensorType:
+    def sample(self, at: TensorType, *, jitter: float = 0.0) -> TensorType:
         """
         :param at: Where to sample the predictive distribution, with shape `[..., 1, D]`, for points
             of dimension `D`.
