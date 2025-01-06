@@ -277,8 +277,7 @@ class BatchReparametrizationSampler(ReparametrizationSampler[SupportsPredictJoin
             )
 
         identity = tf.eye(batch_size, dtype=cov.dtype)  # [B, B]
-        cov = ensure_positive(cov + jitter * identity)
-        cov_cholesky = tf.linalg.cholesky(cov)  # [..., L, B, B]
+        cov_cholesky = tf.linalg.cholesky(cov + jitter * identity)  # [..., L, B, B]
 
         variance_contribution = cov_cholesky @ self._eps  # [..., L, B, S]
 

@@ -471,20 +471,6 @@ def test_batch_reparametrization_sampler_reset_sampler(qmc: bool, qmc_skip: bool
         npt.assert_array_less(1e-9, tf.abs(samples2 - samples1))
 
 
-@pytest.mark.parametrize("qmc", [True, False])
-@pytest.mark.parametrize("dtype", [tf.float32, tf.float64])
-def test_batch_reparametrization_sampler_sample_ensures_positive_variance(
-    qmc: bool, dtype: tf.DType
-) -> None:
-    model = QuadraticMeanAndRBFKernel(kernel_amplitude=tf.constant(0, dtype=dtype))
-    sampler = BatchReparametrizationSampler(100, model, qmc=qmc)
-    x = tf.constant([[1.0]], dtype=dtype)
-    variance = tf.math.reduce_variance(sampler.sample(x))  # default jitter
-    assert variance > 1e-7
-    variance = tf.math.reduce_variance(sampler.sample(x, jitter=0.0))  # explicit jitter
-    assert variance > (1e-7 if dtype is tf.float32 else 1e-17)
-
-
 @pytest.mark.parametrize("num_features", [0, -2])
 def test_rff_trajectory_sampler_raises_for_invalid_number_of_features(
     num_features: int,

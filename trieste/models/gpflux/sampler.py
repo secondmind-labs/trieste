@@ -27,7 +27,6 @@ from gpflux.models import DeepGP
 
 from ...types import TensorType
 from ...utils import DEFAULTS, flatten_leading_dims
-from ...utils.misc import ensure_positive
 from ..interfaces import (
     ReparametrizationSampler,
     TrajectoryFunction,
@@ -109,7 +108,7 @@ class DeepGaussianProcessReparamSampler(ReparametrizationSampler[GPfluxPredictor
                 continue
 
             mean, var = layer.predict(samples, full_cov=False, full_output_cov=False)
-            var = ensure_positive(var + jitter)
+            var = var + jitter
 
             if not self._initialized:
                 self._eps_list[i].assign(
