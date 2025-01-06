@@ -25,6 +25,7 @@ from typing_extensions import Protocol, final, runtime_checkable
 from ..data import Dataset
 from ..space import EncoderFunction
 from ..types import TensorType
+from ..utils import DEFAULTS
 
 ProbabilisticModelType = TypeVar(
     "ProbabilisticModelType", bound="ProbabilisticModel", contravariant=True
@@ -591,7 +592,7 @@ class ReparametrizationSampler(ABC, Generic[ProbabilisticModelType]):
         return f"{self.__class__.__name__}({self._sample_size!r}, {self._model!r})"
 
     @abstractmethod
-    def sample(self, at: TensorType, *, jitter: float = 0.0) -> TensorType:
+    def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
         """
         :param at: Where to sample the predictive distribution, with shape `[..., 1, D]`, for points
             of dimension `D`.
