@@ -293,6 +293,8 @@ def test_independent_reparametrization_sampler_sample_ensures_positive_variance(
     model = QuadraticMeanAndRBFKernel(kernel_amplitude=tf.constant(0, dtype=dtype))
     sampler = IndependentReparametrizationSampler(100, model, qmc=qmc)
     x = tf.constant([[1.0]], dtype=dtype)
+    _, model_var = model.predict(x)
+    npt.assert_array_equal(model_var, tf.constant([[0]]))
     variance = tf.math.reduce_variance(sampler.sample(x))  # default jitter
     assert variance > (1e-7 if dtype is tf.float32 else 1e-17)
     variance = tf.math.reduce_variance(sampler.sample(x, jitter=0.0))  # explicit jitter
