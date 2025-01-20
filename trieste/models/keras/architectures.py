@@ -29,8 +29,9 @@ import tensorflow_probability as tfp
 from gpflow.keras import tf_keras
 
 try:
-    SafeModeScope = tf_keras.src.saving.serialization_lib.SafeModeScope
-except AttributeError:  # pragma: no cover (tested but not by coverage)
+    # (note that this isn't always defined in tf_keras!)
+    from keras.src.saving.serialization_lib import SafeModeScope
+except ImportError:  # pragma: no cover (tested but not by coverage)
     SafeModeScope = contextlib.nullcontext
 from tensorflow_probability.python.layers.distribution_layer import DistributionLambda, _serialize
 
