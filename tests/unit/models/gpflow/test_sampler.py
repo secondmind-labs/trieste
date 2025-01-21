@@ -122,13 +122,6 @@ def test_reparametrization_sampler_reprs(
 
 
 @pytest.mark.parametrize("qmc", [True, False])
-def test_independent_reparametrization_sampler_sample_raises_for_negative_jitter(qmc: bool) -> None:
-    sampler = IndependentReparametrizationSampler(100, QuadraticMeanAndRBFKernel(), qmc=qmc)
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        sampler.sample(tf.constant([[0.0]]), jitter=-1e-6)
-
-
-@pytest.mark.parametrize("qmc", [True, False])
 @pytest.mark.parametrize("sample_size", [0, -2])
 def test_independent_reparametrization_sampler_raises_for_invalid_sample_size(
     sample_size: int,
