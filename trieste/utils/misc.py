@@ -465,6 +465,6 @@ def _flatten_module(  # type: ignore[no-untyped-def]
 
 
 def ensure_positive(x: TensorType) -> TensorType:
-    """Esure that all the elements in `x` are strictly positive (using a dtype-dependent
-    capping threshold."""
-    return tf.math.maximum(x, 1e-6 if x.dtype == tf.float32 else 1e-16)
+    """Ensure that all the elements in `x` are strictly positive (using a dtype-dependent
+    capping threshold)."""
+    return tf.math.maximum(x, 1e-15 if x.dtype == tf.float32 else 1e-30)

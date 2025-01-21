@@ -230,19 +230,19 @@ def test_flatten_leading_dims_invalid_output_dims(output_dims: int) -> None:
     [
         (
             tf.constant(0, dtype=tf.float32),
-            tf.constant(1e-6, dtype=tf.float32),
+            tf.constant(1e-15, dtype=tf.float32),
         ),
         (
             tf.constant(0, dtype=tf.float64),
-            tf.constant(1e-16, dtype=tf.float64),
+            tf.constant(1e-30, dtype=tf.float64),
         ),
         (
-            tf.constant([[-1.0, 0.0], [1e-7, 1.0]], dtype=tf.float32),
-            tf.constant([[1e-6, 1e-6], [1e-6, 1.0]], dtype=tf.float32),
+            tf.constant([[-1.0, 0.0], [1e-35, 1.0]], dtype=tf.float32),
+            tf.constant([[1e-15, 1e-15], [1e-15, 1.0]], dtype=tf.float32),
         ),
         (
-            tf.constant([[-1.0, 0.0], [1e-7, 1.0]], dtype=tf.float64),
-            tf.constant([[1e-16, 1e-16], [1e-7, 1.0]], dtype=tf.float64),
+            tf.constant([[-1.0, 0.0], [1e-35, 1.0]], dtype=tf.float64),
+            tf.constant([[1e-30, 1e-30], [1e-30, 1.0]], dtype=tf.float64),
         ),
     ],
 )

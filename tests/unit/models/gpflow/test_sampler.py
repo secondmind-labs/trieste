@@ -296,9 +296,9 @@ def test_independent_reparametrization_sampler_sample_ensures_positive_variance(
     _, model_var = model.predict(x)
     npt.assert_array_equal(model_var, tf.constant([[0]]))
     variance = tf.math.reduce_variance(sampler.sample(x))  # default jitter
-    assert variance > (1e-7 if dtype is tf.float32 else 1e-17)
-    variance = tf.math.reduce_variance(sampler.sample(x, jitter=0.0))  # explicit jitter
-    assert variance > (1e-7 if dtype is tf.float32 else 1e-17)
+    assert variance > 0
+    variance = tf.math.reduce_variance(sampler.sample(x, jitter=-15))  # explicit negative jitter
+    assert variance > 0
 
 
 @pytest.mark.parametrize("qmc", [True, False])
