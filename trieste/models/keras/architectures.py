@@ -31,7 +31,11 @@ from gpflow.keras import tf_keras
 try:
     SafeModeScope = tf_keras.src.saving.serialization_lib.SafeModeScope
 except AttributeError:  # pragma: no cover (tested but not by coverage)
-    SafeModeScope = contextlib.nullcontext
+    try:
+        # in TF 2.14 it's in keras but not in tf_keras (but vice versa in TF 2.16)!
+        from keras.src.saving.serialization_lib import SafeModeScope  # type:ignore[no-redef]
+    except (ImportError, ModuleNotFoundError):
+        SafeModeScope = contextlib.nullcontext
 from tensorflow_probability.python.layers.distribution_layer import DistributionLambda, _serialize
 
 from trieste.types import TensorType

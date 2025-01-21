@@ -30,6 +30,6 @@ authors:
 - family-names: "Picheny"
   given-names: "Victor"
 title: "Trieste"
-version: 4.2.2
-date-released: 2024-11-05
+version: 4.2.3
+date-released: 2025-01-20
 url: "https://github.com/secondmind-labs/trieste"
