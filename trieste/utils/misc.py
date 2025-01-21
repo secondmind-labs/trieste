@@ -462,3 +462,9 @@ def _flatten_module(  # type: ignore[no-untyped-def]
         for subvalue in subvalues:
             # Predicate is already tested for these values.
             yield subvalue
+
+
+def ensure_positive(x: TensorType) -> TensorType:
+    """Ensure that all the elements in `x` are strictly positive (using a dtype-dependent
+    capping threshold)."""
+    return tf.math.maximum(x, 1e-15 if x.dtype == tf.float32 else 1e-30)
