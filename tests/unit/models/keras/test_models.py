@@ -780,6 +780,7 @@ def test_deep_ensemble_log(
     assert mocked_summary_histogram.call_count == num_histogram
 
 
+@pytest.mark.slow
 @random_seed
 def test_deep_ensemble_parallel_training_performance() -> None:
     """
