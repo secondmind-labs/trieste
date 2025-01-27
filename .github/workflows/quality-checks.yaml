@@ -80,6 +80,21 @@ jobs:
     - run: pip install tox
     - run: tox -e tests_old_${{ matrix.part }}
 
+  tests_prod:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [ "1", "2", "3", "4" ]
+    name: tests_prod (part${{ matrix.part }})
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        python-version: "3.10"
+    - run: pip install tox
+    - run: tox -e tests_prod_${{ matrix.part }}
+
   docs:
     runs-on: ubuntu-latest
     steps:
