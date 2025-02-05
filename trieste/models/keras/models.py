@@ -21,6 +21,7 @@ import dill
 import tensorflow as tf
 import tensorflow_probability as tfp
 import tensorflow_probability.python.distributions as tfd
+from check_shapes import check_shapes
 from gpflow.keras import tf_keras
 from tensorflow.python.keras.callbacks import Callback
 
@@ -29,7 +30,12 @@ from ...data import Dataset
 from ...space import EncoderFunction
 from ...types import TensorType
 from ...utils import flatten_leading_dims
-from ..interfaces import EncodedTrainableProbabilisticModel, HasTrajectorySampler, TrajectorySampler
+from ..interfaces import (
+    EncodedSupportsPredictY,
+    EncodedTrainableProbabilisticModel,
+    HasTrajectorySampler,
+    TrajectorySampler,
+)
 from ..optimizer import KerasOptimizer
 from ..utils import write_summary_data_based_metrics
 from .architectures import KerasEnsemble, MultivariateNormalTriL
@@ -43,6 +49,7 @@ class DeepEnsemble(
     EncodedTrainableProbabilisticModel,
     DeepEnsembleModel,
     HasTrajectorySampler,
+    EncodedSupportsPredictY,
 ):
     """
     A :class:`~trieste.model.TrainableProbabilisticModel` wrapper for deep ensembles built using
@@ -252,7 +259,42 @@ class DeepEnsemble(
 
     def predict_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         r"""
-        Returns mean and variance at ``query_points`` for the whole ensemble.
+        Returns mean and variance at ``query_points`` for the whole ensemble. Variance here is
+        the epistemic uncertainty, computed as the variance of the ensemble means.
+
+        Following <cite data-cite="lakshminarayanan2017simple"/> we treat the ensemble as a
+        uniformly-weighted Gaussian mixture model and combine the predictions as
+
+        .. math:: p(y|\mathbf{x}) = M^{-1} \Sum_{m=1}^M \mathcal{N}
+            (\mu_{\theta_m}(\mathbf{x}),\,\sigma_{\theta_m}^{2}(\mathbf{x}))
+
+        We further approximate the ensemble prediction as a Gaussian whose mean and variance
+        are respectively the mean and variance of the mixture, given by
+
+        .. math:: \mu_{*}(\mathbf{x}) = M^{-1} \Sum_{m=1}^M \mu_{\theta_m}(\mathbf{x})
+
+        .. math:: \sigma^2_{*}(\mathbf{x}) = M^{-1} \Sum_{m=1}^M (\mu^2_{\theta_m}(\mathbf{x}))
+            - \mu^2_{*}(\mathbf{x})
+
+        This method assumes that the final layer in each member of the ensemble is
+        probabilistic, an instance of :class:`~tfp.distributions.Distribution`. In particular, given
+        the nature of the approximations stated above the final layer should be a Gaussian
+        distribution with `mean` and `variance` methods.
+
+        :param query_points: The points at which to make predictions.
+        :return: The predicted mean and variance of the observations at the specified
+            ``query_points``.
+        """
+        ensemble_means, _ = self.predict_ensemble_encoded(query_points)
+        predicted_means = tf.math.reduce_mean(ensemble_means, axis=-3)
+        epistemic_variance = tf.math.reduce_variance(ensemble_means, axis=-3)
+
+        return predicted_means, epistemic_variance
+
+    def predict_y_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        r"""
+        Returns mean and variance at ``query_points`` for the whole ensemble. Variance here is
+        the total uncertainty, computed as the sum of the epistemic and aleatoric uncertainties.
 
         Following <cite data-cite="lakshminarayanan2017simple"/> we treat the ensemble as a
         uniformly-weighted Gaussian mixture model and combine the predictions as
@@ -277,29 +319,52 @@ class DeepEnsemble(
         :return: The predicted mean and variance of the observations at the specified
             ``query_points``.
         """
-        # handle leading batch dimensions, while still allowing `Functional` to
-        # "allow (None,) and (None, 1) Tensors to be passed interchangeably"
-        input_dims = min(len(query_points.shape), len(self.model.input_shape[0]))
-        flat_x, unflatten = flatten_leading_dims(query_points, output_dims=input_dims)
-        ensemble_distributions = self.ensemble_distributions(flat_x)
-        predicted_means = tf.math.reduce_mean(
-            [dist.mean() for dist in ensemble_distributions], axis=0
-        )
-        predicted_vars = (
-            tf.math.reduce_mean(
-                [dist.variance() + dist.mean() ** 2 for dist in ensemble_distributions], axis=0
-            )
-            - predicted_means**2
-        )
+        ensemble_means, ensemble_vars = self.predict_ensemble_encoded(query_points)
+        predicted_means = tf.math.reduce_mean(ensemble_means, axis=-3)
+        epistemic_variance = tf.math.reduce_variance(ensemble_means, axis=-3)
+        aleatoric_variance = tf.math.reduce_mean(ensemble_vars, axis=-3)
 
-        return unflatten(predicted_means), unflatten(predicted_vars)
+        return predicted_means, epistemic_variance + aleatoric_variance
+
+    def predict_noise_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        """
+        Returns mean and variance of the noise at ``query_points`` for the whole ensemble.
+        Mean is the mean of the variance across the ensemble, variance is the variance of the
+        variance across the ensemble. Assumes that the data is encoded already.
+
+        :param query_points: The points at which to make predictions.
+        :return: The predicted mean and variance of the aleatoric noise at the specified
+            ``query_points``.
+        """
+        _, ensemble_vars = self.predict_ensemble_encoded(query_points)
+        aleatoric_variance_mean = tf.math.reduce_mean(ensemble_vars, axis=-3)
+        aleatoric_variance_variance = tf.math.reduce_variance(ensemble_vars, axis=-3)
+
+        return aleatoric_variance_mean, aleatoric_variance_variance
+
+    @check_shapes(
+        "query_points: [batch..., D]",
+        "return[0]: [batch..., E...]",
+        "return[1]: [batch..., E...]",
+    )
+    def predict_noise(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        """
+        Returns mean and variance of the noise at ``query_points`` for the whole ensemble.
+        Mean is the mean of the variance across the ensemble, variance is the variance of the
+        variance across the ensemble. Data is encoded before prediction if encoder is provided.
+
+        :param query_points: The points at which to make predictions.
+        :return: The predicted mean and variance of the aleatoric noise at the specified
+            ``query_points``.
+        """
+        return self.predict_noise_encoded(self.encode(query_points))
 
     @property
     def dtype(self) -> tf.DType:
         """The prediction dtype."""
         return self._model.output_dtype
 
-    def predict_ensemble(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+    def predict_ensemble_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         """
         Returns mean and variance at ``query_points`` for each member of the ensemble. First tensor
         is the mean and second is the variance, where each has shape [..., M, N, 1], where M is
@@ -313,11 +378,20 @@ class DeepEnsemble(
         :return: The predicted mean and variance of the observations at the specified
             ``query_points`` for each member of the ensemble.
         """
-        ensemble_distributions = self.ensemble_distributions(self.encode(query_points))
-        predicted_means = tf.convert_to_tensor([dist.mean() for dist in ensemble_distributions])
-        predicted_vars = tf.convert_to_tensor([dist.variance() for dist in ensemble_distributions])
+        input_dims = min(len(query_points.shape), len(self.model.input_shape[0]))
+        flat_x, unflatten = flatten_leading_dims(query_points, output_dims=input_dims)
+        ensemble_distributions = self.ensemble_distributions(flat_x)
+        predicted_means = tf.stack(
+            [unflatten(dist.mean()) for dist in ensemble_distributions], axis=-3
+        )
+        predicted_vars = tf.stack(
+            [unflatten(dist.variance()) for dist in ensemble_distributions], axis=-3
+        )
 
         return predicted_means, predicted_vars
+
+    def predict_ensemble(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        return self.predict_ensemble_encoded(self.encode(query_points))
 
     def sample_encoded(self, query_points: TensorType, num_samples: int) -> TensorType:
         """
@@ -337,7 +411,7 @@ class DeepEnsemble(
 
         return samples  # [num_samples, len(query_points), 1]
 
-    def sample_ensemble(self, query_points: TensorType, num_samples: int) -> TensorType:
+    def sample_ensemble_encoded(self, query_points: TensorType, num_samples: int) -> TensorType:
         """
         Return ``num_samples`` samples at ``query_points``. Each sample is taken from a Gaussian
         distribution given by the predicted mean and variance of a randomly chosen network in the
@@ -349,7 +423,7 @@ class DeepEnsemble(
         :return: The samples. For a predictive distribution with event shape E, this has shape
             [..., S, N] + E, where S is the number of samples.
         """
-        ensemble_distributions = self.ensemble_distributions(self.encode(query_points))
+        ensemble_distributions = self.ensemble_distributions(query_points)
         network_indices = sample_model_index(self.ensemble_size, num_samples)
 
         stacked_samples = []
@@ -358,6 +432,9 @@ class DeepEnsemble(
         samples = tf.stack(stacked_samples, axis=0)
 
         return samples  # [num_samples, len(query_points), 1]
+
+    def sample_ensemble(self, query_points: TensorType, num_samples: int) -> TensorType:
+        return self.sample_ensemble_encoded(self.encode(query_points), num_samples)
 
     def trajectory_sampler(self) -> TrajectorySampler[DeepEnsemble]:
         """

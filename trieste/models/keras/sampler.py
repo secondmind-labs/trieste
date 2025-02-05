@@ -114,8 +114,9 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
     Option `diversify` can be used to increase the diversity in case of optimizing very large
     batches of trajectories. We use quantiles from the approximate Gaussian distribution of
     the ensemble as trajectories, with randomly chosen quantiles approximating a trajectory and
-    using a reparametrisation trick to speed up computation. Note that quantiles are not true
-    trajectories, so this will likely have some performance costs.
+    using a reparametrisation trick to speed up computation. Only epistemic uncertainty is taken
+    into account in sampling. Note that quantiles are not true trajectories, so this will likely
+    have some performance costs.
     """
 
     def __init__(self, model: DeepEnsembleModel, diversify: bool, seed: Optional[int] = None):

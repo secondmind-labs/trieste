@@ -319,12 +319,24 @@ def test_deep_ensemble_predict_broadcasts(
     query_data = _get_example_data(
         [1, 2, dataset_size, num_outputs], [1, 2, dataset_size, num_outputs]
     )
-    predicted_means, predicted_vars = model.predict(query_data.query_points)
 
+    predicted_means, predicted_vars = model.predict(query_data.query_points)
     assert tf.is_tensor(predicted_vars)
     assert predicted_vars.shape == query_data.observations.shape
     assert tf.is_tensor(predicted_means)
     assert predicted_means.shape == query_data.observations.shape
+
+    predicted_y_means, predicted_y_vars = model.predict_y(query_data.query_points)
+    assert tf.is_tensor(predicted_y_vars)
+    assert predicted_y_vars.shape == query_data.observations.shape
+    assert tf.is_tensor(predicted_y_means)
+    assert predicted_y_means.shape == query_data.observations.shape
+
+    noise_means, noise_vars = model.predict_noise(query_data.query_points)
+    assert tf.is_tensor(noise_vars)
+    assert noise_vars.shape == query_data.observations.shape
+    assert tf.is_tensor(noise_means)
+    assert noise_means.shape == query_data.observations.shape
 
 
 def test_deep_ensemble_predict_omit_trailing_dim_one(ensemble_size: int, dataset_size: int) -> None:
@@ -333,12 +345,24 @@ def test_deep_ensemble_predict_omit_trailing_dim_one(ensemble_size: int, dataset
 
     # Functional has code to "allow (None,) and (None, 1) Tensors to be passed interchangeably"
     qp = tf.random.uniform(tf.TensorShape([dataset_size]), dtype=tf.float64)
-    predicted_means, predicted_vars = model.predict(qp)
 
+    predicted_means, predicted_vars = model.predict(qp)
     assert tf.is_tensor(predicted_vars)
     assert predicted_vars.shape == dummy_data.observations.shape
     assert tf.is_tensor(predicted_means)
     assert predicted_means.shape == dummy_data.observations.shape
+
+    predicted_y_means, predicted_y_vars = model.predict_y(qp)
+    assert tf.is_tensor(predicted_y_vars)
+    assert predicted_y_vars.shape == dummy_data.observations.shape
+    assert tf.is_tensor(predicted_y_means)
+    assert predicted_y_means.shape == dummy_data.observations.shape
+
+    noise_means, noise_vars = model.predict_noise(qp)
+    assert tf.is_tensor(noise_vars)
+    assert noise_vars.shape == dummy_data.observations.shape
+    assert tf.is_tensor(noise_means)
+    assert noise_means.shape == dummy_data.observations.shape
 
 
 def test_deep_ensemble_predict_call_shape(
@@ -348,11 +372,22 @@ def test_deep_ensemble_predict_call_shape(
     model, _, _ = trieste_deep_ensemble_model(example_data, ensemble_size, False, False)
 
     predicted_means, predicted_vars = model.predict(example_data.query_points)
-
     assert tf.is_tensor(predicted_vars)
     assert predicted_vars.shape == example_data.observations.shape
     assert tf.is_tensor(predicted_means)
     assert predicted_means.shape == example_data.observations.shape
+
+    predicted_y_means, predicted_y_vars = model.predict_y(example_data.query_points)
+    assert tf.is_tensor(predicted_y_vars)
+    assert predicted_y_vars.shape == example_data.observations.shape
+    assert tf.is_tensor(predicted_y_means)
+    assert predicted_y_means.shape == example_data.observations.shape
+
+    noise_means, noise_vars = model.predict_noise(example_data.query_points)
+    assert tf.is_tensor(noise_vars)
+    assert noise_vars.shape == example_data.observations.shape
+    assert tf.is_tensor(noise_means)
+    assert noise_means.shape == example_data.observations.shape
 
 
 def test_deep_ensemble_predict_ensemble_call_shape(
@@ -369,6 +404,19 @@ def test_deep_ensemble_predict_ensemble_call_shape(
     assert tf.is_tensor(predicted_vars)
     assert predicted_means.shape[-2:] == example_data.observations.shape
     assert predicted_vars.shape[-2:] == example_data.observations.shape
+
+
+def test_deep_ensemble_uncertainty_separation() -> None:
+    example_data = _get_example_data([100, 2])
+    model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE, False, False)
+
+    qp = example_data.query_points
+    _, epistemic_var = model.predict(qp)
+    aleatoric_var, _ = model.predict_noise(qp)
+    _, total_var = model.predict_y(qp)
+
+    assert tf.reduce_all((total_var >= epistemic_var) & (total_var >= aleatoric_var))
+    npt.assert_array_almost_equal(epistemic_var + aleatoric_var, total_var)
 
 
 @pytest.mark.parametrize("num_samples", [6, 12])
