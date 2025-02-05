@@ -247,4 +247,6 @@ def test_flatten_leading_dims_invalid_output_dims(output_dims: int) -> None:
     ],
 )
 def test_ensure_positive(t: TensorType, expected: TensorType) -> None:
-    npt.assert_array_equal(ensure_positive(t), expected)
+    result = ensure_positive(t)
+    npt.assert_array_equal(result, expected)
+    assert result.dtype == t.dtype
