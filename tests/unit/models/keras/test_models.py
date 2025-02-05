@@ -414,7 +414,7 @@ def test_deep_ensemble_uncertainty_separation() -> None:
     aleatoric_var, _ = model.predict_noise(qp)
     _, total_var = model.predict_y(qp)
 
-    assert tf.reduce_all(total_var >= epistemic_var)
+    assert tf.reduce_all((total_var >= epistemic_var) & (total_var >= aleatoric_var))
     npt.assert_array_almost_equal(epistemic_var + aleatoric_var, total_var)
 
 

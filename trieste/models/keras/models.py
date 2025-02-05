@@ -21,6 +21,7 @@ import dill
 import tensorflow as tf
 import tensorflow_probability as tfp
 import tensorflow_probability.python.distributions as tfd
+from check_shapes import check_shapes
 from gpflow.keras import tf_keras
 from tensorflow.python.keras.callbacks import Callback
 
@@ -329,7 +330,7 @@ class DeepEnsemble(
         """
         Returns mean and variance of the noise at ``query_points`` for the whole ensemble.
         Mean is the mean of the variance across the ensemble, variance is the variance of the
-        variance across the ensemble.
+        variance across the ensemble. Assumes that the data is encoded already.
 
         :param query_points: The points at which to make predictions.
         :return: The predicted mean and variance of the aleatoric noise at the specified
@@ -341,7 +342,21 @@ class DeepEnsemble(
 
         return aleatoric_variance_mean, aleatoric_variance_variance
 
+    @check_shapes(
+        "query_points: [batch..., D]",
+        "return[0]: [batch..., E...]",
+        "return[1]: [batch..., E...]",
+    )
     def predict_noise(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        """
+        Returns mean and variance of the noise at ``query_points`` for the whole ensemble.
+        Mean is the mean of the variance across the ensemble, variance is the variance of the
+        variance across the ensemble. Data is encoded before prediction if encoder is provided.
+
+        :param query_points: The points at which to make predictions.
+        :return: The predicted mean and variance of the aleatoric noise at the specified
+            ``query_points``.
+        """
         return self.predict_noise_encoded(self.encode(query_points))
 
     @property
