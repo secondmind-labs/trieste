@@ -122,13 +122,6 @@ def test_reparametrization_sampler_reprs(
 
 
 @pytest.mark.parametrize("qmc", [True, False])
-def test_independent_reparametrization_sampler_sample_raises_for_negative_jitter(qmc: bool) -> None:
-    sampler = IndependentReparametrizationSampler(100, QuadraticMeanAndRBFKernel(), qmc=qmc)
-    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
-        sampler.sample(tf.constant([[0.0]]), jitter=-1e-6)
-
-
-@pytest.mark.parametrize("qmc", [True, False])
 @pytest.mark.parametrize("sample_size", [0, -2])
 def test_independent_reparametrization_sampler_raises_for_invalid_sample_size(
     sample_size: int,
@@ -283,6 +276,22 @@ def test_independent_reparametrization_sampler_reset_sampler(qmc: bool, qmc_skip
         npt.assert_raises(AssertionError, npt.assert_array_less, 1e-9, tf.abs(samples2 - samples1))
     else:
         npt.assert_array_less(1e-9, tf.abs(samples2 - samples1))
+
+
+@pytest.mark.parametrize("qmc", [True, False])
+@pytest.mark.parametrize("dtype", [tf.float32, tf.float64])
+def test_independent_reparametrization_sampler_sample_ensures_positive_variance(
+    qmc: bool, dtype: tf.DType
+) -> None:
+    model = QuadraticMeanAndRBFKernel(kernel_amplitude=tf.constant(0, dtype=dtype))
+    sampler = IndependentReparametrizationSampler(100, model, qmc=qmc)
+    x = tf.constant([[1.0]], dtype=dtype)
+    _, model_var = model.predict(x)
+    npt.assert_array_equal(model_var, tf.constant([[0]]))
+    variance = tf.math.reduce_variance(sampler.sample(x))  # default jitter
+    assert variance > 0
+    variance = tf.math.reduce_variance(sampler.sample(x, jitter=-15))  # explicit negative jitter
+    assert variance > 0
 
 
 @pytest.mark.parametrize("qmc", [True, False])

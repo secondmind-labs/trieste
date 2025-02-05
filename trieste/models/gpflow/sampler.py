@@ -32,6 +32,7 @@ from typing_extensions import Protocol, TypeGuard, runtime_checkable
 from ...space import EncoderFunction
 from ...types import TensorType
 from ...utils import DEFAULTS, flatten_leading_dims
+from ...utils.misc import ensure_positive
 from ..interfaces import (
     ProbabilisticModel,
     ReparametrizationSampler,
@@ -114,7 +115,7 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
         "at: [N..., 1, D] # IndependentReparametrizationSampler only supports batch sizes of one",
         "return: [N..., S, 1, L]",
     )
-    def sample(self, at: TensorType, *, jitter: float = DEFAULTS.JITTER) -> TensorType:
+    def sample(self, at: TensorType, *, jitter: float = -1.0) -> TensorType:
         """
         Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
         :meth:`sample`, for any given :class:`IndependentReparametrizationSampler` and ``at``, will
@@ -124,16 +125,15 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
         :param at: Where to sample the predictive distribution, with shape `[..., 1, D]`, for points
             of dimension `D`.
         :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
-            the covariance matrix.
+            the covariance matrix. If a negative value is passed then no jitter is applied but
+            all values are capped to a hardcoded minimum.
         :return: The samples, of shape `[..., S, 1, L]`, where `S` is the `sample_size` and `L` is
             the number of latent model dimensions.
         :raise ValueError (or InvalidArgumentError): If ``at`` has an invalid shape or ``jitter``
             is negative.
         """
-        tf.debugging.assert_greater_equal(jitter, 0.0)
-
         mean, var = self._model.predict(at[..., None, :, :])  # [..., 1, 1, L], [..., 1, 1, L]
-        var = var + jitter
+        var = ensure_positive(var) if jitter < 0 else (var + jitter)
 
         def sample_eps() -> tf.Tensor:
             self._initialized.assign(True)

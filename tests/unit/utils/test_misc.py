@@ -29,6 +29,7 @@ from trieste.utils.misc import (
     LocalizedTag,
     Ok,
     Timer,
+    ensure_positive,
     flatten_leading_dims,
     get_value_for_tag,
     jit,
@@ -222,3 +223,28 @@ def test_flatten_leading_dims_invalid_output_dims(output_dims: int) -> None:
     x_old = tf.random.uniform([2, 3, 4, 5])  # [2, 3, 4, 5]
     with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
         flatten_leading_dims(x_old, output_dims=output_dims)
+
+
+@pytest.mark.parametrize(
+    "t, expected",
+    [
+        (
+            tf.constant(0, dtype=tf.float32),
+            tf.constant(1e-15, dtype=tf.float32),
+        ),
+        (
+            tf.constant(0, dtype=tf.float64),
+            tf.constant(1e-30, dtype=tf.float64),
+        ),
+        (
+            tf.constant([[-1.0, 0.0], [1e-35, 1.0]], dtype=tf.float32),
+            tf.constant([[1e-15, 1e-15], [1e-15, 1.0]], dtype=tf.float32),
+        ),
+        (
+            tf.constant([[-1.0, 0.0], [1e-35, 1.0]], dtype=tf.float64),
+            tf.constant([[1e-30, 1e-30], [1e-30, 1.0]], dtype=tf.float64),
+        ),
+    ],
+)
+def test_ensure_positive(t: TensorType, expected: TensorType) -> None:
+    npt.assert_array_equal(ensure_positive(t), expected)
