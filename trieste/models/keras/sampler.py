@@ -23,8 +23,10 @@ from typing import Dict, Optional
 
 import tensorflow as tf
 
+from trieste.utils.misc import ensure_positive
+
 from ...types import TensorType
-from ...utils import DEFAULTS, flatten_leading_dims
+from ...utils import flatten_leading_dims
 from ..interfaces import TrajectoryFunction, TrajectoryFunctionClass, TrajectorySampler
 from .interface import DeepEnsembleModel
 from .utils import sample_model_index
@@ -169,7 +171,7 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
 
         if self._diversify:
             predicted_means, predicted_vars = self._model.predict(flat_x)  # ([N*B, L], [N*B, L])
-            predicted_vars = predicted_vars + tf.constant(DEFAULTS.JITTER, predicted_vars.dtype)
+            predicted_vars = ensure_positive(predicted_vars)
             predictions = predicted_means + tf.sqrt(predicted_vars) * tf.tile(
                 self._eps, [tf.shape(x)[0], 1]
             )  # [N*B, L]

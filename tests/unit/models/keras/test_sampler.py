@@ -479,3 +479,42 @@ def test_ensemble_trajectory_sampler_returns_state(batch_size: int, diversify: b
     assert state_post_call["batch_size"] == batch_size
     assert tf.equal(tf.size(state_post_call[rnd_state_name]), batch_size)
     assert state_post_call[rnd_state_name].dtype == dtype
+
+
+def test_ensemble_trajectory_sampler_handles_negative_variances() -> None:
+    """Test that trajectory sampler correctly handles potentially negative variances."""
+    # Create a small dataset
+    query_points = tf.constant([[0.0], [1.0]], dtype=tf.float64)
+    observations = tf.constant([[0.0], [1.0]], dtype=tf.float64)
+    dataset = Dataset(query_points, observations)
+
+    # Create a model with a custom predict method that returns negative variances
+    model, _, _ = trieste_deep_ensemble_model(dataset, _ENSEMBLE_SIZE, False, True)
+
+    # Create a custom predict method that returns negative variances
+    original_predict = model.predict
+
+    def predict_with_negative_vars(x: TensorType) -> tuple[TensorType, TensorType]:
+        means, _ = original_predict(x)
+        # Return some negative variances to test ensure_positive
+        return means, tf.constant([[-1.0], [-0.5]], dtype=tf.float64)
+
+    # Monkey patch the predict method
+    model.predict = predict_with_negative_vars  # type: ignore
+
+    # Create trajectory sampler and get trajectory
+    sampler = DeepEnsembleTrajectorySampler(
+        model, diversify=True
+    )  # diversify=True to test variance handling
+    trajectory = sampler.get_trajectory()
+
+    # Sample trajectories - this should not raise any errors and return valid values
+    samples = trajectory(tf.expand_dims(query_points, -2))  # [N, 1, D]
+
+    # Check that samples have correct shape and are finite
+    assert samples.shape == (2, 1, 1)  # [N, B, L]
+    assert tf.reduce_all(tf.math.is_finite(samples))
+
+    # The samples should be different from the means due to the variance
+    means, _ = model.predict(query_points)
+    assert not tf.reduce_all(tf.equal(samples[:, 0, :], means))
