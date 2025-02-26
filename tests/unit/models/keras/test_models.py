@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import copy
+import logging
 import operator
 import tempfile
 import unittest.mock
@@ -486,6 +487,44 @@ def test_deep_ensemble_optimize(ensemble_size: int, bootstrap_data: bool, epochs
     assert loss[-1] < loss[0]
     assert len(loss) == epochs
     assert sum(ensemble_losses) == ensemble_size
+
+
+@random_seed
+def test_deep_ensemble_optimize__with_steps_per_epoch(caplog) -> None:
+    """
+    Test that DeepEnsemble.optimize will repeat the dataset if `steps_per_epoch`
+    is set, rather than finishing early if the dataset doesn't contain at
+    least epochs * steps_per_epoch many rows.
+    """
+    example_data = _get_example_data([100, 1])
+
+    keras_ensemble = trieste_keras_ensemble_model(example_data, ensemble_size=2)
+
+    custom_optimizer = tf_keras.optimizers.RMSprop()
+
+    # N.B. custom fit args are constructed such that 26 * 5 = 130 rows of data will be required
+    # to complete all 5 iterations. However, the dataset only contains 100 rows, so it will
+    # be exhausted part way through the 4th epoch.
+    custom_fit_args = {
+        "verbose": 0,
+        "epochs": 5,
+        "steps_per_epoch": 26,
+        "batch_size": 10,
+    }
+    custom_loss = tf_keras.losses.MeanSquaredError()
+    optimizer_wrapper = KerasOptimizer(custom_optimizer, custom_fit_args, custom_loss)
+
+    model = DeepEnsemble(keras_ensemble, optimizer_wrapper)
+
+    model.optimize(example_data)
+    loss = model.model.history.history["loss"]
+
+    warning_messages = [x.message for x in caplog.records if x.levelno >= logging.WARNING]
+    assert not any(warning_messages), f"Warnings were logged:\n{warning_messages}"
+
+    # If training finishes early (i.e. before the final epoch starts), then the length
+    # of the loss history will be less than the number of requested epochs.
+    assert len(loss) == custom_fit_args["epochs"]
 
 
 @random_seed
