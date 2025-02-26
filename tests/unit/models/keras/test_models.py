@@ -25,6 +25,7 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
+from _pytest.logging import LogCaptureFixture
 from gpflow.keras import tf_keras
 from tensorflow.python.keras.callbacks import Callback
 
@@ -490,7 +491,7 @@ def test_deep_ensemble_optimize(ensemble_size: int, bootstrap_data: bool, epochs
 
 
 @random_seed
-def test_deep_ensemble_optimize__with_steps_per_epoch(caplog) -> None:
+def test_deep_ensemble_optimize__with_steps_per_epoch(caplog: LogCaptureFixture) -> None:
     """
     Test that DeepEnsemble.optimize will repeat the dataset if `steps_per_epoch`
     is set, rather than finishing early if the dataset doesn't contain at
