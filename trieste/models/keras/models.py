@@ -480,9 +480,17 @@ class DeepEnsemble(
             fit_args["epochs"] = fit_args["epochs"] + self._absolute_epochs
 
         x, y = self.prepare_dataset(dataset)
+        tf_dataset = tf.data.Dataset.from_tensor_slices((x, y))
+
+        if "steps_per_epoch" in fit_args:
+            tf_dataset = (
+                tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
+                .repeat()
+                .batch(fit_args["batch_size"], drop_remainder=True)
+            )
+
         history = self.model.fit(
-            x=x,
-            y=y,
+            tf_dataset,
             **fit_args,
             initial_epoch=self._absolute_epochs,
         )
