@@ -179,9 +179,11 @@ def _dim_two_gp(mean_shift: tuple[float, float] = (0.0, 0.0)) -> GaussianProcess
         (2, (5, 6)),
     ],
 )
+@pytest.mark.parametrize("compile", [False, True])
 def test_independent_reparametrization_sampler_custom_predict_function(
     n_latent_dims: int,
     batch_shape: Tuple[int],
+    compile: bool,
 ) -> None:
     """
     Test that it's possible to construct an IndependentReparametrizationSampler
@@ -190,7 +192,6 @@ def test_independent_reparametrization_sampler_custom_predict_function(
     """
 
     model = MagicMock(spec=ProbabilisticModel)
-    model.predict = MagicMock()
 
     def fn_predict(x: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
         shape = x.shape[:-1] + [n_latent_dims]
@@ -203,17 +204,26 @@ def test_independent_reparametrization_sampler_custom_predict_function(
 
     sample_size = 123
     sampler = IndependentReparametrizationSampler(
-        sample_size=sample_size, model=model, fn_predict=mock_predict
+        sample_size=sample_size, model=model, predict_fn=mock_predict
     )
 
     n_model_inputs = 3
     input_point = tf.random.uniform(shape=batch_shape + (1, n_model_inputs))  # value doesn't matter
 
-    samples = sampler.sample(input_point)
+    sample_fn = sampler.sample
+
+    if compile:
+        sample_fn = tf.function(sample_fn)
+
+    samples = sample_fn(input_point)
     assert samples.shape == batch_shape + (sample_size, 1, n_latent_dims)
 
     model.predict.assert_not_called()
-    mock_predict.assert_called()
+    if compile:
+        # If we compile, the mock will be called twice.
+        mock_predict.assert_called()
+    else:
+        mock_predict.assert_called_once()
 
 
 @random_seed
