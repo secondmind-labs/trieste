@@ -543,6 +543,30 @@ def test_deep_ensemble_predict_ensemble() -> None:
 
 
 @random_seed
+def test_deep_ensemble__with_steps_per_epoch_and_validation_split() -> None:
+    example_data = _get_example_data([100, 1])
+
+    keras_ensemble = trieste_keras_ensemble_model(example_data, ensemble_size=10)
+
+    optimizer = tf_keras.optimizers.Adam()
+    fit_args = {
+        "batch_size": 100,
+        "epochs": 10,
+        "callbacks": [],
+        "verbose": 0,
+        "steps_per_epoch": 20,
+        "validation_split": 0.5,
+    }
+    optimizer_wrapper = KerasOptimizer(optimizer, fit_args)
+
+    model = DeepEnsemble(keras_ensemble, optimizer_wrapper)
+    model.optimize(example_data)
+
+    losses = model.model.history.history["loss"]
+    assert len(losses) == fit_args["epochs"]
+
+
+@random_seed
 def test_deep_ensemble_sample() -> None:
     example_data = _get_example_data([100, 1])
     model, _, _ = trieste_deep_ensemble_model(example_data, _ENSEMBLE_SIZE, False, False)

@@ -26,7 +26,7 @@ from gpflow.keras import tf_keras
 from tensorflow.python.keras.callbacks import Callback
 
 from ... import logging
-from ...data import Dataset
+from ...data import Dataset, split_dataset_randomly
 from ...space import EncoderFunction
 from ...types import TensorType
 from ...utils import flatten_leading_dims
@@ -481,10 +481,19 @@ class DeepEnsemble(
         if "epochs" in fit_args:
             fit_args["epochs"] = fit_args["epochs"] + self._absolute_epochs
 
+        if "validation_split" in fit_args:
+            dataset, validation_dataset = split_dataset_randomly(
+                dataset, fit_args["validation_split"]
+            )
+            x_val, y_val = self.prepare_dataset(validation_dataset, do_not_bootstrap=True)
+            del fit_args["validation_split"]
+            fit_args["validation_data"] = tf.data.Dataset.from_tensor_slices((x_val, y_val))
+
         x, y = self.prepare_dataset(dataset)
+        tf_train_dataset = self._build_tf_dataset(x, y)
+
         history = self.model.fit(
-            x=x,
-            y=y,
+            tf_train_dataset,
             **fit_args,
             initial_epoch=self._absolute_epochs,
         )
@@ -501,6 +510,20 @@ class DeepEnsemble(
             self.optimizer.optimizer.lr.assign(self.original_lr)
 
         return history
+
+    def _build_tf_dataset(
+        self, x: Dict[str, tf.Tensor], y: Dict[str, tf.Tensor]
+    ) -> tf.data.Dataset:
+        tf_dataset = tf.data.Dataset.from_tensor_slices((x, y))
+
+        if "steps_per_epoch" in self.optimizer.fit_args:
+            tf_dataset = tf_dataset.prefetch(tf.data.experimental.AUTOTUNE).repeat()
+
+        if "batch_size" in self.optimizer.fit_args:
+            batch_size = self.optimizer.fit_args["batch_size"]
+            tf_dataset = tf_dataset.batch(batch_size)
+
+        return tf_dataset
 
     def log(self, dataset: Optional[Dataset] = None) -> None:
         """
