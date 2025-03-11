@@ -332,7 +332,7 @@ def test_split_dataset_randomly_proportions(proportion: float) -> None:
     )
 
     # Test different proportions
-    first, second = split_dataset_randomly(dataset, proportion, seed=42)
+    first, second = split_dataset_randomly(dataset, proportion)
     expected_first_size = int(len(dataset) * proportion)
     assert len(first) == expected_first_size
     assert len(second) == len(dataset) - expected_first_size
@@ -344,3 +344,33 @@ def test_split_dataset_randomly_proportions(proportion: float) -> None:
     sorted_obs = tf.sort(combined_obs, axis=0)
     npt.assert_allclose(sorted_points, tf.sort(dataset.query_points, axis=0))
     npt.assert_allclose(sorted_obs, tf.sort(dataset.observations, axis=0))
+
+
+@pytest.mark.parametrize("seed", [42, 1234])
+def test_split_dataset_randomly_check_seeding(seed: int) -> None:
+    """
+    Test that splitting the same dataset twice with the same random seed
+    produces the same result (both splits match exactly).
+    """
+    dataset = Dataset(
+        tf.constant([[float(i)] for i in range(20)]), tf.constant([[float(i)] for i in range(20)])
+    )
+    proportion = 0.5
+
+    first_split_1, second_split_1 = split_dataset_randomly(dataset, proportion, seed=seed)
+    first_split_2, second_split_2 = split_dataset_randomly(dataset, proportion, seed=seed)
+
+    # Ensure both splits match in size and contents
+    assert len(first_split_1) == len(first_split_2)
+    assert len(second_split_1) == len(second_split_2)
+
+    # Check that the sample partitions match
+    assert tf.reduce_all(first_split_1.query_points == first_split_2.query_points)
+    assert tf.reduce_all(second_split_1.query_points == second_split_2.query_points)
+
+    # Create a split with a different seed
+    first_split_3, second_split_3 = split_dataset_randomly(dataset, proportion, seed=seed + 100)
+
+    # Verify that different seeds produce different splits
+    assert not tf.reduce_all(first_split_1.query_points == first_split_3.query_points)
+    assert not tf.reduce_all(second_split_1.query_points == second_split_3.query_points)

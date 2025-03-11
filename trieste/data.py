@@ -209,9 +209,9 @@ def split_dataset_randomly(
 ) -> tuple[Dataset, Dataset]:
     """Split dataset randomly into two parts according to the specified proportion.
 
-    :param dataset: Dataset to split
-    :param proportion: Proportion of data to include in first dataset (between 0 and 1)
-    :param seed: Optional random seed for reproducibility
+    :param dataset: Dataset to split.
+    :param proportion: Proportion of data to include in first dataset (between 0 and 1).
+    :param seed: Optional random seed for reproducibility.
     :return: Tuple of two datasets, where first contains approximately proportion * len(dataset)
         points.
     :raise ValueError: If proportion is not between 0 and 1
@@ -222,13 +222,12 @@ def split_dataset_randomly(
     if len(dataset) == 0:
         return dataset, dataset
 
-    # Set random seed if provided
-    if seed is not None:
+    if seed is not None:  # ensure reproducibility
         tf.random.set_seed(seed)
 
     # Generate random permutation of indices
     num_points = len(dataset)
-    indices = tf.random.shuffle(tf.range(num_points))
+    indices = tf.random.shuffle(tf.range(num_points), seed=seed)
 
     # Split indices according to proportion
     split_idx = tf.cast(tf.math.floor(tf.cast(num_points, tf.float32) * proportion), tf.int32)
