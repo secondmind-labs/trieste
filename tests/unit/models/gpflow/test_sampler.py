@@ -53,6 +53,7 @@ from trieste.models.gpflow.sampler import (
     qmc_normal_samples,
 )
 from trieste.models.interfaces import (
+    ProbabilisticModel,
     ReparametrizationSampler,
     SupportsGetInducingVariables,
     SupportsPredictJoint,
@@ -169,6 +170,60 @@ def _dim_two_gp(mean_shift: tuple[float, float] = (0.0, 0.0)) -> GaussianProcess
         [lambda x: mean_shift[0] + Branin.objective(x), lambda x: mean_shift[1] + quadratic(x)],
         [matern52, rbf()],
     )
+
+
+@pytest.mark.parametrize(
+    ["n_latent_dims", "batch_shape"],
+    [
+        (1, (5,)),
+        (2, (5, 6)),
+    ],
+)
+@pytest.mark.parametrize("compile", [False, True])
+def test_independent_reparametrization_sampler_custom_predict_function(
+    n_latent_dims: int,
+    batch_shape: Tuple[int],
+    compile: bool,
+) -> None:
+    """
+    Test that it's possible to construct an IndependentReparametrizationSampler
+    with a custom prediction function, and that this function
+    is called rather than model.predict.
+    """
+
+    model = MagicMock(spec=ProbabilisticModel)
+
+    def fn_predict(x: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
+        shape = x.shape[:-1] + [n_latent_dims]
+        return (
+            tf.random.uniform(shape=shape),
+            tf.random.uniform(shape=shape),
+        )
+
+    mock_predict = MagicMock(side_effect=fn_predict)
+
+    sample_size = 123
+    sampler = IndependentReparametrizationSampler(
+        sample_size=sample_size, model=model, predict_fn=mock_predict
+    )
+
+    n_model_inputs = 3
+    input_point = tf.random.uniform(shape=batch_shape + (1, n_model_inputs))  # value doesn't matter
+
+    sample_fn = sampler.sample
+
+    if compile:
+        sample_fn = tf.function(sample_fn)
+
+    samples = sample_fn(input_point)
+    assert samples.shape == batch_shape + (sample_size, 1, n_latent_dims)
+
+    model.predict.assert_not_called()
+    if compile:
+        # If we compile, the mock will be called twice.
+        mock_predict.assert_called()
+    else:
+        mock_predict.assert_called_once()
 
 
 @random_seed

@@ -95,7 +95,12 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
     """Number of sobol sequence points to skip. This is incremented for each sampler."""
 
     def __init__(
-        self, sample_size: int, model: ProbabilisticModel, qmc: bool = False, qmc_skip: bool = True
+        self,
+        sample_size: int,
+        model: ProbabilisticModel,
+        qmc: bool = False,
+        qmc_skip: bool = True,
+        predict_fn: Optional[Callable[[TensorType], tuple[TensorType, TensorType]]] = None,
     ):
         """
         :param sample_size: The number of samples to take at each point. Must be positive.
@@ -104,10 +109,12 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
             sampling more accurately approximates a normal distribution than truly random samples.
         :param qmc_skip: Whether to use the skip parameter to ensure the QMC sampler gives different
             samples whenever it is reset. This is not supported with XLA.
+        :param predict_fn: A function to use instead of the model's predict method.
         :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
         """
         super().__init__(sample_size, model)
         self._eps: Optional[tf.Variable] = None
+        self._predict_fn = predict_fn or self._model.predict
         self._qmc = qmc
         self._qmc_skip = qmc_skip
 
@@ -132,7 +139,7 @@ class IndependentReparametrizationSampler(ReparametrizationSampler[Probabilistic
         :raise ValueError (or InvalidArgumentError): If ``at`` has an invalid shape or ``jitter``
             is negative.
         """
-        mean, var = self._model.predict(at[..., None, :, :])  # [..., 1, 1, L], [..., 1, 1, L]
+        mean, var = self._predict_fn(at[..., None, :, :])  # [..., 1, 1, L], [..., 1, 1, L]
         var = ensure_positive(var) if jitter < 0 else (var + jitter)
 
         def sample_eps() -> tf.Tensor:
