@@ -546,15 +546,19 @@ def test_deep_ensemble_predict_ensemble() -> None:
 def test_deep_ensemble__with_steps_per_epoch_and_validation_split() -> None:
     example_data = _get_example_data([100, 1])
 
+    epochs = 10
+    steps_per_epoch = 20
+
     keras_ensemble = trieste_keras_ensemble_model(example_data, ensemble_size=10)
 
     optimizer = tf_keras.optimizers.Adam()
+
     fit_args = {
         "batch_size": 100,
-        "epochs": 10,
+        "epochs": epochs,
         "callbacks": [],
         "verbose": 0,
-        "steps_per_epoch": 20,
+        "steps_per_epoch": steps_per_epoch,
         "validation_split": 0.5,
     }
     optimizer_wrapper = KerasOptimizer(optimizer, fit_args)
@@ -562,7 +566,7 @@ def test_deep_ensemble__with_steps_per_epoch_and_validation_split() -> None:
     model = DeepEnsemble(keras_ensemble, optimizer_wrapper)
     model.optimize(example_data)
 
-    assert optimizer.iterations.numpy() == fit_args["steps_per_epoch"] * fit_args["epochs"]
+    assert optimizer.iterations.numpy() == steps_per_epoch * epochs
 
 
 @random_seed
