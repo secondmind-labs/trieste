@@ -142,7 +142,7 @@ To cite Trieste, please reference our [arXiv](https://arxiv.org/abs/2302.08436) 
 
 ```
 @misc{trieste2023,
-  author = {Picheny, Victor and Berkeley, Joel and Moss, Henry B. and Stojic, Hrvoje and Granta, Uri and Ober, Sebastian W. and Artemev, Artem and Ghani, Khurram and Goodall, Alexander and Paleyes, Andrei and Vakili, Sattar and Pascual-Diaz, Sergio and Markou, Stratis and Qing, Jixiang and Loka, Nasrulloh R. B. S and Couckuyt, Ivo},
+  author = {Picheny, Victor and Berkeley, Joel and Moss, Henry B. and Stojic, Hrvoje and Granta, Uri and Ober, Sebastian W. and Artemev, Artem and Ghani, Khurram and Goodall, Alexander and Paleyes, Andrei and Vakili, Sattar and Pascual-Diaz, Sergio and Markou, Stratis and Qing, Jixiang and Loka, Nasrulloh R. B. S and Couckuyt, Ivo and Morter, Chris},
   title = {Trieste: Efficiently Exploring The Depths of Black-box Functions with TensorFlow},
   publisher = {arXiv},
   year = {2023},
