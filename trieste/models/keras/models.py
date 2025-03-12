@@ -482,7 +482,7 @@ class DeepEnsemble(
             fit_args["epochs"] = fit_args["epochs"] + self._absolute_epochs
 
         if "validation_split" in fit_args:
-            dataset, validation_dataset = split_dataset_randomly(
+            validation_dataset, dataset = split_dataset_randomly(
                 dataset, fit_args["validation_split"]
             )
             x_val, y_val = self.prepare_dataset(validation_dataset, do_not_bootstrap=True)
