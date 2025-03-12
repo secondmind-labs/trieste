@@ -562,8 +562,7 @@ def test_deep_ensemble__with_steps_per_epoch_and_validation_split() -> None:
     model = DeepEnsemble(keras_ensemble, optimizer_wrapper)
     model.optimize(example_data)
 
-    losses = model.model.history.history["loss"]
-    assert len(losses) == fit_args["epochs"]
+    assert optimizer.iterations.numpy() == fit_args["steps_per_epoch"] * fit_args["epochs"]
 
 
 @random_seed
