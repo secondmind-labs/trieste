@@ -18,6 +18,7 @@ import operator
 import tempfile
 import unittest.mock
 from typing import Any, Optional
+from unittest.mock import MagicMock
 
 import numpy as np
 import numpy.testing as npt
@@ -544,29 +545,46 @@ def test_deep_ensemble_predict_ensemble() -> None:
 
 @random_seed
 def test_deep_ensemble__with_steps_per_epoch_and_validation_split() -> None:
-    example_data = _get_example_data([100, 1])
+    n_rows = 150
+    example_data = _get_example_data([n_rows, 1])
 
+    batch_size = 100
     epochs = 10
     steps_per_epoch = 20
+    validation_split_proportion = 0.5
 
     keras_ensemble = trieste_keras_ensemble_model(example_data, ensemble_size=10)
+    model_fit_spy = MagicMock(side_effect=keras_ensemble.model.fit)
+    keras_ensemble.model.fit = model_fit_spy
 
     optimizer = tf_keras.optimizers.Adam()
-
     fit_args = {
-        "batch_size": 100,
+        "batch_size": batch_size,
         "epochs": epochs,
         "callbacks": [],
         "verbose": 0,
         "steps_per_epoch": steps_per_epoch,
-        "validation_split": 0.5,
+        "validation_split": validation_split_proportion,
     }
     optimizer_wrapper = KerasOptimizer(optimizer, fit_args)
 
-    model = DeepEnsemble(keras_ensemble, optimizer_wrapper)
+    model = DeepEnsemble(keras_ensemble, optimizer_wrapper, bootstrap=True)
     model.optimize(example_data)
 
     assert optimizer.iterations.numpy() == steps_per_epoch * epochs
+
+    keras_ensemble.model.fit.assert_called_once()
+    validation_data = model_fit_spy.call_args_list[0].kwargs["validation_data"]
+
+    n_expected_validation_data = int(n_rows * validation_split_proportion)
+    assert len(validation_data) == n_expected_validation_data
+
+    validation_data_x, _ = tf.data.Dataset.get_single_element(
+        validation_data.batch(n_expected_validation_data)
+    )
+    for _x in validation_data_x.values():
+        # check for repeated values to verify that validation data has not been bootstrapped
+        assert tf.size(tf.unique(_x[:, 0])[0]) == n_expected_validation_data
 
 
 @random_seed
