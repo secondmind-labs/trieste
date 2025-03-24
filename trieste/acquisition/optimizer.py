@@ -721,10 +721,13 @@ class ScipyOptimizerGreenlet(gr.greenlet):  # type: ignore[misc]
         cache_dy_dx: Optional["np.ndarray[Any, Any]"] = None
         tf.py_function(log_message, [f"In ScipyOptimizerGreenlet.run"], Tout=[])
 
+        n = tf.Variable(0)
+
         def value_and_gradient(
             x: "np.ndarray[Any, Any]",
         ) -> Tuple["np.ndarray[Any, Any]", "np.ndarray[Any, Any]"]:
-            tf.py_function(log_message, [f"In ScipyOptimizerGreenlet.value_and_gradient"], Tout=[])
+            tf.py_function(log_message, [f"In ScipyOptimizerGreenlet.value_and_gradient {n}"], Tout=[])
+            n.assign(n+1)
             # Collect function evaluations from parent greenlet
             nonlocal cache_x
             nonlocal cache_y
