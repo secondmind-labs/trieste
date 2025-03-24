@@ -18,7 +18,7 @@ This module contains functionality for optimizing
 """
 
 from __future__ import annotations
-
+import logging
 from itertools import chain
 from typing import Any, Callable, Iterable, List, Optional, Sequence, Tuple, Union, cast
 
@@ -65,6 +65,9 @@ The default minimum number of optimization runs per dimension of the search spac
 determining the number of acquisition function optimizations to be performed in parallel.
 """
 
+logging.basicConfig(format="%(asctime)s %(levelname)-8s %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 class FailedOptimizationError(Exception):
     """Raised when an acquisition optimizer fails to optimize"""
@@ -697,6 +700,9 @@ def _perform_parallel_continuous_optimization(
     return (successes, fun_values, chosen_x, nfev)
 
 
+def log_message(msg):
+    tf.print(msg)
+
 class ScipyOptimizerGreenlet(gr.greenlet):  # type: ignore[misc]
     """
     Worker greenlet that runs a single Scipy L-BFGS-B (by default). Each greenlet performs all the
@@ -716,10 +722,15 @@ class ScipyOptimizerGreenlet(gr.greenlet):  # type: ignore[misc]
         cache_x = start + 1  # Any value different from `start`.
         cache_y: Optional["np.ndarray[Any, Any]"] = None
         cache_dy_dx: Optional["np.ndarray[Any, Any]"] = None
+        logger.info("In ScipyOptimizerGreenlet.run")
+
+        tf.py_function(log_message, [f"In ScipyOptimizerGreenlet.run"], Tout=[])
 
         def value_and_gradient(
             x: "np.ndarray[Any, Any]",
         ) -> Tuple["np.ndarray[Any, Any]", "np.ndarray[Any, Any]"]:
+            logger.info("In ScipyOptimizerGreenlet.value_and_gradient")
+            tf.py_function(log_message, [f"In ScipyOptimizerGreenlet.value_and_gradient"], Tout=[])
             # Collect function evaluations from parent greenlet
             nonlocal cache_x
             nonlocal cache_y
