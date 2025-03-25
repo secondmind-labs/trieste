@@ -721,13 +721,12 @@ class ScipyOptimizerGreenlet(gr.greenlet):  # type: ignore[misc]
         cache_dy_dx: Optional["np.ndarray[Any, Any]"] = None
         tf.py_function(log_message, [f"In ScipyOptimizerGreenlet.run"], Tout=[])
 
-        n = tf.Variable(0)
+        n_get_vals = tf.Variable(0)
+        n_get_gradients = tf.Variable(0)
 
         def value_and_gradient(
             x: "np.ndarray[Any, Any]",
         ) -> Tuple["np.ndarray[Any, Any]", "np.ndarray[Any, Any]"]:
-            tf.py_function(log_message, [f"In ScipyOptimizerGreenlet.value_and_gradient {n}"], Tout=[])
-            n.assign(n+1)
             # Collect function evaluations from parent greenlet
             nonlocal cache_x
             nonlocal cache_y
@@ -738,16 +737,34 @@ class ScipyOptimizerGreenlet(gr.greenlet):  # type: ignore[misc]
                 # Send `x` to parent greenlet, which will evaluate all `x`s in a batch.
                 cache_y, cache_dy_dx = self.parent.switch(cache_x)
 
-            return cast("np.ndarray[Any, Any]", cache_y), cast("np.ndarray[Any, Any]", cache_dy_dx)
+            _y = cast("np.ndarray[Any, Any]", cache_y)
+            _dy_dx = cast("np.ndarray[Any, Any]", cache_dy_dx)
+
+            return _y, _dy_dx
+
+        def fn_get_value(
+            x: "np.ndarray[Any, Any]",
+        ) -> "np.ndarray[Any, Any]":
+            tf.py_function(log_message, [f"In ScipyOptimizerGreenlet.fn_get_value {n_get_vals}"], Tout=[])
+            n_get_vals.assign(n_get_vals+1)
+            return value_and_gradient(x)[0]
+
+        def fn_get_gradient(
+            x: "np.ndarray[Any, Any]",
+        ) -> "np.ndarray[Any, Any]":
+            tf.py_function(log_message, [f"In ScipyOptimizerGreenlet.fn_get_gradient {n_get_gradients}"], Tout=[])
+            n_get_gradients.assign(n_get_gradients+1)
+            return value_and_gradient(x)[1]
+
 
         method = "trust-constr" if len(constraints) else "l-bfgs-b"
         optimizer_args = dict(
             {"method": method, "constraints": constraints}, **(optimizer_args or {})
         )
         return spo.minimize(
-            lambda x: value_and_gradient(x)[0],
+            fn_get_value,
             start,
-            jac=lambda x: value_and_gradient(x)[1],
+            jac=fn_get_gradient,
             bounds=bounds,
             **optimizer_args,
         )
