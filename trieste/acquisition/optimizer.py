@@ -623,6 +623,7 @@ def _perform_parallel_continuous_optimization(
         x = tf.reshape(vectorized_x, [-1, V, D])  # [N/V, V, D]
         evals = -target_func(x)  # [N/V, V]
         vectorized_evals = tf.reshape(evals, [-1, 1])  # [N, 1]
+        tf.py_function(log_message, [f"vectorised_evals = {vectorized_evals}"], Tout=[])
         return vectorized_evals
 
     def _objective_value_and_gradient(x: TensorType) -> Tuple[TensorType, TensorType]:
