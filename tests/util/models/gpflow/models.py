@@ -50,6 +50,7 @@ from trieste.models.interfaces import (
     SupportsPredictY,
 )
 from trieste.models.optimizer import Optimizer
+from trieste.space import EncoderFunction
 from trieste.types import TensorType
 
 
@@ -383,7 +384,11 @@ class QuadraticMeanAndRBFKernelWithBatchSamplers(
 
 class ModelFactoryType(Protocol):
     def __call__(
-        self, x: TensorType, y: TensorType, optimizer: Optimizer | None = None
+        self,
+        x: TensorType,
+        y: TensorType,
+        optimizer: Optimizer | None = None,
+        encoder: EncoderFunction | None = None,
     ) -> tuple[GPflowPredictor, Callable[[TensorType, TensorType], GPModel]]:
         pass
 

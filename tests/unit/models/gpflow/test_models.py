@@ -87,7 +87,7 @@ from trieste.models.gpflow.sampler import (
 )
 from trieste.models.optimizer import BatchOptimizer, DatasetTransformer, Optimizer
 from trieste.models.utils import get_last_optimization_result, optimize_model_and_save_result
-from trieste.space import Box
+from trieste.space import Box, CategoricalSearchSpace, one_hot_encoder
 from trieste.types import TensorType
 from trieste.utils import DEFAULTS
 from trieste.utils.misc import get_variables
@@ -2179,3 +2179,24 @@ def test_freeze_as_float32_is_frozen(gpflow_interface_factory: ModelFactoryType)
     # some of the frozen Tensors back into Variables (which isn't a problem)
     # so for sanity we just check that the number of Variables has decreased!
     assert len(get_variables(model32)) < len(get_variables(model))
+
+
+def test_freeze_as_float32_usable_with_encoder(gpflow_interface_factory: ModelFactoryType) -> None:
+    """
+    Check that we can make float32 copies of float64 models that use a query point encoder.
+    """
+    search_space = CategoricalSearchSpace(["Red", "Green", "Blue"])
+    x = search_space.sample(10)
+    encoder = one_hot_encoder(search_space)
+    model, _ = gpflow_interface_factory(encoder(x), fnc_2sin_x_over_3(x), encoder=encoder)
+
+    assert hasattr(model, "freeze_as_float32")
+    model32 = model.freeze_as_float32()
+    npt.assert_allclose(model32.encoder(x), encoder(x))
+
+    f_mean, f_var = model.predict(x)
+    f_mean32, f_var32 = model32.predict(tf.cast(x, tf.float32))
+    assert f_mean32.dtype is tf.float32
+    npt.assert_allclose(f_mean, f_mean32, rtol=1e-6)
+    assert f_var32.dtype is tf.float32
+    npt.assert_allclose(f_var, f_var32, rtol=1e-6)
