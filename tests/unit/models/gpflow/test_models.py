@@ -2136,3 +2136,26 @@ def test_gpflow_wrappers_dilling(
     model, _ = gpflow_interface_factory(*data)
     reloaded_model = dill.loads(dill.dumps(model))
     assert type(reloaded_model) is type(model)
+
+
+def test_freeze_as_float32_usable_with_predict(gpflow_interface_factory: ModelFactoryType) -> None:
+    """
+    Check that we can make float32 copies of float64 models and that predict uses the copied
+    posterior cache rather than performing any float32 Cholesky decompositions.
+    """
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    model, _ = gpflow_interface_factory(x, fnc_2sin_x_over_3(x))
+
+    # ensure that from the point onwards we don't perform any Cholesky decompositions
+    with unittest.mock.patch("tensorflow.linalg.cholesky", side_effect=AssertionError):
+
+        assert hasattr(model, "freeze_as_float32")
+        model32 = model.freeze_as_float32()
+
+        # check that the predictions match the original float64 model
+        f_mean, f_var = model.predict(x)
+        f_mean32, f_var32 = model32.predict(tf.cast(x, tf.float32))
+        assert f_mean32.dtype is tf.float32
+        npt.assert_allclose(f_mean, f_mean32, rtol=1e-6)
+        assert f_var32.dtype is tf.float32
+        npt.assert_allclose(f_var, f_var32, rtol=1e-6)

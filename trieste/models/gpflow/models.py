@@ -87,7 +87,7 @@ def freeze_as_float32(input_module: M) -> M:
 # TODO: move to optimizer.py
 class FrozenOptimizer(Optimizer):
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.optimizer = None
 
     def optimize(self, model: tf.Module, dataset: Dataset) -> OptimizeResult:
@@ -182,20 +182,23 @@ class GaussianProcessRegression(
         Return a frozen copy of the model with all values (including the posterior cache)
         convert to float32. This permits a model previously trained in float64 to be used
         for predictions in float32 without worrying about Cholesky decomposition errors.
-        Note that the model can no longer be used for training after this.
+
+        Note that the model can no longer be used for training after this. Also, this assumes that
+        any query point encoder on the original model accepts float32 as inputs. If not, it should
+        be wrapped with cast_encoder(encoder, input_dtype=tf.float64) to work.
         """
         model = freeze_as_float32(self.model)
         posterior = None if self._posterior is None else freeze_as_float32(self._posterior)
+        encoder = (
+            None if self.encoder is None else cast_encoder(self.encoder, output_dtype=tf.float32)
+        )
         return GaussianProcessRegression(
             model,
             optimizer=FrozenOptimizer(),
             num_kernel_samples=self._num_kernel_samples,
             num_rff_features=self._num_rff_features,
             use_decoupled_sampler=self._use_decoupled_sampler,
-            # assumes that the encoder can accept float32 as input
-            # if not, then the original encoder should have been decorated with
-            # cast_encoder(encoder, input_dtype=tf.float64)
-            encoder=cast_encoder(self.encoder, output_dtype=tf.float32),
+            encoder=encoder,
             posterior=posterior,
         )
 
@@ -676,19 +679,22 @@ class SparseGaussianProcessRegression(
         Return a frozen copy of the model with all values (including the posterior cache)
         convert to float32. This permits a model previously trained in float64 to be used
         for predictions in float32 without worrying about Cholesky decomposition errors.
-        Note that the model can no longer be used for training after this.
+
+        Note that the model can no longer be used for training after this. Also, this assumes that
+        any query point encoder on the original model accepts float32 as inputs. If not, it should
+        be wrapped with cast_encoder(encoder, input_dtype=tf.float64) to work.
         """
         model = freeze_as_float32(self.model)
         posterior = None if self._posterior is None else freeze_as_float32(self._posterior)
+        encoder = (
+            None if self.encoder is None else cast_encoder(self.encoder, output_dtype=tf.float32)
+        )
         return SparseGaussianProcessRegression(
             model,
             optimizer=FrozenOptimizer(),
             num_rff_features=self._num_rff_features,
             inducing_point_selector=self._inducing_point_selector,
-            # assumes that the encoder can accept float32 as input
-            # if not, then the original encoder should have been decorated with
-            # cast_encoder(encoder, input_dtype=tf.float64)
-            encoder=cast_encoder(self.encoder, output_dtype=tf.float32),
+            encoder=encoder,
             posterior=posterior,
         )
 
@@ -1030,19 +1036,22 @@ class SparseVariational(
         Return a frozen copy of the model with all values (including the posterior cache)
         convert to float32. This permits a model previously trained in float64 to be used
         for predictions in float32 without worrying about Cholesky decomposition errors.
-        Note that the model can no longer be used for training after this.
+
+        Note that the model can no longer be used for training after this. Also, this assumes that
+        any query point encoder on the original model accepts float32 as inputs. If not, it should
+        be wrapped with cast_encoder(encoder, input_dtype=tf.float64) to work.
         """
         model = freeze_as_float32(self.model)
         posterior = None if self._posterior is None else freeze_as_float32(self._posterior)
+        encoder = (
+            None if self.encoder is None else cast_encoder(self.encoder, output_dtype=tf.float32)
+        )
         return SparseVariational(
             model,
             optimizer=FrozenOptimizer(),
             num_rff_features=self._num_rff_features,
             inducing_point_selector=self._inducing_point_selector,
-            # assumes that the encoder can accept float32 as input
-            # if not, then the original encoder should have been decorated with
-            # cast_encoder(encoder, input_dtype=tf.float64)
-            encoder=cast_encoder(self.encoder, output_dtype=tf.float32),
+            encoder=encoder,
             posterior=posterior,
         )
 
@@ -1378,20 +1387,23 @@ class VariationalGaussianProcess(
         Return a frozen copy of the model with all values (including the posterior cache)
         convert to float32. This permits a model previously trained in float64 to be used
         for predictions in float32 without worrying about Cholesky decomposition errors.
-        Note that the model can no longer be used for training after this.
+
+        Note that the model can no longer be used for training after this. Also, this assumes that
+        any query point encoder on the original model accepts float32 as inputs. If not, it should
+        be wrapped with cast_encoder(encoder, input_dtype=tf.float64) to work.
         """
         model = freeze_as_float32(self.model)
         posterior = None if self._posterior is None else freeze_as_float32(self._posterior)
+        encoder = (
+            None if self.encoder is None else cast_encoder(self.encoder, output_dtype=tf.float32)
+        )
         return VariationalGaussianProcess(
             model,
             optimizer=FrozenOptimizer(),
             use_natgrads=self._use_natgrads,
             natgrad_gamma=self._natgrad_gamma,
             num_rff_features=self._num_rff_features,
-            # assumes that the encoder can accept float32 as input
-            # if not, then the original encoder should have been decorated with
-            # cast_encoder(encoder, input_dtype=tf.float64)
-            encoder=cast_encoder(self.encoder, output_dtype=tf.float32),
+            encoder=encoder,
             posterior=posterior,
         )
 
