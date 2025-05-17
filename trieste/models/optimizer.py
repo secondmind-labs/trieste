@@ -235,3 +235,13 @@ def create_loss_function(model: Any, dataset: TrainingData, compile: bool = Fals
     :return: The loss function.
     """
     raise NotImplementedError(f"Unknown model {model} passed for loss function extraction")
+
+
+class FrozenOptimizer(Optimizer):
+    """Unusable optimizer for models that have been frozen. Raises a RuntimError is used."""
+
+    def __init__(self) -> None:
+        self.optimizer = None
+
+    def optimize(self, model: tf.Module, dataset: Dataset) -> OptimizeResult:
+        raise RuntimeError(f"{model} has been frozen and can no longer be optimized")

@@ -90,6 +90,7 @@ from trieste.models.utils import get_last_optimization_result, optimize_model_an
 from trieste.space import Box
 from trieste.types import TensorType
 from trieste.utils import DEFAULTS
+from trieste.utils.misc import get_variables
 
 
 def _3x_plus_gaussian_noise(x: tf.Tensor) -> tf.Tensor:
@@ -2159,3 +2160,22 @@ def test_freeze_as_float32_usable_with_predict(gpflow_interface_factory: ModelFa
         npt.assert_allclose(f_mean, f_mean32, rtol=1e-6)
         assert f_var32.dtype is tf.float32
         npt.assert_allclose(f_var, f_var32, rtol=1e-6)
+
+
+def test_freeze_as_float32_is_frozen(gpflow_interface_factory: ModelFactoryType) -> None:
+    """
+    Check that the frozen float32 copies are actually frozen: they should raise an exception
+    if we try to optimize them, and should contain fewer Variables than before (see comment).
+    """
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    model, _ = gpflow_interface_factory(x, fnc_2sin_x_over_3(x))
+    assert hasattr(model, "freeze_as_float32")
+    model32 = model.freeze_as_float32()
+
+    with pytest.raises(RuntimeError):
+        model32.optimize(Dataset(x, fnc_2sin_x_over_3(x)))
+
+    # note that even though the model was "frozen", the constructors end up converting
+    # some of the frozen Tensors back into Variables (which isn't a problem)
+    # so for sanity we just check that the number of Variables has decreased!
+    assert len(get_variables(model32)) < len(get_variables(model))

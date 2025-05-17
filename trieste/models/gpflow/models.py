@@ -54,7 +54,7 @@ from ..interfaces import (
     TrainableProbabilisticModel,
     TrajectorySampler,
 )
-from ..optimizer import BatchOptimizer, Optimizer, OptimizeResult
+from ..optimizer import BatchOptimizer, FrozenOptimizer, Optimizer, OptimizeResult
 from .inducing_point_selectors import InducingPointSelector
 from .interface import EncodedSupportsCovarianceBetweenPoints, GPflowPredictor
 from .sampler import DecoupledTrajectorySampler, RandomFourierFeatureTrajectorySampler
@@ -68,7 +68,7 @@ from .utils import (
 )
 
 
-# TODO: move to gpflow
+# TODO: import from GPflow
 def freeze_as_float32(input_module: M) -> M:
     """
     Returns a frozen deepcopy of the input tf.Module with all values converted to tf.float32.
@@ -82,16 +82,6 @@ def freeze_as_float32(input_module: M) -> M:
         for v in objects_to_freeze.values()
     }
     return deepcopy(input_module, memo_tensors)
-
-
-# TODO: move to optimizer.py
-class FrozenOptimizer(Optimizer):
-
-    def __init__(self) -> None:
-        self.optimizer = None
-
-    def optimize(self, model: tf.Module, dataset: Dataset) -> OptimizeResult:
-        raise RuntimeError(f"{model} has been frozen and can no longer be optimized")
 
 
 class GaussianProcessRegression(
