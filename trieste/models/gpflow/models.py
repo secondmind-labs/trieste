@@ -32,6 +32,7 @@ from gpflow.models.vgp import update_vgp_data
 from gpflow.posteriors import AbstractPosterior
 from gpflow.utilities import add_noise_cov, is_variable, multiple_assign, read_values
 from gpflow.utilities.ops import leading_transpose
+from gpflow.utilities.traversal import M, _get_leaf_components, deepcopy
 
 from ...data import (
     Dataset,
@@ -39,7 +40,7 @@ from ...data import (
     check_and_extract_fidelity_query_points,
     split_dataset_by_fidelity,
 )
-from ...space import EncoderFunction
+from ...space import EncoderFunction, cast_encoder
 from ...types import TensorType
 from ...utils import DEFAULTS, jit
 from ...utils.misc import flatten_leading_dims
@@ -65,6 +66,32 @@ from .utils import (
     randomize_hyperparameters,
     squeeze_hyperparameters,
 )
+
+
+# TODO: move to gpflow
+def freeze_as_float32(input_module: M) -> M:
+    """
+    Returns a frozen deepcopy of the input tf.Module with all values converted to tf.float32.
+
+    :param input_module: tf.Module or gpflow.Module.
+    :return: Returns a float32 frozen deepcopy of an input object.
+    """
+    objects_to_freeze = _get_leaf_components(input_module)
+    memo_tensors = {
+        id(v): tf.cast(tf.convert_to_tensor(v), dtype=tf.float32)
+        for v in objects_to_freeze.values()
+    }
+    return deepcopy(input_module, memo_tensors)
+
+
+# TODO: move to optimizer.py
+class FrozenOptimizer(Optimizer):
+
+    def __init__(self):
+        self.optimizer = None
+
+    def optimize(self, model: tf.Module, dataset: Dataset) -> OptimizeResult:
+        raise RuntimeError(f"{model} has been frozen and can no longer be optimized")
 
 
 class GaussianProcessRegression(
@@ -149,6 +176,28 @@ class GaussianProcessRegression(
     @property
     def model(self) -> GPR:
         return self._model
+
+    def freeze_as_float32(self) -> "GaussianProcessRegression":
+        """
+        Return a frozen copy of the model with all values (including the posterior cache)
+        convert to float32. This permits a model previously trained in float64 to be used
+        for predictions in float32 without worrying about Cholesky decomposition errors.
+        Note that the model can no longer be used for training after this.
+        """
+        model = freeze_as_float32(self.model)
+        posterior = None if self._posterior is None else freeze_as_float32(self._posterior)
+        return GaussianProcessRegression(
+            model,
+            optimizer=FrozenOptimizer(),
+            num_kernel_samples=self._num_kernel_samples,
+            num_rff_features=self._num_rff_features,
+            use_decoupled_sampler=self._use_decoupled_sampler,
+            # assumes that the encoder can accept float32 as input
+            # if not, then the original encoder should have been decorated with
+            # cast_encoder(encoder, input_dtype=tf.float64)
+            encoder=cast_encoder(self.encoder, output_dtype=tf.float32),
+            posterior=posterior,
+        )
 
     def _ensure_variable_model_data(self) -> None:
         # GPflow stores the data in Tensors. However, since we want to be able to update the data
@@ -622,6 +671,27 @@ class SparseGaussianProcessRegression(
     def model(self) -> SGPR:
         return self._model
 
+    def freeze_as_float32(self) -> "SparseGaussianProcessRegression":
+        """
+        Return a frozen copy of the model with all values (including the posterior cache)
+        convert to float32. This permits a model previously trained in float64 to be used
+        for predictions in float32 without worrying about Cholesky decomposition errors.
+        Note that the model can no longer be used for training after this.
+        """
+        model = freeze_as_float32(self.model)
+        posterior = None if self._posterior is None else freeze_as_float32(self._posterior)
+        return SparseGaussianProcessRegression(
+            model,
+            optimizer=FrozenOptimizer(),
+            num_rff_features=self._num_rff_features,
+            inducing_point_selector=self._inducing_point_selector,
+            # assumes that the encoder can accept float32 as input
+            # if not, then the original encoder should have been decorated with
+            # cast_encoder(encoder, input_dtype=tf.float64)
+            encoder=cast_encoder(self.encoder, output_dtype=tf.float32),
+            posterior=posterior,
+        )
+
     @property
     def inducing_point_selector(
         self,
@@ -955,6 +1025,27 @@ class SparseVariational(
     def model(self) -> SVGP:
         return self._model
 
+    def freeze_as_float32(self) -> "SparseVariational":
+        """
+        Return a frozen copy of the model with all values (including the posterior cache)
+        convert to float32. This permits a model previously trained in float64 to be used
+        for predictions in float32 without worrying about Cholesky decomposition errors.
+        Note that the model can no longer be used for training after this.
+        """
+        model = freeze_as_float32(self.model)
+        posterior = None if self._posterior is None else freeze_as_float32(self._posterior)
+        return SparseVariational(
+            model,
+            optimizer=FrozenOptimizer(),
+            num_rff_features=self._num_rff_features,
+            inducing_point_selector=self._inducing_point_selector,
+            # assumes that the encoder can accept float32 as input
+            # if not, then the original encoder should have been decorated with
+            # cast_encoder(encoder, input_dtype=tf.float64)
+            encoder=cast_encoder(self.encoder, output_dtype=tf.float32),
+            posterior=posterior,
+        )
+
     @property
     def inducing_point_selector(self) -> Optional[InducingPointSelector[SparseVariational]]:
         return self._inducing_point_selector
@@ -1281,6 +1372,28 @@ class VariationalGaussianProcess(
     @property
     def model(self) -> VGP:
         return self._model
+
+    def freeze_as_float32(self) -> "VariationalGaussianProcess":
+        """
+        Return a frozen copy of the model with all values (including the posterior cache)
+        convert to float32. This permits a model previously trained in float64 to be used
+        for predictions in float32 without worrying about Cholesky decomposition errors.
+        Note that the model can no longer be used for training after this.
+        """
+        model = freeze_as_float32(self.model)
+        posterior = None if self._posterior is None else freeze_as_float32(self._posterior)
+        return VariationalGaussianProcess(
+            model,
+            optimizer=FrozenOptimizer(),
+            use_natgrads=self._use_natgrads,
+            natgrad_gamma=self._natgrad_gamma,
+            num_rff_features=self._num_rff_features,
+            # assumes that the encoder can accept float32 as input
+            # if not, then the original encoder should have been decorated with
+            # cast_encoder(encoder, input_dtype=tf.float64)
+            encoder=cast_encoder(self.encoder, output_dtype=tf.float32),
+            posterior=posterior,
+        )
 
     def predict_y_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         f_mean, f_var = self.predict_encoded(query_points)
