@@ -238,7 +238,7 @@ def create_loss_function(model: Any, dataset: TrainingData, compile: bool = Fals
 
 
 class FrozenOptimizer(Optimizer):
-    """Unusable optimizer for models that have been frozen. Raises a RuntimError is used."""
+    """Unusable optimizer for models that have been frozen. Raises a RuntimError if used."""
 
     def __init__(self) -> None:
         self.optimizer = None

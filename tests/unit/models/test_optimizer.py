@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+import unittest
+
 import gpflow
 import numpy as np
 import pytest
@@ -21,7 +23,8 @@ import tensorflow as tf
 
 from tests.util.models.models import fnc_3x_plus_10
 from trieste.data import Dataset
-from trieste.models.optimizer import create_loss_function
+from trieste.models import TrainableProbabilisticModel
+from trieste.models.optimizer import FrozenOptimizer, create_loss_function
 
 
 def test_create_loss_function_raises_on_none() -> None:
@@ -29,3 +32,11 @@ def test_create_loss_function_raises_on_none() -> None:
     data = Dataset(x, fnc_3x_plus_10(x))
     with pytest.raises(NotImplementedError):
         create_loss_function(None, data)  # type: ignore
+
+
+def test_frozen_optimizer_raises_on_optimizer() -> None:
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    data = Dataset(x, fnc_3x_plus_10(x))
+    model = unittest.mock.MagicMock(spec=TrainableProbabilisticModel)
+    with pytest.raises(RuntimeError):
+        FrozenOptimizer().optimize(model, data)
