@@ -36,6 +36,6 @@ authors:
 - family-names: "Morter"
   given-names: "Chris"
 title: "Trieste"
-version: 4.4.0
-date-released: 2025-03-12
+version: 4.5.0
+date-released: 2025-05-22
 url: "https://github.com/secondmind-labs/trieste"
