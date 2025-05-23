@@ -673,7 +673,7 @@ class CategoricalSearchSpace(GeneralDiscreteSearchSpace, HasOneHotEncoder):
             ]
             encoded = tf.concat(
                 [
-                    tf.cast(encoder(column), dtype=self._dtype)
+                    tf.cast(encoder(column), dtype=x.dtype)
                     for encoder, column in zip(encoders, columns)
                 ],
                 axis=1,

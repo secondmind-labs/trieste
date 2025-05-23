@@ -1778,14 +1778,29 @@ def test_categorical_search_space__to_tags_raises_for_non_integers() -> None:
             tf.constant([[0], [1], [0]], dtype=tf.float64),
         ),
         (
+            CategoricalSearchSpace(["Y", "N"]),
+            tf.constant([[0], [1], [0]], dtype=tf.float32),
+            tf.constant([[0], [1], [0]], dtype=tf.float32),
+        ),
+        (
             CategoricalSearchSpace(["R", "G", "B"], dtype=tf.float32),
             tf.constant([[0], [2], [1]], dtype=tf.float32),
             tf.constant([[1, 0, 0], [0, 0, 1], [0, 1, 0]], dtype=tf.float32),
         ),
         (
+            CategoricalSearchSpace(["R", "G", "B"], dtype=tf.float32),
+            tf.constant([[0], [2], [1]], dtype=tf.float64),
+            tf.constant([[1, 0, 0], [0, 0, 1], [0, 1, 0]], dtype=tf.float64),
+        ),
+        (
             CategoricalSearchSpace(["R", "G", "B"]),
             tf.constant([[[[[0]]]]], dtype=tf.float64),
             tf.constant([[[[[1, 0, 0]]]]], dtype=tf.float64),
+        ),
+        (
+            CategoricalSearchSpace(["R", "G", "B"]),
+            tf.constant([[[[[0]]]]], dtype=tf.float32),
+            tf.constant([[[[[1, 0, 0]]]]], dtype=tf.float32),
         ),
         (
             CategoricalSearchSpace(["R", "G", "B", "A"], dtype=tf.float32),
@@ -1814,6 +1829,11 @@ def test_categorical_search_space__to_tags_raises_for_non_integers() -> None:
             TaggedProductSearchSpace([Box([0.0], [1.0]), CategoricalSearchSpace(["R", "G", "B"])]),
             tf.constant([[[0.5, 0]], [[0.3, 2]]], dtype=tf.float64),
             tf.constant([[[0.5, 1, 0, 0]], [[0.3, 0, 0, 1]]], dtype=tf.float64),
+        ),
+        (
+            TaggedProductSearchSpace([Box([0.0], [1.0]), CategoricalSearchSpace(["R", "G", "B"])]),
+            tf.constant([[[0.5, 0]], [[0.3, 2]]], dtype=tf.float32),
+            tf.constant([[[0.5, 1, 0, 0]], [[0.3, 0, 0, 1]]], dtype=tf.float32),
         ),
         (
             Box([0.0], [1.0]),
